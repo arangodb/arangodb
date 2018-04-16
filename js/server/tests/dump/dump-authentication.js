@@ -162,7 +162,7 @@ function dumpTestSuite () {
       assertTrue(users.exists(uName));
       assertEqual(users.permission(uName, "_system"), 'rw');
       assertEqual(users.permission(uName, "UnitTestsDumpSrc"), 'rw');
-      assertEqual(users.permission(uName, "UnitTestsDumpEmpty"), 'none');
+      assertEqual(users.permission(uName, "UnitTestsDumpEmpty"), 'rw');
     }
 
   };

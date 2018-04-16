@@ -1,5 +1,3 @@
-// flags.h
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -12,13 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: riley@google.com (Michael Riley)
-//
-// \file
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
+// 
 // Google-style flag handling declarations and inline definitions.
 
-#ifndef FST_LIB_FLAGS_H__
-#define FST_LIB_FLAGS_H__
+#ifndef FST_LIB_FLAGS_H_
+#define FST_LIB_FLAGS_H_
+
+#include <cstdlib>
 
 #include <iostream>
 #include <map>
@@ -31,7 +31,6 @@
 
 using std::string;
 
-//
 // FLAGS USAGE:
 //
 // Definition example:
@@ -48,7 +47,6 @@ using std::string;
 // using, for example, '--length=2'.
 //
 // ShowUsage() can be used to print out command and flag usage.
-//
 
 #define DECLARE_bool(name) extern bool FLAGS_ ## name
 #define DECLARE_string(name) extern string FLAGS_ ## name
@@ -77,19 +75,19 @@ template <typename T>
 class FlagRegister {
  public:
   static FlagRegister<T> *GetRegister() {
-    fst::FstOnceInit(&register_init_, &FlagRegister<T>::Init);
-    return register_;
+    static auto reg = new FlagRegister<T>;
+    return reg;
   }
 
   const FlagDescription<T> &GetFlagDescription(const string &name) const {
-    fst::MutexLock l(register_lock_);
-    typename std::map< string, FlagDescription<T> >::const_iterator it =
-      flag_table_.find(name);
+    fst::MutexLock l(&flag_lock_);
+    auto it = flag_table_.find(name);
     return it != flag_table_.end() ? it->second : 0;
   }
+
   void SetDescription(const string &name,
                       const FlagDescription<T> &desc) {
-    fst::MutexLock l(register_lock_);
+    fst::MutexLock l(&flag_lock_);
     flag_table_.insert(make_pair(name, desc));
   }
 
@@ -105,20 +103,24 @@ class FlagRegister {
       return false;
     }
   }
+
   bool SetFlag(const string &val, string *address) const {
     *address = val;
     return true;
   }
+
   bool SetFlag(const string &val, int32 *address) const {
     char *p = 0;
     *address = strtol(val.c_str(), &p, 0);
     return !val.empty() && *p == '\0';
   }
+
   bool SetFlag(const string &val, int64 *address) const {
     char *p = 0;
     *address = strtoll(val.c_str(), &p, 0);
     return !val.empty() && *p == '\0';
   }
+
   bool SetFlag(const string &val, double *address) const {
     char *p = 0;
     *address = strtod(val.c_str(), &p);
@@ -138,12 +140,8 @@ class FlagRegister {
     return false;
   }
 
-  void GetUsage(std::set< std::pair<string, string> > *usage_set) const {
-    for (typename std::map< string,
-             FlagDescription<T> >::const_iterator it =
-           flag_table_.begin();
-         it != flag_table_.end();
-         ++it) {
+  void GetUsage(std::set<std::pair<string, string>> *usage_set) const {
+    for (auto it = flag_table_.begin(); it != flag_table_.end(); ++it) {
       const string &name = it->first;
       const FlagDescription<T> &desc = it->second;
       string usage = "  --" + name;
@@ -157,13 +155,6 @@ class FlagRegister {
   }
 
  private:
-  static void Init() {
-    register_lock_ = new fst::Mutex;
-    register_ = new FlagRegister<T>;
-  }
-
-  std::map< string, FlagDescription<T> > flag_table_;
-
   string GetDefault(bool default_value) const {
     return default_value ? "true" : "false";
   }
@@ -172,37 +163,28 @@ class FlagRegister {
     return "\"" + default_value + "\"";
   }
 
-  template<typename V> string GetDefault(const V& default_value) const {
+  template <class V>
+  string GetDefault(const V &default_value) const {
     std::ostringstream strm;
     strm << default_value;
     return strm.str();
   }
 
-  static fst::FstOnceType register_init_;   // ensures only called once
-  static fst::Mutex* register_lock_;        // multithreading lock
-  static FlagRegister<T> *register_;
+  mutable fst::Mutex flag_lock_;        // Multithreading lock.
+  std::map<string, FlagDescription<T>> flag_table_;
 };
-
-template <class T>
-fst::FstOnceType FlagRegister<T>::register_init_ = fst::FST_ONCE_INIT;
-
-template <class T>
-fst::Mutex *FlagRegister<T>::register_lock_ = 0;
-
-template <class T>
-FlagRegister<T> *FlagRegister<T>::register_ = 0;
-
 
 template <typename T>
 class FlagRegisterer {
  public:
   FlagRegisterer(const string &name, const FlagDescription<T> &desc) {
-    FlagRegister<T> *registr = FlagRegister<T>::GetRegister();
+    auto registr = FlagRegister<T>::GetRegister();
     registr->SetDescription(name, desc);
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(FlagRegisterer);
+  FlagRegisterer(const FlagRegisterer &) = delete;
+  FlagRegisterer &operator=(const FlagRegisterer &) = delete;
 };
 
 
@@ -223,7 +205,7 @@ class FlagRegisterer {
 #define DEFINE_double(name, value, doc) DEFINE_VAR(double, name, value, doc)
 
 
-// Temporary directory
+// Temporary directory.
 DECLARE_string(tmpdir);
 
 void SetFlags(const char *usage, int *argc, char ***argv, bool remove_flags,
@@ -232,11 +214,11 @@ void SetFlags(const char *usage, int *argc, char ***argv, bool remove_flags,
 #define SET_FLAGS(usage, argc, argv, rmflags) \
 SetFlags(usage, argc, argv, rmflags, __FILE__)
 
-// Deprecated - for backward compatibility
+// Deprecated; for backward compatibility.
 inline void InitFst(const char *usage, int *argc, char ***argv, bool rmflags) {
   return SetFlags(usage, argc, argv, rmflags);
 }
 
 void ShowUsage(bool long_usage = true);
 
-#endif  // FST_LIB_FLAGS_H__
+#endif  // FST_LIB_FLAGS_H_

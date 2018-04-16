@@ -31,12 +31,6 @@
 #include "VocBase/voc-types.h"
 
 NS_BEGIN(arangodb)
-
-class LogicalView; // forward declaration
-
-NS_END // arangodb
-
-NS_BEGIN(arangodb)
 NS_BEGIN(velocypack)
 
 class Builder; // forward declarations
@@ -107,16 +101,14 @@ struct IResearchViewMeta {
   struct Mask {
     bool _collections;
     bool _commit;
-    bool _dataPath;
     bool _locale;
     bool _threadsMaxIdle;
     bool _threadsMaxTotal;
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via view property modification (may contain no-longer valid cids)
+  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via IResearchLink creation (may contain no-longer valid cids)
   CommitMeta _commit;
-  std::string _dataPath; // data file path
   std::locale _locale; // locale used for ordering processed attribute names
   size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks
   size_t _threadsMaxTotal; // maximum total number of threads for single-run tasks
@@ -154,7 +146,6 @@ struct IResearchViewMeta {
   bool init(
     arangodb::velocypack::Slice const& slice,
     std::string& errorField,
-    arangodb::LogicalView const& viewDefaults,
     IResearchViewMeta const& defaults = DEFAULT(),
     Mask* mask = nullptr
   ) noexcept;

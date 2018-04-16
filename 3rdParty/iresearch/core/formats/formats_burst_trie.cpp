@@ -33,11 +33,8 @@
 #include "index/file_names.hpp"
 #include "index/index_meta.hpp"
 
-#include "store/checksum_io.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/fst.hpp"
-#include "utils/fst_utils.hpp"
-#include "utils/fst_decl.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/attributes.hpp"
@@ -46,30 +43,18 @@
 #include "utils/fst_matcher.hpp"
 
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-  #if (__GNUC__ >= 6)
-    #pragma GCC diagnostic ignored "-Wmisleading-indentation"
-  #endif
-#endif
-
-#include <fst/equivalent.h>
-
-#if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-#if defined(_MSC_VER)
   #pragma warning(disable : 4291)
 #elif defined (__GNUC__)
   // NOOP
 #endif
 
 #include <fst/matcher.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4291)
+#elif defined (__GNUC__)
+  // NOOP
+#endif
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4244)
@@ -209,7 +194,8 @@ inline void prepare_input(
     const string_ref& ext,
     const string_ref& format,
     const int32_t min_ver,
-    const int32_t max_ver) {
+    const int32_t max_ver,
+    int64_t* checksum = nullptr) {
   assert(!in);
 
   file_name(str, state.meta->name, ext);
@@ -221,6 +207,10 @@ inline void prepare_input(
     ss << "Failed to open file, path: " << str;
 
     throw detailed_io_error(ss.str());
+  }
+
+  if (checksum) {
+    *checksum = format_utils::checksum(*in);
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -1162,8 +1152,8 @@ term_reader::term_reader(term_reader&& rhs) NOEXCEPT
     owner_(rhs.owner_) {
   min_term_ref_ = min_term_;
   max_term_ref_ = max_term_;
-  rhs.min_term_ref_ = bytes_ref::nil;
-  rhs.max_term_ref_ = bytes_ref::nil;
+  rhs.min_term_ref_ = bytes_ref::NIL;
+  rhs.max_term_ref_ = bytes_ref::NIL;
   rhs.terms_count_ = 0;
   rhs.doc_count_ = 0;
   rhs.doc_freq_ = 0;
@@ -1220,10 +1210,13 @@ NS_END // detail
 // --SECTION--                                       field_writer implementation
 // -----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref field_writer::FORMAT_TERMS = "block_tree_terms_dict";
 const string_ref field_writer::TERMS_EXT = "tm";
 const string_ref field_writer::FORMAT_TERMS_INDEX = "block_tree_terms_index";
 const string_ref field_writer::TERMS_INDEX_EXT = "ti";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 void field_writer::write_term_entry(const detail::entry& e, size_t prefix, bool leaf) {
   using namespace detail;
@@ -1602,7 +1595,7 @@ void field_writer::end_field(
   }
 
   // cause creation of all final blocks
-  push(bytes_ref::nil);
+  push(bytes_ref::EMPTY);
 
   // write root block with empty prefix
   write_blocks(0, stack.size());
@@ -1679,21 +1672,22 @@ bool field_reader::prepare(
 
   // check index header 
   index_input::ptr index_in;
+
+  int64_t checksum = 0;
+
   detail::prepare_input(
     str, index_in,
     irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE, state,
     field_writer::TERMS_INDEX_EXT,
     field_writer::FORMAT_TERMS_INDEX,
     field_writer::FORMAT_MIN,
-    field_writer::FORMAT_MAX
+    field_writer::FORMAT_MAX,
+    &checksum
   );
 
   if (!detail::read_segment_features(*index_in, feature_map, features)) {
     return false;
   }
-
-  // check index checksum
-  format_utils::check_checksum<boost::crc_32_type>(*index_in);
 
   // read total number of indexed fields
   size_t fields_count{ 0 };
@@ -1705,6 +1699,10 @@ bool field_reader::prepare(
     );
 
     fields_count = index_in->read_long();
+
+    // check index checksum
+    format_utils::check_footer(*index_in, checksum);
+
     index_in->seek(ptr);
   }
 

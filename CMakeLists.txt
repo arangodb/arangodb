@@ -363,7 +363,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "7.9.9")
     message(FATAL_ERROR "ArangoDB doesn't support g++ 8.0 yet.")
   endif()
-  set(BASE_C_FLAGS "${BASE_C_FLAGS} -std=gnu89")
+  set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
@@ -441,6 +441,8 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -490,8 +492,11 @@ else ()
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
   endif ()
 
-  set(BASE_FLAGS "${Vc_COMPILE_FLAGS} ${BASE_FLAGS}")
+  set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
+
+set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
+
 
 ################################################################################
 ## BACKTRACE
@@ -562,6 +567,13 @@ if (USE_MAINTAINER_MODE)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif ()
+
+option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
+if (USE_CATCH_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
 
 include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
@@ -838,6 +850,7 @@ if (OPENSSL_VERSION)
   string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
   list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
   list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
+
   if ("${OPENSSL_VERSION_MAJOR}" GREATER 0 AND "${OPENSSL_VERSION_MINOR}" GREATER 0)
     option(USE_OPENSSL_NO_SSL2
       "do not use OPENSSL_NO_SSL2"
@@ -1008,7 +1021,6 @@ add_subdirectory(arangod)
 
 add_subdirectory(Documentation)
 
-option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
 if (USE_CATCH_TESTS)
   add_subdirectory(tests)
 endif()

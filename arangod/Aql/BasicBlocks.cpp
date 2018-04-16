@@ -82,8 +82,7 @@ int SingletonBlock::shutdown(int errorCode) {
   return res;
 }
 
-int SingletonBlock::getOrSkipSome(size_t,  // atLeast,
-                                  size_t atMost, bool skipping,
+int SingletonBlock::getOrSkipSome(size_t atMost, bool skipping,
                                   AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -166,10 +165,10 @@ bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
 }
 
 /// @brief internal function to get another block
-bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
+bool FilterBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   while (true) {  // will be left by break or return
-    if (!ExecutionBlock::getBlock(atLeast, atMost)) {
+    if (!ExecutionBlock::getBlock(atMost)) {
       return false;
     }
 
@@ -210,7 +209,7 @@ bool FilterBlock::getBlock(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();  
 }
 
-int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+int FilterBlock::getOrSkipSome(size_t atMost, bool skipping,
                                AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -222,9 +221,9 @@ int FilterBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   // if _buffer.size() is > 0 then _pos is valid
   _collector.clear();
 
-  while (skipped < atLeast) {
+  while (skipped < atMost) {
     if (_buffer.empty()) {
-      if (!getBlock(atLeast - skipped, atMost - skipped)) {
+      if (!getBlock(atMost - skipped)) {
         _done = true;
         break;
       }
@@ -306,7 +305,7 @@ bool FilterBlock::hasMore() {
     // trigger an expensive fetching operation, even if later on only
     // a single document is needed due to a LIMIT...
     // However, how should we know this here?
-    if (!getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+    if (!getBlock(DefaultBatchSize())) {
       _done = true;
       return false;
     }
@@ -338,7 +337,7 @@ int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();  
 }
 
-int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+int LimitBlock::getOrSkipSome(size_t atMost, bool skipping,
                               AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -349,10 +348,7 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
 
   if (_state == 0) {
     if (_fullCount) {
-      // properly initialize fullcount value, which has a default of -1
-      if (_engine->_stats.fullCount == -1) {
-        _engine->_stats.fullCount = 0;
-      }
+      _engine->_stats.fullCount = 0;
     }
 
     if (_offset > 0) {
@@ -375,12 +371,9 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   if (_limit > 0) {
     if (atMost > _limit - _count) {
       atMost = _limit - _count;
-      if (atLeast > atMost) {
-        atLeast = atMost;
-      }
     }
 
-    ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
+    ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
 
     if (skipped == 0) {
       return TRI_ERROR_NO_ERROR;
@@ -398,20 +391,17 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     if (_fullCount) {
       // if fullCount is set, we must fetch all elements from the
       // dependency. we'll use the default batch size for this
-      atLeast = DefaultBatchSize();
       atMost = DefaultBatchSize();
 
       // suck out all data from the dependencies
       while (true) {
         skipped = 0;
         AqlItemBlock* ignore = nullptr;
-        ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore,
-                                      skipped);
+        ExecutionBlock::getOrSkipSome(atMost, skipping, ignore, skipped);
 
-        if (ignore != nullptr) {
-          _engine->_stats.fullCount += static_cast<int64_t>(ignore->size());
-          delete ignore;
-        }
+        TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
+        _engine->_stats.fullCount += skipped;
+        delete ignore;
 
         if (skipped == 0) {
           break;
@@ -426,11 +416,11 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   DEBUG_END_BLOCK();
 }
 
-AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* ReturnBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
+      ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
   if (res.get() == nullptr) {
     traceGetSomeEnd(nullptr);
@@ -515,8 +505,7 @@ int NoResultsBlock::initializeCursor(AqlItemBlock*, size_t) {
   DEBUG_END_BLOCK();  
 }
 
-int NoResultsBlock::getOrSkipSome(size_t,  // atLeast
-                                  size_t,  // atMost
+int NoResultsBlock::getOrSkipSome(size_t,  // atMost
                                   bool,    // skipping
                                   AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);

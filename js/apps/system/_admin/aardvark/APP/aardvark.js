@@ -51,11 +51,11 @@ router.get('/index.html', (req, res) => {
   if (encoding && encoding.indexOf('gzip') >= 0) {
     // gzip-encode?
     res.set('Content-Encoding', 'gzip');
-    res.set('Content-Type', 'text/html');
     res.sendFile(module.context.fileName('frontend/build/index-min.html.gz'));
   } else {
     res.sendFile(module.context.fileName('frontend/build/index-min.html'));
   }
+  res.set('Content-Type', 'text/html; charset=utf-8');
   res.set('X-Frame-Options', 'DENY');
   res.set('X-XSS-Protection', '1; mode=block');
 })
@@ -65,12 +65,19 @@ router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
   const isEnterprise = internal.isEnterprise();
+  let ldapEnabled = false;
+  if (isEnterprise) {
+    if (internal.ldapEnabled()) {
+      ldapEnabled = true;
+    }
+  }
   res.send(
     `var frontendConfig = ${JSON.stringify({
       basePath: basePath,
       db: req.database,
       isEnterprise: isEnterprise,
       authenticationEnabled: internal.authenticationEnabled(),
+      ldapEnabled: ldapEnabled,
       isCluster: cluster.isCluster(),
       engine: db._engine().name
     })}`

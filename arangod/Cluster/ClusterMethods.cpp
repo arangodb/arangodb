@@ -320,7 +320,7 @@ static int distributeBabyOnShards(
   ShardID shardID;
   int error = ci->getResponsibleShard(collinfo.get(), node, false, shardID,
                                       usesDefaultShardingAttributes);
-  if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+  if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
   }
   if (error != TRI_ERROR_NO_ERROR) {
@@ -397,7 +397,7 @@ static int distributeBabyOnShards(
       error = ci->getResponsibleShard(collinfo.get(), node, true, shardID,
                                       usesDefaultShardingAttributes, _key);
     }
-    if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
     }
 
@@ -552,8 +552,9 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   auto result = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
   TRI_ASSERT(cid != 0);
   std::string cidString = arangodb::basics::StringUtils::itoa(cid);
-  std::shared_ptr<LogicalCollection> other =
-    ci->getCollection(col->dbName(), cidString);
+  TRI_ASSERT(col);
+  auto other = ci->getCollection(col->vocbase().name(), cidString);
+
   // The function guarantees that no nullptr is returned
   TRI_ASSERT(other != nullptr);
 
@@ -710,7 +711,7 @@ int revisionOnCoordinator(std::string const& dbname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -784,7 +785,7 @@ int warmupOnCoordinator(std::string const& dbname,
   try {
     collinfo = ci->getCollection(dbname, cid);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -832,7 +833,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -887,7 +888,8 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
-                       std::vector<std::pair<std::string, uint64_t>>& result) {
+                       std::vector<std::pair<std::string, uint64_t>>& result,
+                       bool sendNoLockHeader) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -903,19 +905,31 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
   auto shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  for (auto const& p : *shards) {
-    requests.emplace_back("shard:" + p.first,
-                          arangodb::rest::RequestType::GET,
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                          "/_api/collection/" +
-                          StringUtils::urlEncode(p.first) + "/count", body);
+  if (sendNoLockHeader) {
+    for (auto const& p : *shards) {
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      headers->emplace("x-arango-nolock", p.first);
+      requests.emplace_back(
+          "shard:" + p.first, arangodb::rest::RequestType::GET,
+          "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
+              StringUtils::urlEncode(p.first) + "/count",
+          body, headers);
+    }
+  } else {
+    for (auto const& p : *shards) {
+      requests.emplace_back("shard:" + p.first,
+                            arangodb::rest::RequestType::GET,
+                            "/_db/" + StringUtils::urlEncode(dbname) +
+                            "/_api/collection/" +
+                            StringUtils::urlEncode(p.first) + "/count", body);
+    }
   }
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
@@ -969,7 +983,7 @@ int selectivityEstimatesOnCoordinator(
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -1091,11 +1105,11 @@ int createDocumentOnCoordinator(
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
-  std::string const collid = collinfo->cid_as_string();
+  auto collid = std::to_string(collinfo->id());
   std::unordered_map<
       ShardID, std::vector<std::pair<VPackValueLength, std::string>>> shardMap;
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
@@ -1232,11 +1246,11 @@ int deleteDocumentOnCoordinator(
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
   bool useDefaultSharding = collinfo->usesDefaultShardKeys();
-  std::string collid = collinfo->cid_as_string();
+  auto collid = std::to_string(collinfo->id());
   bool useMultiple = slice.isArray();
 
   std::string const baseUrl =
@@ -1279,7 +1293,7 @@ int deleteDocumentOnCoordinator(
             arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 
-        if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+        if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
           return TRI_ERROR_CLUSTER_SHARD_GONE;
         }
       }
@@ -1465,7 +1479,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -1520,7 +1534,7 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -1588,11 +1602,11 @@ int getDocumentOnCoordinator(
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
-  std::string collid = collinfo->cid_as_string();
+  auto collid = std::to_string(collinfo->id());
 
   // If _key is the one and only sharding attribute, we can do this quickly,
   // because we can easily determine which shard is responsible for the
@@ -2274,7 +2288,7 @@ int modifyDocumentOnCoordinator(
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo =
       ci->getCollection(dbname, collname);
-  std::string collid = collinfo->cid_as_string();
+  auto collid = std::to_string(collinfo->id());
 
   // We have a fast path and a slow path. The fast path only asks one shard
   // to do the job and the slow path asks them all and expects to get
@@ -2553,29 +2567,47 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   // Now listen to the results:
   int count;
   int nrok = 0;
+  int globalErrorCode = TRI_ERROR_INTERNAL;
   for (count = (int)DBservers.size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
+      } else {
+        // got an error. Now try to find the errorNum value returned (if any)
+        TRI_ASSERT(res.answer != nullptr);
+        auto resBody = res.answer->toVelocyPackBuilderPtr();
+        VPackSlice resSlice = resBody->slice();
+        if (resSlice.isObject()) {
+          int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+              resSlice, "errorNum", TRI_ERROR_INTERNAL);
+
+          if (code != TRI_ERROR_NO_ERROR) {
+            globalErrorCode = code;
+          }
+        }
       }
     }
   }
 
   if (nrok != (int)DBservers.size()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not flush WAL on all servers. confirmed: " << nrok << ", expected: " << DBservers.size();
-    return TRI_ERROR_INTERNAL;
+    return globalErrorCode;
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
 #ifndef USE_ENTERPRISE
-std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
-  TRI_col_type_e collectionType, TRI_vocbase_t* vocbase, VPackSlice parameters,
-  bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-  bool enforceReplicationFactor) {
-  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, true);  
+std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
+    TRI_col_type_e collectionType,
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice parameters,
+    bool ignoreDistributeShardsLikeErrors,
+    bool waitForSyncReplication,
+    bool enforceReplicationFactor
+) {
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, 0, true);
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
@@ -2589,7 +2621,7 @@ std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
 /// @brief Persist collection in Agency and trigger shard creation process
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
+std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
   bool waitForSyncReplication, bool enforceReplicationFactor,
   VPackSlice) {
@@ -2602,11 +2634,10 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
   if (!distributeShardsLike.empty()) {
-
-    CollectionNameResolver resolver(col->vocbase());
+    CollectionNameResolver resolver(&(col->vocbase()));
     TRI_voc_cid_t otherCid =
       resolver.getCollectionIdCluster(distributeShardsLike);
-    
+
     if (otherCid != 0) {
       shards = CloneShardDistribution(ci, col, otherCid);
     } else {
@@ -2625,13 +2656,25 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
 
     // the default behaviour however is to bail out and inform the user
     // that the requested replicationFactor is not possible right now
-    if (enforceReplicationFactor && dbServers.size() < replicationFactor) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+    if (dbServers.size() < replicationFactor) {
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        << "Do not have enough DBServers for requested replicationFactor,"
+        << " nrDBServers: " << dbServers.size()
+        << " replicationFactor: " << replicationFactor;
+      if (enforceReplicationFactor) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+      }
     }
 
     if (!avoid.empty()) {
       // We need to remove all servers that are in the avoid list
       if (dbServers.size() - avoid.size() < replicationFactor) {
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "Do not have enough DBServers for requested replicationFactor,"
+          << " (after considering avoid list),"
+          << " nrDBServers: " << dbServers.size()
+          << " replicationFactor: " << replicationFactor
+          << " avoid list size: " << avoid.size();
         // Not enough DBServers left
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
       }
@@ -2659,9 +2702,11 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   col->setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
+  auto& dbName = col->vocbase().name();
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
-      col->dbName(), col->cid_as_string(),
+      dbName,
+      std::to_string(col->id()),
       col->numberOfShards(), col->replicationFactor(),
       waitForSyncReplication, velocy.slice(), errorMsg, 240.0);
 
@@ -2671,14 +2716,15 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
+
   ci->loadPlan();
 
-  auto c = ci->getCollection(col->dbName(), col->cid_as_string());
+  auto c = ci->getCollection(dbName, std::to_string(col->id()));
   // We never get a nullptr here because an exception is thrown if the
   // collection does not exist. Also, the create collection should have
   // failed before.
-  TRI_ASSERT(c != nullptr);
-  return c->clone();
+  TRI_ASSERT(c.get() != nullptr);
+  return c;
 }
 
 /// @brief fetch edges from TraverserEngines

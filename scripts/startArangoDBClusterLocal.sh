@@ -108,7 +108,6 @@ start() {
                --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
                --cluster.my-address tcp://127.0.0.1:$PORT \
                --server.endpoint tcp://127.0.0.1:$PORT \
-               --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                --cluster.my-role $ROLE \
                --log.file /tmp/cluster/$PORT.log \
                --log.level info \
@@ -135,7 +134,6 @@ startTerminal() {
                 --cluster.agency-endpoint tcp://127.0.0.1:$BASE \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --javascript.app-path /tmp/cluster/jsapps$port \
                 --log.file /tmp/cluster/$PORT.log \

@@ -83,7 +83,9 @@
         }
       }.bind(this);
 
-      window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callback);
+      if (!frontendConfig.ldapEnabled) {
+        window.arangoHelper.syncAndReturnUninishedAardvarkJobs('index', callback);
+      }
     },
 
     initialize: function () {

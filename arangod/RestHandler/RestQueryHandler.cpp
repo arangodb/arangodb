@@ -77,9 +77,9 @@ RestStatus RestQueryHandler::execute() {
 }
 
 bool RestQueryHandler::readQueryProperties() {
-  auto queryList = _vocbase->queryList();
-
+  auto queryList = _vocbase.queryList();
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Object));
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
@@ -99,10 +99,10 @@ bool RestQueryHandler::readQueryProperties() {
 }
 
 bool RestQueryHandler::readQuery(bool slow) {
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   auto queries = slow ? queryList->listSlow() : queryList->listCurrent();
-
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Array));
 
   for (auto const& q : queries) {
@@ -157,10 +157,11 @@ bool RestQueryHandler::readQuery() {
 }
 
 bool RestQueryHandler::deleteQuerySlow() {
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   queryList->clearSlow();
 
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Object));
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
@@ -173,7 +174,7 @@ bool RestQueryHandler::deleteQuerySlow() {
 
 bool RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
   auto res = queryList->kill(id);
@@ -223,23 +224,21 @@ bool RestQueryHandler::replaceProperties() {
     return true;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+
   if (!parseSuccess) {
     // error message generated in parseVelocyPackBody
     return true;
   }
 
-  VPackSlice body = parsedBody.get()->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
   };
 
-  auto queryList = _vocbase->queryList();
-
+  auto queryList = _vocbase.queryList();
   bool enabled = queryList->enabled();
   bool trackSlowQueries = queryList->trackSlowQueries();
   bool trackBindVars = queryList->trackBindVars();
@@ -297,15 +296,12 @@ bool RestQueryHandler::parseQuery() {
     return true;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return true;
   }
-
-  VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD,
@@ -316,9 +312,14 @@ bool RestQueryHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(false, _vocbase, QueryString(queryString),
-              nullptr, nullptr, PART_MAIN);
-
+  Query query(
+    false,
+    &_vocbase,
+    QueryString(queryString),
+    nullptr,
+    nullptr,
+    PART_MAIN
+  );
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {

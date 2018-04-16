@@ -207,7 +207,7 @@ function indexSuite() {
         fail();
       }
       catch (e1) {
-        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e1.errorNum);
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e1.errorNum);
       }
 
       try {
@@ -215,7 +215,7 @@ function indexSuite() {
         fail();
       }
       catch (e2) {
-        assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, e2.errorNum);
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e2.errorNum);
       }
     }
 

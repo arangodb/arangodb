@@ -919,7 +919,7 @@ function executePlanForCollections(plannedCollections) {
 
                 // collection exists, now compare collection properties
                 let cmp = [ 'journalSize', 'waitForSync', 'doCompact',
-                  'indexBuckets' ];
+                  'indexBuckets', 'cacheEnabled' ];
 
                 let properties = cmp.reduce((obj, key) => {
                   if (localCollections[shardName].hasOwnProperty(key) &&
@@ -1705,8 +1705,8 @@ var shardList = function (dbName, collectionName) {
     if (isEnterprise) {
       return require('@arangodb/clusterEE').getSmartShards(dbName, collectionName, ci);
     } else {
-      raiseError(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-        arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message);
+      raiseError(arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code,
+        arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message);
     }
   }
 

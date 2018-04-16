@@ -102,7 +102,7 @@ void index_writer::flush_context::reset() {
   modification_queries_.clear();
   pending_segments_.clear();
   segment_mask_.clear();
-  writers_pool_.visit([this](segment_writer& writer)->bool {
+  writers_pool_.visit([](segment_writer& writer)->bool {
     writer.reset();
     return true;
   });
@@ -651,6 +651,10 @@ void index_writer::remove(const filter& filter) {
 }
 
 void index_writer::remove(const std::shared_ptr<filter>& filter) {
+  if (!filter) {
+    return; // skip empty filters
+  }
+
   auto ctx = get_flush_context();
   SCOPED_LOCK(ctx->mutex_); // lock due to context modification
   ctx->modification_queries_.emplace_back(filter, ctx->generation_++, false);

@@ -37,6 +37,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SHUTTING_DOWN, "shutdown in progress");
   REG_ERROR(ERROR_ONLY_ENTERPRISE, "only enterprise version");
   REG_ERROR(ERROR_RESOURCE_LIMIT, "resource limit exceeded");
+  REG_ERROR(ERROR_ARANGO_ICU_ERROR, "icu error: %s");
+  REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -46,6 +48,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_SERVICE_UNAVAILABLE, "service unavailable");
+  REG_ERROR(ERROR_HTTP_GATEWAY_TIMEOUT, "gateway timeout");
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");
@@ -71,7 +74,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
+  REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
   REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
@@ -79,7 +82,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
-  REG_ERROR(ERROR_ARANGO_VIEW_NOT_FOUND, "view not found");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
@@ -176,6 +178,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS, "conflicting shard number with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -217,6 +220,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "bad execution plan JSON");
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
+  REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
+  REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");

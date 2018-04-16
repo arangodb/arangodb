@@ -21,20 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchFilterFactory.h"
-#include "IResearchDocument.h"
-#include "IResearchAnalyzerFeature.h"
-#include "IResearchFeature.h"
-#include "IResearchKludge.h"
-#include "ExpressionFilter.h"
-#include "ApplicationServerHelper.h"
-#include "AqlHelper.h"
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
+#if defined(_MSC_VER)
+  #include "date/date.h"
+  #undef NOEXCEPT
+#endif
 
-#include "Aql/Function.h"
-#include "Aql/Ast.h"
-
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
+#include <cctype>
+#include <type_traits>
 
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
@@ -45,8 +39,18 @@
 #include "search/column_existence_filter.hpp"
 #include "search/phrase_filter.hpp"
 
-#include <cctype>
-#include <type_traits>
+#include "ApplicationServerHelper.h"
+#include "AqlHelper.h"
+#include "ExpressionFilter.h"
+#include "IResearchFilterFactory.h"
+#include "IResearchDocument.h"
+#include "IResearchAnalyzerFeature.h"
+#include "IResearchFeature.h"
+#include "IResearchKludge.h"
+#include "Aql/Function.h"
+#include "Aql/Ast.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 NS_LOCAL
 
@@ -1687,7 +1691,7 @@ NS_BEGIN(iresearch)
     .field(DocumentPrimaryKey::CID()) // set field
     .term(DocumentPrimaryKey::encode(cid)); // set value
 
-  return std::move(filter);
+  return filter;
 }
 
 /*static*/ irs::filter::ptr FilterFactory::filter(
@@ -1698,7 +1702,7 @@ NS_BEGIN(iresearch)
 
   FilterFactory::filter(static_cast<irs::And&>(*filter), cid, rid);
 
-  return std::move(filter);
+  return filter;
 }
 
 /*static*/ irs::filter& FilterFactory::filter(

@@ -86,6 +86,10 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Transactions.h"
 
+#if USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -136,18 +140,18 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   Result rv = executeTransactionJS(isolate, args[0], result, tryCatch);
 
   // do not rethrow if already canceled
-  if(isContextCanceled(isolate)){
+  if (isContextCanceled(isolate)){
     TRI_V8_RETURN(result);
   }
 
   // has caught and could not be converted to arangoError
   // otherwise it would have been reseted
-  if(tryCatch.HasCaught()){
+  if (tryCatch.HasCaught()) {
     tryCatch.ReThrow();
     return;
   }
 
-  if (rv.fail()){
+  if (rv.fail()) {
     THROW_ARANGO_EXCEPTION(rv);
   }
 
@@ -474,9 +478,8 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("RELOAD_AUTH()");
   }
   
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-    "Authentication");
-  authentication->authInfo()->outdate();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  af->userManager()->outdate();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -803,9 +806,6 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // bind parameters
   std::shared_ptr<VPackBuilder> bindVars;
 
-  // options
-  auto options = std::make_shared<VPackBuilder>();
-
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
@@ -820,12 +820,14 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  // options
+  auto options = std::make_shared<VPackBuilder>();
   if (args.Length() > 2) {
     // we have options! yikes!
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-
+    
     int res = TRI_V8ToVPack(isolate, *options, args[2], false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1385,14 +1387,14 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
         value, WRP_VOCBASE_COL_TYPE);
 
     // check if the collection is from the same database
-    if (collection != nullptr && collection->vocbase() == vocbase) {
+    if (collection != nullptr && &(collection->vocbase()) == vocbase) {
       // we cannot use collection->getStatusLocked() here, because we
       // have no idea who is calling us (db[...]). The problem is that
       // if we are called from within a JavaScript transaction, the
       // caller may have already acquired the collection's status lock
       // with that transaction. if we now lock again, we may deadlock!
       TRI_vocbase_col_status_e status = collection->status();
-      TRI_voc_cid_t cid = collection->cid();
+      TRI_voc_cid_t cid = collection->id();
       uint32_t internalVersion = collection->internalVersion();
 
       // check if the collection is still alive
@@ -1434,7 +1436,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       auto colCopy = ci->clone();
       collection = colCopy.release();  // will be delete on garbage collection
     } else {
-      collection = vocbase->lookupCollection(std::string(key));
+      collection = vocbase->lookupCollection(std::string(key)).get();
     }
   } catch (...) {
     // do not propagate exception from here
@@ -1807,7 +1809,7 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && exec->systemAuthLevel() != AuthLevel::RW) {
+  if (exec != nullptr && exec->systemAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1902,69 +1904,21 @@ static void JS_AuthenticationEnabled(
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run version check
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase,
-                         v8::Handle<v8::Context> context) {
-  auto isolate = context->GetIsolate();
-
-  v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  v8g->_vocbase = vocbase;
-
-  auto startupLoader = V8DealerFeature::DEALER->startupLoader();
-
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(), "server/upgrade-database.js");
-
-  bool ok = TRI_ObjectToBoolean(result);
-
-  if (!ok) {
-    vocbase->setState(TRI_vocbase_t::State::FAILED_VERSION);
-  }
-
-  v8g->_vocbase = orig;
-
-  return ok;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run upgrade check
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
-                             v8::Handle<v8::Context> context) {
-  auto isolate = context->GetIsolate();
-  v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  v8g->_vocbase = vocbase;
-
-  auto startupLoader = V8DealerFeature::DEALER->startupLoader();
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(), "server/check-version.js");
-  int code = (int)TRI_ObjectToInt64(result);
-
-  v8g->_vocbase = orig;
-
-  return code;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if we are in the enterprise edition
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_LdapEnabled(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-#ifndef USE_ENTERPRISE
-  TRI_V8_RETURN(v8::False(isolate));
+ 
+#ifdef USE_ENTERPRISE
+  auto ldap = application_features::ApplicationServer::getFeature<LdapFeature>(
+    "Ldap");
+  TRI_ASSERT(ldap != nullptr);
+  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap->isEnabled()));
 #else
-  TRI_V8_RETURN(v8::True(isolate));
-#endif
+  // LDAP only enabled in enterprise mode
+  TRI_V8_RETURN(v8::False(isolate));
+#endif  
+
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2278,14 +2232,14 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AUTHENTICATION_ENABLED"),
                                JS_AuthenticationEnabled, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "LDAP_ENABLED"),
+                               JS_LdapEnabled, true);
 
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "TRUSTED_PROXIES"),
                                JS_TrustedProxies, true);
-  
-  TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_ENTERPRISE"),
-                               JS_IsEnterprise);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "DECODE_REV"),

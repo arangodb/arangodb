@@ -72,6 +72,7 @@ set(IReSearch_tests_sources
   ./utils/async_utils_tests.cpp
   ./utils/bitvector_tests.cpp
   ./utils/container_utils_tests.cpp
+  ./utils/file_utils_tests.cpp
   ./utils/map_utils_tests.cpp
   ./utils/object_pool_tests.cpp
   ./utils/numeric_utils_test.cpp

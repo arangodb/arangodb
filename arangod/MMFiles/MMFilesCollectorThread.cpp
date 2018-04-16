@@ -500,7 +500,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(TRACE, Logger::COLLECTOR) << "queued operations applied successfully";
         } else if (res == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
-                  res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+                  res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
           // these are expected errors
           LOG_TOPIC(TRACE, Logger::COLLECTOR)
               << "removing queued operations for already deleted collection";
@@ -597,11 +597,9 @@ void MMFilesCollectorThread::clearQueuedOperations() {
       for (auto const& cache : operations) {
         {
           arangodb::DatabaseGuard dbGuard(cache->databaseId);
-          TRI_vocbase_t* vocbase = dbGuard.database();
-          TRI_ASSERT(vocbase != nullptr);
-
-          arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId,
-                                                    true);
+          arangodb::CollectionGuard collectionGuard(
+            &(dbGuard.database()), cache->collectionId, true
+          );
           arangodb::LogicalCollection* collection = collectionGuard.collection();
 
           TRI_ASSERT(collection != nullptr);
@@ -732,10 +730,10 @@ void MMFilesCollectorThread::processCollectionMarker(
 /// @brief process all operations for a single collection
 int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* cache) {
   arangodb::DatabaseGuard dbGuard(cache->databaseId);
-  TRI_vocbase_t* vocbase = dbGuard.database();
-  TRI_ASSERT(vocbase != nullptr);
-
-  arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId, true);
+  auto& vocbase = dbGuard.database();
+  arangodb::CollectionGuard collectionGuard(
+    &vocbase, cache->collectionId, true
+  );
   arangodb::LogicalCollection* collection = collectionGuard.collection();
 
   TRI_ASSERT(collection != nullptr);
@@ -753,8 +751,11 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-      collection->cid(), AccessMode::Type::WRITE);
+      arangodb::transaction::StandaloneContext::Create(&(collection->vocbase())),
+      collection->id(),
+      AccessMode::Type::WRITE
+  );
+
   trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above
   trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);  // already locked above
   trx.addHint(transaction::Hints::Hint::NO_THROTTLING);
@@ -941,7 +942,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
 
       if (res != TRI_ERROR_NO_ERROR &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+          res != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
         if (res != TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
           // other places already log this error, and making the logging
           // conditional here
@@ -958,7 +959,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   }
 
   // Error conditions TRI_ERROR_ARANGO_DATABASE_NOT_FOUND and
-  // TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND are intentionally ignored
+  // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND are intentionally ignored
   // here since this can actually happen if someone has dropped things
   // in between.
 
@@ -980,10 +981,9 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
 
   // prepare database and collection
   arangodb::DatabaseGuard dbGuard(databaseId);
-  TRI_vocbase_t* vocbase = dbGuard.database();
-  TRI_ASSERT(vocbase != nullptr);
-
-  arangodb::CollectionGuard collectionGuard(vocbase, collectionId, true);
+  arangodb::CollectionGuard collectionGuard(
+    &(dbGuard.database()), collectionId, true
+  );
   arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
@@ -1003,13 +1003,14 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   int res = TRI_ERROR_INTERNAL;
 
   uint64_t numBytesTransferred = 0;
+
   try {
     auto en = static_cast<MMFilesEngine*>(engine);
     res = en->transferMarkers(collection, cache.get(), operations, numBytesTransferred);
-  
+
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector transferred markers for '"
              << collection->name() << ", number of bytes transferred: " << numBytesTransferred;
-    
+
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       queueOperations(logfile, cache);
     }

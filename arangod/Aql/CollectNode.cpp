@@ -23,6 +23,7 @@
 
 #include "CollectNode.h"
 #include "Aql/Ast.h"
+#include "Aql/CollectBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
@@ -118,6 +119,30 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  switch (aggregationMethod()) {
+    case CollectOptions::CollectMethod::HASH:
+      return std::make_unique<HashedCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::SORTED:
+      return std::make_unique<SortedCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::DISTINCT:
+      return std::make_unique<DistinctCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::COUNT:
+      return std::make_unique<CountCollectBlock>(&engine, this);
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot instantiate CollectBlock with "
+        "undetermined aggregation method"
+      );
+  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -263,6 +288,11 @@ void CollectNode::getVariablesUsedHere(
       }
     }
   }
+}
+  
+void CollectNode::setAggregateVariables(
+    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables) {
+  _aggregateVariables = aggregateVariables;
 }
 
 /// @brief estimateCost

@@ -617,6 +617,22 @@ function ahuacatlFunctionsTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test reverse function
+//////////////////////////////////////////////////////////////////////////////// 
+
+    testReverse5 : function () {
+      let val = [
+        ['eÜrCyeltÖM', 'MÖtleyCrÜe'],
+        ['狗懶了過跳狸狐色棕的捷敏', '敏捷的棕色狐狸跳過了懶狗']
+      ];
+      for (let i = 0; i < 2; i++) {
+        let v = val[i];
+        assertEqual([v[0]], getQueryResults('RETURN REVERSE(@v)', {v: v[1]}));
+        assertEqual([v[0]], getQueryResults('RETURN NOOPT(V8(REVERSE(@v)))', {v: v[1]}));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse function
 ////////////////////////////////////////////////////////////////////////////////
 
     testReverseInvalid : function () {
@@ -628,6 +644,64 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN REVERSE({ })"); 
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse V8 function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverseV8_1 : function () {
+      var expected = [ [ ] ];
+      var actual = getQueryResults("RETURN NOOPT(V8(REVERSE([ ])))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse V8 function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverseV8_2 : function () {
+      var expected = [ [ "fox" ] ];
+      var actual = getQueryResults("RETURN NOOPT(V8(REVERSE([ \"fox\" ])))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse V8 function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverseV8_3 : function () {
+      var expected = [ [ false, [ "fox", "jumped" ], { "quick" : "brown" }, "the" ] ];
+      var actual = getQueryResults("RETURN NOOPT(V8(REVERSE([ \"the\", { \"quick\" : \"brown\" }, [ \"fox\", \"jumped\" ], false ])))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse V8 function
+//////////////////////////////////////////////////////////////////////////////// 
+
+    testReverseV8_4 : function () {
+      var expected = [ [ 1, 2, 3 ] ];
+      var actual = getQueryResults("LET a = (FOR i IN [ 1, 2, 3 ] RETURN i) LET b = NOOPT(V8(REVERSE(a))) RETURN a");
+      // make sure reverse does not modify the original value
+      assertEqual(expected, actual);
+      
+      actual = getQueryResults("LET a = (FOR i IN [ 1, 2, 3] RETURN i) LET b = NOOPT(V8(REVERSE(a))) RETURN b");
+      assertEqual([ expected[0].reverse() ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test reverse V8 function
+////////////////////////////////////////////////////////////////////////////////
+
+    testReverseV8_Invalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(REVERSE()))"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(REVERSE([ ], [ ])))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(REVERSE(null)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(REVERSE(true)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(REVERSE(4)))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(V8(REVERSE({ })))"); 
+    },
+
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test unique function
 ////////////////////////////////////////////////////////////////////////////////

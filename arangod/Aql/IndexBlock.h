@@ -71,12 +71,10 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   /// @brief initializeCursor, here we release our docs from this collection
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  AqlItemBlock* getSome(size_t atMost) override final;
 
-  // skip between atLeast and atMost, returns the number actually skipped . . .
-  // will only return less than atLeast if there aren't atLeast many
-  // things to skip overall.
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  // skip between atMost documents, returns the number actually skipped . . .
+  size_t skipSome(size_t atMost) override final;
 
  private:
   /// @brief adds a SORT to a dynamic IN condition
@@ -90,9 +88,6 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   /// @brief Initializes the indexes
   bool initIndexes();
-
-  /// @brief whether or not one of the bounds expressions requires V8
-  bool hasV8Expression() const;
 
   /// @brief execute the bounds expressions
   void executeExpressions();
@@ -146,11 +141,12 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 
-  /// @brief whether or not at least one expression uses v8
-  bool _hasV8Expression;
-  
   /// @brief A managed document result to temporary hold one document
   std::unique_ptr<ManagedDocumentResult> _mmdr;
+
+  /// @brief whether or not we will use an expression that requires V8, and we need to take
+  /// special care to enter a context before and exit it properly
+  bool _hasV8Expression;
 
   /// @brief Flag if all indexes are exhausted to be maintained accross several getSome() calls
   bool _indexesExhausted;

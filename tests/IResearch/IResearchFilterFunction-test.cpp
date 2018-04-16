@@ -46,9 +46,9 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionPlan.h"
@@ -69,62 +69,6 @@
 #include "search/phrase_filter.hpp"
 
 NS_LOCAL
-
-struct TestAttribute: public irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-};
-
-DEFINE_ATTRIBUTE_TYPE(TestAttribute);
-
-struct TestTermAttribute: public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) {
-    value_ = value;
-  }
-};
-
-class TestAnalyzer: public irs::analysis::analyzer {
- public:
-  DECLARE_ANALYZER_TYPE();
-
-  static ptr make(irs::string_ref const& args) {
-    if (args.null()) throw std::exception();
-    if (args.empty()) return nullptr;
-    PTR_NAMED(TestAnalyzer, ptr);
-    return ptr;
-  }
-
-  TestAnalyzer() : irs::analysis::analyzer(TestAnalyzer::type()) {
-    _attrs.emplace(_term);
-    _attrs.emplace(_attr);
-  }
-
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
-
-  virtual bool next() override {
-    if (_data.empty()) {
-      return false;
-    }
-
-    _term.value(irs::bytes_ref(_data.c_str(), 1));
-    _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1);
-    return true;
-  }
-
-  virtual bool reset(irs::string_ref const& data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    return true;
-  }
-
- private:
-  irs::attribute_view _attrs;
-  irs::bytes_ref _data;
-  TestTermAttribute _term;
-  TestAttribute _attr;
-};
-
-DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestCharAnalyzer");
-REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
 
 std::string mangleBool(std::string name) {
   arangodb::iresearch::kludge::mangleBool(name);
@@ -376,13 +320,13 @@ struct IResearchFilterSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for IResearchFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
@@ -460,7 +404,6 @@ struct IResearchFilterSetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 }; // IResearchFilterSetup

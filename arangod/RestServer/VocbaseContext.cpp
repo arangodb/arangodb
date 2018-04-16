@@ -24,87 +24,96 @@
 #include "VocbaseContext.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
 
-using namespace arangodb;
-using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace arangodb {
 
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
-VocbaseContext* VocbaseContext::create(GeneralRequest* req,
-                                       TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(vocbase != nullptr);
+VocbaseContext::VocbaseContext(
+    GeneralRequest* req,
+    TRI_vocbase_t& vocbase,
+    bool isInternal,
+    auth::Level systemLevel,
+    auth::Level dbLevel
+): ExecContext(isInternal, req->user(), req->databaseName(), systemLevel, dbLevel),
+   _vocbase(vocbase) {
   // _vocbase has already been refcounted for us
-  TRI_ASSERT(!vocbase->isDangling());
+  TRI_ASSERT(!_vocbase.isDangling());
+}
 
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+VocbaseContext::~VocbaseContext() {
+  TRI_ASSERT(!_vocbase.isDangling());
+  _vocbase.release();
+}
+
+/*static*/ VocbaseContext* VocbaseContext::create(
+    GeneralRequest* req, TRI_vocbase_t& vocbase
+) {
+  // _vocbase has already been refcounted for us
+  TRI_ASSERT(!vocbase.isDangling());
+
+  AuthenticationFeature* auth = AuthenticationFeature::instance();
+
   if (auth == nullptr) {
     return nullptr;
   }
 
   if (!auth->isActive()) {
     return new VocbaseContext(req, vocbase, /*isInternal*/ false,
-                              /*sysLevel*/ AuthLevel::RW,
-                              /*dbLevel*/ AuthLevel::RW);
+                              /*sysLevel*/ auth::Level::RW,
+                              /*dbLevel*/ auth::Level::RW);
   }
 
-  if (req->authorized()) {
+  if (req->authenticated()) {
     // superusers will have an empty username. This MUST be invalid
     // for users authenticating with name / password
     if (req->user().empty()) {
       if (req->authenticationMethod() != AuthenticationMethod::JWT) {
         std::string msg = "only jwt can be used to authenticate as superuser";
-        LOG_TOPIC(WARN, Logger::AUTHORIZATION) << msg;
+        LOG_TOPIC(WARN, Logger::AUTHENTICATION) << msg;
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
       }
+
       return new VocbaseContext(req, vocbase, /*isInternal*/ true,
-                                /*sysLevel*/ AuthLevel::RW,
-                                /*dbLevel*/ AuthLevel::RW);
+                                /*sysLevel*/ auth::Level::RW,
+                                /*dbLevel*/ auth::Level::RW);
     }
-    AuthInfo* ai = auth->authInfo();
-    TRI_ASSERT(ai != nullptr);
-    AuthLevel dbLvl = ai->canUseDatabase(req->user(), req->databaseName());
-    AuthLevel sysLvl = dbLvl;
+
+    auth::UserManager* um = auth->userManager();
+    TRI_ASSERT(um != nullptr);
+    auth::Level dbLvl = um->databaseAuthLevel(req->user(), req->databaseName());
+    auth::Level sysLvl = dbLvl;
+
     if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
-      sysLvl = ai->canUseDatabase(req->user(), TRI_VOC_SYSTEM_DATABASE);
+      sysLvl = um->databaseAuthLevel(req->user(), TRI_VOC_SYSTEM_DATABASE);
     }
+
     return new VocbaseContext(req, vocbase, /*isInternal*/ false,
                               /*sysLevel*/ sysLvl,
                               /*dbLevel*/ dbLvl);
   }
+
   return new VocbaseContext(req, vocbase, /*isInternal*/ false,
-                            /*sysLevel*/ AuthLevel::NONE,
-                            /*dbLevel*/ AuthLevel::NONE);
-}
-
-VocbaseContext::VocbaseContext(GeneralRequest* req, TRI_vocbase_t* vocbase,
-                               bool isInternal, AuthLevel sys,
-                               AuthLevel dbl)
-    : ExecContext(isInternal, req->user(), req->databaseName(), sys, dbl),
-      _vocbase(vocbase) {
-  TRI_ASSERT(_vocbase != nullptr);
-  // _vocbase has already been refcounted for us
-  TRI_ASSERT(!_vocbase->isDangling());
-}
-
-VocbaseContext::~VocbaseContext() {
-  TRI_ASSERT(!_vocbase->isDangling());
-  _vocbase->release();
+                            /*sysLevel*/ auth::Level::NONE,
+                            /*dbLevel*/ auth::Level::NONE);
 }
 
 void VocbaseContext::forceSuperuser() {
   TRI_ASSERT(!_internal || _user.empty());
   _internal = true;
-  _systemDbAuthLevel = AuthLevel::RW;
-  _databaseAuthLevel = AuthLevel::RW;
+  _systemDbAuthLevel = auth::Level::RW;
+  _databaseAuthLevel = auth::Level::RW;
 }
 
 void VocbaseContext::forceReadOnly() {
   TRI_ASSERT(!_internal || _user.empty());
   _internal = true;
-  _systemDbAuthLevel = AuthLevel::RO;
-  _databaseAuthLevel = AuthLevel::RO;
+  _systemDbAuthLevel = auth::Level::RO;
+  _databaseAuthLevel = auth::Level::RO;
 }
+
+} // arangodb

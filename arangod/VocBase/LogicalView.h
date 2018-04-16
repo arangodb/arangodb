@@ -24,11 +24,11 @@
 #ifndef ARANGOD_VOCBASE_LOGICAL_VIEW_H
 #define ARANGOD_VOCBASE_LOGICAL_VIEW_H 1
 
+#include "LogicalDataSource.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "VocBase/ViewImplementation.h"
+#include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Buffer.h>
 
@@ -36,116 +36,159 @@ namespace arangodb {
 
 namespace velocypack {
 class Slice;
+class Builder;
 }
 
-namespace aql {
-class ExecutionPlan;
-struct ExecutionContext;
-}
-
-class PhysicalView;
-
-class LogicalView {
-  friend struct ::TRI_vocbase_t;
-
+////////////////////////////////////////////////////////////////////////////////
+/// @class LogicalView
+////////////////////////////////////////////////////////////////////////////////
+class LogicalView : public LogicalDataSource {
  public:
-  LogicalView(TRI_vocbase_t*, velocypack::Slice const&);
-  ~LogicalView();
+  typedef std::function<bool(TRI_voc_cid_t)> CollectionVisitor;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief typedef for a LogicalView pre-commit callback
+  ///        called before completing view creation
+  ///        e.g. before persisting definition to filesystem
+  //////////////////////////////////////////////////////////////////////////////
+  typedef std::function<bool(
+    std::shared_ptr<LogicalView>const& view // a pointer to the created view
+  )> PreCommitCallback;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the category representing a logical view
+  //////////////////////////////////////////////////////////////////////////////
+  static Category const& category() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates view according to a definition
+  /// @param preCommit called before completing view creation (IFF returns true)
+  ///                  e.g. before persisting definition to filesystem
+  //////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<LogicalView> create(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice definition,
+    uint64_t planVersion = 0,
+    PreCommitCallback const& preCommit = PreCommitCallback() // called before
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief opens an existing view when the server is restarted
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void open() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result drop() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief renames an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual Result rename(
+    std::string&& newName,
+    bool doSync
+  ) = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief builds a VelocyPack representation of the node LogicalView
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void toVelocyPack(
+    velocypack::Builder& result,
+    bool includeProperties,
+    bool includeSystem
+  ) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates properties of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result updateProperties(
+    velocypack::Slice const& properties,
+    bool partialUpdate,
+    bool doSync
+  ) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that a view will return
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
-  bool visitCollections(
-      std::function<bool(TRI_voc_cid_t)> const& visitor
-  ) const {
-    return _implementation && _implementation->visitCollections(visitor);
-  }
+  virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
- protected:  // If you need a copy outside the class, use clone below.
-  explicit LogicalView(LogicalView const&);
+ protected:
+  LogicalView(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice const& definition,
+    uint64_t planVersion
+  );
 
  private:
-  LogicalView& operator=(LogicalView const&) = delete;
+  // FIXME seems to be ugly
+  friend struct ::TRI_vocbase_t;
 
+  // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified asynchronously
+  mutable basics::ReadWriteLock _lock;
+}; // LogicalView
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class DBServerLogicalView
+////////////////////////////////////////////////////////////////////////////////
+class DBServerLogicalView : public LogicalView {
  public:
-  LogicalView() = delete;
+  ~DBServerLogicalView() override;
 
-  std::unique_ptr<LogicalView> clone() {
-    auto p = new LogicalView(*this);
-    return std::unique_ptr<LogicalView>(p);
-  }
+  arangodb::Result drop() override final;
 
-  inline TRI_voc_cid_t id() const { return _id; }
+  Result rename(
+    std::string&& newName,
+    bool doSync
+  ) override final;
 
-  TRI_voc_cid_t planId() const;
+  void toVelocyPack(
+    velocypack::Builder& result,
+    bool includeProperties,
+    bool includeSystem
+  ) const override final;
 
-  std::string type() const { return _type; }
-  std::string name() const;
-  std::string dbName() const;
+  arangodb::Result updateProperties(
+    velocypack::Slice const& properties,
+    bool partialUpdate,
+    bool doSync
+  ) override final;
 
-  bool deleted() const;
-  void setDeleted(bool);
+ protected:
+  DBServerLogicalView(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice const& definition,
+    uint64_t planVersion
+  );
 
-  void rename(std::string const& newName, bool doSync);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called by view factories during view creation to persist the view
+  ///        to the storage engine
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::Result create(DBServerLogicalView const& view) noexcept;
 
-  PhysicalView* getPhysical() const { return _physical.get(); }
-  ViewImplementation* getImplementation() const {
-    return _implementation.get();
-  }
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop implementation-specific parts of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result dropImpl() = 0;
 
-  void drop();
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a jSON description of a View object implementation
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void getPropertiesVPack(
+    velocypack::Builder& builder,
+    bool forPersistence
+  ) const = 0;
 
-  // SECTION: Serialization
-  velocypack::Builder toVelocyPack(bool includeProperties = false,
-                                   bool includeSystem = false) const;
-
-  void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
-                    bool includeSystem = false) const;
-
-  inline TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  // Update this view.
-  arangodb::Result updateProperties(velocypack::Slice const&, bool, bool);
-
-  /// @brief Persist the connected physical view.
-  ///        This should be called AFTER the view is successfully
-  ///        created and only on Sinlge/DBServer
-  void persistPhysicalView();
-
-  /// @brief Create implementation object using factory method
-  void spawnImplementation(ViewCreator creator,
-                           arangodb::velocypack::Slice const& parameters,
-                           bool isNew);
-
-  static bool IsAllowedName(velocypack::Slice parameters);
-  static bool IsAllowedName(std::string const& name);
-
- private:
-  // SECTION: Meta Information
-  //
-  // @brief Local view id
-  TRI_voc_cid_t const _id;
-
-  // @brief Global view id
-  TRI_voc_cid_t const _planId;
-
-  // @brief view type
-  std::string const _type;
-
-  // @brief view Name
-  std::string _name;
-
-  bool _isDeleted;
-
-  TRI_vocbase_t* _vocbase;
-
-  std::unique_ptr<PhysicalView> _physical;
-  std::unique_ptr<ViewImplementation> _implementation;
-
-  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
-  mutable basics::ReadWriteLock _infoLock;  // lock protecting the properties
-};
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief called when a view's properties are updated (i.e. delta-modified)
+  ///////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result updateProperties(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+  ) = 0;
+}; // LogicalView
 
 }  // namespace arangodb
 

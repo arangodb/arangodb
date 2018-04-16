@@ -48,7 +48,6 @@ if (USE_IRESEARCH)
   add_library(${LIB_ARANGO_IRESEARCH}
     STATIC
     IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
-    IResearch/AttributeScorer.cpp IResearch/AttributeScorer.h
     IResearch/Containers.cpp IResearch/Containers.h
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
     IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
@@ -60,6 +59,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchRocksDBRecoveryHelper.cpp
     IResearch/IResearchRocksDBRecoveryHelper.h
     IResearch/IResearchView.cpp IResearch/IResearchView.h
+    IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
     IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
     IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
     IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
@@ -97,7 +97,6 @@ if (USE_IRESEARCH)
 
   target_link_libraries(${LIB_ARANGO_IRESEARCH}
     ${IRESEARCH_TARGET_DEPENDENCY}
-    boost_filesystem # required by iResearch
     boost_locale # required by iResearch
   )
 
@@ -170,6 +169,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
+  Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/Ast.cpp
@@ -191,6 +191,8 @@ SET(ARANGOD_SOURCES
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/EngineInfoContainerCoordinator.cpp
+  Aql/EngineInfoContainerDBServer.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
   Aql/ExecutionBlock.cpp
@@ -220,10 +222,12 @@ SET(ARANGOD_SOURCES
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
+  Aql/QueryCursor.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
+  Aql/QueryResult.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RegexCache.cpp
@@ -240,11 +244,14 @@ SET(ARANGOD_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
   Aql/V8Executor.cpp
-  Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  Auth/Common.cpp
+  Auth/TokenCache.cpp
+  Auth/User.cpp
+  Auth/UserManager.cpp
   Cache/BucketState.cpp
   Cache/Cache.cpp
   Cache/CacheManagerFeature.cpp
@@ -363,6 +370,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
+  RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
@@ -374,7 +382,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDemoHandler.cpp
   RestHandler/RestDocumentHandler.cpp
-  RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
@@ -390,6 +397,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
+  RestHandler/RestStatusHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp
@@ -406,7 +414,6 @@ SET(ARANGOD_SOURCES
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
-  RestServer/FeatureCacheFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FlushFeature.cpp
   RestServer/FrontendFeature.cpp
@@ -418,7 +425,6 @@ SET(ARANGOD_SOURCES
   RestServer/ServerIdFeature.cpp
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
-  RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
@@ -436,6 +442,7 @@ SET(ARANGOD_SOURCES
   Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
   Statistics/ConnectionStatistics.cpp
+  Statistics/Descriptions.cpp
   Statistics/RequestStatistics.cpp
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp
@@ -452,11 +459,9 @@ SET(ARANGOD_SOURCES
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
   Transaction/V8Context.cpp
-  Utils/Authentication.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp
-  Utils/Cursor.cpp
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/ExecContext.cpp
@@ -482,17 +487,18 @@ SET(ARANGOD_SOURCES
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
-  Views/LoggerView.cpp
+  VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
   VocBase/Methods/Transactions.cpp
-  VocBase/Methods/AqlUserFunctions.cpp
-  VocBase/AuthInfo.cpp
-  VocBase/AuthUserEntry.cpp
+  VocBase/Methods/Upgrade.cpp
+  VocBase/Methods/UpgradeTasks.cpp
+  VocBase/Methods/Version.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
+  VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
   VocBase/ticks.cpp

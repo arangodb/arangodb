@@ -437,7 +437,7 @@ REGISTER_SCORER_TEXT(AttributeScorer, AttributeScorer::make);
     return ptr;
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Caught error while constructing AttributeScorer from jSON arguments: " << args.c_str();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;

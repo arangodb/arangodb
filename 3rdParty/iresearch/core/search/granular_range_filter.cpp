@@ -204,8 +204,8 @@ void collect_terms_from(
   if (min_term_itr == min_term.rend()) {
     collect_terms_between(
       states, sr, tr, terms, prefix_size, scorer,
-      iresearch::bytes_ref::nil, // collect full granularity range
-      iresearch::bytes_ref::nil, // collect full granularity range
+      iresearch::bytes_ref::NIL, // collect full granularity range
+      iresearch::bytes_ref::NIL, // collect full granularity range
       true, true
     );
 
@@ -223,7 +223,7 @@ void collect_terms_from(
   collect_terms_between(
     states, sr, tr, terms, prefix_size, scorer,
     min_term_itr->second, // the min term for the current granularity level
-    iresearch::bytes_ref::nil, // collect full granularity range
+    iresearch::bytes_ref::NIL, // collect full granularity range
     min_term_inclusive && exact_min_term == &(min_term_itr->second), true // add min_term if requested
   );
 
@@ -247,7 +247,7 @@ void collect_terms_from(
     auto end_term =
       (iresearch::SeekResult::NOT_FOUND == res || (iresearch::SeekResult::FOUND == res && terms.next()))     // have next term
       && mask_granularity(terms.value(), prefix_size) == mask_granularity(min_term_itr->second, prefix_size) // on same level
-      ? terms.value() : iresearch::bytes_ref::nil
+      ? terms.value() : iresearch::bytes_ref::NIL
     ;
     iresearch::bstring end_term_copy;
     auto is_most_granular_term = exact_min_term == &(current_min_term_itr->second);
@@ -285,8 +285,8 @@ void collect_terms_until(
   if (max_term_itr == max_term.rend()) {
     collect_terms_between(
       states, sr, tr, terms, prefix_size, scorer,
-      iresearch::bytes_ref::nil, // collect full granularity range
-      iresearch::bytes_ref::nil, // collect full granularity range
+      iresearch::bytes_ref::NIL, // collect full granularity range
+      iresearch::bytes_ref::NIL, // collect full granularity range
       true, true
     );
 
@@ -314,7 +314,7 @@ void collect_terms_until(
   // advance by one and collect all terms excluding the current max_term
   collect_terms_between(
     states, sr, tr, terms, prefix_size, scorer,
-    iresearch::bytes_ref::nil, // collect full granularity range
+    iresearch::bytes_ref::NIL, // collect full granularity range
     max_term_itr->second, // the max term for the current granularity level
     true, max_term_inclusive && exact_max_term == &(max_term_itr->second) // add max_term if requested
   );
@@ -433,7 +433,7 @@ void collect_terms_within(
   collect_terms_between(
     states, sr, tr, terms, prefix_size, scorer,
     min_term_itr->second, // the min term for the current granularity level
-    max_term.empty() ? iresearch::bytes_ref::nil : iresearch::bytes_ref(max_term_itr->second), // collect up to max term at same granularity range
+    max_term.empty() ? iresearch::bytes_ref::NIL : iresearch::bytes_ref(max_term_itr->second), // collect up to max term at same granularity range
     min_term_inclusive && exact_min_term == &(min_term_itr->second), false // add min_term if requested, end_term already covered by a less-granular range
   );
 
@@ -456,7 +456,7 @@ void collect_terms_within(
     auto end_term =
       (iresearch::SeekResult::NOT_FOUND == res || (iresearch::SeekResult::FOUND == res && terms.next()))     // have next term
       && mask_granularity(terms.value(), prefix_size) == mask_granularity(min_term_itr->second, prefix_size) // on same level
-      ? terms.value() : iresearch::bytes_ref::nil
+      ? terms.value() : iresearch::bytes_ref::NIL
     ;
     iresearch::bstring end_term_copy;
 
@@ -512,7 +512,7 @@ by_granular_range& by_granular_range::field(std::string fld) {
   return *this;
 }
 
-size_t by_granular_range::hash() const {
+size_t by_granular_range::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);
@@ -527,7 +527,8 @@ filter::prepared::ptr by_granular_range::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const {
+    const attribute_view& //ctx
+) const {
   if (!rng_.min.empty() && !rng_.max.empty()) {
     const auto& min = rng_.min.begin()->second;
     const auto& max = rng_.max.begin()->second;
@@ -658,7 +659,7 @@ filter::prepared::ptr by_granular_range::prepare(
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-bool by_granular_range::equals(const filter& rhs) const {
+bool by_granular_range::equals(const filter& rhs) const NOEXCEPT {
   const by_granular_range& trhs = static_cast<const by_granular_range&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
 }

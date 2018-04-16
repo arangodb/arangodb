@@ -42,8 +42,8 @@ namespace aql {
 struct Collection;
 class Condition;
 class ExecutionBlock;
+class ExecutionEngine;
 class ExecutionPlan;
-struct Index;
 
 /// @brief class IndexNode
 class IndexNode : public ExecutionNode, public DocumentProducingNode {
@@ -78,9 +78,21 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief set reverse mode  
   void reverse(bool value) { _reverse = value; }
 
+  /// @brief whether or not the index node needs a post sort of the results
+  /// of multiple shards in the cluster
+  bool needsGatherNodeSort() const { return _needsGatherNodeSort; }
+  void needsGatherNodeSort(bool value) { _needsGatherNodeSort = value; }
+
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -119,6 +131,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief the index sort order - this is the same order for all indexes
   bool _reverse;
+
+  /// @brief the index sort order - this is the same order for all indexes
+  bool _needsGatherNodeSort;
 };
 
 }  // namespace arangodb::aql

@@ -67,11 +67,14 @@ void MMFilesRestReplicationHandler::insertClient(
     TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
 
     if (serverId > 0) {
-      _vocbase->updateReplicationClient(serverId, lastServedTick, InitialSyncer::defaultBatchTimeout);
+      _vocbase.updateReplicationClient(
+        serverId, lastServedTick, InitialSyncer::defaultBatchTimeout
+      );
     }
   }
 }
 
+// prevents datafiles from beeing removed while dumping the contents
 void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
@@ -91,12 +94,12 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+    double ttl =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
 
     TRI_voc_tick_t id;
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    int res = engine->insertCompactionBlocker(_vocbase, expires, id);
+    int res = engine->insertCompactionBlocker(&_vocbase, ttl, id);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -105,6 +108,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
     b.add("id", VPackValue(std::to_string(id)));
+    b.add("lastTick", VPackValue("0")); // not known yet
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -124,12 +128,12 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+    double ttl =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
 
     // now extend the blocker
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    int res = engine->extendCompactionBlocker(_vocbase, id, expires);
+    int res = engine->extendCompactionBlocker(&_vocbase, id, ttl);
 
     if (res == TRI_ERROR_NO_ERROR) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -145,7 +149,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
         static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    int res = engine->removeCompactionBlocker(_vocbase, id);
+    int res = engine->removeCompactionBlocker(&_vocbase, id);
 
     if (res == TRI_ERROR_NO_ERROR) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -199,10 +203,11 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
       return;
     }
 
-    TRI_voc_tick_t id =
-        MMFilesLogfileManager::instance()->addLogfileBarrier(_vocbase->id(), minTick, ttl);
-
+    TRI_voc_tick_t id = MMFilesLogfileManager::instance()->addLogfileBarrier(
+      _vocbase.id(), minTick, ttl
+    );
     VPackBuilder b;
+
     b.add(VPackValue(VPackValueType::Object));
     std::string const idString(std::to_string(id));
     b.add("id", VPackValue(idString));
@@ -362,21 +367,23 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
+  
+  grantTemporaryRights();
 
   // extract collection
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
 
   if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase.lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   if (barrierId > 0) {
@@ -385,7 +392,8 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                                             tickStart);
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),
@@ -502,7 +510,8 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
     return;
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+
   // initialize the dump container
   MMFilesReplicationDumpContext dump(
       ctx, static_cast<size_t>(determineChunkSize()), false, 0);
@@ -597,14 +606,16 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
 
   // collections and indexes
   VPackBuilder inventoryBuilder;
+
   if (global) {
     DatabaseFeature::DATABASE->inventory(inventoryBuilder, tick, nameFilter);
   } else {
-    _vocbase->inventory(inventoryBuilder, tick, nameFilter);
+    _vocbase.inventory(inventoryBuilder, tick, nameFilter);
   }
-  VPackSlice const inventory = inventoryBuilder.slice();
 
+  VPackSlice const inventory = inventoryBuilder.slice();
   VPackBuilder builder;
+
   builder.openObject();
 
   if (global) {
@@ -657,15 +668,16 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
+  auto c = _vocbase.lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 
-  auto guard = std::make_unique<arangodb::CollectionGuard>(_vocbase, c->cid(), false);
+  auto guard =
+    std::make_unique<arangodb::CollectionGuard>(&_vocbase, c->id(), false);
 
   arangodb::LogicalCollection* col = guard->collection();
   TRI_ASSERT(col != nullptr);
@@ -673,22 +685,23 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   // turn off the compaction for the collection
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   TRI_voc_tick_t id;
-  int res = engine->insertCompactionBlocker(_vocbase, 1200.0, id);
+  int res = engine->insertCompactionBlocker(&_vocbase, 1200.0, id);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   // initialize a container with the keys
-  auto keys =
-      std::make_unique<MMFilesCollectionKeys>(_vocbase, std::move(guard), id, 300.0);
+  auto keys = std::make_unique<MMFilesCollectionKeys>(
+    &_vocbase, std::move(guard), id, 300.0
+  );
 
   std::string const idString(std::to_string(keys->id()));
 
   keys->create(tickEnd);
-  size_t const count = keys->count();
 
-  auto keysRepository = _vocbase->collectionKeys();
+  size_t const count = keys->count();
+  auto keysRepository = _vocbase.collectionKeys();
 
   keysRepository->store(keys.get());
   keys.release();
@@ -729,7 +742,7 @@ void MMFilesRestReplicationHandler::handleCommandGetKeys() {
 
   std::string const& id = suffixes[1];
 
-  auto keysRepository = _vocbase->collectionKeys();
+  auto keysRepository = _vocbase.collectionKeys();
   TRI_ASSERT(keysRepository != nullptr);
 
   auto collectionKeysId =
@@ -838,12 +851,11 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
 
   std::string const& id = suffixes[1];
 
-  auto keysRepository = _vocbase->collectionKeys();
+  auto keysRepository = _vocbase.collectionKeys();
   TRI_ASSERT(keysRepository != nullptr);
 
   auto collectionKeysId =
       static_cast<CollectionKeysId>(arangodb::basics::StringUtils::uint64(id));
-
   auto collectionKeys = keysRepository->find(collectionKeysId);
 
   if (collectionKeys == nullptr) {
@@ -853,16 +865,18 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   try {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
     VPackBuilder resultBuilder(ctx->getVPackOptions());
+
     resultBuilder.openArray();
 
     if (keys) {
       collectionKeys->dumpKeys(resultBuilder, chunk,
                                static_cast<size_t>(chunkSize));
     } else {
-      bool success;
-      std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
+      bool success = false;
+      VPackSlice parsedIds = this->parseVPackBody(success);
+
       if (!success) {
         // error already created
         collectionKeys->release();
@@ -870,7 +884,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
       }
       collectionKeys->dumpDocs(resultBuilder, chunk,
                                static_cast<size_t>(chunkSize), offsetInChunk,
-                               maxChunkSize, parsedIds->slice());
+                               maxChunkSize, parsedIds);
     }
 
     resultBuilder.close();
@@ -896,7 +910,7 @@ void MMFilesRestReplicationHandler::handleCommandRemoveKeys() {
 
   std::string const& id = suffixes[1];
 
-  auto keys = _vocbase->collectionKeys();
+  auto keys = _vocbase.collectionKeys();
   TRI_ASSERT(keys != nullptr);
 
   auto collectionKeysId =
@@ -986,10 +1000,19 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     withTicks = StringUtils::boolean(value7);
   }
 
-  LogicalCollection* c = _vocbase->lookupCollection(collection);
+  auto c = _vocbase.lookupCollection(collection);
+
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return;
+  }
+
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr &&
+      !exec->canUseCollection(_vocbase.name(), c->name(), auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -1003,16 +1026,17 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     // additionally wait for the collector
     if (flushWait > 0) {
       MMFilesLogfileManager::instance()->waitForCollectorQueue(
-          c->cid(), static_cast<double>(flushWait));
+        c->id(), static_cast<double>(flushWait)
+      );
     }
   }
 
-  arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
-
+  arangodb::CollectionGuard guard(&_vocbase, c->id(), false);
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(&_vocbase);
+
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),

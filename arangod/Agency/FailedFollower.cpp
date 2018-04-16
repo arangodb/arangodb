@@ -230,10 +230,17 @@ bool FailedFollower::start() {
         addPreconditionServerNotBlocked(job, _to);
         // shard not blocked
         addPreconditionShardNotBlocked(job, _shard);
+<<<<<<< HEAD
         // toServer in good condition
         addPreconditionServerGood(job, _to);
       }
 
+=======
+        // toServer in good condition 
+        addPreconditionServerHealth(job, _to, "GOOD");
+      } 
+        
+>>>>>>> devel
     }
   }
 
@@ -266,8 +273,8 @@ bool FailedFollower::start() {
 
   auto slice = result.get(
     std::vector<std::string>(
-      {agencyPrefix, "Supervision", "Health", _from, "Status"}));
-  if (!slice.isString() || slice.copyString() != "FAILED") {
+      { agencyPrefix, "Supervision", "Health", _from, "Status"}));
+  if (slice.isString() && slice.copyString() != "FAILED") {
     finish("", _shard, false, "Server " + _from + " no longer failing.");
   }
 

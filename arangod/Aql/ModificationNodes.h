@@ -55,7 +55,8 @@ class ModificationNode : public ExecutionNode {
         _collection(collection),
         _options(options),
         _outVariableOld(outVariableOld),
-        _outVariableNew(outVariableNew) {
+        _outVariableNew(outVariableNew),
+        _countStats(true) {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_collection != nullptr);
   }
@@ -127,6 +128,12 @@ class ModificationNode : public ExecutionNode {
   /// @brief whether or not the node is a data modification node
   bool isModificationNode() const override { return true; }
 
+  /// @brief whether this node contributes to statistics. Only disabled in SmartGraph case
+  bool countStats() const { return _countStats; } 
+
+  /// @brief Disable that this node is contributing to statistics. Only disabled in SmartGraph case
+  void disableStatistics() { _countStats = false; }
+
  protected:
   /// @brief _vocbase, the database
   TRI_vocbase_t* _vocbase;
@@ -142,6 +149,9 @@ class ModificationNode : public ExecutionNode {
 
   /// @brief output variable ($NEW)
   Variable const* _outVariableNew;
+
+  /// @brief whether this node contributes to statistics. Only disabled in SmartGraph case
+  bool _countStats;
 };
 
 /// @brief class RemoveNode
@@ -170,6 +180,13 @@ class RemoveNode : public ModificationNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -222,6 +239,13 @@ class InsertNode : public ModificationNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -277,6 +301,13 @@ class UpdateNode : public ModificationNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -347,6 +378,13 @@ class ReplaceNode : public ModificationNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -423,6 +461,13 @@ class UpsertNode : public ModificationNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,

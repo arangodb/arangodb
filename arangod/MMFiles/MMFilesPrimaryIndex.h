@@ -281,12 +281,12 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
-  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createInIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
   /// @brief create the iterator, for a single attribute, EQ operator
-  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createEqIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 

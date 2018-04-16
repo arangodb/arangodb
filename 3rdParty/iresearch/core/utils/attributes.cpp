@@ -45,7 +45,7 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 /*static*/ bool attribute::type_id::exists(const string_ref& name) {
-  return attribute_register::instance().get(name);
+  return nullptr != attribute_register::instance().get(name);
 }
 
 /*static*/ const attribute::type_id* attribute::type_id::get(
@@ -140,7 +140,7 @@ attribute_registrar::attribute_registrar(
       );
     }
 
-    IR_STACK_TRACE();
+    IR_LOG_STACK_TRACE();
   }
 }
 

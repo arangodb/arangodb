@@ -17,6 +17,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchView-test.cpp
     IResearch/IResearchViewMeta-test.cpp
     IResearch/IResearchDocument-test.cpp
+    IResearch/IResearchFilter-test.cpp
     IResearch/IResearchFilterFunction-test.cpp
     IResearch/IResearchFilterBoolean-test.cpp
     IResearch/IResearchFilterCompare-test.cpp
@@ -24,6 +25,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchIndex-test.cpp
     IResearch/IResearchLink-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
+    IResearch/IResearchQuery-test.cpp
     IResearch/IResearchQueryAnd-test.cpp
     IResearch/IResearchQueryBooleanTerm-test.cpp
     IResearch/IResearchQueryComplexBoolean-test.cpp
@@ -42,9 +44,13 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
     IResearch/ExpressionFilter-test.cpp
-    IResearch/StorageEngineMock.cpp
+    IResearch/ExecutionBlockMock.cpp
     IResearch/ExpressionContextMock.cpp
     IResearch/VelocyPackHelper-test.cpp
+    IResearch/ExecutionBlockMock-test.cpp
+    Utils/CollectionNameResolver-test.cpp
+    VocBase/LogicalDataSource-test.cpp
+    VocBase/vocbase-test.cpp
   )
 endif ()
 
@@ -60,11 +66,16 @@ add_executable(
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/DateFunctions.cpp
+  Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/RestAqlHandlerTest.cpp
+  Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
+  Basics/datetime.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/files-test.cpp
@@ -109,7 +120,7 @@ add_executable(
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
-  VocBase/AuthInfoTest.cpp
+  IResearch/StorageEngineMock.cpp
   ${IRESEARCH_TESTS_SOURCES}
   main.cpp
 )
