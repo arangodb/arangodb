@@ -27,6 +27,8 @@
 
 #include "Basics/Common.h"
 
+#include <chrono>
+
 /// @brief construct locker with file and line information
 #ifdef TRI_SHOW_LOCK_TIME
 
