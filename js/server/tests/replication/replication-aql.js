@@ -32,12 +32,12 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 
-var replication = require("@arangodb/replication");
-let compareTicks = replication.compareTicks;
-var console = require("console");
-var internal = require("internal");
-var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = ARGUMENTS[0];
+const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
+const console = require("console");
+const internal = require("internal");
+const masterEndpoint = arango.getEndpoint();
+const slaveEndpoint = ARGUMENTS[0];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
