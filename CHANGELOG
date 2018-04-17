@@ -1,6 +1,10 @@
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
+* fixed: (Enterprise only) If you restore a SmartGraph where the collections
+  are still existing and are supposed to be dropped on restore we ended up in
+  duplicate name error. This is now gone and the SmartGraph is correctly restored.
+
 * improve startup resilience in case there are datafile errors (MMFiles)
   
   also allow repairing broken VERSION files automatically on startup by
