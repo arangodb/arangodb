@@ -601,15 +601,16 @@ void Supervision::reportStatus(std::string const& status) {
         report->add("Mode", VPackValue(status));
         report->add("Timestamp",
           VPackValue(timepointToString(std::chrono::system_clock::now())));}}}
-  if (persist) {
-    write_ret_t res = singleWriteTransaction(_agent, *report);
-  }
 
-  // Importatnt! No reportig in transient for Maintenance mode.
+  // Importatnt! No reporting in transient for Maintenance mode.
   if (status != "Maintenance") {
     transient(_agent, *report);
   }
   
+  if (persist) {
+    write_ret_t res = singleWriteTransaction(_agent, *report);
+  }
+
 }
 
 void Supervision::run() {

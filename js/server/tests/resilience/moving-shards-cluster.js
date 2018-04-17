@@ -462,41 +462,6 @@ function MovingShardsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pausing supervision for a couple of seconds
-////////////////////////////////////////////////////////////////////////////////
-
-    testMaintenanceMode : function() {
-      createSomeCollections(1, 1, 3);
-      assertTrue(waitForSynchronousReplication("_system"));
-      var servers = findCollectionServers("_system", c[1].name());
-      var fromServer = servers[0];
-      var toServer = findServerNotOnList(servers);
-      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
-          "_system", c[1].name());
-      var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(maintenanceMode("on"));      
-      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
-      var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
-          arango.Supervision.State, state;
-      var waitUntil = new Date().getTime() + 30.0*1000;
-      while(true) {
-        state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
-          arango.Supervision.State;
-        assertEqual(state.Timestamp, first.Timestamp);
-        wait(5.0);
-        if (new Date().getTime() > waitUntil) {
-          break;
-        }
-      }
-      assertTrue(maintenanceMode("off"));      
-      state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
-        arango.Supervision.State;
-      assertTrue(state.Timestamp !== first.Timestamp);
-      assertTrue(testServerEmpty(fromServer, false, 1, 1));
-      assertTrue(waitForSupervision());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
     
@@ -700,6 +665,41 @@ function MovingShardsSuite () {
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pausing supervision for a couple of seconds
+////////////////////////////////////////////////////////////////////////////////
+
+    testMaintenanceMode : function() {
+      createSomeCollections(1, 1, 3);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      assertTrue(maintenanceMode("on"));      
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
+      var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+          arango.Supervision.State, state;
+      var waitUntil = new Date().getTime() + 30.0*1000;
+      while(true) {
+        state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+          arango.Supervision.State;
+        assertEqual(state.Timestamp, first.Timestamp);
+        wait(5.0);
+        if (new Date().getTime() > waitUntil) {
+          break;
+        }
+      }
+      assertTrue(maintenanceMode("off"));      
+      state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+        arango.Supervision.State;
+      assertTrue(state.Timestamp !== first.Timestamp);
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
 
