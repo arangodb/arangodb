@@ -86,10 +86,19 @@ class IndexIterator {
     // The default index has no extra information
     return false;
   }
+  
+  virtual bool hasCovering() const {
+    // The default index has no covering method information
+    return false;
+  }
 
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) = 0;
   virtual bool nextDocument(DocumentCallback const& callback, size_t limit);
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
+
+  // extract index attribute values while index scanning
+  // must only be called if hasCovering()
+  virtual bool nextCovering(DocumentCallback const& callback, size_t limit);
 
   virtual void reset();
 

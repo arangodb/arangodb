@@ -109,6 +109,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief getIndexes, hand out the indexes used
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const { return _indexes; }
 
+  void initIndexCoversProjections();
+  
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
@@ -125,7 +127,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief the index sort order - this is the same order for all indexes
   bool _reverse;
 
-  /// @brief the index sort order - this is the same order for all indexes
+  /// @brief whether or not we need to keep a sorted GatherNode to ensure the
+  /// sortedness of this index' results in the cluster
   bool _needsGatherNodeSort;
 };
 

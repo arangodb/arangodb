@@ -49,15 +49,13 @@ class DocumentProducingBlock {
 
  public:
   inline bool produceResult() const { return _produceResult; }
-
- private:
-  DocumentProducingFunction buildCallback() const;
+  void buildCallback();
 
  private:
   transaction::Methods* _trxPtr;
   
   DocumentProducingNode const* _node;
-
+  
   /// @brief hether or not we want to build a result
   bool const _produceResult;
 
@@ -65,7 +63,10 @@ class DocumentProducingBlock {
   bool const _useRawDocumentPointers;
 
  protected:  
-  DocumentProducingFunction const _documentProducer;
+  DocumentProducingFunction _documentProducer;
+  
+  /// @brief whether or not we are allowed to use the covering index optimization right now
+  bool _allowCoveringIndexOptimization;
 };
 
 }

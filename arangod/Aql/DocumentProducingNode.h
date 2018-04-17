@@ -44,7 +44,7 @@ class DocumentProducingNode {
  public:
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
-
+  
   std::vector<std::string> const& projections() const {
     return _projections;
   }
@@ -57,6 +57,14 @@ class DocumentProducingNode {
     _projections = std::move(projections);
   }
   
+  std::vector<size_t> const& coveringIndexAttributePositions() const { 
+    return _coveringIndexAttributePositions;
+  }
+  
+  void resetCoveringIndexAttributePositions() const { 
+    _coveringIndexAttributePositions.clear();
+  }
+  
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
  protected:
@@ -64,6 +72,8 @@ class DocumentProducingNode {
 
   /// @brief produce only the following attributes
   std::vector<std::string> _projections;
+  
+  std::vector<std::size_t> mutable _coveringIndexAttributePositions;
 };
 
 }

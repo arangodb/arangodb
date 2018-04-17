@@ -51,6 +51,8 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
                                        : transaction::Methods::CursorType::ALL),
                           _mmdr.get(), false)) {
   TRI_ASSERT(_cursor->ok());
+
+  buildCallback();
 }
 
 int EnumerateCollectionBlock::initialize() {

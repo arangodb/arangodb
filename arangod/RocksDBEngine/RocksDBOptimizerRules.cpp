@@ -125,20 +125,20 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         }
       } else if (current->getType() == EN::GATHER) {
         // compare sort attributes of GatherNode
-        // TODO
- //       stop = true;
-        /*
         auto gn = static_cast<GatherNode*>(current);
-        auto const& sortVars = gn->elements();
-        for (auto& it : sortVars) {
-          auto path = it.attributePath;
-          std::reverse(path.begin(), path.end());
-          if (it.var == v && path != attributeNames) {
-            stop = true;
-            break;
+        for (auto const& it : gn->elements()) {
+          if (it.var == v) {
+            if (it.attributePath.empty()) {
+              // sort of GatherNode refers to the entire document, not to an
+              // attribute of the document
+              stop = true;
+              break;
+            }
+            // insert 0th level of attribute name into the set of attributes
+            // that we need for our projection
+            attributes.emplace(it.attributePath[0]); 
           }
         }
-        */
       } else {
         vars.clear();
         current->getVariablesUsedHere(vars);
@@ -161,7 +161,13 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
       for (auto& it : attributes) {
         r.emplace_back(std::move(it));
       }
+      // store projections in DocumentProducingNode
       e->projections(std::move(r));
+
+      if (n->getType() == ExecutionNode::INDEX) {
+        // need to update _indexCoversProjections value
+        static_cast<IndexNode*>(n)->initIndexCoversProjections();
+      }
       
       modified = true;
     }

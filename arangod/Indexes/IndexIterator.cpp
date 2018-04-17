@@ -58,7 +58,18 @@ bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   }, limit);
 }
 
-/// @brief default implementation for next
+/// @brief default implementation for nextCovering
+bool IndexIterator::nextCovering(DocumentCallback const&, size_t) {
+  TRI_ASSERT(!hasCovering());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                 "Requested covering values from an index that "
+                                 "does not support it. This seems to be a bug "
+                                 "in ArangoDB. Please report the query you are "
+                                 "using + the indexes you have defined on the "
+                                 "relevant collections to arangodb.com");
+}
+
+/// @brief default implementation for nextExtra
 bool IndexIterator::nextExtra(ExtraCallback const&, size_t) {
   TRI_ASSERT(!hasExtra());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,

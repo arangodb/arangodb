@@ -217,6 +217,8 @@ class Index {
 
   virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
+  
+  virtual bool hasCoveringIterator() const { return false; }
 
   /// @brief Checks if this index is identical to the given definition
   virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;
