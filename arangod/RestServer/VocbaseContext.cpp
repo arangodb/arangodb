@@ -57,7 +57,6 @@ VocbaseContext::~VocbaseContext() {
   TRI_ASSERT(!vocbase.isDangling());
 
   AuthenticationFeature* auth = AuthenticationFeature::instance();
-
   if (auth == nullptr) {
     return nullptr;
   }
@@ -84,10 +83,13 @@ VocbaseContext::~VocbaseContext() {
     }
 
     auth::UserManager* um = auth->userManager();
-    TRI_ASSERT(um != nullptr);
+    if (um == nullptr) {
+      LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "Server does not support users";
+      return nullptr;
+    }
+    
     auth::Level dbLvl = um->databaseAuthLevel(req->user(), req->databaseName());
     auth::Level sysLvl = dbLvl;
-
     if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
       sysLvl = um->databaseAuthLevel(req->user(), TRI_VOC_SYSTEM_DATABASE);
     }

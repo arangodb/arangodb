@@ -44,8 +44,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
@@ -113,7 +114,7 @@ struct CustomScorer : public irs::sort {
       irs::attribute_view const&
     ) const override {
       struct Scorer : public irs::sort::scorer {
-        Scorer(size_t i) : i(i) { }
+        Scorer(float_t score): i(score) { }
 
         virtual void score(irs::byte_type* score_buf) override {
           *reinterpret_cast<score_t*>(score_buf) = i;
@@ -193,7 +194,7 @@ struct IResearchQueryJoinSetup {
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
@@ -272,7 +273,7 @@ struct IResearchQueryJoinSetup {
   ~IResearchQueryJoinSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -371,7 +372,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     auto slice = builder.slice();
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     auto tmpSlice = slice.get("properties").get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
@@ -575,7 +576,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     auto slice = builder.slice();
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     auto tmpSlice = slice.get("properties").get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
