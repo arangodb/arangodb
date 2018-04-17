@@ -1015,7 +1015,7 @@ std::pair<uint64_t, bool> Node::hasAsUInt (
     ret_pair.second = true;
   } catch (...) {
     // do nothing, ret_pair second already false
-    LOG_TOPIC(, Logger::SUPERVISION)
+    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "hasAsUInt had exception processing " << url;
   } // catch
 
