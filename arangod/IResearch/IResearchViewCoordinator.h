@@ -87,6 +87,8 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion
   );
 
+  Result updateLinks(velocypack::Slice links, bool partialUpdate);
+
   IResearchViewMeta _meta;
   velocypack::Builder _links;
 }; // IResearchViewCoordinator

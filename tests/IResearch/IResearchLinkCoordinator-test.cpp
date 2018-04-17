@@ -50,11 +50,14 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "Random/RandomFeature.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/EndpointFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -77,8 +80,7 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchViewCoordinatorSetup {
-
+struct IResearchLinkCoordinatorSetup {
   struct ClusterCommControl : arangodb::ClusterComm {
     static void reset() {
       arangodb::ClusterComm::_theInstanceInit.store(0);
@@ -91,7 +93,7 @@ struct IResearchViewCoordinatorSetup {
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::string testFilesystemPath;
 
-  IResearchViewCoordinatorSetup(): server(nullptr, nullptr) {
+  IResearchLinkCoordinatorSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -113,7 +115,7 @@ struct IResearchViewCoordinatorSetup {
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
     features.emplace_back(auth = new arangodb::AuthenticationFeature(&server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(new arangodb::DatabaseFeature(&server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
@@ -168,7 +170,7 @@ struct IResearchViewCoordinatorSetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
-  ~IResearchViewCoordinatorSetup() {
+  ~IResearchLinkCoordinatorSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     TRI_RemoveDirectory(testFilesystemPath.c_str());
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
@@ -199,153 +201,157 @@ struct IResearchViewCoordinatorSetup {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_CASE("IResearchViewCoordinatorTest", "[iresearch][iresearch-view-coordinator]") {
-  IResearchViewCoordinatorSetup s;
+TEST_CASE("IResearchLinkCoordinatorTest", "[iresearch][iresearch-link]") {
+  IResearchLinkCoordinatorSetup s;
   UNUSED(s);
 
-SECTION("test_type") {
-  CHECK((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
-}
-
-SECTION("visit_collections") {
-  auto json = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"properties\": { \"collections\": [1,2,3] } }");
-
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
-
-  auto view = arangodb::LogicalView::create(vocbase, json->slice());
-
-  CHECK(nullptr != view);
-  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  CHECK(0 == view->planVersion());
-  CHECK("testView" == view->name());
-  CHECK(false == view->deleted());
-  CHECK(1 == view->id());
-  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(&vocbase == &view->vocbase());
-
-  // visit view
-  TRI_voc_cid_t expectedCollections[] = {1,2,3};
-  auto* begin = expectedCollections;
-  CHECK(true == view->visitCollections([&begin](TRI_voc_cid_t cid) {
-    return *begin++ = cid; })
-  );
-  CHECK(3 == (begin-expectedCollections));
-}
-
 SECTION("test_defaults") {
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
-
-  // view definition with LogicalView (for persistence)
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
-
-  auto view = arangodb::LogicalView::create(vocbase, json->slice());
-
-  CHECK(nullptr != view);
-  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  CHECK(0 == view->planVersion());
-  CHECK("testView" == view->name());
-  CHECK(false == view->deleted());
-  CHECK(1 == view->id());
-  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(&vocbase == &view->vocbase());
-
-  // visit default view
-  CHECK(true == view->visitCollections([](TRI_voc_cid_t) { return false; }));
-
-  // +system, +properties
+  // no view specified
   {
-    arangodb::iresearch::IResearchViewMeta expectedMeta;
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    view->toVelocyPack(builder, true, true);
-    builder.close();
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
+    s.engine.views.clear();
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto json = arangodb::velocypack::Parser::fromJson("{}");
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles(logicalCollection, json->slice(), 1, true);
+    CHECK((true == !link));
+  }
+
+  // no view can be found
+  {
+    s.engine.views.clear();
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles(logicalCollection, json->slice(), 1, true);
+    CHECK((true == !link));
+  }
+
+  // valid link creation
+  {
+    s.engine.views.clear();
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    REQUIRE((false == !logicalView));
+
+    bool created;
+    auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
+    REQUIRE((false == !link && created));
+    CHECK((true == link->allowExpansion()));
+    CHECK((true == link->canBeDropped()));
+    CHECK((logicalCollection == link->collection()));
+    CHECK((link->fieldNames().empty()));
+    CHECK((link->fields().empty()));
+    CHECK((true == link->hasBatchInsert()));
+    CHECK((false == link->hasExpansion()));
+    CHECK((false == link->hasSelectivityEstimate()));
+    CHECK((false == link->implicitlyUnique()));
+    CHECK((true == link->isPersistent()));
+    CHECK((false == link->isSorted()));
+    CHECK((0 < link->memory()));
+    CHECK((true == link->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName()));
+    CHECK((false == link->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    auto builder = link->toVelocyPack(true, false);
     std::string error;
 
-    CHECK(6 == slice.length());
-    CHECK(slice.get("id").copyString() == "1");
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(slice.hasKey("planId"));
-    CHECK(false == slice.get("deleted").getBool());
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((5 == slice.length()));
-    CHECK((!slice.hasKey("links"))); // for persistence so no links
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
+    CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
+    auto slice = builder->slice();
+    CHECK((
+      slice.hasKey("view")
+      && slice.get("view").isNumber()
+      && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+      && slice.hasKey("figures")
+      && slice.get("figures").isObject()
+      && slice.get("figures").hasKey("memory")
+      && slice.get("figures").get("memory").isNumber()
+      && 0 < slice.get("figures").get("memory").getUInt()
+    ));
+
+    CHECK((logicalCollection->dropIndex(link->id()) && logicalCollection->getIndexes().empty()));
   }
 
-  // -system, +properties
+  // ensure jSON is still valid after unload()
   {
-    arangodb::iresearch::IResearchViewMeta expectedMeta;
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    view->toVelocyPack(builder, true, false);
-    builder.close();
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    std::string error;
+    s.engine.views.clear();
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42 }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    REQUIRE((false == !logicalView));
 
-    CHECK(4 == slice.length());
-    CHECK(slice.get("id").copyString() == "1");
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(!slice.hasKey("planId"));
-    CHECK(!slice.hasKey("deleted"));
-    slice = slice.get("properties");
-    CHECK(slice.isObject());
-    CHECK((5 == slice.length()));
-    CHECK((!slice.hasKey("links")));
-    CHECK((meta.init(slice, error) && expectedMeta == meta));
+    bool created;
+    auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
+    REQUIRE((false == !link && created));
+    CHECK((true == link->allowExpansion()));
+    CHECK((true == link->canBeDropped()));
+    CHECK((logicalCollection == link->collection()));
+    CHECK((link->fieldNames().empty()));
+    CHECK((link->fields().empty()));
+    CHECK((true == link->hasBatchInsert()));
+    CHECK((false == link->hasExpansion()));
+    CHECK((false == link->hasSelectivityEstimate()));
+    CHECK((false == link->implicitlyUnique()));
+    CHECK((true == link->isPersistent()));
+    CHECK((false == link->isSorted()));
+    CHECK((0 < link->memory()));
+    CHECK((true == link->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName()));
+    CHECK((false == link->unique()));
+
+    {
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      auto builder = link->toVelocyPack(true, false);
+      std::string error;
+
+      CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
+      auto slice = builder->slice();
+      CHECK((
+        slice.hasKey("view")
+        && slice.get("view").isNumber()
+        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.hasKey("figures")
+        && slice.get("figures").isObject()
+        && slice.get("figures").hasKey("memory")
+        && slice.get("figures").get("memory").isNumber()
+        && 0 < slice.get("figures").get("memory").getUInt()
+      ));
+    }
+
+    // ensure jSON is still valid after unload()
+    {
+      link->unload();
+      auto builder = link->toVelocyPack(true, false);
+      auto slice = builder->slice();
+      CHECK((
+        slice.hasKey("view")
+        && slice.get("view").isNumber()
+        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.hasKey("figures")
+        && slice.get("figures").isObject()
+        && slice.get("figures").hasKey("memory")
+        && slice.get("figures").get("memory").isNumber()
+        && 0 < slice.get("figures").get("memory").getUInt()
+      ));
+    }
   }
-
-  // -system, -properties
-  {
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    view->toVelocyPack(builder, false, false);
-    builder.close();
-    auto slice = builder.slice();
-    arangodb::iresearch::IResearchViewMeta meta;
-    std::string error;
-
-    CHECK(3 == slice.length());
-    CHECK(slice.get("id").copyString() == "1");
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(!slice.hasKey("planId"));
-    CHECK(!slice.hasKey("deleted"));
-    CHECK(!slice.hasKey("properties"));
-  }
-
-  // +system, -properties
-  {
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    view->toVelocyPack(builder, false, true);
-    builder.close();
-    auto slice = builder.slice();
-
-    CHECK(5 == slice.length());
-    CHECK(slice.get("id").copyString() == "1");
-    CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    CHECK(false == slice.get("deleted").getBool());
-    CHECK(slice.hasKey("planId"));
-    CHECK(!slice.hasKey("properties"));
-  }
-}
-
-SECTION("test_drop") {
-  // FIXME implement
-}
-
-SECTION("modify_view") {
-  // FIXME implement
 }
 
 }

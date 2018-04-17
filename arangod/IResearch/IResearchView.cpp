@@ -2119,6 +2119,8 @@ arangodb::Result IResearchView::updateProperties(
 
   builder.openObject();
 
+  // FIXME do not blindly drop links in case if
+  // current and expected metas are same
   if (!appendLinkRemoval(builder, _meta)
       || !mergeSlice(builder, slice.get(LINKS_FIELD))) {
     return arangodb::Result(
