@@ -224,17 +224,6 @@ set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 ## Google S2
 ################################################################################
 
-#set(GFLAGS_INTTYPES_FORMAT "C99")
-#set(GFLAGS_BUILD_SHARED_LIBS Off)
-#set(GFLAGS_BUILD_STATIC_LIBS On)
-#set(GFLAGS_BUILD_gflags_LIB Off)
-#set(GFLAGS_BUILD_gflags_nothreads_LIB On)
-#set(GFLAGS_IS_SUBPROJECT On)
-#add_subdirectory(gflags)
-
-#set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
-#set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
-#set(GFLAGS_LIBRARIES gflags)
 add_subdirectory(s2geometry)
 
 ################################################################################
