@@ -32,6 +32,8 @@
 
 var actions = require('@arangodb/actions');
 var cluster = require('@arangodb/cluster');
+var wait = require("internal").wait;
+
 // var internal = require('internal');
 var _ = require('lodash');
 
@@ -140,7 +142,7 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.POST) {
+    if (req.requestType !== actions.PUT) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET and PUT requests are allowed');
       return;
@@ -175,6 +177,38 @@ actions.defineHttp({
       global.ArangoAgency.write([[operations, preconditions]]);
     } catch (e) {
       throw e;
+    }
+
+    // Wait 2 min for supervision to go to maintenance mode
+    var waitUntil = new Date().getTime() + 120.0*1000;
+    while (true) {
+      var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
+          arango.Supervision.State.Mode;
+      
+      if (body === "on" && mode === "Maintenance") {
+        res.body = JSON.stringify({
+          error: false,
+          warning: 'Cluster supervision deactivated. It will be reactivated automatically in 60 minutes unless this call is repeated until then.'});
+        break;
+      } else if (body === "off" && mode === "Normal") {
+        res.body = JSON.stringify({
+          error: false,
+          warning: 'Cluster supervision reactivated.'});
+        break;
+      }
+
+      wait(0.1);
+      
+      if (new Date().getTime() > waitUntil) {
+        res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
+        res.body = JSON.stringify({
+          'error': true,
+          'errorMessage':
+          'timed out while waiting for supervision to go into maintenance mode'
+        });
+        return;
+      }
+      
     }
 
     return ; 

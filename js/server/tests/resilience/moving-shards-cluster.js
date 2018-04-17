@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual */
+/*global assertTrue, assertEqual, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test moving shards in the cluster
@@ -310,15 +310,17 @@ function MovingShardsSuite () {
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    try {
-      return request({ method: "POST",
-                       url: url + "/_admin/cluster/maintenance",
-                       body: JSON.stringify(mode) });
+    var req;
+    try {      
+      req = request({ method: "PUT",
+                      url: url + "/_admin/cluster/maintenance",
+                      body: JSON.stringify(mode) });
     } catch (err) {
       console.error(
-        "Exception for PUT /_admin/cluster/supervision:", err.stack);
+        "Exception for POST /_admin/cluster/supervision:", err.stack);
       return false;
     }
+    
   }
 
   
@@ -442,6 +444,7 @@ function MovingShardsSuite () {
       assertTrue(maintenanceMode("on"));      
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
       wait(30.0);
+      global.ArangoAgency.transient([["/arango/"]])
       assertTrue(maintenanceMode("off"));      
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
