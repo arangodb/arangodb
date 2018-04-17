@@ -42,15 +42,18 @@ ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent
                                      JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
   // Get job details from agency:
-  try {
-    std::string path = pos[status] + _jobId + "/";
-    _server = _snapshot.get(path + "server").getString();
-    _creator = _snapshot.get(path + "creator").getString();
-  } catch (std::exception const& e) {
-    std::string err = 
-      std::string("Failed to find job ") + _jobId + " in agency: " + e.what();
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err;
-    finish(_server, "", false, err);
+  std::string path = pos[status] + _jobId + "/";
+  auto tmp_server = _snapshot.hasAsString(path + "server");
+  auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  
+  if (tmp_server.second && tmp_creator.second) {
+    _server = tmp_server.first;
+    _creator = tmp_creator.first;
+  } else {
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency.";
+    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    finish(tmp_server.first, "", false, err.str());
     _status = FAILED;
   }
 }
@@ -136,24 +139,20 @@ bool ActiveFailoverJob::start() {
     return finish(_server, "", true, reason); // move to /Target/Finished
   }
   
-  Node const& leader = _snapshot(asyncReplLeader);
-  if (leader.compareString(_server) != 0) {
+  auto leader = _snapshot.hasAsSlice(asyncReplLeader);
+  if (!leader.second || leader.first.compareString(_server) != 0) {
     std::string reason = "Server " + _server + " is not the current replication leader";
     LOG_TOPIC(INFO, Logger::SUPERVISION) << reason;
     return finish(_server, "", true, reason); // move to /Target/Finished
   }
   
-  // Abort job blocking server if abortable (should prop never happen)
-  try {
-    if (_snapshot.has(blockedServersPrefix + _server)) {
-      std::string jobId = _snapshot(blockedServersPrefix + _server).getString();
-      if (!abortable(_snapshot, jobId)) {
-        return false; // job will retry later
-      } else {
-        JobContext(PENDING, jobId, _snapshot, _agent).abort();
-      }
-    }
-  } catch (...) {}
+  // Abort job blocking server if abortable
+  auto jobId = _snapshot.hasAsString(blockedServersPrefix + _server);
+  if (jobId.second && !abortable(_snapshot, jobId.first)) {
+    return false;
+  } else if (jobId.second) {
+    JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+  }
   
   // Todo entry
   Builder todo;
@@ -170,8 +169,8 @@ bool ActiveFailoverJob::start() {
       todo.add(_jb->slice()[0].get(toDoPrefix + _jobId));
     }} // Todo entry
   
-  std::string newLeader = findBestFollower(_snapshot);
-  if (newLeader.empty() || leader.compareString(newLeader) == 0) {
+  std::string newLeader = findBestFollower();
+  if (newLeader.empty() || _server == newLeader) {
     LOG_TOPIC(INFO, Logger::SUPERVISION) << "No server available, will retry job later";
     return false; // job will retry later
   }
@@ -196,7 +195,7 @@ bool ActiveFailoverJob::start() {
       // Destination server should not be blocked by another job
       addPreconditionServerNotBlocked(pending, newLeader);
       // AsyncReplication leader must be the failed server
-      addPreconditionUnchanged(pending, asyncReplLeader, leader.slice());
+      addPreconditionUnchanged(pending, asyncReplLeader, leader.first);
     }   // precondition done
     
   }  // array for transaction done
@@ -247,12 +246,12 @@ arangodb::Result ActiveFailoverJob::abort() {
 
 typedef std::pair<std::string, TRI_voc_tick_t> ServerTick;
 /// Try to select the follower most in-sync with failed leader
-std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
-  std::vector<std::string> as = healthyServers(snapshot);
+std::string ActiveFailoverJob::findBestFollower() {
+  std::vector<std::string> as = healthyServers(_snapshot);
   
   // blocked; (not sure if this can even happen)
   try {
-    for (auto const& srv : snapshot(blockedServersPrefix).children()) {
+    for (auto const& srv : _snapshot(blockedServersPrefix).children()) {
       as.erase(std::remove(as.begin(), as.end(), srv.first), as.end());
     }
   } catch (...) {}

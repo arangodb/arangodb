@@ -49,7 +49,7 @@ struct ActiveFailoverJob final : public Job {
   
 private:
   
-  std::string findBestFollower(Node const& snapshot);
+  std::string findBestFollower();
 
 private:
   std::string _server;

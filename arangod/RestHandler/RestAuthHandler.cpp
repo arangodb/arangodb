@@ -69,14 +69,12 @@ RestStatus RestAuthHandler::execute() {
     return RestStatus::DONE;
   }
 
-  bool parseSuccess;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice slice = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     return badRequest();
   }
 
-  VPackSlice slice = parsedBody->slice();
   if (!slice.isObject()) {
     return badRequest();
   }

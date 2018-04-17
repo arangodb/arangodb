@@ -57,9 +57,8 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   }
   
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess) {
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess || body.isNone()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
     return RestStatus::DONE;

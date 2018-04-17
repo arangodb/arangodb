@@ -68,6 +68,20 @@ using namespace arangodb::rest;
 uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
 
+static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
+#ifdef USE_ENTERPRISE
+  if (!force && name[0] == '_') {
+    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
+        strncmp(name.c_str(), "_from_", 6) == 0 ||
+        strncmp(name.c_str(), "_to_", 4) == 0) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Restore ignoring collection " << name << ". Will be created via SmartGraphs of a full dump. If you want to restore ONLY this collection use 'arangorestore --force'. However this is not recommended and you should instead restore the EdgeCollection of the SmartGraph instead.";
+      return true;
+    }
+  }
+#endif
+  return false;
+}
+
 static Result restoreDataParser(char const* ptr, char const* pos,
                                 std::string const& collectionName,
                                 std::string& key,
@@ -477,8 +491,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
   
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  bool success = false;
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -490,7 +504,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     databaseName = _vocbase.name();
   }
 
-  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(parsedBody->slice(), databaseName);
+  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(body, databaseName);
   configuration._skipCreateDrop = false;
 
   // will throw if invalid
@@ -976,6 +990,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection name is missing");
   }
 
+  if (ignoreHiddenEnterpriseCollection(name, force)) {
+    return {TRI_ERROR_NO_ERROR};
+  }
+
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
@@ -1050,7 +1068,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // Replication Factor. Will be overwritten if not existent
   VPackSlice const replFactorSlice = parameters.get("replicationFactor");
-  if (!replFactorSlice.isInteger()) {
+  bool isValidReplFactorSlice =
+      replFactorSlice.isInteger() ||
+        (replFactorSlice.isString() && replFactorSlice.isEqualString("satellite"));
+  if (!isValidReplFactorSlice) {
     if (replicationFactor == 0) {
       replicationFactor = 1;
     }
@@ -1065,6 +1086,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // system collection?
     toMerge.add("isSystem", VPackValue(true));
   }
+
+
+  // Always ignore `shadowCollections` they were accidentially dumped in arangodb versions
+  // earlier than 3.3.6
+  toMerge.add("shadowCollections", arangodb::basics::VelocyPackHelper::NullValue());
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
@@ -1076,7 +1102,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   VPackSlice const sliceToMerge = toMerge.slice();
   VPackBuilder mergedBuilder =
-      VPackCollection::merge(parameters, sliceToMerge, false);
+      VPackCollection::merge(parameters, sliceToMerge, false, true);
   VPackSlice const merged = mergedBuilder.slice();
 
   try {
@@ -1122,6 +1148,21 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreData(std::string const& colName) {
+#ifdef USE_ENTERPRISE
+  {
+    bool force = false;
+    bool found = false;
+    std::string const& forceVal = _request->value("force", found);
+
+    if (found) {
+      force = StringUtils::boolean(forceVal);
+    }
+    if (ignoreHiddenEnterpriseCollection(colName, force)) {
+      return {TRI_ERROR_NO_ERROR};
+    }
+  }
+#endif
+
   grantTemporaryRights();
   
   if (colName == "_users") {
@@ -1502,6 +1543,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
+
   VPackSlice const parameters = collection.get("parameters");
 
   if (!parameters.isObject()) {
@@ -1649,6 +1691,10 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
+  if (ignoreHiddenEnterpriseCollection(name, force)) {
+    return {TRI_ERROR_NO_ERROR};
+  }
+
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
@@ -1728,14 +1774,13 @@ void RestReplicationHandler::handleCommandSync() {
     return;
   }
   
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
 
-  VPackSlice const body = parsedBody->slice();
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
   if (endpoint.empty()) {
@@ -1834,9 +1879,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     return;
   }
 
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
-
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -1849,7 +1893,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   } 
 
   auto config = ReplicationApplierConfiguration::fromVelocyPack(applier->configuration(),
-                                                                parsedBody->slice(), databaseName);
+                                                                body, databaseName);
   // will throw if invalid
   config.validate();
 
@@ -1946,12 +1990,11 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 
 void RestReplicationHandler::handleCommandAddFollower() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'followerId' "
@@ -2076,12 +2119,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
 void RestReplicationHandler::handleCommandRemoveFollower() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'followerId' "
@@ -2121,14 +2163,11 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
-
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-
-  VPackSlice const body = parsedBody->slice();
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2264,12 +2303,12 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
 void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attribute 'id'");
@@ -2314,12 +2353,12 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
 
 void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attribute 'id'");

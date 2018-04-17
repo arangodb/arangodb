@@ -80,7 +80,7 @@ the `SUMMARY.md` files of all books, creates a clone of the external resource, a
 
 The syntax of the `SUMMARY.md` integration are special comment lines that contain `git` in them in a semicolon separated value list:
 
- - The git repository - the gitrepository containing the documentation - we will clone this; If authentification is required, prepend an `@` to `gituhb.com`
+ - The git repository - the gitrepository containing the documentation - we will clone this; If authentification is required, prepend an `@` to `github.com`
  - The directory name where to clone it under `Documentation/Books/repos` (so several integration points can share a working copy)
  - Subdirectory - the sub-directory inside of the git repository to integrate, also used in the `VERSIONS` file
  - Source - may be empty if the whole Subdirectory should be mapped into the book the `SUMMARY.md` is in, else specify source files (one per line) or directories

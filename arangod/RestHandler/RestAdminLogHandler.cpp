@@ -292,14 +292,13 @@ void RestAdminLogHandler::setLogLevel() {
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::PUT) { 
     // set loglevel
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+    bool parseSuccess = false;
+    VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      // error message generated in parseVelocyPackBody
+      // error message generated in parseVPackBody
       return;
     }
     
-    VPackSlice slice = parsedBody->slice();
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {

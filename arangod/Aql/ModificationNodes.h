@@ -55,7 +55,8 @@ class ModificationNode : public ExecutionNode {
         _collection(collection),
         _options(options),
         _outVariableOld(outVariableOld),
-        _outVariableNew(outVariableNew) {
+        _outVariableNew(outVariableNew),
+        _countStats(true) {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_collection != nullptr);
   }
@@ -127,6 +128,12 @@ class ModificationNode : public ExecutionNode {
   /// @brief whether or not the node is a data modification node
   bool isModificationNode() const override { return true; }
 
+  /// @brief whether this node contributes to statistics. Only disabled in SmartGraph case
+  bool countStats() const { return _countStats; } 
+
+  /// @brief Disable that this node is contributing to statistics. Only disabled in SmartGraph case
+  void disableStatistics() { _countStats = false; }
+
  protected:
   /// @brief _vocbase, the database
   TRI_vocbase_t* _vocbase;
@@ -142,6 +149,9 @@ class ModificationNode : public ExecutionNode {
 
   /// @brief output variable ($NEW)
   Variable const* _outVariableNew;
+
+  /// @brief whether this node contributes to statistics. Only disabled in SmartGraph case
+  bool _countStats;
 };
 
 /// @brief class RemoveNode

@@ -113,8 +113,9 @@ void RestAqlHandler::setupClusterQuery() {
   // ---------------------------------------------------
   // SECTION:                            body validation
   // ---------------------------------------------------
-  std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
-  if (bodyBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Failed to setup query. Could not "
                                              "parse the transmitted plan. "
                                              "Aborting query.";
@@ -122,7 +123,6 @@ void RestAqlHandler::setupClusterQuery() {
     return;
   }
 
-  VPackSlice querySlice = bodyBuilder->slice();
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
 
   if (!lockInfoSlice.isObject()) {
@@ -399,13 +399,13 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 // The body is a VelocyPack with attributes "plan" for the execution plan and
 // "options" for the options, all exactly as in AQL_EXECUTEJSON.
 void RestAqlHandler::createQueryFromVelocyPack() {
-  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
-  if (queryBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "invalid VelocyPack plan in query";
     return;
   }
-  VPackSlice querySlice = queryBuilder->slice();
 
   TRI_ASSERT(querySlice.isObject());
 
@@ -497,13 +497,13 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 // This does the same as AQL_PARSE with exactly these parameters and
 // does not keep the query hanging around.
 void RestAqlHandler::parseQuery() {
-  std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
-  if (bodyBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "invalid VelocyPack plan in query";
     return;
   }
-  VPackSlice querySlice = bodyBuilder->slice();
 
   std::string const queryString =
       VelocyPackHelper::getStringValue(querySlice, "query", "");
@@ -576,11 +576,11 @@ void RestAqlHandler::parseQuery() {
 // This does the same as AQL_EXPLAIN with exactly these parameters and
 // does not keep the query hanging around.
 void RestAqlHandler::explainQuery() {
-  std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
-  if (bodyBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     return;
   }
-  VPackSlice querySlice = bodyBuilder->slice();
 
   std::string queryString =
       VelocyPackHelper::getStringValue(querySlice, "query", "");
@@ -649,11 +649,11 @@ void RestAqlHandler::explainQuery() {
 // the cursor API yet. Rather, the query is stored in the query registry
 // for later use by PUT requests.
 void RestAqlHandler::createQueryFromString() {
-  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
-  if (queryBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     return;
   }
-  VPackSlice querySlice = queryBuilder->slice();
 
   std::string const queryString =
       VelocyPackHelper::getStringValue(querySlice, "query", "");
@@ -794,16 +794,16 @@ void RestAqlHandler::useQuery(std::string const& operation,
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
-  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
-
-  if (queryBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     _queryRegistry->close(&_vocbase, _qId);
 
     return;
   }
 
   try {
-    handleUseQuery(operation, query, queryBuilder->slice());
+    handleUseQuery(operation, query, querySlice);
 
     if (_qId != 0) {
       try {

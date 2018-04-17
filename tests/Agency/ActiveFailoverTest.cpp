@@ -286,8 +286,8 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
   
   } // SECTION
 
-  SECTION("no in-sync follower found, job fails") {
-    
+  SECTION("no in-sync follower found, job retries") {
+        
     // follower follows wrong leader
     const char* noInSync = R"=({"arango":{"AsyncReplication":{"SNGL-follower1":{"leader":"abc","lastTick":9}}}})=";
     trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(noInSync))};
@@ -334,8 +334,8 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     REQUIRE_FALSE(job.start());
     // job status stays on TODO and can retry later
     REQUIRE(job.status() == JOB_STATUS::TODO);
-    Verify(Method(mockAgent,transient)).Exactly(1);
-    Verify(Method(mockAgent,write)).Exactly(1); // finish is not called
+    Verify(Method(mockAgent,transient)).Exactly(Once);
+    Verify(Method(mockAgent,write)).Exactly(Once); // finish is not called
 
   } // SECTION
 

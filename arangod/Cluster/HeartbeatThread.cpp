@@ -615,7 +615,7 @@ void HeartbeatThread::runSingleServer() {
         config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
 
-        applier->forget(); // forget about any existingconfiguration
+        applier->forget(); // forget about any existing configuration
         applier->reconfigure(config);
         applier->startReplication();
         
