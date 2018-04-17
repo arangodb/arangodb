@@ -28,9 +28,6 @@
 
 namespace arangodb {
 namespace consensus {
-
-class Store;
-  
 class AgentInterface {
  public:
   /// @brief Possible outcome of write process

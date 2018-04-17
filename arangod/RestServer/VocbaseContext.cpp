@@ -84,7 +84,7 @@ VocbaseContext::~VocbaseContext() {
 
     auth::UserManager* um = auth->userManager();
     if (um == nullptr) {
-      LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "Server does not support users";
+      LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "Server does not support users";
       return nullptr;
     }
     

@@ -42,7 +42,7 @@ const db = internal.db;
 const suspendExternal = internal.suspendExternal;
 const continueExternal = internal.continueExternal;
 
-const jwtSecret = "haxxmann";
+const jwtSecret = 'haxxmann';
 const jwtSuperuser = crypto.jwtEncode(jwtSecret, {
   "server_id": "test",
   "iss": "arangodb",
@@ -174,10 +174,9 @@ function checkData(server) {
 }
 
 function readAgencyValue(path) {
-  print("Querying agency... (", path, ")");
-
   let agents = instanceinfo.arangods.filter(arangod => arangod.role === "agent");
-  assertTrue(agents.length > 0);
+  assertTrue(agents.length > 0, "No agents present");
+  print("Querying agency... (", path, ")");
   var res = request.post({
     url: agents[0].url + "/_api/agency/read",
     auth: {
@@ -186,7 +185,8 @@ function readAgencyValue(path) {
     body: JSON.stringify([[path]])
   });
   assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
   //print("Agency response ", res.json);
   return arangosh.checkRequestResult(res.json);
@@ -224,6 +224,7 @@ function checkForFailover(leader) {
     }
     internal.wait(5.0);
   } while (i-- > 0);
+  print("Timing out, current leader value: ", nextLeader);
   throw "No failover occured";
 }
 
@@ -237,7 +238,6 @@ function ActiveFailoverSuite() {
   let firstLeader = servers[0];
   let secondLeader = null;
   let collection = db._create(cname);
-  print();
 
   return {
     setUp: function () {
@@ -373,7 +373,7 @@ function ActiveFailoverSuite() {
       print("Remaining followers are in sync");
 
       // Resuming stopped second leader
-      print("Resuming server that thinks it is leader (error is expected)");
+      print("Resuming server that thinks it is leader (logged errors are expected)");
       instanceinfo.arangods.forEach(arangod => {
         if (arangod.endpoint === secondLeader) {
           print("Resuming: ", arangod.endpoint);
