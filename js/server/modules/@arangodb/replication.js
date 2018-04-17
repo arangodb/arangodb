@@ -28,9 +28,11 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var ERRORS = internal.errors;
-var endpointToURL = require('@arangodb/cluster').endpointToURL;
+const internal = require('internal');
+const rpc = require('@arangodb/replication-common');
+const ERRORS = internal.errors;
+const endpointToURL = require('@arangodb/cluster').endpointToURL;
+
 var request;
 if (ArangoServerState.role() === 'PRIMARY') {
   request = require('@arangodb/request').clusterRequest;
@@ -189,3 +191,4 @@ exports.syncCollection = syncCollection;
 exports.setupReplication = setupReplication;
 exports.setupReplicationGlobal = setupReplicationGlobal;
 exports.serverId = serverId;
+exports.compareTicks = rpc.compareTicks;
