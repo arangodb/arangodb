@@ -299,6 +299,30 @@ function MovingShardsSuite () {
     }
   }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Set supervision mode
+////////////////////////////////////////////////////////////////////////////////
+
+  function maintenanceMode(mode) {
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    try {
+      return request({ method: "POST",
+                       url: url + "/_admin/cluster/maintenance",
+                       body: JSON.stringify(mode) });
+    } catch (err) {
+      console.error(
+        "Exception for PUT /_admin/cluster/supervision:", err.stack);
+      return false;
+    }
+  }
+
+  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,6 +424,27 @@ function MovingShardsSuite () {
     testSetup : function () {
       dbservers = getDBServers();
       assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pausing supervision for a couple of seconds
+////////////////////////////////////////////////////////////////////////////////
+
+    testMaintenanceMode : function() {
+      createSomeCollections(1, 1, 3);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      assertTrue(maintenanceMode("on"));      
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
+      wait(30.0);
+      assertTrue(maintenanceMode("off"));      
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
+      assertTrue(waitForSupervision());
     },
 
 ////////////////////////////////////////////////////////////////////////////////

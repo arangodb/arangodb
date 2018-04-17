@@ -578,32 +578,36 @@ bool Supervision::doChecks() {
 
 void Supervision::reportStatus(std::string const& status) {
 
-  bool doReport = false;
+  bool persist = false;
   query_t report;
 
-  
   { // Do I have to report to agency under 
     _lock.assertLockedByCurrentThread();
     if (_snapshot.has("/Supervision/State/Mode") &&
         _snapshot("/Supervision/State/Mode").isString()) {
       if (_snapshot("/Supervision/State/Mode").getString() != status) {
-        doReport = true;
+        persist = true;
       }
     } else {
-      doReport = true;
+      persist = true;
     }
   }
   
-  if (doReport) {
-    report = std::make_shared<VPackBuilder>();
-    { VPackArrayBuilder trx(report.get());
-      { VPackObjectBuilder br(report.get());
-        report->add(VPackValue("/Supervision/State"));
-        { VPackObjectBuilder bbr(report.get());
-          report->add("Mode", VPackValue(status));
-          report->add("Timestamp",
-            VPackValue(timepointToString(std::chrono::system_clock::now())));}}}
+  report = std::make_shared<VPackBuilder>();
+  { VPackArrayBuilder trx(report.get());
+    { VPackObjectBuilder br(report.get());
+      report->add(VPackValue("/Supervision/State"));
+      { VPackObjectBuilder bbr(report.get());
+        report->add("Mode", VPackValue(status));
+        report->add("Timestamp",
+          VPackValue(timepointToString(std::chrono::system_clock::now())));}}}
+  if (persist) {
     write_ret_t res = singleWriteTransaction(_agent, *report);
+  }
+
+  // Importatnt! No reportig in transient for Maintenance mode.
+  if (status != "Maintenance") {
+    transient(_agent, *report);
   }
   
 }
