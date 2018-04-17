@@ -165,7 +165,7 @@ struct CustomScorer : public irs::sort {
   CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(i);
+    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
   }
 
   size_t i;
