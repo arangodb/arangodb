@@ -427,6 +427,10 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
+  // < 0 is no timeout in SingleServer. == 0.0 is no timeout in Cluster
+  if (timeout < 0) {
+    timeout = 0.0;
+  }
 
   int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, timeout);
   if (res != TRI_ERROR_NO_ERROR) {
