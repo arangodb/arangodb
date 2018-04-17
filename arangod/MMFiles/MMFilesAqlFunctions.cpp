@@ -63,9 +63,7 @@ static arangodb::MMFilesGeoS2Index* getGeoIndex(
   arangodb::MMFilesGeoS2Index* index = nullptr;
   auto indexes = trx->indexesForCollection(collectionName);
   for (auto const& idx : indexes) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {
+    if (arangodb::Index::isGeoIndex(idx->type())) {
       index = static_cast<arangodb::MMFilesGeoS2Index*>(idx.get());
       break;
     }
