@@ -49,16 +49,15 @@ var db = require('internal').db;
 function optimizerRuleTestSuite() {
   // quickly disable tests here
   var enabled = {
-    basics : true,
-    removeNodes : true,
-    sorted : true
+    basics: true,
+    removeNodes: true,
+    sorted: true
   };
 
   var ruleName = "geoindex";
   var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
   var colName2 = colName2;
 
-  var geocol;
   var sortArray = function (l, r) {
     if (l[0] !== r[0]) {
       return l[0] < r[0] ? -1 : 1;
@@ -68,39 +67,40 @@ function optimizerRuleTestSuite() {
     }
     return 0;
   };
-  var hasSortNode = function (plan,query) {
+  var hasSortNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "SortNode").length, 1, query.string + " Has SortNode ");
   };
-  var hasNoSortNode = function (plan,query) {
+  var hasNoSortNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "SortNode").length, 0, query.string + " Has no SortNode");
   };
-  var hasFilterNode = function (plan,query) {
+  var hasFilterNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 1, query.string + " Has FilterNode");
   };
-  var hasNoFilterNode = function (plan,query) {
+  var hasNoFilterNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query.string + " Has no FilterNode");
   };
-  var hasNoIndexNode = function (plan,query) {
+  var hasNoIndexNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, query.string + " Has no IndexNode");
   };
-  var hasNoResultsNode = function (plan,query) {
+  var hasNoResultsNode = function (plan, query) {
     assertEqual(findExecutionNodes(plan, "NoResultsNode").length, 1, query.string + " Has NoResultsNode");
   };
-  var hasCalculationNodes = function (plan,query, countXPect) {
+  var hasCalculationNodes = function (plan, query, countXPect) {
     assertEqual(findExecutionNodes(plan, "CalculationNode").length,
-                countXPect, "Has " + countXPect +  " CalculationNode");
+      countXPect, "Has " + countXPect + " CalculationNode");
   };
-  var hasIndexNode = function (plan,query) {
-    var rn = findExecutionNodes(plan,"IndexNode");
+  var hasIndexNode = function (plan, query) {
+    var rn = findExecutionNodes(plan, "IndexNode");
     assertEqual(rn.length, 1, query.string + " Has IndexNode");
     assertEqual(rn[0].indexes.length, 1);
     var indexType = rn[0].indexes[0].type;
     assertTrue(indexType === "s2index");
   };
-  var isNodeType = function(node, type, query) {
+  var isNodeType = function (node, type, query) {
     assertEqual(node.type, type, query.string + " check whether this node is of type " + type);
   };
 
+  var geocol;
   let locations;
 
   // GeoJSON test data. https://gist.github.com/aaronlidman/7894176?short_path=2b56a92
@@ -116,15 +116,15 @@ function optimizerRuleTestSuite() {
   let emea = [ // TODO implement multi-polygon
     /*{ "type": "MultiPolygon", "coordinates": [ [[[40, 40], [20, 45], [45, 30], [40, 40]]],
       [[[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],  [[30, 20], [20, 15], [20, 25], [30, 20]]]] }*/
-      { "type": "Polygon",  "coordinates": [ [[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]], [[20, 30], [35, 35], [30, 20], [20, 30]]]},
-      { "type": "LineString", "coordinates": [[25,10],[10,30],[25,40]] },
-      { "type": "MultiLineString", "coordinates": [ [[10, 10], [20, 20], [10, 40]], [[40, 40], [30, 30], [40, 20], [30, 10]]] },
-      { "type": "MultiPoint",  "coordinates": [ [10, 40], [40, 30], [20, 20], [30, 10] ] }
+    { "type": "Polygon", "coordinates": [[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]], [[20, 30], [35, 35], [30, 20], [20, 30]]] },
+    { "type": "LineString", "coordinates": [[25, 10], [10, 30], [25, 40]] },
+    { "type": "MultiLineString", "coordinates": [[[10, 10], [20, 20], [10, 40]], [[40, 40], [30, 30], [40, 20], [30, 10]]] },
+    { "type": "MultiPoint", "coordinates": [[10, 40], [40, 30], [20, 20], [30, 10]] }
   ];
   let emeaKeys = [];
-  let rectEmea1 = {"type":"Polygon","coordinates":[[[2,4],[26,4],[26,49],[2,49],[2,4]]]};
-  let rectEmea2 = {"type":"Polygon","coordinates":[[[35,42],[49,42],[49,50],[35,51],[35,42]]]};
-  let rectEmea3 = {"type":"Polygon","coordinates":[[[35,42],[49,42],[49,50],[35,50],[35,42]]]};
+  let rectEmea1 = { "type": "Polygon", "coordinates": [[[2, 4], [26, 4], [26, 49], [2, 49], [2, 4]]] };
+  let rectEmea2 = { "type": "Polygon", "coordinates": [[[35, 42], [49, 42], [49, 50], [35, 51], [35, 42]]] };
+  let rectEmea3 = { "type": "Polygon", "coordinates": [[[35, 42], [49, 42], [49, 50], [35, 50], [35, 42]]] };
 
 
   return {
@@ -132,7 +132,7 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////
-    setUp : function () {
+    setUp: function () {
       var loopto = 10;
 
       internal.db._drop(colName);
@@ -140,19 +140,18 @@ function optimizerRuleTestSuite() {
       /*geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
       geocol.ensureIndex({type:"geo", fields:["geo"]});
       geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});*/
-      geocol.ensureIndex({type: "s2index", fields:["lat","lon"], geoJson: false});
-      geocol.ensureIndex({type: "s2index", fields:["geo"], geoJson: false});
-      geocol.ensureIndex({type: "s2index", fields:["loca.tion.lat","loca.tion.lon"], geoJson: false});
+      geocol.ensureIndex({ type: "s2index", fields: ["lat", "lon"], geoJson: false });
+      geocol.ensureIndex({ type: "s2index", fields: ["geo"], geoJson: false });
+      geocol.ensureIndex({ type: "s2index", fields: ["loca.tion.lat", "loca.tion.lon"], geoJson: false });
       var lat, lon;
-      for (lat=-40; lat <=40 ; ++lat) {
-          for (lon=-40; lon <= 40; ++lon) {
-              //geocol.insert({lat,lon});
-              geocol.insert({lat, lon, "geo":[lat,lon], "loca":{"tion":{ lat, lon }} });
-          }
+      for (lat = -40; lat <= 40; ++lat) {
+        for (lon = -40; lon <= 40; ++lon) {
+          //geocol.insert({lat,lon});
+          geocol.insert({ lat, lon, "geo": [lat, lon], "loca": { "tion": { lat, lon } } });
+        }
       }
 
       db._drop("UnitTestsGeoJsonTestSuite");
-
       locations = db._create("UnitTestsGeoJsonTestSuite");
       locations.ensureIndex({ type: "s2index", fields: ["geometry"], geoJson: true });
 
@@ -163,125 +162,134 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////
-    tearDown : function () {
+    tearDown: function () {
       internal.db._drop(colName);
       geocol = null;
       db._drop("UnitTestsGeoJsonTestSuite");
     },
 
-    testRuleBasics : function () {
-      if(enabled.basics){
-        geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
+    testRuleBasics: function () {
+      if (enabled.basics) {
+        geocol.ensureIndex({ type: "hash", fields: ["y", "z"], unique: false });
 
         var queries = [
-          { string  : "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
+          {
+            string: "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: false,
+            index: true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
+          {
+            string: "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: false,
+            index: true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
+          {
+            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: false,
+            index: true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
+          {
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: false,
+            index: true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1] ) < 1 LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
+          {
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1] ) < 1 LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: false,
+            index: true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1] ) < 1 LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : true,
-            index   : false
+          {
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1] ) < 1 LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: true,
+            index: false
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
+          {
+            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: false,
+            index: true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
+          {
+            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: false,
+            index: true
           },
-          { string  : "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : true,
-            index   : true
+          {
+            string: "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d",
+            cluster: false,
+            sort: false,
+            filter: true,
+            index: true
           }
         ];
 
-        queries.forEach(function(query) {
+        queries.forEach(function (query) {
           var result = AQL_EXPLAIN(query.string);
 
           //sort nodes
           if (query.sort) {
-            hasSortNode(result,query);
+            hasSortNode(result, query);
           } else {
-            hasNoSortNode(result,query);
+            hasNoSortNode(result, query);
           }
 
           //filter nodes
           if (query.filter) {
-            hasFilterNode(result,query);
+            hasFilterNode(result, query);
           } else {
-            hasNoFilterNode(result,query);
+            hasNoFilterNode(result, query);
           }
 
-          if (query.index){
-            hasIndexNode(result,query);
+          if (query.index) {
+            hasIndexNode(result, query);
           } else {
-            hasNoIndexNode(result,query);
+            hasNoIndexNode(result, query);
           }
 
         });
       }
     }, // testRuleBasics
 
-    testRuleRemoveNodes : function () {
-      if(enabled.removeNodes){
+    testRuleRemoveNodes: function () {
+      if (enabled.removeNodes) {
         var queries = [
-          [ "FOR d IN " + colName  + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
-          [ "FOR d IN " + colName  + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false ],
-          [ "FOR d IN " + colName  + " FILTER distance(0, 0, d.lat,d.lon ) < 111200 RETURN d", false, false, false ],
-          [ "FOR d IN " + colName + " SORT distance(d.loca.tion.lat,d.loca.tion.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
-          [ "FOR d IN " + colName + " SORT distance(d.geo[0], d.geo[1], 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
-          [ "FOR d IN " + colName + " SORT distance(0, 0, d.geo[0], d.geo[1]) ASC LIMIT 5 RETURN d", false, false, false ],
+          ["FOR d IN " + colName + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false],
+          ["FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false],
+          ["FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 111200 RETURN d", false, false, false],
+          ["FOR d IN " + colName + " SORT distance(d.loca.tion.lat,d.loca.tion.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false],
+          ["FOR d IN " + colName + " SORT distance(d.geo[0], d.geo[1], 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false],
+          ["FOR d IN " + colName + " SORT distance(0, 0, d.geo[0], d.geo[1]) ASC LIMIT 5 RETURN d", false, false, false],
         ];
 
         var expected = [
-          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
-          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
-          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
-          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
-          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
-          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
+          [[0, 0], [-1, 0], [0, 1], [1, 0], [0, -1]],
+          [[0, 0], [-1, 0], [0, 1], [1, 0], [0, -1]],
+          [[0, 0], [-1, 0], [0, 1], [1, 0], [0, -1]],
+          [[0, 0], [-1, 0], [0, 1], [1, 0], [0, -1]],
+          [[0, 0], [-1, 0], [0, 1], [1, 0], [0, -1]],
+          [[0, 0], [-1, 0], [0, 1], [1, 0], [0, -1]],
         ];
 
-        queries.forEach(function(query, qindex) {
+        queries.forEach(function (query, qindex) {
           var result = AQL_EXECUTE(query[0]);
           expect(expected[qindex].length).to.be.equal(result.json.length, query[0]);
-          var pairs = result.json.map(function(res){
-              return [res.lat,res.lon];
+          var pairs = result.json.map(function (res) {
+            return [res.lat, res.lon];
           });
 
           assertEqual(pairs.sort(), expected[qindex].sort(), query[0]);
@@ -290,16 +298,16 @@ function optimizerRuleTestSuite() {
       }
     }, // testRuleSort
 
-    testRuleSorted : function(){
-      if(enabled.sorted){
+    testRuleSorted: function () {
+      if (enabled.sorted) {
         const internal = require('internal');
-        var old=0;
+        var old = 0;
         var query = "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) ASC RETURN distance(d.lat, d.lon, 0, 0)";
         var result = AQL_EXECUTE(query);
         var distances = result.json.map(d => { return parseFloat(d.toFixed(5)); });
-        old=0;
+        old = 0;
         distances.forEach(d => {
-          assertTrue( d >= old, d + " >= " + old);
+          assertTrue(d >= old, d + " >= " + old);
           old = d;
         });
       }
@@ -377,6 +385,68 @@ function optimizerRuleTestSuite() {
             RETURN x._key`,
         bindVars: {
           "@cc": locations.name(),
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on sphere (a donut)
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsAnnulus: function () {
+      let query = {
+        string: `FOR x IN @@cc
+                  FILTER DISTANCE(-10, 25, x.lat, x.lon) <= 150000
+                  FILTER DISTANCE(-10, 25, x.lat, x.lon) > 108500
+                  RETURN x`,
+        bindVars: {
+          "@cc": geocol.name(),
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on a sphere (a donut) with nested FOR loops
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsAnnulusReference: function () {
+      let query = {
+        string: `LET latLng = [25, -10]
+                 FOR x IN @@cc
+                    FILTER GEO_DISTANCE(latLng, [x.lon, x.lat]) <= 150000
+                    FILTER GEO_DISTANCE(latLng, [x.lon, x.lat]) > 109545
+                    SORT x.lat, x.lng RETURN x`,
+        bindVars: {
+          "@cc": geocol.name(),
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on a sphere (a donut) with nested FOR loops
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsAnnulusNested: function () {
+      let query = {
+        string: `FOR latLng IN [[25, -10], [150, 70]]
+                  FOR x IN @@cc
+                    FILTER GEO_DISTANCE(latLng, [x.lon, x.lat]) <= 150000
+                    FILTER GEO_DISTANCE(latLng, [x.lon, x.lat]) > 109545
+                    SORT x.lat, x.lng RETURN x`,
+        bindVars: {
+          "@cc": geocol.name(),
         }
       };
 
@@ -543,7 +613,7 @@ function optimizerRuleTestSuite() {
       hasSortNode(result, query);
     },
 
-    testContainsGeoConstructorPolygon1: function() {
+    testContainsGeoConstructorPolygon1: function () {
       var query = {
         string: `
           LET poly = GEO_POLYGON(@coords)
@@ -561,7 +631,7 @@ function optimizerRuleTestSuite() {
       hasNoFilterNode(result, query);
     },
 
-    testContainsGeoConstructorPolygon2: function() {
+    testContainsGeoConstructorPolygon2: function () {
       var query = {
         string: `
           FOR x IN @@cc
@@ -578,7 +648,7 @@ function optimizerRuleTestSuite() {
       hasNoFilterNode(result, query);
     },
 
-    testIntersectsGeoConstructorPolygon1: function() {
+    testIntersectsGeoConstructorPolygon1: function () {
       var query = {
         string: `
           LET poly = GEO_POLYGON(@coords)
@@ -596,7 +666,7 @@ function optimizerRuleTestSuite() {
       hasNoFilterNode(result, query);
     },
 
-    testIntersectsGeoConstructorPolygon2: function() {
+    testIntersectsGeoConstructorPolygon2: function () {
       var query = {
         string: `
           FOR x IN @@cc
