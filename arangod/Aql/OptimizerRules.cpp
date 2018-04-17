@@ -4901,8 +4901,8 @@ struct GeoIndexInfo {
 
   // ============ Accessed Fields ============
   AstNode const* locationVar = nullptr;// access to location field
-  AstNode const* latitudeExpr = nullptr;// access path to longitude
-  AstNode const* longitudeVar = nullptr;// access path to latitude
+  AstNode const* latitudeVar = nullptr;// access path to latitude
+  AstNode const* longitudeVar = nullptr;// access path to longitude
 
   /// contains this node a valid condition
   bool valid = true;
@@ -4961,7 +4961,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
           return false;
         }
         info.index = idx;
-        info.latitudeExpr = latArg;
+        info.latitudeVar = latArg;
         info.longitudeVar = lngArg;
         return true;
       }
@@ -4980,7 +4980,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
           return false;
         }
         info.index = idx;
-        info.latitudeExpr = latArg;
+        info.latitudeVar = latArg;
         info.longitudeVar = lngArg;
         return true;
       }
@@ -5199,7 +5199,7 @@ static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, G
     if (fields.size() == 1) {
       info.locationVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
     } else {
-      info.latitudeExpr = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
+      info.latitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
       info.longitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[1]);
     }
     calcNode->canRemoveIfThrows(true);
@@ -5381,10 +5381,10 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   auto addLocationArg = [ast, &info] (AstNode* args) {
     if (info.locationVar) {
       args->addMember(info.locationVar);
-    } else if (info.latitudeExpr && info.longitudeVar) {
+    } else if (info.latitudeVar && info.longitudeVar) {
       AstNode* array = ast->createNodeArray(2);
       array->addMember(info.longitudeVar); // GeoJSON ordering
-      array->addMember(info.latitudeExpr);
+      array->addMember(info.latitudeVar);
       args->addMember(array);
     } else {TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -5435,7 +5435,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   if (info.filterMode != geo::FilterType::NONE) {
     // create GEO_CONTAINS / GEO_INTERSECTS
     TRI_ASSERT(info.filterExpr);
-    TRI_ASSERT(info.locationVar || (info.longitudeVar && info.latitudeExpr));
+    TRI_ASSERT(info.locationVar || (info.longitudeVar && info.latitudeVar));
 
     AstNode* args = ast->createNodeArray(2);
     args->addMember(info.filterExpr);
