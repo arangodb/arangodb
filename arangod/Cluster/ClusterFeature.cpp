@@ -152,6 +152,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   _enableCluster = !_agencyEndpoints.empty();
 
   if (!_enableCluster) {
+    _requestedRole = ServerState::ROLE_SINGLE;
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
     auto ss = ServerState::instance();
     ss->findHost("localhost");
@@ -210,6 +211,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                     "SECONDARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
+    ServerState::instance()->setRole(_requestedRole);
   }
 }
 
@@ -279,8 +281,6 @@ void ClusterFeature::prepare() {
   } else {
     reportRole(_requestedRole);
   }
-
-  ServerState::instance()->setClusterEnabled();
 
   // register the prefix with the communicator
   AgencyCommManager::initialize(_agencyPrefix);
@@ -423,14 +423,13 @@ void ClusterFeature::start() {
   // no value set in agency. use default
   if (_heartbeatInterval == 0) {
     _heartbeatInterval = 5000;  // 1/s
-
     LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "unable to read heartbeat interval from agency. Using "
               << "default value '" << _heartbeatInterval << " ms'";
   }
 
   // start heartbeat thread
   _heartbeatThread = std::make_shared<HeartbeatThread>(
-      _agencyCallbackRegistry.get(), _heartbeatInterval * 1000, 5);
+      _agencyCallbackRegistry.get(), std::chrono::microseconds(_heartbeatInterval * 1000), 5);
 
   if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "heartbeat could not connect to agency endpoints ("

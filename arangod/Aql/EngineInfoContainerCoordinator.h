@@ -49,7 +49,9 @@ class EngineInfoContainerCoordinator {
    public:
     EngineInfo(QueryId id, size_t idOfRemoteNode);
     ~EngineInfo();
-
+#if (_MSC_VER != 0)
+#pragma warning( disable : 4521) // stfu wintendo.
+#endif
     EngineInfo(EngineInfo&) = delete;
     EngineInfo(EngineInfo const& other) = delete;
     EngineInfo(EngineInfo const&& other);
