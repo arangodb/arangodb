@@ -147,7 +147,7 @@ void IndexNode::initIndexCoversProjections() {
     }
     ++i;
   }
-  
+ 
   _coveringIndexAttributePositions = std::move(coveringAttributePositions);
 }
 

@@ -66,22 +66,27 @@ void DocumentProducingBlock::buildCallback() {
         b->openObject(true);
 
         if (_allowCoveringIndexOptimization) {
-          TRI_ASSERT(slice.isArray());
+          bool const isArray = slice.isArray();
           size_t i = 0;
+          VPackSlice found;
           for (auto const& it : _node->projections()) {
-            VPackSlice found = slice.at(_node->coveringIndexAttributePositions()[i]);
+            if (isArray) {
+              found = slice.at(_node->coveringIndexAttributePositions()[i]);
+              ++i;
+            } else {
+              found = slice;
+            }
             if (found.isNone()) {
               // attribute not found
               b->add(it, VPackValue(VPackValueType::Null));
             } else {
               if (_useRawDocumentPointers) {
                 b->add(VPackValue(it));
-                b->addExternal(slice.begin());
+                b->addExternal(found.begin());
               } else {
                 b->add(it, found);
               }
             }
-            ++i;
           }
         } else {
           // projections from a "real" document
@@ -110,7 +115,7 @@ void DocumentProducingBlock::buildCallback() {
               } else {
                 if (_useRawDocumentPointers) {
                   b->add(VPackValue(it));
-                  b->addExternal(slice.begin());
+                  b->addExternal(found.begin());
                 } else {
                   b->add(it, found);
                 }
