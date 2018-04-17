@@ -24,7 +24,7 @@
 #define ARANGODB_BASICS_DATETIME_H 1
 
 #include <boost/algorithm/string.hpp>
-#include <date/date.h>
+#include <chrono>
 
 #include <regex>
 
