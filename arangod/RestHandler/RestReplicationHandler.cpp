@@ -54,6 +54,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -1682,9 +1683,6 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   }
   TRI_ASSERT(col != nullptr);
   
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
-
-  int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     VPackSlice type = idxDef.get("type");
     if (type.isString() &&
@@ -1694,17 +1692,13 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     }
 
     VPackBuilder tmp;
-    res = ci->ensureIndexCoordinator(dbName, col->cid_as_string(), idxDef, true,
-                                     arangodb::Index::Compare, tmp, errorMsg,
-                                     cluster->indexCreationTimeout());
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg =
-          "could not create index: " + std::string(TRI_errno_string(res));
-      break;
+    auto res = methods::Indexes::ensureIndex(col.get(), idxDef, true, tmp);
+    if (!res.ok()) {
+      errorMsg = "could not create index: " + res.errorMessage();
+      return res.errorNumber();
     }
   }
-
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
