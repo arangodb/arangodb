@@ -22,9 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationServerHelper.h"
-#include "IResearchFeature.h"
+#include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
-
 #include "Basics/LocalTaskQueue.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -42,7 +41,8 @@ NS_LOCAL
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the string representing the link type
 ////////////////////////////////////////////////////////////////////////////////
-static const std::string& LINK_TYPE = arangodb::iresearch::IResearchFeature::type();
+static const std::string& LINK_TYPE =
+  arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the iResearch Link definition denoting the
@@ -178,7 +178,7 @@ int IResearchLink::drop() {
     auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
 
     if (!result.ok()) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to force view link revalidation while unloading dropped IResearch link '" << _id
         << "' for IResearch view '" << _view->id() << "'";
 
@@ -213,7 +213,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   IResearchLinkMeta meta;
 
   if (!meta.init(definition, error)) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error parsing view link parameters from json: " << error;
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "error parsing view link parameters from json: " << error;
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 
     return false; // failed to parse metadata
@@ -228,8 +229,10 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       // NOTE: this will cause a deadlock if registering a link while view is being created
       auto logicalView = collection()->vocbase().lookupView(viewId);
 
-      if (!logicalView || IResearchView::type() != logicalView->type()) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error looking up view '" << viewId << "': no such view";
+      if (!logicalView
+          || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "error looking up view '" << viewId << "': no such view";
         return false; // no such view
       }
 
@@ -241,7 +244,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       #endif
 
       if (!view) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error finding view: '" << viewId << "' for link '" << _id << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "error finding view: '" << viewId << "' for link '" << _id << "'";
 
         return false;
       }
@@ -249,7 +253,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       auto viewSelf = view->self();
 
       if (!viewSelf) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "error read-locking view: '" << viewId
           << "' for link '" << _id << "'";
 
@@ -260,7 +264,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
       if (!viewSelf->get()) {
         _viewLock.unlock();
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error getting view: '" << viewId << "' for link '" << _id << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "error getting view: '" << viewId << "' for link '" << _id << "'";
 
         return false;
       }
@@ -283,7 +288,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     }
   }
 
-  LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error finding view for link '" << _id << "'";
+  LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    << "error finding view for link '" << _id << "'";
   TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   return false;
@@ -541,7 +547,8 @@ int IResearchLink::unload() {
   auto* col = collection();
 
   if (!col) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed finding collection while unloading IResearch link '" << _id << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed finding collection while unloading IResearch link '" << _id << "'";
 
     return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' required
   }
@@ -553,7 +560,7 @@ int IResearchLink::unload() {
     auto res = drop();
 
     if (TRI_ERROR_NO_ERROR != res) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to drop collection from view while unloading dropped IResearch link '" << _id
         << "' for IResearch view '" << _view->id() << "'";
 

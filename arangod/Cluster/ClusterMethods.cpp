@@ -2607,7 +2607,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
     bool waitForSyncReplication,
     bool enforceReplicationFactor
 ) {
-  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, 0, true);
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, true, 0);
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
