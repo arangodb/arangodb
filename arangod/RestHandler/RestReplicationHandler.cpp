@@ -53,6 +53,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -733,42 +734,49 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 
   bool overwrite = false;
 
-  bool found;
-  std::string const& value1 = _request->value("overwrite", found);
-
-  if (found) {
-    overwrite = StringUtils::boolean(value1);
+  bool found = false;
+  {
+    std::string const& value1 = _request->value("overwrite", found);
+    if (found) {
+      overwrite = StringUtils::boolean(value1);
+    }
   }
 
   bool force = false;
-  std::string const& value3 = _request->value("force", found);
+  {
+    std::string const& value3 = _request->value("force", found);
 
-  if (found) {
-    force = StringUtils::boolean(value3);
-  }
-
-  std::string const& value9 =
-      _request->value("ignoreDistributeShardsLikeErrors", found);
-  bool ignoreDistributeShardsLikeErrors =
-      found ? StringUtils::boolean(value9) : false;
-
-  uint64_t numberOfShards = 0;
-  std::string const& value4 = _request->value("numberOfShards", found);
-
-  if (found) {
-    numberOfShards = StringUtils::uint64(value4);
-  }
-
-  uint64_t replicationFactor = 1;
-  std::string const& value5 = _request->value("replicationFactor", found);
-
-  if (found) {
-    replicationFactor = StringUtils::uint64(value5);
+    if (found) {
+      force = StringUtils::boolean(value3);
+    }
   }
 
   Result res;
 
   if (ServerState::instance()->isCoordinator()) {
+    uint64_t numberOfShards = 0;
+    {
+      std::string const& value4 = _request->value("numberOfShards", found);
+      if (found) {
+        numberOfShards = StringUtils::uint64(value4);
+      }
+    }
+    uint64_t replicationFactor = 1;
+    {
+      std::string const& value5 = _request->value("replicationFactor", found);
+      if (found) {
+        replicationFactor = StringUtils::uint64(value5);
+      }
+    }
+    bool ignoreDistributeShardsLikeErrors = false;
+    {
+      std::string const& value9 =
+          _request->value("ignoreDistributeShardsLikeErrors", found);
+      if (found) {
+        ignoreDistributeShardsLikeErrors = StringUtils::boolean(value9);
+      }
+    }
+
     res = processRestoreCollectionCoordinator(
         slice, overwrite, force, numberOfShards,
         replicationFactor, ignoreDistributeShardsLikeErrors);
@@ -997,28 +1005,24 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   ClusterInfo* ci = ClusterInfo::instance();
 
+  grantTemporaryRights();
   try {
     // in a cluster, we only look up by name:
     std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      std::string errorMsg;
-      int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
-                                              errorMsg, 0.0);
-      if (res == TRI_ERROR_FORBIDDEN ||
-          res ==
-              TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
-        // some collections must not be dropped
-        res = truncateCollectionOnCoordinator(dbName, name);
-        if (res != TRI_ERROR_NO_ERROR) {
-          return Result(res, std::string("unable to truncate collection (dropping is forbidden): '") + name + "'");
+      auto res = methods::Collections::drop(_vocbase, col.get(), false, 0.0, false);
+      if (!res.ok()) {
+        if (res.is(TRI_ERROR_FORBIDDEN) || res.is(TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
+          // some collections must not be dropped
+          int innerRes = truncateCollectionOnCoordinator(dbName, name);
+          if (innerRes != TRI_ERROR_NO_ERROR) {
+            return Result(innerRes, std::string("unable to truncate collection (dropping is forbidden): '") + name + "'");
+          }
+          return {innerRes};
         }
-        return Result(res);
-      }
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return Result(res, std::string("unable to drop collection '") + name + "': " + TRI_errno_string(res));
+        return res;
       }
     } else {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("unable to create collection '") + name + "': " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
