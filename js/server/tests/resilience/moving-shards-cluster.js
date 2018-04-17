@@ -133,6 +133,37 @@ function MovingShardsSuite () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get cleaned out servers
+////////////////////////////////////////////////////////////////////////////////
+
+  function getTransientValue() {
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    
+    var res;
+    try {
+      var envelope = 
+          { method: "GET", url: url + "/_admin/cluster/numberOfServers" };
+      res = request(envelope);
+    } catch (err) {
+      console.error(
+        "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+      return {};
+    }
+    var body = res.body;
+    if (typeof body === "string") {
+      body = JSON.parse(body);
+    }
+    return body;
+  }
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -305,6 +336,7 @@ function MovingShardsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function maintenanceMode(mode) {
+    console.log("Switching supervision maintenance " + mode);
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
@@ -317,10 +349,11 @@ function MovingShardsSuite () {
                       body: JSON.stringify(mode) });
     } catch (err) {
       console.error(
-        "Exception for POST /_admin/cluster/supervision:", err.stack);
+        "Exception for PUT /_admin/cluster/supervision:", err.stack);
       return false;
     }
-    
+    console.log("Supervision maintenance is " + mode);
+    return true;
   }
 
   
@@ -443,9 +476,22 @@ function MovingShardsSuite () {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));      
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
-      wait(30.0);
-      global.ArangoAgency.transient([["/arango/"]])
+      var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+          arango.Supervision.State, state;
+      var waitUntil = new Date().getTime() + 30.0*1000;
+      while(true) {
+        state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+          arango.Supervision.State;
+        assertEqual(state.Timestamp, first.Timestamp);
+        wait(5.0);
+        if (new Date().getTime() > waitUntil) {
+          break;
+        }
+      }
       assertTrue(maintenanceMode("off"));      
+      state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+        arango.Supervision.State;
+      assertTrue(state.Timestamp !== first.Timestamp);
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
