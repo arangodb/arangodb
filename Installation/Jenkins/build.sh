@@ -185,6 +185,7 @@ case "$1" in
             '-DV8_TARGET_ARCHS=Debug'
             '-DUSE_MAINTAINER_MODE=On'
             '-DUSE_FAILURE_TESTS=On'
+            '-DUSE_BACKTRACE=1'
             '-DOPTDBG=On'
             "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
         )
@@ -759,17 +760,20 @@ if test "${DOWNLOAD_STARTER}" == 1; then
     STARTER_REV=$(grep "STARTER_REV"  "${SRC}/VERSIONS" |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
     if test "${STARTER_REV}" == "latest"; then
         # we utilize https://developer.github.com/v3/repos/ to get the newest release:
-        STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
-                             grep tag_name | \
-                             head -n 1 | \
-                             ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
+        STARTER_URL=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
+                          grep browser_download_url |grep "/arangodb-${OSNAME}" | \
+                          head -n 1 | \
+                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
+                   )
+    else
+        STARTER_URL=$(curl -s "https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV}" | \
+                          grep browser_download_url | \
+                          grep "/arangodb-${OSNAME}" | \
+                          grep "/${STARTER_REV}/" | \
+                          grep "${OSNAME}" | \
+                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
                    )
     fi
-    STARTER_URL=$(curl -s "https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV}" | \
-                         grep browser_download_url | \
-                         grep "${OSNAME}" | \
-                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
-               )
     if test -n "${STARTER_URL}"; then
         mkdir -p "${BUILD_DIR}"
         if test "${isCygwin}" == 1; then
