@@ -127,9 +127,6 @@ class ServerState {
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
 
-  /// @brief sets the initialized flag
-  void setClusterEnabled() { _clusterEnabled = true; }
-
   /// @brief flush the server state (used for testing)
   void flush();
 
@@ -182,6 +179,7 @@ class ServerState {
     return isClusterRole(role);
   }
 
+  /// @brief check whether the server is a single server or coordinator
   bool isSingleServerOrCoordinator() {
     RoleEnum role = loadRole();
     return isCoordinator(role) || isSingleServer(role);
@@ -250,6 +248,7 @@ class ServerState {
   /// @brief sets server mode and propagates new mode to agency
   Result propagateClusterServerMode(Mode);
 
+  /// file where the server persists it's UUID
   std::string getUuidFilename();
 
  private:
@@ -257,9 +256,6 @@ class ServerState {
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
   }
-
-  /// @brief store the server role
-  bool storeRole(RoleEnum role);
 
   /// @brief validate a state transition for a primary server
   bool checkPrimaryState(StateEnum);
@@ -271,9 +267,6 @@ class ServerState {
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
-
-  /// @brief the pointer to the singleton instance
-  static ServerState* _theinstance;
 
   /// @brief the server's id, can be set just once
   std::string _id;
@@ -298,9 +291,6 @@ class ServerState {
 
   /// @brief whether or not the cluster was initialized
   bool _initialized;
-
-  /// @brief whether or not we are a cluster member
-  bool _clusterEnabled;
 
   std::string _foxxmaster;
 

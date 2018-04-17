@@ -29,10 +29,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+
 #ifdef USE_IRESEARCH
-#include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchMMFilesLink.h"
+  #include "IResearch/IResearchCommon.h"
+  #include "IResearch/IResearchMMFilesLink.h"
 #endif
+
 #include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
@@ -577,7 +579,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   if (0 == type.compare("edge")) {
     index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
 #ifdef USE_IRESEARCH
-  } else if (0 == type.compare(arangodb::iresearch::IResearchFeature::type())) {
+  } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
     index = arangodb::iresearch::IResearchMMFilesLink::make(_logicalCollection, info, ++lastId, false);
 #endif
   }

@@ -988,9 +988,9 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
     TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
-    size_t const n = member->numMembers();
+    int const n = static_cast<int>(member->numMembers());
     int callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
-    v8::Handle<v8::Value> args[callArgs];
+    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs); 
 
     if (node->type == NODE_TYPE_FCALL_USER) {
       // a call to a user-defined function
@@ -1033,7 +1033,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
       }
     }
 
-    return invokeV8Function(_ast->query(), trx, jsName, "", "", true, callArgs, args, mustDestroy);
+    return invokeV8Function(_ast->query(), trx, jsName, "", "", true, callArgs, args.get(), mustDestroy);
   }
 }
 
