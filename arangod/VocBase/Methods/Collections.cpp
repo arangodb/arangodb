@@ -417,7 +417,7 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
 ////////////////////////////////////////////////////////////////////////////////
 
 static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
-                                        bool allowDropSystem) {
+                                        bool allowDropSystem, double timeout) {
   if (collection->isSystem() && !allowDropSystem) {
     return TRI_ERROR_FORBIDDEN;
   }
@@ -427,8 +427,12 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
+  // < 0 is no timeout in SingleServer. == 0.0 is no timeout in Cluster
+  if (timeout < 0) {
+    timeout = 0.0;
+  }
 
-  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 120.0);
+  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, timeout);
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, errorMsg);
   }
@@ -439,7 +443,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 #endif
 
 Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
-                         bool allowDropSystem, double timeout) {
+                         bool allowDropSystem, double timeout, bool updateUsers) {
   
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
@@ -462,9 +466,9 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    res = DropColCoordinatorEnterprise(coll, allowDropSystem);
+    res = DropColCoordinatorEnterprise(coll, allowDropSystem, timeout);
 #else
-    res = DropVocbaseColCoordinator(coll, allowDropSystem);
+    res = DropVocbaseColCoordinator(coll, allowDropSystem, timeout);
 #endif
   } else {
     int r = coll->vocbase()->dropCollection(coll, allowDropSystem, timeout);
@@ -473,7 +477,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     }
   }
 
-  if (res.ok() && ServerState::instance()->isSingleServerOrCoordinator()) {
+  if (updateUsers && res.ok() && ServerState::instance()->isSingleServerOrCoordinator()) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
       return entry.removeCollection(dbname, collName);
