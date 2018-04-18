@@ -61,7 +61,7 @@ class UserManager {
 #ifdef USE_ENTERPRISE
   explicit UserManager(std::unique_ptr<arangodb::auth::Handler>&&);
 #endif
-  ~UserManager();
+  ~UserManager() = default;
 
  public:
   typedef std::function<Result(auth::User&)> UserCallback;
@@ -163,7 +163,7 @@ class UserManager {
   aql::QueryRegistry* _queryRegistry;
 #ifdef USE_ENTERPRISE
   /// iterface to external authentication systems like LDAP
-  arangodb::auth::Handler* _authHandler;
+  std::unique_ptr<arangodb::auth::Handler> _authHandler;
 #endif
 };
 }  // auth
