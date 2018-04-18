@@ -73,11 +73,15 @@ TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   }
 
   if (arangodb::ServerState::instance()->isDBServer()) {
-    return arangodb::ClusterInfo::instance()->uniqid(1);
+    auto* ci = arangodb::ClusterInfo::instance();
+
+    return ci ? ci->uniqid(1) : 0;
   }
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    return arangodb::ClusterInfo::instance()->uniqid(1);
+    auto* ci = arangodb::ClusterInfo::instance();
+
+    return ci ? ci->uniqid(1) : 0;
   }
 
   return TRI_NewTickServer();
