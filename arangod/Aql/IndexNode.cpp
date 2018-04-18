@@ -111,14 +111,23 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 void IndexNode::initIndexCoversProjections() {
   _coveringIndexAttributePositions.clear();
 
-  if (_indexes.size() != 1) {
-    // cannot apply the optimization if we use more than one index
-    // TODO: this would actually be possible if we use the same index
-    // multiple times
+  if (_indexes.empty()) {
+    // no indexes used
     return;
   }
 
+  // cannot apply the optimization if we use more than one different index
   auto idx = _indexes[0].getIndex();
+  for (size_t i = 1; i < _indexes.size(); ++i) {
+    if (_indexes[i].getIndex() != idx) {
+      // different index used => optimization not possible
+      return;
+    }
+  }
+
+  // note that we made sure that if we have multiple index instances, they
+  // are actually all of the same index
+
   auto const& fields = idx->fields();
 
   if (!idx->hasCoveringIterator()) {
