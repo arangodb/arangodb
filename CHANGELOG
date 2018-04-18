@@ -1,6 +1,8 @@
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
+* fix lookups by `_id` in smart graph edge collections
+
 * improve startup resilience in case there are datafile errors (MMFiles)
   
   also allow repairing broken VERSION files automatically on startup by

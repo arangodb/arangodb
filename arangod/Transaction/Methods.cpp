@@ -3086,6 +3086,29 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   return TRI_ERROR_NO_ERROR;
 }
 
+Result transaction::Methods::resolveId(char const* handle, size_t length,
+                                       std::shared_ptr<LogicalCollection>& collection, char const*& key,
+                                       size_t& outLength) {
+  char const* p = static_cast<char const*>(
+      memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
+
+  if (p == nullptr || *p == '\0') {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  std::string const name(handle, p - handle);
+  collection = resolver()->getCollectionStructCluster(name);
+
+  if (collection == nullptr) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  key = p + 1;
+  outLength = length - (key - handle);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 /// @brief invoke a callback method when a transaction has finished
 void transaction::CallbackInvoker::invoke() noexcept {
   if (!_trx->_onFinish) {
