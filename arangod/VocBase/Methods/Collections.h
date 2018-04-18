@@ -63,7 +63,7 @@ struct Collections {
                        bool doOverride);
   
   static Result drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
-                     bool allowDropSystem, double timeout);
+                     bool allowDropSystem, double timeout, bool updateUsers);
   
   static Result warmup(TRI_vocbase_t* vocbase,
                        LogicalCollection* coll);
@@ -77,7 +77,7 @@ struct Collections {
                                     TRI_vocbase_col_status_e status);
   
   Result DropColCoordinatorEnterprise(LogicalCollection* collection,
-                                      bool allowDropSystem);
+                                      bool allowDropSystem, double timeout);
 #endif
 }
 }
