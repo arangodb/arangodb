@@ -362,7 +362,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
 EngineInfoContainerDBServer::createDBServerMapping(
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_set<ShardID>* lockedShards) const {
+    std::unordered_set<ShardID>& lockedShards) const {
   auto ci = ClusterInfo::instance();
 
   std::map<ServerID, DBServerInfo> dbServerMapping;
@@ -376,7 +376,7 @@ EngineInfoContainerDBServer::createDBServerMapping(
     }
     auto shardIds = it.first->shardIds(restrictToShards);
     for (auto const& s : *(shardIds.get())) {
-      lockedShards->emplace(s);
+      lockedShards.emplace(s);
       auto const servers = ci->getResponsibleServer(s);
       if (servers == nullptr || servers->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -562,7 +562,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
 Result EngineInfoContainerDBServer::buildEngines(
     Query* query, std::unordered_map<std::string, std::string>& queryIds,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_set<ShardID>* lockedShards) const {
+    std::unordered_set<ShardID>& lockedShards) const {
   TRI_ASSERT(_engineStack.empty());
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "We have " << _engines.size()
                                           << " DBServer engines";

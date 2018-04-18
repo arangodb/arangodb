@@ -428,7 +428,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ///        clean out their snippets after a TTL.
   ///        Returns the First Coordinator Engine, the one not in the registry.
   ExecutionEngineResult buildEngines(
-      QueryRegistry* registry, std::unordered_set<ShardID>* lockedShards) {
+      QueryRegistry* registry, std::unordered_set<ShardID>& lockedShards) {
     // QueryIds are filled by responses of DBServer parts.
     std::unordered_map<std::string, std::string> queryIds;
 
@@ -513,9 +513,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
         CoordinatorInstanciator inst(query);
 
-        plan->root()->walk(&inst);
+        plan->root()->walk(inst);
 
-        auto result = inst.buildEngines(queryRegistry, &lockedShards);
+        auto result = inst.buildEngines(queryRegistry, lockedShards);
         if (!result.ok()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
                                          result.errorMessage());
@@ -552,7 +552,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       // instantiate the engine on a local server
       ExecutionEngine engine(query);
       Instanciator inst(&engine);
-      plan->root()->walk(&inst);
+      plan->root()->walk(inst);
       root = inst.root;
       TRI_ASSERT(root != nullptr);
     }

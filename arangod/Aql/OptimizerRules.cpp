@@ -1570,7 +1570,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
   if (!replacements.empty()) {
     // finally replace the variables
     RedundantCalculationsReplacer finder(replacements);
-    plan->root()->walk(&finder);
+    plan->root()->walk(finder);
   }
 
   opt->addPlan(std::move(plan), rule, !replacements.empty());
@@ -1662,7 +1662,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
                                                    rootNode->getData()));
 
           RedundantCalculationsReplacer finder(replacements);
-          plan->root()->walk(&finder);
+          plan->root()->walk(finder);
           toUnlink.emplace(n);
           continue;
         }
@@ -1771,7 +1771,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt,
   bool hasEmptyResult = false;
   for (auto const& n : nodes) {
     ConditionFinder finder(plan.get(), &changes, &hasEmptyResult, false);
-    n->walk(&finder);
+    n->walk(finder);
   }
 
   if (!changes.empty()) {
@@ -2110,7 +2110,7 @@ void arangodb::aql::useIndexForSortRule(Optimizer* opt,
     auto sortNode = static_cast<SortNode*>(n);
 
     SortToIndexNode finder(plan.get());
-    sortNode->walk(&finder);
+    sortNode->walk(finder);
 
     if (finder._modified) {
       modified = true;
@@ -3616,7 +3616,7 @@ void arangodb::aql::undistributeRemoveAfterEnumCollRule(
 
   for (auto& n : nodes) {
     RemoveToEnumCollFinder finder(plan.get(), toUnlink);
-    n->walk(&finder);
+    n->walk(finder);
   }
 
   bool modified = false;
@@ -4326,7 +4326,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
     for (auto const& n : nodes) {
       TraversalConditionFinder finder(plan.get(), &modified);
-      n->walk(&finder);
+      n->walk(finder);
     }
   }
 
@@ -4657,7 +4657,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           replacements.emplace(listNode->outVariable()->id,
                                returnNode->inVariable());
           RedundantCalculationsReplacer finder(replacements);
-          plan->root()->walk(&finder);
+          plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();
           plan->invalidateCost();
