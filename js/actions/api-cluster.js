@@ -252,9 +252,9 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    if (req.requestType !== actions.POST) {
+    if (req.requestType !== actions.PUT) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET and POST requests are allowed');
+        'only GET and PUT requests are allowed');
       return;
     }
 
@@ -324,6 +324,7 @@ actions.defineHttp({
     return ; 
 
   }});
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_cluster_node_version_GET
 // //////////////////////////////////////////////////////////////////////////////
