@@ -313,8 +313,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
             {
               // First Ask the leader
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
+              std::unordered_map<std::string, std::string> headers;
               leaderOpId = _cc->asyncRequest(
                   "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
                   path, body, headers, nullptr, timeleft);
@@ -335,9 +334,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             }
 
             // Ask them
+            std::unordered_map<std::string, std::string> headers;
             for (auto const& server : serversToAsk) {
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
               _cc->asyncRequest("", coordId, "server:" + server,
                                 rest::RequestType::GET, path, body, headers,
                                 nullptr, timeleft);

@@ -475,10 +475,9 @@ void Constituent::callElection() {
   auto cc = ClusterComm::instance();
 
   // Ask everyone for their vote
+  std::unordered_map<std::string, std::string> headerFields;
   for (auto const& i : active) {
     if (i != _id) {
-      auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
       if (!isStopping() && cc != nullptr) {
          cc->asyncRequest(
           "", coordinatorTransactionID, _agent->config().poolAt(i),
