@@ -41,39 +41,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-class AttributeAccessReplacer final : public WalkerWorker<ExecutionNode> {
- public:
-  AttributeAccessReplacer(Variable const* variable, std::vector<std::string> const& attribute)
-      : _variable(variable), _attribute(attribute) {
-    TRI_ASSERT(_variable != nullptr);
-    TRI_ASSERT(!_attribute.empty());
-  }
-
-  bool before(ExecutionNode* en) override final {
-    if (en->getType() == EN::CALCULATION) {
-      auto node = static_cast<CalculationNode*>(en);
-      node->expression()->replaceAttributeAccess(_variable, _attribute);
-    } else if (en->getType() == EN::GATHER) {
-      auto node = static_cast<GatherNode*>(en);
-      // intentional copy
-      auto sortVars = node->elements();
-      for (auto& it : sortVars) {
-        if (it.var == _variable && it.attributePath == _attribute) {
-          it.attributePath.clear();
-        }
-      }
-      node->elements(sortVars);
-    }
-
-    // always continue
-    return false;
-  }
-
- private:
-  Variable const* _variable;
-  std::vector<std::string> _attribute;
-};
-
 void RocksDBOptimizerRules::registerResources() {
   OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, 
                OptimizerRule::reduceExtractionToProjectionRule_pass10, false, true);
@@ -156,6 +123,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
       current = current->getFirstParent();
     }
 
+    // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
       std::vector<std::string> r;
       for (auto& it : attributes) {
@@ -165,7 +133,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
       e->projections(std::move(r));
 
       if (n->getType() == ExecutionNode::INDEX) {
-        // need to update _indexCoversProjections value
+        // need to update _indexCoversProjections value in an IndexNode
         static_cast<IndexNode*>(n)->initIndexCoversProjections();
       }
       

@@ -59,6 +59,8 @@ bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
 }
 
 /// @brief default implementation for nextCovering
+/// specialized index iterators can implement this method with some
+/// sensible behavior
 bool IndexIterator::nextCovering(DocumentCallback const&, size_t) {
   TRI_ASSERT(!hasCovering());
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,

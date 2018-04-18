@@ -86,7 +86,9 @@ class IndexIterator {
     // The default index has no extra information
     return false;
   }
-  
+ 
+  /// @brief default implementation for whether or not an index iterator provides
+  /// the "nextCovering" method as a performance optimization
   virtual bool hasCovering() const {
     // The default index has no covering method information
     return false;
@@ -96,7 +98,7 @@ class IndexIterator {
   virtual bool nextDocument(DocumentCallback const& callback, size_t limit);
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
 
-  // extract index attribute values while index scanning
+  // extract index attribute values directly from the index while index scanning
   // must only be called if hasCovering()
   virtual bool nextCovering(DocumentCallback const& callback, size_t limit);
 

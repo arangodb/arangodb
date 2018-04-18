@@ -72,7 +72,13 @@ class DocumentProducingNode {
 
   /// @brief produce only the following attributes
   std::vector<std::string> _projections;
-  
+
+  /// @brief vector (built up in order of projection attributes) that contains
+  /// the position of the index attribute value in the data returned by the index
+  /// example, if the index is on ["a", "b", "c"], and the projections are ["b", "a"],
+  /// then this vector will contain [1, 0]
+  /// the vector will only be populated by IndexNodes, and will be left empty by
+  /// EnumerateCollectionNodes
   std::vector<std::size_t> mutable _coveringIndexAttributePositions;
 };
 

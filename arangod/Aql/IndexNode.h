@@ -79,7 +79,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   void reverse(bool value) { _reverse = value; }
 
   /// @brief whether or not the index node needs a post sort of the results
-  /// of multiple shards in the cluster
+  /// of multiple shards in the cluster (via a GatherNode).
+  /// not all queries that use an index will need to produce a sorted result
+  /// (e.g. if the index is used only for filtering)
   bool needsGatherNodeSort() const { return _needsGatherNodeSort; }
   void needsGatherNodeSort(bool value) { _needsGatherNodeSort = value; }
 
@@ -109,6 +111,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief getIndexes, hand out the indexes used
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const { return _indexes; }
 
+  /// @brief called to build up the matching positions of the index values for
+  /// the projection attributes (if any)
   void initIndexCoversProjections();
   
  private:

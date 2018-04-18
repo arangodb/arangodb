@@ -106,10 +106,15 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   initIndexCoversProjections();
 }
 
+/// @brief called to build up the matching positions of the index values for
+/// the projection attributes (if any)
 void IndexNode::initIndexCoversProjections() {
   _coveringIndexAttributePositions.clear();
 
   if (_indexes.size() != 1) {
+    // cannot apply the optimization if we use more than one index
+    // TODO: this would actually be possible if we use the same index
+    // multiple times
     return;
   }
 

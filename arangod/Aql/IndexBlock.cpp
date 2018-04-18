@@ -108,7 +108,9 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
-  
+ 
+  // build the _documentProducer callback for extracting
+  // documents from the index 
   buildCallback();
 }
 
@@ -471,22 +473,28 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
-      
-    _allowCoveringIndexOptimization = _cursor->hasCovering();
- 
+     
     bool res;
-    if (_allowCoveringIndexOptimization && 
-        !static_cast<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
-      // index covers all projections
-      res = _cursor->nextCovering(callback, atMost - _returned);
-    } else if (produceResult()) {
-      // fetch entire documents
-      res = _cursor->nextDocument(callback, atMost - _returned);
-    } else {
-      // optimization: iterate over index, but do not fetch documents
+    if (!produceResult()) {
+      // optimization: iterate over index (e.g. for filtering), but do not fetch the
+      // actual documents
       res = _cursor->next([&callback](LocalDocumentId const& id) {
         callback(id, VPackSlice::nullSlice());
       }, atMost - _returned);
+    } else {
+      // check if the *current* cursor supports covering index queries or not 
+      // if we can optimize or not must be stored in our instance, so the
+      // DocumentProducingBlock can access the flag
+      _allowCoveringIndexOptimization = _cursor->hasCovering();
+      
+      if (_allowCoveringIndexOptimization && 
+          !static_cast<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
+        // index covers all projections
+        res = _cursor->nextCovering(callback, atMost - _returned);
+      } else {
+        // we need the documents later on. fetch entire documents
+        res = _cursor->nextDocument(callback, atMost - _returned);
+      }
     }
 
     if (res) {

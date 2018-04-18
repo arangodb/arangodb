@@ -2109,6 +2109,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // sort condition is fully covered by index... now we can remove the
         // sort node from the plan
         _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+        // we need to have a sorted result later on, so we will need a sorted
+        // GatherNode in the cluster
         indexNode->needsGatherNodeSort(true); 
         _modified = true;
         handled = true;
@@ -2184,6 +2186,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
             indexNode->reverse(sortCondition.isDescending());
+            // we need to have a sorted result later on, so we will need a sorted
+            // GatherNode in the cluster
             indexNode->needsGatherNodeSort(true); 
             _modified = true;
           } else if (numCovered > 0 && sortCondition.isUnidirectional()) {
@@ -2910,6 +2914,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
       // Using Index for sort only works if all indexes are equal.
       auto first = allIndexes[0].getIndex();
+      // also check if we actually need to bother about the sortedness of the
+      // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
         for (auto const& path : first->fieldNames()) {
           elements.emplace_back(sortVariable, !isSortReverse, path);
