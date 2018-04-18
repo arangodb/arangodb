@@ -40,21 +40,8 @@ class ManagedDirectory;
 
 class RestoreFeature final : public application_features::ApplicationFeature {
  public:
-  // statistics
-  struct Stats {
-    uint64_t totalBatches;
-    uint64_t totalCollections;
-    uint64_t totalRead;
-  };
-
-  struct JobData {
-    RestoreFeature& feature;
-    ManagedDirectory& directory;
-    Stats& stats;
-  };
-
- public:
-  RestoreFeature(application_features::ApplicationServer* server, int& exitCode);
+  RestoreFeature(application_features::ApplicationServer* server,
+                 int& exitCode);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -63,56 +50,62 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   void prepare() override;
   void start() override;
 
-public:
- /**
-  * @brief Returns the feature name (for registration with `ApplicationServer`)
-  * @return The name of the feature
-  */
- static std::string featureName();
+ public:
+  /**
+   * @brief Returns the feature name (for registration with `ApplicationServer`)
+   * @return The name of the feature
+   */
+  static std::string featureName();
 
- /**
-  * @brief Saves a worker error for later handling and clears queued jobs
-  * @param error Error from a client worker
-  */
- void reportError(Result const& error);
+  /**
+   * @brief Saves a worker error for later handling and clears queued jobs
+   * @param error Error from a client worker
+   */
+  void reportError(Result const& error);
 
- private:
-   int& _exitCode;
+ public:
+  struct Options {
+    std::vector<std::string> collections{};
+    std::string inputPath{};
+    uint64_t chunkSize{1024 * 1024 * 8};
+    uint64_t defaultNumberOfShards{1};
+    uint64_t defaultReplicationFactor{1};
+    bool clusterMode{false};
+    bool createDatabase{false};
+    bool force{false};
+    bool forceSameDatabase{false};
+    bool ignoreDistributeShardsLikeErrors{false};
+    bool importData{true};
+    bool importStructure{true};
+    bool includeSystemCollections{false};
+    bool overwrite{true};
+    bool progress{true};
+  };
+
+  struct Stats {
+    uint64_t totalBatches{0};
+    uint64_t totalCollections{0};
+    uint64_t totalRead{0};
+  };
+
+  struct JobData {
+    ManagedDirectory& directory;
+    RestoreFeature& feature;
+    Options const& options;
+    Stats& stats;
+
+    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&);
+  };
 
  private:
   ClientManager _clientManager;
   ClientTaskQueue<JobData> _clientTaskQueue;
-  std::vector<std::string> _collections;
-  std::string _inputDirectory;
-  uint64_t _chunkSize;
-  bool _includeSystemCollections;
-  bool _createDatabase;
-  std::string _inputPath;
   std::unique_ptr<ManagedDirectory> _directory;
-  bool _forceSameDatabase;
-  bool _importData;
-  bool _importStructure;
-  bool _progress;
-  bool _overwrite;
-  bool _force;
-  bool _ignoreDistributeShardsLikeErrors;
-  bool _clusterMode;
-  uint64_t _defaultNumberOfShards;
-  uint64_t _defaultReplicationFactor;
+  int& _exitCode;
+  Options _options;
   Stats _stats;
   Mutex _workerErrorLock;
   std::queue<Result> _workerErrors;
-
- private:
-  int tryCreateDatabase(std::string const& name);
-  int sendRestoreCollection(VPackSlice const& slice, std::string const& name,
-                            std::string& errorMsg);
-  int sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg);
-  int sendRestoreData(std::string const& cname, char const* buffer,
-                      size_t bufferSize, std::string& errorMsg);
-  Result checkEncryption();
-  Result readDumpInfo();
-  int processInputDirectory(std::string& errorMsg);
 };
 }  // namespace arangodb
 
