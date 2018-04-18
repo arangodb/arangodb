@@ -9,13 +9,14 @@ endforeach()
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
     IResearch/common.cpp
+    IResearch/AgencyCommManagerMock.cpp
 #    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
     IResearch/IResearchAnalyzerFeature-test.cpp
     IResearch/IResearchFeature-test.cpp
     IResearch/IResearchOrder-test.cpp
     IResearch/IResearchView-test.cpp
-    IResearch/IResearchViewCoordinator-test.cpp
+    IResearch/IResearchViewDBServer-test.cpp
     IResearch/IResearchViewMeta-test.cpp
     IResearch/IResearchDocument-test.cpp
     IResearch/IResearchFilter-test.cpp

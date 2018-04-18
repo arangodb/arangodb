@@ -203,6 +203,7 @@ class IResearchLink {
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
   IResearchView* _view; // effectively the IResearch datastore itself (nullptr == not associated)
+  std::function<void()> _wiewDrop; // callback for undergistering '_view' from IResearchViewDBServer (valid only on DBServer)
   std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _viewLock; // prevent view deallocation (lock @ AsyncSelf)
 }; // IResearchLink
 
