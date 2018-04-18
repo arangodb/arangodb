@@ -29,6 +29,10 @@ This will find all documents matching a given example.
 
 Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
 
+Please note that this API is quite expensive until including ArangoDB version 3.3.
+A more lightweight alternative is to use the [Http Cursor API](../AqlQueryCursor/README.md)
+directly.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}

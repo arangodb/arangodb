@@ -21,6 +21,10 @@ If more than one document in the collection matches the specified example, only
 one of these documents will be returned, and it is undefined which of the matching
 documents is returned.
 
+Please note that this API is quite expensive until including ArangoDB version 3.3.
+A more lightweight alternative is to use the [Http Cursor API](../AqlQueryCursor/README.md)
+directly.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
