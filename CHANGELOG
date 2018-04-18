@@ -27,6 +27,9 @@ v3.3.8 (XXXX-XX-XX)
   - populated: database directory must exist and contain specific files already
   - any: any state allowed
 
+* added `@arangodb/locals` module to expose the Foxx service context as an
+  alternative to using `module.context` directly.
+
 
 v3.3.7 (2018-04-11)
 -------------------
