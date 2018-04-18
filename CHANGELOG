@@ -42,7 +42,7 @@ v3.3.8 (XXXX-XX-XX)
   when scanning an index via an IndexNode. 
   The optimization is benefial especially for huge documents because it will copy
   out only the projected attributes from the document instead of copying the entire 
-  document data from the storage engine. T
+  document data from the storage engine. 
 
   When applied, the explainer will show the projected attributes in a `projections`
   remark for an EnumerateCollectionNode or IndexNode. The optimization is limited
