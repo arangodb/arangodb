@@ -61,7 +61,7 @@ static TRI_edge_direction_e parseDirection(AstNode const* node) {
 
 GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                      AstNode const* direction, AstNode const* graph,
-                     std::unique_ptr<BaseOptions>& options)
+                     std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -373,7 +373,7 @@ GraphNode::GraphNode(
     std::vector<std::unique_ptr<Collection>> const& edgeColls,
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
     std::vector<TRI_edge_direction_e> const& directions,
-    std::unique_ptr<BaseOptions>& options)
+    std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),

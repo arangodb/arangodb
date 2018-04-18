@@ -102,7 +102,7 @@ class MMFilesPrimaryIndexIterator final : public IndexIterator {
   MMFilesPrimaryIndexIterator(LogicalCollection* collection,
                               transaction::Methods* trx,
                               MMFilesPrimaryIndex const* index,
-                              std::unique_ptr<VPackBuilder>& keys);
+                              std::unique_ptr<VPackBuilder> keys);
 
   ~MMFilesPrimaryIndexIterator();
 

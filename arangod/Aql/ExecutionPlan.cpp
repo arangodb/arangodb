@@ -817,17 +817,16 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  auto options = CreateTraversalOptions(getAst()->query(), direction,
-                                        node->getMember(3));
-
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
   direction = direction->getMember(0);
   TRI_ASSERT(direction->isIntValue());
 
+  auto options = CreateTraversalOptions(getAst()->query(), direction,
+                                        node->getMember(3));
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),
-                                    direction, start, graph, options);
+                                    direction, start, graph, std::move(options));
 
   auto variable = node->getMember(4);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -904,7 +903,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
                                      direction, start, target,
-                                     graph, options);
+                                     graph, std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);

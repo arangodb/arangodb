@@ -917,7 +917,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
           "shard:" + p.first, arangodb::rest::RequestType::GET,
           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
               StringUtils::urlEncode(p.first) + "/count",
-          body, headers);
+          body, std::move(headers));
     }
   } else {
     for (auto const& p : *shards) {
@@ -1579,7 +1579,7 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
-    std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
+    std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
@@ -1687,7 +1687,7 @@ int getDocumentOnCoordinator(
                 StringUtils::urlEncode(keySlice.copyString()) +
                 optsUrlPart,
             body);
-        requests[0].setHeaders(headers);
+        requests[0].setHeaders(std::move(headers));
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -1761,7 +1761,7 @@ int getDocumentOnCoordinator(
       auto headersCopy =
           std::make_unique<std::unordered_map<std::string, std::string>>(
               *headers);
-      req.setHeaders(headersCopy);
+      req.setHeaders(std::move(headersCopy));
       requests.emplace_back(std::move(req));
     }
   } else {
