@@ -71,13 +71,11 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder)
   _outVariable->toVelocyPack(builder);
  
   // export in new format 
-  if (!_projections.empty()) {
-    builder.add("projections", VPackValue(VPackValueType::Array));
-    for (auto const& it : _projections) {
-      builder.add(VPackValue(it));
-    }
-    builder.close();
+  builder.add("projections", VPackValue(VPackValueType::Array));
+  for (auto const& it : _projections) {
+    builder.add(VPackValue(it));
   }
+  builder.close();
   
   builder.add("producesResult", VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
 }
