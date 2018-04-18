@@ -3299,7 +3299,6 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
       } else if (current->getType() == ExecutionNode::REMOTE) {
         auto previous = current->getFirstDependency();
         // now we are on a DB server
-        bool removeGatherNodeSort = false;
 
         // we may have moved another CollectNode here already. if so, we need to
         // move the new CollectNode to the front of multiple CollectNodes
@@ -3310,6 +3309,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
         }
 
         if (previous != nullptr) {
+          bool removeGatherNodeSort = false;
+
           if (collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT) {
             // clone a COLLECT WITH COUNT operation from the coordinator to the DB server(s), and
             // leave an aggregate COLLECT node on the coordinator for total aggregation
@@ -3451,26 +3452,17 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               
             removeGatherNodeSort = (dbCollectNode->aggregationMethod() != CollectOptions::CollectMethod::SORTED);
 
+            // in case we need to keep the sortedness of the GatherNode,
+            // we may need to replace some variable references in it due
+            // to the changes we made to the COLLECT node
             SortElementVector& elements = gatherNode->elements();
             if (!removeGatherNodeSort && gatherNode != nullptr && !replacements.empty() && !elements.empty()) {
-              if (elements.size() != replacements.size()) {
-                LOG_TOPIC(ERR, Logger::FIXME) << "ELEMENTS: " << elements.size() << ", REPLACEMENTS: " << replacements.size();
-              }
               TRI_ASSERT(elements.size() >= replacements.size());
               auto r = replacements.begin();
               for (auto& it : elements) {
                 it.var = (*r).second;
                 it.attributePath.clear();
                 ++r;
-                /*
-                auto it2 = replacements.find(it.var);
-
-                  LOG_TOPIC(ERR, Logger::FIXME) << "VAR: " << it.var->name << ", ID: " << it.var->id;
-                if (it2 != replacements.end()) {
-                  LOG_TOPIC(ERR, Logger::FIXME) << "REPLACUNG";
-                  it.var = (*it2).second; 
-                }
-                */
               }
             }
           } else {
