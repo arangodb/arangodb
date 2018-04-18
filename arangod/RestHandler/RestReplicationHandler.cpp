@@ -1328,7 +1328,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   auto queryResult = query.execute(queryRegistry);
 
+  // neither agency nor dbserver should get here
   AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af->userManager() != nullptr);
   if (af->userManager() != nullptr) {
     af->userManager()->outdate();
   }
