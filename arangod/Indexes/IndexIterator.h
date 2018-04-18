@@ -139,7 +139,7 @@ class EmptyIndexIterator final : public IndexIterator {
 ///        Each iterator is requested at the index itself.
 ///        This iterator does NOT check for uniqueness.
 ///        Will always start with the first iterator in the vector. Reverse them
-///        Outside if necessary.
+///        outside if necessary.
 class MultiIndexIterator final : public IndexIterator {
 
   public:
@@ -147,9 +147,21 @@ class MultiIndexIterator final : public IndexIterator {
                       ManagedDocumentResult* mmdr,
                       arangodb::Index const* index,
                       std::vector<IndexIterator*> const& iterators)
-     : IndexIterator(collection, trx, mmdr, index), _iterators(iterators), _currentIdx(0), _current(nullptr) {
+     : IndexIterator(collection, trx, mmdr, index), 
+       _iterators(iterators), 
+       _currentIdx(0), 
+       _current(nullptr),
+       _hasCovering(true) {
        if (!_iterators.empty()) {
          _current = _iterators.at(0);
+         for (auto const& it : _iterators) {
+           // covering index support only present if all index
+           // iterators in this MultiIndexIterator support it
+           _hasCovering &= it->hasCovering();
+         }
+       } else {
+         // no iterators => no covering index support
+         _hasCovering = false;
        }
      }
 
@@ -168,14 +180,21 @@ class MultiIndexIterator final : public IndexIterator {
     ///        all iterators are exhausted
     bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
 
+    bool nextCovering(DocumentCallback const& callback, size_t limit) override;
+
     /// @brief Reset the cursor
     ///        This will reset ALL internal iterators and start all over again
     void reset() override;
+  
+    /// @brief for whether or not the iterators provide the "nextCovering" method 
+    /// as a performance optimization
+    bool hasCovering() const override { return _hasCovering; }
 
   private:
    std::vector<IndexIterator*> _iterators;
    size_t _currentIdx;
    IndexIterator* _current;
+   bool _hasCovering;
 };
 }
 #endif
