@@ -2149,6 +2149,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // sort condition is fully covered by index... now we can remove the
         // sort node from the plan
         _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+        indexNode->needsGatherNodeSort(true); 
         _modified = true;
         handled = true;
       }
@@ -2223,6 +2224,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
             indexNode->reverse(sortCondition.isDescending());
+            indexNode->needsGatherNodeSort(true); 
             _modified = true;
           } else if (numCovered > 0 && sortCondition.isUnidirectional()) {
             // remove the first few attributes if they are constant
@@ -2953,7 +2955,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
       // Using Index for sort only works if all indexes are equal.
       auto first = allIndexes[0].getIndex();
-      if (first->isSorted()) {
+      if (first->isSorted() && idxNode->needsGatherNodeSort()) {
         for (auto const& path : first->fieldNames()) {
           elements.emplace_back(sortVariable, !isSortReverse, path);
         }
@@ -3013,7 +3015,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
-    if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
+    // On SmartEdge collections we have 0 shards and we need the elements
+    // to be injected here as well. So do not replace it with > 1
+    if (!elements.empty() && gatherNode->collection()->numberOfShards() != 1) {
       gatherNode->setElements(elements);
     }
 
@@ -3300,7 +3304,6 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
   for (auto& node : nodes) {
     // found a node we need to replace in the plan
 
-    auto const& parents = node->getParents();
     auto const& deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
@@ -3545,7 +3548,9 @@ void arangodb::aql::distributeSortToClusterRule(
           if (thisSortNode->_reinsertInCluster) {
             plan->insertDependency(rn, inspectNode);
           }
-          if (gatherNode->collection()->numberOfShards() > 1) {
+          // On SmartEdge collections we have 0 shards and we need the elements
+          // to be injected here as well. So do not replace it with > 1
+          if (gatherNode->collection()->numberOfShards() != 1) {
             gatherNode->setElements(thisSortNode->getElements());
           }
           modified = true;

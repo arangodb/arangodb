@@ -33,9 +33,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "IResearch/AttributeScorer.h"
 #include "IResearch/AqlHelper.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewNode.h"
-#include "IResearch/IResearchFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -215,6 +216,10 @@ struct IResearchOrderSetup {
 
     arangodb::tests::init();
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
@@ -244,14 +249,12 @@ struct IResearchOrderSetup {
     arangodb::aql::Function invalid("INVALID", "|.", false, true, true, false);
 
     functions.add(invalid);
-
-    // suppress log messages since tests check error conditions
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchOrderSetup() {
     arangodb::aql::AqlFunctionFeature(&server).unprepare(); // unset singleton instance
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 

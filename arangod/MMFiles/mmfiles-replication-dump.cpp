@@ -78,18 +78,19 @@ static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump,
   }
 
   // collection name not in cache yet
-  std::string name(dump->_vocbase->collectionName(cid));
+  auto collection = dump->_vocbase->lookupCollection(cid);
+  std::string name = collection ? collection->name() : std::string();
 
   if (!name.empty()) {
     // insert into cache
     try {
       dump->_collectionNames.emplace(cid, std::move(name));
+
       // and look it up again
       return nameFromCid(dump, cid);
     } catch (...) {
       // fall through to returning empty string
     }
-
   }
 
   return StaticStrings::Empty;
@@ -464,7 +465,7 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
       res = DumpCollection(
         dump,
         collection,
-        collection->vocbase()->id(),
+        collection->vocbase().id(),
         collection->id(),
         dataMin,
         dataMax,

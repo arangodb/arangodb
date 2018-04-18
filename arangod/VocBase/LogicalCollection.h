@@ -79,7 +79,7 @@ class LogicalCollection: public LogicalDataSource {
  public:
   LogicalCollection() = delete;
   LogicalCollection(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     velocypack::Slice const& info,
     bool isAStub,
     uint64_t planVersion = 0
@@ -228,7 +228,7 @@ class LogicalCollection: public LogicalDataSource {
   void load();
   void unload();
 
-  virtual void drop() override;
+  virtual arangodb::Result drop() override;
   virtual Result rename(std::string&& name, bool doSync) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 

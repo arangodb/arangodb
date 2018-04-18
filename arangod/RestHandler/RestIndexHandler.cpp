@@ -167,8 +167,8 @@ RestStatus RestIndexHandler::getIndexes() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+   bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /" + _request->requestPath() +
@@ -193,7 +193,6 @@ RestStatus RestIndexHandler::createIndex() {
   }
 
   VPackBuilder copy;
-  VPackSlice body = parsedBody->slice();
   if (body.get("collection").isNone()) {
     copy.openObject();
     copy.add("collection", VPackValue(cName));

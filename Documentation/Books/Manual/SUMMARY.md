@@ -149,6 +149,7 @@
     * [Introduction](Scalability/DC2DC/Introduction.md)
     * [Applicability](Scalability/DC2DC/Applicability.md)
     * [Requirements](Scalability/DC2DC/Requirements.md)
+    * [Limitations](Scalability/DC2DC/Limitations.md)
 
 ## OPERATIONS		
 

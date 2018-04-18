@@ -1,5 +1,5 @@
 <!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
-# ArangoLocalStorage Custom Resource
+# ArangoDeployment Custom Resource
 
 The ArangoDB Deployment Operator creates and maintains ArangoDB deployments
 in a Kubernetes cluster, given a deployment specification.
@@ -52,10 +52,10 @@ Below you'll find all settings of the `ArangoDeployment` custom resource.
 Several settings are for various groups of servers. These are indicated
 with `<group>` where `<group>` can be any of:
 
-- `agents` for all agents of a `Cluster` or `ResilientSingle` pair.
+- `agents` for all agents of a `Cluster` or `ActiveFailover` pair.
 - `dbservers` for all dbservers of a `Cluster`.
 - `coordinators` for all coordinators of a `Cluster`.
-- `single` for all single servers of a `Single` instance or `ResilientSingle` pair.
+- `single` for all single servers of a `Single` instance or `ActiveFailover` pair.
 - `syncmasters` for all syncmasters of a `Cluster`.
 - `syncworkers` for all syncworkers of a `Cluster`.
 
@@ -65,7 +65,7 @@ This setting specifies the type of deployment you want to create.
 Possible values are:
 
 - `Cluster` (default) Full cluster. Defaults to 3 agents, 3 dbservers & 3 coordinators.
-- `ResilientSingle` Resilient single pair. Defaults to 3 agents and 2 single servers.
+- `ActiveFailover` Active-failover single pair. Defaults to 3 agents and 2 single servers.
 - `Single` Single server only (note this does not provide high availability or reliability).
 
 This setting cannot be changed after the deployment has been created.
@@ -255,7 +255,7 @@ The default is `false`.
 This setting specifies the number of servers to start for the given group.
 For the agent group, this value must be a positive, odd number.
 The default value is `3` for all groups except `single` (there the default is `1`
-for `spec.mode: single` and `2` for `spec.mode: resilientsingle`).
+for `spec.mode: Single` and `2` for `spec.mode: ActiveFailover`).
 
 For the `syncworkers` group, it is highly recommended to use the same number
 as for the `dbservers` group.

@@ -444,7 +444,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction "
                                         << tid;
 
-  auto trx = std::make_unique<ReplicationTransaction>(vocbase);
+  auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
   Result res = trx->begin();
 
   if (res.ok()) {

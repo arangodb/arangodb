@@ -940,7 +940,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (af->isActive()) {
+      if (af->isActive() && af->userManager() != nullptr) {
         auto level = af->userManager()->databaseAuthLevel(username, vocbase->name());
         if (level == auth::Level::NONE) { // hide dbs without access
           continue;
@@ -1107,35 +1107,31 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   return nullptr;
 }
 
-std::string DatabaseFeature::translateCollectionName(std::string const& dbName, std::string const& collectionName) {
-  if (ServerState::instance()->isCoordinator()) {
-    auto unuser(_databasesProtector.use());
-    auto theLists = _databasesLists.load();
-    
-    auto it = theLists->_coordinatorDatabases.find(dbName);
-    if (it == theLists->_coordinatorDatabases.end()) {
-      return std::string();
-    }
-      
-    TRI_vocbase_t* vocbase = (*it).second;
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
+std::string DatabaseFeature::translateCollectionName(
+    std::string const& dbName,
+    std::string const& collectionName
+) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+  auto itr = theLists->_databases.find(dbName);
 
+  if (itr == theLists->_coordinatorDatabases.end()) {
+    return std::string();
+  }
+
+  auto* vocbase = itr->second;
+  TRI_ASSERT(vocbase != nullptr);
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
     CollectionNameResolver resolver(vocbase);
+
     return resolver.getCollectionNameCluster(NumberUtils::atoi_zero<TRI_voc_cid_t>(collectionName.data(), collectionName.data() + collectionName.size()));
   } else {
-    auto unuser(_databasesProtector.use());
-    auto theLists = _databasesLists.load();
-    
-    auto it = theLists->_databases.find(dbName);
-    if (it == theLists->_databases.end()) {
-      return std::string();
-    }
-    
-    TRI_vocbase_t* vocbase = (*it).second;
-    TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    return vocbase->collectionName(NumberUtils::atoi_zero<uint64_t>(collectionName.data(), collectionName.data() + collectionName.size()));
+    auto collection = vocbase->lookupCollection(collectionName);
+
+    return collection ? collection->name() : std::string();
   }
 }
 

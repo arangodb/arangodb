@@ -101,8 +101,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
-    TRI_ASSERT(collection->vocbase());
-    auto& databaseName = collection->vocbase()->name();
+    TRI_ASSERT(collection);
+    auto& databaseName = collection->vocbase().name();
     std::string const& cid = collection->name();
 
     // add code for estimates here
@@ -141,7 +141,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
   } else {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(collection->vocbase()),
+        transaction::StandaloneContext::Create(&(collection->vocbase())),
         collection->id(),
         AccessMode::Type::READ
     );
@@ -248,14 +248,15 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
                                VPackSlice const& definition, bool create,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
-  READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
+  READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
   SingleCollectionTransaction trx(
-      transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-      collection->id(),
-      create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
-
+    transaction::V8Context::CreateWhenRequired(&(collection->vocbase()), false),
+    collection->id(),
+    create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ
+  );
   Result res = trx.begin();
+
   if (!res.ok()) {
     return res;
   }
@@ -306,8 +307,7 @@ Result Indexes::ensureIndexCoordinator(
     arangodb::LogicalCollection const* collection, VPackSlice const& indexDef,
     bool create, VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(collection->vocbase());
-  auto& dbName = collection->vocbase()->name();
+  auto& dbName = collection->vocbase().name();
   auto cid = std::to_string(collection->id());
   std::string errorMsg;
 
@@ -339,16 +339,16 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
   VPackBuilder defBuilder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  int res = idxFactory->enhanceIndexDefinition(
-      definition, defBuilder, create, ServerState::instance()->isCoordinator());
+  int res = engine->indexFactory().enhanceIndexDefinition(
+    definition, defBuilder, create, ServerState::instance()->isCoordinator()
+  ).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res);
   }
 
-  TRI_ASSERT(collection->vocbase());
-  auto& dbname = collection->vocbase()->name();
+  TRI_ASSERT(collection);
+  auto& dbname = collection->vocbase().name();
   std::string const collname(collection->name());
   VPackSlice indexDef = defBuilder.slice();
 
@@ -546,7 +546,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
   TRI_idx_iid_t iid = 0;
   if (ServerState::instance()->isCoordinator()) {
-    CollectionNameResolver resolver(collection->vocbase());
+    CollectionNameResolver resolver(&(collection->vocbase()));
     Result res = Indexes::extractHandle(collection, &resolver, indexArg, iid);
     if (!res.ok()) {
       return res;
@@ -555,8 +555,8 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 #ifdef USE_ENTERPRISE
     return Indexes::dropCoordinatorEE(collection, iid);
 #else
-    TRI_ASSERT(collection->vocbase());
-    auto& databaseName = collection->vocbase()->name();
+    TRI_ASSERT(collection);
+    auto& databaseName = collection->vocbase().name();
     auto cid = std::to_string(collection->id());
     std::string errorMsg;
     int r = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
@@ -564,12 +564,12 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
     return Result(r, errorMsg);
 #endif
   } else {
-    READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
+    READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
     SingleCollectionTransaction trx(
-        transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-        collection->id(),
-        AccessMode::Type::EXCLUSIVE
+      transaction::V8Context::CreateWhenRequired(&(collection->vocbase()), false),
+      collection->id(),
+      AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();
 

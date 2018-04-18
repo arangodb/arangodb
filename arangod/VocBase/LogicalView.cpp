@@ -95,7 +95,7 @@ namespace arangodb {
 // The Slice contains the part of the plan that
 // is relevant for this view
 LogicalView::LogicalView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalDataSource(
@@ -125,10 +125,17 @@ LogicalView::LogicalView(
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 }
 
+/*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
+  static const Category category;
+
+  return category;
+}
+
 /*static*/ std::shared_ptr<LogicalView> LogicalView::create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
-    uint64_t planVersion /*= 0*/
+    uint64_t planVersion /*= 0*/,
+    PreCommitCallback const& preCommit /*= PreCommitCallback()*/
 ) {
   auto const* viewTypes =
     application_features::ApplicationServer::getFeature<ViewTypesFeature>("ViewTypes");
@@ -154,13 +161,16 @@ LogicalView::LogicalView(
     return nullptr;
   }
 
-  return viewFactory(vocbase, definition, planVersion);
-}
+  auto view = viewFactory(vocbase, definition, planVersion, preCommit);
 
-/*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
-  static const Category category;
+  if (!view) {
+    LOG_TOPIC(ERR, Logger::VIEWS)
+      << "Failure to instantiate view of type: " << viewType.toString();
 
-  return category;
+    return nullptr;
+  }
+
+  return view;
 }
 
 // -----------------------------------------------------------------------------
@@ -168,7 +178,7 @@ LogicalView::LogicalView(
 // -----------------------------------------------------------------------------
 
 DBServerLogicalView::DBServerLogicalView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalView(vocbase, definition, planVersion) {
@@ -178,28 +188,88 @@ DBServerLogicalView::~DBServerLogicalView() {
   if (deleted()) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
+
     engine->destroyView(vocbase(), this);
   }
 }
 
-void DBServerLogicalView::drop() {
+/*static*/ arangodb::Result DBServerLogicalView::create(
+    DBServerLogicalView const& view
+) noexcept {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
-  engine->dropView(vocbase(), this);
+
+  try {
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      // during recovery entry is being played back from the engine
+      if (!engine->inRecovery()) {
+        arangodb::velocypack::Builder builder;
+        auto res = engine->getViews(view.vocbase(), builder);
+        TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
+        auto slice  = builder.slice();
+        TRI_ASSERT(slice.isArray());
+        auto viewId = std::to_string(view.id());
+
+        // We have not yet persisted this view
+        for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
+          auto id = arangodb::basics::VelocyPackHelper::getStringRef(
+            entry, "id", arangodb::velocypack::StringRef()
+          );
+
+          if (!id.compare(viewId)) {
+            return arangodb::Result(
+              TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+              std::string("view id '") + viewId + "already exists in the sotrage engine"
+            );
+          }
+        }
+      }
+    #endif
+
+    engine->createView(view.vocbase(), view.id(), view);
+
+    return engine->persistView(view.vocbase(), view);
+  } catch (std::exception const& e) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("caught exception during storage engine persistance of view '") + view.name() + "': " + e.what()
+    );
+  } catch (...) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("caught exception during storage engine persistance of view '") + view.name() + "'"
+    );
+  }
+}
+
+arangodb::Result DBServerLogicalView::drop() {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  auto res = dropImpl();
+
+  if (res.ok()) {
+    deleted(true);
+    engine->dropView(vocbase(), this);
+  }
+
+  return res;
 }
 
 Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+
   auto oldName = name();
 
   try {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine != nullptr);
-
     name(std::move(newName));
 
+    // store new view definition to disk
     if (!engine->inRecovery()) {
-      engine->changeView(vocbase(), id(), this, doSync);
+      engine->changeView(vocbase(), id(), *this, doSync);
     }
   } catch (basics::Exception const& ex) {
     name(std::move(oldName));
@@ -211,7 +281,8 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
     return TRI_ERROR_INTERNAL;
   }
 
-  return TRI_ERROR_NO_ERROR;
+  // write WAL 'rename' marker
+  return engine->renameView(vocbase(), *this, oldName);
 }
 
 void DBServerLogicalView::toVelocyPack(
@@ -219,6 +290,8 @@ void DBServerLogicalView::toVelocyPack(
     bool includeProperties,
     bool includeSystem
 ) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 
@@ -258,6 +331,8 @@ arangodb::Result DBServerLogicalView::updateProperties(
     bool partialUpdate,
     bool doSync
 ) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
   auto res = updateProperties(slice, partialUpdate);
 
   if (!res.ok()) {
@@ -273,7 +348,7 @@ arangodb::Result DBServerLogicalView::updateProperties(
   }
 
   try {
-    engine->changeView(vocbase(), id(), this, doSync);
+    engine->changeView(vocbase(), id(), *this, doSync);
   } catch (arangodb::basics::Exception const& e) {
     return { e.code() };
   } catch (...) {

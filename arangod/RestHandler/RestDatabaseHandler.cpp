@@ -109,13 +109,13 @@ RestStatus RestDatabaseHandler::getDatabases() {
 // //////////////////////////////////////////////////////////////////////////////
 RestStatus RestDatabaseHandler::createDatabase() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return RestStatus::DONE;
   }
-  VPackSlice nameVal = parsedBody->slice().get("name");
+  VPackSlice nameVal = body.get("name");
   if (!nameVal.isString()) {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
@@ -123,8 +123,8 @@ RestStatus RestDatabaseHandler::createDatabase() {
   }
   std::string dbName = nameVal.copyString();
 
-  VPackSlice options = parsedBody->slice().get("options");
-  VPackSlice users = parsedBody->slice().get("users");
+  VPackSlice options = body.get("options");
+  VPackSlice users = body.get("users");
 
   Result res = methods::Databases::create(dbName, users, options);
   if (res.ok()) {

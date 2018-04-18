@@ -43,7 +43,8 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit
   );
 
   bool visitCollections(CollectionVisitor const& visitor) const override {
@@ -52,9 +53,9 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
 
   void open() override { }
 
-  void drop() override { }
+  arangodb::Result drop() override { return TRI_ERROR_NOT_IMPLEMENTED; }
 
-  virtual Result rename(std::string&& newName, bool doSync) {
+  virtual Result rename(std::string&& newName, bool doSync) override {
     return { TRI_ERROR_NOT_IMPLEMENTED };
   }
 
@@ -62,7 +63,7 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
     arangodb::velocypack::Builder& result,
     bool includeProperties = false,
     bool includeSystem = false
-  ) const {
+  ) const override {
     // FIXME: implement
   }
 
@@ -70,7 +71,7 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
       arangodb::velocypack::Slice const& properties,
       bool partialUpdate,
       bool doSync
-  ) {
+  ) override {
     return { TRI_ERROR_NOT_IMPLEMENTED };
   }
 }; // IResearchViewCoordinator

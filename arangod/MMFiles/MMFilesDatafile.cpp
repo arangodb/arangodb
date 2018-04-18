@@ -1203,7 +1203,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   TRI_ASSERT(_initSize == _maximalSize);
   TRI_ASSERT(maximalSize <= _initSize);
   _maximalSize = static_cast<uint32_t>(maximalSize);
-  _initSize = maximalSize;
+  _initSize = static_cast<uint32_t>(maximalSize);
   _fd = fd;
   _mmHandle = mmHandle;
   _state = TRI_DF_STATE_WRITE;

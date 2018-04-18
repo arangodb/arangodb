@@ -86,7 +86,7 @@ class LogicalDataSource {
   LogicalDataSource(
       Category const& category,
       Type const& type,
-      TRI_vocbase_t* vocbase,
+      TRI_vocbase_t& vocbase,
       TRI_voc_cid_t id,
       TRI_voc_cid_t planId,
       std::string&& name,
@@ -118,14 +118,14 @@ class LogicalDataSource {
 
   Category const& category() const noexcept { return _category; }
   bool deleted() const noexcept { return _deleted; }
-  virtual void drop() = 0;
+  virtual arangodb::Result drop() = 0;
   TRI_voc_cid_t const& id() const noexcept { return _id; } // reference required for ShardDistributionReporterTest
   std::string const& name() const noexcept { return _name; }
   TRI_voc_cid_t planId() const noexcept { return _planId; }
   uint64_t planVersion() const noexcept { return _planVersion; }
   virtual Result rename(std::string&& newName, bool doSync) = 0;
   Type const& type() const noexcept { return _type; }
-  TRI_vocbase_t* vocbase() const noexcept { return _vocbase; }
+  TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
  protected:
   void deleted(bool deleted) noexcept { _deleted = deleted; }
@@ -136,7 +136,7 @@ class LogicalDataSource {
   std::string _name; // data-source name
   Category const& _category; // the category of the logical data-source
   Type const& _type; // the type of the underlying data-source implementation
-  TRI_vocbase_t* const _vocbase; // the database where the data-source resides TODO change to reference
+  TRI_vocbase_t& _vocbase; // the database where the data-source resides
   TRI_voc_cid_t const _id; // local data-source id (current database node)
   TRI_voc_cid_t const _planId; // global data-source id (cluster-wide)
   uint64_t const _planVersion; // Only set if setPlanVersion was called. This only

@@ -35,6 +35,7 @@
 #include "Basics/files.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
@@ -147,6 +148,10 @@ struct IResearchIndexSetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(&server), true); // required for arangodb::aql::Query(...)
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false); // requires for IResearchView::open()
@@ -185,6 +190,7 @@ struct IResearchIndexSetup {
 
   ~IResearchIndexSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -227,7 +233,7 @@ SECTION("test_analyzer") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto viewImpl = vocbase.createView(createView->slice(), 0);
+  auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
 
   // populate collections
@@ -344,7 +350,7 @@ SECTION("test_async_index") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto viewImpl = vocbase.createView(createView->slice(), 0);
+  auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
 
   // link collections with view
@@ -388,7 +394,7 @@ SECTION("test_async_index") {
       if (!resThread0) return;
 
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(collection0->vocbase()),
+        arangodb::transaction::StandaloneContext::Create(&(collection0->vocbase())),
         collection0->id(),
         arangodb::AccessMode::Type::WRITE
       );
@@ -426,7 +432,7 @@ SECTION("test_async_index") {
       if (!resThread1) return;
 
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(collection1->vocbase()),
+        arangodb::transaction::StandaloneContext::Create(&(collection1->vocbase())),
         collection1->id(),
         arangodb::AccessMode::Type::WRITE
       );
@@ -543,7 +549,7 @@ SECTION("test_fields") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto viewImpl = vocbase.createView(createView->slice(), 0);
+  auto viewImpl = vocbase.createView(createView->slice());
   REQUIRE((nullptr != viewImpl));
 
   // populate collections

@@ -115,15 +115,26 @@ public:
   // -----------------------
 
   void getDatabases(arangodb::velocypack::Builder& result) override;
-  void getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
-                         arangodb::velocypack::Builder& result,
-                         bool includeIndexes, TRI_voc_tick_t maxTick) override;
-  int getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
-                               arangodb::velocypack::Builder& result,
-                               bool wasCleanShutdown, bool isUpgrade) override;
 
-  int getViews(TRI_vocbase_t* vocbase,
-               arangodb::velocypack::Builder& result) override;
+  void getCollectionInfo(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t cid,
+    arangodb::velocypack::Builder& result,
+    bool includeIndexes,
+    TRI_voc_tick_t maxTick
+  ) override;
+
+  int getCollectionsAndIndexes(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Builder& result,
+    bool wasCleanShutdown,
+    bool isUpgrade
+  ) override;
+
+  int getViews(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Builder& result
+  ) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
@@ -185,50 +196,96 @@ public:
   void recoveryDone(TRI_vocbase_t* vocbase) override;
 
  public:
-  std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalCollection const*) override;
+  std::string createCollection(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalCollection const* collection
+  ) override;
 
   arangodb::Result persistCollection(
-      TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*) override;
-  arangodb::Result dropCollection(TRI_vocbase_t* vocbase,
-                                  arangodb::LogicalCollection*) override;
-  void destroyCollection(TRI_vocbase_t* vocbase,
-                         arangodb::LogicalCollection*) override;
-  void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                        arangodb::LogicalCollection const*,
-                        bool doSync) override;
-  arangodb::Result renameCollection(TRI_vocbase_t* vocbase,
-                                    arangodb::LogicalCollection const*,
-                                    std::string const& oldName) override;
-  void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                   TRI_idx_iid_t id,
-                   arangodb::velocypack::Slice const& data) override;
-  void unloadCollection(TRI_vocbase_t* vocbase,
-                        arangodb::LogicalCollection* collection) override;
-  void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                  arangodb::LogicalView const*) override;
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection const* collection
+  ) override;
+
+  arangodb::Result dropCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+  ) override;
+
+  void destroyCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+  ) override;
+
+  void changeCollection(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalCollection const* collection,
+    bool doSync
+  ) override;
+
+  arangodb::Result renameCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection const* collection,
+    std::string const& oldName
+  ) override;
+
+  void createIndex(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t collectionId,
+    TRI_idx_iid_t id,
+    arangodb::velocypack::Slice const& data
+  ) override;
+
+  void unloadCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+  ) override;
+
+  void changeView(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const& view,
+    bool doSync
+  ) override;
+
+  void createView(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const& view
+  ) override;
 
   virtual void getViewProperties(
-     TRI_vocbase_t* /*vocbase*/,
+     TRI_vocbase_t& /*vocbase*/,
      arangodb::LogicalView const* /*view*/,
      VPackBuilder& /*builder*/
   ) override {
     // does nothing
   }
 
+  arangodb::Result persistView(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView const& view
+  ) override;
+
   // asks the storage engine to persist renaming of a view
   // This will write a renameMarker if not in recovery
-  arangodb::Result renameView(TRI_vocbase_t* vocbase,
-                              std::shared_ptr<arangodb::LogicalView> view,
-                              std::string const& oldName) override;
+  arangodb::Result renameView(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView const& view,
+    std::string const& oldName
+  ) override;
 
-  arangodb::Result persistView(TRI_vocbase_t* vocbase,
-                               arangodb::LogicalView const*) override;
+  arangodb::Result dropView(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView* view
+  ) override;
 
-  arangodb::Result dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
-  void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) noexcept override;
-  void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                  arangodb::LogicalView const*, bool doSync) override;
+  void destroyView(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView* view
+  ) noexcept override;
+
   void signalCleanup(TRI_vocbase_t* vocbase) override;
 
   int shutdownDatabase(TRI_vocbase_t* vocbase) override;

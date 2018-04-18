@@ -139,10 +139,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result commit() override;
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief drop this iResearch View
-  ///////////////////////////////////////////////////////////////////////////////
-  void drop() override;
+  using LogicalView::drop;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
@@ -195,7 +192,8 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit = LogicalView::PreCommitCallback()
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -241,11 +239,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   bool sync(size_t maxMsec = 0);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the view type as used when selecting which view to instantiate
-  ////////////////////////////////////////////////////////////////////////////////
-  static arangodb::LogicalDataSource::Type const& type() noexcept;
-
   using LogicalView::updateProperties;
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -255,6 +248,11 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
  protected:
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief drop this IResearch View
+  ///////////////////////////////////////////////////////////////////////////////
+  arangodb::Result dropImpl() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
@@ -323,7 +321,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   > FlushTransactionPtr;
 
   IResearchView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
     uint64_t planVersion

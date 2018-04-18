@@ -86,8 +86,8 @@ use the load command:
     require("internal").load("/tmp/test.js")     // <- Linux / MacOS
     require("internal").load("c:\\tmp\\test.js") // <- Windows
 
-Exiting arangosh can be done using the key combination ```<CTRL> + D``` or by
-typing ```quit<CR>```
+Exiting arangosh can be done using the key combination `<CTRL> + D` or by
+typing `quit<CR>`
 
 Escaping
 --------

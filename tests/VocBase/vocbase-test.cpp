@@ -37,31 +37,30 @@
 
 namespace {
 
-std::unique_ptr<arangodb::LogicalView> makeTestView(
+std::shared_ptr<arangodb::LogicalView> makeTestView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    arangodb::LogicalView::PreCommitCallback const& preCommit
   ) {
-  struct Impl: public arangodb::LogicalView{
+  struct Impl: public arangodb::DBServerLogicalView{
     Impl(
         TRI_vocbase_t& vocbase,
         arangodb::velocypack::Slice const& info,
         uint64_t planVersion
-    ): LogicalView(&vocbase, info, planVersion) {
+    ): DBServerLogicalView(vocbase, info, planVersion) {
     }
-    virtual void drop() override {
-      deleted(true);
-    }
-    virtual void toVelocyPack(
-        arangodb::velocypack::Builder&, bool, bool
+    arangodb::Result create() { return DBServerLogicalView::create(*this); }
+    virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
+    virtual void getPropertiesVPack(
+      arangodb::velocypack::Builder&,
+      bool
     ) const override {
     }
     virtual void open() override {}
-    virtual arangodb::Result rename(std::string&& newName, bool doSync) {
-      return {};
-    }
     virtual arangodb::Result updateProperties(
-        arangodb::velocypack::Slice const&, bool, bool
+      arangodb::velocypack::Slice const&,
+      bool
     ) override {
       return arangodb::Result();
     }
@@ -72,7 +71,12 @@ std::unique_ptr<arangodb::LogicalView> makeTestView(
     }
   };
 
-  return std::make_unique<Impl>(vocbase, info, planVersion);
+  auto view = std::make_shared<Impl>(vocbase, info, planVersion);
+
+  return
+    (!preCommit || preCommit(std::static_pointer_cast<arangodb::LogicalView>(view)))
+    && view->create().ok()
+    ? view : nullptr;
 }
 
 }
@@ -277,7 +281,7 @@ SECTION("test_lookupDataSource") {
   }
 
   auto* collection = vocbase.createCollection(collectionJson->slice());
-  auto view = vocbase.createView(viewJson->slice(), 42);
+  auto view = vocbase.createView(viewJson->slice());
 
   CHECK((false == collection->deleted()));
   CHECK((false == view->deleted()));
@@ -335,7 +339,7 @@ SECTION("test_lookupDataSource") {
   }
 
   CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(collection, true, 0)));
-  CHECK((TRI_ERROR_NO_ERROR == vocbase.dropView(view)));
+  CHECK((true == vocbase.dropView(*view).ok()));
   CHECK((true == collection->deleted()));
   CHECK((true == view->deleted()));
 

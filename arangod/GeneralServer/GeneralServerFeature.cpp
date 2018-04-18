@@ -71,6 +71,7 @@
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -258,12 +259,11 @@ void GeneralServerFeature::start() {
     server->startListening();
   }
 
-  // populate the authentication cache. otherwise no one can access the new
-  // database
-  auto authentication = AuthenticationFeature::instance();
-  TRI_ASSERT(authentication != nullptr);
-  if (authentication->isActive()) {
-    authentication->userManager()->outdate();
+  // initially populate the authentication cache. otherwise no one
+  // can access the new database
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->outdate();
   }
 }
 
@@ -514,6 +514,9 @@ void GeneralServerFeature::defineHandlers() {
   // /_admin
   // ...........................................................................
 
+  _handlerFactory->addHandler(
+      "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
+  
   _handlerFactory->addPrefixHandler(
       "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,

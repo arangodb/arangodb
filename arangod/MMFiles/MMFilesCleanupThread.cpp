@@ -231,7 +231,7 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
           isDeleted = (s == TRI_VOC_COL_STATUS_DELETED);
         }
 
-        if (!isDeleted && collection->vocbase()->isDropped()) {
+        if (!isDeleted && collection->vocbase().isDropped()) {
           // the collection was not marked as deleted, but the database was
           isDeleted = true;
         }

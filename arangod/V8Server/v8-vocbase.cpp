@@ -478,8 +478,10 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("RELOAD_AUTH()");
   }
   
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->outdate();
+  }
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -1387,7 +1389,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
         value, WRP_VOCBASE_COL_TYPE);
 
     // check if the collection is from the same database
-    if (collection != nullptr && collection->vocbase() == vocbase) {
+    if (collection != nullptr && &(collection->vocbase()) == vocbase) {
       // we cannot use collection->getStatusLocked() here, because we
       // have no idea who is calling us (db[...]). The problem is that
       // if we are called from within a JavaScript transaction, the
@@ -1923,21 +1925,6 @@ static void JS_LdapEnabled(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if we are in the enterprise edition
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-#ifndef USE_ENTERPRISE
-  TRI_V8_RETURN(v8::False(isolate));
-#else
-  TRI_V8_RETURN(v8::True(isolate));
-#endif
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief decode a _rev time stamp
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2255,10 +2242,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "TRUSTED_PROXIES"),
                                JS_TrustedProxies, true);
-  
-  TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_ENTERPRISE"),
-                               JS_IsEnterprise);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "DECODE_REV"),

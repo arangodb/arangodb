@@ -530,30 +530,27 @@ void ClusterInfo::loadPlan() {
             try {
               std::shared_ptr<LogicalCollection> newCollection;
 
-#ifndef USE_ENTERPRISE
-              newCollection = std::make_shared<LogicalCollection>(
-                vocbase, collectionSlice, true, newPlanVersion
-              );
-#else
+            #if defined(USE_ENTERPRISE)
               VPackSlice isSmart = collectionSlice.get("isSmart");
 
               if (isSmart.isTrue()) {
                 VPackSlice type = collectionSlice.get("type");
                 if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
                   newCollection = std::make_shared<VirtualSmartEdgeCollection>(
-                    vocbase, collectionSlice, newPlanVersion
+                    *vocbase, collectionSlice, newPlanVersion
                   );
                 } else {
                   newCollection = std::make_shared<SmartVertexCollection>(
-                    vocbase, collectionSlice, newPlanVersion
+                    *vocbase, collectionSlice, newPlanVersion
                   );
                 }
-              } else {
+              } else
+            #endif
+              {
                 newCollection = std::make_shared<LogicalCollection>(
-                  vocbase, collectionSlice, true, newPlanVersion
+                  *vocbase, collectionSlice, true, newPlanVersion
                 );
               }
-#endif
 
               auto& collectionName = newCollection->name();
 
@@ -1342,7 +1339,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
-
+      
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1457,7 +1454,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         }
         return true;
       };
-
+      
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
@@ -1549,8 +1546,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     // Update our cache:
     loadPlan();
   }
+      
+  bool isSmart = false;
+  VPackSlice smartSlice = json.get("isSmart");
+  if (smartSlice.isBool() && smartSlice.getBool()) {
+    isSmart = true;
+  }
 
-  if (numberOfShards == 0) {
+  if (numberOfShards == 0 || isSmart) {
     loadCurrent();
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
     return TRI_ERROR_NO_ERROR;

@@ -77,7 +77,7 @@ static void WeakCollectionCallback(const v8::WeakCallbackInfo<
   v8g->decreaseActiveExternals();
 
   // decrease the reference-counter for the database
-  TRI_ASSERT(!collection->vocbase()->isDangling());
+  TRI_ASSERT(!collection->vocbase().isDangling());
 
   // find the persistent handle
 #if ARANGODB_ENABLE_MAINTAINER_MODE
@@ -88,12 +88,12 @@ static void WeakCollectionCallback(const v8::WeakCallbackInfo<
   // dispose and clear the persistent handle
   v8g->JSCollections[collection].Reset();
   v8g->JSCollections.erase(collection);
-  
+
   if (!collection->isLocal()) {
-    collection->vocbase()->release();
+    collection->vocbase().release();
     delete collection;
   } else {
-    collection->vocbase()->release();
+    collection->vocbase().release();
   }
 }
 
@@ -125,8 +125,9 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
 
     if (it == v8g->JSCollections.end()) {
       // increase the reference-counter for the database
-      TRI_ASSERT(!nonconstCollection->vocbase()->isDangling());
-      nonconstCollection->vocbase()->forceUse();
+      TRI_ASSERT(!nonconstCollection->vocbase().isDangling());
+      nonconstCollection->vocbase().forceUse();
+
       try {
         auto externalCollection = v8::External::New(isolate, nonconstCollection);
 
@@ -138,7 +139,7 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
                                                        v8::WeakCallbackType::kFinalizer);
         v8g->increaseActiveExternals();
       } catch (...) {
-        nonconstCollection->vocbase()->release();
+        nonconstCollection->vocbase().release();
         throw;
       }
     } else {
@@ -154,7 +155,7 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
       TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()),
       v8::ReadOnly
     );
-    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase()->name()));
+    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name()));
     result->ForceSet(
         VersionKeyHidden,
         v8::Integer::NewFromUnsigned(isolate, 5),

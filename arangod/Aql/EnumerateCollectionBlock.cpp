@@ -54,11 +54,10 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
 int EnumerateCollectionBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
 
-  if (_collection->isSatellite()) {
+  if (ServerState::instance()->isRunningInCluster() && _collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
-    TRI_ASSERT(logicalCollection->vocbase());
-    auto dbName = logicalCollection->vocbase()->name();
+    auto& dbName = logicalCollection->vocbase().name();
     double maxWait = _engine->getQuery()->queryOptions().satelliteSyncWait;
     bool inSync = false;
     unsigned long waitInterval = 10000;

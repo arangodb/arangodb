@@ -219,6 +219,11 @@ class Query {
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
 
+  /// @brief prepare a V8 context for execution for this expression
+  /// this needs to be called once before executing any V8 function in this
+  /// expression
+  void prepareV8Context();
+
   /// @brief enter a V8 context
   void enterContext();
 
@@ -228,6 +233,11 @@ class Query {
   /// @brief check if the query has a V8 context ready for use
   bool hasEnteredContext() const {
     return (_contextOwnedByExterior || _context != nullptr);
+  }
+
+  // @brief resets the contexts load-state of the AQL functions.
+  void unPrepareV8Context() {
+    _preparedV8Context = false;
   }
 
   /// @brief returns statistics for current query.
@@ -375,6 +385,12 @@ class Query {
 
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
+
+  /// @brief whether or not the preparation routine for V8 contexts was run
+  /// once for this expression
+  /// it needs to be run once before any V8-based function is called
+  bool _preparedV8Context;
+
 };
 }
 }
