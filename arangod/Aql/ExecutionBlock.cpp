@@ -29,6 +29,7 @@
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
+#include "Aql/QueryProfile.h"
 
 using namespace arangodb::aql;
   
@@ -38,7 +39,8 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _exeNode(ep),
       _pos(0),
       _done(false),
-      _tracing(engine->getQuery()->queryOptions().tracing) {
+      _profile(engine->getQuery()->queryOptions().tracing ?
+                engine->getQuery()->profile() : nullptr) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -154,20 +156,34 @@ int ExecutionBlock::shutdown(int errorCode) {
 }
 
 // Trace the start of a getSome call
-void ExecutionBlock::traceGetSomeBegin(size_t atMost) const {
-  if (_tracing > 0) {
+void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
+  if (_profile != nullptr) {
+    _getSomeBegin = std::chrono::steady_clock::now();
+  }
+  
+  /*if (_tracing > 0) {
     auto node = getPlanNode();
     LOG_TOPIC(INFO, Logger::QUERIES)
       << "getSome type=" << node->getTypeString()
       << " atMost = " << atMost
       << " this=" << (uintptr_t) this << " id=" << node->id();
-  }
+  }*/
 }
 
 // Trace the end of a getSome call, potentially with result
 void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
-  if (_tracing > 0) {
-    auto node = getPlanNode();
+  if (_profile != nullptr) {
+    ExecutionNode const* en = getPlanNode();
+    auto duration = std::chrono::steady_clock::now() - _getSomeBegin;
+    size_t size = result != nullptr ? result->size() : 0;
+    _profile->addNodeProfile(en->id(), QueryProfile::NodeProfile{
+      std::chrono::duration_cast<std::chrono::milliseconds>(duration),
+      size
+    });
+  }
+  
+  /*if (_tracing > 0) {
+    ExecutionNode const* node = getPlanNode();
     LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
       << node->getTypeString() << " this=" << (uintptr_t) this
       << " id=" << node->id();
@@ -186,7 +202,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
             << " result: " << builder.toJson();
       }
     }
-  }
+  }*/
 }
 
 /// @brief getSome, gets some more items, semantic is as follows: not

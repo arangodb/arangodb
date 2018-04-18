@@ -627,6 +627,13 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
   size_t nrItems = 0;
   nodes.add("estimatedCost", VPackValue(getCost(nrItems)));
   nodes.add("estimatedNrItems", VPackValue(nrItems));
+  
+  Query* query = _plan->getAst()->query();
+  if (query != nullptr && query->queryOptions().tracing) {
+    query->profile()->ge
+    nodes.add("actualNrItems", VPackValue(getCost(nrItems)));
+    nodes.add("actualRuntime", VPackValue(nrItems));
+  }
 
   if (verbose) {
     nodes.add("depth", VPackValue(static_cast<double>(_depth)));

@@ -63,7 +63,7 @@ QueryProfile::~QueryProfile() {
 }
 
 /// @brief sets a state to done
-double QueryProfile::setDone(QueryExecutionState::ValueType state) {
+double QueryProfile::setStateDone(QueryExecutionState::ValueType state) {
   double const now = TRI_microtime();
 
   if (state != QueryExecutionState::ValueType::INVALID_STATE) {
@@ -76,8 +76,27 @@ double QueryProfile::setDone(QueryExecutionState::ValueType state) {
   return now;
 }
 
+///  @brief track the execution profile for ExecutionNodes
+void QueryProfile::addNodeProfile(size_t nid, aql::QueryProfile::NodeProfile const& n) {
+  auto it = _nodeProfiles.find(nid);
+  if (it == _nodeProfiles.end()) {
+    _nodeProfiles.emplace(nid, n);
+  } else {
+    it->second += n;
+  }
+}
+
+///  @brief track the execution profile for ExecutionNodes
+aql::QueryProfile::NodeProfile QueryProfile::nodeProfile(size_t nid) {
+  auto it = _nodeProfiles.find(nid);
+  if (it == _nodeProfiles.end()) {
+    return it->second;
+  }
+  return QueryProfile::NodeProfile{std::chrono::milliseconds(0), 0};
+}
+
 /// @brief sets the absolute end time for an execution state
-void QueryProfile::setEnd(QueryExecutionState::ValueType state, double time) {
+void QueryProfile::setStateEnd(QueryExecutionState::ValueType state, double time) {
   timers[static_cast<int>(state)] = time - stamp;
 }
 

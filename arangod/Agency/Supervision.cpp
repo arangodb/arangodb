@@ -53,7 +53,7 @@ struct HealthRecord {
   std::string hostId;
   size_t version;
 
-  HealthRecord() : version(0) {}
+  explicit HealthRecord() : version(0) {}
 
   HealthRecord(
     std::string const& sn, std::string const& ep, std::string const& ho) :
