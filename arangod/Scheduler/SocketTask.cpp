@@ -146,15 +146,6 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
     return;
   }
 
-  {
-    auto self = shared_from_this();
-
-    _loop._scheduler->post([self, this]() {
-      MUTEX_LOCKER(locker, _lock);
-      processAll();
-    });
-  }
-
   if (!buffer.empty()) {
     if (!_writeBuffer.empty()) {
       _writeBuffers.emplace_back(std::move(buffer));
