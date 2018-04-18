@@ -4,7 +4,7 @@ v3.3.8 (XXXX-XX-XX)
 * fix lookups by `_id` in smart graph edge collections
 
 * improve startup resilience in case there are datafile errors (MMFiles)
-  
+
   also allow repairing broken VERSION files automatically on startup by
   specifying the option `--database.ignore-datafile-errors true`
 
@@ -13,15 +13,17 @@ v3.3.8 (XXXX-XX-XX)
 * fixed internal issue #2148: Number of documents found by filter is misleading in web UI
 
 * added startup option `--database.required-directory-state`
-  
+
   using this option it is possible to require the database directory to be
   in a specific state on startup. the options for this value are:
- 
+
   - non-existing: database directory must not exist
   - existing: database directory must exist
   - empty: database directory must exist but be empty
   - populated: database directory must exist and contain specific files already
   - any: any state allowed
+
+* supervision can be put into maintenance mode
 
 
 v3.3.7 (2018-04-11)
