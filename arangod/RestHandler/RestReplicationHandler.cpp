@@ -954,6 +954,7 @@ Result RestReplicationHandler::processRestoreCollection(
   if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    TRI_ASSERT(um != nullptr); // should not get here
     if (um != nullptr) {
       um->updateUser(exe->user(), [&](auth::User& entry) {
         entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
@@ -1125,6 +1126,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      TRI_ASSERT(um != nullptr); // should not get here
       if (um != nullptr) {
         um->updateUser(ExecContext::CURRENT->user(),
                        [&](auth::User& entry) {
