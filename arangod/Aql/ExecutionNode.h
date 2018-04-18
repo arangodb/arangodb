@@ -417,7 +417,7 @@ class ExecutionNode {
   }
   
   /// @brief walk a complete execution plan recursively
-  bool walk(WalkerWorker<ExecutionNode>* worker);
+  bool walk(WalkerWorker<ExecutionNode>& worker);
 
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool, bool = false) const;

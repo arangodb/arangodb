@@ -169,7 +169,7 @@ bool ConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
 }
 
 bool ConditionFinder::handleFilterCondition(
-    ExecutionNode* en, std::unique_ptr<Condition>& condition) {
+    ExecutionNode* en, std::unique_ptr<Condition> const& condition) {
   bool foundCondition = false;
   for (auto& it : _variableDefinitions) {
     if (_filters.find(it.first) != _filters.end()) {
@@ -240,7 +240,7 @@ bool ConditionFinder::handleFilterCondition(
 }
 
 void ConditionFinder::handleSortCondition(
-    ExecutionNode* en, Variable const* outVar, std::unique_ptr<Condition>& condition,
+    ExecutionNode* en, Variable const* outVar, std::unique_ptr<Condition> const& condition,
     std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves

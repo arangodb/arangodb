@@ -73,7 +73,7 @@ namespace {
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(
     arangodb::httpclient::SimpleHttpClient& client,
-    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> const& response) {
   using arangodb::basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,

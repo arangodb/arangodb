@@ -233,7 +233,7 @@ class MMFilesHashIndexIteratorVPack final : public IndexIterator {
   MMFilesHashIndexIteratorVPack(
       LogicalCollection* collection, transaction::Methods* trx,
       MMFilesHashIndex const* index,
-      std::unique_ptr<arangodb::velocypack::Builder>& searchValues);
+      std::unique_ptr<arangodb::velocypack::Builder> searchValues);
 
   ~MMFilesHashIndexIteratorVPack();
 

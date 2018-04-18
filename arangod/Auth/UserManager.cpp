@@ -63,16 +63,14 @@ static bool inline IsRole(std::string const& name) {
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager()
     : _outdated(true), _queryRegistry(nullptr) {}
-auth::UserManager::~UserManager() {}
 #else
 auth::UserManager::UserManager()
     : _outdated(true), _queryRegistry(nullptr), _authHandler(nullptr) {}
 
-auth::UserManager::UserManager(std::unique_ptr<auth::Handler>&& handler)
+auth::UserManager::UserManager(std::unique_ptr<auth::Handler> handler)
     : _outdated(true),
       _queryRegistry(nullptr),
-      _authHandler(handler.release()) {}
-auth::UserManager::~UserManager() { delete _authHandler; }
+      _authHandler(std::move(handler)) {}
 #endif
 
 // Parse the users

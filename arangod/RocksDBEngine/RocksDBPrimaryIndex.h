@@ -53,7 +53,7 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
   RocksDBPrimaryIndexIterator(LogicalCollection* collection,
                               transaction::Methods* trx,
                               RocksDBPrimaryIndex* index,
-                              std::unique_ptr<VPackBuilder>& keys);
+                              std::unique_ptr<VPackBuilder> keys);
 
   ~RocksDBPrimaryIndexIterator();
 

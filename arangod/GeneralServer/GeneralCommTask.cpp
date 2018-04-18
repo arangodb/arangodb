@@ -170,7 +170,7 @@ void GeneralCommTask::executeRequest(
         response->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
 
-      addResponse(response.get(), nullptr);
+      addResponse(*response, nullptr);
       return;
     } else {
       handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request,
@@ -304,7 +304,7 @@ void GeneralCommTask::handleRequestDirectly(
     CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
     _lock.assertLockedByCurrentThread();
 
-    addResponse(h->response(), stat);
+    addResponse(*h->response(), stat);
   });
 
   HandlerWorkStack monitor(handler);
