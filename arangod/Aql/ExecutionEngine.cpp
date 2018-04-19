@@ -35,7 +35,6 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -82,9 +81,8 @@ struct TraverserEngineShardLists {
 Result ExecutionEngine::createBlocks(
     std::vector<ExecutionNode*> const& nodes,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_map<std::string, std::string> const& queryIds) {
+    MapRemoteToSnippet const& queryIds) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-  auto clusterInfo = arangodb::ClusterInfo::instance();
 
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
   RemoteNode const* remoteNode = nullptr;
@@ -133,50 +131,36 @@ Result ExecutionEngine::createBlocks(
       }
 
       // now we'll create a remote node for each shard and add it to the
-      // gather node
-      auto gatherNode = static_cast<GatherNode const*>(en);
-      Collection const* collection = gatherNode->collection();
+      // gather node (eb->addDependency)
+      auto serversForRemote = queryIds.find(remoteNode->id());
+      // Planning gone terribly wrong. The RemoteNode does not have a
+      // counter-part to fetch data from.
+      TRI_ASSERT(serversForRemote != queryIds.end());
+      if (serversForRemote == queryIds.end()) {
+        return {TRI_ERROR_INTERNAL, "Did not find a DBServer to contact for RemoteNode."};
+      }
 
-      auto shardIds = collection->shardIds(restrictToShards);
-      for (auto const& shardId : *shardIds) {
-        std::string theId =
-            arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
-            shardId;
-
-        auto it = queryIds.find(theId);
-        if (it == queryIds.end()) {
-          return {TRI_ERROR_INTERNAL, "could not find query id " + theId + " in list"};
+      // use "server:" instead of "shard:" to send query fragments to
+      // the correct servers, even after failover or when a follower drops
+      // the problem with using the previous shard-based approach was that
+      // responsibilities for shards may change at runtime.
+      // however, an AQL query must send all requests for the query to the
+      // initially used servers.
+      // if there is a failover while the query is executing, we must still
+      // send all following requests to the same servers, and not the newly
+      // responsible servers.
+      // otherwise we potentially would try to get data from a query from
+      // server B while the query was only instanciated on server A.
+      for (auto const& serverToSnippet : serversForRemote->second) {
+        auto const& serverID = serverToSnippet.first;
+        for (auto const& snippetId : serverToSnippet.second) {
+          auto r = std::make_unique<RemoteBlock>(this, remoteNode,
+              serverID, "", snippetId);
+          TRI_ASSERT(r != nullptr);
+          eb->addDependency(r.get());
+          addBlock(r.get());
+          r.release();
         }
-
-        auto serverList = clusterInfo->getResponsibleServer(shardId);
-        if (serverList->empty()) {
-          return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                  "Could not find responsible server for shard " + shardId};
-        }
-
-        // use "server:" instead of "shard:" to send query fragments to
-        // the correct servers, even after failover or when a follower drops
-        // the problem with using the previous shard-based approach was that
-        // responsibilities for shards may change at runtime.
-        // however, an AQL query must send all requests for the query to the
-        // initially used servers.
-        // if there is a failover while the query is executing, we must still
-        // send all following requests to the same servers, and not the newly
-        // responsible servers.
-        // otherwise we potentially would try to get data from a query from
-        // server B while the query was only instanciated on server A.
-        TRI_ASSERT(!serverList->empty());
-        auto& leader = (*serverList)[0];
-        auto r = std::make_unique<RemoteBlock>(this, remoteNode,
-                                               "server:" + leader,  // server
-                                               "",                  // ownName
-                                               it->second);         // queryId
-
-        TRI_ASSERT(r != nullptr);
-
-        eb->addDependency(r.get());
-        addBlock(r.get());
-        r.release();
       }
     }
 
@@ -436,7 +420,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ExecutionEngineResult buildEngines(
       QueryRegistry* registry, std::unordered_set<ShardID>* lockedShards) {
     // QueryIds are filled by responses of DBServer parts.
-    std::unordered_map<std::string, std::string> queryIds;
+    MapRemoteToSnippet queryIds{};
 
     bool needsErrorCleanup = true;
     auto cleanup = [&]() {

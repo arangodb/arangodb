@@ -181,7 +181,7 @@ class EngineInfoContainerDBServer {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   Result buildEngines(Query* query,
-                      std::unordered_map<std::string, std::string>& queryIds,
+                      MapRemoteToSnippet& queryIds,
                       std::unordered_set<std::string> const& restrictToShards,
                       std::unordered_set<ShardID>* lockedShards) const;
 
@@ -201,7 +201,7 @@ class EngineInfoContainerDBServer {
  */
   void cleanupEngines(
       std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
-      std::unordered_map<std::string, std::string>& queryIds) const;
+      MapRemoteToSnippet& queryIds) const;
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.

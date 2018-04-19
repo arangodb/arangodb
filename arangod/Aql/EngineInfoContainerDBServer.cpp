@@ -655,7 +655,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
 }
 
 Result EngineInfoContainerDBServer::buildEngines(
-    Query* query, std::unordered_map<std::string, std::string>& queryIds,
+    Query* query, MapRemoteToSnippet& queryIds,
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_set<ShardID>* lockedShards) const {
   TRI_ASSERT(_engineStack.empty());
@@ -691,6 +691,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   for (auto& it : dbServerMapping) {
+    std::string const serverDest = "server:" + it.first;
     LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Building Engine Info for "
                                             << it.first;
     infoBuilder.clear();
@@ -703,7 +704,7 @@ Result EngineInfoContainerDBServer::buildEngines(
     // [engineId]}}
 
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
-    auto res = cc->syncRequest("", coordTransactionID, "server:" + it.first,
+    auto res = cc->syncRequest("", coordTransactionID, serverDest,
                                RequestType::POST, url, infoBuilder.toJson(),
                                headers, SETUP_TIMEOUT);
 
@@ -719,7 +720,6 @@ Result EngineInfoContainerDBServer::buildEngines(
     VPackSlice response = builder->slice();
 
     if (!response.isObject() || !response.get("result").isObject()) {
-      // TODO could not register all engines. Need to cleanup.
       LOG_TOPIC(ERR, Logger::AQL) << "Recieved error information from "
                                   << it.first << " : " << response.toJson();
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
@@ -733,20 +733,31 @@ Result EngineInfoContainerDBServer::buildEngines(
     VPackSlice snippets = result.get("snippets");
 
     for (auto const& resEntry : VPackObjectIterator(snippets)) {
-      if (!resEntry.value.isString()) {
+      if (!resEntry.value.isArray()) {
         return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                 "Unable to deploy query on all required "
                 "servers. This can happen during "
                 "Failover. Please check: " +
                     it.first};
       }
-      queryIds.emplace(resEntry.key.copyString(), resEntry.value.copyString());
+      size_t remoteId = basics::StringUtils::uint64(resEntry.key.copyString());
+      auto remote = queryIds[remoteId];
+      auto thisServer = remote[serverDest];
+      for (auto const& snippetEntry : VPackArrayIterator(resEntry.value)) {
+        if (!snippetEntry.isString()) {
+          return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                  "Unable to deploy query on all required "
+                  "servers. This can happen during "
+                  "Failover. Please check: " +
+                      it.first};
+        }
+        thisServer.emplace_back(snippetEntry.copyString());
+      }
     }
 
     VPackSlice travEngines = result.get("traverserEngines");
     if (!travEngines.isNone()) {
       if (!travEngines.isArray()) {
-        // TODO could not register all traversal engines. Need to cleanup.
         return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                 "Unable to deploy query on all required "
                 "servers. This can happen during "
@@ -805,8 +816,8 @@ void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
  * queryid.
  */
 void EngineInfoContainerDBServer::cleanupEngines(
-    std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
-    std::unordered_map<std::string, std::string>& queryIds) const {
+    std::shared_ptr<ClusterComm> cc, int errorCode,
+    std::string const& dbname, MapRemoteToSnippet& queryIds) const {
   // Shutdown query snippets
   std::string url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
                   "/_api/aql/shutdown/");
@@ -814,15 +825,15 @@ void EngineInfoContainerDBServer::cleanupEngines(
   auto body = std::make_shared<std::string>("{\"code\":" +
                                             std::to_string(errorCode) + "}");
   for (auto const& it : queryIds) {
-    auto pos = it.first.find(':');
-    if (pos == it.first.npos) {
-      // We we get here the setup format was not as expected.
-      TRI_ASSERT(false);
-      continue;
+    // it.first == RemoteNodeId, we don't need this
+    // it.second server -> [snippets]
+    for (auto const& serToSnippets : it.second) {
+      auto server = serToSnippets.first;
+      for (auto const& shardId : serToSnippets.second) {
+        requests.emplace_back(server, rest::RequestType::PUT, url + shardId,
+                              body);
+      }
     }
-    auto shardId = it.first.substr(pos + 1);
-    requests.emplace_back(shardId, rest::RequestType::PUT, url + it.second,
-                          body);
   }
 
   // Shutdown traverser engines

@@ -51,7 +51,7 @@ class ExecutionEngine {
   TEST_VIRTUAL Result createBlocks(
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const& restrictToShards,
-      std::unordered_map<std::string, std::string> const& queryIds);
+      MapRemoteToSnippet const& queryIds);
 
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const {

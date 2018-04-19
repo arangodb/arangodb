@@ -63,7 +63,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_map<std::string, std::string> const& dbServerQueryIds,
+    MapRemoteToSnippet const& dbServerQueryIds,
     std::vector<uint64_t>& coordinatorQueryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
   TRI_ASSERT(!_nodes.empty());
@@ -146,7 +146,7 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_map<std::string, std::string>& dbServerQueryIds,
+    MapRemoteToSnippet const& dbServerQueryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
