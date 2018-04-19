@@ -27,6 +27,8 @@ v3.3.8 (XXXX-XX-XX)
   - populated: database directory must exist and contain specific files already
   - any: any state allowed
 
+* field "$schema" in Foxx manifest.json files no longer produce warnings
+
 
 v3.3.7 (2018-04-11)
 -------------------
