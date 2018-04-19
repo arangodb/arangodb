@@ -66,7 +66,7 @@ void GeneralClientConnectionAgencyMock::handleWrite(
   auto const success = _store->applyTransactions(query);
   auto const code = std::find(success.begin(), success.end(), false) == success.end()
     ? arangodb::rest::ResponseCode::OK
-    : arangodb::rest::ResponseCode::BAD;
+    : arangodb::rest::ResponseCode::PRECONDITION_FAILED;
 
   VPackBuilder bodyObj;
   bodyObj.openObject();

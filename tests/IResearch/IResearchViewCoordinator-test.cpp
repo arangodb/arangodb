@@ -384,6 +384,24 @@ SECTION("test_create_drop_view") {
     return planVersionSlice.getNumber<uint64_t>();
   };
 
+  // no name specified
+  {
+    arangodb::ViewID viewId;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\" }");
+    CHECK(TRI_ERROR_BAD_PARAMETER == ci->createViewCoordinator(
+      vocbase->name(), json->slice(), viewId, error
+    ));
+  }
+
+  // no type specified
+  {
+    arangodb::ViewID viewId;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    CHECK(TRI_ERROR_BAD_PARAMETER == ci->createViewCoordinator(
+      vocbase->name(), json->slice(), viewId, error
+    ));
+  }
+
   // create and drop view
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -409,6 +427,14 @@ SECTION("test_create_drop_view") {
     CHECK(arangodb::LogicalView::category() == view->category());
     CHECK(vocbase == &view->vocbase());
 
+    // create duplicate view
+    CHECK(TRI_ERROR_ARANGO_DUPLICATE_NAME == ci->createViewCoordinator(
+      vocbase->name(), json->slice(), viewId, error
+    ));
+    CHECK(error.empty());
+    CHECK(planVersion == getCurrentPlanVersion());
+    CHECK(view != ci->getView(vocbase->name(), view->name())); // FIXME by some reason???
+
     // drop view
     CHECK(view->drop().ok());
     CHECK(planVersion < getCurrentPlanVersion());
@@ -417,7 +443,11 @@ SECTION("test_create_drop_view") {
     CHECK(nullptr == ci->getView(vocbase->name(), view->name()));
 
     // drop already dropped view
-    CHECK(view->drop().fail());
+    {
+      auto const res = view->drop();
+      CHECK(res.fail());
+      //CHECK(TRI_ERROR_... == res.errorNumber()) FIXME
+    }
   }
 }
 

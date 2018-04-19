@@ -1984,23 +1984,31 @@ int ClusterInfo::dropViewCoordinator(
   int errorCode = TRI_ERROR_NO_ERROR;
 
   if (!res.successful()) {
-    auto const ag = ac.getValues("");
+    if (res.errorCode() == int(arangodb::ResponseCode::PRECONDITION_FAILED)) {
+      errorMsg += "Precondition that view  with ID ";
+      errorMsg += viewID;
+      errorMsg += " already exist failed. Cannot create view.";
 
-    if (ag.successful()) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                      << ag.slice().toJson();
+      // Dump agency plan:
+      auto const ag = ac.getValues("/");
+
+      if (ag.successful()) {
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "Agency dump:\n"  << ag.slice().toJson();
+      } else {
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+          << "Could not get agency dump!";
+      }
     } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+      errorMsg += std::string("file: ") + __FILE__ +
+                  " line: " + std::to_string(__LINE__);
+      errorMsg += " HTTP code: " + std::to_string(res.httpCode());
+      errorMsg += " error message: " + res.errorMessage();
+      errorMsg += " error details: " + res.errorDetails();
+      errorMsg += " body: " + res.body();
     }
 
-    errorCode = res.errorCode();
-
-    if (TRI_ERROR_NO_ERROR == errorCode) {
-      // no error specified in response
-      errorCode = TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED; // FIXME proper error code?
-    }
-
-    errorMsg = res.errorMessage();
+    errorCode = TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN; // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
   }
 
   events::DropView(viewID, errorCode);
