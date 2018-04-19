@@ -79,7 +79,7 @@ static arangodb::Mutex deadThreadsMutex;
 HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval,
                                  uint64_t maxFailsBeforeWarning)
-    : Thread("Heartbeat"),
+    : CriticalThread("Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
       _agency(),
@@ -215,10 +215,6 @@ void HeartbeatThread::run() {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
-  recordThreadDeath("test death 1");
-  recordThreadDeath("test death 2");
-  recordThreadDeath("test death 3");
-
   logThreadDeaths();
 
   if (ServerState::instance()->isCoordinator(role)) {
@@ -228,8 +224,7 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isSingleServer(role)) {
     runSingleServer();
   } else if (ServerState::instance()->isAgent(role)) {
-    sleep(3);
-//    runAgentServer();
+    runAgentServer();
   } else {
     LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
@@ -462,6 +457,8 @@ void HeartbeatThread::runSingleServer() {
   uint64_t lastSentVersion = 0;
   auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
+    logThreadDeaths();
+
     {
       CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
@@ -925,6 +922,28 @@ void HeartbeatThread::runCoordinator() {
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heartbeat main loop, agent version
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runAgentServer() {
+
+  // simple loop to post dead threads every hour, no other tasks today
+  while (!isStopping()) {
+    logThreadDeaths();
+
+    {
+      CONDITION_LOCKER(locker, _condition);
+      if (!isStopping()) {
+        locker.wait(std::chrono::hours(1));
+      }
+    }
+  } // while
+
+  return;
+
+} // HeartbeatThread::runAgentServer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the heartbeat
