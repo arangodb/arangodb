@@ -375,7 +375,7 @@ void HeartbeatThread::runDBServer() {
         {
           CONDITION_LOCKER(locker, _condition);
           wasNotified = _wasNotified;
-          if (!wasNotified) {
+          if (!wasNotified && !isStopping()) {
             if (remain.count() > 0) {
               locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
               wasNotified = _wasNotified;
@@ -440,10 +440,12 @@ void HeartbeatThread::runSingleServer() {
   uint64_t lastSentVersion = 0;
   auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
-    auto remain = _interval - (std::chrono::steady_clock::now() - start);
-    CONDITION_LOCKER(locker, _condition);
-    if (remain.count() > 0) {
-      locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
+    {
+      CONDITION_LOCKER(locker, _condition);
+      auto remain = _interval - (std::chrono::steady_clock::now() - start);
+      if (remain.count() > 0 && !isStopping()) {
+        locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
+      }
     }
     start = std::chrono::steady_clock::now();
 
@@ -885,9 +887,9 @@ void HeartbeatThread::runCoordinator() {
         DBServerUpdateCounter = 0;
       }
 
-      auto remain = _interval - (std::chrono::steady_clock::now() - start);
       CONDITION_LOCKER(locker, _condition);
-      if (remain.count() > 0) {
+      auto remain = _interval - (std::chrono::steady_clock::now() - start);
+      if (remain.count() > 0 && !isStopping()) {
         locker.wait(std::chrono::duration_cast<std::chrono::microseconds>(remain));
       }
 
@@ -918,11 +920,12 @@ bool HeartbeatThread::init() {
 
 void HeartbeatThread::beginShutdown() {
 
-  // set the state in parent class
+  CONDITION_LOCKER(guard, _condition);
+
+  // set the shutdown state in parent class
   Thread::beginShutdown();
 
   // break _condition.wait() in runDBserver
-  CONDITION_LOCKER(guard, _condition);
   _condition.signal();
 }
 
