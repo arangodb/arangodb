@@ -53,6 +53,8 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -67,6 +69,20 @@ using namespace arangodb::rest;
 
 uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
+
+static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
+#ifdef USE_ENTERPRISE
+  if (!force && name[0] == '_') {
+    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
+        strncmp(name.c_str(), "_from_", 6) == 0 ||
+        strncmp(name.c_str(), "_to_", 4) == 0) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Restore ignoring collection " << name << ". Will be created via SmartGraphs of a full dump. If you want to restore ONLY this collection use 'arangorestore --force'. However this is not recommended and you should instead restore the EdgeCollection of the SmartGraph instead.";
+      return true;
+    }
+  }
+#endif
+  return false;
+}
 
 static Result restoreDataParser(char const* ptr, char const* pos,
                                 std::string const& collectionName,
@@ -719,42 +735,49 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
 
   bool overwrite = false;
 
-  bool found;
-  std::string const& value1 = _request->value("overwrite", found);
-
-  if (found) {
-    overwrite = StringUtils::boolean(value1);
+  bool found = false;
+  {
+    std::string const& value1 = _request->value("overwrite", found);
+    if (found) {
+      overwrite = StringUtils::boolean(value1);
+    }
   }
 
   bool force = false;
-  std::string const& value3 = _request->value("force", found);
+  {
+    std::string const& value3 = _request->value("force", found);
 
-  if (found) {
-    force = StringUtils::boolean(value3);
-  }
-
-  std::string const& value9 =
-      _request->value("ignoreDistributeShardsLikeErrors", found);
-  bool ignoreDistributeShardsLikeErrors =
-      found ? StringUtils::boolean(value9) : false;
-
-  uint64_t numberOfShards = 0;
-  std::string const& value4 = _request->value("numberOfShards", found);
-
-  if (found) {
-    numberOfShards = StringUtils::uint64(value4);
-  }
-
-  uint64_t replicationFactor = 1;
-  std::string const& value5 = _request->value("replicationFactor", found);
-
-  if (found) {
-    replicationFactor = StringUtils::uint64(value5);
+    if (found) {
+      force = StringUtils::boolean(value3);
+    }
   }
 
   Result res;
 
   if (ServerState::instance()->isCoordinator()) {
+    uint64_t numberOfShards = 0;
+    {
+      std::string const& value4 = _request->value("numberOfShards", found);
+      if (found) {
+        numberOfShards = StringUtils::uint64(value4);
+      }
+    }
+    uint64_t replicationFactor = 1;
+    {
+      std::string const& value5 = _request->value("replicationFactor", found);
+      if (found) {
+        replicationFactor = StringUtils::uint64(value5);
+      }
+    }
+    bool ignoreDistributeShardsLikeErrors = false;
+    {
+      std::string const& value9 =
+          _request->value("ignoreDistributeShardsLikeErrors", found);
+      if (found) {
+        ignoreDistributeShardsLikeErrors = StringUtils::boolean(value9);
+      }
+    }
+
     res = processRestoreCollectionCoordinator(
         slice, overwrite, force, numberOfShards,
         replicationFactor, ignoreDistributeShardsLikeErrors);
@@ -969,6 +992,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection name is missing");
   }
 
+  if (ignoreHiddenEnterpriseCollection(name, force)) {
+    return {TRI_ERROR_NO_ERROR};
+  }
+
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
@@ -979,28 +1006,24 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   ClusterInfo* ci = ClusterInfo::instance();
 
+  grantTemporaryRights();
   try {
     // in a cluster, we only look up by name:
     std::shared_ptr<LogicalCollection> col = ci->getCollection(dbName, name);
 
     // drop an existing collection if it exists
     if (dropExisting) {
-      std::string errorMsg;
-      int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
-                                              errorMsg, 0.0);
-      if (res == TRI_ERROR_FORBIDDEN ||
-          res ==
-              TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
-        // some collections must not be dropped
-        res = truncateCollectionOnCoordinator(dbName, name);
-        if (res != TRI_ERROR_NO_ERROR) {
-          return Result(res, std::string("unable to truncate collection (dropping is forbidden): '") + name + "'");
+      auto res = methods::Collections::drop(_vocbase, col.get(), false, 0.0, false);
+      if (!res.ok()) {
+        if (res.is(TRI_ERROR_FORBIDDEN) || res.is(TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE)) {
+          // some collections must not be dropped
+          int innerRes = truncateCollectionOnCoordinator(dbName, name);
+          if (innerRes != TRI_ERROR_NO_ERROR) {
+            return Result(innerRes, std::string("unable to truncate collection (dropping is forbidden): '") + name + "'");
+          }
+          return {innerRes};
         }
-        return Result(res);
-      }
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        return Result(res, std::string("unable to drop collection '") + name + "': " + TRI_errno_string(res));
+        return res;
       }
     } else {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("unable to create collection '") + name + "': " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
@@ -1042,7 +1065,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // Replication Factor. Will be overwritten if not existent
   VPackSlice const replFactorSlice = parameters.get("replicationFactor");
-  if (!replFactorSlice.isInteger()) {
+  bool isValidReplFactorSlice =
+      replFactorSlice.isInteger() ||
+        (replFactorSlice.isString() && replFactorSlice.isEqualString("satellite"));
+  if (!isValidReplFactorSlice) {
     if (replicationFactor == 0) {
       replicationFactor = 1;
     }
@@ -1057,6 +1083,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // system collection?
     toMerge.add("isSystem", VPackValue(true));
   }
+
+
+  // Always ignore `shadowCollections` they were accidentially dumped in arangodb versions
+  // earlier than 3.3.6
+  toMerge.add("shadowCollections", arangodb::basics::VelocyPackHelper::NullValue());
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
@@ -1068,7 +1099,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   VPackSlice const sliceToMerge = toMerge.slice();
   VPackBuilder mergedBuilder =
-      VPackCollection::merge(parameters, sliceToMerge, false);
+      VPackCollection::merge(parameters, sliceToMerge, false, true);
   VPackSlice const merged = mergedBuilder.slice();
 
   try {
@@ -1107,6 +1138,21 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreData(std::string const& colName) {
+#ifdef USE_ENTERPRISE
+  {
+    bool force = false;
+    bool found = false;
+    std::string const& forceVal = _request->value("force", found);
+
+    if (found) {
+      force = StringUtils::boolean(forceVal);
+    }
+    if (ignoreHiddenEnterpriseCollection(colName, force)) {
+      return {TRI_ERROR_NO_ERROR};
+    }
+  }
+#endif
+
   grantTemporaryRights();
   
   if (colName == "_users") {
@@ -1476,6 +1522,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
+
   VPackSlice const parameters = collection.get("parameters");
 
   if (!parameters.isObject()) {
@@ -1613,6 +1660,10 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
+  if (ignoreHiddenEnterpriseCollection(name, force)) {
+    return {TRI_ERROR_NO_ERROR};
+  }
+
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
@@ -1632,9 +1683,6 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   }
   TRI_ASSERT(col != nullptr);
   
-  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
-
-  int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
     VPackSlice type = idxDef.get("type");
     if (type.isString() &&
@@ -1644,17 +1692,13 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     }
 
     VPackBuilder tmp;
-    res = ci->ensureIndexCoordinator(dbName, col->cid_as_string(), idxDef, true,
-                                     arangodb::Index::Compare, tmp, errorMsg,
-                                     cluster->indexCreationTimeout());
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg =
-          "could not create index: " + std::string(TRI_errno_string(res));
-      break;
+    auto res = methods::Indexes::ensureIndex(col.get(), idxDef, true, tmp);
+    if (!res.ok()) {
+      errorMsg = "could not create index: " + res.errorMessage();
+      return res.errorNumber();
     }
   }
-
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -362,7 +362,7 @@ router.get('/fishbowl', function (req, res) {
   try {
     store.update();
   } catch (e) {
-    console.warnLines(`Failed to update Foxx store: ${e.stack}`);
+    console.warn('Failed to update Foxx store from GitHub.');
   }
   res.json(store.availableJson());
 })

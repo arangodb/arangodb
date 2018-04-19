@@ -13,6 +13,26 @@ mkdir -p "${HOME}@INC_CPACK_ARANGODB_APPS_DIRECTORY@"
 if test ! -f "${HOME}@INC_CPACK_INSTALL_SYSCONFDIR@"; then
     cp -R "${ROOTDIR}@CPACK_PACKAGING_INSTALL_PREFIX@/@CMAKE_INSTALL_SYSCONFDIR_ARANGO@" "${ARANGOD_CONF_DIR}/"
 fi
+
+# binary symlinks
+SCRIPTS=$( cd "${ROOTDIR}@CMAKE_INSTALL_PREFIX@" && ls -1 {"@CMAKE_INSTALL_BINDIR@","@CMAKE_INSTALL_SBINDIR@"}/* )
+
+for script in $SCRIPTS; do
+  base=$(basename "$script")
+
+  (
+    echo "#!/bin/bash"
+    echo
+    echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
+    echo
+
+    echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}/${base}.conf\" \$*"
+  ) > "${ROOTDIR}/$base.$$"
+
+  chmod 755 "${ROOTDIR}/$base.$$"
+  mv "${ROOTDIR}/$base.$$" "${ROOTDIR}/$base"
+done
+
 if test ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/SERVER" -a ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"; then
     STORAGE_ENGINE=$(
         /usr/bin/osascript <<-EOF
@@ -39,6 +59,7 @@ end tell
 END
               )
         if test "${UPGRADE_DB}" == "Yes"; then
+            echo "Updating the database ..."
             "${ROOTDIR}/arangod" --database.auto-upgrade -c "${ARANGOD_CONF}"
         else
             echo "Can't continue with not updated database."
@@ -46,24 +67,6 @@ END
         fi
     fi
 fi
-
-SCRIPTS=$( cd "${ROOTDIR}@CMAKE_INSTALL_PREFIX@" && ls -1 {"@CMAKE_INSTALL_BINDIR@","@CMAKE_INSTALL_SBINDIR@"}/* )
-
-for script in $SCRIPTS; do
-  base=$(basename "$script")
-
-  (
-    echo "#!/bin/bash"
-    echo
-    echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
-    echo
-
-    echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}/${base}.conf\" \$*"
-  ) > "${ROOTDIR}/$base.$$"
-
-  chmod 755 "${ROOTDIR}/$base.$$"
-  mv "${ROOTDIR}/$base.$$" "${ROOTDIR}/$base"
-done
 
 # start the server
 
