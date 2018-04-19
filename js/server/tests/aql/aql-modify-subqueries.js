@@ -53,11 +53,11 @@ let hasDistributeNode = function(nodes) {
   }).length > 0);
 };
 
-let allRemoteNodesAreRestrictedToShard = function(nodes, collection) {
+let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
   return nodes.filter(function(node) { 
-    return node.type === 'RemoteNode'; 
+    return node.type === typeName; 
   }).every(function(node) {
-    return (collection.shards().indexOf(node.ownName) !== -1);
+    return (collection.shards().indexOf(node.restrictedTo) !== -1);
   });
 };
 
@@ -94,7 +94,7 @@ function ahuacatlModifySuite () {
    
       let plan = AQL_EXPLAIN(query).plan;
       assertFalse(hasDistributeNode(plan.nodes));
-      assertTrue(allRemoteNodesAreRestrictedToShard(plan.nodes, c));
+      assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'UpdateNode', c));
       assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
 
       assertEqual(1, c.count());
@@ -126,7 +126,7 @@ function ahuacatlModifySuite () {
    
       let plan = AQL_EXPLAIN(query).plan;
       assertFalse(hasDistributeNode(plan.nodes));
-      assertTrue(allRemoteNodesAreRestrictedToShard(plan.nodes, c));
+      assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
       assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
 
       assertEqual(1, c.count());
@@ -400,7 +400,7 @@ function ahuacatlModifySuite () {
       if (isCluster) {
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
-        assertTrue(allRemoteNodesAreRestrictedToShard(plan.nodes, c));
+        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
     
@@ -422,7 +422,7 @@ function ahuacatlModifySuite () {
       if (isCluster) {
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
-        assertTrue(allRemoteNodesAreRestrictedToShard(plan.nodes, c));
+        assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'RemoveNode', c));
         assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
     
