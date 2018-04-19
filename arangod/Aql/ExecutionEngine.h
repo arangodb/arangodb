@@ -48,9 +48,8 @@ class ExecutionEngine {
   static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*,
                                               ExecutionPlan*, bool);
 
-  TEST_VIRTUAL void createBlocks(
+  TEST_VIRTUAL Result createBlocks(
       std::vector<ExecutionNode*> const& nodes,
-      std::unordered_set<std::string> const& includedShards,
       std::unordered_set<std::string> const& restrictToShards,
       std::unordered_map<std::string, std::string> const& queryIds);
 

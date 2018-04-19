@@ -131,7 +131,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       delete lockedShards; // This is a copy
       return;
     });
-    fakeit::When(Method(mockEngine, createBlocks)).Return();
+    fakeit::When(Method(mockEngine, createBlocks)).Return(Result{TRI_ERROR_NO_ERROR});
     fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&rootBlock);
 
@@ -226,10 +226,10 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_set<std::string> const&,
       std::unordered_map<std::string, std::string> const&) {
         REQUIRE(nodes.size() == 1);
         REQUIRE(nodes[0] == &fNode);
+        return Result{TRI_ERROR_NO_ERROR};
     });
     fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
@@ -260,10 +260,10 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockSecondEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_set<std::string> const&,
       std::unordered_map<std::string, std::string> const&) {
         REQUIRE(nodes.size() == 1);
         REQUIRE(nodes[0] == &sNode);
+        return Result{TRI_ERROR_NO_ERROR};
     });
     fakeit::When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
@@ -419,12 +419,12 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_set<std::string> const&,
       std::unordered_map<std::string, std::string> const&) {
         REQUIRE(nodes.size() == 3);
         REQUIRE(nodes[0] == &fbNode);
         REQUIRE(nodes[1] == &sbNode);
         REQUIRE(nodes[2] == &tbNode);
+        return Result{TRI_ERROR_NO_ERROR};
     });
     fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
@@ -451,10 +451,10 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockSecondEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_set<std::string> const&,
       std::unordered_map<std::string, std::string> const&) {
         REQUIRE(nodes.size() == 1);
         REQUIRE(nodes[0] == &aNode);
+        return Result{TRI_ERROR_NO_ERROR};
     });
     fakeit::When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
@@ -470,10 +470,10 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockThirdEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_set<std::string> const&,
       std::unordered_map<std::string, std::string> const&) {
         REQUIRE(nodes.size() == 1);
         REQUIRE(nodes[0] == &bNode);
+        return Result{TRI_ERROR_NO_ERROR};
     });
     fakeit::When(ConstOverloadedMethod(mockThirdEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
@@ -606,7 +606,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       delete lockedShards; // This is a copy
       return;
     });
-    fakeit::When(Method(mockEngine, createBlocks)).AlwaysReturn();
+    fakeit::When(Method(mockEngine, createBlocks)).AlwaysReturn(Result{TRI_ERROR_NO_ERROR});
     fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
 
@@ -625,7 +625,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       delete lockedShards; // This is a copy
       return;
     });
-    fakeit::When(Method(mockSecondEngine, createBlocks)).AlwaysReturn();
+    fakeit::When(Method(mockSecondEngine, createBlocks)).AlwaysReturn(Result{TRI_ERROR_NO_ERROR});
     fakeit::When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
 

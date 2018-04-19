@@ -81,7 +81,10 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     engine->setLockedShards(cpyLockedShards.release());
   }
 
-  engine->createBlocks(_nodes, {}, restrictToShards, dbServerQueryIds);
+  auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
+  if (!res.ok()) {
+    return res;
+  }
 
   TRI_ASSERT(engine->root() != nullptr);
 
