@@ -3777,10 +3777,10 @@ void arangodb::aql::restrictToSingleShardRule(
 
         if (!shardId.empty() && finder.isSafeForOptimization(collection, shardId)) {
           wasModified = true;
-          static_cast<RemoteNode*>(node)->ownName(shardId);
           // we are on a single shard. we must not ignore not-found documents now
           auto* modNode = static_cast<ModificationNode*>(current);
           modNode->getOptions().ignoreDocumentNotFound = false;
+          modNode->restrictToShard(shardId);
         }
         break;
       } else if (currentType == ExecutionNode::INDEX) {
