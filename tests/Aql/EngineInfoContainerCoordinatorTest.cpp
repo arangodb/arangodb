@@ -88,7 +88,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
   SECTION("it should create an ExecutionEngine for the first snippet") {
 
     std::unordered_set<std::string> const restrictToShards;
-    std::unordered_map<std::string, std::string> queryIds;
+    MapRemoteToSnippet queryIds;
     auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
     std::string const dbname = "TestDB";
 
@@ -164,7 +164,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
   SECTION("it should create an new engine and register it for second snippet") {
     std::unordered_set<std::string> const restrictToShards;
-    std::unordered_map<std::string, std::string> queryIds;
+    MapRemoteToSnippet queryIds;
     auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
 
     size_t remoteId = 1337;
@@ -226,7 +226,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_map<std::string, std::string> const&) {
+      MapRemoteToSnippet const&) {
         REQUIRE(nodes.size() == 1);
         REQUIRE(nodes[0] == &fNode);
         return Result{TRI_ERROR_NO_ERROR};
@@ -260,7 +260,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockSecondEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_map<std::string, std::string> const&) {
+      MapRemoteToSnippet const&) {
         REQUIRE(nodes.size() == 1);
         REQUIRE(nodes[0] == &sNode);
         return Result{TRI_ERROR_NO_ERROR};
@@ -322,7 +322,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
   SECTION("snipets are a stack, insert node always into top snippet") {
     std::unordered_set<std::string> const restrictToShards;
-    std::unordered_map<std::string, std::string> queryIds;
+    MapRemoteToSnippet queryIds;
     auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
 
     size_t remoteId = 1337;
@@ -419,7 +419,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_map<std::string, std::string> const&) {
+      MapRemoteToSnippet const&) {
         REQUIRE(nodes.size() == 3);
         REQUIRE(nodes[0] == &fbNode);
         REQUIRE(nodes[1] == &sbNode);
@@ -451,7 +451,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockSecondEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_map<std::string, std::string> const&) {
+      MapRemoteToSnippet const&) {
         REQUIRE(nodes.size() == 1);
         REQUIRE(nodes[0] == &aNode);
         return Result{TRI_ERROR_NO_ERROR};
@@ -470,7 +470,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     fakeit::When(Method(mockThirdEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
-      std::unordered_map<std::string, std::string> const&) {
+      MapRemoteToSnippet const&) {
         REQUIRE(nodes.size() == 1);
         REQUIRE(nodes[0] == &bNode);
         return Result{TRI_ERROR_NO_ERROR};
@@ -551,7 +551,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
   SECTION("error cases") {
     std::unordered_set<std::string> const restrictToShards;
-    std::unordered_map<std::string, std::string> queryIds;
+    MapRemoteToSnippet queryIds;
     auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
 
     size_t remoteId = 1337;

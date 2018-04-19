@@ -44,6 +44,28 @@ using namespace arangodb;
 using namespace arangodb::aql;
 static const double SETUP_TIMEOUT = 25.0;
 
+static Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
+  TRI_ASSERT(keySlice.isString()); // used as  a key in Json
+  StringRef key(keySlice);
+  size_t p = key.find(':');
+  if (p == std::string::npos) {
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+      "Unexpected response from DBServer during setup"};
+  }
+  StringRef remId = key.substr(0, p);
+  remoteId = basics::StringUtils::uint64(remId.begin(), remId.length());
+  if (remoteId == 0) {
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+      "Unexpected response from DBServer during setup"};
+  }
+  shardId = key.substr(p + 1).toString();
+  if (shardId.empty()) {
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+      "Unexpected response from DBServer during setup"};
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(size_t idOfRemoteNode)
     : _idOfRemoteNode(idOfRemoteNode), _otherId(0), _collection(nullptr) {}
 
@@ -692,11 +714,11 @@ Result EngineInfoContainerDBServer::buildEngines(
   VPackBuilder infoBuilder;
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
-    LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Building Engine Info for "
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for "
                                             << it.first;
     infoBuilder.clear();
     it.second.buildMessage(query, infoBuilder);
-    LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Sending the Engine info: "
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Sending the Engine info: "
                                             << infoBuilder.toJson();
 
     // Now we send to DBServers.
@@ -733,26 +755,24 @@ Result EngineInfoContainerDBServer::buildEngines(
     VPackSlice snippets = result.get("snippets");
 
     for (auto const& resEntry : VPackObjectIterator(snippets)) {
-      if (!resEntry.value.isArray()) {
+      if (!resEntry.value.isString()) {
         return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                 "Unable to deploy query on all required "
                 "servers. This can happen during "
                 "Failover. Please check: " +
                     it.first};
       }
-      size_t remoteId = basics::StringUtils::uint64(resEntry.key.copyString());
-      auto remote = queryIds[remoteId];
-      auto thisServer = remote[serverDest];
-      for (auto const& snippetEntry : VPackArrayIterator(resEntry.value)) {
-        if (!snippetEntry.isString()) {
-          return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                  "Unable to deploy query on all required "
-                  "servers. This can happen during "
-                  "Failover. Please check: " +
-                      it.first};
-        }
-        thisServer.emplace_back(snippetEntry.copyString());
+      size_t remoteId = 0;
+      std::string shardId = "";
+      auto res = ExtractRemoteAndShard(resEntry.key, remoteId, shardId);
+      if (!res.ok()) {
+        return res;
       }
+      TRI_ASSERT(remoteId != 0);
+      TRI_ASSERT(!shardId.empty());
+      auto& remote = queryIds[remoteId];
+      auto& thisServer = remote[serverDest];
+      thisServer.emplace_back(resEntry.value.copyString());
     }
 
     VPackSlice travEngines = result.get("traverserEngines");
