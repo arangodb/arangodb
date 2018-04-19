@@ -23,6 +23,7 @@
 
 #include "catch.hpp"
 #include "common.h"
+#include "AgencyMock.h"
 #include "StorageEngineMock.h"
 
 #include "utils/utf8_path.hpp"
@@ -46,6 +47,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterComm.h"
 #include "Agency/AgencyFeature.h"
+#include "Agency/Store.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -73,6 +75,7 @@
 #include "velocypack/Parser.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -87,6 +90,8 @@ struct IResearchLinkCoordinatorSetup {
     }
   };
 
+  arangodb::consensus::Store _agencyStore{nullptr, "arango"};
+  GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
@@ -94,6 +99,11 @@ struct IResearchLinkCoordinatorSetup {
   std::string testFilesystemPath;
 
   IResearchLinkCoordinatorSetup(): server(nullptr, nullptr) {
+    //initializeAgencyStore(_agencyStore); // initialize agency structure
+    auto* agencyCommManager = new AgencyCommManagerMock("arango");
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -115,7 +125,7 @@ struct IResearchLinkCoordinatorSetup {
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
     features.emplace_back(auth = new arangodb::AuthenticationFeature(&server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
@@ -164,6 +174,8 @@ struct IResearchLinkCoordinatorSetup {
     std::string systemErrorStr;
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
 
+    agencyCommManager->start(); // initialize agency
+
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -208,10 +220,26 @@ TEST_CASE("IResearchLinkCoordinatorTest", "[iresearch][iresearch-link]") {
 SECTION("test_defaults") {
   // no view specified
   {
+    std::string error;
     s.engine.views.clear();
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 1, \"replicationFactor\":0 }");
+//    auto* logicalCollection = arangodb::ClusterInfo::instance()->createCollectionCoordinator(
+//      vocbase.name(), "1", 2, 1, false, collectionJson->slice(), error, 10);
+////          createCollection(collectionJson->slice());
+//
+    arangodb::LogicalCollection* logicalCollection{};
+
+    auto res = arangodb::methods::Collections::create(
+      &vocbase,
+      "testCollection",
+      TRI_COL_TYPE_DOCUMENT,
+      collectionJson->slice(),
+      false,
+      false,
+      [&logicalCollection](arangodb::LogicalCollection* created) { logicalCollection = created; }
+    );
+    REQUIRE(res.ok());
     REQUIRE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{}");
     auto link = arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles(logicalCollection, json->slice(), 1, true);

@@ -9,6 +9,7 @@ endforeach()
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
     IResearch/common.cpp
+    IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp
 #    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp

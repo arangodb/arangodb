@@ -340,11 +340,17 @@ SECTION("test_defaults") {
   }
 }
 
-SECTION("test_drop") {
+SECTION("test_drop_view") {
   // FIXME implement
+  // IResearchViewCoordinator::drop()
 }
 
-SECTION("modify_view") {
+SECTION("test_drop_link") {
+  // FIXME implement
+  // IResearchViewCoordinator::drop(TRI_voc_cid_t)
+}
+
+SECTION("test_update_properties") {
   // FIXME implement
 }
 

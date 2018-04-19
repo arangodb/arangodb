@@ -368,18 +368,21 @@ arangodb::Result IResearchViewCoordinator::updateLinks(
           return { TRI_ERROR_BAD_PARAMETER, error } ;
         }
 
+        // do not need to drop link afterwards
+        collections.erase(collection->id());
+
         if (*existingLink == linkMeta) {
           // nothing to do
           continue;
         }
 
-        builder.clear();
         res = dropLink(*existingLink, *collection, builder);
-        collections.erase(collection->id());
 
         if (!res.ok()) {
           return res;
         }
+
+        builder.clear();
       }
 
       res = createLink(*collection, *this, link, builder);
@@ -390,6 +393,7 @@ arangodb::Result IResearchViewCoordinator::updateLinks(
     }
   }
 
+  // in case of full update drop unprocessed links
   for (auto const cid : collections) {
     auto collection = resolver.getCollection(cid);
 
