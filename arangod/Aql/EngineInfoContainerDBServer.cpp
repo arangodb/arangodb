@@ -58,7 +58,8 @@ EngineInfoContainerDBServer::EngineInfo::EngineInfo(EngineInfo const&& other)
     : _nodes(std::move(other._nodes)),
       _idOfRemoteNode(other._idOfRemoteNode),
       _otherId(other._otherId),
-      _collection(other._collection) {
+      _collection(other._collection),
+      _restrictedShard("") {
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(_collection != nullptr);
 }
@@ -68,6 +69,24 @@ void EngineInfoContainerDBServer::EngineInfo::connectQueryId(QueryId id) {
 }
 
 void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
+  switch (node->getType()) {
+    case ExecutionNode::INSERT:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPSERT: {
+      auto modNode = static_cast<ModificationNode*>(node);
+      if (modNode->isRestricted()) {
+        TRI_ASSERT(_restrictedShard.empty());
+        _restrictedShard = modNode->restrictedShard();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "RESTRICTION! " << modNode->restrictedShard();
+      }
+      break;
+    }
+    default:
+      // do nothing
+      break;
+  }
   _nodes.emplace_back(node);
 }
 
@@ -82,6 +101,14 @@ void EngineInfoContainerDBServer::EngineInfo::collection(Collection* col) {
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     Query* query, ShardID id, VPackBuilder& infoBuilder,
     bool isResponsibleForInit) const {
+  if (!_restrictedShard.empty()) {
+    if (id != _restrictedShard) {
+      return;
+    } else {
+      // We only have one shard it has to be responsible!
+      isResponsibleForInit = true;
+    }
+  }
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(
       arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
@@ -136,6 +163,25 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   _collection->resetCurrentShard();
 }
 
+EngineInfoContainerDBServer::CollectionInfo::CollectionInfo(
+    AccessMode::Type lock, std::shared_ptr<std::vector<ShardID>> shards) : lockType(lock) {
+  // What if we have an empty shard list here?
+  if (shards->empty()) {
+    // TODO FIXME
+    LOG_TOPIC(WARN, arangodb::Logger::AQL) << "TEMPORARY: A collection access of a query has no result in any shard";
+  }
+  mergeShards(shards);
+}
+
+EngineInfoContainerDBServer::CollectionInfo::~CollectionInfo() {}
+
+void EngineInfoContainerDBServer::CollectionInfo::mergeShards(std::shared_ptr<std::vector<ShardID>> shards) {
+  for (auto const& s : *shards) {
+    usedShards.emplace(s);
+  }
+}
+
+
 EngineInfoContainerDBServer::EngineInfoContainerDBServer() {}
 
 EngineInfoContainerDBServer::~EngineInfoContainerDBServer() {}
@@ -145,22 +191,37 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   _engineStack.top()->addNode(node);
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
-      handleCollection(
-          static_cast<EnumerateCollectionNode*>(node)->collection(),
-          AccessMode::Type::READ, true);
-      break;
+      {
+        auto col = static_cast<EnumerateCollectionNode*>(node)->collection();
+        handleCollection(col, AccessMode::Type::READ);
+        updateCollection(col);
+        break;
+      }
     case ExecutionNode::INDEX:
-      handleCollection(static_cast<IndexNode*>(node)->collection(),
-                       AccessMode::Type::READ, true);
-      break;
+      {
+        auto idxNode = static_cast<IndexNode*>(node);
+        auto col = idxNode->collection();
+        handleCollection(col, AccessMode::Type::READ);
+        updateCollection(col);
+        break;
+      }
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
     case ExecutionNode::REPLACE:
     case ExecutionNode::UPSERT:
-      handleCollection(static_cast<ModificationNode*>(node)->collection(),
-                       AccessMode::Type::WRITE, true);
-      break;
+      {
+        auto modNode = static_cast<ModificationNode*>(node);
+        auto col = modNode->collection();
+        if (modNode->isRestricted()) {
+          std::unordered_set<std::string> restrict{modNode->restrictedShard()};
+          handleCollection(col, AccessMode::Type::WRITE, restrict);
+        } else {
+          handleCollection(col, AccessMode::Type::WRITE);
+        }
+        updateCollection(col);
+        break;
+      }
     default:
       // Do nothing
       break;
@@ -183,32 +244,70 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 
   e->connectQueryId(coordinatorEngineId);
   TRI_ASSERT(e->collection() != nullptr);
-  auto& engine = _engines[e->collection()];
-  engine.emplace_back(std::move(e));
+  auto it = _collectionInfos.find(e->collection());
+  // This is not possible we have a snippet where no collection is involved
+  TRI_ASSERT(it != _collectionInfos.end());
+  if (it == _collectionInfos.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Created a DBServer QuerySnippet without a Collection. This should not happen. Please report this query to ArangoDB");
+  } 
+  it->second.engines.emplace_back(std::move(e));
 }
 
-// This first defines the lock required for this collection
-// Then we update the collection pointer of the last engine.
+/**
+ * @brief Take care of this collection, set the lock state accordingly
+ *        and maintain the list of used shards for this collection.
+ *        This call will not restrict the shards of this collection.
+ *
+ * @param col The collection that should be used
+ * @param accessType The lock-type of this collection
+ */
+void EngineInfoContainerDBServer::handleCollection(
+    Collection const* col, AccessMode::Type const& accessType) {
+  std::unordered_set<std::string> noRestriction;
+  handleCollection(col, accessType, noRestriction);
+}
 
-#ifndef USE_ENTERPRISE
+
+
+/**
+ * @brief Take care of this collection, set the lock state accordingly
+ *        and maintain the list of used shards for this collection.
+ *
+ * @param col The collection that should be used
+ * @param accessType The lock-type of this collection
+ * @param restrictedShards The list of shards that can be relevant in this query (a subset of the collection shards)
+ */
 void EngineInfoContainerDBServer::handleCollection(
     Collection const* col, AccessMode::Type const& accessType,
-    bool updateCollection) {
-  auto it = _collections.find(col);
-  if (it == _collections.end()) {
-    _collections.emplace(col, accessType);
+    std::unordered_set<std::string> const& restrictedShards) {
+  // Call without restriction instead
+  auto it = _collectionInfos.find(col);
+  if (it == _collectionInfos.end()) {
+    if (restrictedShards.empty()) {
+      _collectionInfos.emplace(col, CollectionInfo{accessType, col->shardIds()});
+    } else {
+      _collectionInfos.emplace(col, CollectionInfo{accessType, col->shardIds(restrictedShards)});
+    }
   } else {
-    if (it->second < accessType) {
+    if (it->second.lockType < accessType) {
       // We need to upgrade the lock
-      it->second = accessType;
+      it->second.lockType = accessType;
+    }
+    if (restrictedShards.empty()) {
+      it->second.mergeShards(col->shardIds());
+    } else {
+      it->second.mergeShards(col->shardIds(restrictedShards));
     }
   }
-  if (updateCollection) {
-    TRI_ASSERT(!_engineStack.empty());
-    auto e = _engineStack.top();
-    // ... const_cast
-    e->collection(const_cast<Collection*>(col));
-  }
+}
+
+// Then we update the collection pointer of the last engine.
+#ifndef USE_ENTERPRISE
+void updateCollection(Collection const* col) {
+  TRI_ASSERT(!_engineStack.empty());
+  auto e = _engineStack.top();
+  // ... const_cast
+  e->collection(const_cast<Collection*>(col));
 }
 #endif
 
@@ -367,15 +466,13 @@ EngineInfoContainerDBServer::createDBServerMapping(
 
   std::map<ServerID, DBServerInfo> dbServerMapping;
 
-  for (auto const& it : _collections) {
+  for (auto const& it : _collectionInfos) {
     // it.first => Collection const*
-    // it.second => Lock Type
-    std::vector<std::shared_ptr<EngineInfo>> const* engines = nullptr;
-    if (_engines.find(it.first) != _engines.end()) {
-      engines = &_engines.find(it.first)->second;
-    }
-    auto shardIds = it.first->shardIds(restrictToShards);
-    for (auto const& s : *(shardIds.get())) {
+    // it.second.lockType => Lock Type
+    // it.second.engines => All Engines using this collection
+    // it.second.usedShards => All shards of this collection releveant for this query
+    std::vector<std::shared_ptr<EngineInfo>> const engines = it.second.engines;
+    for (auto const& s : it.second.usedShards) {
       lockedShards->emplace(s);
       auto const servers = ci->getResponsibleServer(s);
       if (servers == nullptr || servers->empty()) {
@@ -385,11 +482,9 @@ EngineInfoContainerDBServer::createDBServerMapping(
       }
       auto responsible = servers->at(0);
       auto& mapping = dbServerMapping[responsible];
-      mapping.addShardLock(it.second, s);
-      if (engines != nullptr) {
-        for (auto& e : *engines) {
-          mapping.addEngine(e, s);
-        }
+      mapping.addShardLock(it.second.lockType, s);
+      for (auto& e : engines) {
+        mapping.addEngine(e, s);
       }
     }
   }
@@ -564,8 +659,6 @@ Result EngineInfoContainerDBServer::buildEngines(
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_set<ShardID>* lockedShards) const {
   TRI_ASSERT(_engineStack.empty());
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "We have " << _engines.size()
-                                          << " DBServer engines";
 
   // We create a map for DBServer => All Query snippets executed there
   auto dbServerMapping = createDBServerMapping(restrictToShards, lockedShards);
@@ -598,11 +691,11 @@ Result EngineInfoContainerDBServer::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   for (auto& it : dbServerMapping) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for "
+    LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Building Engine Info for "
                                             << it.first;
     infoBuilder.clear();
     it.second.buildMessage(query, infoBuilder);
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Sending the Engine info: "
+    LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Sending the Engine info: "
                                             << infoBuilder.toJson();
 
     // Now we send to DBServers.
@@ -675,7 +768,7 @@ Result EngineInfoContainerDBServer::buildEngines(
 void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
   // Add all Edge Collections to the Transactions, Traversals do never write
   for (auto const& col : node->edgeColls()) {
-    handleCollection(col.get(), AccessMode::Type::READ, false);
+    handleCollection(col.get(), AccessMode::Type::READ);
   }
 
   // Add all Vertex Collections to the Transactions, Traversals do never write
@@ -686,11 +779,11 @@ void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
     std::map<std::string, Collection*>* cs =
         query->collections()->collections();
     for (auto const& col : *cs) {
-      handleCollection(col.second, AccessMode::Type::READ, false);
+      handleCollection(col.second, AccessMode::Type::READ);
     }
   } else {
     for (auto const& col : node->vertexColls()) {
-      handleCollection(col.get(), AccessMode::Type::READ, false);
+      handleCollection(col.get(), AccessMode::Type::READ);
     }
   }
 
