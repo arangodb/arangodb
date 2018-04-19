@@ -56,7 +56,8 @@ class ModificationNode : public ExecutionNode {
         _options(options),
         _outVariableOld(outVariableOld),
         _outVariableNew(outVariableNew),
-        _countStats(true) {
+        _countStats(true),
+        _restrictedTo("") {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_collection != nullptr);
   }
@@ -134,6 +135,12 @@ class ModificationNode : public ExecutionNode {
   /// @brief Disable that this node is contributing to statistics. Only disabled in SmartGraph case
   void disableStatistics() { _countStats = false; }
 
+  void restrictToShard(std::string const& shardId) { _restrictedTo = shardId; }
+
+  bool isRestricted() const { return !_restrictedTo.empty(); }
+
+  std::string const& restrictedShard() const { return _restrictedTo; }
+
  protected:
   /// @brief _vocbase, the database
   TRI_vocbase_t* _vocbase;
@@ -152,6 +159,8 @@ class ModificationNode : public ExecutionNode {
 
   /// @brief whether this node contributes to statistics. Only disabled in SmartGraph case
   bool _countStats;
+
+  std::string _restrictedTo;
 };
 
 /// @brief class RemoveNode

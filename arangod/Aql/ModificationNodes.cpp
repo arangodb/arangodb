@@ -44,7 +44,8 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
           Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)), 
-      _countStats(base.get("countStats").getBool()) {
+      _countStats(base.get("countStats").getBool()),
+      _restrictedTo("") {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
 }
