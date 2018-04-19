@@ -280,6 +280,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
+  Cluster/CriticalThread.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
