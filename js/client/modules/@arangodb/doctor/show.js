@@ -28,8 +28,29 @@
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // /////////////////////////////////////////////////////////////////////////////
 
-function showAgents() {
-  print("HALLO");
+const _ = require("lodash");
+const doctor = require("@arangodb/doctor");
+const AsciiTable = require("ascii-table");
+
+function showServers() {
+  let servers = doctor.listServers();
+  let table = new AsciiTable();
+
+  table.setHeading("type", "id", "endpoint", "status");
+
+  _.forEach(servers, function(info, id) {
+    let status = "";
+
+    if (info.type === "AGENT") {
+      status = info.leading ? "leading" : "";
+    } else {
+      status = info.status;
+    }
+
+    table.addRow(info.type, info.id, info.endpoint || "unknown", status);
+  });
+
+  return table;
 }
 
-exports.agents = showAgents;
+exports.servers = showServers;

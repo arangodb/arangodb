@@ -1,4 +1,4 @@
-/* global require, arango */
+/* global require, arango, print, db */
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -29,8 +29,10 @@
 // /////////////////////////////////////////////////////////////////////////////
 
 var request = require("@arangodb/request");
+const _ = require("lodash");
 
 const servers = {};
+let possibleAgent = null;
 
 function INFO() {
   let args = Array.prototype.slice.call(arguments);
@@ -47,49 +49,166 @@ function loadAgencyConfig() {
   return configuration;
 }
 
-function loadAgency(conn) {
-
+function loadAgency(conn, seen) {
   
-  var agency = arango.POST("/_api/agency/read", '[["/"]]');
+  var agency = conn.POST("/_api/agency/read", '[["/"]]');
+  seen[conn.getEndpoint()] = true;
 
   if (agency.code === 404) {
     WARN("not talking to an agent, got: " + JSON.stringify(agency));
-    return {};
+    return null;
+  }
+
+  if (agency.code === 307) {
+    var red = conn.POST_RAW("/_api/agency/read", '[["/"]]');
+
+    if (red.code === 307) {
+      INFO("got redirect to " + red.headers.location);
+
+      let leader = red.headers.location;
+      let reg = /^(http|https):\/\/(.*)\/_api\/agency\/read$/;
+      let m = reg.exec(leader);
+
+      if (m === null) {
+        WARN("unknown redirect " + leader);
+        return null;
+      } else {
+        if (m[1] === "http") {
+          leader = "tcp://" + m[2];
+        }
+        else if (m[1] === "https") {
+          leader = "ssl://" + m[2];
+        }
+
+        if (leader in seen) {
+          WARN("cannot find leader, tried: " + Object.keys(seen).join(", "));
+          return null;
+        }
+
+        INFO("switching to " + leader);
+
+        conn.reconnect(leader, "_system");
+        return loadAgencyAgency(arango, seen);
+      }
+    }
   }
 
   if (agency.code !== undefined) {
     WARN("failed to load agency, got: " + JSON.stringify(agency));
-    return {};
+    return null;
   }
 
   return agency;
 }
 
-function defineAgent(status, endpoint) {
-  let id = status.agent.id;
+function loadAgency() {
+  return loadAgency(arango, {});
+}
 
+function defineServer(type, id, source) {
   if (id in servers) {
+    _.merge(servers[id].source, source);
   } else {
     servers[id] = {
-      type: 'AGENT',
+      type: type,
       id: id,
-      endpoint: endpoint,
-      source: "status"
+      source: source
     };
   }
+}
 
-  if (status.agent.leading) {
-    arango.reconnect(endpoint, "_system");
+function defineServerEndpoint(id, endpoint) {
+  const server = servers[id];
 
-    const cfg = db.configuration.toArray()[0].cfg;
-
-    print("active");
-    cfg.active.map(a => print(a));
-
-    print("pool");
-    Object.keys(cfg.pool).forEach(a => print(a));
-  } else {
+  if ('endpoint' in server) {
+    if (server.endpoint !== endpoint) {
+      INFO("changing endpoint for " + id + " from "
+           + server.endpoint + " to " + endpoint);
+    }
   }
+
+  server.endpoint = endpoint;
+}
+
+function defineServerStatus(id, status) {
+  const server = servers[id];
+
+  if ('status' in server) {
+    if (server.status !== status) {
+      INFO("changing status for " + id + " from "
+           + server.status + " to " + status);
+    }
+  }
+
+  server.status = status;
+}
+
+function defineAgentLeader(id, leading) {
+  const server = servers[id];
+
+  if ('leading' in server) {
+    if (server.leading !== leading) {
+      INFO("changing leading for " + id + " from "
+           + server.leading + " to " + leading);
+    }
+  }
+
+  server.leading = leading;
+}
+
+function defineAgentFromStatus(status, endpoint) {
+  let id = status.agent.id;
+  let leader = status.agent.leaderId;
+
+  defineServer('AGENT', id, { status: endpoint });
+  defineServerEndpoint(id, endpoint);
+
+  arango.reconnect(endpoint, "_system");
+
+  const cfg = db.configuration.toArray()[0].cfg;
+
+  _.forEach(cfg.active, function(id) {
+    defineServer('AGENT', id, { active: endpoint });
+  });
+
+  _.forEach(cfg.pool, function(loc, id) {
+    defineServer('AGENT', id, { pool: endpoint });
+    defineServerEndpoint(id, loc);
+    defineAgentLeader(id, id === leader);
+  });
+
+  defineAgentLeader(id,status.agent.leading);
+}
+
+function definePrimaryFromStatus(status, endpoint) {
+  let id = status.serverInfo.serverId;
+
+  defineServer('PRIMARY', id, { status: endpoint });
+  defineServerEndpoint(id, endpoint);
+
+  let agency = status.agency.endpoints;
+
+  if (0 < agency.length) {
+    possibleAgent = agency[0];
+  }
+}
+
+function defineCoordinatorFromStatus(status, endpoint) {
+  let id = status.serverInfo.serverId;
+
+  defineServer('COORDINATOR', id, { status: endpoint });
+  defineServerEndpoint(id, endpoint);
+
+  let agency = status.agency.endpoints;
+
+  if (0 < agency.length) {
+    possibleAgent = agency[0];
+  }
+}
+
+function defineSingleFromStatus(status, endpoint) {
+  defineServer('SINGLE', 'SINGLE', { status: endpoint });
+  defineServerEndpoint('SINGLE', endpoint);
 }
 
 function serverBasics(conn) {
@@ -97,24 +216,46 @@ function serverBasics(conn) {
     conn = arango;
   }
 
-  const version = conn.GET("/_admin/status");
-  const role = version.serverInfo.role;
+  const status = conn.GET("/_admin/status");
+  const role = status.serverInfo.role;
 
   if (role === 'AGENT') {
     INFO("talking to an agent");
-    defineAgent(version, conn.getEndpoint());
+    defineAgentFromStatus(status, conn.getEndpoint());
   } else if (role === 'PRIMARY') {
     INFO("talking to a primary db server");
-    definePrimary(version);
+    definePrimaryFromStatus(status, conn.getEndpoint());
   } else if (role === 'COORDINATOR') {
     INFO("talking to a coordinator");
-    defineCoordinator(version);
+    defineCoordinatorFromStatus(status);
   } else if (role === 'SINGLE') {
     INFO("talking to a single server");
-    defineSingle(version);
+    defineSingleFromStatus(status);
   } else {
     INFO("talking to a unknown server, role: " + role);
+    return "unknown";
   }
+
+  return role;
+}
+
+function locateServers(plan) {
+  let health = plan[0].arango.Supervision.Health;
+  let cluster = plan[0].arango.Cluster;
+
+  _.forEach(health, function(info, id) {
+    const type = id.substr(0, 4);
+    
+    if (type === "PRMR") {
+      defineServer('PRIMARY', id, { supervision: cluster });
+      defineServerEndpoint(id, info.Endpoint);
+      defineServerStatus(id, info.Status);
+    } else if (type === "CRDN") {
+      defineServer('COORDINATOR', id, { supervision: cluster });
+      defineServerEndpoint(id, info.Endpoint);
+      defineServerStatus(id, info.Status);
+    }
+  });
 }
 
 function listServers() {
@@ -123,5 +264,42 @@ function listServers() {
 
 exports.loadAgencyConfig = loadAgencyConfig;
 exports.serverBasics = serverBasics;
+
 exports.loadAgency = loadAgency;
+exports.locateServers = locateServers;
 exports.listServers = listServers;
+
+(function() {
+  try {
+    var type = serverBasics();
+
+    if (type !== 'AGENT') {
+      if (possibleAgent !== null) {
+        arango.reconnect(possibleAgent, "_system");
+        serverBasics();
+      }
+    }
+
+    var plan = agencyPlan();
+
+    if (plan !== null) {
+      locateServers(plan);
+    }
+  } catch (e) {
+    print(e);
+  }
+}());
+
+exports.show = require("@arangodb/doctor/show");
+
+
+
+
+
+
+
+
+
+
+
+

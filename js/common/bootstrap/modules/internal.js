@@ -744,7 +744,7 @@ global.DEFINE_MODULE('internal', (function () {
 
   // end process
   if (global.SYS_EXIT) {
-    exports.exit = SYS_EXIT;
+    exports.exit = global.SYS_EXIT;
     delete global.SYS_EXIT;
   } else {
     exports.exit = function() {};
