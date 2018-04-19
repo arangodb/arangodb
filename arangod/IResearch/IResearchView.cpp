@@ -1271,10 +1271,13 @@ arangodb::Result IResearchView::dropImpl() {
     for (size_t i = 0, count = IRESEARCH_COUNTOF(_memoryNodes); i < count; ++i) {
       auto& memoryStore = _memoryNodes[i]._store;
 
-      memoryStore._writer->close();
-      memoryStore._writer.reset();
-      memoryStore._directory->close();
-      memoryStore._directory.reset();
+      // ensure no error on double-drop
+      if (memoryStore) {
+        memoryStore._writer->close();
+        memoryStore._writer.reset();
+        memoryStore._directory->close();
+        memoryStore._directory.reset();
+      }
     }
 
     if (_storePersisted) {

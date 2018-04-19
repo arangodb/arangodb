@@ -176,10 +176,6 @@ int IResearchLink::drop() {
 
   // if the collection is in the process of being removed then drop it from the view
   if (_collection->deleted()) {
-    if (_wiewDrop) {
-      _wiewDrop();
-    }
-
     auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
 
     if (!result.ok()) {
@@ -193,7 +189,25 @@ int IResearchLink::drop() {
 
   _dropCollectionInDestructor = false; // will do drop now
 
-  return _view->drop(_collection->id());
+  if (!arangodb::ServerState::instance()->isDBServer()) {
+    return _view->drop(_collection->id());
+  }
+
+  auto res = _view->drop(_collection->id());
+
+  if (TRI_ERROR_NO_ERROR != res) {
+    return res;
+  }
+
+  // TODO FIXME find a better way to look up an iResearch View
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* view = dynamic_cast<IResearchViewDBServer*>(_wiew.get());
+  #else
+    auto* view = static_cast<IResearchViewDBServer*>(_wiew.get());
+  #endif
+
+  return view && view->drop(_collection->id())
+    ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -241,19 +255,23 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false; // no such view
       }
 
-      IResearchViewDBServer* wiew = nullptr;
+      std::shared_ptr<arangodb::LogicalView> wiew;
 
       // create the IResearchView for the specific collection (on DBServer)
       if (arangodb::ServerState::instance()->isDBServer()) {
         // TODO FIXME find a better way to look up an iResearch View
         #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          wiew = dynamic_cast<IResearchViewDBServer*>(logicalView.get());
+          auto* view = dynamic_cast<IResearchViewDBServer*>(logicalView.get());
         #else
-          wiew = static_cast<IResearchViewDBServer*>(logicalView.get());
+          auto* view = static_cast<IResearchViewDBServer*>(logicalView.get());
         #endif
 
-        // repoint LogicalView at the collection-specific instance
-        logicalView = wiew ? wiew->create(id()) : nullptr;
+        if (view) {
+          wiew = logicalView; // remeber the DBServer view instance
+          logicalView = view->ensure(id()); // repoint LogicalView at the per-cid instance
+        } else {
+          logicalView = nullptr;
+        }
       }
 
       // TODO FIXME find a better way to look up an iResearch View
@@ -293,18 +311,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       _dropCollectionInDestructor = view->emplace(collection()->id()); // track if this is the instance that called emplace
       _meta = std::move(meta);
       _view = std::move(view);
-
-      // register the IResearchView for the specific collection (on DBServer)
-      if (wiew) {
-        _wiewDrop = wiew->emplace(_id, logicalView);
-
-        if (!_wiewDrop) {
-          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "error registering view: '" << viewId << "' for link '" << _id << "'";
-
-          return false;
-        }
-      }
+      _wiew = std::move(wiew);
 
       // FIXME TODO remove once View::updateProperties(...) will be fixed to write
       // the update delta into the WAL marker instead of the full persisted state
@@ -312,7 +319,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
         if (engine && engine->inRecovery()) {
-          _defaultId = view->id();
+          _defaultId = _wiew ? _wiew->id() : _view->id();
         }
       }
 
@@ -382,11 +389,13 @@ bool IResearchLink::json(
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (_view) {
-    builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
+  if (_wiew) {
+    setView(builder, _wiew->id());
+  } else if (_view) {
+    setView(builder, _view->id());
   } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
   //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
-    builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
+    setView(builder, _defaultId);
   }
 
   return true;
@@ -406,10 +415,11 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
     }
 
     auto identifier = slice.get(VIEW_ID_FIELD);
+    auto viewId = _wiew ? _wiew->id() : _view->id();
 
     if (!identifier.isNumber()
         || uint64_t(identifier.getInt()) != identifier.getUInt()
-        || identifier.getUInt() != _view->id()) {
+        || identifier.getUInt() != viewId) {
       return false; // iResearch View names of current object and slice do not match
     }
   } else if (_view) {
@@ -574,7 +584,7 @@ int IResearchLink::unload() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  _defaultId = _wiew ? _wiew->id() : _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
 
   auto* col = collection();
 
