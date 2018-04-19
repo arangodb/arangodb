@@ -1820,19 +1820,21 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
 /// is a timeout, a timeout of 0.0 means no timeout.
 ////////////////////////////////////////////////////////////////////////////////
 
-int ClusterInfo::createViewCoordinator(std::string const& databaseName,
-                                       VPackSlice json,
-                                       ViewID& viewID,
-                                       std::string& errorMsg) {
+int ClusterInfo::createViewCoordinator(
+    std::string const& databaseName,
+    VPackSlice json,
+    ViewID& viewID,
+    std::string& errorMsg
+) {
   using arangodb::velocypack::Slice;
 
-  auto typeSlice = json.get("type");
+  auto const typeSlice = json.get("type");
 
   if (!typeSlice.isString()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  auto nameSlice = json.get("name");
+  auto const nameSlice = json.get("name");
 
   if (!nameSlice.isString()) {
     return TRI_ERROR_BAD_PARAMETER;
@@ -1840,7 +1842,7 @@ int ClusterInfo::createViewCoordinator(std::string const& databaseName,
 
   AgencyComm ac;
 
-  std::string const name = basics::VelocyPackHelper::getStringValue(
+  auto const name = basics::VelocyPackHelper::getStringValue(
     json, "name", StaticStrings::Empty
   );
 
@@ -1894,23 +1896,23 @@ int ClusterInfo::createViewCoordinator(std::string const& databaseName,
   }
 
   if (ac.exists("Plan/Views/" + databaseName + "/" + viewID)) {
-    events::CreateView(name, TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS);
-    return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
+    events::CreateView(name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS); // FIXME should it be something like TRI_ERROR_CLUSTER_DATA_SOURCE_ID_EXISTS???
+    return setErrormsg(TRI_ERROR_CLUSTER_VIEW_ID_EXISTS, errorMsg);
   }
 
-  std::vector<AgencyOperation> opers (
-    { AgencyOperation("Plan/Views/" + databaseName + "/" + viewID,
-                      AgencyValueOperationType::SET, json),
-      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
+  AgencyWriteTransaction const transaction{
+    // operations
+    {
+      { "Plan/Views/" + databaseName + "/" + viewID, AgencyValueOperationType::SET, json },
+      { "Plan/Version", AgencySimpleOperationType::INCREMENT_OP }
+    },
+    // preconditions
+    {
+      { "Plan/Views/" + databaseName + "/" + viewID, AgencyPrecondition::Type::EMPTY, true }
+    }
+  };
 
-  std::vector<AgencyPrecondition> precs;
-  precs.emplace_back(
-    AgencyPrecondition("Plan/Views/" + databaseName + "/" + viewID,
-                       AgencyPrecondition::Type::EMPTY, true));
-
-  AgencyWriteTransaction transaction(opers, precs);
-
-  auto res = ac.sendTransactionWithFailover(transaction);
+  auto const res = ac.sendTransactionWithFailover(transaction);
 
   // Only if not precondition failed
   if (!res.successful()) {
@@ -1920,7 +1922,8 @@ int ClusterInfo::createViewCoordinator(std::string const& databaseName,
         + viewID + " does not yet exist failed. Cannot create view.";
 
       // Dump agency plan:
-      AgencyCommResult ag = ac.getValues("/");
+      auto const ag = ac.getValues("/");
+
       if (ag.successful()) {
         LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
                                         << ag.slice().toJson();
@@ -1936,9 +1939,8 @@ int ClusterInfo::createViewCoordinator(std::string const& databaseName,
       errorMsg += " error message: " + res.errorMessage();
       errorMsg += " error details: " + res.errorDetails();
       errorMsg += " body: " + res.body();
-      events::CreateCollection(
-        name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+      events::CreateView(name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
+      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN;
     }
   }
 
@@ -1954,42 +1956,55 @@ int ClusterInfo::createViewCoordinator(std::string const& databaseName,
 ////////////////////////////////////////////////////////////////////////////////
 
 int ClusterInfo::dropViewCoordinator(
-  std::string const& databaseName, std::string const& viewID,
-  std::string& errorMsg) {
+    std::string const& databaseName,
+    std::string const& viewID,
+    std::string& errorMsg
+) {
+  // Transact to agency
+  AgencyWriteTransaction const trans{
+    // operations
+    {
+      { "Plan/Views/" + databaseName + "/" + viewID, AgencySimpleOperationType::DELETE_OP },
+      { "Plan/Version", AgencySimpleOperationType::INCREMENT_OP }
+    },
+    // preconditions
+    {
+      { "Plan/Databases/" + databaseName, AgencyPrecondition::Type::EMPTY, false },
+      { "Plan/Views/" + databaseName + "/" + viewID, AgencyPrecondition::Type::EMPTY, false }
+    }
+  };
 
   AgencyComm ac;
-  AgencyCommResult res;
+  auto const res = ac.sendTransactionWithFailover(trans);
 
-  // Transact to agency
-  AgencyOperation delPlanCollection(
-      "Plan/Views/" + databaseName + "/" + viewID,
-      AgencySimpleOperationType::DELETE_OP);
-  AgencyOperation incrementVersion("Plan/Version",
-                                   AgencySimpleOperationType::INCREMENT_OP);
-  AgencyPrecondition precondition = AgencyPrecondition(
-      "Plan/Databases/" + databaseName, AgencyPrecondition::Type::EMPTY, false);
-  AgencyPrecondition pre2 = AgencyPrecondition(
-      "Plan/Views/" + databaseName + "/" + viewID,
-      AgencyPrecondition::Type::EMPTY, false);
-  AgencyWriteTransaction trans({delPlanCollection, incrementVersion},
-      {precondition, pre2});
-  res = ac.sendTransactionWithFailover(trans);
+  // FIXME do we really have to load plan even in case of error?
+  // Update our own cache
+  loadPlan();
+
+  int errorCode = TRI_ERROR_NO_ERROR;
 
   if (!res.successful()) {
-    AgencyCommResult ag = ac.getValues("");
+    auto const ag = ac.getValues("");
+
     if (ag.successful()) {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
                                       << ag.slice().toJson();
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
     }
+
+    errorCode = res.errorCode();
+
+    if (TRI_ERROR_NO_ERROR == errorCode) {
+      // no error specified in response
+      errorCode = TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED; // FIXME proper error code?
+    }
+
+    errorMsg = res.errorMessage();
   }
 
-  // Update our own cache:
-  loadPlan();
-
-  events::DropView(viewID, TRI_ERROR_NO_ERROR);
-  return TRI_ERROR_NO_ERROR;
+  events::DropView(viewID, errorCode);
+  return errorCode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2002,25 +2017,20 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     VPackSlice const& json
 ) {
   AgencyComm ac;
-  AgencyCommResult res;
 
-  AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
-                                    AgencyPrecondition::Type::EMPTY, false);
-  AgencyOperation incrementVersion("Plan/Version",
-                                   AgencySimpleOperationType::INCREMENT_OP);
-
-  res = ac.getValues("Plan/Views/" + databaseName + "/" + viewID);
+  auto res = ac.getValues("Plan/Views/" + databaseName + "/" + viewID);
 
   if (!res.successful()) {
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
   }
 
-  velocypack::Slice view = res.slice()[0].get(
-      std::vector<std::string>({AgencyCommManager::path(), "Plan",
-                                "Views", databaseName, viewID}));
+  auto const view = res.slice()[0].get(
+    { AgencyCommManager::path(), "Plan", "Views", databaseName, viewID }
+  );
 
   if (!view.isObject()) {
-    AgencyCommResult ag = ac.getValues("");
+    auto const ag = ac.getValues("");
+
     if (ag.successful()) {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
                                       << ag.slice().toJson();
@@ -2028,25 +2038,32 @@ Result ClusterInfo::setViewPropertiesCoordinator(
       LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
     }
 
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
   }
 
   res.clear();
 
-  AgencyOperation setColl(
-      "Plan/Views/" + databaseName + "/" + viewID,
-      AgencyValueOperationType::SET, json);
-
-  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
+  AgencyWriteTransaction const trans{
+    // operations
+    {
+      { "Plan/Views/" + databaseName + "/" + viewID, AgencyValueOperationType::SET, json },
+      { "Plan/Version", AgencySimpleOperationType::INCREMENT_OP }
+    },
+    // preconditions
+    { "Plan/Databases/" + databaseName, AgencyPrecondition::Type::EMPTY, false }
+  };
 
   res = ac.sendTransactionWithFailover(trans);
 
-  if (res.successful()) {
-    loadPlan();
-    return Result();
+  if (!res.successful()) {
+    return {
+      TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
+      res.errorMessage()
+    };
   }
 
-  return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage());
+  loadPlan();
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

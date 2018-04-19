@@ -350,56 +350,75 @@ SECTION("test_defaults") {
   }
 }
 
-SECTION("test_create_cluster_info") {
+SECTION("test_create_drop_view") {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   REQUIRE(nullptr != database);
 
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE(nullptr != ci);
 
-  // create database
-  // simulate heartbeat thread
-  TRI_vocbase_t* vocbase; // owned by DatabaseFeature
-  REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
-
-  REQUIRE(nullptr != vocbase);
-  CHECK("testDatabase" == vocbase->name());
-  CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
-  CHECK(1 == vocbase->id());
-
   std::string error;
+  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
 
-  CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
-    vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
-  ));
-  CHECK("no error" == error);
+  // create database
+  {
+    // simulate heartbeat thread
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
 
-  // create view
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  arangodb::ViewID viewId;
-  error.clear(); // clear error message
+    REQUIRE(nullptr != vocbase);
+    CHECK("testDatabase" == vocbase->name());
+    CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    CHECK(1 == vocbase->id());
 
-  CHECK(TRI_ERROR_NO_ERROR == ci->createViewCoordinator(
-    "testDatabase", json->slice(), viewId, error
-  ));
-  CHECK(error.empty());
+    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
+      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
+    ));
+    CHECK("no error" == error);
+  }
 
-  // get current plan version
-  auto result = arangodb::AgencyComm().getValues("Plan");
-  VPackSlice planVersionSlice = result.slice()[0].get(
-    std::vector<std::string>({AgencyCommManagerMock::path(), "Plan", "Version"})
-  );
+  auto getCurrentPlanVersion = []() {
+    auto result = arangodb::AgencyComm().getValues("Plan");
+    auto planVersionSlice = result.slice()[0].get(
+      std::vector<std::string>({AgencyCommManagerMock::path(), "Plan", "Version"})
+    );
+    return planVersionSlice.getNumber<uint64_t>();
+  };
 
-  auto view = ci->getView("testDatabase", viewId);
-  CHECK(nullptr != view);
-  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-  CHECK(planVersionSlice.getNumber<uint64_t>() == view->planVersion());
-  CHECK("testView" == view->name());
-  CHECK(false == view->deleted());
-  CHECK(1 == view->id());
-  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
-  CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(vocbase == &view->vocbase());
+  // create and drop view
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    arangodb::ViewID viewId;
+    error.clear(); // clear error message
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createViewCoordinator(
+      vocbase->name(), json->slice(), viewId, error
+    ));
+    CHECK(error.empty());
+
+    // get current plan version
+    auto planVersion = getCurrentPlanVersion();
+
+    auto view = ci->getView(vocbase->name(), viewId);
+    CHECK(nullptr != view);
+    CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+    CHECK(planVersion == view->planVersion());
+    CHECK("testView" == view->name());
+    CHECK(false == view->deleted());
+    CHECK(1 == view->id());
+    CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+    CHECK(arangodb::LogicalView::category() == view->category());
+    CHECK(vocbase == &view->vocbase());
+
+    // drop view
+    CHECK(view->drop().ok());
+    CHECK(planVersion < getCurrentPlanVersion());
+
+    // check there is no more view
+    CHECK(nullptr == ci->getView(vocbase->name(), view->name()));
+
+    // drop already dropped view
+    CHECK(view->drop().fail());
+  }
 }
 
 SECTION("test_drop_view") {

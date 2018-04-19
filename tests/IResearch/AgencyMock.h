@@ -33,11 +33,6 @@ class Store;
 } // arangod
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes a specified store
-////////////////////////////////////////////////////////////////////////////////
-bool initializeAgencyStore(arangodb::consensus::Store& store);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief specialization of GeneralClientConnectionMock returning results from
 ///        underlying agency store
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,6 +60,6 @@ class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
   std::vector<std::string> _path;
   std::string _url;
   std::string _body;
-};
+}; // GeneralClientConnectionAgencyMock
 
 #endif

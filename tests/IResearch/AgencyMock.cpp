@@ -97,6 +97,9 @@ void GeneralClientConnectionAgencyMock::getValue(
     handleWrite(buffer);
   } else if (op == "read") {
     handleRead(buffer);
+  } else {
+    // unsupported operation
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 }
 
@@ -132,142 +135,6 @@ void GeneralClientConnectionAgencyMock::setKey(char const* data, size_t length) 
   _url = requestLineParts[1];
   _path = arangodb::basics::StringUtils::split(_url, '/');
   _body.assign(data + pos + bodyDelimiter.size());
-}
-
-bool initializeAgencyStore(arangodb::consensus::Store& store) {
-  store.clear();
-
-  auto addEmptyVPackObject = [](
-      std::string const& name,
-      VPackBuilder& builder
-  ) {
-    builder.add(VPackValue(name));
-    VPackObjectBuilder c(&builder);
-  };
-
-  VPackBuilder builder;
-
-  {
-    VPackObjectBuilder b(&builder);
-
-    builder.add(                       // Cluster Id --------------------------
-      "Cluster", VPackValue(to_string(boost::uuids::random_generator()())));
-
-    builder.add(VPackValue("Agency")); // Agency ------------------------------
-    {
-      VPackObjectBuilder a(&builder);
-      builder.add("Definition", VPackValue(1));
-    }
-
-    builder.add(VPackValue("Current")); // Current ----------------------------
-    {
-      VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("AsyncReplication", builder);
-      builder.add(VPackValue("Collections"));
-      {
-        VPackObjectBuilder d(&builder);
-        addEmptyVPackObject("_system", builder);
-      }
-      builder.add("Version", VPackValue(1));
-      addEmptyVPackObject("ShardsCopied", builder);
-      addEmptyVPackObject("NewServers", builder);
-      addEmptyVPackObject("Coordinators", builder);
-      builder.add("Lock", VPackValue("UNLOCKED"));
-      addEmptyVPackObject("DBServers", builder);
-      addEmptyVPackObject("Singles", builder);
-      builder.add(VPackValue("ServersRegistered"));
-      {
-        VPackObjectBuilder c(&builder);
-        builder.add("Version", VPackValue(1));
-      }
-      addEmptyVPackObject("Databases", builder);
-    }
-
-    builder.add("InitDone", VPackValue(true)); // InitDone
-
-    builder.add(VPackValue("Plan")); // Plan ----------------------------------
-    {
-      VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("AsyncReplication", builder);
-      addEmptyVPackObject("Coordinators", builder);
-      builder.add(VPackValue("Databases"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
-        {
-          VPackObjectBuilder d2(&builder);
-          builder.add("name", VPackValue("_system"));
-          builder.add("id", VPackValue("1"));
-        }
-      }
-      builder.add("Lock", VPackValue("UNLOCKED"));
-      addEmptyVPackObject("DBServers", builder);
-      addEmptyVPackObject("Singles", builder);
-      builder.add("Version", VPackValue(1));
-      builder.add(VPackValue("Collections"));
-      {
-        VPackObjectBuilder d(&builder);
-        addEmptyVPackObject("_system", builder);
-      }
-      builder.add(VPackValue("Views"));
-      {
-        VPackObjectBuilder d(&builder);
-        addEmptyVPackObject("_system", builder);
-      }
-    }
-
-    builder.add(VPackValue("Sync")); // Sync ----------------------------------
-    {
-      VPackObjectBuilder c(&builder);
-      builder.add("LatestID", VPackValue(1));
-      addEmptyVPackObject("Problems", builder);
-      builder.add("UserVersion", VPackValue(1));
-      addEmptyVPackObject("ServerStates", builder);
-      builder.add("HeartbeatIntervalMs", VPackValue(1000));
-      addEmptyVPackObject("Commands", builder);
-    }
-
-    builder.add(VPackValue("Supervision")); // Supervision --------------------
-    {
-      VPackObjectBuilder c(&builder);
-      addEmptyVPackObject("Health", builder);
-      addEmptyVPackObject("Shards", builder);
-      addEmptyVPackObject("DBServers", builder);
-    }
-
-    builder.add(VPackValue("Target")); // Target ------------------------------
-    {
-      VPackObjectBuilder c(&builder);
-      builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
-      builder.add("NumberOfDBServers", VPackSlice::nullSlice());
-      builder.add(VPackValue("CleanedServers"));
-      { VPackArrayBuilder dd(&builder); }
-      builder.add(VPackValue("FailedServers"));
-      { VPackObjectBuilder dd(&builder); }
-      builder.add("Lock", VPackValue("UNLOCKED"));
-      // MapLocalToID is not used for anything since 3.4. It was used in previous
-      // versions to store server ids from --cluster.my-local-info that were mapped
-      // to server UUIDs
-      addEmptyVPackObject("MapLocalToID", builder);
-      addEmptyVPackObject("Failed", builder);
-      addEmptyVPackObject("Finished", builder);
-      addEmptyVPackObject("Pending", builder);
-      addEmptyVPackObject("ToDo", builder);
-      builder.add("Version", VPackValue(1));
-    }
-  }
-
-  arangodb::AgencyOperation initOperation(
-    "", arangodb::AgencyValueOperationType::SET, builder.slice()
-  );
-
-  arangodb::AgencyWriteTransaction initTransaction;
-  initTransaction.operations.push_back(initOperation);
-
-  VPackBuilder transactionBuilder;
-  initTransaction.toVelocyPack(transactionBuilder);
-
-  return store.applyTransaction(transactionBuilder.slice()).success;
 }
 
 // -----------------------------------------------------------------------------
