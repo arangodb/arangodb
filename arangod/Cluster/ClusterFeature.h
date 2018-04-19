@@ -54,6 +54,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _agencyPrefix;
   }
 
+protected:
+  void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
+                            uint64_t interval_ms,
+                            uint64_t maxFailsBeforeWarning,
+                            const std::string & endpoints);
+
  private:
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
