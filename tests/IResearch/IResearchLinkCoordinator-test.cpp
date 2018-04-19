@@ -99,7 +99,6 @@ struct IResearchLinkCoordinatorSetup {
   std::string testFilesystemPath;
 
   IResearchLinkCoordinatorSetup(): server(nullptr, nullptr) {
-    //initializeAgencyStore(_agencyStore); // initialize agency structure
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);

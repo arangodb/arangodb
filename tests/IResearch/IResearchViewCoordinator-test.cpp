@@ -23,6 +23,7 @@
 
 #include "catch.hpp"
 #include "common.h"
+#include "AgencyMock.h"
 #include "StorageEngineMock.h"
 
 #include "utils/utf8_path.hpp"
@@ -34,6 +35,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Agency/Store.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
 
@@ -85,6 +87,8 @@ struct IResearchViewCoordinatorSetup {
     }
   };
 
+  arangodb::consensus::Store _agencyStore{nullptr, "arango"};
+  GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
@@ -92,6 +96,10 @@ struct IResearchViewCoordinatorSetup {
   std::string testFilesystemPath;
 
   IResearchViewCoordinatorSetup(): server(nullptr, nullptr) {
+    auto* agencyCommManager = new AgencyCommManagerMock("arango");
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
+
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init();
@@ -113,7 +121,7 @@ struct IResearchViewCoordinatorSetup {
     system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
     features.emplace_back(auth = new arangodb::AuthenticationFeature(&server), false);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
@@ -162,6 +170,8 @@ struct IResearchViewCoordinatorSetup {
     std::string systemErrorStr;
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
 
+    agencyCommManager->start(); // initialize agency
+
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
@@ -174,7 +184,6 @@ struct IResearchViewCoordinatorSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -190,6 +199,7 @@ struct IResearchViewCoordinatorSetup {
     ClusterCommControl::reset();
     arangodb::ServerState::instance()->setRole(serverRoleBeforeSetup);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 
   arangodb::ServerState::RoleEnum serverRoleBeforeSetup;
@@ -338,6 +348,58 @@ SECTION("test_defaults") {
     CHECK(slice.hasKey("planId"));
     CHECK(!slice.hasKey("properties"));
   }
+}
+
+SECTION("test_create_cluster_info") {
+  auto* database = arangodb::DatabaseFeature::DATABASE;
+  REQUIRE(nullptr != database);
+
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
+  // create database
+  // simulate heartbeat thread
+  TRI_vocbase_t* vocbase; // owned by DatabaseFeature
+  REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+
+  REQUIRE(nullptr != vocbase);
+  CHECK("testDatabase" == vocbase->name());
+  CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+  CHECK(1 == vocbase->id());
+
+  std::string error;
+
+  CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
+    vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
+  ));
+  CHECK("no error" == error);
+
+  // create view
+  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  arangodb::ViewID viewId;
+  error.clear(); // clear error message
+
+  CHECK(TRI_ERROR_NO_ERROR == ci->createViewCoordinator(
+    "testDatabase", json->slice(), viewId, error
+  ));
+  CHECK(error.empty());
+
+  // get current plan version
+  auto result = arangodb::AgencyComm().getValues("Plan");
+  VPackSlice planVersionSlice = result.slice()[0].get(
+    std::vector<std::string>({AgencyCommManagerMock::path(), "Plan", "Version"})
+  );
+
+  auto view = ci->getView("testDatabase", viewId);
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(planVersionSlice.getNumber<uint64_t>() == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(1 == view->id());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(vocbase == &view->vocbase());
 }
 
 SECTION("test_drop_view") {

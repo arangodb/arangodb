@@ -17,6 +17,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchFeature-test.cpp
     IResearch/IResearchOrder-test.cpp
     IResearch/IResearchView-test.cpp
+    IResearch/IResearchViewCoordinator-test.cpp
     IResearch/IResearchViewDBServer-test.cpp
     IResearch/IResearchViewMeta-test.cpp
     IResearch/IResearchDocument-test.cpp
