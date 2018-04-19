@@ -200,7 +200,7 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "user are not supported on this server");
+                                   "users are not supported on this server");
   }
   
   VPackBuilder result = um->serializeUser(username);
@@ -253,7 +253,7 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "user are not supported on this server");
+                                   "users are not supported on this server");
   }
   Result r = um->updateUser(username,
           [&](auth::User& entry) {
@@ -281,7 +281,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "user are not supported on this server");
+                                   "users are not supported on this server");
   }
   
   std::string username = TRI_ObjectToString(args[0]);
@@ -313,7 +313,7 @@ static void JS_GrantCollection(
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "user are not supported on this server");
+                                   "users are not supported on this server");
   }
   
   std::string username = TRI_ObjectToString(args[0]);
@@ -352,7 +352,7 @@ static void JS_RevokeCollection(
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "user are not supported on this server");
+                                   "users are not supported on this server");
   }
 
   std::string username = TRI_ObjectToString(args[0]);
@@ -401,7 +401,7 @@ static void JS_UpdateConfigData(
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "user are not supported on this server");
+                                   "users are not supported on this server");
   }
   
   Result r = um->updateUser(username, [&](auth::User& u) {
@@ -433,7 +433,7 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "user are not supported on this server");
+                                   "users are not supported on this server");
   }
   
   v8::Handle<v8::Value> result;
@@ -465,7 +465,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "user are not supported on this server");
+                                   "users are not supported on this server");
   }
   
   std::string username = TRI_ObjectToString(isolate, args[0]);
