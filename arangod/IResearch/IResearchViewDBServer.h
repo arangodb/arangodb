@@ -41,24 +41,23 @@ NS_BEGIN(iresearch)
 
 class IResearchViewDBServer final: public arangodb::LogicalView {
  public:
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure there is a view instance for the specified 'cid'
-  /// @return an existing instance or create a new instance if none is registred
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalView> create(TRI_voc_cid_t cid);
+  virtual ~IResearchViewDBServer();
 
   virtual arangodb::Result drop() override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief register a view instance for the specified 'cid'
-  /// @return functer used for dropping the association or 'false' on error or
-  ///         duplicate definition
+  /// @brief drop the view association for the specified 'cid'
+  /// @return if an association was removed
   //////////////////////////////////////////////////////////////////////////////
-  std::function<void()> emplace(
-    TRI_voc_cid_t cid,
-    std::shared_ptr<arangodb::LogicalView> const& view
-  );
+  arangodb::Result drop(TRI_voc_cid_t cid);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ensure there is a view instance for the specified 'cid'
+  /// @return an existing instance or create a new instance if none is registred
+  ///         on ptr reset the view will be dropped if it has no collections
+  /// @note view created in vocbase() to match callflow during regular startup
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<arangodb::LogicalView> ensure(TRI_voc_cid_t cid);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory

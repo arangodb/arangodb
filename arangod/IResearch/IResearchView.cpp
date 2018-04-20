@@ -1271,10 +1271,13 @@ arangodb::Result IResearchView::dropImpl() {
     for (size_t i = 0, count = IRESEARCH_COUNTOF(_memoryNodes); i < count; ++i) {
       auto& memoryStore = _memoryNodes[i]._store;
 
-      memoryStore._writer->close();
-      memoryStore._writer.reset();
-      memoryStore._directory->close();
-      memoryStore._directory.reset();
+      // ensure no error on double-drop
+      if (memoryStore) {
+        memoryStore._writer->close();
+        memoryStore._writer.reset();
+        memoryStore._directory->close();
+        memoryStore._directory.reset();
+      }
     }
 
     if (_storePersisted) {
@@ -1489,6 +1492,7 @@ void IResearchView::getPropertiesVPack(
     return; // nothing more to output (persistent configuration does not need links)
   }
 
+  TRI_ASSERT(builder.isOpenObject());
   std::vector<std::string> collections;
 
   // add CIDs of known collections to list
