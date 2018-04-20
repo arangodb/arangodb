@@ -306,7 +306,7 @@ class MMFilesSkiplist {
     }
 
     // Now the element is successfully inserted, the rest is performance
-    // optimisation:
+    // optimization:
     for (lev = 1; lev < newNode->_height; lev++) {
       newNode->_next[lev] = pos[lev]->_next[lev];
       pos[lev]->_next[lev] = newNode;
@@ -349,7 +349,7 @@ class MMFilesSkiplist {
     // Now delete where next points to:
     for (lev = next->_height - 1; lev >= 0; lev--) {
       // Note the order from top to bottom. The element remains in the
-      // skiplist as long as we are at a level > 0, only some optimisations
+      // skiplist as long as we are at a level > 0, only some optimizations
       // in performance vanish before that. Only when we have removed it at
       // level 0, it is really gone.
       pos[lev]->_next[lev] = next->_next[lev];

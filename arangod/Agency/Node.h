@@ -77,7 +77,7 @@ class Store;
 /// Nodes are are always constructed as element and can become an array through
 /// assignment operator.
 /// toBuilder(Builder&) will create a _vecBuf, when needed as a means to
-/// optimisation by avoiding to build it before necessary.
+/// optimization by avoiding to build it before necessary.
 class Node {
  public:
   /// @brief Slash-segmented path

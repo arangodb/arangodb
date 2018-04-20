@@ -232,7 +232,7 @@ class LogicalCollection: public LogicalDataSource {
   virtual Result rename(std::string&& name, bool doSync) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
-  // SECTION: Serialisation
+  // SECTION: Serialization
   void toVelocyPack(velocypack::Builder&, bool translateCids,
                     bool forPersistence = false) const;
 

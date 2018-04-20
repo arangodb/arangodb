@@ -323,7 +323,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
 
     // check that the database occurs in the database list
     if (!(t.databaseFlags & dbFlag)) {
-      // special optimisation: for local server and new database,
+      // special optimization: for local server and new database,
       // an upgrade-only task can be viewed as executed.
       if (isLocal && dbFlag == DATABASE_INIT &&
           t.databaseFlags == DATABASE_UPGRADE) {

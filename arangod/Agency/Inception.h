@@ -40,7 +40,7 @@ namespace consensus {
 
 class Agent;
 
-/// @brief This class organises the startup of the agency until the point
+/// @brief This class organizes the startup of the agency until the point
 ///        where the RAFT implementation can commence function
 class Inception : public Thread {
 
