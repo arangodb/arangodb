@@ -1134,7 +1134,7 @@
       tableContent.push(
         window.modalView.createTextEntry(
           'new-app-mount',
-          'Mountpoint',
+          'Mount point',
           mountPoint,
           'The path the app will be mounted. Is not allowed to start with _',
           'mountpoint',
