@@ -280,7 +280,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
-      _viewLock = std::unique_lock<ReadMutex>(viewSelf->mutex()); // aquire read-lock before checking view
+      _viewLock = std::unique_lock<ReadMutex>(viewSelf->mutex()); // acquire read-lock before checking view
 
       if (!viewSelf->get()) {
         _viewLock.unlock();

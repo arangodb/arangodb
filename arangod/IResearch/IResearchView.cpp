@@ -1020,7 +1020,7 @@ IResearchView::IResearchView(
       // sleep until timeout
       {
         SCOPED_LOCK_NAMED(mutex, lock); // for '_meta._commit._commitIntervalMsec'
-        SCOPED_LOCK_NAMED(_asyncMutex, asyncLock); // aquire before '_asyncTerminate' check
+        SCOPED_LOCK_NAMED(_asyncMutex, asyncLock); // acquire before '_asyncTerminate' check
 
         if (_asyncTerminate.load()) {
           return; // termination requested
@@ -1965,7 +1965,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
       << "failed to sync while creating snapshot for IResearch view '" << name() << "', previous snapshot will be used instead";
   }
 
-  auto cookiePtr = irs::memory::make_unique<ViewState>(_asyncSelf->mutex()); // will aquire read-lock to prevent data-store deallocation
+  auto cookiePtr = irs::memory::make_unique<ViewState>(_asyncSelf->mutex()); // will acquire read-lock to prevent data-store deallocation
   auto& reader = cookiePtr->_snapshot;
 
   if (!_asyncSelf->get()) {
