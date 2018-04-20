@@ -164,6 +164,12 @@ class Supervision : public arangodb::Thread {
 
   void shrinkCluster();
 
+  /**
+   * @brief Report status of supervision in agency
+   * @param  status  Status, which will show in Supervision/State
+   */
+  void reportStatus(std::string const& status);
+
   bool isShuttingDown();
 
   bool handleJobs();
