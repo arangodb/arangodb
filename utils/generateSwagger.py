@@ -1120,10 +1120,6 @@ def getOneApi(infile, filename):
     automat.set_fn(filename)
     automat.run((infile, ''))
 
-################################################################################
-### Swagger Markdown rendering
-################################################################################
-
 def getReference(name, source, verb):
     try:
         ref = name['$ref'][defLen:]
