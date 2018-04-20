@@ -98,7 +98,7 @@ struct jsonData {
   * ----------------------------------------------------------------------------- */
 
 \"[ !\x23-\x5b\x5d-\x7f]*\" {
-  // performance optimisation for all-ASCII strings without escape characters
+  // performance optimization for all-ASCII strings without escape characters
   // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
   // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
   return STRING_CONSTANT_ASCII;

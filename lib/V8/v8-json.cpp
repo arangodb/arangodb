@@ -1168,7 +1168,7 @@ YY_RULE_SETUP
 case 4:
 YY_RULE_SETUP
 {
-  // performance optimisation for all-ASCII strings without escape characters
+  // performance optimization for all-ASCII strings without escape characters
   // this matches the ASCII chars with ordinal numbers 35 (x23) to 127 (x7f), 
   // plus space (32) and ! (33) but no quotation marks (34, x22) and backslashes (92, x5c)
   return STRING_CONSTANT_ASCII;
