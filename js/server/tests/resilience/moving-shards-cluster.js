@@ -131,38 +131,6 @@ function MovingShardsSuite () {
   }
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get cleaned out servers
-////////////////////////////////////////////////////////////////////////////////
-
-  function getTransientValue() {
-    var coordEndpoint =
-        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
-
-    var request = require("@arangodb/request");
-    var endpointToURL = require("@arangodb/cluster").endpointToURL;
-    var url = endpointToURL(coordEndpoint);
-    
-    var res;
-    try {
-      var envelope = 
-          { method: "GET", url: url + "/_admin/cluster/numberOfServers" };
-      res = request(envelope);
-    } catch (err) {
-      console.error(
-        "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
-      return {};
-    }
-    var body = res.body;
-    if (typeof body === "string") {
-      body = JSON.parse(body);
-    }
-    return body;
-  }
-
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test whether or not a server is clean
 ////////////////////////////////////////////////////////////////////////////////
