@@ -70,7 +70,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for non-collection access, limit > 0
+/// @brief check limit optimization for non-collection access, limit > 0
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionNoRestriction : function () {
@@ -110,7 +110,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for full collection access, limit > 0
+/// @brief check limit optimization for full collection access, limit > 0
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionNoRestriction : function () {
@@ -144,7 +144,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for non collection access, limit 0
+/// @brief check limit optimization for non collection access, limit 0
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionNoRestrictionEmpty : function () {
@@ -177,7 +177,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for full collection access, limit 0
+/// @brief check limit optimization for full collection access, limit 0
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionNoRestrictionEmpty : function () {
@@ -204,7 +204,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
       
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for non-collection access, limit 0
+/// @brief check limit optimization for non-collection access, limit 0
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionDoubleLimitEmpty : function () {
@@ -222,7 +222,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for full collection access, limit 0
+/// @brief check limit optimization for full collection access, limit 0
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionDoubleLimitEmpty : function () {
@@ -235,7 +235,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with 2 limits
+/// @brief check limit optimization with 2 limits
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitNonCollectionLimitLimit : function () {
@@ -270,7 +270,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with 2 limits
+/// @brief check limit optimization with 2 limits
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionLimitLimit : function () {
@@ -297,7 +297,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for non-collection access, limit > 0 and
+/// @brief check limit optimization for non-collection access, limit > 0 and
 /// filter conditions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -349,7 +349,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
     
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for full collection access, limit > 0 and
+/// @brief check limit optimization for full collection access, limit > 0 and
 /// filter conditions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -395,7 +395,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation for full collection access, limit > 0 and
+/// @brief check limit optimization for full collection access, limit > 0 and
 /// filter conditions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -441,7 +441,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with index
+/// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionHashIndex1 : function () {
@@ -458,7 +458,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with index
+/// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionHashIndex2 : function () {
@@ -481,7 +481,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with index
+/// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFilterFilterCollectionHashIndex : function () {
@@ -504,7 +504,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with index
+/// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionSkiplistIndex1 : function () {
@@ -521,7 +521,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with index
+/// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionSkiplistIndex2 : function () {
@@ -539,7 +539,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with index
+/// @brief check limit optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFilterFilterSkiplistIndex : function () {
@@ -557,7 +557,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with sort
+/// @brief check limit optimization with sort
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionSort1 : function () {
@@ -573,7 +573,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with sort
+/// @brief check limit optimization with sort
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionSort2 : function () {
@@ -591,7 +591,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with sort
+/// @brief check limit optimization with sort
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionSort3 : function () {
@@ -604,7 +604,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check limit optimisation with sort
+/// @brief check limit optimization with sort
 ////////////////////////////////////////////////////////////////////////////////
 
     testLimitFullCollectionSort4 : function () {
