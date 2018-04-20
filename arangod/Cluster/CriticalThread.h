@@ -37,7 +37,6 @@ public:
 
   CriticalThread(std::string const& name, bool deleteOnExit = false)
     : Thread(name, deleteOnExit) {
-      LOG_TOPIC(INFO, Logger::HEARTBEAT) << "CriticalThread for " << name << " constructed.";
   };
 
   virtual ~CriticalThread() {};
