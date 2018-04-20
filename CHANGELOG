@@ -1,6 +1,9 @@
 devel
 -----
 
+* Query cursors can now be created with option `profile`, with a value from (integers) 0 to 4.
+  This will cause queries to include more statistics in their results and will allow tracing of queries.
+
 * Fixed internal issue #2237: AQL queries on collections with replicationFactor:
   "satellite" crashed arangod in single server mode
 

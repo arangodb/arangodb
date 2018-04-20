@@ -627,13 +627,6 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
   size_t nrItems = 0;
   nodes.add("estimatedCost", VPackValue(getCost(nrItems)));
   nodes.add("estimatedNrItems", VPackValue(nrItems));
-  
-  Query* query = _plan->getAst()->query();
-  if (query != nullptr && query->queryOptions().tracing) {
-    query->profile()->ge
-    nodes.add("actualNrItems", VPackValue(getCost(nrItems)));
-    nodes.add("actualRuntime", VPackValue(nrItems));
-  }
 
   if (verbose) {
     nodes.add("depth", VPackValue(static_cast<double>(_depth)));
@@ -1264,6 +1257,10 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(incoming);
   transaction::Methods* trx = _plan->getAst()->query()->trx();
+  if (trx->status() != transaction::Status::RUNNING) {
+    nrItems = 0;
+    return 0.0;
+  }
   size_t count = _collection->count(trx);
   nrItems = incoming * count;
   // We do a full collection scan for each incoming item.

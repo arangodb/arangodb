@@ -231,11 +231,11 @@ class ExecutionBlock {
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 
-  /// @brief query profile
-  QueryProfile* const _profile;
+  /// @brief profiling level
+  uint32_t _profile;
   
   /// @brief getSome begin point in time
-  std::chrono::steady_clock::time_point _getSomeBegin;
+  double _getSomeBegin;
 };
 
 }  // namespace arangodb::aql

@@ -103,15 +103,8 @@ ArangoStatement.prototype.parse = function () {
 // / @brief explain a query and return the results
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoStatement.prototype.explain = function (options) {
+ArangoStatement.prototype.explain = function () { // options
   var opts = this._options || { };
-  if (typeof opts === 'object' && typeof options === 'object') {
-    Object.keys(options).forEach(function (o) {
-      // copy options
-      opts[o] = options[o];
-    });
-  }
-
   var body = {
     query: this._query,
     bindVars: this._bindVars,

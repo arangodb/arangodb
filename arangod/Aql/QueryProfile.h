@@ -47,43 +47,25 @@ struct QueryProfile {
   ~QueryProfile();
   
 public:
-  
-  struct NodeProfile {
-    std::chrono::milliseconds time;
-    size_t numRows;
-    NodeProfile& operator+=(NodeProfile const& other) {
-      time = other.time;
-      numRows = other.numRows;
-      return *this;
-    }
-  };
-  
-public:
 
   double setStateDone(QueryExecutionState::ValueType);
 
   /// @brief sets the absolute end time for an execution state
   void setStateEnd(QueryExecutionState::ValueType state, double time);
-  
-  ///  @brief track the execution profile for ExecutionNodes
-  void addNodeProfile(size_t, NodeProfile const&);
-  
-  ///  @brief track the execution profile for ExecutionNodes
-  NodeProfile nodeProfile(size_t);
 
+  /// @brief get a timer time
+  inline double timer(QueryExecutionState::ValueType t) const {
+    return _timers[QueryExecutionState::toNumber(t)];
+  }
+  
   /// @brief convert the profile to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack();
+  void toVelocyPack(arangodb::velocypack::Builder&) const;
   
-
-
 private:
-  Query* query;
-  std::array<double, static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)> timers;
-  double stamp;
-  bool tracked;
-  
-  ///  @brief track the execution profile for ExecutionNodes
-  std::unordered_map<size_t, NodeProfile> _nodeProfiles;
+  Query* _query;
+  std::array<double, static_cast<size_t>(QueryExecutionState::ValueType::INVALID_STATE)> _timers;
+  double _lastStamp;
+  bool _tracked;
 };
 
 // we want the number of execution states to be quite low

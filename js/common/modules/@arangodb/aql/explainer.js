@@ -115,6 +115,7 @@ function section (v) {
   return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;
 }
 
+// return n times ' '
 function pad (n) {
   'use strict';
   if (n < 0) {
@@ -188,6 +189,22 @@ function printRules (rules) {
 function printWarnings (warnings) {
   'use strict';
   if (!Array.isArray(warnings) || warnings.length === 0) {
+    return;
+  }
+
+  stringBuilder.appendLine(section('Warnings:'));
+  var maxIdLen = String('Code').length;
+  stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Code').length) + header('Code') + '   ' + header('Message'));
+  for (var i = 0; i < warnings.length; ++i) {
+    stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + '   ' + keyword(warnings[i].message));
+  }
+  stringBuilder.appendLine();
+}
+
+/* print stats */
+function printStats (stats) {
+  'use strict';
+  if (!stats) {
     return;
   }
 
@@ -485,7 +502,14 @@ function processQuery (query, explain) {
     maxSiteLen = 0,
     maxIdLen = String('Id').length,
     maxEstimateLen = String('Est.').length,
-    plan = explain.plan;
+    maxCallsLen = String('Calls').length,
+    maxItemsLen = String('Items').length,
+    maxRuntimeLen = String('Runtime').length,
+    plan = explain.plan,
+    stats = explain.stats;
+
+  /// mode with actual runtime stats per node
+  let profileMode = stats && stats.hasOwnProperty("nodes");
 
   var isCoordinator = false;
   if (typeof ArangoClusterComm === 'object') {
@@ -529,10 +553,39 @@ function processQuery (query, explain) {
       if (String(node.site).length > maxSiteLen) {
         maxSiteLen = String(node.site).length;
       }
-      if (String(node.estimatedNrItems).length > maxEstimateLen) {
-        maxEstimateLen = String(node.estimatedNrItems).length;
+      if (!profileMode) { // not shown when we got actual runtime stats
+        if (String(node.estimatedNrItems).length > maxEstimateLen) {
+          maxEstimateLen = String(node.estimatedNrItems).length;
+        }
       }
     });
+
+    if (profileMode) { // merge runtime info into plan
+      stats.nodes.forEach(n => {
+        nodes[n.id].calls = n.calls;
+        nodes[n.id].items = n.items;
+        nodes[n.id].runtime = Math.floor(n.runtime * 1000) / 1000;
+
+        if (String(n.calls).length > maxCallsLen) {
+          maxCallsLen = String(n.calls).length;
+        }
+        if (String(n.items).length > maxItemsLen) {
+          maxCallsLen = String(n.items).length;
+        }
+        if (String(nodes[n.id].runtime).length > maxRuntimeLen) {
+          maxCallsLen = String(nodes[n.id].runtime).length;
+        }
+      });
+      // by design the runtime is culmulative right now.
+      // by subtracting the parent runtime we get the runtime per node
+      stats.nodes.forEach(n => {
+        if (parents.hasOwnProperty(n.id)) {
+          parents[n.id].forEach(pid => {
+            nodes[pid].runtime -= nodes[n.id].runtime;
+          });
+        }
+      });
+    }  
 
     var count = n.length, site = 'COOR';
     while (count > 0) {
@@ -1213,8 +1266,15 @@ function processQuery (query, explain) {
       line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
     }
 
-    line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
-    indent(level, node.type === 'SingletonNode') + label(node);
+    if (profileMode) {
+      line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
+              pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
+              pad(1 + maxRuntimeLen - String(node.runtime).length) + value(node.runtime) + '   ' +
+              indent(level, node.type === 'SingletonNode') + label(node);
+    } else {
+      line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
+              indent(level, node.type === 'SingletonNode') + label(node);
+    }
 
     if (node.type === 'CalculationNode') {
       line += variablesUsed() + constNess();
@@ -1234,8 +1294,16 @@ function processQuery (query, explain) {
     line += header('Site') + pad(1 + maxSiteLen - String('Site').length) + '  ';
   }
 
-  line += pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
-  header('Comment');
+  if (profileMode) {
+    line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
+            pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
+            pad(1 + maxRuntimeLen - String('Runtime').length) + header('Runtime') + '   ' +
+            header('Comment');
+  } else {
+    line += pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
+    header('Comment');
+  }
+
 
   stringBuilder.appendLine(line);
 
@@ -1260,13 +1328,17 @@ function processQuery (query, explain) {
   printRules(plan.rules);
   printModificationFlags(modificationFlags);
   printWarnings(explain.warnings);
+  if (profileMode) {
+    printStats(explain.stats);
+    printProfile(explain.profile);
+  }
 }
 
 /* the exposed explain function */
 function explain(data, options, shouldPrint) {
   'use strict';
   if (typeof data === 'string') {
-    data = { query: data };
+    data = { query: data, options:options };
   }
   if (!(data instanceof Object)) {
     throw 'ArangoStatement needs initial data';
@@ -1279,10 +1351,20 @@ function explain(data, options, shouldPrint) {
   setColors(options.colors === undefined ? true : options.colors);
 
   let stmt = db._createStatement(data);
-  let result = stmt.explain(options);
+  if (options.profile >= 2) {
+    let cursor = stmt.execute();
+    let extra = cursor.getExtra();
 
-  stringBuilder.clearOutput();
-  processQuery(data.query, result, true);
+    stringBuilder.clearOutput();
+    let result = stmt.explain(options); // TODO why is this there ?
+    processQuery(data.query, extra);
+    
+  } else {
+    stringBuilder.clearOutput();
+    let result = stmt.explain(options); // TODO why is this there ?
+    processQuery(data.query, result);
+  }
+  
 
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());

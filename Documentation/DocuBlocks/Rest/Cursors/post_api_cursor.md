@@ -94,10 +94,12 @@ can be put into this attribute, telling the optimizer to include or exclude
 specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
 with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
 
-@RESTSTRUCT{profile,post_api_cursor_opts,boolean,optional,}
-If set to *true*, then the additional query profiling information will be returned
-in the sub-attribute *profile* of the *extra* return attribute if the query result
-is not served from the query cache.
+@RESTSTRUCT{profile,post_api_cursor_opts,integer,optional,}
+If set to *true* or *1*, then the additional query profiling information will be returned
+in the sub-attribute *profile* of the *extra* return attribute, if the query result
+is not served from the query cache. Set to *2* the query will include execution stats
+per query plan node in sub-attribute *stats.nodes* of the *extra* return attribute.
+Additionally the query plan is returned in the sub-attribute *extra.plan*.
 
 @RESTSTRUCT{satelliteSyncWait,post_api_cursor_opts,boolean,optional,}
 This *enterprise* parameter allows to configure how long a DBServer will have time

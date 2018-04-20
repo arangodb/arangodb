@@ -45,9 +45,8 @@ struct QueryResult {
       : code(code),
         cached(false),
         details(details),
-        warnings(nullptr),
         result(nullptr),
-        profile(nullptr),
+        extra(nullptr),
         context(nullptr) {}
 
   explicit QueryResult(int code) : QueryResult(code, "") {}
@@ -59,7 +58,7 @@ struct QueryResult {
   ////////////////////////////////////////////////////////////////////
   /// @brief builds the "extra" attribute values from the result.
   ////////////////////////////////////////////////////////////////////
-  std::shared_ptr<velocypack::Builder> extra() const;
+  //std::shared_ptr<velocypack::Builder> extra() const;
 
  public:
   int code;
@@ -67,10 +66,8 @@ struct QueryResult {
   std::string details;
   std::unordered_set<std::string> bindParameters;
   std::vector<std::string> collectionNames;
-  std::shared_ptr<arangodb::velocypack::Builder> warnings;
   std::shared_ptr<arangodb::velocypack::Builder> result;
-  std::shared_ptr<arangodb::velocypack::Builder> stats;
-  std::shared_ptr<arangodb::velocypack::Builder> profile;
+  std::shared_ptr<arangodb::velocypack::Builder> extra;
   std::shared_ptr<transaction::Context> context;
 };
 }

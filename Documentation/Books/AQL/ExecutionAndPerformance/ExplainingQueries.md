@@ -9,8 +9,24 @@ An explain will throw an error if the given query is syntactically invalid. Othe
 return the execution plan and some information about what optimizations could be applied to
 the query. The query will not be executed.
 
-Explaining a query can be achieved by calling the [HTTP REST API](../../HTTP/AqlQuery/index.html).
-A query can also be explained from the ArangoShell using `ArangoStatement`'s `explain` method.
+Explaining a query can be achieved by calling the [HTTP REST API](../../HTTP/AqlQuery/index.html)
+or via the arangosh.
+A query can also be explained from the ArangoShell using the `ArangoDatabase`'s `explain` method
+or in detail via `ArangoStatement`'s `explain` method.
+
+
+### Inspecting query plans
+
+The `explain` method of `ArangoStatement` as shown in the next chapters creates very verbose output.
+To get a human-readable output of the query plan
+
+
+#### Executing an instrumented query
+
+For a human readable output you can execute 
+  `db.explain(<query>, <bind-vars, {profile:2})` in the arangosh.
+
+### Execution plans in detail
 
 By default, the query optimizer will return what it considers to be the *optimal plan*. The
 optimal plan will be returned in the `plan` attribute of the result. If `explain` is
