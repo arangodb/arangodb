@@ -550,10 +550,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       }
     } else {
       // instantiate the engine on a local server
-      ExecutionEngine engine(query);
-      Instanciator inst(&engine);
-      plan->root()->walk(inst);
-      root = inst.root;
+      engine = new ExecutionEngine(query); 
+      auto inst = std::make_unique<Instanciator>(engine); 
+      plan->root()->walk(*inst); 
+      root = inst.get()->root; 
       TRI_ASSERT(root != nullptr);
     }
 
