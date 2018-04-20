@@ -20,6 +20,8 @@ v3.2.13 (2018-04-13)
 
 * fixed interal issue #2215 FailedLeader timeout bug
 
+* supervision can be switched to maintenance mode f.e. for rolling upgrades
+
 
 v3.2.12 (2018-02-27)
 --------------------
