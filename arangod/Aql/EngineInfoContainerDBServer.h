@@ -153,7 +153,7 @@ class EngineInfoContainerDBServer {
   };
 
  public:
-  EngineInfoContainerDBServer();
+  EngineInfoContainerDBServer(Query* query);
 
   ~EngineInfoContainerDBServer();
 
@@ -180,9 +180,7 @@ class EngineInfoContainerDBServer {
   //   this methods a shutdown request is send to all DBServers.
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
-  Result buildEngines(Query* query,
-                      MapRemoteToSnippet& queryIds,
-                      std::unordered_set<std::string> const& restrictToShards,
+  Result buildEngines(MapRemoteToSnippet& queryIds,
                       std::unordered_set<ShardID>* lockedShards) const;
 
 /**
@@ -205,7 +203,7 @@ class EngineInfoContainerDBServer {
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
-  void addGraphNode(Query* query, GraphNode* node);
+  void addGraphNode(GraphNode* node);
 
  private:
 
@@ -243,24 +241,24 @@ class EngineInfoContainerDBServer {
   // @brief Helper to create DBServerInfos and sort collections/shards into
   // them
   std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
-  createDBServerMapping(std::unordered_set<std::string> const& restrictToShards,
-                        std::unordered_set<ShardID>* lockedShards) const;
+  createDBServerMapping(std::unordered_set<ShardID>* lockedShards) const;
 
   // @brief Helper to inject the TraverserEngines into the correct infos
   void injectGraphNodesToMapping(
-      Query* query, std::unordered_set<std::string> const& restrictToShards,
-      std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>&
-          dbServerMapping) const;
+      std::map<ServerID, DBServerInfo>& dbServerMapping) const;
 
 #ifdef USE_ENTERPRISE
   void prepareSatellites(
-      std::map<ServerID, DBServerInfo>& dbServerMapping,
-      std::unordered_set<std::string> const& restrictToShards) const;
+      std::map<ServerID, DBServerInfo>& dbServerMapping) const;
 
   void resetSatellites() const;
 #endif
 
  private:
+
+  // @brief The query that is executed. We are not responsible for it
+  Query* _query;
+
   // @brief Reference to the last inserted EngineInfo, used for back linking of
   // QueryIds
   std::stack<std::shared_ptr<EngineInfo>> _engineStack;

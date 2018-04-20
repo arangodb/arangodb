@@ -347,7 +347,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
  public:
   CoordinatorInstanciator(Query* query)
-      : _isCoordinator(true), _lastClosed(0), _query(query) {}
+      : _dbserverParts(query), _isCoordinator(true), _lastClosed(0), _query(query) {}
 
   ~CoordinatorInstanciator() {}
 
@@ -367,7 +367,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
-          _dbserverParts.addGraphNode(_query, static_cast<GraphNode*>(en));
+          _dbserverParts.addGraphNode(static_cast<GraphNode*>(en));
           break;
         default:
           // Do nothing
@@ -432,8 +432,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     };
     TRI_DEFER(cleanup());
 
-    _dbserverParts.buildEngines(_query, queryIds,
-                                _query->queryOptions().shardIds, lockedShards);
+    _dbserverParts.buildEngines(queryIds, lockedShards);
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
