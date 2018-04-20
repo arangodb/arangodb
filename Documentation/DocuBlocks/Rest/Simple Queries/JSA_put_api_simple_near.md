@@ -28,7 +28,6 @@ applied before the *limit* restriction. The default is 100. (optional)
 If given, the identifier of the geo-index to use. (optional)
 
 @RESTDESCRIPTION
-
 The default will find at most 100 documents near the given coordinate.  The
 returned array is sorted according to the distance, with the nearest document
 being first in the return array. If there are near documents of equal distance, documents

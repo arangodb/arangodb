@@ -6,6 +6,7 @@
 
 @RESTDESCRIPTION
 clears the query cache
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

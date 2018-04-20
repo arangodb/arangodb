@@ -28,7 +28,6 @@ will be replaced.
 
 
 @RESTDESCRIPTION
-
 This will find all documents in the collection that match the specified
 example object, and replace the entire document body with the new value
 specified. Note that document meta-attributes such as *_id*, *_key*,

@@ -25,7 +25,6 @@ is applied before the *limit* restriction. (optional)
 The identifier of the fulltext-index to use.
 
 @RESTDESCRIPTION
-
 This will find all documents from the collection that match the fulltext
 query specified in *query*.
 

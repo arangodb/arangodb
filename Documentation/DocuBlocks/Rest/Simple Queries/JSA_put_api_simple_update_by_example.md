@@ -39,7 +39,6 @@ patch document will overwrite the existing document's value. If set to
 true, objects will be merged. The default is true.
 
 @RESTDESCRIPTION
-
 This will find all documents in the collection that match the specified
 example object, and partially update the document body with the new value
 specified. Note that document meta-attributes such as *_id*, *_key*,

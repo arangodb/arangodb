@@ -8,7 +8,6 @@
 The body to be executed.
 
 @RESTDESCRIPTION
-
 Executes the javascript code in the body on the server as the body
 of a function with no arguments. If you have a *return* statement
 then the return value you produce will be returned as content type
@@ -23,6 +22,10 @@ started with the option `--javascript.allow-admin-execute true`.
 The default value of this option is `false`, which disables the execution of 
 user-defined code and disables this API endpoint entirely. 
 This is also the recommended setting for production. 
+
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200} is returned when everything went well.
 
 @endDocuBlock
 

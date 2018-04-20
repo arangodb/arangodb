@@ -31,7 +31,6 @@ applied before the *limit* restriction. The default is 100. (optional)
 If given, the identifier of the geo-index to use. (optional)
 
 @RESTDESCRIPTION
-
 This will find all documents within a given radius around the coordinate
 (*latitude*, *longitude*). The returned list is sorted by distance.
 
