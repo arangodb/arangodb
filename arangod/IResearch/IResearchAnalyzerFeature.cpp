@@ -398,7 +398,6 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   _analyzers(getStaticAnalyzers()), // load static analyzers
   _started(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
   startsAfter("SystemDatabase"); // used for getting the system database containing the persisted configuration
 }

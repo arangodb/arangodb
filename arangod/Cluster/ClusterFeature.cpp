@@ -56,7 +56,6 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Authentication");
   startsAfter("CacheManager");
   startsAfter("Logger");
