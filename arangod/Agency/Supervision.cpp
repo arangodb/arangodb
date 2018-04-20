@@ -584,12 +584,9 @@ void Supervision::reportStatus(std::string const& status) {
 
   { // Do I have to report to agency under 
     _lock.assertLockedByCurrentThread();
-    if (_snapshot.has("/Supervision/State/Mode") &&
-        _snapshot("/Supervision/State/Mode").isString()) {
-      if (_snapshot("/Supervision/State/Mode").getString() != status) {
-        persist = true;
-      }
-    } else {
+    if (_snapshot.hasAsString("/Supervision/State/Mode").first != status) {
+      // This includes the case that the mode is not set, since status
+      // is never empty
       persist = true;
     }
   }
