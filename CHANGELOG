@@ -6,6 +6,11 @@ v3.2.14 (XXXX-XX-XX)
 * added `@arangodb/locals` module to expose the Foxx service context as an
   alternative to using `module.context` directly.
 
+* the internal implementation of REST API `/_api/simple/by-example` now uses
+  C++ instead of JavaScript
+
+* added maintenance mode for agency supervision
+
 
 v3.2.13 (2018-04-13)
 --------------------
