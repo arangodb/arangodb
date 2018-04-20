@@ -35,7 +35,6 @@ namespace arangodb {
 namespace httpclient {
 class SimpleHttpResult;
 }
-class EncryptionFeature;
 class ManagedDirectory;
 
 class RestoreFeature final : public application_features::ApplicationFeature {
@@ -63,13 +62,25 @@ class RestoreFeature final : public application_features::ApplicationFeature {
    */
   void reportError(Result const& error);
 
+  Result getFirstError() {
+    {
+      MUTEX_LOCKER(lock, _workerErrorLock);
+      if (!_workerErrors.empty()) {
+        return _workerErrors.front();
+      }
+    }
+    return {TRI_ERROR_NO_ERROR};
+  }
+
  public:
+  /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
     std::string inputPath{};
     uint64_t chunkSize{1024 * 1024 * 8};
     uint64_t defaultNumberOfShards{1};
     uint64_t defaultReplicationFactor{1};
+    uint32_t threadCount{8};
     bool clusterMode{false};
     bool createDatabase{false};
     bool force{false};
@@ -82,19 +93,24 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool progress{true};
   };
 
+  /// @brief Stores stats about the overall restore progress
   struct Stats {
-    uint64_t totalBatches{0};
-    uint64_t totalCollections{0};
-    uint64_t totalRead{0};
+    std::atomic<uint64_t> totalBatches{0};
+    std::atomic<uint64_t> totalCollections{0};
+    std::atomic<uint64_t> totalRead{0};
   };
 
+  /// @brief Stores all necessary data to restore a single collection or shard
   struct JobData {
     ManagedDirectory& directory;
     RestoreFeature& feature;
     Options const& options;
     Stats& stats;
 
-    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&);
+    VPackSlice collection;
+
+    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&,
+            VPackSlice const&);
   };
 
  private:

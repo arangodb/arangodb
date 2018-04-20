@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestoreFeature.h"
@@ -25,10 +26,10 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/algorithm/clamp.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/OpenFilesTracker.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -97,6 +98,8 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
   int rightType = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
       right, "type", 0);
+  LOG_TOPIC(ERR, arangodb::Logger::RESTORE)
+      << "TYPE " << leftType << ", " << rightType;
 
   if (leftType != rightType) {
     return leftType < rightType;
@@ -352,11 +355,187 @@ arangodb::Result sendRestoreData(
 }  // namespace
 
 namespace {
-/// @brief process a single job from the queue
-arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
-                            arangodb::RestoreFeature::JobData& jobData) {
-  arangodb::Result result{TRI_ERROR_NO_ERROR};
+arangodb::Result recreateCollection(
+    arangodb::httpclient::SimpleHttpClient& httpClient,
+    arangodb::RestoreFeature::JobData& jobData) {
+  using arangodb::Logger;
 
+  arangodb::Result result;
+  VPackSlice const parameters = jobData.collection.get("parameters");
+  std::string const cname = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
+  int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+      parameters, "type", 2);
+
+  std::string const collectionType(type == 2 ? "document" : "edge");
+
+  // re-create collection
+  if (jobData.options.progress) {
+    if (jobData.options.overwrite) {
+      LOG_TOPIC(INFO, Logger::RESTORE) << "# Re-creating " << collectionType
+                                       << " collection '" << cname << "'...";
+    } else {
+      LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating " << collectionType
+                                       << " collection '" << cname << "'...";
+    }
+  }
+
+  result = ::sendRestoreCollection(httpClient, jobData.options,
+                                   jobData.collection, cname);
+
+  if (result.fail() && jobData.options.force) {
+    LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
+    result.reset();
+  }
+  return result;
+}
+}  // namespace
+
+namespace {
+arangodb::Result restoreIndexes(
+    arangodb::httpclient::SimpleHttpClient& httpClient,
+    arangodb::RestoreFeature::JobData& jobData) {
+  using arangodb::Logger;
+
+  arangodb::Result result;
+  VPackSlice const parameters = jobData.collection.get("parameters");
+  VPackSlice const indexes = jobData.collection.get("indexes");
+  // re-create indexes
+  if (indexes.length() > 0) {
+    // we actually have indexes
+    if (jobData.options.progress) {
+      std::string const cname =
+          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
+                                                             "");
+      LOG_TOPIC(INFO, Logger::RESTORE)
+          << "# Creating indexes for collection '" << cname << "'...";
+    }
+
+    result =
+        ::sendRestoreIndexes(httpClient, jobData.options, jobData.collection);
+  }
+
+  if (result.fail() && jobData.options.force) {
+    LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
+    result.reset();
+  }
+  return result;
+}
+}  // namespace
+
+namespace {
+arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
+                             arangodb::RestoreFeature::JobData& jobData) {
+  using arangodb::Logger;
+  using arangodb::basics::StringBuffer;
+
+  arangodb::Result result;
+  StringBuffer buffer(true);
+
+  VPackSlice const parameters = jobData.collection.get("parameters");
+  std::string const cname = arangodb::basics::VelocyPackHelper::getStringValue(
+      parameters, "name", "");
+  int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+      parameters, "type", 2);
+
+  std::string const collectionType(type == 2 ? "document" : "edge");
+
+  // import data. check if we have a datafile
+  auto datafile = jobData.directory.readableFile(
+      cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json");
+  if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(cname + ".data.json");
+    if (!datafile || datafile->status().fail()) {
+      result = {TRI_ERROR_CANNOT_READ_FILE, "could not open file"};
+      return result;
+    }
+  }
+
+  if (jobData.options.progress) {
+    LOG_TOPIC(INFO, Logger::RESTORE) << "# Loading data into " << collectionType
+                                     << " collection '" << cname << "'...";
+  }
+
+  buffer.clear();
+
+  while (true) {
+    if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
+      result = {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
+      return result;
+    }
+
+    ssize_t numRead = datafile->read(buffer.end(), 16384);
+    if (datafile->status().fail()) {  // error while reading
+      result = datafile->status();
+      return result;
+    }
+    // we read something
+    buffer.increaseLength(numRead);
+    jobData.stats.totalRead += (uint64_t)numRead;
+
+    if (buffer.length() < jobData.options.chunkSize && numRead > 0) {
+      continue;  // still continue reading
+    }
+
+    // do we have a buffer?
+    if (buffer.length() > 0) {
+      // look for the last \n in the buffer
+      char* found =
+          (char*)memrchr((const void*)buffer.begin(), '\n', buffer.length());
+      size_t length;
+
+      if (found == nullptr) {  // no \n in buffer...
+        if (numRead == 0) {
+          // we're at the end of the file, so send the complete buffer anyway
+          length = buffer.length();
+        } else {
+          continue;  // don't have a complete line yet, read more
+        }
+      } else {
+        length = found - buffer.begin();  // found a \n somewhere; break at line
+      }
+
+      jobData.stats.totalBatches++;
+      result = ::sendRestoreData(httpClient, jobData.options, cname,
+                                 buffer.begin(), length);
+      if (result.fail()) {
+        if (jobData.options.force) {
+          LOG_TOPIC(ERR, Logger::RESTORE) << result.errorMessage();
+          result.reset();
+          continue;
+        }
+        return result;
+      }
+
+      buffer.erase_front(length);
+    }
+
+    if (numRead == 0) {  // EOF
+      break;
+    }
+  }
+
+  return result;
+}
+}  // namespace
+
+namespace {
+/// @brief process a single job from the queue
+arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
+                            arangodb::RestoreFeature::JobData& jobData) {
+  arangodb::Result result;
+  if (jobData.options.importData) {
+    result = ::restoreData(httpClient, jobData);
+    if (result.fail()) {
+      return result;
+    }
+  }
+  if (jobData.options.importStructure) {
+    result = ::restoreIndexes(httpClient, jobData);
+    if (result.fail()) {
+      return result;
+    }
+  }
   return result;
 }
 }  // namespace
@@ -375,12 +554,13 @@ void handleJobResult(
 namespace {
 arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
+    arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
+    arangodb::RestoreFeature& feature,
     arangodb::RestoreFeature::Options const& options,
     arangodb::ManagedDirectory& directory,
     arangodb::RestoreFeature::Stats& stats) {
   using arangodb::Logger;
   using arangodb::Result;
-  using arangodb::basics::StringBuffer;
   using arangodb::basics::FileUtils::listFiles;
 
   // create a lookup table for collections
@@ -475,155 +655,29 @@ arangodb::Result processInputDirectory(
     }
     std::sort(collections.begin(), collections.end(), ::sortCollections);
 
-    StringBuffer buffer(true);
     // step2: run the actual import
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
-      VPackSlice const parameters = collection.get("parameters");
-      VPackSlice const indexes = collection.get("indexes");
-      std::string const cname =
-          arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
-                                                             "");
-      int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          parameters, "type", 2);
 
-      std::string const collectionType(type == 2 ? "document" : "edge");
+      auto jobData = std::make_unique<arangodb::RestoreFeature::JobData>(
+          directory, feature, options, stats, collection);
 
       if (options.importStructure) {
-        // re-create collection
-        if (options.progress) {
-          if (options.overwrite) {
-            LOG_TOPIC(INFO, Logger::RESTORE)
-                << "# Re-creating " << collectionType << " collection '"
-                << cname << "'...";
-          } else {
-            LOG_TOPIC(INFO, Logger::RESTORE)
-                << "# Creating " << collectionType << " collection '" << cname
-                << "'...";
-          }
-        }
-
-        Result res =
-            ::sendRestoreCollection(httpClient, options, collection, cname);
-
-        if (res.fail()) {
-          if (options.force) {
-            LOG_TOPIC(ERR, Logger::RESTORE) << res.errorMessage();
-            continue;
-          }
-          return {TRI_ERROR_INTERNAL};
+        Result result = ::recreateCollection(httpClient, *jobData);
+        if (result.fail()) {
+          return result;
         }
       }
       stats.totalCollections++;
 
-      if (options.importData) {
-        // import data. check if we have a datafile
-        auto datafile = directory.readableFile(
-            cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) +
-            ".data.json");
-        if (!datafile || datafile->status().fail()) {
-          datafile = directory.readableFile(cname + ".data.json");
-          if (!datafile || datafile->status().fail()) {
-            return {TRI_ERROR_CANNOT_READ_FILE, "could not open file"};
-          }
-        }
+      jobQueue.queueJob(std::move(jobData));
+    }
 
-        if (TRI_ExistsFile(datafile->path().c_str())) {
-          // found a datafile
-
-          if (options.progress) {
-            LOG_TOPIC(INFO, Logger::RESTORE)
-                << "# Loading data into " << collectionType << " collection '"
-                << cname << "'...";
-          }
-
-          buffer.clear();
-
-          while (true) {
-            if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
-              return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
-            }
-
-            ssize_t numRead = datafile->read(buffer.end(), 16384);
-            if (datafile->status().fail()) {  // error while reading
-              return datafile->status();
-            }
-
-            // read something
-            buffer.increaseLength(numRead);
-
-            stats.totalRead += (uint64_t)numRead;
-
-            if (buffer.length() < options.chunkSize && numRead > 0) {
-              // still continue reading
-              continue;
-            }
-
-            // do we have a buffer?
-            if (buffer.length() > 0) {
-              // look for the last \n in the buffer
-              char* found = (char*)memrchr((const void*)buffer.begin(), '\n',
-                                           buffer.length());
-              size_t length;
-
-              if (found == nullptr) {
-                // no \n found...
-                if (numRead == 0) {
-                  // we're at the end. send the complete buffer anyway
-                  length = buffer.length();
-                } else {
-                  // read more
-                  continue;
-                }
-              } else {
-                // found a \n somewhere
-                length = found - buffer.begin();
-              }
-
-              stats.totalBatches++;
-
-              Result res = ::sendRestoreData(httpClient, options, cname,
-                                             buffer.begin(), length);
-
-              if (res.fail()) {
-                if (options.force) {
-                  LOG_TOPIC(ERR, Logger::RESTORE) << res.errorMessage();
-                  continue;
-                }
-                return res;
-              }
-
-              buffer.erase_front(length);
-            }
-
-            if (numRead == 0) {
-              // EOF
-              break;
-            }
-          }
-        }
-      }
-
-      if (options.importStructure) {
-        // re-create indexes
-        if (indexes.length() > 0) {
-          // we actually have indexes
-          if (options.progress) {
-            LOG_TOPIC(INFO, Logger::RESTORE)
-                << "# Creating indexes for collection '" << cname << "'...";
-          }
-
-          Result res = ::sendRestoreIndexes(httpClient, options, collection);
-
-          if (res.fail()) {
-            if (options.force) {
-              LOG_TOPIC(ERR, Logger::RESTORE) << res.errorMessage();
-              continue;
-            }
-            return {TRI_ERROR_INTERNAL};
-          }
-        }
-      }
+    // wait for all jobs to finish, then check for errors
+    jobQueue.waitForIdle();
+    Result firstError = feature.getFirstError();
+    if (firstError.fail()) {
+      return firstError;
     }
   } catch (std::exception const& ex) {
     return {TRI_ERROR_INTERNAL,
@@ -641,8 +695,8 @@ namespace arangodb {
 
 RestoreFeature::JobData::JobData(ManagedDirectory& d, RestoreFeature& f,
                                  RestoreFeature::Options const& o,
-                                 RestoreFeature::Stats& s)
-    : directory{d}, feature{f}, options{o}, stats{s} {}
+                                 RestoreFeature::Stats& s, VPackSlice const& c)
+    : directory{d}, feature{f}, options{o}, stats{s}, collection{c} {}
 
 RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
                                int& exitCode)
@@ -683,6 +737,10 @@ void RestoreFeature::collectOptions(
   options->addOption("--batch-size",
                      "maximum size for individual data batches (in bytes)",
                      new UInt64Parameter(&_options.chunkSize));
+
+  options->addOption("--threads",
+                     "maximum number of collections to process in parallel",
+                     new UInt32Parameter(&_options.threadCount));
 
   options->addOption("--include-system-collections",
                      "include system collections",
@@ -748,6 +806,13 @@ void RestoreFeature::validateOptions(
   // use a minimum value for batches
   if (_options.chunkSize < 1024 * 128) {
     _options.chunkSize = 1024 * 128;
+  }
+
+  auto clamped = boost::algorithm::clamp(_options.threadCount, 1,
+                                         4 * TRI_numberProcessors());
+  if (_options.threadCount != clamped) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "capping --threads value to " << clamped;
+    _options.threadCount = clamped;
   }
 }
 
@@ -855,9 +920,13 @@ void RestoreFeature::start() {
         << "'";
   }
 
+  // set up threads and workers
+  _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
+
+  // run the actual restore
   try {
-    result =
-        ::processInputDirectory(*httpClient, _options, *_directory, _stats);
+    result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
+                                     _options, *_directory, _stats);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception " << ex.what();
     result = {TRI_ERROR_INTERNAL};
