@@ -325,7 +325,7 @@ void EngineInfoContainerDBServer::handleCollection(
 
 // Then we update the collection pointer of the last engine.
 #ifndef USE_ENTERPRISE
-void updateCollection(Collection const* col) {
+void EngineInfoContainerDBServer::updateCollection(Collection const* col) {
   TRI_ASSERT(!_engineStack.empty());
   auto e = _engineStack.top();
   // ... const_cast
