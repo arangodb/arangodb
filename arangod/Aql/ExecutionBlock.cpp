@@ -29,7 +29,6 @@
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
-#include "Aql/QueryProfile.h"
 
 using namespace arangodb::aql;
   

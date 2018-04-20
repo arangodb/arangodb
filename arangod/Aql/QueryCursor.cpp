@@ -120,8 +120,8 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    if (extra().isObject()) {
-      builder.add("extra", extra());
+    if (_result.extra.get() != nullptr) {
+      builder.add("extra", _result.extra->slice());
     }
 
     builder.add("cached", VPackValue(_cached));

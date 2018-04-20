@@ -847,16 +847,18 @@ void Query::finalize(QueryResult& result) {
   _engine->_stats.setExecutionTime(runTime());
   enterState(QueryExecutionState::ValueType::FINALIZATION);
   
-  double now = TRI_microtime();
+  double now;
   result.extra = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder extras(result.extra.get(), true);
     if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
       result.extra->add(VPackValue("plan"));
-      _plan->toVelocyPack(*result.extra, _ast.get(), false); // before plan cleanup
+      _plan->toVelocyPack(*result.extra, _ast.get(), false);
+      // needed to happen before plan cleanup
     }
     cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, result.extra.get());
     addWarningsToVelocyPack(*result.extra);
+    now = TRI_microtime();
     if (_profile != nullptr && _queryOptions.profile >= PROFILE_LEVEL_BASIC) {
       _profile->setStateEnd(QueryExecutionState::ValueType::FINALIZATION, now);
       _profile->toVelocyPack(*(result.extra));
