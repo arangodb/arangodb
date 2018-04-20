@@ -99,6 +99,8 @@ class DumpFeature : public application_features::ApplicationFeature {
   Result runDump(httpclient::SimpleHttpClient& client, std::string& dbName);
   Result runClusterDump(httpclient::SimpleHttpClient& client);
 
+  bool isIgnoredHiddenEnterpriseCollection(std::string const &name) const;
+
  private:
   int& _exitCode;
 

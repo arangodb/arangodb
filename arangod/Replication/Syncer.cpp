@@ -356,24 +356,32 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   } else if (slice.isString()) {
     name = slice.copyString();
   }
+
   if (name.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                    "could not resolve vocbase id / name");
   }
-  
+
   // will work with either names or id's
   auto const& it = _vocbases.find(name);
+
   if (it == _vocbases.end()) {
     // automatically checks for id in string
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+
     if (vocbase != nullptr) {
-      _vocbases.emplace(name, DatabaseGuard(vocbase));
+      _vocbases.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(name),
+        std::forward_as_tuple(*vocbase)
+      );
     } else {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
+
     return vocbase;
   } else {
-    return it->second.database();
+    return &(it->second.database());
   }
 }
 
@@ -915,7 +923,10 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
 void Syncer::reloadUsers() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  auth::UserManager* um = af->userManager();
+  if (um != nullptr) {
+    um->outdate();
+  }
 }
   
 bool Syncer::hasFailed(SimpleHttpResult* response) const {

@@ -59,15 +59,12 @@ RestStatus RestSimpleHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::PUT) {
-    bool parsingSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parsingSuccess);
-
+    
+    bool parsingSuccess = false;
+    VPackSlice const body = this->parseVPackBody(parsingSuccess);
     if (!parsingSuccess) {
       return RestStatus::DONE;
     }
-
-    VPackSlice body = parsedBody.get()->slice();
 
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,

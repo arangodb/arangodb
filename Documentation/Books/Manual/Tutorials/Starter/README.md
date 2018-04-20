@@ -195,12 +195,12 @@ docker run -it --name=adb --rm -p 8528:8528 \
 
 ## Starting a resilient single server pair
 
-If you want to start a resilient single database server, use `--starter.mode=resilientsingle`.
+If you want to start a resilient single database server, use `--starter.mode=activefailover`.
 In this mode a 3 machine agency is started and 2 single servers that perform
 asynchronous replication an failover if needed.
 
 ```bash
-arangodb --starter.mode=resilientsingle --starter.join A,B,C
+arangodb --starter.mode=activefailover --starter.join A,B,C
 ```
 
 Run this on machine A, B & C.
@@ -213,7 +213,7 @@ instance should NOT be scheduled.
 ## Starting a resilient single server pair in Docker
 
 If you want to start a resilient single database server running in docker containers,
-use the normal docker arguments, combined with `--starter.mode=resilientsingle`.
+use the normal docker arguments, combined with `--starter.mode=activefailover`.
 
 ```bash
 export IP=<IP of docker host>
@@ -223,7 +223,7 @@ docker run -it --name=adb --rm -p 8528:8528 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     arangodb/arangodb-starter \
     --starter.address=$IP \
-    --starter.mode=resilientsingle \
+    --starter.mode=activefailover \
     --starter.join=A,B,C
 ```
 
@@ -240,7 +240,7 @@ If you want to start a local resilient server pair quickly, use the `--starter.l
 It will start all servers within the context of a single starter process.
 
 ```bash
-arangodb --starter.local --starter.mode=resilientsingle
+arangodb --starter.local --starter.mode=activefailover
 ```
 
 Note: When you restart the started, it remembers the original `--starter.local` flag.

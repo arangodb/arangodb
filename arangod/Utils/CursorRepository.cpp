@@ -40,7 +40,7 @@ size_t const CursorRepository::MaxCollectCount = 32;
 /// @brief create a cursor repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CursorRepository::CursorRepository(TRI_vocbase_t* vocbase)
+CursorRepository::CursorRepository(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase), _lock(), _cursors() {
   _cursors.reserve(64);
 }

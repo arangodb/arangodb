@@ -47,6 +47,7 @@
 
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
@@ -136,7 +137,7 @@ struct IResearchViewSetup {
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL); // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
@@ -195,7 +196,7 @@ struct IResearchViewSetup {
   ~IResearchViewSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     TRI_RemoveDirectory(testFilesystemPath.c_str());
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -228,7 +229,7 @@ TEST_CASE("IResearchViewTest", "[iresearch][iresearch-view]") {
   UNUSED(s);
 
 SECTION("test_type") {
-  CHECK((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::IResearchView::type()));
+  CHECK((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
 
 SECTION("test_defaults") {
@@ -253,7 +254,7 @@ SECTION("test_defaults") {
 
     CHECK(6 == slice.length());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(false == slice.get("deleted").getBool());
     slice = slice.get("properties");
     CHECK(slice.isObject());
@@ -281,7 +282,7 @@ SECTION("test_defaults") {
 
     CHECK(4 == slice.length());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK((false == slice.hasKey("deleted")));
     slice = slice.get("properties");
     CHECK(slice.isObject());
@@ -1435,7 +1436,7 @@ SECTION("test_register_link") {
       CHECK(slice.isObject());
       CHECK(slice.get("id").copyString() == "101");
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       CHECK(3 == slice.length());
     }
@@ -1489,7 +1490,7 @@ SECTION("test_register_link") {
       CHECK(slice.isObject());
       CHECK(slice.get("id").copyString() == "101");
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       CHECK(3 == slice.length());
     }
@@ -1913,7 +1914,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(&vocbase, logicalView); // ensure link can find view
+    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
@@ -1941,7 +1942,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(&vocbase, logicalView); // ensure link can find view
+    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
@@ -2534,7 +2535,7 @@ SECTION("test_update_overwrite") {
       CHECK(slice.isObject());
       CHECK(4 == slice.length());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
@@ -2567,7 +2568,7 @@ SECTION("test_update_overwrite") {
 
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
@@ -2616,7 +2617,7 @@ SECTION("test_update_overwrite") {
 
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
@@ -2669,7 +2670,7 @@ SECTION("test_update_overwrite") {
 
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
@@ -2727,7 +2728,7 @@ SECTION("test_update_overwrite") {
       auto slice = builder.slice();
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       auto tmpSlice = slice.get("collections");
@@ -2755,7 +2756,7 @@ SECTION("test_update_overwrite") {
 
       auto slice = builder.slice();
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       auto tmpSlice = slice.get("links");
@@ -2809,7 +2810,7 @@ SECTION("test_update_partial") {
 
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
@@ -2848,7 +2849,7 @@ SECTION("test_update_partial") {
 
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
@@ -2889,7 +2890,7 @@ SECTION("test_update_partial") {
     auto slice = builder.slice();
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
@@ -2934,7 +2935,7 @@ SECTION("test_update_partial") {
 
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
@@ -3011,7 +3012,7 @@ SECTION("test_update_partial") {
 
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK((6U == slice.length()));
@@ -3066,7 +3067,7 @@ SECTION("test_update_partial") {
 
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK((6U == slice.length()));
@@ -3106,7 +3107,7 @@ SECTION("test_update_partial") {
       auto slice = builder.slice();
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK((
@@ -3137,7 +3138,7 @@ SECTION("test_update_partial") {
       auto slice = builder.slice();
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK((
@@ -3181,7 +3182,7 @@ SECTION("test_update_partial") {
 
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
@@ -3213,7 +3214,7 @@ SECTION("test_update_partial") {
 
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       CHECK(slice.isObject());
@@ -3251,7 +3252,7 @@ SECTION("test_update_partial") {
 
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
@@ -3291,7 +3292,7 @@ SECTION("test_update_partial") {
 
     CHECK(slice.isObject());
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.get("deleted").isNone()); // no system properties
     slice = slice.get("properties");
     CHECK(slice.isObject());
@@ -3327,7 +3328,7 @@ SECTION("test_update_partial") {
       auto slice = builder.slice();
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       auto tmpSlice = slice.get("links");
@@ -3356,7 +3357,7 @@ SECTION("test_update_partial") {
       auto slice = builder.slice();
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       auto tmpSlice = slice.get("links");
@@ -3397,7 +3398,7 @@ SECTION("test_update_partial") {
       auto slice = builder.slice();
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       auto tmpSlice = slice.get("collections");
@@ -3426,7 +3427,7 @@ SECTION("test_update_partial") {
       auto slice = builder.slice();
       CHECK(slice.isObject());
       CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+      CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       CHECK(slice.get("deleted").isNone()); // no system properties
       slice = slice.get("properties");
       auto tmpSlice = slice.get("links");

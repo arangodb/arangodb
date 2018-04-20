@@ -75,6 +75,9 @@ struct Functions {
    /// @brief register warning
    static void RegisterWarning(arangodb::aql::Query* query,
                        char const* functionName, int code);
+   /// @brief register error
+   static void RegisterError(arangodb::aql::Query* query,
+                             char const* functionName, int code);
    /// @brief register usage of an invalid function argument
    static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
                                               char const* functionName);
@@ -456,6 +459,16 @@ struct Functions {
                           VPackFunctionParameters const&);
     static AqlValue Position(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
+    static AqlValue CallApplyBackend(arangodb::aql::Query* query,
+                                     transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters,
+                                     char const* AFN,
+                                     AqlValue const& invokeFN,
+                                     VPackFunctionParameters const& invokeParams);
+    static AqlValue Call(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+    static AqlValue Apply(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);  
     static AqlValue IsSameCollection(arangodb::aql::Query*,
                                      transaction::Methods*,
                                      VPackFunctionParameters const&);

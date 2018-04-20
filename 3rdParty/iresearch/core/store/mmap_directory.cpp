@@ -90,7 +90,7 @@ class mmap_index_input : public irs::bytes_ref_input {
       IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER ", error %d", file, errno);
     }
 
-    handle->dontneed(bool(advice & irs::IOAdvice::READONCE));
+    handle->dontneed(irs::IOAdvice(0) != (advice & irs::IOAdvice::READONCE));
 
     return mmap_index_input::make<mmap_index_input>(std::move(handle));
   }

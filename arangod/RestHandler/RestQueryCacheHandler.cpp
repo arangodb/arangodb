@@ -101,15 +101,13 @@ bool RestQueryCacheHandler::replaceProperties() {
                   "expecting PUT /_api/query-cache/properties");
     return true;
   }
-  bool validBody = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(validBody);
 
+  bool validBody = false;
+  VPackSlice body = this->parseVPackBody(validBody);
   if (!validBody) {
     // error message generated in parseJsonBody
     return true;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD,

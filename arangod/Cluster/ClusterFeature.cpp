@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,6 +106,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.arangod-path",
                              "path to the arangod for the cluster",
                              true);
+
+  options->addOption("--cluster.require-persisted-id",
+                     "if set to true, then the instance will only start if a UUID file is found in the database on startup. Setting this option will make sure the instance is started using an already existing database directory and not a new one. For the first start, the UUID file must either be created manually or the option must be set to false for the initial startup",
+                     new BooleanParameter(&_requirePersistedId));
 
   options->addOption("--cluster.require-persisted-id",
                      "if set to true, then the instance will only start if a UUID file is found in the database on startup. Setting this option will make sure the instance is started using an already existing database directory and not a new one. For the first start, the UUID file must either be created manually or the option must be set to false for the initial startup",
@@ -225,6 +229,13 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
 
 void ClusterFeature::prepare() {
   auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+
+  if (_enableCluster &&
+      _requirePersistedId &&
+      !ServerState::instance()->hasPersistedId()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
+    FATAL_ERROR_EXIT();
+  }
 
   if (_enableCluster &&
       _requirePersistedId &&

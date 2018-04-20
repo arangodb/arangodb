@@ -113,8 +113,9 @@ void RestAqlHandler::setupClusterQuery() {
   // ---------------------------------------------------
   // SECTION:                            body validation
   // ---------------------------------------------------
-  std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
-  if (bodyBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Failed to setup query. Could not "
                                              "parse the transmitted plan. "
                                              "Aborting query.";
@@ -122,7 +123,6 @@ void RestAqlHandler::setupClusterQuery() {
     return;
   }
 
-  VPackSlice querySlice = bodyBuilder->slice();
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
 
   if (!lockInfoSlice.isObject()) {
@@ -399,13 +399,13 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 // The body is a VelocyPack with attributes "plan" for the execution plan and
 // "options" for the options, all exactly as in AQL_EXECUTEJSON.
 void RestAqlHandler::createQueryFromVelocyPack() {
-  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
-  if (queryBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "invalid VelocyPack plan in query";
     return;
   }
-  VPackSlice querySlice = queryBuilder->slice();
 
   TRI_ASSERT(querySlice.isObject());
 
@@ -491,264 +491,6 @@ void RestAqlHandler::createQueryFromVelocyPack() {
                transactionContext);
 }
 
-// POST method for /_api/aql/parse (internal)
-// The body is a Json with attributes "query" for the query string,
-// "parameters" for the query parameters and "options" for the options.
-// This does the same as AQL_PARSE with exactly these parameters and
-// does not keep the query hanging around.
-void RestAqlHandler::parseQuery() {
-  std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
-  if (bodyBuilder == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "invalid VelocyPack plan in query";
-    return;
-  }
-  VPackSlice querySlice = bodyBuilder->slice();
-
-  std::string const queryString =
-      VelocyPackHelper::getStringValue(querySlice, "query", "");
-  if (queryString.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "body must be an object with attribute \"query\"";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "body must be an object with attribute \"query\"");
-    return;
-  }
-
-  auto query = std::make_unique<Query>(
-    false,
-    &_vocbase,
-    QueryString(queryString),
-    std::shared_ptr<VPackBuilder>(),
-    nullptr,
-    PART_MAIN
-  );
-  QueryResult res = query->parse();
-
-  if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "failed to instantiate the Query: " << res.details;
-    generateError(rest::ResponseCode::BAD, res.code, res.details);
-    return;
-  }
-
-  // Now prepare the answer:
-  VPackBuilder answerBuilder;
-  auto transactionContext = query->trx()->transactionContext();
-  try {
-    {
-      VPackObjectBuilder guard(&answerBuilder);
-      answerBuilder.add("parsed", VPackValue(true));
-      answerBuilder.add(VPackValue("collections"));
-      {
-        VPackArrayBuilder arrGuard(&answerBuilder);
-        for (auto const& c : res.collectionNames) {
-          answerBuilder.add(VPackValue(c));
-        }
-      }
-
-      answerBuilder.add(VPackValue("parameters"));
-      {
-        VPackArrayBuilder arrGuard(&answerBuilder);
-        for (auto const& p : res.bindParameters) {
-          answerBuilder.add(VPackValue(p));
-        }
-      }
-      answerBuilder.add(VPackValue("ast"));
-      answerBuilder.add(res.result->slice());
-      res.result = nullptr;
-    }
-    sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
-                 transactionContext.get());
-  } catch (basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
-                  "out of memory - RestAqlHandler::parseQuery");
-  }
-}
-
-// POST method for /_api/aql/explain (internal)
-// The body is a Json with attributes "query" for the query string,
-// "parameters" for the query parameters and "options" for the options.
-// This does the same as AQL_EXPLAIN with exactly these parameters and
-// does not keep the query hanging around.
-void RestAqlHandler::explainQuery() {
-  std::shared_ptr<VPackBuilder> bodyBuilder = parseVelocyPackBody();
-  if (bodyBuilder == nullptr) {
-    return;
-  }
-  VPackSlice querySlice = bodyBuilder->slice();
-
-  std::string queryString =
-      VelocyPackHelper::getStringValue(querySlice, "query", "");
-  if (queryString.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "body must be an object with attribute \"query\"";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "body must be an object with attribute \"query\"");
-    return;
-  }
-
-  auto bindVars = std::make_shared<VPackBuilder>(
-      VPackBuilder::clone(querySlice.get("parameters")));
-
-  auto options = std::make_shared<VPackBuilder>(
-      VPackBuilder::clone(querySlice.get("options")));
-
-  auto query = std::make_unique<Query>(
-    false,
-    &_vocbase,
-    QueryString(queryString),
-    bindVars,
-    options,
-    PART_MAIN
-  );
-  QueryResult res = query->explain();
-
-  if (res.code != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "failed to instantiate the Query: " << res.details;
-    generateError(rest::ResponseCode::BAD, res.code, res.details);
-    return;
-  }
-
-  // Now prepare the answer:
-  VPackBuilder answerBuilder;
-  try {
-    {
-      VPackObjectBuilder guard(&answerBuilder);
-      if (res.result != nullptr) {
-        if (query->queryOptions().allPlans) {
-          answerBuilder.add(VPackValue("plans"));
-        } else {
-          answerBuilder.add(VPackValue("plan"));
-        }
-        answerBuilder.add(res.result->slice());
-        res.result = nullptr;
-      }
-    }
-    sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
-                 query->trx()->transactionContext().get());
-  } catch (basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
-                  "out of memory - RestAqlHandler::explainQuery");
-  }
-}
-
-// POST method for /_api/aql/query (internal)
-// The body is a Json with attributes "query" for the query string,
-// "parameters" for the query parameters and "options" for the options.
-// This sets up the query as as AQL_EXECUTE would, but does not use
-// the cursor API yet. Rather, the query is stored in the query registry
-// for later use by PUT requests.
-void RestAqlHandler::createQueryFromString() {
-  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
-  if (queryBuilder == nullptr) {
-    return;
-  }
-  VPackSlice querySlice = queryBuilder->slice();
-
-  std::string const queryString =
-      VelocyPackHelper::getStringValue(querySlice, "query", "");
-  if (queryString.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "body must be an object with attribute \"query\"";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "body must be an object with attribute \"query\"");
-    return;
-  }
-
-  std::string const part =
-      VelocyPackHelper::getStringValue(querySlice, "part", "");
-  if (part.empty()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "body must be an object with attribute \"part\"";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "body must be an object with attribute \"part\"");
-    return;
-  }
-
-  auto bindVars = std::make_shared<VPackBuilder>(
-      VPackBuilder::clone(querySlice.get("parameters")));
-  auto options = std::make_shared<VPackBuilder>(
-      VPackBuilder::clone(querySlice.get("options")));
-
-  auto query = std::make_unique<Query>(
-    false,
-    &_vocbase,
-    QueryString(queryString),
-    bindVars,
-    options,
-    (part == "main" ? PART_MAIN : PART_DEPENDENT)
-  );
-
-  try {
-    query->prepare(_queryRegistry, 0);
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "failed to instantiate the query: " << ex.what();
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                  ex.what());
-    return;
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "failed to instantiate the query";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
-    return;
-  }
-
-  // Now the query is ready to go, store it in the registry and return:
-  double ttl = 600.0;
-  bool found;
-  std::string const& ttlstring = _request->header("ttl", found);
-
-  if (found) {
-    ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
-  }
-
-  auto transactionContext = query->trx()->transactionContext().get();
-  _qId = TRI_NewTickServer();
-
-  try {
-    _queryRegistry->insert(_qId, query.get(), ttl);
-    query.release();
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "could not keep query in registry";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "could not keep query in registry");
-    return;
-  }
-
-  VPackBuilder answerBody;
-  try {
-    VPackObjectBuilder guard(&answerBody);
-    answerBody.add("queryId",
-                   VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
-    answerBody.add("ttl", VPackValue(ttl));
-  } catch (basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
-    return;
-  } catch (std::exception const& ex) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
-    return;
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
-                  "out of memory");
-    return;
-  }
-
-  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice(),
-               transactionContext);
-}
-
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
 // this is using the part of the cursor API with side effects.
 // <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or
@@ -794,16 +536,16 @@ void RestAqlHandler::useQuery(std::string const& operation,
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
 
-  std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
-
-  if (queryBuilder == nullptr) {
+  bool success = false;
+  VPackSlice querySlice = this->parseVPackBody(success);
+  if (!success) {
     _queryRegistry->close(&_vocbase, _qId);
 
     return;
   }
 
   try {
-    handleUseQuery(operation, query, queryBuilder->slice());
+    handleUseQuery(operation, query, querySlice);
 
     if (_qId != 0) {
       try {
@@ -964,12 +706,6 @@ RestStatus RestAqlHandler::execute() {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffixes[0] == "instantiate") {
         createQueryFromVelocyPack();
-      } else if (suffixes[0] == "parse") {
-        parseQuery();
-      } else if (suffixes[0] == "explain") {
-        explainQuery();
-      } else if (suffixes[0] == "query") {
-        createQueryFromString();
       } else if (suffixes[0] == "setup") {
         setupClusterQuery();
       } else {

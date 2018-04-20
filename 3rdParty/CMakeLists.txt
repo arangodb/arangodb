@@ -170,7 +170,7 @@ if (USE_IRESEARCH)
   else()
     # 'cmake -E copy_directory' does not preserve timestamps, use 'cp' directly where avalable
     add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND cp -rp "${IRESEARCH_ROOT}.build" "${IRESEARCH_BUILD_DIR}/"
+      COMMAND cp -rp "${IRESEARCH_ROOT}.build/*" "${IRESEARCH_BUILD_DIR}/" # MacOS requires '/*' suffix
     )
   endif()
 
@@ -232,7 +232,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 
 if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories("${JEMALLOC_HOME}/include")
+  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
   set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
 endif ()
