@@ -23,5 +23,9 @@ The default value of this option is `false`, which disables the execution of
 user-defined code and disables this API endpoint entirely. 
 This is also the recommended setting for production. 
 
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200} is returned when everything went well.
+
 @endDocuBlock
 

@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/status, Return status information}
 
 @RESTDESCRIPTION
-
 Returns status information about the server.
 
 This is intended for manual use by the support and should
