@@ -735,7 +735,8 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
         DocumentProducingNode(outVariable),
         _vocbase(vocbase),
         _collection(collection),
-        _random(random) {
+        _random(random),
+        _restrictedTo("") {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_collection != nullptr);
   }
@@ -783,6 +784,27 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
 
+  /**
+   * @brief Restrict this Node to a single Shard (cluster only)
+   *
+   * @param shardId The shard restricted to
+   */
+  void restrictToShard(std::string const& shardId) { _restrictedTo = shardId; }
+
+  /**
+   * @brief Check if this Node is restricted to a single Shard (cluster only)
+   *
+   * @return True if we are restricted, false otherwise
+   */
+  bool isRestricted() const { return !_restrictedTo.empty(); }
+
+  /**
+   * @brief Get the Restricted shard for this Node
+   *
+   * @return The Shard this node is restricted to
+   */
+  std::string const& restrictedShard() const { return _restrictedTo; }
+
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
@@ -792,6 +814,9 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 
   /// @brief whether or not we want random iteration
   bool _random;
+
+  /// @brief A shard this node is restricted to, may be empty
+  std::string _restrictedTo;
 };
 
 /// @brief class EnumerateListNode
