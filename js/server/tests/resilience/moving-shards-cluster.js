@@ -317,7 +317,7 @@ function MovingShardsSuite () {
                       body: JSON.stringify(mode) });
     } catch (err) {
       console.error(
-        "Exception for PUT /_admin/cluster/supervision:", err.stack);
+        "Exception for PUT /_admin/cluster/maintenance:", err.stack);
       return false;
     }
     console.log("Supervision maintenance is " + mode);
