@@ -208,12 +208,43 @@ function printStats (stats) {
     return;
   }
 
-  stringBuilder.appendLine(section('Warnings:'));
-  var maxIdLen = String('Code').length;
-  stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String('Code').length) + header('Code') + '   ' + header('Message'));
-  for (var i = 0; i < warnings.length; ++i) {
-    stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + '   ' + keyword(warnings[i].message));
+  stringBuilder.appendLine(section('Runtime Statistics:'));
+  var maxWELen = String('Writes Exec').length;
+  var maxWILen = String('Writes Ign').length;
+  var maxSFLen = String('Scan Full').length;
+  var maxSILen = String('Scan Index').length;
+  var maxFLen = String('Filtered').length;
+  var maxETen = String('Exec Time [s]').length;
+  stats.executionTime = stats.executionTime.toFixed(5) + "s";
+  stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
+                           header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
+                         
+  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' + 
+  pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
+  pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
+  pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
+  pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+  pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
+  stringBuilder.appendLine();
+}
+
+function printProfile (profile) {
+  'use strict';
+  if (!profile) {
+    return;
   }
+
+  stringBuilder.appendLine(section('Query Profile:'));
+  let maxHeadLen = 0;
+  Object.keys(profile).forEach(key => {
+    if (key.length > maxHeadLen) {
+      maxHeadLen = key.length;
+    }
+  });
+  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + header('Duration [s]'));
+  Object.keys(profile).forEach(key => {
+    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + profile[key].toFixed(5));
+  });
   stringBuilder.appendLine();
 }
 
@@ -504,7 +535,7 @@ function processQuery (query, explain) {
     maxEstimateLen = String('Est.').length,
     maxCallsLen = String('Calls').length,
     maxItemsLen = String('Items').length,
-    maxRuntimeLen = String('Runtime').length,
+    maxRuntimeLen = String('Runtime [s]').length,
     plan = explain.plan,
     stats = explain.stats;
 
@@ -564,7 +595,7 @@ function processQuery (query, explain) {
       stats.nodes.forEach(n => {
         nodes[n.id].calls = n.calls;
         nodes[n.id].items = n.items;
-        nodes[n.id].runtime = Math.floor(n.runtime * 1000) / 1000;
+        nodes[n.id].runtime = n.runtime;
 
         if (String(n.calls).length > maxCallsLen) {
           maxCallsLen = String(n.calls).length;
@@ -572,8 +603,9 @@ function processQuery (query, explain) {
         if (String(n.items).length > maxItemsLen) {
           maxCallsLen = String(n.items).length;
         }
-        if (String(nodes[n.id].runtime).length > maxRuntimeLen) {
-          maxCallsLen = String(nodes[n.id].runtime).length;
+        let l = String(nodes[n.id].runtime.toFixed(3)).length;
+        if (l > maxRuntimeLen) {
+          maxCallsLen = l;
         }
       });
       // by design the runtime is culmulative right now.
@@ -1269,7 +1301,7 @@ function processQuery (query, explain) {
     if (profileMode) {
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
               pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-              pad(1 + maxRuntimeLen - String(node.runtime).length) + value(node.runtime) + '   ' +
+              pad(1 + maxRuntimeLen - String(node.runtime.toFixed(4)).length) + value(node.runtime.toFixed(4)) + '   ' +
               indent(level, node.type === 'SingletonNode') + label(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
@@ -1297,7 +1329,7 @@ function processQuery (query, explain) {
   if (profileMode) {
     line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
             pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
-            pad(1 + maxRuntimeLen - String('Runtime').length) + header('Runtime') + '   ' +
+            pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
             header('Comment');
   } else {
     line += pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
