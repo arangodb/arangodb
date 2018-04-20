@@ -186,10 +186,14 @@ function definePrimaryFromStatus(status, endpoint) {
   defineServer('PRIMARY', id, { status: endpoint });
   defineServerEndpoint(id, endpoint);
 
-  let agency = status.agency.endpoints;
+  let agentEndpoints = status.agency.agencyComm.endpoints;
 
-  if (0 < agency.length) {
-    possibleAgent = agency[0];
+  if (0 < agentEndpoints.length) {
+    possibleAgent = agentEndpoints[0];
+    return agentEndpoints[0];
+  } else {
+    console.error("Failed to find an agency endpoint");
+    return "";
   }
 }
 
@@ -199,10 +203,14 @@ function defineCoordinatorFromStatus(status, endpoint) {
   defineServer('COORDINATOR', id, { status: endpoint });
   defineServerEndpoint(id, endpoint);
 
-  let agency = status.agency.endpoints;
+  let agentEndpoints = status.agency.agencyComm.endpoints;
 
-  if (0 < agency.length) {
-    possibleAgent = agency[0];
+  if (0 < agentEndpoints.length) {
+    possibleAgent = agentEndpoints[0];
+    return agentEndpoints[0];
+  } else {
+    console.error("Failed to find an agency endpoint");
+    return "";
   }
 }
 
@@ -228,6 +236,7 @@ function serverBasics(conn) {
   } else if (role === 'COORDINATOR') {
     INFO("talking to a coordinator");
     defineCoordinatorFromStatus(status);
+    console.error(possibleAgent);
   } else if (role === 'SINGLE') {
     INFO("talking to a single server");
     defineSingleFromStatus(status);
@@ -280,7 +289,7 @@ exports.listServers = listServers;
       }
     }
 
-    var plan = agencyPlan();
+    var plan = loadAgency();
 
     if (plan !== null) {
       locateServers(plan);
