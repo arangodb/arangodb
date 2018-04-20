@@ -3,6 +3,9 @@ v3.2.14 (XXXX-XX-XX)
 
 * field "$schema" in Foxx manifest.json files no longer produce warnings
 
+* added `@arangodb/locals` module to expose the Foxx service context as an
+  alternative to using `module.context` directly.
+
 
 v3.2.13 (2018-04-13)
 --------------------
@@ -25,6 +28,8 @@ v3.2.13 (2018-04-13)
   fully prepare before adding 10 second grace period after leadership change
 
 * fixed interal issue #2215 FailedLeader timeout bug
+
+* supervision can be switched to maintenance mode f.e. for rolling upgrades
 
 
 v3.2.12 (2018-02-27)

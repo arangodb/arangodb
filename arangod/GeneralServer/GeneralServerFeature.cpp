@@ -391,6 +391,11 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
           aql::QueryRegistry*>,
       queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<
+      aql::QueryRegistry*>, queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
