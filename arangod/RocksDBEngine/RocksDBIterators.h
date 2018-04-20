@@ -64,6 +64,34 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   rocksdb::Comparator const* _cmp;
 };
 
+
+/// @brief iterator over all documents in the collection
+/// basically sorted after revision ID
+class RocksDBGenericAllIndexIterator final : public IndexIterator {
+ public:
+  RocksDBGenericAllIndexIterator(LogicalCollection* collection,
+                          transaction::Methods* trx,
+                          RocksDBPrimaryIndex const* index, bool reverse);
+
+  ~RocksDBGenericAllIndexIterator() {}
+
+  char const* typeName() const override { return "generic-all-index-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override { return false;}
+  //bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+  //void skip(uint64_t count, uint64_t& skipped) override;
+
+  //void reset() override;
+
+ private:
+  //bool outOfRange() const;
+
+  bool const _reverse;
+  RocksDBKeyBounds const _bounds;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  rocksdb::Comparator const* _cmp;
+};
+
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
