@@ -92,6 +92,24 @@ void EngineInfoContainerDBServer::EngineInfo::connectQueryId(QueryId id) {
 
 void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
   switch (node->getType()) {
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      auto ecNode = static_cast<EnumerateCollectionNode*>(node);
+      if (ecNode->isRestricted()) {
+        TRI_ASSERT(_restrictedShard.empty());
+        _restrictedShard = ecNode->restrictedShard();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "RESTRICTION! " << ecNode->restrictedShard();
+      }
+      break;
+    }
+    case ExecutionNode::INDEX: {
+      auto idxNode = static_cast<IndexNode*>(node);
+      if (idxNode->isRestricted()) {
+        TRI_ASSERT(_restrictedShard.empty());
+        _restrictedShard = idxNode->restrictedShard();
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "RESTRICTION! " << idxNode->restrictedShard();
+      }
+      break;
+    }
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -214,8 +232,14 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
       {
-        auto col = static_cast<EnumerateCollectionNode*>(node)->collection();
-        handleCollection(col, AccessMode::Type::READ);
+        auto ecNode = static_cast<EnumerateCollectionNode*>(node);
+        auto col = ecNode->collection();
+        if (ecNode->isRestricted()) {
+          std::unordered_set<std::string> restrict{ecNode->restrictedShard()};
+          handleCollection(col, AccessMode::Type::READ, restrict);
+        } else {
+          handleCollection(col, AccessMode::Type::READ);
+        }
         updateCollection(col);
         break;
       }
@@ -223,7 +247,12 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       {
         auto idxNode = static_cast<IndexNode*>(node);
         auto col = idxNode->collection();
-        handleCollection(col, AccessMode::Type::READ);
+        if (idxNode->isRestricted()) {
+          std::unordered_set<std::string> restrict{idxNode->restrictedShard()};
+          handleCollection(col, AccessMode::Type::READ, restrict);
+        } else {
+          handleCollection(col, AccessMode::Type::READ);
+        }
         updateCollection(col);
         break;
       }
