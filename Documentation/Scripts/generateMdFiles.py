@@ -39,6 +39,9 @@ thisVerb = {}
 route = ''
 verb = ''
 
+################################################################################
+### Swagger Markdown rendering
+################################################################################
 def getReference(name, source, verb):
     try:
         ref = name['$ref'][defLen:]
@@ -339,7 +342,7 @@ def replaceCode(lines, blockName):
                     lineR[r] = '@RESTDESCRIPTION'
                 foundRestBodyParam = True
                 r+=1
-                while ((len(lineR[r]) > 0) and
+                while ((len(lineR[r]) == 0) or
                        ((lineR[r][0] != '@') or
                        have_RESTBODYPARAM.search(lineR[r]))):
                     # print "xxx - %d %s" %(len(lineR[r]), lineR[r])
