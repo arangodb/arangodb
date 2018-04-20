@@ -1,6 +1,8 @@
 v3.2.14 (XXXX-XX-XX)
 --------------------
 
+* field "$schema" in Foxx manifest.json files no longer produce warnings
+
 * added `@arangodb/locals` module to expose the Foxx service context as an
   alternative to using `module.context` directly.
 
