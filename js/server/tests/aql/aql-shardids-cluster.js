@@ -151,7 +151,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       let docs = [];
 
       for (let i = 0; i < 100; ++i) {
-        docs.push({ "value" : i % 25 });
+        docs.push({ "value" : i % 25, "joinValue" : i % 5 });
       }
 
       collection.save(docs);
@@ -234,6 +234,31 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         assertEqual(4, res.length);
         for (let doc of res) {
           assertEqual(i, doc.value);
+        }
+      }
+    },
+
+    testRestrictMultipleShards : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i}
+            FOR joined IN ${cnKey}
+              FILTER joined.${shardKey} == ${i % 5}
+              FILTER joined.joinValue == doc.joinValue
+            RETURN [doc, joined]
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+        let res = db._query(query).toArray();
+        // we find 4 in first Loop, and 4 joins each
+        assertEqual(16, res.length);
+        for (let [doc, joined] of res) {
+          assertEqual(i, doc.value);
+          assertEqual(i % 5, joined.value);
+          assertEqual(doc.joinValue, joined.joinValue);
         }
       }
     },
