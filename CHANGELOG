@@ -1,6 +1,9 @@
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
+* added arangod startup option `--dump-options` to print all configuration parameters
+  as a JSON object
+
 * fixed: (Enterprise only) If you restore a SmartGraph where the collections
   are still existing and are supposed to be dropped on restore we ended up in
   duplicate name error. This is now gone and the SmartGraph is correctly restored.
