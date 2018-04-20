@@ -26,5 +26,5 @@ Once the ArangoDB _master_ and _slaves_ have been deployed, the replication has
 to be started on each of the available _slaves_. This can be done at database level,
 or globally.
 
-For further informations on how to set up the replication in _master/slave_ environment,
+For further information on how to set up the replication in _master/slave_ environment,
 please refer to [this](../../Administration/MasterSlave/SettingUp.md) _Section_.

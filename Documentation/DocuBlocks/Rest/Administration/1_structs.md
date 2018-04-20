@@ -21,7 +21,7 @@ this task should run each `period` seconds
 time offset in seconds from the created timestamp
 
 @RESTSTRUCT{command,api_task_struct,string,required,}
-the javascript function for this dask
+the javascript function for this task
 
 @RESTSTRUCT{database,api_task_struct,string,required,}
 the database this task belongs to

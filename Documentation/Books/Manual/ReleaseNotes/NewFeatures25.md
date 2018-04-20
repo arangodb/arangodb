@@ -242,7 +242,7 @@ That includes a rewrite of the documentation as well as some code changes as fol
 
 ### Moved Foxx applications to a different folder.
 
-Until 2.4 foxx apps were stored in the following folder structure:
+Until 2.4 Foxx apps were stored in the following folder structure:
 `<app-path>/databases/<dbname>/<appname>:<appversion>`.
 This caused some trouble as apps where cached based on name and version and updates did not apply.
 Also the path on filesystem and the app's access URL had no relation to one another.
@@ -252,7 +252,7 @@ Now the path on filesystem is identical to the URL (except the appended APP):
 ### Rewrite of Foxx routing
 
 The routing of Foxx has been exposed to major internal changes we adjusted because of user feedback.
-This allows us to set the development mode per mountpoint without having to change paths and hold
+This allows us to set the development mode per mount point without having to change paths and hold
 apps at separate locations.
 
 ### Foxx Development mode
@@ -272,8 +272,8 @@ latter option is only read and used during the upgrade to 2.5 and does not have 
 ### Foxx install process
 
 Installing Foxx apps has been a two step process: import them into ArangoDB and mount them at a
-specific mountpoint. These operations have been joined together. You can install an app at one
-mountpoint, that's it. No fetch, mount, unmount, purge cycle anymore. The commands have been 
+specific mount point. These operations have been joined together. You can install an app at one
+mount point, that's it. No fetch, mount, unmount, purge cycle anymore. The commands have been 
 simplified to just:
 
 * install: get your Foxx app up and running
@@ -302,7 +302,7 @@ your in-house devs to track down errors in the application.
 
 We added a `console` object to Foxx apps. All Foxx apps now have a console object implementing
 the familiar Console API in their global scope, which can be used to log diagnostic
-messages to the database. This console also allows to read the error output of one specific foxx.
+messages to the database. This console also allows to read the error output of one specific Foxx.
 
 ### Foxx requests
 We added `org/arangodb/request` module, which provides a simple API for making HTTP requests
