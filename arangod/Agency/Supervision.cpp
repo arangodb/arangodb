@@ -714,10 +714,10 @@ void Supervision::run() {
     }
   }
   
-    if (shutdown) {
-      ApplicationServer::server->beginShutdown();
-    }
+  if (shutdown) {
+    ApplicationServer::server->beginShutdown();
   }
+}
 
 // Guarded by caller
 bool Supervision::isShuttingDown() {
