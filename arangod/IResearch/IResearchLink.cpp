@@ -189,25 +189,21 @@ int IResearchLink::drop() {
 
   _dropCollectionInDestructor = false; // will do drop now
 
-  if (!arangodb::ServerState::instance()->isDBServer()) {
-    return _view->drop(_collection->id());
+  if (arangodb::ServerState::instance()->isDBServer()) {
+    // TODO FIXME find a better way to look up an iResearch View
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto* view = dynamic_cast<IResearchViewDBServer*>(_wiew.get());
+    #else
+      auto* view = static_cast<IResearchViewDBServer*>(_wiew.get());
+    #endif
+
+    return view
+      ? view->drop(_collection->id()).errorNumber()
+      : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+      ;
   }
 
-  auto res = _view->drop(_collection->id());
-
-  if (TRI_ERROR_NO_ERROR != res) {
-    return res;
-  }
-
-  // TODO FIXME find a better way to look up an iResearch View
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* view = dynamic_cast<IResearchViewDBServer*>(_wiew.get());
-  #else
-    auto* view = static_cast<IResearchViewDBServer*>(_wiew.get());
-  #endif
-
-  return view && view->drop(_collection->id())
-    ? TRI_ERROR_NO_ERROR : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  return _view->drop(_collection->id());
 }
 
 bool IResearchLink::hasBatchInsert() const {

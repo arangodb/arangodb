@@ -49,7 +49,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   /// @brief drop the view association for the specified 'cid'
   /// @return if an association was removed
   //////////////////////////////////////////////////////////////////////////////
-  bool drop(TRI_voc_cid_t cid);
+  arangodb::Result drop(TRI_voc_cid_t cid);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure there is a view instance for the specified 'cid'

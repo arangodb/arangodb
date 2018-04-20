@@ -33,6 +33,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewDBServer.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -67,6 +68,7 @@ struct IResearchViewDBServerSetup {
 
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
     features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
@@ -218,17 +220,17 @@ SECTION("test_drop_cid") {
   static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
   CHECK((false == impl->visitCollections(visitor)));
   CHECK((false == !vocbase.lookupView(view->id())));
-  CHECK((true == impl->drop(123)));
-  CHECK((false == !vocbase.lookupView(view->id())));
+  CHECK((TRI_ERROR_NO_ERROR == impl->drop(123).errorNumber()));
+  CHECK((true == !vocbase.lookupView(view->id())));
   CHECK((true == impl->visitCollections(visitor)));
-  CHECK((false == impl->drop(123))); // no longer present
+  CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == impl->drop(123).errorNumber())); // no longer present
 }
 
 SECTION("test_ensure") {
   s.agency->responses.clear();
   s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
   s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
-  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ] }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
   CHECK((false == !wiew));
@@ -245,6 +247,8 @@ SECTION("test_ensure") {
   CHECK((0 == view->planVersion()));
   CHECK((arangodb::iresearch::DATA_SOURCE_TYPE == view->type()));
   CHECK((&vocbase == &(view->vocbase())));
+  static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+  CHECK((true == view->visitCollections(visitor))); // no collections in view
   CHECK((false == !vocbase.lookupView("_iresearch_123_1_testView")));
 }
 
@@ -434,11 +438,324 @@ SECTION("test_rename") {
 }
 
 SECTION("test_toVelocyPack") {
-  // FIXME TODO implemet
+  // base
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    wiew->toVelocyPack(builder,false, false);
+    builder.close();
+    auto slice = builder.slice();
+    CHECK((3 == slice.length()));
+    CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
+    CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
+    CHECK((slice.hasKey("unusedKey") && slice.get("unusedKey").isString() && std::string("unusedValue") == slice.get("unusedKey").copyString())); // ensure the original definition is fully stored
+  }
+
+  // includeProperties
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    wiew->toVelocyPack(builder, true, false);
+    builder.close();
+    auto slice = builder.slice();
+    CHECK((4 == slice.length()));
+    CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
+    CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
+    CHECK((slice.hasKey("unusedKey") && slice.get("unusedKey").isString() && std::string("unusedValue") == slice.get("unusedKey").copyString())); // ensure the original definition is fully stored
+    CHECK((slice.hasKey("properties")));
+    auto props = slice.get("properties");
+    CHECK((props.isObject()));
+    CHECK((1 == props.length()));
+    CHECK((props.hasKey("collections") && props.get("collections").isArray() && 0 == props.get("collections").length()));
+  }
+
+  // includeSystem (same as base)
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    wiew->toVelocyPack(builder, false, true);
+    builder.close();
+    auto slice = builder.slice();
+    CHECK((3 == slice.length()));
+    CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
+    CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
+    CHECK((slice.hasKey("unusedKey") && slice.get("unusedKey").isString() && std::string("unusedValue") == slice.get("unusedKey").copyString())); // ensure the original definition is fully stored
+  }
 }
 
 SECTION("test_updateProperties") {
-  // FIXME TODO implemet
+  // update empty (partial)
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      wiew->toVelocyPack(builder, true, false);
+      builder.close();
+      auto slice = builder.slice().get("properties");
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 42 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+    }
+
+    {
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"threadsMaxTotal\": 52 }");
+      CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
+    }
+
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      wiew->toVelocyPack(builder, true, false);
+      builder.close();
+      auto slice = builder.slice().get("properties");
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+      CHECK((!slice.hasKey("links")));
+      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+    }
+
+    auto view = impl->ensure(123);
+    CHECK((false == !view));
+    static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+    CHECK((true == view->visitCollections(visitor))); // no collections in view
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->toVelocyPack(builder, true, false);
+    builder.close();
+    auto slice = builder.slice().get("properties");
+    CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+    CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+    CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+  }
+
+  // update empty (full)
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      wiew->toVelocyPack(builder, true, false);
+      builder.close();
+      auto slice = builder.slice().get("properties");
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 42 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+    }
+
+    {
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8, 9 ], \"links\": { \"testCollection\": {} }, \"threadsMaxTotal\": 52 }");
+      CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
+    }
+
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      wiew->toVelocyPack(builder, true, false);
+      builder.close();
+      auto slice = builder.slice().get("properties");
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+      CHECK((!slice.hasKey("links")));
+      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 5 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+    }
+
+    auto view = impl->ensure(123);
+    CHECK((false == !view));
+    static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+    CHECK((true == view->visitCollections(visitor))); // no collections in view
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->toVelocyPack(builder, true, false);
+    builder.close();
+    auto slice = builder.slice().get("properties");
+    CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+    CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 5 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+    CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+  }
+
+  // update non-empty (partial)
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    auto view = impl->ensure(123);
+    CHECK((false == !view));
+    static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+    CHECK((true == view->visitCollections(visitor))); // no collections in view
+
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      wiew->toVelocyPack(builder, true, false);
+      builder.close();
+      auto slice = builder.slice().get("properties");
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 42 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+    }
+
+    {
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"threadsMaxTotal\": 52 }");
+      CHECK((true == wiew->updateProperties(update->slice(), true, true).ok()));
+    }
+
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      wiew->toVelocyPack(builder, true, false);
+      builder.close();
+      auto slice = builder.slice().get("properties");
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+      CHECK((!slice.hasKey("links")));
+      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+    }
+
+    CHECK((true == view->visitCollections(visitor))); // no collections in view
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->toVelocyPack(builder, true, false);
+    builder.close();
+    auto slice = builder.slice().get("properties");
+    CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+    CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+    CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+  }
+
+  // update non-empty (full)
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    auto view = impl->ensure(123);
+    CHECK((false == !view));
+    static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+    CHECK((true == view->visitCollections(visitor))); // no collections in view
+
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      wiew->toVelocyPack(builder, true, false);
+      builder.close();
+      auto slice = builder.slice().get("properties");
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 24 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 42 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+    }
+
+    {
+      auto update = arangodb::velocypack::Parser::fromJson("{ \"collections\": [ 6, 7, 8 ], \"links\": { \"testCollection\": {} }, \"threadsMaxTotal\": 52 }");
+      CHECK((true == wiew->updateProperties(update->slice(), false, true).ok()));
+    }
+
+    {
+      arangodb::velocypack::Builder builder;
+
+      builder.openObject();
+      wiew->toVelocyPack(builder, true, false);
+      builder.close();
+      auto slice = builder.slice().get("properties");
+      CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
+      CHECK((!slice.hasKey("links")));
+      CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 5 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+      CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+    }
+
+    CHECK((true == view->visitCollections(visitor))); // no collections in view
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->toVelocyPack(builder, true, false);
+    builder.close();
+    auto slice = builder.slice().get("properties");
+    CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 0 == slice.get("collections").length()));
+    CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
+    CHECK((slice.hasKey("threadsMaxIdle") && slice.get("threadsMaxIdle").isNumber<size_t>() && 5 == slice.get("threadsMaxIdle").getNumber<size_t>()));
+    CHECK((slice.hasKey("threadsMaxTotal") && slice.get("threadsMaxTotal").isNumber<size_t>() && 52 == slice.get("threadsMaxTotal").getNumber<size_t>()));
+  }
 }
 
 SECTION("test_visitCollections") {

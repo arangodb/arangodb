@@ -1492,6 +1492,7 @@ void IResearchView::getPropertiesVPack(
     return; // nothing more to output (persistent configuration does not need links)
   }
 
+  TRI_ASSERT(builder.isOpenObject());
   std::vector<std::string> collections;
 
   // add CIDs of known collections to list
