@@ -1,4 +1,4 @@
-v3.2.14 (XXXX-XX-XX)
+v3.2.14 (2018-04-20)
 --------------------
 
 * field "$schema" in Foxx manifest.json files no longer produce warnings
