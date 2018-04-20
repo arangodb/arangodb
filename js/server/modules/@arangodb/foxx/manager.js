@@ -1061,7 +1061,7 @@ exports._mountPoints = getMountPoints;
 exports._isClusterReady = isClusterReadyForBusiness;
 
 // -------------------------------------------------
-// Exports from foxx utils module
+// Exports from Foxx utils module
 // -------------------------------------------------
 
 exports.getServiceDefinition = utils.getServiceDefinition;
@@ -1070,7 +1070,7 @@ exports.listDevelopment = utils.listDevelopment;
 exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 // -------------------------------------------------
-// Exports from foxx store module
+// Exports from Foxx store module
 // -------------------------------------------------
 
 exports.available = store.available;

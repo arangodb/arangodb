@@ -975,7 +975,7 @@ function flattenRoutingTree (tree) {
 }
 
 //
-// @brief creates the foxx routing actions
+// @brief creates the Foxx routing actions
 //
 
 function foxxRouting (req, res, options, next) {
@@ -1051,7 +1051,7 @@ function buildRouting (dbname) {
   // allow the collection to unload
   routing = null;
 
-  // install the foxx routes
+  // install the Foxx routes
   var mountPoints = FoxxManager._mountPoints();
 
   for (let i = 0; i < mountPoints.length; i++) {
@@ -1665,7 +1665,7 @@ function resultCursor (req, res, cursor, code, options) {
   var extra;
 
   if (Array.isArray(cursor)) {
-    // performance optimisation: if the value passed in is an array, we can
+    // performance optimization: if the value passed in is an array, we can
     // use it as it is
     hasCount = ((options && options.countRequested) ? true : false);
     count = cursor.length;
@@ -1673,7 +1673,7 @@ function resultCursor (req, res, cursor, code, options) {
     hasNext = false;
     cursorId = null;
   } else if (typeof cursor === 'object' && cursor.hasOwnProperty('json')) {
-    // cursor is a regular JS object (performance optimisation)
+    // cursor is a regular JS object (performance optimization)
     hasCount = Boolean(options && options.countRequested);
     count = cursor.json.length;
     rows = cursor.json;

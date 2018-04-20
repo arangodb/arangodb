@@ -4873,7 +4873,7 @@ function AQL_MATCHES (element, examples, returnIndex) {
 // / @brief passthru the argument
 // /
 // / this function is marked as non-deterministic so its argument withstands
-// / query optimisation. this function can be used for testing
+// / query optimization. this function can be used for testing
 // //////////////////////////////////////////////////////////////////////////////
 
 function AQL_PASSTHRU (value) {
@@ -4969,7 +4969,7 @@ function AQL_CURRENT_DATABASE () {
 // / @brief always fail
 // /
 // / this function is non-deterministic so it is not executed at query
-// / optimisation time. this function can be used for testing
+// / optimization time. this function can be used for testing
 // //////////////////////////////////////////////////////////////////////////////
 
 function AQL_FAIL (message) {
