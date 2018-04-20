@@ -51,8 +51,15 @@ ArangoStatement.prototype.parse = function () {
 // / @brief explain a query and return the results
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoStatement.prototype.explain = function () { // options
-  return AQL_EXPLAIN(this._query, this._bindVars, this._options || {});//opts
+ArangoStatement.prototype.explain = function (options) {
+  let opts = this._options || { };
+  if (typeof opts === 'object' && typeof options === 'object') {
+    Object.keys(options).forEach(function (o) {
+      // copy options
+      opts[o] = options[o];
+    });
+  }
+  return AQL_EXPLAIN(this._query, this._bindVars, opts);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

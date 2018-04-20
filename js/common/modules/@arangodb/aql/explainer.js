@@ -208,7 +208,7 @@ function printStats (stats) {
     return;
   }
 
-  stringBuilder.appendLine(section('Runtime Statistics:'));
+  stringBuilder.appendLine(section('Query Statistics:'));
   var maxWELen = String('Writes Exec').length;
   var maxWILen = String('Writes Ign').length;
   var maxSFLen = String('Scan Full').length;
@@ -609,7 +609,7 @@ function processQuery (query, explain) {
         }
       });
       // by design the runtime is culmulative right now.
-      // by subtracting the parent runtime we get the runtime per node
+      // by subtracting the dependencies from parent runtime we get the runtime per node
       stats.nodes.forEach(n => {
         if (parents.hasOwnProperty(n.id)) {
           parents[n.id].forEach(pid => {
@@ -1382,27 +1382,34 @@ function explain(data, options, shouldPrint) {
   options = options || { };
   setColors(options.colors === undefined ? true : options.colors);
 
+  stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
-  if (options.profile >= 2) {
-    let cursor = stmt.execute();
-    let extra = cursor.getExtra();
-
-    stringBuilder.clearOutput();
-    let result = stmt.explain(options); // TODO why is this there ?
-    processQuery(data.query, extra);
-    
-  } else {
-    stringBuilder.clearOutput();
-    let result = stmt.explain(options); // TODO why is this there ?
-    processQuery(data.query, result);
-  }
+  let result = stmt.explain(options); // TODO why is this there ?
+  processQuery(data.query, result);
   
-
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
   } else {
     return stringBuilder.getOutput();
   }
+}
+
+
+/* the exposed profile query function */
+function profileQuery(data) {
+  'use strict';
+  if (!(data instanceof Object) || !data.hasOwnProperty("options")) {
+    throw 'ArangoStatement needs initial data';
+  }
+  let options =  data.options || { };
+  setColors(options.colors === undefined ? true : options.colors);
+
+  stringBuilder.clearOutput();
+  let stmt = db._createStatement(data);
+  let cursor = stmt.execute();
+  let extra = cursor.getExtra();
+  processQuery(data.query, extra);
+  print(stringBuilder.getOutput());
 }
 
 /* the exposed debug function */
@@ -1559,6 +1566,7 @@ function inspectDump(filename) {
 }
 
 exports.explain = explain;
+exports.profileQuery = profileQuery;
 exports.debug = debug;
 exports.debugDump = debugDump;
 exports.inspectDump = inspectDump;
