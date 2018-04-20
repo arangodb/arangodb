@@ -613,8 +613,8 @@ void DumpFeature::validateOptions(
     _options.outputPath.pop_back();
   }
 
-  auto clamped = boost::algorithm::clamp(_options.threadCount, 1,
-                                         4 * TRI_numberProcessors());
+  uint32_t clamped = boost::algorithm::clamp(
+      _threadCount, 1, 4 * static_cast<uint32_t>(TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC(WARN, Logger::FIXME) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
