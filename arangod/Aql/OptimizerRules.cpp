@@ -103,8 +103,8 @@ static aql::Variable const* getVariable(ExecutionNode const* node) {
 /// try to figure out the target shard. If the operation cannot be restricted to
 /// a single shard, this function will return an empty string
 std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* node, aql::Collection const* collection) {
-  if (collection->isSmart()) {
-    // no support for smart graphs yet
+  if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
+    // no support for smart edge collections
     return std::string();
   }
 
@@ -3789,7 +3789,7 @@ void arangodb::aql::restrictToSingleShardRule(
 
         if (!shardId.empty() && finder.isSafeForOptimization(collection, shardId)) {
           wasModified = true;
-          static_cast<RemoteNode*>(node)->ownName(shardId);
+          static_cast<IndexNode*>(current)->restrictToShard(shardId);
         }
         break;
       } else if (currentType == ExecutionNode::UPSERT ||
