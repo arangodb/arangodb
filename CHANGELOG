@@ -207,6 +207,9 @@ devel
 
 * fixed internal #2215's failedleader timeout, when in todo
 
+* Foxx manifest.json files can now contain a $schema key with the value
+  of "http://json.schemastore.org/foxx-manifest" to improve tooling support.
+
 * added `@arangodb/locals` module to expose the Foxx service context as an
   alternative to using `module.context` directly.
 
