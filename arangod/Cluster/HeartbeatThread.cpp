@@ -434,7 +434,9 @@ void HeartbeatThread::runSingleServer() {
   auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
     auto remain = _interval - (std::chrono::steady_clock::now() - start);
-    std::this_thread::sleep_for(remain);
+    if (remain.count() > 0) {
+      std::this_thread::sleep_for(remain);
+    }
     start = std::chrono::steady_clock::now();
     
     if (isStopping()) {

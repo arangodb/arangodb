@@ -1053,18 +1053,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
     if (!reply.error && reply.code === 200) {
       let res = JSON.parse(reply.body);
-<<<<<<< HEAD
-      internal.print("Response ====> " + reply.body);      
-      let leader = res.endpoints[0].endpoint;
-      instanceInfo.arangods.forEach(d => {
-        if (d.endpoint === leader) {
-          instanceInfo.endpoint = d.endpoint;
-          instanceInfo.url = d.url;
-        }
-      });
-    }
-  }   
-=======
       internal.print("Response ====> " + reply.body);
       let leader = res[0].arango.Plan.AsyncReplication.Leader;
       if (!leader) {
@@ -1083,7 +1071,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       }
     });
   }
->>>>>>> 836dbdaeb8... Moving out more from #5066
 
   arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
   return true;
