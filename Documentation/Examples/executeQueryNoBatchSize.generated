@@ -3,20 +3,20 @@ arangosh&gt; result = db.users.all().toArray();
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17730"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17730"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Wp43O72---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WsKMXEe--_"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17726"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17726"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WsKMXEe---"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17737"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17737"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Wp43O72--A"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17733"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17733"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WsKMXEe--A"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17734"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/17734"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Wp43O72--_"</span>, 
-    <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
   } 
 ]
 arangosh&gt; q = db.users.all(); q.execute(); result = [ ]; <span class="hljs-keyword">while</span> (q.hasNext()) { result.push(q.next()); }
