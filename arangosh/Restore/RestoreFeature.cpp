@@ -98,8 +98,6 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);
   int rightType = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
       right, "type", 0);
-  LOG_TOPIC(ERR, arangodb::Logger::RESTORE)
-      << "TYPE " << leftType << ", " << rightType;
 
   if (leftType != rightType) {
     return leftType < rightType;
