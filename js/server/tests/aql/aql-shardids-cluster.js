@@ -125,7 +125,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
 
   const validatePlan = (query, nodeType, c) => {
     const plan = AQL_EXPLAIN(query).plan;
-    require("internal").print(plan.nodes);
     assertFalse(hasDistributeNode(plan.nodes));
     assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, nodeType, c));
   };
@@ -206,12 +205,6 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         assertEqual(1, res.length);
         assertEqual(doc._key, res[0]._key);
         assertEqual(doc._rev, res[0]._rev);
-        const queryId = `FOR doc IN ${cn} FILTER doc._id == "${doc._id}" RETURN doc`;
-        validatePlan(queryId, "IndexNode", collection);
-        res = db._query(queryId).toArray();
-        assertEqual(1, res.length);
-        assertEqual(doc._key, res[0]._key);
-        assertEqual(doc._rev, res[0]._rev);
       }
     },
 
@@ -245,6 +238,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
       }
     },
 
+    /* Not supported yet
     testRestrictOnShardKeyNoIndex : function () {
       dropIndexes(collectionByKey);
 
@@ -258,6 +252,7 @@ function ahuacatlShardIdsOptimizationTestSuite() {
         }
       }
     }
+    */
   };
 };
 
