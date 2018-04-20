@@ -23,6 +23,7 @@
 
 #include "ApplicationServerHelper.h"
 #include "IResearchCommon.h"
+#include "IResearchViewDBServer.h"
 #include "VelocyPackHelper.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Logger/Logger.h"
@@ -175,6 +176,10 @@ int IResearchLink::drop() {
 
   // if the collection is in the process of being removed then drop it from the view
   if (_collection->deleted()) {
+    if (_wiewDrop) {
+      _wiewDrop();
+    }
+
     auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
 
     if (!result.ok()) {
@@ -236,6 +241,21 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false; // no such view
       }
 
+      IResearchViewDBServer* wiew = nullptr;
+
+      // create the IResearchView for the specific collection (on DBServer)
+      if (arangodb::ServerState::instance()->isDBServer()) {
+        // TODO FIXME find a better way to look up an iResearch View
+        #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          wiew = dynamic_cast<IResearchViewDBServer*>(logicalView.get());
+        #else
+          wiew = static_cast<IResearchViewDBServer*>(logicalView.get());
+        #endif
+
+        // repoint LogicalView at the collection-specific instance
+        logicalView = wiew ? wiew->create(id()) : nullptr;
+      }
+
       // TODO FIXME find a better way to look up an iResearch View
       #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         auto* view = dynamic_cast<IResearchView*>(logicalView.get());
@@ -273,6 +293,18 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       _dropCollectionInDestructor = view->emplace(collection()->id()); // track if this is the instance that called emplace
       _meta = std::move(meta);
       _view = std::move(view);
+
+      // register the IResearchView for the specific collection (on DBServer)
+      if (wiew) {
+        _wiewDrop = wiew->emplace(_id, logicalView);
+
+        if (!_wiewDrop) {
+          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+            << "error registering view: '" << viewId << "' for link '" << _id << "'";
+
+          return false;
+        }
+      }
 
       // FIXME TODO remove once View::updateProperties(...) will be fixed to write
       // the update delta into the WAL marker instead of the full persisted state

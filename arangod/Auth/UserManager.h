@@ -54,7 +54,7 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// stored in `_system/_users` as well as in external authentication
 /// systems like LDAP. The permissions are cached locally if possible,
 /// to avoid unnecessary disk access. An instance of this should only
-/// exist on Coordinators and single servers.
+/// exist on coordinators and single servers.
 class UserManager {
  public:
   explicit UserManager();
