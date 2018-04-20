@@ -80,7 +80,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     uint64_t chunkSize{1024 * 1024 * 8};
     uint64_t defaultNumberOfShards{1};
     uint64_t defaultReplicationFactor{1};
-    uint32_t threadCount{8};
+    uint32_t threadCount{2};
     bool clusterMode{false};
     bool createDatabase{false};
     bool force{false};

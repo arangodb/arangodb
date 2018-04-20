@@ -27,10 +27,10 @@
 #include <iostream>
 #include <thread>
 
-#include <boost/algorithm/clamp.hpp>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/algorithm/clamp.hpp>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -614,7 +614,8 @@ void DumpFeature::validateOptions(
   }
 
   uint32_t clamped = boost::algorithm::clamp(
-      _threadCount, 1, 4 * static_cast<uint32_t>(TRI_numberProcessors()));
+      _options.threadCount, 1,
+      4 * static_cast<uint32_t>(TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
     LOG_TOPIC(WARN, Logger::FIXME) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
@@ -875,8 +876,8 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
 
     // queue job to actually dump collection
     auto jobData = std::make_unique<JobData>(
-        *_directory, *this, _options, _stats, collection,
-        0 /* batchId */, std::to_string(cid), name, "" /* collectionType */);
+        *_directory, *this, _options, _stats, collection, 0 /* batchId */,
+        std::to_string(cid), name, "" /* collectionType */);
     _clientTaskQueue.queueJob(std::move(jobData));
   }
 
