@@ -43,8 +43,8 @@ class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
   }
 
  protected:
-  virtual void getValue(arangodb::basics::StringBuffer& buffer) override;
-  virtual void setKey(char const* data, size_t length) override;
+  virtual void response(arangodb::basics::StringBuffer& buffer) override;
+  virtual void request(char const* data, size_t length) override;
 
  private:
   std::string const& action() {

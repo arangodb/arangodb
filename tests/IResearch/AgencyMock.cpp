@@ -83,7 +83,7 @@ void GeneralClientConnectionAgencyMock::handleWrite(
   buffer.appendText(body);
 }
 
-void GeneralClientConnectionAgencyMock::getValue(
+void GeneralClientConnectionAgencyMock::response(
     arangodb::basics::StringBuffer& buffer
 ) {
   if (_path.size() != 4) {
@@ -103,7 +103,7 @@ void GeneralClientConnectionAgencyMock::getValue(
   }
 }
 
-void GeneralClientConnectionAgencyMock::setKey(char const* data, size_t length) {
+void GeneralClientConnectionAgencyMock::request(char const* data, size_t length) {
   static const std::string bodyDelimiter("\r\n\r\n");
 
   std::string request(data, length);

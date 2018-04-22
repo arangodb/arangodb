@@ -197,7 +197,7 @@ function book-check-markdown-leftovers()
     pwd
     NAME="$1"
     echo "${STD_COLOR}##### checking for remaining markdown snippets in the HTML output of ${NAME}${RESET}"
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep -- '##' {} \; -print)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep -- '^##' {} \; -print)
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}";
         echo "found these unconverted markdown titles: "
