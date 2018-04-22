@@ -63,7 +63,6 @@ class IResearchLinkMMFilesCoordinator final
       std::vector<std::pair<arangodb::LocalDocumentId, VPackSlice>> const&,
       std::shared_ptr<LocalTaskQueue>
   ) override {
-    TRI_ASSERT(false); // should not be called
   }
 
   bool canBeDropped() const noexcept override {
@@ -89,7 +88,6 @@ class IResearchLinkMMFilesCoordinator final
       VPackSlice const& doc,
       Index::OperationMode mode
   ) override {
-    TRI_ASSERT(false); // should not be called
     return { TRI_ERROR_NOT_IMPLEMENTED };
   }
 
@@ -123,7 +121,6 @@ class IResearchLinkMMFilesCoordinator final
       VPackSlice const&,
       Index::OperationMode
   ) override {
-    TRI_ASSERT(false); // should not be called
     return { TRI_ERROR_NOT_IMPLEMENTED };
   }
 
@@ -148,12 +145,8 @@ class IResearchLinkMMFilesCoordinator final
   ) const {
     TRI_ASSERT(!builder.isOpenObject());
     builder.openObject();
-    {
-      bool const success = _meta.json(builder);
-      TRI_ASSERT(success);
-    }
-    builder.add("id", VPackValue(StringUtils::itoa(Index::id())));
-    IResearchLinkHelper::setType(builder);
+    bool const success = IResearchLinkCoordinator::toVelocyPack(builder);
+    TRI_ASSERT(success);
 
     if (withFigures) {
       VPackBuilder figuresBuilder;
@@ -287,12 +280,8 @@ class IResearchLinkRocksDBCoordinator final
   ) const {
     TRI_ASSERT(!builder.isOpenObject());
     builder.openObject();
-    {
-      bool const success = _meta.json(builder);
-      TRI_ASSERT(success);
-    }
-    builder.add("id", VPackValue(StringUtils::itoa(Index::id())));
-    IResearchLinkHelper::setType(builder);
+    bool const success = IResearchLinkCoordinator::toVelocyPack(builder);
+    TRI_ASSERT(success);
 
     if (withFigures) {
       VPackBuilder figuresBuilder;
@@ -309,9 +298,6 @@ class IResearchLinkRocksDBCoordinator final
   void unload() noexcept override {
     // NOOP
   }
-
- private:
-  IResearchLinkMeta _meta;
 }; // IResearchLinkRocksDBCoordinator
 
 }
@@ -435,12 +421,10 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
 
   if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
     auto const viewId = identifier.getUInt();
+
     auto& vocbase = collection().vocbase();
 
-    auto logicalView = ClusterInfo::instance()->getView(
-      vocbase.name(), // database ID
-      basics::StringUtils::itoa(viewId) // view ID
-    );
+    auto logicalView  = vocbase.lookupView(viewId);
 
     if (!logicalView
         || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
@@ -450,9 +434,9 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     }
 
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* view = dynamic_cast<IResearchViewCoordinator*>(logicalView.get());
+      auto view = std::dynamic_pointer_cast<IResearchViewCoordinator>(logicalView);
     #else
-      auto* view = static_cast<IResearchViewCoordinator*>(logicalView.get());
+      auto view = std::static_pointer_cast<IResearchViewCoordinator>(logicalView);
     #endif
 
     if (!view) {
@@ -479,6 +463,22 @@ bool IResearchLinkCoordinator::matchesDefinition(VPackSlice const& slice) const 
   std::string errorField;
 
   return rhs.init(slice, errorField) && _meta == rhs;
+}
+
+bool IResearchLinkCoordinator::toVelocyPack(
+    arangodb::velocypack::Builder& builder
+) const {
+  if (!builder.isOpenObject() || !_meta.json(builder)) {
+    return false;
+  }
+
+  TRI_ASSERT(_view);
+
+  builder.add("id", VPackValue(StringUtils::itoa(_id)));
+  IResearchLinkHelper::setType(builder);
+  IResearchLinkHelper::setView(builder, _view->id());
+
+  return true;
 }
 
 } // iresearch

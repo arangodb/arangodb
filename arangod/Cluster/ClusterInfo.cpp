@@ -1840,36 +1840,13 @@ int ClusterInfo::createViewCoordinator(
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  AgencyComm ac;
-
   auto const name = basics::VelocyPackHelper::getStringValue(
     json, "name", StaticStrings::Empty
   );
 
-  viewID = basics::VelocyPackHelper::getStringValue(
-    json, "id", StaticStrings::Empty
-  );
-
-  VPackBuilder builder;
-  if (viewID.empty()) {
-    // view id is has not been provided
-    viewID = basics::StringUtils::itoa(uniqid());
-
-    builder.openObject(); // {
-    builder.add("name", nameSlice);
-    builder.add("type", typeSlice);
-    builder.add("id", VPackValue(viewID));
-    builder.add("planId", VPackValue(viewID));
-    builder.add(VPackValue("properties")); // properties : {
-    builder.add(VPackValue(VPackValueType::Object));
-    auto const props = json.get("properties");
-    if (props.isObject()) {
-      builder.add(VPackObjectIterator(props));
-    }
-    builder.close(); // }
-    builder.close(); // }
-
-    json = builder.slice();
+  if (name.empty()) {
+    // must not be empty
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
   {
@@ -1889,6 +1866,17 @@ int ClusterInfo::createViewCoordinator(
     }
   }
 
+  viewID = basics::VelocyPackHelper::getStringValue(
+    json, "id", StaticStrings::Empty
+  );
+
+  if (viewID.empty()) {
+    // view id has not been provided
+    viewID = basics::StringUtils::itoa(uniqid());
+  }
+
+  AgencyComm ac;
+
   // mop: why do these ask the agency instead of checking cluster info?
   if (!ac.exists("Plan/Databases/" + databaseName)) {
     events::CreateView(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1899,6 +1887,31 @@ int ClusterInfo::createViewCoordinator(
     events::CreateView(name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS); // FIXME should it be something like TRI_ERROR_CLUSTER_DATA_SOURCE_ID_EXISTS???
     return setErrormsg(TRI_ERROR_CLUSTER_VIEW_ID_EXISTS, errorMsg);
   }
+
+  auto const planId = basics::VelocyPackHelper::getStringValue(
+    json, "planId", StaticStrings::Empty
+  );
+
+  auto const propsSlice = json.get("properties");
+
+  // normalize definition
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("name", nameSlice);
+  builder.add("type", typeSlice);
+  builder.add("id", VPackValue(viewID));
+  if (!planId.empty()) {
+    builder.add("planId", VPackValue(planId));
+  }
+  builder.add(VPackValue("properties"));
+  builder.add(VPackValue(VPackValueType::Object));
+  if (propsSlice.isObject()) {
+    builder.add(VPackObjectIterator(propsSlice));
+  }
+  builder.close();
+  builder.close();
+
+  json = builder.slice();
 
   AgencyWriteTransaction const transaction{
     // operations

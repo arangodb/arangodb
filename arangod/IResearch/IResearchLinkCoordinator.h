@@ -122,6 +122,13 @@ class IResearchLinkCoordinator {
     return *_collection;
   }
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a JSON description of a IResearchLinkCoordinator object
+  ////////////////////////////////////////////////////////////////////////////////
+  bool toVelocyPack(
+    arangodb::velocypack::Builder& builder
+  ) const;
+
  protected:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief construct an uninitialized IResearch link, must call init(...) after
@@ -140,7 +147,8 @@ class IResearchLinkCoordinator {
   IResearchLinkMeta _meta; // how this collection should be indexed
   arangodb::LogicalCollection const* _collection; // the linked collection
   TRI_idx_iid_t const _id; // the index identifier
-  IResearchViewCoordinator* _view{}; // effectively the IResearch view itself (nullptr == not associated)
+  TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
+  std::shared_ptr<IResearchViewCoordinator> _view; // effectively the IResearch view itself (nullptr == not associated)
 }; // IResearchLinkCoordinator
 
 } // iresearch

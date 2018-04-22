@@ -385,6 +385,24 @@ SECTION("test_create_drop_view") {
     ));
   }
 
+  // empty name
+  {
+    arangodb::ViewID viewId;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"\", \"type\": \"arangosearch\" }");
+    CHECK(TRI_ERROR_BAD_PARAMETER == ci->createViewCoordinator(
+      vocbase->name(), json->slice(), viewId, error
+    ));
+  }
+
+  // wrong name
+  {
+    arangodb::ViewID viewId;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": 5, \"type\": \"arangosearch\" }");
+    CHECK(TRI_ERROR_BAD_PARAMETER == ci->createViewCoordinator(
+      vocbase->name(), json->slice(), viewId, error
+    ));
+  }
+
   // no type specified
   {
     arangodb::ViewID viewId;
@@ -394,7 +412,7 @@ SECTION("test_create_drop_view") {
     ));
   }
 
-  // create and drop view
+  // create and drop view (no id specified)
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     arangodb::ViewID viewId;
@@ -415,6 +433,55 @@ SECTION("test_create_drop_view") {
     CHECK("testView" == view->name());
     CHECK(false == view->deleted());
     CHECK(1 == view->id());
+    CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+    CHECK(arangodb::LogicalView::category() == view->category());
+    CHECK(vocbase == &view->vocbase());
+
+    // create duplicate view
+    CHECK(TRI_ERROR_ARANGO_DUPLICATE_NAME == ci->createViewCoordinator(
+      vocbase->name(), json->slice(), viewId, error
+    ));
+    CHECK(error.empty());
+    CHECK(planVersion == arangodb::tests::getCurrentPlanVersion());
+    CHECK(view != ci->getView(vocbase->name(), view->name())); // FIXME by some reason???
+
+    // drop view
+    CHECK(view->drop().ok());
+    CHECK(planVersion < arangodb::tests::getCurrentPlanVersion());
+
+    // check there is no more view
+    CHECK(nullptr == ci->getView(vocbase->name(), view->name()));
+
+    // drop already dropped view
+    {
+      auto const res = view->drop();
+      CHECK(res.fail());
+      //CHECK(TRI_ERROR_... == res.errorNumber()) FIXME
+    }
+  }
+
+  // create and drop view
+  {
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
+    arangodb::ViewID viewId;
+    error.clear(); // clear error message
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createViewCoordinator(
+      vocbase->name(), json->slice(), viewId, error
+    ));
+    CHECK(error.empty());
+    CHECK("42" == viewId);
+
+    // get current plan version
+    auto planVersion = arangodb::tests::getCurrentPlanVersion();
+
+    auto view = ci->getView(vocbase->name(), viewId);
+    CHECK(nullptr != view);
+    CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+    CHECK(planVersion == view->planVersion());
+    CHECK("testView" == view->name());
+    CHECK(false == view->deleted());
+    CHECK(42 == view->id());
     CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
     CHECK(arangodb::LogicalView::category() == view->category());
     CHECK(vocbase == &view->vocbase());
