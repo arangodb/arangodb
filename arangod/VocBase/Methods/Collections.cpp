@@ -453,7 +453,7 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
 
 static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
                                         bool allowDropSystem) {
-  if (collection->isSystem() && !allowDropSystem) {
+  if (collection->system() && !allowDropSystem) {
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -502,7 +502,8 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     res = DropVocbaseColCoordinator(coll, allowDropSystem);
 #endif
   } else {
-    int r = coll->vocbase().dropCollection(coll, allowDropSystem, timeout);
+    auto r =
+      coll->vocbase().dropCollection(coll->id(), allowDropSystem, timeout).errorNumber();
 
     if (r != TRI_ERROR_NO_ERROR) {
       res.reset(r, "cannot drop collection");

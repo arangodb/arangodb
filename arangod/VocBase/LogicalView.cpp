@@ -38,6 +38,24 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
+bool ReadIsSystem(arangodb::velocypack::Slice info) {
+  if (!info.isObject()) {
+    return false;
+  }
+
+  auto name =
+    arangodb::basics::VelocyPackHelper::getStringValue(info, "name", "");
+
+  if (!TRI_vocbase_t::IsSystemName(name)) {
+    return false;
+  }
+
+  // same condition as in LogicalCollection
+  return arangodb::basics::VelocyPackHelper::readBooleanValue(
+    info, "isSystem", false
+  );
+}
+
 TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   if (!info.isObject()) {
     // ERROR CASE
@@ -112,6 +130,7 @@ LogicalView::LogicalView(
      ReadPlanId(definition, 0),
      arangodb::basics::VelocyPackHelper::getStringValue(definition, "name", ""),
      planVersion,
+     ReadIsSystem(definition),
      Helper::readBooleanValue(definition, "deleted", false)
    ) {
   if (!TRI_vocbase_t::IsAllowedName(definition)) {
@@ -306,6 +325,7 @@ void DBServerLogicalView::toVelocyPack(
 
   if (includeSystem) {
     result.add("deleted", VPackValue(deleted()));
+    result.add("isSystem", VPackValue(system()));
 
     // FIXME not sure if the following is relevant
     // Cluster Specific
