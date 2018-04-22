@@ -104,7 +104,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(!collection->isSystem() &&
+      _cacheEnabled(!collection->system() &&
                     basics::VelocyPackHelper::readBooleanValue(
                         info, "cacheEnabled", false)) {
   VPackSlice s = info.get("isVolatile");
@@ -163,10 +163,12 @@ void RocksDBCollection::setPath(std::string const&) {
 
 Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                            bool doSync) {
-  bool isSys = _logicalCollection != nullptr && _logicalCollection->isSystem();
+  auto isSys = _logicalCollection != nullptr && _logicalCollection->system();
+
   _cacheEnabled = !isSys && basics::VelocyPackHelper::readBooleanValue(
                                 slice, "cacheEnabled", _cacheEnabled);
   primaryIndex()->setCacheEnabled(_cacheEnabled);
+
   if (_cacheEnabled) {
     createCache();
     primaryIndex()->createCache();

@@ -1816,9 +1816,12 @@ class index_block {
   static const size_t SIZE = Size;
 
   bool push_back(doc_id_t key, uint64_t offset) {
-    assert(keys_ <= key_);
+    assert(key_ >= keys_);
+    assert(key_ < keys_ + Size);
     *key_++ = key;
     assert(key >= key_[-1]);
+    assert(offset_ >= offsets_);
+    assert(offset_ < offsets_ + Size);
     *offset_++ = offset;
     assert(offset >= offset_[-1]);
     return key_ == std::end(keys_);
@@ -1931,6 +1934,13 @@ class writer final : public iresearch::columnstore_writer {
 
       // commit previous key and offset unless the 'reset' method has been called
       if (max_ != pending_key_) {
+        // flush block if we've overcome INDEX_BLOCK_SIZE size (before push_back)
+        if (INDEX_BLOCK_SIZE <= block_index_.size()) {
+          flush_block();
+          min_ = key;
+          offset = block_buf_.size(); // reset offset to position in the current block
+        }
+
         // will trigger 'flush_block' if offset >= MAX_DATA_BLOCK_SIZE
         offset = offsets_[size_t(block_index_.push_back(pending_key_, offset))];
         max_ = pending_key_;

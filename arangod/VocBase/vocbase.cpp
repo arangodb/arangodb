@@ -1260,12 +1260,27 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
 }
 
 /// @brief drops a collection
-int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
-                                  bool allowDropSystem, double timeout) {
-  TRI_ASSERT(collection != nullptr);
+arangodb::Result TRI_vocbase_t::dropCollection(
+    TRI_voc_cid_t cid,
+    bool allowDropSystem,
+    double timeout
+) {
+  auto* collection = lookupCollection(cid).get();
+
+  if (!collection) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  if (!allowDropSystem && collection->isSystem() && !engine->inRecovery()) {
+
+  if (!engine) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find StorageEngine while dropping collection '") + collection->name() + "'"
+    );
+  }
+
+  if (!allowDropSystem && collection->system() && !engine->inRecovery()) {
     // prevent dropping of system collections
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1363,7 +1378,7 @@ int TRI_vocbase_t::renameCollection(
     std::string const& newName,
     bool doOverride
 ) {
-  if (collection->isSystem()) {
+  if (collection->system()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
 
@@ -1678,12 +1693,36 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 }
 
 /// @brief drops a view
-arangodb::Result TRI_vocbase_t::dropView(arangodb::LogicalView& view) {
+arangodb::Result TRI_vocbase_t::dropView(
+    TRI_voc_cid_t cid,
+    bool allowDropSystem
+) {
+  auto view = lookupView(cid);
+
+  if (!view) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  if (!allowDropSystem && view->system()) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+    if (!engine) {
+      return arangodb::Result(
+        TRI_ERROR_INTERNAL,
+        std::string("failed to find StorageEngine while dropping view '") + view->name() + "'"
+      );
+    }
+
+    if (!engine->inRecovery()) {
+      return TRI_ERROR_FORBIDDEN; // prevent dropping of system views
+    }
+  }
+
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
     std::string errorMsg;
     auto res =
-      ci->dropViewCoordinator(name(), std::to_string(view.id()), errorMsg);
+      ci->dropViewCoordinator(name(), std::to_string(view->id()), errorMsg);
 
     if (res == TRI_ERROR_NO_ERROR) {
       return res;
@@ -1705,7 +1744,7 @@ arangodb::Result TRI_vocbase_t::dropView(arangodb::LogicalView& view) {
   RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner,
                            basics::ConditionalLocking::DoNotLock);
   CONDITIONAL_WRITE_LOCKER(
-    locker, view._lock, basics::ConditionalLocking::DoNotLock
+    locker, view->_lock, basics::ConditionalLocking::DoNotLock
   );
 
   while (true) {
@@ -1740,18 +1779,18 @@ arangodb::Result TRI_vocbase_t::dropView(arangodb::LogicalView& view) {
   arangodb::aql::PlanCache::instance()->invalidate(this);
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
-  auto res = view.drop();
+  auto res = view->drop();
 
   if (!res.ok()) {
     return res;
   }
 
-  unregisterView(view);
+  unregisterView(*view);
 
   locker.unlock();
   writeLocker.unlock();
 
-  events::DropView(view.name(), TRI_ERROR_NO_ERROR);
+  events::DropView(view->name(), TRI_ERROR_NO_ERROR);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
