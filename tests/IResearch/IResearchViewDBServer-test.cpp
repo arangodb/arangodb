@@ -457,9 +457,9 @@ SECTION("test_toVelocyPack") {
     builder.close();
     auto slice = builder.slice();
     CHECK((3 == slice.length()));
+    CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("1") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
     CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
-    CHECK((slice.hasKey("unusedKey") && slice.get("unusedKey").isString() && std::string("unusedValue") == slice.get("unusedKey").copyString())); // ensure the original definition is fully stored
   }
 
   // includeProperties
@@ -481,9 +481,9 @@ SECTION("test_toVelocyPack") {
     builder.close();
     auto slice = builder.slice();
     CHECK((4 == slice.length()));
+    CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("2") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
     CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
-    CHECK((slice.hasKey("unusedKey") && slice.get("unusedKey").isString() && std::string("unusedValue") == slice.get("unusedKey").copyString())); // ensure the original definition is fully stored
     CHECK((slice.hasKey("properties")));
     auto props = slice.get("properties");
     CHECK((props.isObject()));
@@ -491,7 +491,7 @@ SECTION("test_toVelocyPack") {
     CHECK((props.hasKey("collections") && props.get("collections").isArray() && 0 == props.get("collections").length()));
   }
 
-  // includeSystem (same as base)
+  // includeSystem
   {
     s.agency->responses.clear();
     s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
@@ -509,10 +509,13 @@ SECTION("test_toVelocyPack") {
     wiew->toVelocyPack(builder, false, true);
     builder.close();
     auto slice = builder.slice();
-    CHECK((3 == slice.length()));
+    CHECK((6 == slice.length()));
+    CHECK((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean()));
+    CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("3") == slice.get("id").copyString()));
+    CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
+    CHECK((slice.hasKey("planId") && slice.get("planId").isString() && std::string("3") == slice.get("planId").copyString()));
     CHECK((slice.hasKey("type") && slice.get("type").isString() && arangodb::iresearch::DATA_SOURCE_TYPE.name() == slice.get("type").copyString()));
-    CHECK((slice.hasKey("unusedKey") && slice.get("unusedKey").isString() && std::string("unusedValue") == slice.get("unusedKey").copyString())); // ensure the original definition is fully stored
   }
 }
 
@@ -759,7 +762,43 @@ SECTION("test_updateProperties") {
 }
 
 SECTION("test_visitCollections") {
-  // FIXME TODO implemet
+  // visit empty
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+    CHECK((true == wiew->visitCollections(visitor))); // no collections in view
+  }
+
+  // visit non-empty
+  {
+    s.agency->responses.clear();
+    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
+    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), 42);
+    CHECK((false == !wiew));
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
+    CHECK((nullptr != impl));
+
+    auto view = impl->ensure(123);
+    CHECK((false == !view));
+    std::set<TRI_voc_cid_t> cids = { 123 };
+    static auto visitor = [&cids](TRI_voc_cid_t cid)->bool { return 1 == cids.erase(cid); };
+    CHECK((true == wiew->visitCollections(visitor))); // all collections expected
+    CHECK((true == cids.empty()));
+    CHECK((true == impl->drop(123).ok()));
+    CHECK((true == wiew->visitCollections(visitor))); // no collections in view
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

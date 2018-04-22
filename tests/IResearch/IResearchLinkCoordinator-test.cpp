@@ -375,7 +375,7 @@ SECTION("test_defaults") {
     CHECK(!arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *logicalView));
 
     // drop view
-    CHECK(vocbase->dropView(*logicalView).ok());
+    CHECK(vocbase->dropView(logicalView->planId(), false).ok());
     CHECK(nullptr == vocbase->lookupView(viewId));
   }
 
@@ -464,5 +464,7 @@ SECTION("test_defaults") {
     }
   }
 }
+
+// FIXME test: drop view -> link remains valid
 
 }

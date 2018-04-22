@@ -252,10 +252,11 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK(6 == slice.length());
+    CHECK(7 == slice.length());
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(false == slice.get("deleted").getBool());
+    CHECK(false == slice.get("isSystem").getBool());
     slice = slice.get("properties");
     CHECK(slice.isObject());
     CHECK((5U == slice.length()));
@@ -335,7 +336,7 @@ SECTION("test_drop") {
   CHECK((true == logicalCollection->getIndexes().empty()));
   CHECK((false == !vocbase.lookupView("testView")));
   CHECK((true == TRI_IsDirectory(dataPath.c_str())));
-  CHECK((true == vocbase.dropView(*view).ok()));
+  CHECK((true == vocbase.dropView(view->id(), false).ok()));
   CHECK((true == logicalCollection->getIndexes().empty()));
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
@@ -373,7 +374,7 @@ SECTION("test_drop_with_link") {
   CHECK(true == res.ok());
   CHECK((false == logicalCollection->getIndexes().empty()));
 
-  CHECK((true == vocbase.dropView(*view).ok()));
+  CHECK((true == vocbase.dropView(view->id(), false).ok()));
   CHECK((true == logicalCollection->getIndexes().empty()));
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
@@ -1686,7 +1687,7 @@ SECTION("test_unregister_link") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
+    CHECK((true == vocbase.dropCollection(logicalCollection->id(), true, -1).ok()));
     CHECK((false == persisted)); // link removal does not persist view meta
     CHECK((nullptr == vocbase.lookupCollection("testCollection")));
 
@@ -1706,7 +1707,7 @@ SECTION("test_unregister_link") {
     }
 
     CHECK((false == !vocbase.lookupView("testView")));
-    CHECK((true == vocbase.dropView(*view).ok()));
+    CHECK((true == vocbase.dropView(view->id(), false).ok()));
     CHECK((true == !vocbase.lookupView("testView")));
   }
 
@@ -1766,7 +1767,7 @@ SECTION("test_unregister_link") {
 
     CHECK((nullptr != vocbase.lookupCollection("testCollection")));
     persisted = false;
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
+    CHECK((true == vocbase.dropCollection(logicalCollection->id(), true, -1).ok()));
     CHECK((true == persisted)); // collection removal persists view meta
     CHECK((nullptr == vocbase.lookupCollection("testCollection")));
 
@@ -1786,7 +1787,7 @@ SECTION("test_unregister_link") {
     }
 
     CHECK((false == !vocbase.lookupView("testView")));
-    CHECK((true == vocbase.dropView(*view).ok()));
+    CHECK((true == vocbase.dropView(view->id(), false).ok()));
     CHECK((true == !vocbase.lookupView("testView")));
   }
 
@@ -1812,10 +1813,10 @@ SECTION("test_unregister_link") {
     view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((1 == cids.size()));
     CHECK((false == !vocbase.lookupView("testView")));
-    CHECK((true == vocbase.dropView(*view).ok()));
+    CHECK((true == vocbase.dropView(view->id(), false).ok()));
     CHECK((true == !vocbase.lookupView("testView")));
     CHECK((nullptr != vocbase.lookupCollection("testCollection")));
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
+    CHECK((true == vocbase.dropCollection(logicalCollection->id(), true, -1).ok()));
     CHECK((nullptr == vocbase.lookupCollection("testCollection")));
   }
 
@@ -1838,7 +1839,7 @@ SECTION("test_unregister_link") {
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((1 == cids.size()));
       logicalCollection->getIndexes()[0]->unload(); // release view reference to prevent deadlock due to ~IResearchView() waiting for IResearchLink::unload()
-      CHECK((true == vocbase.dropView(*logicalView).ok()));
+      CHECK((true == vocbase.dropView(logicalView->id(), false).ok()));
       CHECK((1 == logicalView.use_count())); // ensure destructor for ViewImplementation is called
       CHECK((false == logicalCollection->getIndexes().empty()));
     }
@@ -2233,7 +2234,7 @@ SECTION("test_transaction_registration") {
   }
 
   // drop collection from vocbase
-  CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection1, true, 0)));
+  CHECK((true == vocbase.dropCollection(logicalCollection1->id(), true, 0).ok()));
 
   // read transaction (by id) (one collection dropped)
   {
