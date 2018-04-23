@@ -92,7 +92,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(
 #endif
 
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Daemon");
   startsAfter("DatabasePath");
 }

@@ -40,7 +40,6 @@ DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
     : ApplicationFeature(server, "DatabasePath"),
       _requiredDirectoryState("any") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("FileDescriptors");
   startsAfter("Language");
   startsAfter("Logger");

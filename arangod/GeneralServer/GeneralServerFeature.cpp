@@ -104,7 +104,6 @@ GeneralServerFeature::GeneralServerFeature(
       _allowMethodOverride(false),
       _proxyCheck(true) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Agency");
   startsAfter("Authentication");
   startsAfter("CheckVersion");

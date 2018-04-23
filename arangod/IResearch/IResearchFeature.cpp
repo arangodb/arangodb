@@ -298,7 +298,6 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   : ApplicationFeature(server, IResearchFeature::name()),
     _running(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("ViewTypes");
   startsAfter("Logger");
   startsAfter("Database");

@@ -161,7 +161,6 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
-  bool isSystem() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -390,8 +389,6 @@ class LogicalCollection: public LogicalDataSource {
 
   // SECTION: Properties
   bool _isLocal;
-
-  bool const _isSystem;
 
   bool _waitForSync;
 
