@@ -149,7 +149,7 @@ struct HealthRecord {
 std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision()
-  : arangodb::Thread("Supervision"),
+  : arangodb::CriticalThread("Supervision"),
   _agent(nullptr),
   _snapshot("Supervision"),
   _transient("Transient"),
@@ -380,7 +380,7 @@ void handleOnStatus(
 // Build transaction for removing unattended servers from health monitoring
 query_t arangodb::consensus::removeTransactionBuilder(
   std::vector<std::string> const& todelete) {
-  
+
   query_t del = std::make_shared<Builder>();
   { VPackArrayBuilder trxs(del.get());
     { VPackArrayBuilder trx(del.get());
@@ -392,7 +392,7 @@ query_t arangodb::consensus::removeTransactionBuilder(
           { VPackObjectBuilder oper(del.get());
             del->add("op", VPackValue("delete")); }}}}}
   return del;
-  
+
 }
 
 // Check all DB servers, guarded above doChecks
@@ -423,7 +423,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   if (!todelete.empty()) {
     _agent->write(removeTransactionBuilder(todelete));
   }
-  
+
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
@@ -595,7 +595,7 @@ void Supervision::reportStatus(std::string const& status) {
   bool persist = false;
   query_t report;
 
-  { // Do I have to report to agency under 
+  { // Do I have to report to agency under
     _lock.assertLockedByCurrentThread();
     if (_snapshot.hasAsString("/Supervision/State/Mode").first != status) {
       // This includes the case that the mode is not set, since status
@@ -603,7 +603,7 @@ void Supervision::reportStatus(std::string const& status) {
       persist = true;
     }
   }
-  
+
   report = std::make_shared<VPackBuilder>();
   { VPackArrayBuilder trx(report.get());
     { VPackObjectBuilder br(report.get());
@@ -617,7 +617,7 @@ void Supervision::reportStatus(std::string const& status) {
   if (status != "Maintenance") {
     transient(_agent, *report);
   }
-  
+
   if (persist) {
     write_ret_t res = singleWriteTransaction(_agent, *report);
   }
@@ -667,7 +667,7 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
-      
+
       {
         MUTEX_LOCKER(locker, _lock);
 
@@ -682,8 +682,7 @@ void Supervision::run() {
         // Supervision needs to wait until the agent has finished leadership
         // preparation or else the local agency snapshot might be behind its
         // last state.
-        if (
-          _agent->leading() && _agent->getPrepareLeadership() == 0) {
+        if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
 
           if (_jobId == 0 || _jobId == _jobIdMax) {
             getUniqueIds();  // cannot fail but only hang
@@ -712,18 +711,18 @@ void Supervision::run() {
             }
 
             handleJobs();
-            
+
           } else {
 
             reportStatus("Maintenance");
-            
+
           }
         }
       }
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
   }
-  
+
   if (shutdown) {
     ApplicationServer::server->beginShutdown();
   }

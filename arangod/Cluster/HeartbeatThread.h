@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/asio-helper.h"
+#include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
 
@@ -51,7 +52,7 @@ struct AgencyVersions {
 
 class AgencyCallbackRegistry;
 
-class HeartbeatThread : public Thread,
+class HeartbeatThread : public CriticalThread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
   HeartbeatThread(AgencyCallbackRegistry*, std::chrono::microseconds,
@@ -94,6 +95,20 @@ class HeartbeatThread : public Thread,
   //////////////////////////////////////////////////////////////////////////////
   virtual void beginShutdown() override;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add thread name to ongoing list of threads that have crashed
+  ///        unexpectedly
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void recordThreadDeath(const std::string & threadName);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief post list of deadThreads to current log.  Called regularly, but only
+  ///        posts to log roughly every 60 minutes
+  //////////////////////////////////////////////////////////////////////////////
+
+  static void logThreadDeaths(bool force=false);
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief heartbeat main loop
@@ -119,6 +134,12 @@ class HeartbeatThread : public Thread,
   //////////////////////////////////////////////////////////////////////////////
 
   void runSingleServer();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief heartbeat main loop, agent version
+  //////////////////////////////////////////////////////////////////////////////
+
+  void runAgentServer();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
