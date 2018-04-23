@@ -448,7 +448,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
         if (isAborted()) {
           return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
         }
-        this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+        syncSleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
       }
       // fallthrough here in case everything went well
     }
@@ -627,7 +627,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
     if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
-    this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+    syncSleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
   }
   
   if (hasFailed(response.get())) {

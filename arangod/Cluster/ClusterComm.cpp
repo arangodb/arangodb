@@ -703,6 +703,7 @@ ClusterCommResult const ClusterComm::wait(
         return_result.operationID = ticketId;
         // does res.coordTransactionID need to be set here too?
         return_result.status = CL_COMM_TIMEOUT;
+        LOG_TOPIC(WARN, Logger::FIXME) << "won't wait anymore 2 - " <<  __FUNCTION__ << return_result.stringifyErrorMessage();
         match_good = false;
       } // else
     } // if
@@ -1050,7 +1051,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   // We only get here if the global timeout was triggered, not all
   // requests are marked by done!
 
-  LOG_TOPIC(DEBUG, logTopic) << "ClusterComm::performRequests: "
+  LOG_TOPIC(ERR, logTopic) << "ClusterComm::performRequests: "
                              << "got timeout, this will be reported...";
 
   // Forget about

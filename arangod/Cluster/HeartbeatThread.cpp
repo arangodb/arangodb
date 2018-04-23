@@ -208,7 +208,7 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isSingleServer(role)) {
     runSingleServer();
   } else if (ServerState::instance()->isAgent(role)) {
-    sleep(3);
+    std::this_thread::sleep_for(std::chrono::microseconds(3000000));
 //    runAgentServer();
   } else {
     LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";

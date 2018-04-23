@@ -77,7 +77,7 @@ class Syncer {
   virtual ~Syncer();
 
   /// @brief sleeps (nanoseconds)
-  void sleep(uint64_t time) {
+  void syncSleep(uint64_t time) {
     std::this_thread::sleep_for(std::chrono::microseconds(time));
   }
 
