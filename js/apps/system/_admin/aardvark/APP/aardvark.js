@@ -196,7 +196,7 @@ authRouter.post('/query/debugDump', function (req, res) {
     res.throw('bad request', e.message, {cause: e});
   }
   try {
-    fs.zipFile(tmpDebugZipFileName, tmpDebugFolder, [tmpDebugFileName]);
+    fs.zipFile(tmpDebugZipFileName, "", [tmpDebugFileName]);
   } catch (e) {
     require("console").error(e);
     res.throw('Server error, failed to create zip file', e.message, {cause: e});
