@@ -3650,31 +3650,6 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
     return (!_stop && !_plan->getAst()->functionsMayAccessDocuments());
   }
   
-  bool isSafeForOptimization(aql::Collection const* collection, std::string const& shardId) const {
-    // check how often the collection was used in the query
-    auto it = _shardsUsed.find(collection);
-
-    if (it != _shardsUsed.end()) {
-      auto const& it2 = (*it).second;
-      if (it2.size() != 1) {
-        // unsafe, more than a single shard found!
-        return false;
-      }
-      if (it2.find(shardId) != it2.end()) {
-        // we only have one shard, and it is the shard we are looking for!
-        return true;
-      }
-
-      // unsafe for optimization
-      return false;
-    }
-
-    // oops, getting asked for a collection that we have not tracked
-    // seems like an internal error
-    TRI_ASSERT(false);
-    return false;
-  }
-  
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return true;
   }
@@ -3775,7 +3750,7 @@ void arangodb::aql::restrictToSingleShardRule(
         auto collection = static_cast<ModificationNode const*>(current)->collection();
         std::string shardId = getSingleShardId(plan.get(), current, collection);
 
-        if (!shardId.empty() && finder.isSafeForOptimization(collection, shardId)) {
+        if (!shardId.empty()) {
           wasModified = true;
           // we are on a single shard. we must not ignore not-found documents now
           auto* modNode = static_cast<ModificationNode*>(current);
@@ -3787,7 +3762,7 @@ void arangodb::aql::restrictToSingleShardRule(
         auto collection = static_cast<IndexNode const*>(current)->collection();
         std::string shardId = getSingleShardId(plan.get(), current, collection);
 
-        if (!shardId.empty() && finder.isSafeForOptimization(collection, shardId)) {
+        if (!shardId.empty()) {
           wasModified = true;
           static_cast<IndexNode*>(current)->restrictToShard(shardId);
         }
