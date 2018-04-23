@@ -25,6 +25,7 @@
 
 #include <thread>
 
+#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
@@ -173,7 +174,6 @@ static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
   "/Current/ServersRegistered";
 static std::string const foxxmaster = "/Current/Foxxmaster";
-static std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 
 void Supervision::upgradeOne(Builder& builder) {
   _lock.assertLockedByCurrentThread();
@@ -282,7 +282,6 @@ void handleOnStatusDBServer(
   uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
 
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
-
   // New condition GOOD:
   if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
     if (snapshot.has(failedServerPath)) {
@@ -306,7 +305,6 @@ void handleOnStatusDBServer(
                    "supervision", serverID).create(envelope);
     }
   }
-
 }
 
 
@@ -329,18 +327,32 @@ void handleOnStatusCoordinator(
 
 void handleOnStatusSingle(
    Agent* agent, Node const& snapshot, HealthRecord& persisted,
-   HealthRecord& transisted, std::string const& serverID) {
-  // if the current leader server failed => reset the value to ""
-  if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
-
-    if (snapshot.hasAsString(asyncReplLeader).first == serverID) {
-      VPackBuilder create;
-      { VPackArrayBuilder tx(&create);
-        { VPackObjectBuilder d(&create);
-          create.add(asyncReplLeader, VPackValue("")); }}
-      singleWriteTransaction(agent, create);
+   HealthRecord& transisted, std::string const& serverID,
+   uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
+  
+  std::string failedServerPath = failedServersPrefix + "/" + serverID;
+  // New condition GOOD:
+  if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
+    if (snapshot.has(failedServerPath)) {
+      envelope = std::make_shared<VPackBuilder>();
+      { VPackArrayBuilder a(envelope.get());
+        { VPackObjectBuilder operations (envelope.get());
+          envelope->add(VPackValue(failedServerPath));
+          { VPackObjectBuilder ccc(envelope.get());
+            envelope->add("op", VPackValue("delete")); }}}
     }
-
+  } else if ( // New state: FAILED persisted: GOOD (-> BAD)
+             persisted.status == Supervision::HEALTH_STATUS_GOOD &&
+             transisted.status != Supervision::HEALTH_STATUS_GOOD) {
+    transisted.status = Supervision::HEALTH_STATUS_BAD;
+  } else if ( // New state: FAILED persisted: BAD (-> Job)
+             persisted.status == Supervision::HEALTH_STATUS_BAD &&
+             transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
+    if (!snapshot.has(failedServerPath)) {
+      envelope = std::make_shared<VPackBuilder>();
+      ActiveFailoverJob(snapshot, agent, std::to_string(jobId),
+                        "supervision", serverID).create(envelope);
+    }
   }
 }
 
@@ -356,7 +368,8 @@ void handleOnStatus(
     handleOnStatusCoordinator(
       agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0,4,"SNGL") == 0) {
-    handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID);
+    handleOnStatusSingle(agent, snapshot, persisted, transisted,
+                         serverID, jobId, envelope);
   } else {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
       << "Unknown server type. No supervision action taken. " << serverID;

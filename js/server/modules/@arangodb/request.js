@@ -124,17 +124,6 @@ function clusterRequest(req) {
     });
   }
 
-  if (req.auth) {
-    headers['authorization'] = ( // eslint-disable-line dot-notation
-      req.auth.bearer ?
-        'Bearer ' + req.auth.bearer :
-        'Basic ' + new Buffer(
-          req.auth.username + ':' +
-          req.auth.password
-        ).toString('base64')
-    );
-  }
-
   let options = {
     method: (req.method || 'get').toUpperCase(),
     headers: headers,
@@ -151,6 +140,16 @@ function clusterRequest(req) {
     options.maxRedirects = req.maxRedirects;
   } else {
     options.maxRedirects = 10;
+  }
+  if (is.existy(req.auth)) {
+    if (is.existy(req.auth.jwt)) {
+      options.jwt = req.auth.jwt;
+    } else if (is.existy(req.auth.bearer)) {
+      options.jwt = req.auth.bearer;
+    } else if (is.existy(req.auth.username)) {
+      options.username = req.auth.username;
+      options.password = req.auth.password || "";
+    }
   }
   let result = internal.clusterDownload(path, body, options);
   return new Response(result, req.encoding, req.json);
