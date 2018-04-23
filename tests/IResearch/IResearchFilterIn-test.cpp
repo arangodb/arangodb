@@ -101,8 +101,11 @@ void assertExpressionFilter(
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    std::make_shared<arangodb::velocypack::Builder>(),
     arangodb::aql::PART_MAIN
   );
 
@@ -181,9 +184,12 @@ void assertFilter(
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, options,
-     arangodb::aql::PART_MAIN
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
@@ -589,9 +595,12 @@ SECTION("BinaryIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -690,9 +699,12 @@ SECTION("BinaryIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -791,9 +803,12 @@ SECTION("BinaryIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -891,9 +906,12 @@ SECTION("BinaryIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -992,9 +1010,12 @@ SECTION("BinaryIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -1088,9 +1109,12 @@ SECTION("BinaryIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -2006,9 +2030,12 @@ SECTION("BinaryNotIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -2113,9 +2140,12 @@ SECTION("BinaryNotIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -2220,9 +2250,12 @@ SECTION("BinaryNotIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -2327,9 +2360,12 @@ SECTION("BinaryNotIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -2433,9 +2469,12 @@ SECTION("BinaryNotIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();
@@ -2532,9 +2571,12 @@ SECTION("BinaryNotIn") {
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
     arangodb::aql::Query query(
-       false, &vocbase, arangodb::aql::QueryString(queryString),
-       nullptr, options,
-       arangodb::aql::PART_MAIN
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      options,
+      arangodb::aql::PART_MAIN
     );
 
     auto const parseResult = query.parse();

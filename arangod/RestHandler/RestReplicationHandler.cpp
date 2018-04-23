@@ -1317,7 +1317,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   arangodb::aql::Query query(
     false,
-    &_vocbase,
+    _vocbase,
     arangodb::aql::QueryString(aql),
     bindVars,
     nullptr,

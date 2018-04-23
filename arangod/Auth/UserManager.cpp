@@ -102,6 +102,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 static std::shared_ptr<VPackBuilder> QueryAllUsers(
     aql::QueryRegistry* queryRegistry) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -112,9 +113,14 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(false, vocbase,
-                             arangodb::aql::QueryString(queryStr), emptyBuilder,
-                             emptyBuilder, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(queryStr),
+    emptyBuilder,
+    emptyBuilder,
+    arangodb::aql::PART_MAIN
+  );
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";

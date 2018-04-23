@@ -65,8 +65,11 @@ bool assertRules(
   );
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
     arangodb::aql::PART_MAIN
   );
 
@@ -98,8 +101,11 @@ arangodb::aql::QueryResult executeQuery(
   );
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
     arangodb::aql::PART_MAIN
   );
 
@@ -117,8 +123,11 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   );
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    nullptr, options,
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    options,
     arangodb::aql::PART_MAIN
   );
 
