@@ -59,7 +59,7 @@ class UserManager {
  public:
   explicit UserManager();
 #ifdef USE_ENTERPRISE
-  explicit UserManager(std::unique_ptr<arangodb::auth::Handler>&&);
+  explicit UserManager(std::unique_ptr<arangodb::auth::Handler>);
 #endif
   ~UserManager() = default;
 
