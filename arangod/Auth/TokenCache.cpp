@@ -103,9 +103,8 @@ void auth::TokenCache::invalidateBasicCache() {
 // private
 auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     std::string const& secret) {
-  auto role = ServerState::instance()->getRole();
-  if (role != ServerState::ROLE_SINGLE &&
-      role != ServerState::ROLE_COORDINATOR) {
+  if (_userManager == nullptr) { // server does not support users
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Basic auth not supported";
     return auth::TokenCache::Entry();
   }
 
@@ -175,8 +174,10 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
       LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
       return auth::TokenCache::Entry();  // unauthorized
     }
-    // LDAP rights might need to be refreshed
-    _userManager->refreshUser(entry.username());
+    if (_userManager != nullptr) {
+      // LDAP rights might need to be refreshed
+      _userManager->refreshUser(entry.username());
+    }
     return entry;
   } catch (std::range_error const&) {
     // mop: not found

@@ -33,6 +33,7 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
 
+#include <chrono>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -53,7 +54,7 @@ class AgencyCallbackRegistry;
 class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
-  HeartbeatThread(AgencyCallbackRegistry*, uint64_t interval,
+  HeartbeatThread(AgencyCallbackRegistry*, std::chrono::microseconds,
                   uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
@@ -135,7 +136,7 @@ class HeartbeatThread : public Thread,
   /// @brief sends the current server's state to the agency
   //////////////////////////////////////////////////////////////////////////////
 
-  bool sendState();
+  bool sendServerState();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief bring the db server in sync with the desired state
@@ -190,7 +191,7 @@ class HeartbeatThread : public Thread,
   /// @brief heartbeat interval
   //////////////////////////////////////////////////////////////////////////////
 
-  uint64_t _interval;
+  std::chrono::microseconds  _interval;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of fails in a row before a warning is issued
