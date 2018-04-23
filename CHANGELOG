@@ -213,6 +213,9 @@ devel
 * added `@arangodb/locals` module to expose the Foxx service context as an
   alternative to using `module.context` directly.
 
+* added `query` and `aql.literal` helpers to `@arangodb` module.
+
+
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
