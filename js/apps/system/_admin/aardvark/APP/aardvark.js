@@ -37,6 +37,7 @@ const examples = require('@arangodb/graph-examples/example-graph');
 const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
+const request = require('@arangodb/request');
 const isEnterprise = require('internal').isEnterprise();
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
@@ -306,6 +307,22 @@ authRouter.get('/job', function (req, res) {
   res.json(result);
 })
 .summary('Return all job ids.')
+.description(dd`
+  This function returns the job ids of all currently running jobs.
+`);
+
+//  * mode (server modes, numeric e.g.
+//    0: No active replication found.
+//    1: Replication per Database found.
+//    2: Replication per Server found.
+//    3: Active-Failover replication found.
+authRouter.get('/replication/mode', function (req, res) {
+  const result = {
+    mode: 3
+  };
+  res.json(result);
+})
+.summary('Return the replication mode.')
 .description(dd`
   This function returns the job ids of all currently running jobs.
 `);

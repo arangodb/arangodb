@@ -1,0 +1,124 @@
+<script id="replicationView.ejs" type="text/template">
+  <div id="replicationContent" class="innerContent replicationContent">
+    
+    <div class="repl-state">
+      <table class="pure-table">
+          <tbody>
+            <tr>
+              <td><i class="fa fa-server"></i></td>
+              <td id="info-state-id"><%=info.state%></td>
+            </tr>
+            <tr>
+              <td state-status-id><i class="fa fa-check-circle"></i></td>
+              <td id="info-state-id"><%=info.msg%></td>
+            </tr>
+          </tbody>
+      </table>
+    </div>
+
+    <div class="repl-info">
+      <div class="categoryBar">
+        <h4>Info</h4>
+      </div>
+      <table class="pure-table">
+          <tbody>
+            <tr>
+              <td>Mode:</td>
+              <td id="info-mode-id"><%=info.mode%></td>
+            </tr>
+            <tr>
+              <td>Level:</td>
+              <td id="info-level-id"><%=info.level%></td>
+            </tr>
+            <tr>
+              <td>Role:</td>
+              <td id="info-role-id"><%=info.role%></td>
+            </tr>
+          </tbody>
+      </table>
+    </div>
+
+    <% if (mode === 3) { %>
+      <div class="repl-nodes">
+        <div class="categoryBar">
+          <h4>Nodes</h4>
+        </div>
+      </div>
+      <table class="pure-table">
+          <tbody>
+            <tr>
+              <td>Leader:</td>
+              <td id="nodes-leader-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+            <tr>
+              <td>Followers:</td>
+              <td id="nodes-followers-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+          </tbody>
+      </table>
+    <% } %>
+
+    <div class="repl-logger">
+      <div class="categoryBar">
+        <h4>Leader State</h4>
+      </div>
+      <table class="pure-table">
+          <tbody>
+            <tr>
+              <td>Running:</td>
+              <td id="logger-running-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+            <tr>
+              <td>Version:</td>
+              <td id="logger-version-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+            <tr>
+              <td>Server ID:</td>
+              <td id="logger-serverid-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+            <tr>
+              <td>Time:</td>
+              <td id="logger-time-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+            <tr>
+              <td>Last tick:</td>
+              <td id="logger-lastLogTick-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+            <tr>
+              <td>Last uncommited tick:</td>
+              <td id="logger-lastUncommitedLogTick-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+            <tr>
+              <td>Total events:</td>
+              <td id="logger-totalEvents-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+            </tr>
+          </tbody>
+      </table>
+    </div>
+
+<!--
+    <div class="repl-applier">
+      <div class="categoryBar">
+        <h4>Follower States</h4>
+      </div>
+
+      <table id="repl-follower-table" class="pure-table" style="width: 100%">
+        <thead>
+          <tr>
+            <th>Endpoint</th>
+            <th>Running</th>
+            <th>Version</th>
+            <th>Server ID</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+
+        <tbody>
+        </tbody>
+
+      </table>
+    </div>
+-->
+
+  </div>
+</script>

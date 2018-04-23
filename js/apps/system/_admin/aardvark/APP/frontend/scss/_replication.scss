@@ -1,0 +1,21 @@
+.replicationContent {
+  padding-bottom: 15px;
+
+  .pure-table {
+    margin-left: 15px;
+
+    thead {
+      th {
+        text-align: left;
+      }
+    }
+
+    tbody {
+      tr {
+        td:first-child {
+          padding-right: 15px;
+        }
+      }
+    }
+  }
+}
