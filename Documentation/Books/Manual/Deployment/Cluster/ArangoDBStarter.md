@@ -14,11 +14,11 @@ If you only want a local test Cluster, you can run a single _Starter_ with the
 arangodb --starter.local
 ```
 
-Multiple Machines
------------------
-
 **Note:** a local Cluster is intended only for test purposes since a failure of 
 a single PC will bring down the entire Cluster.
+
+Multiple Machines
+-----------------
 
 By invoking the first `arangodb` you launch a primary node. It will
 bind a network port, and output the commands you need to cut'n'paste
