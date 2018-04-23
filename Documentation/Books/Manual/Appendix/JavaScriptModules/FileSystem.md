@@ -14,7 +14,7 @@ You will not be able to tell whether the environment the server is running in wi
 reading or writing of files.
 
 You should either base your directories with `getTempPath()`, or as a foxx service use the
-[module.context.basePath](../..//Foxx/Reference/Context.md).
+[module.context.basePath](../../Foxx/Reference/Context.md).
 
 
 Single File Directory Manipulation
