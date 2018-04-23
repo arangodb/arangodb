@@ -47,7 +47,6 @@ UpgradeFeature::UpgradeFeature(
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("CheckVersion");
   startsAfter("Database");
   startsAfter("Cluster");

@@ -107,7 +107,6 @@ V8DealerFeature::V8DealerFeature(
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Action");
   startsAfter("Authentication");
   startsAfter("Database");

@@ -55,7 +55,6 @@ SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("Random");

@@ -40,7 +40,6 @@ JemallocFeature::JemallocFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Jemalloc"), _defaultPath("./") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
 }
 
 void JemallocFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
