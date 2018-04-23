@@ -495,7 +495,7 @@ void RestCollectionHandler::collectionRepresentation(
 
   if (!showProperties) {
     builder.add("isSystem", VPackValue(coll->system()));
-    builder.add("globallyUniqueId", VPackValue(coll->globallyUniqueId()));
+    builder.add("globallyUniqueId", VPackValue(coll->guid()));
   } else {
     Result res = methods::Collections::properties(coll, builder);
 

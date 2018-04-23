@@ -1014,7 +1014,7 @@ arangodb::Result MMFilesEngine::dropCollection(
     builder.openObject();
     builder.add("id", VPackValue(std::to_string(collection->id())));
     builder.add("name", VPackValue(collection->name()));
-    builder.add("cuid", VPackValue(collection->globallyUniqueId()));
+    builder.add("cuid", VPackValue(collection->guid()));
     builder.close();
 
     MMFilesCollectionMarker marker(
