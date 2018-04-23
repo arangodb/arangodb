@@ -1,9 +1,9 @@
 Development mode
-----------------
+================
 
 Development mode allows you to make changes to deployed services in-place directly on the database server's file system without downloading and re-uploading the service bundle. Additionally error messages will contain stacktraces.
 
-You can toggle development mode on and off in the service settings tab of the web interface or using the [HTTP API](../../HTTP/Foxx/Miscellaneous.html). Once activated the service's file system path will be shown in the info tab.
+You can toggle development mode on and off in the service settings tab of the web interface, using the [Foxx CLI](../Deployment/FoxxCLI/README.md) or using the [HTTP API](../../HTTP/Foxx/Miscellaneous.html). Once activated the service's file system path will be shown in the info tab.
 
 <!-- TODO (Add link to relevant aardvark docs) -->
 
