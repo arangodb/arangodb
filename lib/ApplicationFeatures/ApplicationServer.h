@@ -317,6 +317,9 @@ class ApplicationServer {
 
   // whether or not to dump dependencies
   bool _dumpDependencies = false;
+  
+  // whether or not to dump configuration options
+  bool _dumpOptions = false;
 
   // reporter for progress
   std::vector<ProgressHandler> _progressReports;

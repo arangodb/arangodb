@@ -45,7 +45,6 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
       _queryCacheMode("off"),
       _queryCacheEntries(128) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("Database");
   startsAfter("Cluster");

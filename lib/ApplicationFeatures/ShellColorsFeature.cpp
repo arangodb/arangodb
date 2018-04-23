@@ -60,7 +60,6 @@ ShellColorsFeature::ShellColorsFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "ShellColors") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
 }
 
 void ShellColorsFeature::prepare() {

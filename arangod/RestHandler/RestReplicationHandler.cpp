@@ -909,7 +909,7 @@ Result RestReplicationHandler::processRestoreCollection(
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      Result res = _vocbase.dropCollection(col, true, -1.0);
+      auto res = _vocbase.dropCollection(col->id(), true, -1.0);
 
       if (res.errorNumber() == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
@@ -2555,7 +2555,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   }
 
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->isSystem() == (name[0] == '_'));
+  TRI_ASSERT(col->system() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
