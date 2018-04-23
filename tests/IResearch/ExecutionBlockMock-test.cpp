@@ -178,10 +178,14 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
   {
     std::string const queryString = "RETURN 1";
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
+
     query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
                   arangodb::aql::Query::DontCache);
 
@@ -223,10 +227,14 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
   {
     std::string const queryString = "RETURN 1";
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
+
     query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
                   arangodb::aql::Query::DontCache);
 
@@ -263,10 +271,14 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
   {
     std::string const queryString = "RETURN 1";
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
+
     query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
                   arangodb::aql::Query::DontCache);
 
@@ -311,10 +323,14 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
   {
     std::string const queryString = "RETURN 1";
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
+
     query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
                   arangodb::aql::Query::DontCache);
 
@@ -368,10 +384,14 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
   {
     std::string const queryString = "RETURN 1";
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
+
     query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
                   arangodb::aql::Query::DontCache);
 
@@ -420,10 +440,14 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
   {
     std::string const queryString = "RETURN 1";
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
+
     query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
                   arangodb::aql::Query::DontCache);
 

@@ -581,9 +581,11 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8
-Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cname,
-                        DocCallback cb) {
-  
+/*static*/ arangodb::Result Collections::all(
+    TRI_vocbase_t& vocbase,
+    std::string const& cname,
+    DocCallback cb
+) {
   // Implement it like this to stay close to the original
   if (ServerState::instance()->isCoordinator()) {
     auto empty = std::make_shared<VPackBuilder>();
@@ -606,23 +608,26 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cname,
     }
     return res;
   } else {
-    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+    auto ctx = transaction::V8Context::CreateWhenRequired(&vocbase, true);
     SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
     Result res = trx.begin();
+
     if (res.fail()) {
       return res;
     }
-    
+
     // We directly read the entire cursor. so batchsize == limit
     std::unique_ptr<OperationCursor> opCursor =
     trx.indexScan(cname, transaction::Methods::CursorType::ALL, false);
+
     if (!opCursor->hasMore()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    
+
     opCursor->allDocuments([&](LocalDocumentId const& token, VPackSlice doc) {
       cb(doc.resolveExternal());
     }, 1000);
+
     return trx.finish(res);
   }
 }

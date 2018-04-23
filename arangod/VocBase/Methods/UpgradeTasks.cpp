@@ -178,19 +178,27 @@ bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
       }
     }
   };
-  Result res = methods::Collections::all(vocbase, "_routing", cb);
+
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  auto res = methods::Collections::all(*vocbase, "_routing", cb);
+
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, "_routing", AccessMode::Type::WRITE);
+
   res = trx.begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   OperationOptions opts;
+
   opts.waitForSync = true;
+
   for (std::string const& key : toRemove) {
     VPackBuilder b;
     b(VPackValue(VPackValueType::Object))(StaticStrings::KeyString,
