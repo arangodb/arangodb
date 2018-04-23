@@ -53,10 +53,11 @@ extern std::string const planColPrefix;
 extern std::string const curColPrefix;
 extern std::string const blockedServersPrefix;
 extern std::string const blockedShardsPrefix;
-extern std::string const serverStatePrefix;
 extern std::string const planVersion;
 extern std::string const plannedServers;
 extern std::string const healthPrefix;
+extern std::string const asyncReplLeader;
+extern std::string const asyncReplTransientPrefix;
 
 struct Job {
 
@@ -128,6 +129,9 @@ struct Job {
   /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(
     const arangodb::consensus::Node&);
+  
+  /// @brief Get servers from Supervision with health status GOOD
+  static std::vector<std::string> healthyServers(arangodb::consensus::Node const&);
 
   static std::vector<shard_t> clones(
     Node const& snap, std::string const& db, std::string const& col,
@@ -169,12 +173,12 @@ struct Job {
   static void addReleaseServer(Builder& trx, std::string const& server);
   static void addReleaseShard(Builder& trx, std::string const& shard);
   static void addPreconditionServerNotBlocked(Builder& pre, std::string const& server);
-  static void addPreconditionServerHealth(Builder& pre, std::string const& server, std::string const& health);
+  static void addPreconditionServerHealth(Builder& pre, std::string const& server,
+                                          std::string const& health);
   static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
   static void addPreconditionUnchanged(Builder& pre,
     std::string const& key, Slice value);
   static std::string checkServerHealth(Node const& snapshot, std::string const& server);
-
 };
 
 inline arangodb::consensus::write_ret_t singleWriteTransaction(
@@ -263,8 +267,7 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
 }
 
 inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
-                                                  Builder const& transaction,
-                                                  bool waitForCommit = true) {
+                                                  Builder const& transaction) {
   query_t envelope = std::make_shared<Builder>();
 
   Slice trx = transaction.slice();
@@ -288,7 +291,6 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
         << "Supervision failed to build transaction for transient: " << e.what();
   }
 
-  
   return _agent->transient(envelope);
 }
 
