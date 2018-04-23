@@ -67,6 +67,8 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   TRI_voc_cid_t getCollectionIdCluster(std::string const& name) const;
+  
+  std::shared_ptr<LogicalCollection> getCollectionStructCluster(std::string const& name) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name, this is the

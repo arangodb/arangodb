@@ -39,6 +39,9 @@ thisVerb = {}
 route = ''
 verb = ''
 
+################################################################################
+### Swagger Markdown rendering
+################################################################################
 def getReference(name, source, verb):
     try:
         ref = name['$ref'][defLen:]
@@ -66,41 +69,65 @@ def TrimThisParam(text, indent):
     return removeLF.sub("\n" + ' ' * indent, text)
 
 def unwrapPostJson(reference, layer):
+    swaggerDataTypes = ["number", "integer", "string", "boolean", "array", "object"]
+    ####
+    # print >>sys.stderr, "xx" * layer + reference
     global swagger
     rc = ''
-    for param in swagger['definitions'][reference]['properties'].keys():
-        thisParam = swagger['definitions'][reference]['properties'][param]
-        required = ('required' in swagger['definitions'][reference] and
-                    param in swagger['definitions'][reference]['required'])
-
-        if '$ref' in thisParam:
-            subStructRef = getReference(thisParam, reference, None)
-
-            rc += ' ' * layer + " - **" + param + "**:\n"
+    if not 'properties' in swagger['definitions'][reference]:
+        if 'items' in swagger['definitions'][reference]:
+            if swagger['definitions'][reference]['type'] == 'array':
+                rc += '[\n'
+            subStructRef = getReference(swagger['definitions'][reference]['items'], reference, None)
             rc += unwrapPostJson(subStructRef, layer + 1)
+            if swagger['definitions'][reference]['type'] == 'array':
+                rc += ']\n'
+    else:
+        for param in swagger['definitions'][reference]['properties'].keys():
+            thisParam = swagger['definitions'][reference]['properties'][param]
+            required = ('required' in swagger['definitions'][reference] and
+                        param in swagger['definitions'][reference]['required'])
     
-        elif thisParam['type'] == 'object':
-            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
-        elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
-            rc += ' ' * layer + " - **" + param + "**"
-            trySubStruct = False
-            if 'type' in thisParam['items']:
-                rc += " (" + thisParam['items']['type']  + ")"
-            else:
-                if len(thisParam['items']) == 0:
-                    rc += " (anonymous json object)"
+            # print >> sys.stderr, thisParam
+            if '$ref' in thisParam:
+                subStructRef = getReference(thisParam, reference, None)
+    
+                rc += '  ' * layer + "- **" + param + "**:\n"
+                ####
+                # print >>sys.stderr, "yy" * layer + param
+                rc += unwrapPostJson(subStructRef, layer + 1)
+        
+            elif thisParam['type'] == 'object':
+                rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
+            elif thisParam['type'] == 'array':
+                rc += '  ' * layer + "- **" + param + "**"
+                trySubStruct = False
+                lf=""
+                ####
+                # print >>sys.stderr, "zz" * layer + param
+                if 'type' in thisParam['items']:
+                    rc += " (" + thisParam['items']['type']  + ")"
+                    lf="\n"
                 else:
-                    trySubStruct = True
-            rc += ": " + TrimThisParam(brTrim(thisParam['description']), layer)
-            if trySubStruct:
-                try:
-                    subStructRef = getReference(thisParam['items'], reference, None)
-                except:
-                    print >>sys.stderr, ERR_COLOR + "while analyzing: " + param  + RESET
-                    print >>sys.stderr, WRN_COLOR + thisParam + RESET
-                rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
-        else:
-            rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
+                    if len(thisParam['items']) == 0:
+                        rc += " (anonymous json object)"
+                        lf="\n"
+                    else:
+                        trySubStruct = True
+                rc += ": " + TrimThisParam(brTrim(thisParam['description']), layer) + lf
+                if trySubStruct:
+                    try:
+                        subStructRef = getReference(thisParam['items'], reference, None)
+                    except:
+                        print >>sys.stderr, ERR_COLOR + "while analyzing: " + param + RESET
+                        print >>sys.stderr, WRN_COLOR + thisParam + RESET
+                    rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
+            else:
+                if thisParam['type'] not in swaggerDataTypes:
+                    print >>sys.stderr, ERR_COLOR + "while analyzing: " + param + RESET
+                    print >>sys.stderr, WRN_COLOR + thisParam['type'] + " is not a valid swagger datatype; supported ones: " + str(swaggerDataTypes) + RESET
+                    raise Exception("invalid swagger type")
+                rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
     return rc
 
 def getRestBodyParam():
@@ -120,7 +147,7 @@ def getRestDescription():
     #print >>sys.stderr, "RESTDESCRIPTION"
     if thisVerb['description']:
         #print >> sys.stderr, thisVerb['description']
-        return thisVerb['description']
+        return RX3[0].sub(RX3[1], thisVerb['description'])
     else:
         #print >> sys.stderr, "ELSE"
         return ""
@@ -254,6 +281,7 @@ RX2 = [
     (re.compile(r"@RESTRETURNCODE{(.*)}"), r"* *\g<1>*:")
 ]
 
+RX3 = (re.compile(r'\*\*Example:\*\*((?:.|\n)*?)</code></pre>'), r"")
 
 match_RESTHEADER = re.compile(r"@RESTHEADER\{(.*)\}")
 match_RESTRETURNCODE = re.compile(r"@RESTRETURNCODE\{(.*)\}")
@@ -314,7 +342,7 @@ def replaceCode(lines, blockName):
                     lineR[r] = '@RESTDESCRIPTION'
                 foundRestBodyParam = True
                 r+=1
-                while ((len(lineR[r]) > 0) and
+                while ((len(lineR[r]) == 0) or
                        ((lineR[r][0] != '@') or
                        have_RESTBODYPARAM.search(lineR[r]))):
                     # print "xxx - %d %s" %(len(lineR[r]), lineR[r])

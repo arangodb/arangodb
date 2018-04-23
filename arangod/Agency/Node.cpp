@@ -937,7 +937,6 @@ Slice Node::getArray() const {
   return Slice(_vecBuf.data());
 }
 
-
 void Node::clear() {
   _children.clear();
   _ttl = std::chrono::system_clock::time_point();

@@ -23,6 +23,7 @@
 
 #include "JobContext.h"
 
+#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedFollower.h"
@@ -41,36 +42,24 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
   auto const& type = job("type").getString();
   
   if        (type == "failedLeader") {
-    _job =
-      std::unique_ptr<FailedLeader>(
-        new FailedLeader(snapshot, agent, status, id));
+    _job = std::make_unique<FailedLeader>(snapshot, agent, status, id);
   } else if (type == "failedFollower") {
-    _job =
-      std::unique_ptr<FailedFollower>(
-        new FailedFollower(snapshot, agent, status, id));
+    _job = std::make_unique<FailedFollower>(snapshot, agent, status, id);
   } else if (type == "failedServer") {
-    _job =
-      std::unique_ptr<FailedServer>(
-        new FailedServer(snapshot, agent, status, id));
+    _job = std::make_unique<FailedServer>(snapshot, agent, status, id);
   } else if (type == "cleanOutServer") {
-    _job =
-      std::unique_ptr<CleanOutServer>(
-        new CleanOutServer(snapshot, agent, status, id));
+    _job = std::make_unique<CleanOutServer>(snapshot, agent, status, id);
   } else if (type == "moveShard") {
-    _job =
-      std::unique_ptr<MoveShard>(
-        new MoveShard(snapshot, agent, status, id));
+    _job = std::make_unique<MoveShard>(snapshot, agent, status, id);
   } else if (type == "addFollower") {
-    _job =
-      std::unique_ptr<AddFollower>(
-        new AddFollower(snapshot, agent, status, id));
+    _job = std::make_unique<AddFollower>(snapshot, agent, status, id);
   } else if (type == "removeFollower") {
-    _job =
-      std::unique_ptr<RemoveFollower>(
-        new RemoveFollower(snapshot, agent, status, id));
+    _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
+  } else if (type == "activeFailover") {
+    _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) <<
-      "Failed to run supervision job " << type << " with id " << id;
+    "Failed to run supervision job " << type << " with id " << id;
   }
 
 }

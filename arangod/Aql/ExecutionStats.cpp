@@ -92,5 +92,7 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
   // note: fullCount is an optional attribute!
   if (slice.hasKey("fullCount")) {
     fullCount = slice.get("fullCount").getNumber<int64_t>();
+  } else {
+    fullCount = 0;
   }
 }

@@ -24,6 +24,7 @@
 
 #include <iostream>
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -903,6 +904,10 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       continue;
     }
 
+    if (isIgnoredHiddenEnterpriseCollection(name)) {
+      continue;
+    }
+
     if (!_ignoreDistributeShardsLikeErrors) {
       std::string prototypeCollection =
           arangodb::basics::VelocyPackHelper::getStringValue(
@@ -954,7 +959,21 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
       beginEncryption(fd);
 
-      std::string const collectionInfo = collection.toJson();
+      VPackBuilder excludes;
+      { // { parameters: { shadowCollections: null } }
+        excludes.add(VPackValue(VPackValueType::Object));
+        excludes.add("parameters", VPackValue(VPackValueType::Object));
+        excludes.add("shadowCollections", VPackSlice::nullSlice());
+        excludes.close();
+        excludes.close();
+      }
+
+      VPackBuilder collectionWithExcludedParametersBuilder
+        = VPackCollection::merge(collection, excludes.slice(), true, true);
+
+      std::string const collectionInfo =
+          collectionWithExcludedParametersBuilder.slice().toJson();
+
       bool result =
           writeData(fd, collectionInfo.c_str(), collectionInfo.size());
 
@@ -1236,4 +1255,24 @@ void DumpFeature::endEncryption(int fd) {
     _encryption->endEncryption(fd);
   }
 #endif
+}
+
+bool DumpFeature::isIgnoredHiddenEnterpriseCollection(
+    std::string const& name) const {
+#ifdef USE_ENTERPRISE
+  if (!_force && name[0] == '_') {
+    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
+        strncmp(name.c_str(), "_from_", 6) == 0 ||
+        strncmp(name.c_str(), "_to_", 4) == 0) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "Dump ignoring collection " << name
+          << ". Will be created via SmartGraphs of a full dump. If you want to "
+             "dump this collection anyway use 'arangodump --force'. "
+             "However this is not recommended and you should instead dump "
+             "the EdgeCollection of the SmartGraph instead.";
+      return true;
+    }
+  }
+#endif
+  return false;
 }

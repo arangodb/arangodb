@@ -425,7 +425,7 @@ void RestCollectionHandler::handleCommandDelete() {
         std::string cid = coll->cid_as_string();
         VPackObjectBuilder obj(&builder, true);
         obj->add("id", VPackValue(cid));
-        res = methods::Collections::drop(_vocbase, coll, allowDropSystem, -1.0);
+        res = methods::Collections::drop(_vocbase, coll, allowDropSystem, -1.0, true);
       });
   if (found.fail()) {
     generateError(found);

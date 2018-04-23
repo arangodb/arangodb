@@ -45,11 +45,13 @@ ExecContext* ExecContext::create(std::string const& user,
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   auth::Level dbLvl = auth::Level::RW;
-  auth::Level sysLvl = dbLvl;
+  auth::Level sysLvl = auth::Level::RW;
   if (af->isActive()) {
-    dbLvl = af->userManager()->databaseAuthLevel(user, dbname);
+    auth::UserManager* um = af->userManager();
+    TRI_ASSERT(um != nullptr);
+    dbLvl = um->databaseAuthLevel(user, dbname);
     if (dbname != TRI_VOC_SYSTEM_DATABASE) {
-      sysLvl = af->userManager()->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
+      sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
   }
   return new ExecContext(false, user, dbname, sysLvl, dbLvl);
@@ -73,7 +75,7 @@ bool ExecContext::canUseDatabase(std::string const& db,
 
 /// @brief returns auth level for user
 auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
-                                           std::string const& coll) const {
+                                             std::string const& coll) const {
   if (_internal) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
@@ -81,18 +83,21 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  if (af->isActive()) {
-    // handle fixed permissions here outside auth module.
-    // TODO: move this block above, such that it takes effect
-    //       when authentication is disabled
-    if (dbname == TRI_VOC_SYSTEM_DATABASE && coll == TRI_COL_NAME_USERS) {
-      return auth::Level::NONE;
-    } else if (coll == "_queues") {
-      return auth::Level::RO;
-    } else if (coll == "_frontend") {
-      return auth::Level::RW;
-    }  // intentional fall through
-    return af->userManager()->collectionAuthLevel(_user, dbname, coll);
+  if (!af->isActive()) {
+    return auth::Level::RW;
   }
-  return auth::Level::RW;
+  // handle fixed permissions here outside auth module.
+  // TODO: move this block above, such that it takes effect
+  //       when authentication is disabled
+  if (dbname == TRI_VOC_SYSTEM_DATABASE && coll == TRI_COL_NAME_USERS) {
+    return auth::Level::NONE;
+  } else if (coll == "_queues") {
+    return auth::Level::RO;
+  } else if (coll == "_frontend") {
+    return auth::Level::RW;
+  }  // intentional fall through
+  
+  auth::UserManager* um = af->userManager();
+  TRI_ASSERT(um != nullptr);
+  return um->collectionAuthLevel(_user, dbname, coll);
 }

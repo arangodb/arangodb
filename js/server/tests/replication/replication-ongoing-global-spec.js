@@ -32,6 +32,7 @@
 const expect = require('chai').expect;
 const arangodb = require("@arangodb");
 const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
 const errors = arangodb.errors;
 const db = arangodb.db;
 const internal = require("internal");
@@ -60,27 +61,24 @@ const delay = 10;
 // Flag if we need to reconnect.
 let onMaster = true;
 
-const compareTicks = function(l, r) {
-  if (l === null) {
-    l = "0";
+const compareIndexes = function(l, r, eq) {
+  // This can modify l and r and remove id and selectivityEstimate
+  expect(l).to.be.an("array");
+  expect(r).to.be.an("array");
+  for (let x of l) {
+    delete x.id;
+    delete x.selectivityEstimate;
   }
-  if (r === null) {
-    r = "0";
+  for (let x of r) {
+    delete x.id;
+    delete x.selectivityEstimate;
   }
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
+  if (eq) {
+    expect(l).to.eql(r, JSON.stringify(l) + " vs. " + JSON.stringify(r));
+  } else {
+    expect(l).to.not.eql(r, JSON.stringify(l) + " vs. " + JSON.stringify(r));
   }
-
-  // length is equal
-  for (let i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
-    }
-  }
-
-  return 0;
 };
-
 
 
 const waitForReplication = function() {
@@ -254,7 +252,7 @@ describe('Global Replication on a fresh boot', function () {
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
 
       connectToMaster();
       // Second Part Drop it again
@@ -281,7 +279,7 @@ describe('Global Replication on a fresh boot', function () {
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
 
       connectToMaster();
       // Second Part Drop it again
@@ -440,8 +438,8 @@ describe('Global Replication on a fresh boot', function () {
         connectToSlave();
 
         let sIdx = db._collection(docColName).getIndexes();
-        expect(sIdx).to.deep.equal(mIdx);
-        expect(sIdx).to.not.deep.equal(oIdx);
+        compareIndexes(sIdx, mIdx, true);
+        compareIndexes(sIdx, oIdx, false);
       });
     });
   });
@@ -493,7 +491,7 @@ describe('Global Replication on a fresh boot', function () {
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
 
       connectToMaster();
       db._useDatabase(dbName);
@@ -524,7 +522,7 @@ describe('Global Replication on a fresh boot', function () {
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
 
       connectToMaster();
       db._useDatabase(dbName);
@@ -664,22 +662,16 @@ describe('Global Replication on a fresh boot', function () {
 
         db._collection(docColName).ensureHashIndex("value");
 
-        let mIdx = db._collection(docColName).getIndexes().map(function(idx) { 
-          delete idx.selectivityEstimate; 
-          return idx; 
-        });
+        let mIdx = db._collection(docColName).getIndexes();
 
         waitForReplication();
         connectToSlave();
         db._useDatabase(dbName);
 
-        let sIdx = db._collection(docColName).getIndexes().map(function(idx) { 
-          delete idx.selectivityEstimate; 
-          return idx; 
-        });
+        let sIdx = db._collection(docColName).getIndexes();
         
-        expect(sIdx).to.deep.equal(mIdx);
-        expect(sIdx).to.not.deep.equal(oIdx);
+        compareIndexes(sIdx, mIdx, true);
+        compareIndexes(sIdx, oIdx, false);
       });
     });
 
@@ -752,7 +744,7 @@ describe('Setup global replication on empty slave and master has some data', fun
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
     });
 
     it("should have synced the edge collection", function () {
@@ -769,7 +761,7 @@ describe('Setup global replication on empty slave and master has some data', fun
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
     });
 
     it("should have synced the database", function () {
@@ -804,7 +796,7 @@ describe('Setup global replication on empty slave and master has some data', fun
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
     });
 
     it("should have synced the edge collection", function () {
@@ -824,7 +816,7 @@ describe('Setup global replication on empty slave and master has some data', fun
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
     });
 
     describe("content of an existing collection", function () {
@@ -900,7 +892,7 @@ describe('Test switch off and restart replication', function() {
       let scol = db._collection(col);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+      compareIndexes(scol.getIndexes(), mIdxs, true);
 
       // Second part. Delete collection
 
@@ -938,8 +930,8 @@ describe('Test switch off and restart replication', function() {
       connectToSlave();
       let scol = db._collection(col);
       let sidxs = scol.getIndexes();
-      expect(sidxs).to.deep.equal(midxs);
-      expect(sidxs).to.not.deep.equal(omidx);
+      compareIndexes(sidxs, midxs, true);
+      compareIndexes(sidxs, omidx, false);
 
       connectToMaster();
       db._drop(col);
