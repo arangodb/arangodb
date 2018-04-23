@@ -40,10 +40,8 @@ const cluster = require('@arangodb/cluster');
 const isEnterprise = require('internal').isEnterprise();
 const explainer = require('@arangodb/aql/explainer');
 const fs = require('fs');
-const path = require('path');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
-const ERROR_FILE_NOT_FOUND = errors.ERROR_FILE_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
 API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
