@@ -41,7 +41,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "Logger"),
       _threaded(threaded) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
 
   startsAfter("ShellColors");
   startsAfter("Version");

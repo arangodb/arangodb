@@ -31,7 +31,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
-#include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
 
 #include "velocypack/Builder.h"
@@ -136,6 +135,12 @@ struct TRI_vocbase_t {
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
+  // explicitly document implicit behaviour (due to presence of locks)
+  TRI_vocbase_t(TRI_vocbase_t&&) = delete;
+  TRI_vocbase_t(TRI_vocbase_t const&) = delete;
+  TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
+  TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
+
   /// @brief sleep interval used when polling for a loading collection's status
   static constexpr unsigned collectionStatusPollInterval() { return 10 * 1000; }
 
@@ -269,15 +274,13 @@ struct TRI_vocbase_t {
   /// @brief returns names of all known collections
   std::vector<std::string> collectionNames();
 
-  /// @brief get a collection name by a collection id
-  /// the name is fetched under a lock to make this thread-safe.
-  /// returns empty string if the collection does not exist.
-  std::string collectionName(TRI_voc_cid_t id);
+  /// @brief creates a new view from parameter set
+  std::shared_ptr<arangodb::LogicalView> createView(
+    arangodb::velocypack::Slice parameters
+  );
 
-  /// @brief get a view name by a view id
-  /// the name is fetched under a lock to make this thread-safe.
-  /// returns empty string if the view does not exist.
-  std::string viewName(TRI_voc_cid_t id) const;
+  /// @brief drops a view
+  arangodb::Result dropView(TRI_voc_cid_t cid, bool allowDropSystem);
 
   /// @brief returns all known collections with their parameters
   /// and optionally indexes
@@ -345,26 +348,17 @@ struct TRI_vocbase_t {
   /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise
   /// timeout is in seconds. Essentially, the timeout counts to acquire the
   /// write lock for using the collection.
-  int dropCollection(arangodb::LogicalCollection* collection,
-                     bool allowDropSystem, double timeout);
+  arangodb::Result dropCollection(
+    TRI_voc_cid_t cid,
+    bool allowDropSystem,
+    double timeout
+  );
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(arangodb::LogicalCollection* collection);
 
   /// @brief unloads a collection
   int unloadCollection(arangodb::LogicalCollection* collection, bool force);
-
-  /// @brief creates a new view from parameter set
-  /// view id is normally passed with a value of 0
-  /// this means that the system will assign a new id automatically
-  /// using a cid of > 0 is supported to import dumps from other servers etc.
-  /// but the functionality is not advertised
-  std::shared_ptr<arangodb::LogicalView> createView(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t id);
-
-  /// @brief drops a view
-  int dropView(std::string const& name);
-  int dropView(std::shared_ptr<arangodb::LogicalView> view);
 
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the
@@ -426,10 +420,6 @@ struct TRI_vocbase_t {
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
                            DropState& state, double timeout);
 
-  /// @brief creates a new view, worker function
-  std::shared_ptr<arangodb::LogicalView> createViewWorker(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& id);
-
   /// @brief adds a new view
   /// caller must hold _dataSourceLock in write mode or set doLock
   void registerView(
@@ -439,7 +429,7 @@ struct TRI_vocbase_t {
 
   /// @brief removes a view from the global list of views
   /// This function is called when a view is dropped.
-  bool unregisterView(std::shared_ptr<arangodb::LogicalView> view);
+  bool unregisterView(arangodb::LogicalView const& view);
 };
 
 /// @brief extract the _rev attribute from a slice

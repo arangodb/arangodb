@@ -114,16 +114,14 @@ void RestAdminServerHandler::handleMode() {
     if (requestType == rest::RequestType::GET) {
         writeModeResult(ServerState::serverMode());
     } else if (requestType == rest::RequestType::PUT) {
-        bool parseSuccess;
-        std::shared_ptr<VPackBuilder> parsedBody =
-            parseVelocyPackBody(parseSuccess);
+        bool parseSuccess = false;
+        VPackSlice slice = this->parseVPackBody(parseSuccess);
         if (!parseSuccess) {
             generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
             return;
         }
 
-        auto slice = parsedBody->slice();
         if (!slice.isObject()) {
           generateError(rest::ResponseCode::BAD,
             TRI_ERROR_HTTP_BAD_PARAMETER, "body must be an object");

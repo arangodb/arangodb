@@ -394,7 +394,7 @@ bool VstCommTask::processRead(double startTime) {
           _connectionInfo, std::move(message), chunkHeader._messageID));
       request->setAuthenticated(_authorized);
       request->setUser(_authenticatedUser);
-      if (_authorized) {
+      if (_authorized && _auth->userManager() != nullptr) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }

@@ -84,7 +84,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // create transaction+snapshot, ttl will be 300 if `ttl == 0``
-    RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
+    auto* ctx = _manager->createContext(&_vocbase, ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
 
@@ -103,7 +103,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
+    _vocbase.updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -154,7 +154,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
+    _vocbase.updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -256,7 +256,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
   if (found) {
-    auto c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase.lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
@@ -267,12 +267,17 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     cid = c->id();
   }
 
-  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
+  auto trxContext = transaction::StandaloneContext::Create(&_vocbase);
   VPackBuilder builder(trxContext->getVPackOptions());
+
   builder.openArray();
-  auto result = tailWal(_vocbase, tickStart, tickEnd, chunkSize, includeSystem,
-                        cid, builder);
+
+  auto result = tailWal(
+    &_vocbase, tickStart, tickEnd, chunkSize, includeSystem, cid, builder
+  );
+
   builder.close();
+
   auto data = builder.slice();
 
   uint64_t const latest = latestSequenceNumber();
@@ -344,7 +349,11 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // note a higher tick than the slave will have received, which may
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
-  _vocbase->updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1, InitialSyncer::defaultBatchTimeout);
+  _vocbase.updateReplicationClient(
+    serverId,
+    tickStart == 0 ? 0 : tickStart - 1,
+    InitialSyncer::defaultBatchTimeout
+  );
 }
 
 /// @brief run the command that determines which transactions were open at
@@ -388,8 +397,9 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   getApplier(isGlobal);
 
   VPackBuilder inventoryBuilder;
-  Result res = ctx->getInventory(this->_vocbase, includeSystem,
-                                 isGlobal, inventoryBuilder);
+  Result res =
+    ctx->getInventory(&_vocbase, includeSystem, isGlobal, inventoryBuilder);
+
   if (res.fail()) {
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   "inventory could not be created");
@@ -464,6 +474,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
   // bind collection to context - will initialize iterator
   int res = ctx->bindCollection(_vocbase, collection);
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -611,8 +622,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   std::shared_ptr<transaction::Context> transactionContext =
-      transaction::StandaloneContext::Create(_vocbase);
-
+    transaction::StandaloneContext::Create(&_vocbase);
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, transactionContext->getVPackOptions());
 
@@ -622,15 +632,16 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateError(rv);
       return;
     }
-  } else {
-    bool success;
-    std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
+  } else {    
+    bool success = false;
+    VPackSlice const parsedIds = this->parseVPackBody(success);
     if (!success) {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
 
-    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, maxChunkSize, lowKey, parsedIds->slice());
+    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk,
+                                   maxChunkSize, lowKey, parsedIds);
     if (rv.fail()) {
       generateError(rv);
       return;
@@ -702,6 +713,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   if (!isBusy) {
     int res = context->chooseDatabase(_vocbase);
+
     isBusy = (TRI_ERROR_CURSOR_BUSY == res);
   }
 
@@ -727,14 +739,18 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase->name(), collection, auth::Level::RO)) {
+      !exec->canUseCollection(_vocbase.name(), collection, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN,
                   TRI_ERROR_FORBIDDEN);
     return;
   }
+
   // do the work!
-  auto result = context->dump(_vocbase, collection, dump, determineChunkSize());
+  auto result =
+    context->dump(&_vocbase, collection, dump, determineChunkSize());
+
   if (result.fail()) {
     if (result.is(TRI_ERROR_BAD_PARAMETER)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,

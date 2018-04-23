@@ -72,7 +72,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   bool found = false;
   std::string const& value1 = _request->value("global", found);
   if (found && StringUtils::boolean(value1)) {
-    if (!_vocbase->isSystem()) {
+    if (!_vocbase.isSystem()) {
       generateError(
           rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
           "global tailing is only possible from within _system database");
@@ -80,12 +80,12 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     }
   } else {
     // filter for collection
-    filter.vocbase = _vocbase->id();
+    filter.vocbase = _vocbase.id();
 
     // extract collection
     std::string const& value2 = _request->value("collection", found);
     if (found) {
-      auto c = _vocbase->lookupCollection(value2);
+      auto c = _vocbase.lookupCollection(value2);
 
       if (c == nullptr) {
         generateError(rest::ResponseCode::NOT_FOUND,

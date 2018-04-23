@@ -183,23 +183,29 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     ExecContext const* exe = ExecContext::CURRENT;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     if (ServerState::instance()->isCoordinator()) {
-      std::shared_ptr<LogicalCollection> col =
-          ClusterMethods::createCollectionOnCoordinator(
-              collectionType, vocbase, infoSlice, false,
-              createWaitsForSyncReplication, enforceReplicationFactor);
+      auto col = ClusterMethods::createCollectionOnCoordinator(
+        collectionType,
+        *vocbase,
+        infoSlice,
+        false,
+        createWaitsForSyncReplication,
+        enforceReplicationFactor
+      );
+
       if (!col) {
         return Result(TRI_ERROR_INTERNAL, "createCollectionOnCoordinator");
       }
 
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access
-      if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        af->userManager()->updateUser(
-            ExecContext::CURRENT->user(), [&](auth::User& entry) {
-              entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-              return TRI_ERROR_NO_ERROR;
-            });
+        um->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+        });
       }
 
       // reload otherwise collection might not be in yet
@@ -210,10 +216,10 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access
-      if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
-          ServerState::instance()->isSingleServerOrCoordinator()) {
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        af->userManager()->updateUser(
+        um->updateUser(
           ExecContext::CURRENT->user(), [&](auth::User& u) {
             u.grantCollection(vocbase->name(), name, auth::Level::RW);
             return TRI_ERROR_NO_ERROR;
@@ -236,11 +242,9 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   TRI_ASSERT(coll != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_ASSERT(coll->vocbase());
-
 #ifdef USE_ENTERPRISE
     return ULColCoordinatorEnterprise(
-      coll->vocbase()->name(),
+      coll->vocbase().name(),
       std::to_string(coll->id()),
       TRI_VOC_COL_STATUS_LOADED
     );
@@ -248,7 +252,7 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
     auto ci = ClusterInfo::instance();
 
     return ci->setCollectionStatusCoordinator(
-      coll->vocbase()->name(),
+      coll->vocbase().name(),
       std::to_string(coll->id()),
       TRI_VOC_COL_STATUS_LOADED
     );
@@ -304,8 +308,10 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
                        "replicationFactor", "shardKeys"});
-    
-    auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
+
+    auto ctx =
+      transaction::V8Context::CreateWhenRequired(&(coll->vocbase()), true);
+
     // populate the transaction object (which is used outside this if too)
     trx.reset(new SingleCollectionTransaction(
       ctx, coll->id(), AccessMode::Type::READ
@@ -347,14 +353,15 @@ Result Collections::updateProperties(LogicalCollection* coll,
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
 
-    TRI_ASSERT(coll->vocbase());
+    TRI_ASSERT(coll);
 
     auto info =
-      ci->getCollection(coll->vocbase()->name(), std::to_string(coll->id()));
+      ci->getCollection(coll->vocbase().name(), std::to_string(coll->id()));
 
     return info->updateProperties(props, false);
   } else {
-    auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
+    auto ctx =
+      transaction::V8Context::CreateWhenRequired(&(coll->vocbase()), false);
     SingleCollectionTransaction trx(
       ctx, coll->id(), AccessMode::Type::EXCLUSIVE
     );
@@ -429,13 +436,14 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
   }
 
   std::string const oldName(coll->name());
-  int res = coll->vocbase()->renameCollection(coll, newName, doOverride);
+  int res = coll->vocbase().renameCollection(coll, newName, doOverride);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, "cannot rename collection");
   }
 
   // rename collection inside _graphs as well
-  return RenameGraphCollections(coll->vocbase(), oldName, newName);
+  return RenameGraphCollections(&(coll->vocbase()), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE
@@ -446,12 +454,11 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
 
 static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
                                         bool allowDropSystem) {
-  if (collection->isSystem() && !allowDropSystem) {
+  if (collection->system() && !allowDropSystem) {
     return TRI_ERROR_FORBIDDEN;
   }
 
-  TRI_ASSERT(collection->vocbase());
-  auto& databaseName = collection->vocbase()->name();
+  auto& databaseName = collection->vocbase().name();
   auto cid = std::to_string(collection->id());
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
@@ -474,8 +481,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     if  (!exec->canUseDatabase(vocbase->name(), auth::Level::RW) ||
          !exec->canUseCollection(coll->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
-                    "Insufficient rights to drop "
-                    "collection " +
+                    "Insufficient rights to drop collection " +
                     coll->name());
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
@@ -483,8 +489,8 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     }
   }
 
-  TRI_ASSERT(coll->vocbase());
-  auto& dbname = coll->vocbase()->name();
+  TRI_ASSERT(coll);
+  auto& dbname = coll->vocbase().name();
   std::string const collName = coll->name();
 
   Result res;
@@ -496,15 +502,17 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     res = DropVocbaseColCoordinator(coll, allowDropSystem);
 #endif
   } else {
-    int r = coll->vocbase()->dropCollection(coll, allowDropSystem, timeout);
+    auto r =
+      coll->vocbase().dropCollection(coll->id(), allowDropSystem, timeout).errorNumber();
+
     if (r != TRI_ERROR_NO_ERROR) {
       res.reset(r, "cannot drop collection");
     }
   }
 
-  if (res.ok() && ServerState::instance()->isSingleServerOrCoordinator()) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (res.ok() && um != nullptr) {
+    um->enumerateUsers([&](auth::User& entry) -> bool {
       return entry.removeCollection(dbname, collName);
     });
   }
@@ -553,8 +561,7 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
                                LogicalCollection* coll,
                                TRI_voc_rid_t& rid) {
   TRI_ASSERT(coll != nullptr);
-  TRI_ASSERT(coll->vocbase());
-  auto& databaseName = coll->vocbase()->name();
+  auto& databaseName = coll->vocbase().name();
   auto cid = std::to_string(coll->id());
 
   if (ServerState::instance()->isCoordinator()) {
@@ -574,9 +581,11 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8
-Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cname,
-                        DocCallback cb) {
-  
+/*static*/ arangodb::Result Collections::all(
+    TRI_vocbase_t& vocbase,
+    std::string const& cname,
+    DocCallback cb
+) {
   // Implement it like this to stay close to the original
   if (ServerState::instance()->isCoordinator()) {
     auto empty = std::make_shared<VPackBuilder>();
@@ -599,23 +608,26 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cname,
     }
     return res;
   } else {
-    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+    auto ctx = transaction::V8Context::CreateWhenRequired(&vocbase, true);
     SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
     Result res = trx.begin();
+
     if (res.fail()) {
       return res;
     }
-    
+
     // We directly read the entire cursor. so batchsize == limit
     std::unique_ptr<OperationCursor> opCursor =
     trx.indexScan(cname, transaction::Methods::CursorType::ALL, false);
+
     if (!opCursor->hasMore()) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
-    
+
     opCursor->allDocuments([&](LocalDocumentId const& token, VPackSlice doc) {
       cb(doc.resolveExternal());
     }, 1000);
+
     return trx.finish(res);
   }
 }

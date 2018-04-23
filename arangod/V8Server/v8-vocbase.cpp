@@ -478,8 +478,10 @@ static void JS_ReloadAuth(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("RELOAD_AUTH()");
   }
   
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->outdate();
+  }
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -509,11 +511,14 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const queryString(TRI_ObjectToString(args[0]));
-
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             nullptr, nullptr,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    *vocbase,
+    aql::QueryString(queryString),
+    nullptr,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
@@ -649,10 +654,14 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             bindVars, options,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    *vocbase,
+    aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.explain();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -660,6 +669,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
   if (queryResult.result != nullptr) {
     if (query.queryOptions().allPlans) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "plans"),
@@ -736,9 +746,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, vocbase, queryBuilder, options,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    *vocbase,
+    queryBuilder,
+    options,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.execute(
       static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
@@ -836,10 +850,14 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             bindVars, options,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    *vocbase,
+    aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.executeV8(
       isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
@@ -1387,7 +1405,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
         value, WRP_VOCBASE_COL_TYPE);
 
     // check if the collection is from the same database
-    if (collection != nullptr && collection->vocbase() == vocbase) {
+    if (collection != nullptr && &(collection->vocbase()) == vocbase) {
       // we cannot use collection->getStatusLocked() here, because we
       // have no idea who is calling us (db[...]). The problem is that
       // if we are called from within a JavaScript transaction, the
@@ -1923,21 +1941,6 @@ static void JS_LdapEnabled(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if we are in the enterprise edition
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-#ifndef USE_ENTERPRISE
-  TRI_V8_RETURN(v8::False(isolate));
-#else
-  TRI_V8_RETURN(v8::True(isolate));
-#endif
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief decode a _rev time stamp
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2060,8 +2063,7 @@ static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   uint64_t index = 0;
   uint64_t term = 0;
-  std::shared_ptr<VPackBuilder> b
-    = arangodb::consensus::State::latestAgencyState(vocbase, index, term);
+  auto b = arangodb::consensus::State::latestAgencyState(*vocbase, index, term);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING(isolate, "index"),
@@ -2255,10 +2257,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "TRUSTED_PROXIES"),
                                JS_TrustedProxies, true);
-  
-  TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_ENTERPRISE"),
-                               JS_IsEnterprise);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "DECODE_REV"),

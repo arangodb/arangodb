@@ -62,14 +62,20 @@ using namespace arangodb::rest;
 
 size_t const DatabaseInitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 
-DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
-                                             ReplicationApplierConfiguration const& configuration)
-    : InitialSyncer(configuration),
-      _vocbase(vocbase),
-      _hasFlushed(false) {
-  _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
+DatabaseInitialSyncer::DatabaseInitialSyncer(
+    TRI_vocbase_t& vocbase,
+    ReplicationApplierConfiguration const& configuration
+): InitialSyncer(configuration),
+   _vocbase(&vocbase),
+   _hasFlushed(false) {
+  _vocbases.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(vocbase.name()),
+    std::forward_as_tuple(vocbase)
+  );
+
   if (configuration._database.empty()) {
-    _databaseName = vocbase->name();
+    _databaseName = vocbase.name();
   }
 }
 
@@ -811,7 +817,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         // in this case we must drop it because we will run into duplicate
         // name conflicts otherwise
         try {
-          int res = vocbase()->dropCollection(col, true, -1.0);
+          auto res =
+            vocbase()->dropCollection(col->id(), true, -1.0).errorNumber();
+
           if (res == TRI_ERROR_NO_ERROR) {
             col = nullptr;
           }
@@ -870,7 +878,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
             setProgress("dropping " + collectionMsg);
 
-            int res = vocbase()->dropCollection(col, true, -1.0);
+            auto res =
+              vocbase()->dropCollection(col->id(), true, -1.0).errorNumber();
 
             if (res != TRI_ERROR_NO_ERROR) {
               return Result(res, std::string("unable to drop ") + collectionMsg + ": " + TRI_errno_string(res));

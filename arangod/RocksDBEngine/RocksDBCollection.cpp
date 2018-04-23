@@ -104,7 +104,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(!collection->isSystem() &&
+      _cacheEnabled(!collection->system() &&
                     basics::VelocyPackHelper::readBooleanValue(
                         info, "cacheEnabled", false)) {
   VPackSlice s = info.get("isVolatile");
@@ -115,7 +115,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
   }
 
   rocksutils::globalRocksEngine()->addCollectionMapping(
-    _objectId, _logicalCollection->vocbase()->id(), _logicalCollection->id()
+    _objectId, _logicalCollection->vocbase().id(), _logicalCollection->id()
   );
 
   if (_cacheEnabled) {
@@ -136,7 +136,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cacheEnabled(
           static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
   rocksutils::globalRocksEngine()->addCollectionMapping(
-    _objectId, _logicalCollection->vocbase()->id(), _logicalCollection->id()
+    _objectId, _logicalCollection->vocbase().id(), _logicalCollection->id()
   );
 
   if (_cacheEnabled) {
@@ -163,16 +163,20 @@ void RocksDBCollection::setPath(std::string const&) {
 
 Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                            bool doSync) {
-  bool isSys = _logicalCollection != nullptr && _logicalCollection->isSystem();
+  auto isSys = _logicalCollection != nullptr && _logicalCollection->system();
+
   _cacheEnabled = !isSys && basics::VelocyPackHelper::readBooleanValue(
                                 slice, "cacheEnabled", _cacheEnabled);
   primaryIndex()->setCacheEnabled(_cacheEnabled);
+
   if (_cacheEnabled) {
     createCache();
     primaryIndex()->createCache();
-  } else if (useCache()) {
+  } else {
+    // will do nothing if cache is not present
     destroyCache();
     primaryIndex()->destroyCache();
+    TRI_ASSERT(_cache.get() == nullptr);
   }
 
   // nothing else to do
@@ -300,10 +304,10 @@ void RocksDBCollection::prepareIndexes(
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
+  auto& idxFactory = engine->indexFactory();
   bool splitEdgeIndex = false;
   TRI_idx_iid_t last = 0;
+
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
                                                             false)) {
@@ -357,8 +361,9 @@ void RocksDBCollection::prepareIndexes(
           }
           to.close();
 
-          auto idxFrom = idxFactory->prepareIndexFromSlice(
-              from.slice(), false, _logicalCollection, true);
+          auto idxFrom = idxFactory.prepareIndexFromSlice(
+            from.slice(), false, _logicalCollection, true
+          );
 
           if (ServerState::instance()->isRunningInCluster()) {
             addIndexCoordinator(idxFrom);
@@ -366,8 +371,9 @@ void RocksDBCollection::prepareIndexes(
             addIndex(idxFrom);
           }
 
-          auto idxTo = idxFactory->prepareIndexFromSlice(
-              to.slice(), false, _logicalCollection, true);
+          auto idxTo = idxFactory.prepareIndexFromSlice(
+            to.slice(), false, _logicalCollection, true
+          );
 
           if (ServerState::instance()->isRunningInCluster()) {
             addIndexCoordinator(idxTo);
@@ -392,8 +398,9 @@ void RocksDBCollection::prepareIndexes(
         }
         b.close();
 
-        auto idx = idxFactory->prepareIndexFromSlice(b.slice(), false,
-                                                     _logicalCollection, true);
+        auto idx = idxFactory.prepareIndexFromSlice(
+          b.slice(), false, _logicalCollection, true
+        );
 
         if (ServerState::instance()->isRunningInCluster()) {
           addIndexCoordinator(idx);
@@ -407,7 +414,7 @@ void RocksDBCollection::prepareIndexes(
 
     if (!alreadyHandled) {
       auto idx =
-          idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+        idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
 
       if (ServerState::instance()->isRunningInCluster()) {
         addIndexCoordinator(idx);
@@ -489,16 +496,16 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock.
   // Create it
 
-  idx =
-      idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = engine->indexFactory().prepareIndexFromSlice(
+    info, true, _logicalCollection, false
+  );
   TRI_ASSERT(idx != nullptr);
+
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
     // We only inform the others.
@@ -529,11 +536,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   VPackBuilder indexInfo;
   idx->toVelocyPack(indexInfo, false, true);
   res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
-    _logicalCollection->vocbase()->id(),
+    _logicalCollection->vocbase().id(),
     _logicalCollection->id(),
     builder.slice(),
     RocksDBLogValue::IndexCreate(
-      _logicalCollection->vocbase()->id(),
+      _logicalCollection->vocbase().id(),
       _logicalCollection->id(),
       indexInfo.slice()
     )
@@ -571,17 +578,19 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   // We create a new Index object to make sure that the index
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
+
   try {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    IndexFactory const* idxFactory = engine->indexFactory();
-    TRI_ASSERT(idxFactory != nullptr);
-    newIdx = idxFactory->prepareIndexFromSlice(info, false, _logicalCollection,
-                                               false);
+
+    newIdx = engine->indexFactory().prepareIndexFromSlice(
+      info, false, _logicalCollection, false
+    );
   } catch (arangodb::basics::Exception const& e) {
     // Something with index creation went wrong.
     // Just report.
     return e.code();
   }
+
   TRI_ASSERT(newIdx != nullptr);
 
   auto const id = newIdx->id();
@@ -616,11 +625,11 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     TRI_ASSERT(engine != nullptr);
     int res = engine->writeCreateCollectionMarker(
-      _logicalCollection->vocbase()->id(),
+      _logicalCollection->vocbase().id(),
       _logicalCollection->id(),
       builder.slice(),
       RocksDBLogValue::IndexCreate(
-        _logicalCollection->vocbase()->id(),
+        _logicalCollection->vocbase().id(),
         _logicalCollection->id(),
         indexInfo.slice()
       )
@@ -686,11 +695,11 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 
         // log this event in the WAL and in the collection meta-data
         int res = engine->writeCreateCollectionMarker(
-          _logicalCollection->vocbase()->id(),
+          _logicalCollection->vocbase().id(),
           _logicalCollection->id(),
           builder.slice(),
           RocksDBLogValue::IndexDrop(
-            _logicalCollection->vocbase()->id(), _logicalCollection->id(), iid
+            _logicalCollection->vocbase().id(), _logicalCollection->id(), iid
           )
         );
 
@@ -1025,10 +1034,9 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                         options.mergeObjects, options.keepNull, *builder.get(),
                         options.isRestore, revisionId);
   if (_isDBServer) {
-    TRI_ASSERT(_logicalCollection->vocbase());
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection->vocbase()->name(),
+          _logicalCollection->vocbase().name(),
           trx->resolver()->getCollectionNameCluster(
             _logicalCollection->planId()
           ),
@@ -1134,10 +1142,9 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                       revisionId);
 
   if (_isDBServer) {
-    TRI_ASSERT(_logicalCollection->vocbase());
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection->vocbase()->name(),
+          _logicalCollection->vocbase().name(),
           trx->resolver()->getCollectionNameCluster(
             _logicalCollection->planId()
           ),
@@ -1292,10 +1299,9 @@ void RocksDBCollection::createInitialIndexes() {
 
   std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
 
-  idxFactory->fillSystemIndexes(_logicalCollection, systemIndexes);
+  engine->indexFactory().fillSystemIndexes(_logicalCollection, systemIndexes);
+
   for (auto const& it : systemIndexes) {
     addIndex(it);
   }
@@ -1358,7 +1364,7 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   }
 
   std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false, true);
-  auto vocbase = _logicalCollection->vocbase();
+  auto& vocbase = _logicalCollection->vocbase();
   auto collectionId = _logicalCollection->id();
   VPackSlice data = builder->slice();
 
@@ -1852,7 +1858,8 @@ int RocksDBCollection::unlockRead() {
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
-  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
+  auto ctx =
+    transaction::StandaloneContext::Create(&(_logicalCollection->vocbase()));
   SingleCollectionTransaction trx(
     ctx, _logicalCollection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -1986,7 +1993,8 @@ void RocksDBCollection::recalculateIndexEstimates(
   // method or endpoint unless the implementation changes
 
   // start transaction to get a collection lock
-  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
+  auto ctx =
+    transaction::StandaloneContext::Create(&(_logicalCollection->vocbase()));
   arangodb::SingleCollectionTransaction trx(
     ctx, _logicalCollection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -2045,6 +2053,7 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating document cache";
   _cache = CacheManagerFeature::MANAGER->createCache(
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
@@ -2057,13 +2066,11 @@ void RocksDBCollection::destroyCache() const {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "Destroying document cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_cacheEnabled);
 }
 
 // blacklist given key from transactional cache

@@ -616,7 +616,7 @@ IRESEARCH_API uint32_t write_block(
 IRESEARCH_API uint32_t write_block(
   data_output& out,
   const uint64_t* RESTRICT decoded,
-  uint32_t size,
+  uint64_t size, // same type as 'decoded'/'encoded'
   uint64_t* RESTRICT encoded
 );
 

@@ -134,6 +134,23 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
   return 0;
 }
 
+std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollectionStructCluster(
+    std::string const& name) const {
+  if (!ServerState::isRunningInCluster(_serverRole)) {
+    return std::shared_ptr<LogicalCollection>(const_cast<LogicalCollection*>(getCollectionStruct(name)), [](LogicalCollection*){});
+  }
+
+  try {
+    // We have to look up the collection info:
+    ClusterInfo* ci = ClusterInfo::instance();
+    auto cinfo = ci->getCollection(_vocbase->name(), name);
+    TRI_ASSERT(cinfo != nullptr);
+    return cinfo;
+  } catch (...) {
+  }
+  return nullptr;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief look up a collection id for a collection name, this is the
 /// default one to use, which will usually do the right thing. On a
@@ -290,9 +307,8 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         std::shared_ptr<LogicalCollection> ci;
 
         try {
-          TRI_ASSERT(it->second->vocbase());
           ci = ClusterInfo::instance()->getCollection(
-            it->second->vocbase()->name(), name
+            it->second->vocbase().name(), name
           );
         }
         catch (...) {
@@ -305,15 +321,14 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         }
       }
     }
-  } else {
-    // exactly as in the non-cluster case
-    name = _vocbase->collectionName(cid);
+
+    return !name.empty() ? name : std::string("_unknown");
   }
 
-  if (name.empty()) {
-    name = "_unknown";
-  }
-  return name;
+  // exactly as in the non-cluster case
+  auto collection = _vocbase->lookupCollection(cid);
+
+  return collection ? collection->name() : std::string("_unknown");
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
@@ -417,7 +432,9 @@ std::string CollectionNameResolver::getViewNameCluster(
 ) const {
   if (!ServerState::isClusterRole(_serverRole)) {
     // This handles the case of a standalone server
-    return _vocbase->viewName(cid);
+    auto view = _vocbase->lookupView(cid);
+
+    return view ? view->name() : StaticStrings::Empty;
   }
 
   // FIXME not supported

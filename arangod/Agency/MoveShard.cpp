@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,21 +48,31 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
+
   // Get job details from agency:
-  try {
-    std::string path = pos[status] + _jobId + "/";
-    _database = _snapshot.get(path + "database").getString();
-    _collection = _snapshot.get(path + "collection").getString();
-    _from = _snapshot.get(path + "fromServer").getString();
-    _to = _snapshot.get(path + "toServer").getString();
-    _shard = _snapshot.get(path + "shard").getString();
-    _isLeader = _snapshot.get(path + "isLeader").slice().isTrue();
-    _creator = _snapshot.get(path + "creator").getString();
-  } catch (std::exception const& e) {
-    std::string err = 
-      std::string("Failed to find job ") + _jobId + " in agency: " + e.what();
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err;
-    finish("", _shard, false, err);
+  std::string path = pos[status] + _jobId + "/";
+  auto tmp_database = _snapshot.hasAsString(path + "database");
+  auto tmp_collection = _snapshot.hasAsString(path + "collection");
+  auto tmp_from = _snapshot.hasAsString(path + "fromServer");
+  auto tmp_to = _snapshot.hasAsString(path + "toServer");
+  auto tmp_shard = _snapshot.hasAsString(path + "shard");
+  auto tmp_isLeader = _snapshot.hasAsSlice(path + "isLeader");
+  auto tmp_creator = _snapshot.hasAsString(path + "creator");
+
+  if (tmp_database.second && tmp_collection.second && tmp_from.second && tmp_to.second
+      && tmp_shard.second && tmp_creator.second && tmp_isLeader.second) {
+    _database = tmp_database.first;
+    _collection = tmp_collection.first;
+    _from = tmp_from.first;
+    _to = tmp_to.first;
+    _shard = tmp_shard.first;
+    _isLeader = tmp_isLeader.first.isTrue();
+    _creator = tmp_creator.first;
+  } else {
+    std::stringstream err;
+    err << "Failed to find job " << _jobId << " in agency";
+    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    finish("", _shard, false, err.str());
     _status = FAILED;
   }
 }
@@ -77,7 +87,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
 
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
     << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
-  
+
   bool selfCreate = (envelope == nullptr); // Do we create ourselves?
 
   if (selfCreate) {
@@ -87,14 +97,16 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   std::string now(timepointToString(std::chrono::system_clock::now()));
-  
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // DBservers
   std::string planPath =
     planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice plan = _snapshot.get(planPath).slice();
+  Slice plan = _snapshot.hasAsSlice(planPath).first;
   TRI_ASSERT(plan.isArray());
   TRI_ASSERT(plan[0].isString());
+#endif
 
   if (selfCreate) {
     _jb->openArray();
@@ -164,14 +176,14 @@ bool MoveShard::start() {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  Node collection
-    = _snapshot.get(planColPrefix + _database + "/" + _collection);
-  if (collection.has("distributeShardsLike")) {
+  auto collection
+    = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
+  if (collection.second && collection.first.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
     return false;
   }
-  
+
   // Check that the shard is not locked:
   if (_snapshot.has(blockedShardsPrefix + _shard)) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "shard " << _shard
@@ -187,7 +199,7 @@ bool MoveShard::start() {
   }
 
   // Check that the toServer is in state "GOOD":
-  std::string health = checkServerGood(_snapshot, _to);
+  std::string health = checkServerHealth(_snapshot, _to);
   if (health != "GOOD") {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "server " << _to
       << " is currently " << health << ", not starting MoveShard job "
@@ -197,15 +209,12 @@ bool MoveShard::start() {
 
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
-  try {
-    auto cleanedServersNode = _snapshot.get(cleanedPrefix);
-    cleanedServersNode.toBuilder(cleanedServersBuilder);
-  }
-  catch (...) {
+  auto cleanedServersNode = _snapshot.hasAsBuilder(cleanedPrefix, cleanedServersBuilder);
+  if (!cleanedServersNode.second) {
     // ignore this check
     cleanedServersBuilder.clear();
     {
-      VPackArrayBuilder guard(&cleanedServersBuilder); 
+      VPackArrayBuilder guard(&cleanedServersBuilder);
     }
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
@@ -221,14 +230,12 @@ bool MoveShard::start() {
 
   // Check that _to is not in `Target/FailedServers`:
   VPackBuilder failedServersBuilder;
-  try {
-    auto failedServersNode = _snapshot.get(failedServersPrefix);
-    failedServersNode.toBuilder(failedServersBuilder);
-  }
-  catch (...) {
+  auto failedServersNode = _snapshot.hasAsBuilder(failedServersPrefix, failedServersBuilder);
+  if (!failedServersNode.second) {
     // ignore this check
     failedServersBuilder.clear();
-    { VPackObjectBuilder guard(&failedServersBuilder); 
+    {
+      VPackObjectBuilder guard(&failedServersBuilder);
     }
   }
   VPackSlice failedServers = failedServersBuilder.slice();
@@ -243,9 +250,9 @@ bool MoveShard::start() {
   // Look at Plan:
   std::string planPath =
     planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice planned = _snapshot.get(planPath).slice();
+  Slice planned = _snapshot.hasAsSlice(planPath).first;
   TRI_ASSERT(planned.isArray());
-  
+
   int found = -1;
   int count = 0;
   for (auto const& srv : VPackArrayIterator(planned)) {
@@ -272,7 +279,7 @@ bool MoveShard::start() {
   // Compute group to move shards together:
   std::vector<Job::shard_t> shardsLikeMe
       = clones(_snapshot, _database, _collection, _shard);
-    
+
   // Copy todo to pending
   Builder todo, pending;
 
@@ -282,9 +289,8 @@ bool MoveShard::start() {
     // will not be in the snapshot under ToDo, but in this case we find it
     // in _jb:
     if (_jb == nullptr) {
-      try {
-        _snapshot.get(toDoPrefix + _jobId).toBuilder(todo);
-      } catch (std::exception const&) {
+      auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
+      if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC(INFO, Logger::SUPERVISION)
@@ -303,7 +309,7 @@ bool MoveShard::start() {
       }
     }
   }
-  
+
   // Enter pending, remove todo, block toserver
   { VPackArrayBuilder listOfTransactions(&pending);
 
@@ -314,7 +320,7 @@ bool MoveShard::start() {
 
       addBlockShard(pending, _shard, _jobId);
       addBlockServer(pending, _to, _jobId);
-    
+
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
         [this, &pending](Slice plan, Slice current, std::string& planPath) {
@@ -348,7 +354,7 @@ bool MoveShard::start() {
       addPreconditionUnchanged(pending, planPath, planned);
       addPreconditionShardNotBlocked(pending, _shard);
       addPreconditionServerNotBlocked(pending, _to);
-      addPreconditionServerGood(pending, _to);
+      addPreconditionServerHealth(pending, _to, "GOOD"); 
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }   // precondition done
@@ -381,7 +387,7 @@ JOB_STATUS MoveShard::status() {
     finish("", _shard, true, "collection was dropped");
     return FINISHED;
   }
- 
+
   if (_isLeader) {
     return pendingLeader();
   } else {
@@ -393,7 +399,7 @@ JOB_STATUS MoveShard::pendingLeader() {
   auto considerTimeout = [&]() -> bool {
     // Not yet all in sync, consider timeout:
     std::string timeCreatedString
-      = _snapshot.get(pendingPrefix + _jobId + "/timeCreated").getString();
+      = _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(3600.0)) {
@@ -411,7 +417,7 @@ JOB_STATUS MoveShard::pendingLeader() {
   // in the Plan:
   std::string planPath =
     planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice plan = _snapshot.get(planPath).slice();
+  Slice plan = _snapshot.hasAsSlice(planPath).first;
   Builder trx;
   Builder pre;  // precondition
   bool finishedAfterTransaction = false;
@@ -550,7 +556,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         addPreconditionCollectionStillThere(pre, _database, _collection);
         addRemoveJobFromSomewhere(trx, "Pending", _jobId);
         Builder job;
-        _snapshot.get(pendingPrefix + _jobId).toBuilder(job);
+        _snapshot.hasAsBuilder(pendingPrefix + _jobId,job);
         addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
         addReleaseShard(trx, _shard);
         addReleaseServer(trx, _to);
@@ -595,7 +601,7 @@ JOB_STATUS MoveShard::pendingFollower() {
   if (done < shardsLikeMe.size()) {
     // Not yet all in sync, consider timeout:
     std::string timeCreatedString
-      = _snapshot.get(pendingPrefix + _jobId + "/timeCreated").getString();
+      = _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(3600.0)) {
@@ -638,7 +644,7 @@ JOB_STATUS MoveShard::pendingFollower() {
 
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
-      _snapshot.get(pendingPrefix + _jobId).toBuilder(job);
+      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
       addPreconditionCollectionStillThere(precondition, _database, _collection);
       addReleaseShard(trx, _shard);
@@ -662,14 +668,14 @@ JOB_STATUS MoveShard::pendingFollower() {
 arangodb::Result MoveShard::abort() {
 
   arangodb::Result result;
-  
+
   // We can assume that the job is either in ToDo or in Pending.
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
     result = Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
                     "Failed aborting moveShard beyond pending stage");
     return result;
   }
-  
+
   // Can now only be TODO or PENDING
   if (_status == TODO) {
     finish("", "", true, "job aborted");
@@ -721,7 +727,7 @@ arangodb::Result MoveShard::abort() {
       }
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
-      _snapshot(pendingPrefix + _jobId).toBuilder(job);
+      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted");
       addReleaseShard(trx, _shard);
       addReleaseServer(trx, _to);
@@ -746,4 +752,3 @@ arangodb::Result MoveShard::abort() {
   return result;
 
 }
-

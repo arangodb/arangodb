@@ -68,6 +68,20 @@ using namespace arangodb::rest;
 uint64_t const RestReplicationHandler::_defaultChunkSize = 128 * 1024;
 uint64_t const RestReplicationHandler::_maxChunkSize = 128 * 1024 * 1024;
 
+static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force) {
+#ifdef USE_ENTERPRISE
+  if (!force && name[0] == '_') {
+    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
+        strncmp(name.c_str(), "_from_", 6) == 0 ||
+        strncmp(name.c_str(), "_to_", 4) == 0) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Restore ignoring collection " << name << ". Will be created via SmartGraphs of a full dump. If you want to restore ONLY this collection use 'arangorestore --force'. However this is not recommended and you should instead restore the EdgeCollection of the SmartGraph instead.";
+      return true;
+    }
+  }
+#endif
+  return false;
+}
+
 static Result restoreDataParser(char const* ptr, char const* pos,
                                 std::string const& collectionName,
                                 std::string& key,
@@ -165,10 +179,11 @@ RestReplicationHandler::~RestReplicationHandler() {}
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestReplicationHandler::isCoordinatorError() {
-  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (_vocbase.type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
+
     return true;
   }
 
@@ -476,19 +491,20 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
   
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  bool success = false;
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
  
   std::string databaseName;
+
   if (!isGlobal) {
-    databaseName = _vocbase->name();
+    databaseName = _vocbase.name();
   }
-  
-  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(parsedBody->slice(), databaseName);
+
+  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(body, databaseName);
   configuration._skipCreateDrop = false;
 
   // will throw if invalid
@@ -887,18 +903,19 @@ Result RestReplicationHandler::processRestoreCollection(
   }
 
   grantTemporaryRights();
-  auto* col = _vocbase->lookupCollection(name).get();
+
+  auto* col = _vocbase.lookupCollection(name).get();
 
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      Result res = _vocbase->dropCollection(col, true, -1.0);
+      auto res = _vocbase.dropCollection(col->id(), true, -1.0);
 
       if (res.errorNumber() == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
 
         // instead, truncate them
-        auto ctx = transaction::StandaloneContext::Create(_vocbase);
+        auto ctx = transaction::StandaloneContext::Create(&_vocbase);
         SingleCollectionTransaction trx(
           ctx, col->id(), AccessMode::Type::EXCLUSIVE
         );
@@ -936,11 +953,14 @@ Result RestReplicationHandler::processRestoreCollection(
   ExecContext const* exe = ExecContext::CURRENT;
   if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    af->userManager()->updateUser(exe->user(), [&](auth::User& entry) {
-      entry.grantCollection(_vocbase->name(), col->name(), auth::Level::RW);
-      return TRI_ERROR_NO_ERROR;
-    });
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    TRI_ASSERT(um != nullptr); // should not get here
+    if (um != nullptr) {
+      um->updateUser(exe->user(), [&](auth::User& entry) {
+        entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
+        return TRI_ERROR_NO_ERROR;
+      });
+    }
   }
 
   return Result();
@@ -971,14 +991,17 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "collection name is missing");
   }
 
+  if (ignoreHiddenEnterpriseCollection(name, force)) {
+    return {TRI_ERROR_NO_ERROR};
+  }
+
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
     return Result();
   }
 
-  std::string dbName = _vocbase->name();
-
+  auto& dbName = _vocbase.name();
   ClusterInfo* ci = ClusterInfo::instance();
 
   try {
@@ -1046,7 +1069,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // Replication Factor. Will be overwritten if not existent
   VPackSlice const replFactorSlice = parameters.get("replicationFactor");
-  if (!replFactorSlice.isInteger()) {
+  bool isValidReplFactorSlice =
+      replFactorSlice.isInteger() ||
+        (replFactorSlice.isString() && replFactorSlice.isEqualString("satellite"));
+  if (!isValidReplFactorSlice) {
     if (replicationFactor == 0) {
       replicationFactor = 1;
     }
@@ -1061,6 +1087,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // system collection?
     toMerge.add("isSystem", VPackValue(true));
   }
+
+
+  // Always ignore `shadowCollections` they were accidentially dumped in arangodb versions
+  // earlier than 3.3.6
+  toMerge.add("shadowCollections", arangodb::basics::VelocyPackHelper::NullValue());
   toMerge.close();  // TopLevel
 
   VPackSlice const type = parameters.get("type");
@@ -1072,7 +1103,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   VPackSlice const sliceToMerge = toMerge.slice();
   VPackBuilder mergedBuilder =
-      VPackCollection::merge(parameters, sliceToMerge, false);
+      VPackCollection::merge(parameters, sliceToMerge, false, true);
   VPackSlice const merged = mergedBuilder.slice();
 
   try {
@@ -1083,18 +1114,26 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // in the replication case enforcing the replication factor is absolutely
     // not desired, so it is hardcoded to false
     auto col = ClusterMethods::createCollectionOnCoordinator(
-        collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors,
-        createWaitsForSyncReplication, false);
+      collectionType,
+      _vocbase,
+      merged,
+      ignoreDistributeShardsLikeErrors,
+      createWaitsForSyncReplication,
+      false
+    );
     TRI_ASSERT(col != nullptr);
-    
+
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
-      AuthenticationFeature* af = AuthenticationFeature::instance();
-      af->userManager()->updateUser(ExecContext::CURRENT->user(),
-                   [&](auth::User& entry) {
-                     entry.grantCollection(dbName, col->name(), auth::Level::RW);
-                     return TRI_ERROR_NO_ERROR;
-                   });
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      TRI_ASSERT(um != nullptr); // should not get here
+      if (um != nullptr) {
+        um->updateUser(ExecContext::CURRENT->user(),
+                       [&](auth::User& entry) {
+                         entry.grantCollection(dbName, col->name(), auth::Level::RW);
+                         return TRI_ERROR_NO_ERROR;
+                       });
+      }
     }
   } catch (basics::Exception const& ex) {
     // Error, report it.
@@ -1111,14 +1150,28 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreData(std::string const& colName) {
+#ifdef USE_ENTERPRISE
+  {
+    bool force = false;
+    bool found = false;
+    std::string const& forceVal = _request->value("force", found);
+
+    if (found) {
+      force = StringUtils::boolean(forceVal);
+    }
+    if (ignoreHiddenEnterpriseCollection(colName, force)) {
+      return {TRI_ERROR_NO_ERROR};
+    }
+  }
+#endif
+
   grantTemporaryRights();
   
   if (colName == "_users") {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName);
   }
-  auto ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
@@ -1262,16 +1315,25 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   bindVars->close();  // restored
   bindVars->close();  // bindVars
 
-  arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
-                             bindVars, nullptr, arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    false,
+    _vocbase,
+    arangodb::aql::QueryString(aql),
+    bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   TRI_ASSERT(queryRegistry != nullptr);
 
   auto queryResult = query.execute(queryRegistry);
 
+  // neither agency nor dbserver should get here
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  TRI_ASSERT(af->userManager() != nullptr);
+  if (af->userManager() != nullptr) {
+    af->userManager()->outdate();
+  }
   af->tokenCache()->invalidateBasicCache();
   
   return Result{queryResult.code};
@@ -1485,6 +1547,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
+
   VPackSlice const parameters = collection.get("parameters");
 
   if (!parameters.isObject()) {
@@ -1526,13 +1589,12 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
   int res = TRI_ERROR_NO_ERROR;
 
   grantTemporaryRights();
-  READ_LOCKER(readLocker, _vocbase->_inventoryLock);
-  
+  READ_LOCKER(readLocker, _vocbase._inventoryLock);
+
   // look up the collection
   try {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
     SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
-    
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1633,25 +1695,31 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
+  if (ignoreHiddenEnterpriseCollection(name, force)) {
+    return {TRI_ERROR_NO_ERROR};
+  }
+
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
                                                           false)) {
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::string dbName = _vocbase->name();
+  auto& dbName = _vocbase.name();
 
   // in a cluster, we only look up by name:
   ClusterInfo* ci = ClusterInfo::instance();
   std::shared_ptr<LogicalCollection> col;
+
   try {
     col = ci->getCollection(dbName, name);
   } catch (...) {
     errorMsg = "could not find collection '" + name + "'";
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
+
   TRI_ASSERT(col != nullptr);
-  
+
   auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
 
   int res = TRI_ERROR_NO_ERROR;
@@ -1710,14 +1778,13 @@ void RestReplicationHandler::handleCommandSync() {
     return;
   }
   
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
 
-  VPackSlice const body = parsedBody->slice();
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
   if (endpoint.empty()) {
@@ -1725,12 +1792,13 @@ void RestReplicationHandler::handleCommandSync() {
                   "<endpoint> must be a valid endpoint");
     return;
   }
-  
-  std::string dbname = isGlobal ? "" : _vocbase->name();
+
+  std::string dbname = isGlobal ? "" : _vocbase.name();
   auto config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
+
   // will throw if invalid
   config.validate();
-  
+
   double waitForSyncTimeout = VelocyPackHelper::getNumericValue(body, "waitForSyncTimeout", 5.0);
 
   // wait until all data in current logfile got synced
@@ -1740,6 +1808,7 @@ void RestReplicationHandler::handleCommandSync() {
 
   TRI_ASSERT(!config._skipCreateDrop);
   std::unique_ptr<InitialSyncer> syncer;
+
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(config));
   } else {
@@ -1747,6 +1816,7 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   Result r = syncer->run(config._incremental);
+
   if (r.fail()) {
     LOG_TOPIC(ERR, Logger::REPLICATION)
       << "failed to sync: " << r.errorMessage();
@@ -1813,24 +1883,24 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     return;
   }
 
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
-
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-    
+
   std::string databaseName;
+
   if (!isGlobal) {
-    databaseName = _vocbase->name();
+    databaseName = _vocbase.name();
   } 
-  
+
   auto config = ReplicationApplierConfiguration::fromVelocyPack(applier->configuration(),
-                                                                parsedBody->slice(), databaseName);
+                                                                body, databaseName);
   // will throw if invalid
   config.validate();
-  
+
   applier->reconfigure(config);
   handleCommandApplierGetConfig();
 }
@@ -1924,12 +1994,11 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 
 void RestReplicationHandler::handleCommandAddFollower() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'followerId' "
@@ -1945,7 +2014,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = _vocbase->lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.copyString());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1956,7 +2025,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   if (readLockId.isNone()) {
     // Short cut for the case that the collection is empty
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
     SingleCollectionTransaction trx(
       ctx, col->id(), AccessMode::Type::EXCLUSIVE
     );
@@ -2054,12 +2123,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
 void RestReplicationHandler::handleCommandRemoveFollower() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'followerId' "
@@ -2074,7 +2142,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  auto col = _vocbase->lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.copyString());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2099,30 +2167,32 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'collection', "
                   "'ttl' and 'id'");
     return;
   }
+
   VPackSlice const collection = body.get("collection");
   VPackSlice const ttlSlice = body.get("ttl");
   VPackSlice const idSlice = body.get("id");
+
   if (!collection.isString() || !ttlSlice.isNumber() || !idSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "'collection' must be a string and 'ttl' a number and "
                   "'id' a string");
     return;
   }
-  std::string id = idSlice.copyString();
 
-  auto col = _vocbase->lookupCollection(collection.copyString());
+  std::string id = idSlice.copyString();
+  auto col = _vocbase.lookupCollection(collection.copyString());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2165,8 +2235,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     access = AccessMode::Type::EXCLUSIVE;
   }
 
-  auto ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
   auto trx =
       std::make_shared<SingleCollectionTransaction>(ctx, col->id(), access);
 
@@ -2238,12 +2307,12 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
 void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attribute 'id'");
@@ -2288,12 +2357,12 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
 
 void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attribute 'id'");
@@ -2356,17 +2425,19 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 void RestReplicationHandler::handleCommandLoggerState() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
-  
+
   engine->waitForSyncTimeout(10.0); // only for mmfiles
-  
+
   VPackBuilder builder;
-  auto res = engine->createLoggerState(_vocbase, builder);
+  auto res = engine->createLoggerState(&_vocbase, builder);
+
   if (res.fail()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state" << res.errorMessage();
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   res.errorMessage());
     return;
   }
+
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
@@ -2442,11 +2513,11 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   arangodb::LogicalCollection* col = nullptr;
 
   if (!uuid.empty()) {
-    col = _vocbase->lookupCollectionByUuid(uuid).get();
+    col = _vocbase.lookupCollectionByUuid(uuid).get();
   }
 
   if (col != nullptr) {
-    col = _vocbase->lookupCollection(name).get();
+    col = _vocbase.lookupCollection(name).get();
   }
 
   if (col != nullptr && col->type() == type) {
@@ -2477,14 +2548,14 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
                         /*mergeValues*/true, /*nullMeansRemove*/true);
   slice = builder.slice();
 
-  col = _vocbase->createCollection(slice);
+  col = _vocbase.createCollection(slice);
 
   if (col == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->isSystem() == (name[0] == '_'));
+  TRI_ASSERT(col->system() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");
@@ -2566,7 +2637,7 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
       getFeature<ReplicationFeature>("Replication");
     return replicationFeature->globalReplicationApplier();
   } else {
-    return _vocbase->replicationApplier();
+    return _vocbase.replicationApplier();
   }
 }
 

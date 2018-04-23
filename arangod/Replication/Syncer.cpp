@@ -356,24 +356,32 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   } else if (slice.isString()) {
     name = slice.copyString();
   }
+
   if (name.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                    "could not resolve vocbase id / name");
   }
-  
+
   // will work with either names or id's
   auto const& it = _vocbases.find(name);
+
   if (it == _vocbases.end()) {
     // automatically checks for id in string
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+
     if (vocbase != nullptr) {
-      _vocbases.emplace(name, DatabaseGuard(vocbase));
+      _vocbases.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(name),
+        std::forward_as_tuple(*vocbase)
+      );
     } else {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
+
     return vocbase;
   } else {
-    return it->second.database();
+    return &(it->second.database());
   }
 }
 
@@ -576,7 +584,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   col = vocbase->lookupCollection(name).get();
 
   if (col != nullptr) {
-    if (col->isSystem()) {
+    if (col->system()) {
       TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
       SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase),
@@ -598,7 +606,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
       return trx.finish(opRes.result);
     } else {
-      vocbase->dropCollection(col, false, -1.0);
+      vocbase->dropCollection(col->id(), false, -1.0);
     }
   }
 
@@ -657,7 +665,7 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return Result();
   }
 
-  return Result(vocbase->dropCollection(col, true, -1.0));
+  return vocbase->dropCollection(col->id(), true, -1.0);
 }
 
 /// @brief creates an index, based on the VelocyPack provided
@@ -915,7 +923,10 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
 void Syncer::reloadUsers() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  auth::UserManager* um = af->userManager();
+  if (um != nullptr) {
+    um->outdate();
+  }
 }
   
 bool Syncer::hasFailed(SimpleHttpResult* response) const {

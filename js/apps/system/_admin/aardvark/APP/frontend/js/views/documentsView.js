@@ -67,7 +67,7 @@
 
     setCollectionId: function (colid, page) {
       var self = this;
-      this.collection.setCollection(colid);
+      this.collection.setCollection(colid, page);
       this.collection.setPage(page);
       this.page = page;
 
@@ -81,13 +81,16 @@
           } else {
             this.collectionName = colid;
           }
-          this.collection.getDocuments(this.getDocsCallback.bind(this));
-          this.collectionModel = this.collectionsStore.get(colid);
-
+          // check here if filters are active or not
+          // documents will be loaded differently if filter is active
+          if (self.restoredFilters.length === 0) {
+            this.collection.getDocuments(this.getDocsCallback.bind(this));
+            this.collectionModel = this.collectionsStore.get(colid);
+            // render pagination
+            this.renderPaginationElements();
+          }
           // fill navigation and breadcrumb
           this.breadcrumb();
-          // render pagination
-          this.renderPaginationElements();
         }
       }.bind(this);
 
@@ -396,11 +399,13 @@
           }
 
           if ($('#attribute_name' + i).val() !== '') {
-            filters.push({
-              attribute: $('#attribute_name' + i).val(),
-              operator: $('#operator' + i).val(),
-              value: value
-            });
+            if ($('#operator' + i).val() !== undefined) {
+              filters.push({
+                attribute: $('#attribute_name' + i).val(),
+                operator: $('#operator' + i).val(),
+                value: value
+              });
+            }
           }
         }
       }
@@ -703,6 +708,7 @@
       var toDelete = this.getSelectedDocs();
 
       if (toDelete.length === 0) {
+        arangoHelper.arangoMessage('Move documents', 'No documents selected!');
         return;
       }
 
@@ -748,10 +754,15 @@
       var self = this;
       var toCollection = $('#move-documents-to').val();
 
-      var callback = function () {
-        this.collection.getDocuments(this.getDocsCallback.bind(this));
-        $('#markDocuments').click();
-        window.modalView.hide();
+      var callback = function (error) {
+        if (error) {
+          arangoHelper.arangoError('Error', 'Could not move document.');
+        } else {
+          self.collection.setTotalMinusOne();
+          this.collection.getDocuments(this.getDocsCallback.bind(this));
+          $('#markDocuments').click();
+          window.modalView.hide();
+        }
       }.bind(this);
 
       _.each(toMove, function (key) {
@@ -764,6 +775,7 @@
       var toDelete = this.getSelectedDocs();
 
       if (toDelete.length === 0) {
+        arangoHelper.arangoMessage('Delete documents', 'No documents selected!');
         return;
       }
 
@@ -809,6 +821,7 @@
               window.modalView.hide();
             }
           }.bind(self);
+
           self.documentStore.deleteDocument(self.collection.collectionID, key, callback);
         } else if (self.type === 'edge') {
           var callback2 = function (error) {
@@ -931,7 +944,6 @@
       } catch (ex) {
         url = 'collection/' + this.collection.collectionID + '/' + encodeURIComponent(doc);
       }
-
       window.location.hash = url;
     },
 
@@ -1048,7 +1060,7 @@
     breadcrumb: function () {
       var self = this;
 
-      if (window.App.naviView) {
+      if (window.App.naviView && $('#subNavigationBar .breadcrumb').html() !== undefined) {
         $('#subNavigationBar .breadcrumb').html(
           'Collection: ' + this.collectionName
         );

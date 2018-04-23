@@ -77,7 +77,13 @@ class LogicalCollection: public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
  public:
-  LogicalCollection(TRI_vocbase_t*, velocypack::Slice const&, bool isAStub);
+  LogicalCollection() = delete;
+  LogicalCollection(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice const& info,
+    bool isAStub,
+    uint64_t planVersion = 0
+  );
 
   virtual ~LogicalCollection();
 
@@ -90,7 +96,6 @@ class LogicalCollection: public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
 
  public:
-  LogicalCollection() = delete;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
@@ -156,7 +161,6 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
-  bool isSystem() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -223,7 +227,7 @@ class LogicalCollection: public LogicalDataSource {
   void load();
   void unload();
 
-  virtual void drop() override;
+  virtual arangodb::Result drop() override;
   virtual Result rename(std::string&& name, bool doSync) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
@@ -341,14 +345,6 @@ class LogicalCollection: public LogicalDataSource {
   // with the checksum provided in the reference checksum
   Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
-  // Set and get _planVersion, this is only used if the object is used in
-  // ClusterInfo to represent a cluster wide collection in the agency.
-  void setPlanVersion(uint64_t v) {
-    _planVersion = v;
-  }
-  uint64_t getPlanVersion() const {
-    return _planVersion;
-  }
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -394,8 +390,6 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Properties
   bool _isLocal;
 
-  bool const _isSystem;
-
   bool _waitForSync;
 
   uint32_t _version;
@@ -431,12 +425,6 @@ class LogicalCollection: public LogicalDataSource {
   std::unordered_map<std::string, double> _clusterEstimates;
   double _clusterEstimateTTL; //only valid if above vector is not empty
   basics::ReadWriteLock _clusterEstimatesLock;
-
-  uint64_t _planVersion;   // Only set if setPlanVersion was called. This only
-                           // happens in ClusterInfo when this object is used
-                           // to represent a cluster wide collection. This is
-                           // then the version in the agency Plan that underpins
-                           // the information in this object. Otherwise 0.
 };
 
 }  // namespace arangodb
