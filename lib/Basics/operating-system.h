@@ -28,10 +28,6 @@
 #error use <Basics/Common.h>
 #endif
 
-#ifdef sleep
-#undef sleep
-#endif
-#define sleep(...) ERROR_USE_std_this_thread_sleep_for()
 
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
