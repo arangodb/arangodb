@@ -179,7 +179,7 @@ int RocksDBReplicationContext::bindCollectionIncremental(
 
   if ((nullptr == _collection) || (id != _collection->logical.id())) {
     MUTEX_LOCKER(writeLocker, _contextLock);
-    
+
     if (_collection) {
       _collection->release();
     }
@@ -277,11 +277,11 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpJson(
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
   }
-  
+
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
   auto cb = [&collection, &buff, &adapter](LocalDocumentId const& documentId,
                                            VPackSlice const& doc) {
-    
+
     buff.appendText("{\"type\":");
     buff.appendInteger(REPLICATION_MARKER_DOCUMENT); // set type
     buff.appendText(",\"data\":");
@@ -289,7 +289,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpJson(
     // printing the data, note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &collection->vpackOptions);
     dumper.dump(doc);
-    
+
     buff.appendText("}\n");
   };
 
@@ -324,11 +324,11 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpVPack(TRI_vocbase_t* voc
     MUTEX_LOCKER(locker, _contextLock);
     collection->release();
   });
-  
+
   {
     MUTEX_LOCKER(writeLocker, _contextLock);
     TRI_ASSERT(vocbase != nullptr);
-    
+
     if (!_trx || !_guard || (&(_guard->database()) != vocbase)) {
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
@@ -341,7 +341,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpVPack(TRI_vocbase_t* voc
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
   }
-  
+
   VPackBuilder builder(buffer, &collection->vpackOptions);
   auto cb = [&collection, &builder](LocalDocumentId const& documentId,
                                     VPackSlice const& doc) {
@@ -362,7 +362,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpVPack(TRI_vocbase_t* voc
     }
     builder.close();
   };
-  
+
   TRI_ASSERT(collection->iter && !collection->sorted());
   while (collection->hasMore && buffer.length() < chunkSize) {
     try {
@@ -376,11 +376,11 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpVPack(TRI_vocbase_t* voc
       return ex;
     }
   }
-  
+
   if (collection->hasMore) {
     collection->currentTick++;
   }
-  
+
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, collection->currentTick);
 }
 
@@ -466,13 +466,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   _collection->setSorted(true, _trx.get());
   TRI_ASSERT(_collection->iter);
   TRI_ASSERT(_collection->sorted());
-  
-  RocksDBSortedAllIterator* primary =
-      static_cast<RocksDBSortedAllIterator*>(_collection->iter.get());
+
+  RocksDBGenericAllIndexIterator* primary = static_cast<RocksDBGenericAllIndexIterator*>(_collection->iter.get());
 
   // Position the iterator correctly
-  if (chunk != 0 &&
-      ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
+  if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
     return rv.reset(TRI_ERROR_BAD_PARAMETER,
                     "It seems that your chunk / chunkSize combination is not "
                     "valid - overflow");
@@ -507,23 +505,19 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
   }
 
-  auto cb = [&](LocalDocumentId const& documentId, VPackSlice slice) {
-    TRI_voc_rid_t revisionId = 0;
-    VPackSlice key;
-    transaction::helpers::extractKeyAndRevFromDocument(slice, key, revisionId);
-
-    TRI_ASSERT(key.isString());
-
+  auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+    TRI_ASSERT(rocksValue.size() > sizeof(TRI_voc_rid_t));
+    TRI_voc_rid_t docRev = uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
     b.openArray();
-    b.add(key);
-    b.add(VPackValue(TRI_RidToString(revisionId)));
+    b.add(velocypack::ValuePair(rocksKey.data()+sizeof(std::uint64_t), rocksKey.size()-sizeof(std::uint64_t)));
+    b.add(VPackValue(TRI_RidToString(docRev)));
     b.close();
   };
 
   b.openArray();
   // chunkSize is going to be ignored here
   try {
-    _collection->hasMore = primary->nextDocument(cb, chunkSize);
+    _collection->hasMore = primary->gnext(cb, chunkSize);
     _lastIteratorOffset++;
   } catch (std::exception const&) {
     return rv.reset(TRI_ERROR_INTERNAL);
@@ -548,7 +542,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   _collection->setSorted(true, _trx.get());
   TRI_ASSERT(_collection->iter);
   TRI_ASSERT(_collection->sorted());
-  
+
   RocksDBSortedAllIterator* primary =
       static_cast<RocksDBSortedAllIterator*>(_collection->iter.get());
 
@@ -791,7 +785,7 @@ void RocksDBReplicationContext::CollectionIterator::release() {
 RocksDBReplicationContext::CollectionIterator*
 RocksDBReplicationContext::getCollectionIterator(TRI_voc_cid_t cid, bool sorted) {
   _contextLock.assertLockedByCurrentThread();
-  
+
   CollectionIterator* collection{nullptr};
   // check if iterator already exists
   auto it = _iterators.find(cid);

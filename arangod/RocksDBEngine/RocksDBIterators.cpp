@@ -333,3 +333,47 @@ void RocksDBSortedAllIterator::reset() {
   TRI_ASSERT(_trx->state()->isRunning());
   _iterator->Seek(_bounds.start());
 }
+
+void RocksDBGenericAllIndexIterator::seek(StringRef const& key) {
+  TRI_ASSERT(_trx->state()->isRunning());
+  // don't want to get the index pointer just for this
+  uint64_t objectId = _bounds.objectId();
+  RocksDBKeyLeaser val(_trx);
+  val->constructPrimaryIndexValue(objectId, key);
+  _iterator->Seek(val->string());
+  TRI_ASSERT(_iterator->Valid());
+}
+
+bool RocksDBGenericAllIndexIterator::outOfRange() const {
+  TRI_ASSERT(_trx->state()->isRunning());
+  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+}
+
+void RocksDBGenericAllIndexIterator::reset() {
+  TRI_ASSERT(_trx->state()->isRunning());
+    _iterator->Seek(_bounds.start());
+}
+
+bool RocksDBGenericAllIndexIterator::gnext(GenericCallback const& cb, size_t limit){
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  while (limit > 0) {
+    cb(_iterator->key(), _iterator->value());
+    --limit;
+
+    _iterator->Next();
+
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+
+  return true;
+}

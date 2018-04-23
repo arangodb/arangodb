@@ -39,6 +39,8 @@ namespace arangodb {
 class RocksDBCollection;
 class RocksDBPrimaryIndex;
 
+typedef std::function<void(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
+
 /// @brief iterator over all documents in the collection
 /// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
@@ -78,13 +80,15 @@ class RocksDBGenericAllIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "generic-all-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override { return false;}
+  bool gnext(GenericCallback const& cb, size_t limit);
+  void seek(StringRef const& key);
   //bool nextDocument(DocumentCallback const& cb, size_t limit) override;
   //void skip(uint64_t count, uint64_t& skipped) override;
 
-  //void reset() override;
+  void reset() override;
 
  private:
-  //bool outOfRange() const;
+  bool outOfRange() const;
 
   bool const _reverse;
   RocksDBKeyBounds const _bounds;
