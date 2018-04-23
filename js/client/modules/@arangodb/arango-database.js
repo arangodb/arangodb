@@ -1124,13 +1124,31 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     });
   }
 
-  if (!data.collections || typeof (data.collections) !== 'object') {
+  data = Object.assign({}, data);
+
+  if (!data.collections || typeof data.collections !== 'object') {
     throw new ArangoError({
       error: true,
       code: internal.errors.ERROR_HTTP_BAD_PARAMETER.code,
       errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
       errorMessage: 'missing/invalid collections definition for transaction'
     });
+  }
+
+  data.collections = Object.assign({}, data.collections);
+  if (data.collections.read && data.collections.read.isArangoCollection) {
+    data.collections.read = [data.collections.read.name()];
+  } else if (Array.isArray(data.collections.read)) {
+    data.collections.read = data.collections.read.map(
+      col => col.isArangoCollection ? col.name() : col
+    );
+  }
+  if (data.collections.write && data.collections.write.isArangoCollection) {
+    data.collections.write = [data.collections.write.name()];
+  } else if (Array.isArray(data.collections.write)) {
+    data.collections.write = data.collections.write.map(
+      col => col.isArangoCollection ? col.name() : col
+    );
   }
 
   if (!data.action ||
