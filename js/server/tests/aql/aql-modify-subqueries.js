@@ -620,7 +620,7 @@ function ahuacatlModifySuite () {
         c.insert({ id: 42 });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = { writesExecuted: 100, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
@@ -641,15 +641,15 @@ function ahuacatlModifySuite () {
         c.insert({ id: i });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
-      // this will still go to all the shards!
+      let expected = { writesExecuted: 100, writesIgnored: 0 };
+      // this will only go to a single shard, as the shardkey is given in REMOVE!
       let query = "FOR d IN " + cn + " REMOVE { _key: d._key, id: 42 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
         let plan = AQL_EXPLAIN(query).plan;
         assertFalse(hasDistributeNode(plan.nodes));
         assertEqual(-1, plan.rules.indexOf("undistribute-remove-after-enum-coll"));
-        assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+        assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
       }
 
       assertEqual(0, c.count());
