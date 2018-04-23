@@ -47,7 +47,6 @@ ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
       _checkConfiguration(false),
       _progname(progname) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("ShellColors");
 }

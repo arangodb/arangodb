@@ -595,7 +595,6 @@ bool Constituent::start(TRI_vocbase_t* vocbase,
 
 /// Get persisted information and run election process
 void Constituent::run() {
-
   // single instance
   _id = _agent->config().id();
 
@@ -607,10 +606,16 @@ void Constituent::run() {
   // Most recent vote
   {
     std::string const aql("FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
-
+    arangodb::aql::Query query(
+      false,
+      *_vocbase,
+      arangodb::aql::QueryString(aql),
+      bindVars,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
     auto queryResult = query.execute(_queryRegistry);
+
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }
