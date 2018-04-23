@@ -121,7 +121,6 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");

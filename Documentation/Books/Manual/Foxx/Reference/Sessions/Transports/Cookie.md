@@ -45,7 +45,7 @@ Creates a [Transport](README.md) that can be used in the sessions middleware.
 
   * **algorithm**: `string` (optional)
 
-    The algorithm used to sign and verify the cookie. If no algorithm is specified, the cookie will not be signed or verified. See the [cookie method on the response object](../../Router/Response.md).
+    The algorithm used to sign and verify the cookie. If no algorithm is specified, the cookie will not be signed or verified. See the [cookie method on the response object](../../Routers/Response.md).
 
   * **secret**: `string` (optional)
 

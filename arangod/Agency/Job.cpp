@@ -43,10 +43,11 @@ std::string const planColPrefix = "/Plan/Collections/";
 std::string const curColPrefix = "/Current/Collections/";
 std::string const blockedServersPrefix = "/Supervision/DBServers/";
 std::string const blockedShardsPrefix = "/Supervision/Shards/";
-std::string const serverStatePrefix = "/Sync/ServerStates/";
 std::string const planVersion = "/Plan/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
+std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
+std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 
 }  // namespace arangodb::consensus
 }  // namespace arangodb
@@ -239,6 +240,18 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
 }
 
+/// @brief Get servers from Supervision with health status GOOD
+std::vector<std::string> Job::healthyServers(arangodb::consensus::Node const& snapshot) {
+  std::vector<std::string> ret;
+  for (auto const& srv : snapshot(healthPrefix).children()) {
+    auto healthState = srv.second->hasAsString("Status");
+    if (healthState.second && healthState.first == Supervision::HEALTH_STATUS_GOOD) {
+      ret.emplace_back(srv.first);
+    }
+  }
+  return ret;
+}
+
 template<typename T> std::vector<size_t> idxsort (const std::vector<T> &v) {
 
   std::vector<size_t> idx(v.size());
@@ -413,8 +426,9 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   }
   auto const& tmp_type = job.first.hasAsString("type");
 
-  std::string type = tmp_type.first;
-  if (!tmp_type.second || type == "failedServer" || type == "failedLeader") {
+  std::string const& type = tmp_type.first;
+  if (!tmp_type.second || type == "failedServer" || type == "failedLeader" ||
+      type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer") {
@@ -549,12 +563,9 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
 std::string Job::checkServerHealth(Node const& snapshot,
                                    std::string const& server) {
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");
-
+  
   if (!status.second) {
     return "UNCLEAR";
   }
-  if (status.first != "GOOD") {
-    return "UNHEALTHY";
-  }
-  return "GOOD";
+  return status.first;
 }

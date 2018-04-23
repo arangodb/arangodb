@@ -36,7 +36,6 @@ TempFeature::TempFeature(application_features::ApplicationServer* server,
                          std::string const& appname)
     : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("Random");
 }

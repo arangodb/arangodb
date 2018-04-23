@@ -314,7 +314,7 @@ bool RestQueryHandler::parseQuery() {
 
   Query query(
     false,
-    &_vocbase,
+    _vocbase,
     QueryString(queryString),
     nullptr,
     nullptr,

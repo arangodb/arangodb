@@ -511,11 +511,14 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const queryString(TRI_ObjectToString(args[0]));
-
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             nullptr, nullptr,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    *vocbase,
+    aql::QueryString(queryString),
+    nullptr,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {
@@ -651,10 +654,14 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // bind parameters will be freed by the query later
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             bindVars, options,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    *vocbase,
+    aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.explain();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -662,6 +669,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
   if (queryResult.result != nullptr) {
     if (query.queryOptions().allPlans) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "plans"),
@@ -738,9 +746,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, vocbase, queryBuilder, options,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    *vocbase,
+    queryBuilder,
+    options,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.execute(
       static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
@@ -838,10 +850,14 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
-                             bindVars, options,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    *vocbase,
+    aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.executeV8(
       isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
@@ -2047,8 +2063,7 @@ static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   uint64_t index = 0;
   uint64_t term = 0;
-  std::shared_ptr<VPackBuilder> b
-    = arangodb::consensus::State::latestAgencyState(vocbase, index, term);
+  auto b = arangodb::consensus::State::latestAgencyState(*vocbase, index, term);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   result->Set(TRI_V8_ASCII_STRING(isolate, "index"),

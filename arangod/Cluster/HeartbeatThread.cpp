@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
+/// disclaimer
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,13 +59,27 @@ using namespace arangodb::rest;
 std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief static object to record thread crashes.  it is static so that
+///        it can contain information about threads that crash before HeartbeatThread
+///        starts (i.e. HeartbeatThread starts late).  this list is intentionally
+///        NEVER PURGED so that it can be reposted to logs regularly
+////////////////////////////////////////////////////////////////////////////////
+
+static std::multimap<std::chrono::system_clock::time_point /* when */, const std::string /* threadName */> deadThreads;
+
+static std::chrono::system_clock::time_point deadThreadsPosted;  // defaults to epoch
+
+static arangodb::Mutex deadThreadsMutex;
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
 HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval,
                                  uint64_t maxFailsBeforeWarning)
-    : Thread("Heartbeat"),
+    : CriticalThread("Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
       _agency(),
@@ -201,6 +215,8 @@ void HeartbeatThread::run() {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
+  logThreadDeaths();
+
   if (ServerState::instance()->isCoordinator(role)) {
     runCoordinator();
   } else if (ServerState::instance()->isDBServer(role)) {
@@ -208,13 +224,13 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isSingleServer(role)) {
     runSingleServer();
   } else if (ServerState::instance()->isAgent(role)) {
-    std::this_thread::sleep_for(std::chrono::microseconds(3000000));
-//    runAgentServer();
+    runAgentServer();
   } else {
     LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
   }
 
+  logThreadDeaths(true);  // force log
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (" << role << ")";
 }
@@ -274,6 +290,7 @@ void HeartbeatThread::runDBServer() {
 
 
   while (!isStopping()) {
+    logThreadDeaths();
 
     try {
       auto const start = std::chrono::steady_clock::now();
@@ -440,6 +457,8 @@ void HeartbeatThread::runSingleServer() {
   uint64_t lastSentVersion = 0;
   auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
+    logThreadDeaths();
+
     {
       CONDITION_LOCKER(locker, _condition);
       auto remain = _interval - (std::chrono::steady_clock::now() - start);
@@ -554,6 +573,8 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
         if (applier->isActive()) {
           applier->stopAndJoin();
+          // preemtily remove the transient entry from the agency
+          _agency.setTransient(transientPath, VPackSlice::emptyObjectSlice(), 0);
         }
 
         // ensure everyone has server access
@@ -590,8 +611,22 @@ void HeartbeatThread::runSingleServer() {
         // wait for everything to calm down for good measure
         std::this_thread::sleep_for(std::chrono::seconds(10));
       }
+      
+      TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
+      auto sendTransient = [&]() {
+        VPackBuilder builder;
+        builder.openObject();
+        builder.add("leader", leader);
+        builder.add("lastTick", VPackValue(lastTick));
+        builder.close();
+        double ttl = std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
+        _agency.setTransient(transientPath, builder.slice(), ttl);
+      };
+      TRI_DEFER(sendTransient());
 
-      if (applier->endpoint() != endpoint) { // configure applier for new endpoint
+      if (applier->isActive() && applier->endpoint() == endpoint) {
+        lastTick = applier->lastTick();
+      } else if (applier->endpoint() != endpoint) { // configure applier for new endpoint
         if (applier->isActive()) {
           applier->stopAndJoin();
         }
@@ -688,6 +723,7 @@ void HeartbeatThread::runCoordinator() {
 
   while (!isStopping()) {
     try {
+      logThreadDeaths();
       auto const start = std::chrono::steady_clock::now();
       // send our state to the agency.
       // we don't care if this fails
@@ -902,6 +938,28 @@ void HeartbeatThread::runCoordinator() {
     }
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heartbeat main loop, agent version
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runAgentServer() {
+
+  // simple loop to post dead threads every hour, no other tasks today
+  while (!isStopping()) {
+    logThreadDeaths();
+
+    {
+      CONDITION_LOCKER(locker, _condition);
+      if (!isStopping()) {
+        locker.wait(std::chrono::hours(1));
+      }
+    }
+  } // while
+
+  return;
+
+} // HeartbeatThread::runAgentServer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the heartbeat
@@ -1198,3 +1256,51 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
   }
 }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief record the death of a thread, adding std::chrono::system_clock::now().
+  ///        This is a static function because HeartbeatThread might not have
+  ///        started yet
+  //////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::recordThreadDeath(const std::string & threadName) {
+  MUTEX_LOCKER(mutexLocker, deadThreadsMutex);
+
+  deadThreads.insert(std::pair<std::chrono::system_clock::time_point, const std::string>
+                     (std::chrono::system_clock::now(), threadName));
+
+  return;
+
+} // HeartbeatThread::recordThreadDeath
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief post list of deadThreads to current log.  Called regularly, but only
+  ///        posts to log roughly every 60 minutes
+  //////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::logThreadDeaths(bool force) {
+
+  bool doLogging(force);
+
+  if (std::chrono::hours(1) < (std::chrono::system_clock::now() - deadThreadsPosted)) {
+    doLogging = true;
+  } // if
+
+  if (doLogging) {
+    deadThreadsPosted = std::chrono::system_clock::now();
+
+    LOG_TOPIC(INFO, Logger::HEARTBEAT) << "HeartbeatThread ok.";
+
+    for (auto const it : deadThreads) {
+      char buffer[40];
+      struct tm gmt;
+      time_t tt = std::chrono::system_clock::to_time_t(it.first);
+      gmtime_r(&tt, &gmt);
+      strftime(buffer, sizeof(buffer), "%FT%TZ", &gmt);
+
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Prior crash of thread " << it.second
+                                        << " occurred at " << buffer;
+    } // for
+  } // if
+
+} // HeartbeatThread::logThreadDeaths
