@@ -12,6 +12,10 @@ if (USE_IRESEARCH)
     IResearch/AgencyCommManagerMock.cpp
 #    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
+    IResearch/ExpressionFilter-test.cpp
+    IResearch/ExecutionBlockMock.cpp
+    IResearch/ExecutionBlockMock-test.cpp
+    IResearch/ExpressionContextMock.cpp
     IResearch/IResearchAnalyzerFeature-test.cpp
     IResearch/IResearchFeature-test.cpp
     IResearch/IResearchOrder-test.cpp
@@ -45,11 +49,8 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryJoin-test.cpp
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
-    IResearch/ExpressionFilter-test.cpp
-    IResearch/ExecutionBlockMock.cpp
-    IResearch/ExpressionContextMock.cpp
+    IResearch/StorageEngineMock.cpp
     IResearch/VelocyPackHelper-test.cpp
-    IResearch/ExecutionBlockMock-test.cpp
     Utils/CollectionNameResolver-test.cpp
     VocBase/LogicalDataSource-test.cpp
     VocBase/vocbase-test.cpp
@@ -59,6 +60,7 @@ endif ()
 add_executable(
   arangodbtests
   ${CMAKE_SOURCE_DIR}/arangod/RestServer/FlushFeature.cpp
+  Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
   Agency/FailedFollowerTest.cpp
@@ -122,7 +124,6 @@ add_executable(
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
-  IResearch/StorageEngineMock.cpp
   ${IRESEARCH_TESTS_SOURCES}
   main.cpp
 )

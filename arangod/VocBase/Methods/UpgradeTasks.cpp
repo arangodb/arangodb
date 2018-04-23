@@ -122,7 +122,10 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t* vocbase,
     return false;
   }
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  TRI_ASSERT(um != nullptr);
+  if (um == nullptr) {
+    return true; // server does not support users
+  }
+  
   for (VPackSlice slice : VPackArrayIterator(users)) {
     std::string user = VelocyPackHelper::getStringValue(slice, "username",
                                                         StaticStrings::Empty);

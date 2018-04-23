@@ -2640,7 +2640,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   } else {
     // system collections should never enforce replicationfactor
     // to allow them to come up with 1 dbserver
-    if (col->isSystem()) {
+    if (col->system()) {
       enforceReplicationFactor = false;
     }
 
@@ -2678,7 +2678,9 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
           }), dbServers.end());
     }
     std::random_shuffle(dbServers.begin(), dbServers.end());
-    shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor, dbServers, !col->isSystem());
+    shards = DistributeShardsEvenly(
+      ci, numberOfShards, replicationFactor, dbServers, !col->system()
+    );
   }
 
   if (shards->empty() && !col->isSmart()) {

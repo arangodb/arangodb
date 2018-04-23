@@ -183,7 +183,7 @@ inline void rawWrite(int fd, char const* data, size_t length,
                      arangodb::Result& status, std::string const& path,
                      int flags) {
   while (length > 0) {
-    ssize_t written = TRI_WRITE(fd, data, length);
+    ssize_t written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
     if (written < 0) {
       status = ::genericError(path, flags);
       break;
@@ -199,7 +199,7 @@ namespace {
 inline ssize_t rawRead(int fd, char* buffer, size_t length,
                        arangodb::Result& status, std::string const& path,
                        int flags) {
-  ssize_t bytesRead = TRI_READ(fd, buffer, length);
+  ssize_t bytesRead = TRI_READ(fd, buffer, static_cast<TRI_read_t>(length));
   if (bytesRead < 0) {
     status = ::genericError(path, flags);
   }

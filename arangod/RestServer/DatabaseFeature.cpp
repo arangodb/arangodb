@@ -237,7 +237,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _checkVersion(false),
       _upgrade(false) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Authentication");
   startsAfter("CacheManager");
   startsAfter("DatabasePath");

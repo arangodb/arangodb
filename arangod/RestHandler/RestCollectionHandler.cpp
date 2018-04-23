@@ -85,7 +85,8 @@ void RestCollectionHandler::handleCommandGet() {
       ExecContext const* exec = ExecContext::CURRENT;
       bool canUse = exec == nullptr ||
                     exec->canUseCollection(coll->name(), auth::Level::RO);
-      if (canUse && (!excludeSystem || !coll->isSystem())) {
+
+      if (canUse && (!excludeSystem || !coll->system())) {
         collectionRepresentation(builder, coll,
                                  /*showProperties*/ false,
                                  /*showFigures*/ false, /*showCount*/ false,
@@ -493,7 +494,7 @@ void RestCollectionHandler::collectionRepresentation(
   builder.add("type", VPackValue(coll->type()));
 
   if (!showProperties) {
-    builder.add("isSystem", VPackValue(coll->isSystem()));
+    builder.add("isSystem", VPackValue(coll->system()));
     builder.add("globallyUniqueId", VPackValue(coll->globallyUniqueId()));
   } else {
     Result res = methods::Collections::properties(coll, builder);
