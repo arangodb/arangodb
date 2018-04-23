@@ -38,10 +38,12 @@ const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
 const isEnterprise = require('internal').isEnterprise();
-const explainer = require("@arangodb/aql/explainer");
-const fs = require("fs");
+const explainer = require('@arangodb/aql/explainer');
+const fs = require('fs');
+const path = require('path');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
+const ERROR_FILE_NOT_FOUND = errors.ERROR_FILE_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
 API_DOCS.basePath = `/_db/${encodeURIComponent(db._name())}`;
 
@@ -174,14 +176,14 @@ authRouter.post('/query/explain', function (req, res) {
 authRouter.post('/query/debugDump', function (req, res) {
   const bindVars = req.body.bindVars || {};
   const query = req.body.query;
-  const tmpDebugFolder = fs.getTempFile(fs.getTempPath(), false);
-  const tmpDebugFileName = fs.join(tmpDebugFolder, "debugDump.json");
-  const tmpDebugZipFileName = fs.join(tmpDebugFolder, "debugDump.zip");
+  const tmpDebugFolder = fs.getTempFile();
+  const tmpDebugFileName = fs.join(tmpDebugFolder, 'debugDump.json');
+  const tmpDebugZipFileName = fs.join(tmpDebugFolder, 'debugDump.zip');
 
   try {
     fs.makeDirectory(tmpDebugFolder);
   } catch (e) {
-    require("console").error(e);
+    require('console').error(e);
     res.throw('Server error, failed to create temp directory', e.message, {cause: e});
   }
   let options = {};
@@ -196,13 +198,13 @@ authRouter.post('/query/debugDump', function (req, res) {
     res.throw('bad request', e.message, {cause: e});
   }
   try {
-    fs.zipFile(tmpDebugZipFileName, "", [tmpDebugFileName]);
+    fs.zipFile(tmpDebugZipFileName, tmpDebugFolder, ['debugDump.json']);
   } catch (e) {
-    require("console").error(e);
+    require('console').error(e);
     res.throw('Server error, failed to create zip file', e.message, {cause: e});
   }
 
-  res.download(tmpDebugZipFileName, `debugDump.zip`);
+  res.download(tmpDebugZipFileName, 'debugDump.zip');
 })
 .body(joi.object({
   query: joi.string().required(),
@@ -218,8 +220,6 @@ authRouter.post('/query/debugDump', function (req, res) {
   and to reproduce your case. Whenever you submit a query based issue
   please attach this file and the Team can help you much faster with it.
 `);
-
-
 
 authRouter.post('/query/upload/:user', function (req, res) {
   let user = req.pathParams.user;

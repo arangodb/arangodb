@@ -559,15 +559,20 @@
       if (this.verifyQueryAndParams()) {
         return;
       }
+
+      var cbFunction = function () {
+        window.modalView.hide();
+      };
+
       var query = this.aqlEditor.getValue();
       if (query !== '' && query !== undefined && query !== null) {
         var url = 'query/debugDump';
         var body = {
           query: query,
           bindVars: this.bindParamTableObj || {},
-          examples: $('#debug-download-package-examples').is(":checked")
+          examples: $('#debug-download-package-examples').is(':checked')
         };
-        arangoHelper.downloadPost(url, JSON.stringify(body));
+        arangoHelper.downloadPost(url, JSON.stringify(body), cbFunction);
       } else {
         arangoHelper.arangoError('Query error', 'Could not create a debug package.');
       }
