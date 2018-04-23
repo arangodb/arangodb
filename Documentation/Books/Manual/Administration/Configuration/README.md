@@ -13,8 +13,8 @@ General Options
 Prints a list of the most common options available and then exits. In order to
 see all options use *--help-all*.
 
-To make use of the startup options from a program, the option `--dump-options`
-will print out all options in JSON format and then exits.
+To receive the startup options in JSON format, pass the `--dump-options` flag. This will
+print out all options and exit.
 
 ### Version
 
