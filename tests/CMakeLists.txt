@@ -6,6 +6,7 @@ endforeach()
 add_executable(
   arangodbtests
 #  ../lib/Basics/WorkMonitorDummy.cpp
+  Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
   Agency/FailedFollowerTest.cpp

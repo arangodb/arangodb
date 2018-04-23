@@ -104,7 +104,7 @@ void auth::TokenCache::invalidateBasicCache() {
 auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
     std::string const& secret) {
   if (_userManager == nullptr) { // server does not support users
-    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Basic auth not supported";
+    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "Basic auth not supported";
     return auth::TokenCache::Entry();
   }
 
@@ -185,7 +185,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
 
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
   if (parts.size() != 3) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
         << "Secret contains " << parts.size() << " parts";
     return auth::TokenCache::Entry();
   }

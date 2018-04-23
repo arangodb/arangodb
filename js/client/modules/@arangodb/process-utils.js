@@ -1045,11 +1045,12 @@ function startInstanceCluster (instanceInfo, protocol, options,
   // we need to find the leading server
   if (options.activefailover) {
     internal.wait(5.0);
-    let opts = makeAuthorizationHeaders(authOpts);
-    opts['headers']['content-type'] =  'application/json';
-    opts['method'] = 'POST';
-    let reply = download(agencyUrl + '/_api/agency/read',
-    '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
+    let opts = {
+      method: 'POST',
+      jwt: crypto.jwtEncode(authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
+      headers: {'content-type': 'application/json' }
+    };
+    let reply = download(agencyUrl + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 
     if (!reply.error && reply.code === 200) {
       let res = JSON.parse(reply.body);

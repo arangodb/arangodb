@@ -544,6 +544,8 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
         if (applier->isActive()) {
           applier->stopAndJoin();
+          // preemtily remove the transient entry from the agency
+          _agency.setTransient(transientPath, VPackSlice::emptyObjectSlice(), 0);
         }
         
         // ensure everyone has server access
@@ -580,8 +582,22 @@ void HeartbeatThread::runSingleServer() {
         // wait for everything to calm down for good measure
         sleep(10);
       }
+      
+      TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
+      auto sendTransient = [&]() {
+        VPackBuilder builder;
+        builder.openObject();
+        builder.add("leader", leader);
+        builder.add("lastTick", VPackValue(lastTick));
+        builder.close();
+        double ttl = std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
+        _agency.setTransient(transientPath, builder.slice(), ttl);
+      };
+      TRI_DEFER(sendTransient());
 
-      if (applier->endpoint() != endpoint) { // configure applier for new endpoint
+      if (applier->isActive() && applier->endpoint() == endpoint) {
+        lastTick = applier->lastTick();
+      } else if (applier->endpoint() != endpoint) { // configure applier for new endpoint
         if (applier->isActive()) {
           applier->stopAndJoin();
         }
