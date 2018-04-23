@@ -107,7 +107,7 @@ void* load_library(const char* soname, int mode /* = 2 */) {
 
   if (!handle) {
     #ifdef _WIN32
-      IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.c_str(), dlerror().c_str());
+      IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.utf8().c_str(), dlerror().c_str());
     #else
       IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.c_str(), dlerror());
     #endif

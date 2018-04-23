@@ -53,7 +53,7 @@ class ServerState {
     STATE_STOPPED,        // primary only
     STATE_SHUTDOWN        // used by all roles
   };
-  
+
   enum class Mode : uint8_t {
     DEFAULT = 0,
     /// reject all requests
@@ -78,12 +78,12 @@ class ServerState {
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
-  
+
   static std::string roleToShortString(RoleEnum);
-  
+
   /// @brief get the key for lists of a role in the agency
   static std::string roleToAgencyListKey(RoleEnum);
-  
+
   /// @brief get the key for a role in the agency
   static std::string roleToAgencyKey(RoleEnum role);
 
@@ -95,25 +95,25 @@ class ServerState {
 
   /// @brief convert a string representation to a state
   static StateEnum stringToState(std::string const&);
-  
+
   /// @brief get the string representation of a mode
   static std::string modeToString(Mode);
-    
+
   /// @brief convert a string representation to a mode
   static Mode stringToMode(std::string const&);
-  
+
   /// @brief sets server mode, returns previously held
   /// value (performs atomic read-modify-write operation)
   static Mode setServerMode(Mode mode);
-  
+
   /// @brief atomically load current server mode
   static Mode serverMode();
-  
+
   /// @brief checks maintenance mode
   static bool isMaintenance() {
     return serverMode() == Mode::MAINTENANCE;
   }
-  
+
   /// @brief should not allow DDL operations / transactions
   static bool writeOpsEnabled() {
     Mode mode = serverMode();
@@ -127,14 +127,11 @@ class ServerState {
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
 
-  /// @brief sets the initialized flag
-  void setClusterEnabled() { _clusterEnabled = true; }
-
   /// @brief flush the server state (used for testing)
   void flush();
-  
+
   bool isSingleServer() { return isSingleServer(loadRole()); }
-  
+
   static bool isSingleServer(ServerState::RoleEnum role) {
     return (role == ServerState::ROLE_SINGLE);
   }
@@ -156,14 +153,17 @@ class ServerState {
   static bool isDBServer(ServerState::RoleEnum role) {
     return (role == ServerState::ROLE_PRIMARY);
   }
-  
+
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
     return (role == ServerState::ROLE_PRIMARY ||
             role == ServerState::ROLE_COORDINATOR);
   }
-  
-  /// @brief check whether the server is an agent 
+
+  /// @brief whether or not the role is a cluster-related role
+  bool isClusterRole() {return (isClusterRole(loadRole()));};
+
+  /// @brief check whether the server is an agent
   bool isAgent() { return isAgent(loadRole()); }
 
   /// @brief check whether the server is an agent
@@ -173,12 +173,13 @@ class ServerState {
 
   /// @brief check whether the server is running in a cluster
   bool isRunningInCluster() { return isClusterRole(loadRole()); }
-  
+
   /// @brief check whether the server is running in a cluster
-  static bool isRunningInCluster(ServerState::RoleEnum role) { 
-    return isClusterRole(role); 
+  static bool isRunningInCluster(ServerState::RoleEnum role) {
+    return isClusterRole(role);
   }
-  
+
+  /// @brief check whether the server is a single server or coordinator
   bool isSingleServerOrCoordinator() {
     RoleEnum role = loadRole();
     return isCoordinator(role) || isSingleServer(role);
@@ -186,10 +187,9 @@ class ServerState {
 
   /// @brief get the server role
   RoleEnum getRole();
-  
-  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
-                            std::string const& myLocalInfo);
-  
+
+  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr);
+
   bool unregister();
 
   /// @brief set the server role
@@ -197,7 +197,7 @@ class ServerState {
 
   /// @brief get the server id
   std::string getId();
-  
+
   /// @brief set the server id
   void setId(std::string const&);
 
@@ -237,7 +237,7 @@ class ServerState {
   void setFoxxmaster(std::string const&);
 
   void setFoxxmasterQueueupdate(bool);
-  
+
   bool getFoxxmasterQueueupdate();
 
   std::string getPersistedId();
@@ -248,32 +248,26 @@ class ServerState {
   /// @brief sets server mode and propagates new mode to agency
   Result propagateClusterServerMode(Mode);
 
-private:
+  /// file where the server persists it's UUID
+  std::string getUuidFilename();
+
+ private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
   }
-
-  /// @brief store the server role
-  bool storeRole(RoleEnum role);
 
   /// @brief validate a state transition for a primary server
   bool checkPrimaryState(StateEnum);
 
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
-  
+
   /// @brief register at agency
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
 
-  /// 
-  std::string getUuidFilename();
-
-  /// @brief the pointer to the singleton instance
-  static ServerState* _theinstance;
-  
   /// @brief the server's id, can be set just once
   std::string _id;
 
@@ -298,11 +292,8 @@ private:
   /// @brief whether or not the cluster was initialized
   bool _initialized;
 
-  /// @brief whether or not we are a cluster member
-  bool _clusterEnabled;
-
   std::string _foxxmaster;
-  
+
   bool _foxxmasterQueueupdate;
 };
 }

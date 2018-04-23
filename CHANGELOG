@@ -4,6 +4,40 @@ devel
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
 
+* Fixed internal issue #2237: AQL queries on collections with replicationFactor:
+  "satellite" crashed arangod in single server mode
+
+* Fixed restore of satellite collections: replicationFactor was set to 1 during
+  restore
+
+* Fixed dump and restore of smart graphs:
+  a) The dump will not include the hidden shadow collections anymore, they were dumped
+     accidentially and only contain duplicated data.
+  b) Restore will now ignore hidden shadow collections as all data is contained
+     in the smart-edge collection. You can manually include these collections from an
+     old dump (3.3.5 or earlier) by using `--force`.
+  c) Restore of a smart-graph will now create smart collections properly instead
+     of getting into `TIMEOUT_IN_CLUSTER_OPERATION`
+
+* fixed internal issue #2147 - fixed database filter in UI
+
+* fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
+
+* fixed internal issue #2148: Number of documents found by filter is misleading in web UI
+
+* fix internal issue #2150: UI - loading a saved query does not update the list of bind parameters
+
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+
+* removed option `--cluster.my-local-info` in favor of persisted server UUIDs
+
+  The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
+
+* added /_admin/status for debugging
+
+* added new collection property `cacheEnabled` which enables in-memory caching for
+  documents and primary index entries. Available only when using RocksDB
+
 * arangodump now supports `--threads` option to dump collections in parallel
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
@@ -114,13 +148,6 @@ devel
 
 * issue #1190: added option `--create-database` for arangoimport
 
-  with this option set to true, it is possible to make any arangorestore attempt
-  fail if the specified target database does not match the database name
-  specified in the source dump's "dump.json" file. it can thus be used to
-  prevent restoring data into the "wrong" database
-
-  The option is set to `false` by default to ensure backwards-compatibility
-
 * UI: updated dygraph js library to version 2.1.0
 
 * honor specified COLLECT method in AQL COLLECT options
@@ -175,7 +202,19 @@ devel
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
 
-* fixed a bug where clusterinfo missed changes to plan after agency callback is registred for create collection
+* fixed a bug where clusterinfo missed changes to plan after agency
+  callback is registred for create collection
+
+* fixed a bug related to internal issue #2215. supervision started
+  working before its agent's leadership preparation had not finished.
+
+* fixed internal #2215's failedleader timeout, when in todo
+
+* Foxx manifest.json files can now contain a $schema key with the value
+  of "http://json.schemastore.org/foxx-manifest" to improve tooling support.
+
+* added `@arangodb/locals` module to expose the Foxx service context as an
+  alternative to using `module.context` directly.
 
 v3.3.4 (XXXX-XX-XX)
 -------------------

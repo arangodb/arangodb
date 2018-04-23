@@ -61,9 +61,14 @@ aql::QueryResultV8 AqlQuery(
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
-                             bindVars, nullptr, arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    col->vocbase(),
+    arangodb::aql::QueryString(aql),
+    bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.executeV8(
       isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
@@ -201,7 +206,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const collectionName(collection->name());
 
   std::shared_ptr<transaction::V8Context> transactionContext =
-      transaction::V8Context::Create(collection->vocbase(), true);
+      transaction::V8Context::Create(&(collection->vocbase()), true);
   SingleCollectionTransaction trx(
     transactionContext, collection->id(), AccessMode::Type::READ
   );
@@ -292,7 +297,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const collectionName(col->name());
 
   std::shared_ptr<transaction::V8Context> transactionContext =
-      transaction::V8Context::Create(col->vocbase(), true);
+      transaction::V8Context::Create(&(col->vocbase()), true);
   SingleCollectionTransaction trx(
     transactionContext, col->id(), AccessMode::Type::READ
   );

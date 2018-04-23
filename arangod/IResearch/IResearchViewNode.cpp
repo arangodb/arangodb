@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchFeature.h"
+#include "IResearchCommon.h"
 #include "IResearchViewNode.h"
 #include "IResearchViewBlock.h"
 #include "IResearchOrderFactory.h"
@@ -279,13 +279,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::unordered_set<std::string> const&
 ) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<IResearchView*>(view()->getImplementation());
+  auto* impl = dynamic_cast<IResearchView*>(view().get());
 #else
-  auto* impl = static_cast<IResearchView*>(view()->getImplementation());
+  auto* impl = static_cast<IResearchView*>(view().get());
 #endif
 
   if (!impl) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to get view implementation while creating IResearchView ExecutionBlock";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -297,7 +297,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto* trx = engine.getQuery()->trx();
 
   if (!trx || !(trx->state())) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to get transaction state while creating IResearchView ExecutionBlock";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -310,7 +310,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto* reader = impl->snapshot(state);
 
   if (!reader) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << impl->name() << "' tid '" << state.id() << "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -52,7 +52,6 @@ uint64_t PregelFeature::createExecutionNumber() {
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
   startsAfter("Logger");
   startsAfter("Database");
@@ -193,22 +192,26 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   }
 }
 
-void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
-                                        std::string const& path,
-                                        VPackSlice const& body,
-                                        VPackBuilder& outBuilder) {
+/*static*/ void PregelFeature::handleWorkerRequest(
+    TRI_vocbase_t& vocbase,
+    std::string const& path,
+    VPackSlice const& body,
+    VPackBuilder& outBuilder
+) {
   if (SchedulerFeature::SCHEDULER->isStopping()) {
     return; // shutdown ongoing
   }
-  
+
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
+
   if (!sExecutionNum.isInteger()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "Worker not found, invalid execution number");
   }
+
   uint64_t exeNum = sExecutionNum.getUInt();
   std::shared_ptr<IWorker> w = Instance->worker(exeNum);
-  
+
   // create a new worker instance if necessary
   if (path == Utils::startExecutionPath) {
     if (w) {
@@ -216,14 +219,18 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
                                      TRI_ERROR_INTERNAL,
                                      "Worker with this execution number already exists.");
     }
+
     Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
     Instance->worker(exeNum)->setupWorker(); // will call conductor
+
     return;
   } else if (path == Utils::startRecoveryPath) {
     if (!w) {
       Instance->addWorker(AlgoRegistry::createWorker(vocbase, body), exeNum);
     }
+
     Instance->worker(exeNum)->startRecovery(body);
+
     return;
   } else if (!w) {
     // any other call should have a working worker instance

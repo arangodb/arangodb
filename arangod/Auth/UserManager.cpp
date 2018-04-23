@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,6 +102,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 static std::shared_ptr<VPackBuilder> QueryAllUsers(
     aql::QueryRegistry* queryRegistry) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -112,9 +113,14 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(false, vocbase,
-                             arangodb::aql::QueryString(queryStr), emptyBuilder,
-                             emptyBuilder, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(queryStr),
+    emptyBuilder,
+    emptyBuilder,
+    arangodb::aql::PART_MAIN
+  );
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
@@ -657,6 +663,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (it != _userCache.end() && (it->second.source() == auth::Source::LOCAL) &&
       af != nullptr && !af->localAuthentication()) {
+    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
     return false;
   }
 

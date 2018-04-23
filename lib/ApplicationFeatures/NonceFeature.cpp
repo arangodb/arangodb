@@ -34,7 +34,6 @@ using namespace arangodb::options;
 NonceFeature::NonceFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Nonce"), _size(4 * 1024 * 1024) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 

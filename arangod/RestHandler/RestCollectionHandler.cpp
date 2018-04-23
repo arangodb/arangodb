@@ -81,11 +81,12 @@ void RestCollectionHandler::handleCommandGet() {
     bool excludeSystem = _request->parsedValue("excludeSystem", false);
 
     builder.openArray();
-    methods::Collections::enumerate(_vocbase, [&](LogicalCollection* coll) {
+    methods::Collections::enumerate(&_vocbase, [&](LogicalCollection* coll) {
       ExecContext const* exec = ExecContext::CURRENT;
       bool canUse = exec == nullptr ||
                     exec->canUseCollection(coll->name(), auth::Level::RO);
-      if (canUse && (!excludeSystem || !coll->isSystem())) {
+
+      if (canUse && (!excludeSystem || !coll->system())) {
         collectionRepresentation(builder, coll,
                                  /*showProperties*/ false,
                                  /*showFigures*/ false, /*showCount*/ false,
@@ -120,7 +121,9 @@ void RestCollectionHandler::handleCommandGet() {
   std::string const& sub = suffixes[1];
   bool skipGenerate = false;
   Result found = methods::Collections::lookup(
-      _vocbase, name, [&](LogicalCollection* coll) {
+      &_vocbase,
+      name,
+      [&](LogicalCollection* coll) {
         if (sub == "checksum") {
           // /_api/collection/<identifier>/checksum
           if (!coll->isLocal()) {
@@ -161,7 +164,8 @@ void RestCollectionHandler::handleCommandGet() {
           // /_api/collection/<identifier>/revision
           TRI_voc_rid_t revisionId;
           Result res =
-              methods::Collections::revisionId(_vocbase, coll, revisionId);
+              methods::Collections::revisionId(&_vocbase, coll, revisionId);
+
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
           }
@@ -213,13 +217,13 @@ void RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   VPackSlice nameSlice;
   if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
       nameSlice.getStringLength() == 0) {
@@ -247,7 +251,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   // for some "security" a white-list of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
-      parsedBody->slice(),
+      body,
       std::unordered_set<std::string>{
           "doCompact", "isSystem", "id", "isVolatile", "journalSize",
           "indexBuckets", "keyOptions", "waitForSync", "cacheEnabled",
@@ -259,13 +263,19 @@ void RestCollectionHandler::handleCommandPost() {
   std::string const& name = nameSlice.copyString();
   VPackBuilder builder;
   Result res = methods::Collections::create(
-      _vocbase, name, type, parameters, waitForSyncReplication, enforceReplicationFactor,
+    &_vocbase,
+    name,
+    type,
+    parameters,
+    waitForSyncReplication,
+    enforceReplicationFactor,
       [&](LogicalCollection* coll) {
         collectionRepresentation(builder, coll->name(), /*showProperties*/ true,
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*aggregateCount*/ false);
-      });
-  
+      }
+  );
+
   if (res.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
   } else {
@@ -280,13 +290,13 @@ void RestCollectionHandler::handleCommandPut() {
                   "expected PUT /_api/collection/<collection-name>/<action>");
     return;
   }
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return;
   }
-  VPackSlice body = parsedBody->slice();
+
   if (!body.isObject()) {
     body = VPackSlice::emptyObjectSlice();
   }
@@ -296,9 +306,12 @@ void RestCollectionHandler::handleCommandPut() {
   Result res;
   VPackBuilder builder;
   Result found = methods::Collections::lookup(
-      _vocbase, name, [&](LogicalCollection* coll) {
+    &_vocbase,
+    name,
+    [&](LogicalCollection* coll) {
         if (sub == "load") {
-          res = methods::Collections::load(_vocbase, coll);
+          res = methods::Collections::load(&_vocbase, coll);
+
           if (res.ok()) {
             bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
             collectionRepresentation(builder, name, /*showProperties*/ false,
@@ -307,13 +320,15 @@ void RestCollectionHandler::handleCommandPut() {
           }
         } else if (sub == "unload") {
           bool flush = _request->parsedValue("flush", false);
+
           if (flush &&
               coll->status() ==
                   TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED) {
             EngineSelectorFeature::ENGINE->flushWal(false, false, false);
           }
 
-          res = methods::Collections::unload(_vocbase, coll);
+          res = methods::Collections::unload(&_vocbase, coll);
+
           if (res.ok()) {
             collectionRepresentation(builder, name, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
@@ -325,7 +340,7 @@ void RestCollectionHandler::handleCommandPut() {
           opts.isSynchronousReplicationFrom =
               _request->value("isSynchronousReplication");
 
-          auto ctx = transaction::StandaloneContext::Create(_vocbase);
+          auto ctx = transaction::StandaloneContext::Create(&_vocbase);
           SingleCollectionTransaction trx(
             ctx, coll->id(), AccessMode::Type::EXCLUSIVE
           );
@@ -372,7 +387,7 @@ void RestCollectionHandler::handleCommandPut() {
           }
 
         } else if (sub == "rotate") {
-          auto ctx = transaction::StandaloneContext::Create(_vocbase);
+          auto ctx = transaction::StandaloneContext::Create(&_vocbase);
           SingleCollectionTransaction trx(
             ctx, coll->id(), AccessMode::Type::WRITE
           );
@@ -387,15 +402,17 @@ void RestCollectionHandler::handleCommandPut() {
           builder.add("result", VPackValue(true));
           builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
-          res = methods::Collections::warmup(_vocbase, coll);
+          res = methods::Collections::warmup(&_vocbase, coll);
           VPackObjectBuilder obj(&builder, true);
+
           obj->add("result", VPackValue(res.ok()));
         } else {
           res.reset(TRI_ERROR_HTTP_NOT_FOUND,
                     "expecting one of the actions 'load', 'unload', 'truncate',"
                     " 'properties', 'rename', 'loadIndexesIntoMemory'");
         }
-      });
+    }
+  );
 
   if (found.fail()) {
     generateError(found);
@@ -421,12 +438,16 @@ void RestCollectionHandler::handleCommandDelete() {
   VPackBuilder builder;
   Result res;
   Result found = methods::Collections::lookup(
-      _vocbase, name, [&](LogicalCollection* coll) {
+    &_vocbase,
+    name,
+    [&](LogicalCollection* coll) {
         auto cid = std::to_string(coll->id());
         VPackObjectBuilder obj(&builder, true);
         obj->add("id", VPackValue(cid));
-        res = methods::Collections::drop(_vocbase, coll, allowDropSystem, -1.0);
-      });
+        res = methods::Collections::drop(&_vocbase, coll, allowDropSystem, -1.0);
+    }
+  );
+
   if (found.fail()) {
     generateError(found);
   } else if (res.fail()) {
@@ -445,10 +466,13 @@ void RestCollectionHandler::collectionRepresentation(
     VPackBuilder& builder, std::string const& name, bool showProperties,
     bool showFigures, bool showCount, bool aggregateCount) {
   Result r = methods::Collections::lookup(
-      _vocbase, name, [&](LogicalCollection* coll) {
+    &_vocbase,
+    name,
+    [&](LogicalCollection* coll) {
         collectionRepresentation(builder, coll, showProperties, showFigures,
                                  showCount, aggregateCount);
-      });
+    }
+  );
 
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
@@ -470,10 +494,11 @@ void RestCollectionHandler::collectionRepresentation(
   builder.add("type", VPackValue(coll->type()));
 
   if (!showProperties) {
-    builder.add("isSystem", VPackValue(coll->isSystem()));
+    builder.add("isSystem", VPackValue(coll->system()));
     builder.add("globallyUniqueId", VPackValue(coll->globallyUniqueId()));
   } else {
     Result res = methods::Collections::properties(coll, builder);
+
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -485,17 +510,22 @@ void RestCollectionHandler::collectionRepresentation(
   }
 
   if (showCount) {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
     SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
     Result res = trx.begin();
+
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
+
     OperationResult opRes = trx.count(coll->name(), aggregateCount);
+
     trx.finish(opRes.result);
+
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);
     }
+
     builder.add("count", opRes.slice());
   }
 

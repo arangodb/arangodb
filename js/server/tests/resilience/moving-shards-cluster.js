@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual */
+/*global assertTrue, assertEqual, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test moving shards in the cluster
@@ -129,7 +129,6 @@ function MovingShardsSuite () {
     }
     return body;
   }
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,6 +297,34 @@ function MovingShardsSuite () {
       return false;
     }
   }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Set supervision mode
+////////////////////////////////////////////////////////////////////////////////
+
+  function maintenanceMode(mode) {
+    console.log("Switching supervision maintenance " + mode);
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    var req;
+    try {      
+      req = request({ method: "PUT",
+                      url: url + "/_admin/cluster/maintenance",
+                      body: JSON.stringify(mode) });
+    } catch (err) {
+      console.error(
+        "Exception for PUT /_admin/cluster/maintenance:", err.stack);
+      return false;
+    }
+    console.log("Supervision maintenance is " + mode);
+    return true;
+  }
+
+  
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
@@ -606,6 +633,41 @@ function MovingShardsSuite () {
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
+      assertTrue(waitForSupervision());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pausing supervision for a couple of seconds
+////////////////////////////////////////////////////////////////////////////////
+
+    testMaintenanceMode : function() {
+      createSomeCollections(1, 1, 3);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var toServer = findServerNotOnList(servers);
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      assertTrue(maintenanceMode("on"));      
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer));
+      var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+          arango.Supervision.State, state;
+      var waitUntil = new Date().getTime() + 30.0*1000;
+      while(true) {
+        state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+          arango.Supervision.State;
+        assertEqual(state.Timestamp, first.Timestamp);
+        wait(5.0);
+        if (new Date().getTime() > waitUntil) {
+          break;
+        }
+      }
+      assertTrue(maintenanceMode("off"));      
+      state = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
+        arango.Supervision.State;
+      assertTrue(state.Timestamp !== first.Timestamp);
+      assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());
     },
 

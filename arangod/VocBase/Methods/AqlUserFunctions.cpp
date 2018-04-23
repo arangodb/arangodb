@@ -88,8 +88,16 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
 
   {
     bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
-    arangodb::aql::Query query(contextOwnedByExterior, vocbase, arangodb::aql::QueryString(aql),
-                               binds, nullptr, arangodb::aql::PART_MAIN);
+
+    TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+    arangodb::aql::Query query(
+      contextOwnedByExterior,
+      *vocbase,
+      arangodb::aql::QueryString(aql),
+      binds,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
 
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
     auto queryResult = query.execute(queryRegistry);
@@ -121,9 +129,11 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
                                     std::string const& functionFilterPrefix,
                                     int& deleteCount) {
   deleteCount = 0;
+
   if (functionFilterPrefix.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER);
   }
+
   if (!isValidFunctionNameFilter(functionFilterPrefix)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
                   std::string("error deleting AQL user function: '") +
@@ -133,6 +143,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
 
   std::string uc(functionFilterPrefix);
   basics::StringUtils::toupperInPlace(&uc);
+
   if ((uc.length() < 2) ||
       (uc[uc.length() - 1 ] != ':') ||
       (uc[uc.length() - 2 ] != ':')) {
@@ -150,8 +161,16 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
 
   {
     bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
-    arangodb::aql::Query query(contextOwnedByExterior, vocbase, arangodb::aql::QueryString(aql),
-                               binds, nullptr, arangodb::aql::PART_MAIN);
+
+    TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+    arangodb::aql::Query query(
+      contextOwnedByExterior,
+      *vocbase,
+      arangodb::aql::QueryString(aql),
+      binds,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
 
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
     auto queryResult = query.execute(queryRegistry);
@@ -326,28 +345,41 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
                                       velocypack::Builder& result) {
   std::string aql;
   auto binds = std::make_shared<VPackBuilder>();
+
   binds->openObject();
+
   if (!functionFilterPrefix.empty()) {
     aql = "FOR function IN @@col FILTER LEFT(function._key, @fnLength) == @ucName RETURN function";
 
     std::string uc(functionFilterPrefix);
     basics::StringUtils::toupperInPlace(&uc);
+
     if ((uc.length() < 2) ||
         (uc[uc.length() - 1 ] != ':') ||
         (uc[uc.length() - 2 ] != ':')) {
       uc += "::";
     }
+
     binds->add("fnLength", VPackValue(uc.length()));
     binds->add("ucName", VPackValue(uc));
   } else {
     aql = "FOR function IN @@col RETURN function";
   }
+
   binds->add("@col", VPackValue(collectionName));
   binds->close();
 
   bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
-  arangodb::aql::Query query(contextOwnedByExterior, vocbase, arangodb::aql::QueryString(aql),
-                             binds, nullptr, arangodb::aql::PART_MAIN);
+
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  arangodb::aql::Query query(
+    contextOwnedByExterior,
+    *vocbase,
+    arangodb::aql::QueryString(aql),
+    binds,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto queryResult = query.execute(queryRegistry);

@@ -20,6 +20,8 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <date/date.h>
+#include <regex>
 #include "Basics/datetime.h"
 #include "Logger/Logger.h"
 #include "lib/Basics/StringUtils.h"

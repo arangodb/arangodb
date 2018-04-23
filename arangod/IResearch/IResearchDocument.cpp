@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchCommon.h"
 #include "IResearchDocument.h"
-#include "IResearchFeature.h"
 #include "IResearchViewMeta.h"
 #include "IResearchKludge.h"
 #include "Misc.h"
@@ -32,7 +32,6 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
 #include "utils/log.hpp"
@@ -341,7 +340,8 @@ bool setStringValue(
   TRI_ASSERT(value.isString());
 
   if (!pool) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "got nullptr analyzer factory";
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "got nullptr analyzer factory";
 
     return false;
   }
@@ -354,7 +354,7 @@ bool setStringValue(
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "got nullptr from analyzer factory, name '" << pool->name() <<  "'";
     return false;
   }
@@ -708,7 +708,7 @@ bool visitReaderCollections(
     auto* term_reader = segment.field(CID_FIELD);
 
     if (!term_reader) {
-      LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to get term reader for the 'cid' column while collecting CIDs for IResearch reader";
 
       return false;
@@ -717,7 +717,7 @@ bool visitReaderCollections(
     auto term_itr = term_reader->iterator();
 
     if (!term_itr) {
-      LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to get term iterator for the 'cid' column while collecting CIDs for IResearch reader ";
 
       return false;
@@ -727,7 +727,7 @@ bool visitReaderCollections(
       TRI_voc_cid_t cid;
 
       if (!DocumentPrimaryKey::decode(cid, term_itr->value())) {
-        LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
           << "failed to decode CID while collecting CIDs for IResearch reader";
 
         return false;

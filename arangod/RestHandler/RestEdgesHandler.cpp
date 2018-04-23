@@ -149,7 +149,7 @@ bool RestEdgesHandler::parseDirection(TRI_edge_direction_e& direction) {
 }
 
 bool RestEdgesHandler::validateCollection(std::string const& name) {
-  CollectionNameResolver resolver(_vocbase);
+  CollectionNameResolver resolver(&_vocbase);
   auto collection = resolver.getCollection(name);
   auto colType = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 
@@ -207,8 +207,14 @@ bool RestEdgesHandler::readEdges() {
     VPackBuilder resultDocument(buffer);
     resultDocument.openObject();
     int res = getFilteredEdgesOnCoordinator(
-        _vocbase->name(), collectionName, vertexString, direction,
-        responseCode, resultDocument);
+      _vocbase.name(),
+      collectionName,
+      vertexString,
+      direction,
+      responseCode,
+      resultDocument
+    );
+
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(responseCode, res);
       return false;
@@ -224,7 +230,7 @@ bool RestEdgesHandler::readEdges() {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................
@@ -310,9 +316,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(rest::ResponseCode::BAD,
@@ -322,7 +327,6 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     // A body is required
     return false;
   }
-  VPackSlice body = parsedBody->slice();
 
   if (!body.isArray()) {
     generateError(rest::ResponseCode::BAD,
@@ -345,21 +349,28 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     rest::ResponseCode responseCode;
     VPackBuffer<uint8_t> buffer;
     VPackBuilder resultDocument(buffer);
-    
+
     resultDocument.openObject();
+
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
-
         int res = getFilteredEdgesOnCoordinator(
-            _vocbase->name(), collectionName, vertexString, direction,
-            responseCode, resultDocument);
+          _vocbase.name(),
+          collectionName,
+          vertexString,
+          direction,
+          responseCode,
+          resultDocument
+        );
+
         if (res != TRI_ERROR_NO_ERROR) {
           generateError(responseCode, res);
           return false;
         }
       }
     }
+
     resultDocument.add(StaticStrings::Error, VPackValue(false));
     resultDocument.add("code", VPackValue(200));
     resultDocument.close();
@@ -369,7 +380,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................

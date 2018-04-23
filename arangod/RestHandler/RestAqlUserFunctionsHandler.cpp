@@ -44,15 +44,13 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
   if (type == rest::RequestType::POST) {
     // JSF_post_api_aqlfunction.md
     // POST /_api/aqlfunction
-    bool parsingSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parsingSuccess);
+    bool parsingSuccess = false;
+    VPackSlice body = this->parseVPackBody(parsingSuccess);
     if (!parsingSuccess) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting JSON object body");
       return RestStatus::DONE;
     }
-
-    VPackSlice body = parsedBody.get()->slice();
 
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
@@ -62,7 +60,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // call internal function that does the work
     bool replacedExisting = false;
-    auto res = registerUserFunction(_vocbase, body, replacedExisting);
+    auto res = registerUserFunction(&_vocbase, body, replacedExisting);
 
     if (res.ok()) {
       auto code = (replacedExisting)? rest::ResponseCode::OK : rest::ResponseCode::CREATED;
@@ -92,9 +90,9 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     bool deleteGroup = extractBooleanParameter(StaticStrings::Group, false);
     if (deleteGroup) {
-      res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);
+      res = unregisterUserFunctionsGroup(&_vocbase, suffixes[0], deletedCount);
     } else { // delete single
-      res = unregisterUserFunction(_vocbase,suffixes[0]);
+      res = unregisterUserFunction(&_vocbase, suffixes[0]);
       ++deletedCount;
     }
 
@@ -137,7 +135,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // internal get
     VPackBuilder arrayOfFunctions;
-    auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
+    auto res =
+      toArrayUserFunctions(&_vocbase, functionNamespace, arrayOfFunctions);
 
     // error handling
     if (res.ok()) {

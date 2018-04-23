@@ -44,8 +44,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
@@ -113,7 +114,7 @@ struct CustomScorer : public irs::sort {
       irs::attribute_view const&
     ) const override {
       struct Scorer : public irs::sort::scorer {
-        Scorer(size_t i) : i(i) { }
+        Scorer(float_t score): i(score) { }
 
         virtual void score(irs::byte_type* score_buf) override {
           *reinterpret_cast<score_t*>(score_buf) = i;
@@ -164,7 +165,7 @@ struct CustomScorer : public irs::sort {
   CustomScorer(size_t i) : irs::sort(CustomScorer::type()), i(i) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<Prepared>(i);
+    return irs::memory::make_unique<Prepared>(static_cast<float_t>(i));
   }
 
   size_t i;
@@ -176,13 +177,13 @@ REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchQuerySetup {
+struct IResearchQueryJoinSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchQuerySetup(): server(nullptr, nullptr) {
+  IResearchQueryJoinSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
@@ -190,6 +191,11 @@ struct IResearchQuerySetup {
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
@@ -262,17 +268,12 @@ struct IResearchQuerySetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
-  ~IResearchQuerySetup() {
+  ~IResearchQueryJoinSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -303,7 +304,7 @@ TEST_CASE("IResearchQueryTestJoinVolatileBlock", "[iresearch][iresearch-query]")
 }
 
 TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-query]") {
-  IResearchQuerySetup s;
+  IResearchQueryJoinSetup s;
   UNUSED(s);
 
   static std::vector<std::string> const EMPTY;
@@ -340,9 +341,9 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
   }
 
   // add view
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice())
+  );
   REQUIRE((false == !view));
 
   // add logical collection with the same name as view
@@ -365,11 +366,15 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder, false);
+    view->toVelocyPack(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
-    auto tmpSlice = slice.get("links");
+    CHECK(slice.isObject());
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    CHECK(slice.get("deleted").isNone()); // no system properties
+    auto tmpSlice = slice.get("properties").get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
@@ -510,7 +515,7 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
 }
 
 TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
-  IResearchQuerySetup s;
+  IResearchQueryJoinSetup s;
   UNUSED(s);
 
   static std::vector<std::string> const EMPTY;
@@ -547,9 +552,9 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // add view
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice())
+  );
   REQUIRE((false == !view));
 
   // add link to collection
@@ -565,11 +570,15 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder, false);
+    view->toVelocyPack(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
-    auto tmpSlice = slice.get("links");
+    CHECK(slice.isObject());
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    CHECK(slice.get("deleted").isNone()); // no system properties
+    auto tmpSlice = slice.get("properties").get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
