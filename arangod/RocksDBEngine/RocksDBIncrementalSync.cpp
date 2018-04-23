@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIncrementalSync.h"
+#include "RocksDBIterators.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Indexes/IndexIterator.h"
@@ -453,18 +454,32 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     LogicalCollection* coll = trx.documentCollection();
     auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
     std::unique_ptr<IndexIterator> iterator = ph->getSortedAllIterator(&trx);
+    RocksDBGenericAllIndexIterator* gIterator = static_cast<RocksDBGenericAllIndexIterator*>(iterator.get());
 
-    iterator->next(
-        [&](LocalDocumentId const& token) {
-          if (coll->readDocument(&trx, token, mmdr) == false) {
-            return;
-          }
-          VPackSlice doc(mmdr.vpack());
-          VPackSlice key = doc.get(StaticStrings::KeyString);
-          if (key.compareString(lowKey.data(), lowKey.length()) < 0) {
-            trx.remove(col->name(), doc, options);
-          } else if (key.compareString(highKey.data(), highKey.length()) > 0) {
-            trx.remove(col->name(), doc, options);
+    auto compare = [](StringRef const& a, std::string const& b){
+      std::size_t compareLen = std::min(a.size(), b.size());
+      int res = memcmp(a.data(),b.data(),compareLen);
+      if (res == 0) {
+        if(a.size() != b.size()) {
+          return (a.size() > b.size()) ? 1: -1;
+        }
+      }
+      return res;
+    };
+
+    VPackBuilder builder;
+    gIterator->gnext(
+        [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+          StringRef docKey(rocksKey.data()+sizeof(uint64_t), rocksKey.size() - sizeof(uint64_t));
+
+          if (compare(docKey, lowKey) < 0) {
+            builder.clear();
+            builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
+            trx.remove(col->name(), builder.slice(), options);
+          } else if (compare(docKey, highKey) > 0) {
+            builder.clear();
+            builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
+            trx.remove(col->name(), builder.slice(), options);
           }
         },
         UINT64_MAX);
