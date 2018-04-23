@@ -400,32 +400,42 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
 
   std::string lowKey;
   VPackSlice highKey;  // points into document owned by _collection->mdr
+  VPackBuilder builder;
   uint64_t hash = 0x012345678;
-  auto cb = [&](LocalDocumentId const& documentId) {
-    bool ok = _collection->logical.readDocument(_trx.get(), documentId,
-                                                _collection->mdr);
-    if (!ok) {
-      // TODO: do something here?
-      return;
-    }
+  auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
 
-    VPackSlice doc(_collection->mdr.vpack());
-    highKey = doc.get(StaticStrings::KeyString);
+    auto const * data = rocksKey.data() + sizeof(uint64_t);
+    std::size_t  size = rocksKey.size() - sizeof(uint64_t);
+
+    StringRef highKey(data, size);
+    TRI_voc_rid_t docRev = uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
     // set type
     if (lowKey.empty()) {
-      lowKey = highKey.copyString();
+      lowKey = highKey.toString();
     }
+
+
 
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
-    hash ^= transaction::helpers::extractKeyFromDocument(doc).hashString();
-    hash ^= transaction::helpers::extractRevSliceFromDocument(doc).hash();
+
+    // FIXME - hash without additional builder!
+
+    builder.clear();
+    builder.add(VPackValue(highKey.toString()));
+    hash ^= builder.slice().hashString();
+    builder.clear();
+    builder.add(VPackValue(docRev));
+    hash ^= builder.slice().hashString();
+    hash ^= builder.slice().hash();
+
+
   };
 
   b.openArray();
   while (_collection->hasMore) {
     try {
-      _collection->hasMore = _collection->iter->next(cb, chunkSize);
+      _collection->hasMore = static_cast<RocksDBGenericAllIndexIterator*>(_collection->iter.get())->gnext(cb, chunkSize);
 
       if (lowKey.empty()) {
         // if lowKey is empty, no new documents were found
