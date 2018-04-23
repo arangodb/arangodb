@@ -95,20 +95,20 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
       { VPackArrayBuilder failedServers(_jb.get()); }
     } // Operations
     
-      //Preconditions
-      { VPackObjectBuilder health(_jb.get());
-        // Status should still be BAD
-        addPreconditionServerHealth(*_jb, _server, Supervision::HEALTH_STATUS_BAD);
-        // Target/FailedServers does not already include _server
-        _jb->add(VPackValue(failedServersPrefix + "/" + _server));
-        { VPackObjectBuilder old(_jb.get());
-          _jb->add("oldEmpty", VPackValue(true)); }
-        // Target/FailedServers is still as in the snapshot
-        _jb->add(VPackValue(failedServersPrefix));
-        { VPackObjectBuilder old(_jb.get());
-          _jb->add("old", _snapshot(failedServersPrefix).toBuilder().slice());}
-      } // Preconditions
-    } // transactions
+    //Preconditions
+    { VPackObjectBuilder health(_jb.get());
+      // Status should still be BAD
+      addPreconditionServerHealth(*_jb, _server, Supervision::HEALTH_STATUS_BAD);
+      // Target/FailedServers does not already include _server
+      _jb->add(VPackValue(failedServersPrefix + "/" + _server));
+      { VPackObjectBuilder old(_jb.get());
+        _jb->add("oldEmpty", VPackValue(true)); }
+      // Target/FailedServers is still as in the snapshot
+      _jb->add(VPackValue(failedServersPrefix));
+      { VPackObjectBuilder old(_jb.get());
+        _jb->add("old", _snapshot(failedServersPrefix).toBuilder().slice());}
+    } // Preconditions
+  } // transactions
   
   _status = TODO;
   
