@@ -76,11 +76,6 @@ class Syncer {
 
   virtual ~Syncer();
 
-  /// @brief sleeps (nanoseconds)
-  void syncSleep(uint64_t time) {
-    std::this_thread::sleep_for(std::chrono::microseconds(time));
-  }
-
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
 
