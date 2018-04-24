@@ -23,7 +23,7 @@ object in arangosh. You may use it like this: (we disable syntax highlighting he
 
     @startDocuBlockInline 01_workWithAQL_databaseExplain
     @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_databaseExplain}
-    db._explain("FOR x IN _frontend FILTER x.a > 10 RETURN x", {}, {colors: false});
+    db._explain("LET s = SLEEP(0.25) LET t = SLEEP(0.5) RETURN 1", {}, {colors: false});
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 01_workWithAQL_databaseExplain
 
@@ -49,8 +49,8 @@ profile.
 
 
     @startDocuBlockInline 01_workWithAQL_databaseProfileQuery
-    @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_databaseExplain}
-    db._profileQuery("FOR x IN _frontend FILTER x.a > 10 RETURN x", {}, {colors: false});
+    @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_databaseProfileQuery}
+    db._profileQuery("LET s = SLEEP(0.25) LET t = SLEEP(0.5) RETURN 1", {}, {colors: false});
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 01_workWithAQL_databaseProfileQuery
 
