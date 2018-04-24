@@ -1070,8 +1070,10 @@
             document.body.removeChild(a);
           }, 500);
         } else {
-          if (errorCB !== undefined) {
-            errorCB(this.status, this.statusText);
+          if (this.readyState === 4) {
+            if (errorCB !== undefined) {
+              errorCB(this.status, this.statusText);
+            }
           }
         }
       };

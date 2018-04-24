@@ -564,7 +564,7 @@
         window.modalView.hide();
       };
       var errorFunction = function (errorCode, response) {
-        window.arangoHelper.arangoError('Debug Dump', errorCode + ": " + response);
+        window.arangoHelper.arangoError('Debug Dump', errorCode + ': ' + response);
         window.modalView.hide();
       };
 
