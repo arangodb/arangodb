@@ -314,12 +314,12 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test allowImplicit
+/// @brief test read collection object
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleReadCollectionObject : function () {
       assertEqual([], db._executeTransaction({
-        collections: { allowImplicit: false, read: db._collection(cn1) },
+        collections: { read: db._collection(cn1) },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn1 RETURN doc', { '@cn1' : params.cn }).toArray(); }",
         params: { cn: cn1 }
@@ -327,12 +327,12 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test allowImplicit
+/// @brief test read collection object in array
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleReadCollectionArray : function () {
       assertEqual([], db._executeTransaction({
-        collections: { allowImplicit: false, read: [db._collection(cn1)] },
+        collections: { read: [db._collection(cn1)] },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn1 RETURN doc', { '@cn1' : params.cn }).toArray(); }",
         params: { cn: cn1 }
@@ -353,12 +353,12 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test allowImplicit
+/// @brief test write collection object
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleWriteCollectionObject : function () {
       assertEqual([], db._executeTransaction({
-        collections: { allowImplicit: false, write: db._collection(cn1) },
+        collections: { write: db._collection(cn1) },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
         params: { cn: cn1 }
@@ -366,12 +366,12 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test allowImplicit
+/// @brief test write collection object in array
 ////////////////////////////////////////////////////////////////////////////////
 
     testSingleWriteCollectionArray : function () {
       assertEqual([], db._executeTransaction({
-        collections: { allowImplicit: false, write: [db._collection(cn1)] },
+        collections: { write: [db._collection(cn1)] },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
         params: { cn: cn1 }
