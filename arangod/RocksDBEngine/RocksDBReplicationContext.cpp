@@ -404,11 +404,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   uint64_t hash = 0x012345678;
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
 
-    auto const * data = rocksKey.data() + sizeof(uint64_t);
-    std::size_t  size = rocksKey.size() - sizeof(uint64_t);
-
-    StringRef highKey(data, size);
+    StringRef highKey(RocksDBKey::primaryKey(rocksKey));
     TRI_voc_rid_t docRev = uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+
     // set type
     if (lowKey.empty()) {
       lowKey = highKey.toString();
@@ -517,8 +515,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     TRI_ASSERT(rocksValue.size() > sizeof(TRI_voc_rid_t));
     TRI_voc_rid_t docRev = uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+    StringRef docKey(RocksDBKey::primaryKey(rocksKey));
     b.openArray();
-    b.add(velocypack::ValuePair(rocksKey.data()+sizeof(std::uint64_t), rocksKey.size()-sizeof(std::uint64_t)));
+    b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
     b.add(VPackValue(TRI_RidToString(docRev)));
     b.close();
   };

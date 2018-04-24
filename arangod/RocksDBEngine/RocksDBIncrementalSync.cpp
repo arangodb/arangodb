@@ -508,7 +508,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     VPackBuilder builder;
     gIterator->gnext(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-          StringRef docKey(rocksKey.data()+sizeof(uint64_t), rocksKey.size() - sizeof(uint64_t));
+          StringRef docKey(RocksDBKey::primaryKey(rocksKey));
 
           if (compare(docKey, lowKey) < 0) {
             builder.clear();
