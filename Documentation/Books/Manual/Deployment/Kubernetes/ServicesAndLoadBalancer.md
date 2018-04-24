@@ -4,10 +4,38 @@
 The ArangoDB Kubernetes Operator will create services that can be used to
 reach the ArangoDB servers from inside the Kubernetes cluster.
 
+By default, the ArangoDB Kubernetes Operator will also create an additional
+service to reach the ArangoDB deployment from outside the Kubernetes cluster.
+
+For exposing the ArangoDB deployment to the outside, there are 2 options:
+
+- Using a `NodePort` service. This will expose the deployment on a specific port (above 30.000)
+  on all nodes of the Kubernetes cluster.
+- Using a `LoadBalancer` service. This will expose the deployment on a load-balancer
+  that is provisioned by the Kubernetes cluster.
+
+The `LoadBalancer` option is the most convenient, but not all Kubernetes clusters
+are able to provision a load-balancer. Therefore we offer a third (and default) option: `Auto`.
+In this option, the ArangoDB Kubernetes Operator tries to create a `LoadBalancer`
+service. It then waits for up to a minute for the Kubernetes cluster to provision
+a load-balancer for it. If that has not happened after a minute, the service
+is replaced by a service of type `NodePort`.
+
+To inspect the created service, run:
+
+```bash
+kubectl get services <deployment-name>-ea
+```
+
 To use the ArangoDB servers from outside the Kubernetes cluster
 you have to add another service as explained below.
 
 ## Services
+
+If you do not want the ArangoDB Kubernetes Operator to create an external-access
+service for you, set `spec.externalAccess.Type` to `None`.
+
+If you want to create external access services manually, follow the instructions below.
 
 ### Single server
 
