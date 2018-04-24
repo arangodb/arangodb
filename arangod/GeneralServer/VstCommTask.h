@@ -44,7 +44,7 @@ class VstCommTask final : public GeneralCommTask {
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse*, RequestStatistics*) override;
+  void addResponse(GeneralResponse &, RequestStatistics *) override;
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -64,7 +64,7 @@ class VstCommTask final : public GeneralCommTask {
                          uint64_t mid) override {
     VstResponse response(code, mid);
     response.setContentType(req.contentTypeResponse());
-    addResponse(&response, nullptr);
+    addResponse(response, nullptr);
   }
 
   void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,

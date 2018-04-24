@@ -61,7 +61,7 @@ static TRI_edge_direction_e parseDirection(AstNode const* node) {
 
 GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                      AstNode const* direction, AstNode const* graph,
-                     std::unique_ptr<BaseOptions>& options)
+                     std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
@@ -118,7 +118,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       }
     }
 
-    auto resolver = std::make_unique<CollectionNameResolver>(vocbase);
+    CollectionNameResolver resolver(vocbase);
 
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
@@ -149,7 +149,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       }
       seenCollections.emplace(eColName, dir);
 
-      auto collection = resolver->getCollection(eColName);
+      auto collection = resolver.getCollection(eColName);
 
       if (!collection || collection->type() != TRI_COL_TYPE_EDGE) {
         std::string msg("collection type invalid for collection '" +
@@ -373,7 +373,7 @@ GraphNode::GraphNode(
     std::vector<std::unique_ptr<Collection>> const& edgeColls,
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
     std::vector<TRI_edge_direction_e> const& directions,
-    std::unique_ptr<BaseOptions>& options)
+    std::unique_ptr<BaseOptions> options)
     : ExecutionNode(plan, id),
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),

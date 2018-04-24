@@ -749,8 +749,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     std::string baseUrl =
         Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
+    std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(
         "", coordinatorTransactionID, "server:" + _config.coordinatorId(),
