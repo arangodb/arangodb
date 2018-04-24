@@ -80,12 +80,11 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     RocksDBPrimaryIndex* index,
-    std::unique_ptr<VPackBuilder>& keys)
+    std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx, index),
       _index(index),
-      _keys(keys.get()),
+      _keys(std::move(keys)),
       _iterator(_keys->slice()) {
-  keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
 }
 
@@ -371,7 +370,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, keys);
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys));
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -394,7 +393,7 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, keys);
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys));
 }
 
 /// @brief add a single value node to the iterator's keys

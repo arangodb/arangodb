@@ -16,7 +16,7 @@ const anonymize = function(doc) {
     return doc.map(anonymize);
   }
   if (typeof doc === 'string') {
-    return Array(doc.length).join("X");
+    return Array(doc.length + 1).join("X");
   }
   if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
     return doc;

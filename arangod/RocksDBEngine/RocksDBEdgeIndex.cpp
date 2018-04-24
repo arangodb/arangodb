@@ -89,13 +89,13 @@ void RocksDBEdgeIndexWarmupTask::run() {
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBEdgeIndex const* index,
-    std::unique_ptr<VPackBuilder>&& keys, std::shared_ptr<cache::Cache> const& cache)
+    std::unique_ptr<VPackBuilder> keys, std::shared_ptr<cache::Cache> cache)
     : IndexIterator(collection, trx, index),
       _keys(std::move(keys)),
       _keysIterator(_keys->slice()),
       _index(index),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
-      _cache(cache),
+      _cache(std::move(cache)),
       _builderIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()) {
   TRI_ASSERT(_keys != nullptr);
   TRI_ASSERT(_keys->slice().isArray());
