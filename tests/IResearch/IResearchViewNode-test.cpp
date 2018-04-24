@@ -164,7 +164,7 @@ SECTION("construct") {
 
   // dummy query
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
@@ -205,7 +205,7 @@ SECTION("clone") {
 
   // dummy query
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
@@ -275,7 +275,7 @@ SECTION("clone") {
     {
       // another dummy query
       arangodb::aql::Query otherQuery(
-        false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+        false, vocbase, arangodb::aql::QueryString("RETURN 1"),
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
@@ -306,7 +306,7 @@ SECTION("clone") {
     {
       // another dummy query
       arangodb::aql::Query otherQuery(
-        false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+        false, vocbase, arangodb::aql::QueryString("RETURN 1"),
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
@@ -343,7 +343,7 @@ SECTION("searialize") {
 
   // dummy query
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
@@ -435,7 +435,7 @@ SECTION("construct") {
   REQUIRE((false == !logicalView));
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
@@ -468,7 +468,7 @@ SECTION("clone") {
 
   // dummy query
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
@@ -523,7 +523,7 @@ SECTION("clone") {
     {
       // another dummy query
       arangodb::aql::Query otherQuery(
-        false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+        false, vocbase, arangodb::aql::QueryString("RETURN 1"),
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
@@ -547,7 +547,7 @@ SECTION("clone") {
     {
       // another dummy query
       arangodb::aql::Query otherQuery(
-        false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+        false, vocbase, arangodb::aql::QueryString("RETURN 1"),
         nullptr, arangodb::velocypack::Parser::fromJson("{}"),
         arangodb::aql::PART_MAIN
       );
@@ -579,7 +579,7 @@ SECTION("searialize") {
 
   // dummy query
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
     nullptr, arangodb::velocypack::Parser::fromJson("{}"),
     arangodb::aql::PART_MAIN
   );
