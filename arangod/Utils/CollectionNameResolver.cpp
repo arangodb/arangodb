@@ -116,10 +116,10 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
 
   try {
     // We have to look up the collection info:
-    ClusterInfo* ci = ClusterInfo::instance();
+    auto* ci = ClusterInfo::instance();
 
     try {
-      auto cinfo = ci->getCollection(_vocbase->name(), name);
+      auto const cinfo = ci->getCollection(_vocbase->name(), name);
 
       if (cinfo) {
         return cinfo->id();
@@ -132,9 +132,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
       }
     }
 
-    // FIXME by some reason 'ClusterInfo::getView' throws exception
-    // in case if view is not found
-    auto vinfo = ci->getView(_vocbase->name(), name);
+    auto const vinfo = ci->getView(_vocbase->name(), name);
 
     if (vinfo) {
       return vinfo->id();
@@ -401,8 +399,6 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
       }
 
       if (!ptr) {
-        // FIXME by some reason 'ClusterInfo::getView' throws exception
-        // in case if view is not found
         ptr = ci->getView(_vocbase->name(), nameOrId);
       }
     } catch (...) {

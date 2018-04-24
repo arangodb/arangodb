@@ -1884,7 +1884,7 @@ int ClusterInfo::createViewCoordinator(
   }
 
   if (ac.exists("Plan/Views/" + databaseName + "/" + viewID)) {
-    events::CreateView(name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS); // FIXME should it be something like TRI_ERROR_CLUSTER_DATA_SOURCE_ID_EXISTS???
+    events::CreateView(name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
     return setErrormsg(TRI_ERROR_CLUSTER_VIEW_ID_EXISTS, errorMsg);
   }
 
@@ -1990,7 +1990,6 @@ int ClusterInfo::dropViewCoordinator(
   AgencyComm ac;
   auto const res = ac.sendTransactionWithFailover(trans);
 
-  // FIXME do we really have to load plan even in case of error?
   // Update our own cache
   loadPlan();
 

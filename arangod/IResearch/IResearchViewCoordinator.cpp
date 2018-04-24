@@ -40,20 +40,6 @@
 
 namespace {
 
-// FIXME introduce common place for shared strings
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        corresponding link definitions
-////////////////////////////////////////////////////////////////////////////////
-const std::string LINKS_FIELD("links");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        corresponding properties definitions
-////////////////////////////////////////////////////////////////////////////////
-const std::string PROPERTIES_FIELD("properties");
-
 arangodb::Result dropLink(
     arangodb::iresearch::IResearchLinkCoordinator const& link,
     arangodb::LogicalCollection& collection,
@@ -115,7 +101,7 @@ namespace iresearch {
 
   std::string error;
 
-  auto properties = info.get(PROPERTIES_FIELD);
+  auto properties = info.get(StaticStrings::PropertiesField);
 
   if (!properties.isObject()) {
     // set to defaults
@@ -131,7 +117,7 @@ namespace iresearch {
     return nullptr;
   }
 
-  auto const links = info.get(LINKS_FIELD);
+  auto const links = info.get(StaticStrings::LinksField);
 
   if (links.isObject()) {
     auto& builder = view->_links;
@@ -205,7 +191,7 @@ void IResearchViewCoordinator::toVelocyPack(
   }
 
   if (includeProperties) {
-    result.add(PROPERTIES_FIELD, VPackValue(VPackValueType::Object)); // properties: {
+    result.add(StaticStrings::PropertiesField, VPackValue(VPackValueType::Object)); // properties: {
 
     // regular properites
     _meta.json(result);
@@ -243,7 +229,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       VPackBuilder builder;
       builder.openObject(); // {
       toVelocyPack(builder, false, true); // only system properties
-      builder.add(PROPERTIES_FIELD, VPackValue(VPackValueType::Object)); // "properties" : {
+      builder.add(StaticStrings::PropertiesField, VPackValue(VPackValueType::Object)); // "properties" : {
       meta.json(builder);
       builder.close(); // }
       builder.close(); // }
@@ -316,7 +302,7 @@ Result IResearchViewCoordinator::drop() {
 arangodb::Result IResearchViewCoordinator::updateLinks(
     VPackSlice properties, bool partialUpdate
 ) {
-  auto links = properties.get(LINKS_FIELD);
+  auto links = properties.get(StaticStrings::LinksField);
 
   if (links.isNone()) {
     return {};
@@ -431,7 +417,7 @@ Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add(LINKS_FIELD, VPackValue(VPackValueType::Object));
+  builder.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
   builder.add(StringUtils::itoa(cid), VPackSlice::nullSlice());
   builder.close();
   builder.close();

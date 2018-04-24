@@ -34,18 +34,6 @@ namespace {
 static const std::string& LINK_TYPE =
     arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the iResearch Link definition denoting the
-///        iResearch Link type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string LINK_TYPE_FIELD("type");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the id of the field in the iResearch Link definition denoting the
-///        corresponding iResearch View
-////////////////////////////////////////////////////////////////////////////////
-static const std::string VIEW_ID_FIELD("view");
-
 }
 
 namespace arangodb {
@@ -96,8 +84,8 @@ namespace iresearch {
   IResearchLinkHelper::setType(normalized);
 
   // copy over IResearch View identifier
-  if (definition.hasKey(VIEW_ID_FIELD)) {
-    normalized.add(VIEW_ID_FIELD, definition.get(VIEW_ID_FIELD));
+  if (definition.hasKey(StaticStrings::ViewIdField)) {
+    normalized.add(StaticStrings::ViewIdField, definition.get(StaticStrings::ViewIdField));
   }
 
   return meta.json(normalized)
@@ -114,7 +102,7 @@ namespace iresearch {
     return false;
   }
 
-  builder.add(LINK_TYPE_FIELD, velocypack::Value(LINK_TYPE));
+  builder.add(StaticStrings::LinkTypeField, velocypack::Value(LINK_TYPE));
 
   return true;
 }
@@ -127,7 +115,7 @@ namespace iresearch {
     return false;
   }
 
-  builder.add(VIEW_ID_FIELD, velocypack::Value(value));
+  builder.add(StaticStrings::ViewIdField, velocypack::Value(value));
 
   return true;
 }
@@ -136,7 +124,7 @@ namespace iresearch {
     velocypack::Slice definition
 ) noexcept {
   try {
-    return definition.get(VIEW_ID_FIELD);
+    return definition.get(StaticStrings::ViewIdField);
   } catch (...) {
     return VPackSlice::noneSlice();
   }
