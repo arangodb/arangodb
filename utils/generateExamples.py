@@ -530,15 +530,15 @@ def generateAQL(testName):
     print '''
 %s
 /// %s
-(() => {
+(function() {
   internal.startPrettyPrint(true);
   internal.stopColorPrint(true);
-  const testName = '%s';
-  const lineCount = 0;
-  const startLineCount = %d;
-  const outputDir = '%s';
-  const sourceFile = '%s';
-  const startTime = time();
+  var testName = '%s';
+  var lineCount = 0;
+  var startLineCount = %d;
+  var outputDir = '%s';
+  var sourceFile = '%s';
+  var startTime = time();
   output = '';
 ''' % (
         ('/'*80),
@@ -574,15 +574,13 @@ def generateAQL(testName):
     jsonAppender(JSON.stringify(result, null, 2));
   }
 
-  if (ds !== '') {
-    exds[ds].removeDS();
-  }
+  exds.%s.removeDS();
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   print("[" + (time () - startTime) + "s]  done with  " + testName);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
-})();
+}());
 
-'''
+''' % (value[AQLDS], value[AQLDS], value[AQLDS])
 
 ################################################################################
 ### @brief generate arangosh run
