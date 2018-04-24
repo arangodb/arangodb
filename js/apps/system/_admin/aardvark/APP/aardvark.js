@@ -38,6 +38,8 @@ const createRouter = require('@arangodb/foxx/router');
 const users = require('@arangodb/users');
 const cluster = require('@arangodb/cluster');
 const isEnterprise = require('internal').isEnterprise();
+const explainer = require('@arangodb/aql/explainer');
+const fs = require('fs');
 
 const ERROR_USER_NOT_FOUND = errors.ERROR_USER_NOT_FOUND.code;
 const API_DOCS = require(module.context.fileName('api-docs.json'));
@@ -143,14 +145,14 @@ authRouter.post('/query/explain', function (req, res) {
 
   try {
     if (bindVars) {
-      msg = require('@arangodb/aql/explainer').explain({
+      msg = explainer.explain({
         query: query,
         bindVars: bindVars,
         batchSize: batchSize,
         id: id
       }, {colors: false}, false, bindVars);
     } else {
-      msg = require('@arangodb/aql/explainer').explain(query, {colors: false}, false);
+      msg = explainer.explain(query, {colors: false}, false);
     }
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
@@ -167,6 +169,54 @@ authRouter.post('/query/explain', function (req, res) {
 .summary('Explains a query')
 .description(dd`
   Explains a query in a more user-friendly way than the query_api/explain
+`);
+
+authRouter.post('/query/debugDump', function (req, res) {
+  const bindVars = req.body.bindVars || {};
+  const query = req.body.query;
+  const tmpDebugFolder = fs.getTempFile();
+  const tmpDebugFileName = fs.join(tmpDebugFolder, 'debugDump.json');
+  const tmpDebugZipFileName = fs.join(tmpDebugFolder, 'debugDump.zip');
+
+  try {
+    fs.makeDirectory(tmpDebugFolder);
+  } catch (e) {
+    require('console').error(e);
+    res.throw('Server error, failed to create temp directory', e.message, {cause: e});
+  }
+  let options = {};
+  if (req.body.examples) {
+    options.anonymize = true;
+    options.examples = true;
+  }
+
+  try {
+    explainer.debugDump(tmpDebugFileName, query, bindVars, options);
+  } catch (e) {
+    res.throw('bad request', e.message, {cause: e});
+  }
+  try {
+    fs.zipFile(tmpDebugZipFileName, tmpDebugFolder, ['debugDump.json']);
+  } catch (e) {
+    require('console').error(e);
+    res.throw('Server error, failed to create zip file', e.message, {cause: e});
+  }
+
+  res.download(tmpDebugZipFileName, 'debugDump.zip');
+})
+.body(joi.object({
+  query: joi.string().required(),
+  bindVars: joi.object().optional(),
+  examples: joi.bool().optional()
+}).required(), 'Query and bindVars to generate debug dump output')
+.summary('Generate Debug Output for Query')
+.description(dd`
+  Creates a debug output for the query in a zip file.
+  This file includes the query plan and anonymized test data as
+  well es collection information required for this query.
+  It is extremely helpful for the ArangoDB team to get this archive
+  and to reproduce your case. Whenever you submit a query based issue
+  please attach this file and the Team can help you much faster with it.
 `);
 
 authRouter.post('/query/upload/:user', function (req, res) {
