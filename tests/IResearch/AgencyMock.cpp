@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyMock.h"
+#include "Cluster/ClusterInfo.h"
 #include "Agency/Store.h"
 #include "lib/Rest/HttpResponse.h"
 
@@ -101,12 +102,21 @@ void GeneralClientConnectionAgencyMock::response(
     // unsupported operation
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+
+  if (_trace) {
+    std::cerr << "Response(" << _url << " " << _path << " )" << std::endl;
+    std::cerr << buffer.toString() << std::endl;
+  }
 }
 
 void GeneralClientConnectionAgencyMock::request(char const* data, size_t length) {
   static const std::string bodyDelimiter("\r\n\r\n");
 
-  std::string request(data, length);
+  std::string const request(data, length);
+
+  if (_trace) {
+    std::cerr << request << std::endl;
+  }
 
   auto pos = request.find("\r\n");
 

@@ -275,6 +275,8 @@ SECTION("test_defaults") {
     REQUIRE((nullptr != logicalCollection));
   }
 
+  ci->loadCurrent();
+
   // no view specified
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -293,28 +295,29 @@ SECTION("test_defaults") {
     CHECK(!link);
   }
 
+  auto const currentCollectionPath =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
+
   // valid link creation
   {
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\" : \"42\", \"type\": \"arangosearch\", \"view\": 42 }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase->createView(viewJson->slice());
     REQUIRE(logicalView);
     auto const viewId = std::to_string(logicalView->planId());
     CHECK("42" == viewId);
 
+    // simulate heartbeat thread (create index in current)
+    {
+      auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
+      CHECK(arangodb::AgencyComm().setValue(currentCollectionPath, value->slice(), 0.0).successful());
+    }
+
     // unable to create index without timeout
-    error.clear();
     VPackBuilder outputDefinition;
-    ci->ensureIndexCoordinator(
-      vocbase->name(),
-      std::to_string(logicalCollection->id()),
-      linkJson->slice(),
-      true,
-      &arangodb::Index::Compare,
-      outputDefinition,
-      error,
-      0.001
-    );
+    CHECK(arangodb::methods::Indexes::ensureIndex(
+      logicalCollection.get(), linkJson->slice(), true, outputDefinition
+    ).ok());
 
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
@@ -359,15 +362,14 @@ SECTION("test_defaults") {
     CHECK(slice.get("figures").get("memory").isNumber());
     CHECK(0 < slice.get("figures").get("memory").getUInt());
 
-    // unable to create index without timeout
-    error.clear();
-    ci->dropIndexCoordinator(
-      vocbase->name(),
-      std::to_string(logicalCollection->id()),
-      index->id(),
-      error,
-      0.001
-    );
+    // simulate heartbeat thread (drop index from current)
+    {
+      auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id\": { \"indexes\" : [ ] } }");
+      CHECK(arangodb::AgencyComm().setValue(currentCollectionPath, value->slice(), 0.0).successful());
+    }
+
+    auto const indexArg = arangodb::velocypack::Parser::fromJson("{\"id\": \"42\"}");
+    CHECK(arangodb::methods::Indexes::drop(logicalCollection.get(), indexArg->slice()).ok());
 
     // get new version from plan
     updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
@@ -377,30 +379,53 @@ SECTION("test_defaults") {
     // drop view
     CHECK(vocbase->dropView(logicalView->planId(), false).ok());
     CHECK(nullptr == vocbase->lookupView(viewId));
+
+    // old index remains valid
+    {
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      auto builder = index->toVelocyPack(true, false);
+      std::string error;
+
+      CHECK((actualMeta.init(builder->slice(), error) && expectedMeta == actualMeta));
+      auto slice = builder->slice();
+      CHECK(error.empty());
+      CHECK((
+        slice.hasKey("view")
+        && slice.get("view").isNumber()
+        && TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>()
+        && slice.hasKey("figures")
+        && slice.get("figures").isObject()
+        && slice.get("figures").hasKey("memory")
+        && slice.get("figures").get("memory").isNumber()
+        && 0 < slice.get("figures").get("memory").getUInt()
+      ));
+    }
   }
 
   // ensure jSON is still valid after unload()
   {
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"id\":\"42\", \"type\": \"arangosearch\", \"view\": 42 }");
     auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase->createView(viewJson->slice());
     REQUIRE(logicalView);
     auto const viewId = std::to_string(logicalView->planId());
     CHECK("42" == viewId);
 
+    // simulate heartbeat thread (create index in current)
+    {
+      auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
+      CHECK(arangodb::AgencyComm().setValue(currentCollectionPath, value->slice(), 0.0).successful());
+    }
+
     // unable to create index without timeout
-    error.clear();
     VPackBuilder outputDefinition;
-    ci->ensureIndexCoordinator(
-      vocbase->name(),
-      std::to_string(logicalCollection->id()),
+    CHECK(arangodb::methods::Indexes::ensureIndex(
+      logicalCollection.get(),
       linkJson->slice(),
       true,
-      &arangodb::Index::Compare,
-      outputDefinition,
-      error,
-      0.001
-    );
+      outputDefinition
+    ).ok());
 
     // get new version from plan
     auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection->id()));
@@ -464,7 +489,5 @@ SECTION("test_defaults") {
     }
   }
 }
-
-// FIXME test: drop view -> link remains valid
 
 }

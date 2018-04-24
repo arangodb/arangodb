@@ -38,8 +38,12 @@ class Store;
 ////////////////////////////////////////////////////////////////////////////////
 class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
  public:
-  explicit GeneralClientConnectionAgencyMock(arangodb::consensus::Store& store)
-    : _store(&store) {
+  explicit GeneralClientConnectionAgencyMock(
+      arangodb::consensus::Store& store,
+      bool trace = false
+  ) noexcept
+    : _store(&store),
+      _trace(trace) {
   }
 
  protected:
@@ -56,10 +60,10 @@ class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
   void handleWrite(arangodb::basics::StringBuffer& buffer);
 
   arangodb::consensus::Store* _store;
-
   std::vector<std::string> _path;
   std::string _url;
   std::string _body;
+  bool _trace;
 }; // GeneralClientConnectionAgencyMock
 
 #endif
