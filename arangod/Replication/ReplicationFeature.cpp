@@ -45,7 +45,6 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
       _enableActiveFailover(false) {
 
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("ServerId");
   startsAfter("StorageEngine");

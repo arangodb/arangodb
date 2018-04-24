@@ -59,7 +59,6 @@ MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
       _db(nullptr), _comparator(nullptr), _path()
 {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("RocksDBOption");
   startsBefore("Database");
   onlyEnabledWith("MMFilesEngine");

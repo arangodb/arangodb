@@ -135,7 +135,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
   aql::Query query(
     false,
-    &_vocbase,
+    _vocbase,
     arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
     bindVarsBuilder,
     options,

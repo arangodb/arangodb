@@ -91,8 +91,8 @@ class GeneralClientConnectionMock
   ) override;
 
  protected:
-  virtual void getValue(arangodb::basics::StringBuffer& buffer); // override by specializations
-  virtual void setKey(char const* data, size_t length); // override by specializations
+  virtual void request(char const* data, size_t length); // override by specializations
+  virtual void response(arangodb::basics::StringBuffer& buffer); // override by specializations
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +103,7 @@ class GeneralClientConnectionListMock: public GeneralClientConnectionMock {
  public:
   std::deque<std::string> responses;
 
-  virtual void getValue(arangodb::basics::StringBuffer& buffer) override;
+  virtual void response(arangodb::basics::StringBuffer& buffer) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,8 +115,8 @@ class GeneralClientConnectionMapMock: public GeneralClientConnectionMock {
   std::string lastKey;
   std::map<std::string, std::string> responses;
 
-  virtual void getValue(arangodb::basics::StringBuffer& buffer) override;
-  virtual void setKey(char const* data, size_t length) override;
+  virtual void request(char const* data, size_t length) override;
+  virtual void response(arangodb::basics::StringBuffer& buffer) override;
 };
 
 #endif

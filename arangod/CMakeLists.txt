@@ -140,6 +140,7 @@ SET(ARANGOD_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
@@ -280,6 +281,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
+  Cluster/CriticalThread.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp

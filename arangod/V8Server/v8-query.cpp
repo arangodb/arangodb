@@ -63,7 +63,7 @@ aql::QueryResultV8 AqlQuery(
   TRI_GET_GLOBALS();
   arangodb::aql::Query query(
     true,
-    &(col->vocbase()),
+    col->vocbase(),
     arangodb::aql::QueryString(aql),
     bindVars,
     nullptr,

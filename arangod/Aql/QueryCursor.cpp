@@ -160,7 +160,7 @@ QueryStreamCursor::QueryStreamCursor(
 
   _query = std::make_unique<Query>(
     false,
-    &(_guard.database()),
+    _guard.database(),
     aql::QueryString(_queryString.c_str(), _queryString.length()),
     std::move(bindVars),
     std::move(opts),

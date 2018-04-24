@@ -535,7 +535,7 @@ SECTION("test_persistence") {
     auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
     if (collection) {
-      vocbase->dropCollection(collection.get(), true, -1);
+      vocbase->dropCollection(collection->id(), true, -1);
     }
 
     collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -836,7 +836,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -871,7 +871,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -909,7 +909,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -950,7 +950,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -993,7 +993,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1025,7 +1025,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1059,7 +1059,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1097,7 +1097,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1158,7 +1158,7 @@ SECTION("test_tokens") {
     auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
     if (collection) {
-      vocbase->dropCollection(collection.get(), true, -1);
+      vocbase->dropCollection(collection->id(), true, -1);
     }
 
     collection = vocbase->lookupCollection("_iresearch_analyzers");

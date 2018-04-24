@@ -128,7 +128,7 @@ Please note that Foxx job queues are database-specific. Queues and jobs are alwa
 
 @startDocuBlock foxxQueuesPollInterval
 
-For the low-level functionality see the chapter on the [task management module](../Appendix/JavaScriptModules/Tasks.md).
+For the low-level functionality see the chapter on the [task management module](../../Appendix/JavaScriptModules/Tasks.md).
 
 ### Creating or updating a queue
 

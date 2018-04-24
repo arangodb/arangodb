@@ -220,7 +220,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
     arangodb::aql::Query query(
       false,
-      &_vocbase,
+      _vocbase,
       arangodb::aql::QueryString(aql),
       bindVars,
       nullptr,
@@ -334,7 +334,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
 
     arangodb::aql::Query query(
       false,
-      &_vocbase,
+      _vocbase,
       aql::QueryString(aql),
       bindVars,
       nullptr,

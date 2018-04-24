@@ -287,7 +287,7 @@ bool RestAqlHandler::registerSnippets(
     // The first snippet will provide proper locking
     auto query = std::make_unique<Query>(
       false,
-      &_vocbase,
+      _vocbase,
       planBuilder,
       options,
       (needToLock ? PART_MAIN : PART_DEPENDENT)
@@ -370,8 +370,7 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 
   for (auto const& te : VPackArrayIterator(traverserEngines)) {
     try {
-      traverser::TraverserEngineID id =
-        _traverserRegistry->createNew(&_vocbase, te, needToLock, ttl);
+      auto id = _traverserRegistry->createNew(_vocbase, te, needToLock, ttl);
 
       needToLock = false;
       TRI_ASSERT(id != 0);
@@ -427,7 +426,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   auto planBuilder = std::make_shared<VPackBuilder>(VPackBuilder::clone(plan));
   auto query = std::make_unique<Query>(
     false,
-    &_vocbase,
+    _vocbase,
     planBuilder,
     options,
     (part == "main" ? PART_MAIN : PART_DEPENDENT)

@@ -108,7 +108,7 @@ void RestExplainHandler::explainQuery() {
 
   arangodb::aql::Query query(
     false,
-    &_vocbase,
+    _vocbase,
     aql::QueryString(queryString),
     bindBuilder,
     optionsBuilder,

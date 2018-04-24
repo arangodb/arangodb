@@ -630,6 +630,51 @@ function StatementSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method with profiling
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteExtraProfiling : function () {
+      var st = db._createStatement({
+        query : "for i in 1..10 FILTER i > 2 return i",
+        count: true,
+        options: { profile: 2 }
+      });
+      var result = st.execute();
+
+      assertEqual(8, result.count());
+      let extra = result.getExtra();
+      assertTrue(extra.hasOwnProperty("plan"));
+      assertTrue(extra.hasOwnProperty("stats"));
+
+      // check stats
+      var stats = extra.stats;
+      assertTrue(stats.hasOwnProperty("scannedFull"));
+      assertTrue(stats.hasOwnProperty("scannedIndex"));
+      assertTrue(stats.hasOwnProperty("writesExecuted"));
+      assertTrue(stats.hasOwnProperty("writesIgnored"));
+      assertTrue(stats.hasOwnProperty("filtered"));
+      assertTrue(stats.hasOwnProperty("nodes"));
+
+      assertTrue(Array.isArray(stats.nodes));
+      assertTrue(stats.nodes.length >= 4);
+      stats.nodes.forEach(n => {
+        assertTrue(n.hasOwnProperty("id"));
+        assertTrue(n.hasOwnProperty("calls"));
+        assertTrue(n.hasOwnProperty("items"));
+        assertTrue(n.hasOwnProperty("runtime"));
+      });
+
+      var plan = extra.plan;
+      assertTrue(plan.hasOwnProperty("estimatedCost"));
+      assertTrue(plan.hasOwnProperty("rules"));
+      assertEqual([ ], plan.rules);
+      assertTrue(plan.hasOwnProperty("nodes"));
+      assertTrue(plan.hasOwnProperty("collections"));
+      assertEqual([ ], plan.collections);
+      assertTrue(plan.hasOwnProperty("variables"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test potentially unsupported types
 ////////////////////////////////////////////////////////////////////////////////
 

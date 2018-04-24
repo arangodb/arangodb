@@ -16,7 +16,7 @@ If present this method will automatically be invoked for each transport until a 
 
 * **request**: `Request`
 
-  [Request object](../../Router/Request.md) to extract a session identifier from.
+  [Request object](../../Routers/Request.md) to extract a session identifier from.
 
 Returns the session identifier or `null` if the transport can not find a session identifier in the request.
 
@@ -41,7 +41,7 @@ If present this method will automatically be invoked at the end of a request reg
 
 * **response**: `Response`
 
-  [Response object](../../Router/Response.md) to attach a session identifier to.
+  [Response object](../../Routers/Response.md) to attach a session identifier to.
 
 * **sid**: `string`
 
