@@ -55,11 +55,6 @@ struct QueryResult {
 
   virtual ~QueryResult() {}
 
-  ////////////////////////////////////////////////////////////////////
-  /// @brief builds the "extra" attribute values from the result.
-  ////////////////////////////////////////////////////////////////////
-  //std::shared_ptr<velocypack::Builder> extra() const;
-
  public:
   int code;
   bool cached;

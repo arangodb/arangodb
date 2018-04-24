@@ -147,9 +147,7 @@ void RestExplainHandler::explainQuery() {
   }
   if (extras.hasKey("stats")) {
     result.add("stats", extras.get("stats"));
-  }/* else {
-    result.add("stats", VPackSlice::noneSlice()); // WTF
-  }*/
+  }
 
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));

@@ -52,4 +52,4 @@ The meaning of the statistics attributes is as follows:
   node id (in `id`), the number of calls to this node `calls` and the number of items returned
   by this node `items` (Items are the temporary results returned at this stage). You can correlate
   this statistics with the `plan` returned in `extra`. For a human readable output you can execute 
-  `db.explain(<query>, <bind-vars, {profile:2})` in the arangosh.
+  `db._profileQuery(<query>, <bind-vars>)` in the arangosh.
