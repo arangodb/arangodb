@@ -486,20 +486,21 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     auto highSlice = chunk.get("high");
     TRI_ASSERT(highSlice.isString());
 
-    std::string const lowKey(lowSlice.copyString());
-    std::string const highKey(highSlice.copyString());
+    StringRef lowRef(lowSlice);
+    StringRef highRef(highSlice);
+    LOG_DEVEL << chunk.toJson() << " " << highSlice.typeName() << " " << highSlice.toHex();
 
     LogicalCollection* coll = trx.documentCollection();
     auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
     std::unique_ptr<IndexIterator> iterator = ph->getSortedAllIterator(&trx);
     RocksDBGenericAllIndexIterator* gIterator = static_cast<RocksDBGenericAllIndexIterator*>(iterator.get());
 
-    auto compare = [](StringRef const& a, std::string const& b){
+    auto compare = [](StringRef const& a, StringRef const& b){
       std::size_t compareLen = std::min(a.size(), b.size());
       int res = memcmp(a.data(),b.data(),compareLen);
       if (res == 0) {
         if(a.size() != b.size()) {
-          return (a.size() > b.size()) ? 1: -1;
+          return (a.size() > b.size()) ? 1 : -1;
         }
       }
       return res;
@@ -510,14 +511,16 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           StringRef docKey(RocksDBKey::primaryKey(rocksKey));
 
-          if (compare(docKey, lowKey) < 0) {
+          if (compare(docKey, lowRef) < 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
-          } else if (compare(docKey, highKey) > 0) {
+            LOG_DEVEL << "lowKey not matching";
+          } else if (compare(docKey, highRef) > 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
+            LOG_DEVEL << "highKey not matching " << docKey.toString() << " - " << highRef.toString() << " compare: " << compare(docKey, highRef);
           }
         },
         UINT64_MAX);
