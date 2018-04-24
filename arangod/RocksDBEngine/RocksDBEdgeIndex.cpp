@@ -66,7 +66,7 @@ constexpr bool EdgeIndexFillBlockCache = false;
 }
 
 RocksDBEdgeIndexWarmupTask::RocksDBEdgeIndexWarmupTask(
-    std::shared_ptr<basics::LocalTaskQueue> queue,
+    std::shared_ptr<basics::LocalTaskQueue> const& queue,
     RocksDBEdgeIndex* index,
     transaction::Methods* trx,
     rocksdb::Slice const& lower,

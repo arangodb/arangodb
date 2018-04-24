@@ -1257,6 +1257,10 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(incoming);
   transaction::Methods* trx = _plan->getAst()->query()->trx();
+  if (trx->status() != transaction::Status::RUNNING) {
+    nrItems = 0;
+    return 0.0;
+  }
   size_t count = _collection->count(trx);
   nrItems = incoming * count;
   // We do a full collection scan for each incoming item.

@@ -9,8 +9,53 @@ An explain will throw an error if the given query is syntactically invalid. Othe
 return the execution plan and some information about what optimizations could be applied to
 the query. The query will not be executed.
 
-Explaining a query can be achieved by calling the [HTTP REST API](../../HTTP/AqlQuery/index.html).
-A query can also be explained from the ArangoShell using `ArangoStatement`'s `explain` method.
+Explaining a query can be achieved by calling the [HTTP REST API](../../HTTP/AqlQuery/index.html)
+or via the arangosh.
+A query can also be explained from the ArangoShell using the `ArangoDatabase`'s `explain` method
+or in detail via `ArangoStatement`'s `explain` method.
+
+
+### Inspecting query plans
+
+The `explain` method of `ArangoStatement` as shown in the next chapters creates very verbose output.
+To get a human-readable output of the query plan you can use the `explain` method on our database
+object in arangosh. You may use it like this: (we disable syntax highlighting here)
+
+    @startDocuBlockInline 01_workWithAQL_databaseExplain
+    @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_databaseExplain}
+    db._explain("FOR x IN _frontend FILTER x.a > 10 RETURN x", {}, {colors: false});
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 01_workWithAQL_databaseExplain
+
+The plan contains all execution nodes that are used during a query. These nodes represent different
+stages in a query. Each stage gets the input from the stage directly above (its dependencies). 
+The plan will show you the estimated number of items (results) for each query stage (under _Est._). Each
+query stage roughly equates to a line in your original query, which you can see under _Comment_.
+
+
+#### Executing an instrumented query
+
+Sometimes when you have a complex query it can become very unclear where time is spend during the execution, 
+even for intermediate ArangoDB users! For this reason we allow you to execute a query with special instrumentation
+code enabled. The resulting query result will contain a copy of the query plan as well as detailed execution statistics.
+To use this in an interactive fashion on the shell you can use the `_profileQuery` method
+on the `ArangoDatabase` object. This will display all the usual information contained in the explain,
+but additionally you get all the statistics, the query profile and per node stats. 
+
+The execution plan contains three additional columns `Calls` (number of times this query stage was executed), 
+`Items` (number of temporary results at this stage) and `Runtime` (the total time spend in this stage). Below the 
+execution plan there are additional sections for the overall [runtime statistics](QueryStatistics.md) and the query
+profile.
+
+
+    @startDocuBlockInline 01_workWithAQL_databaseProfileQuery
+    @EXAMPLE_ARANGOSH_OUTPUT{01_workWithAQL_databaseExplain}
+    db._profileQuery("FOR x IN _frontend FILTER x.a > 10 RETURN x", {}, {colors: false});
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 01_workWithAQL_databaseProfileQuery
+
+
+### Execution plans in detail
 
 By default, the query optimizer will return what it considers to be the *optimal plan*. The
 optimal plan will be returned in the `plan` attribute of the result. If `explain` is

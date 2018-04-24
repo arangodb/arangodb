@@ -41,6 +41,19 @@ namespace aql {
 class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
+  
+
+/// @brief sort element for block, consisting of register, sort direction,
+/// and a possible attribute path to dig into the document
+struct SortElementBlock {
+  RegisterId reg;
+  bool ascending;
+  std::vector<std::string> attributePath;
+  
+  SortElementBlock(RegisterId r, bool asc)
+  : reg(r), ascending(asc) {
+  }
+};
 
 class GatherBlock : public ExecutionBlock {
  public:

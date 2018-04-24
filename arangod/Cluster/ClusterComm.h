@@ -356,7 +356,7 @@ struct ClusterCommRequest {
 
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
-                     std::shared_ptr<std::string const> body)
+                     std::shared_ptr<std::string const> const& body)
       : destination(dest),
         requestType(type),
         path(path),
