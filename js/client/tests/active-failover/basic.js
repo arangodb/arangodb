@@ -271,7 +271,7 @@ function ActiveFailoverSuite() {
       });
 
       currentLead = leaderInAgency();
-      print("connecting shell to leader ", currentLead)
+      print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
       if (db._collection(cname)) {
         db._drop(cname);
