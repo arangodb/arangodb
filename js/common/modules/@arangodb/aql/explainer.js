@@ -11,6 +11,32 @@ if (typeof internal.printBrowser === 'function') {
   print = internal.printBrowser;
 }
 
+const anonymize = function(doc) {
+  if (Array.isArray(doc)) {
+    return doc.map(anonymize);
+  }
+  if (typeof doc === 'string') {
+    return Array(doc.length).join("X");
+  }
+  if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
+    return doc;
+  } 
+  if (typeof doc === 'object') {
+    let result = {};
+    Object.keys(doc).forEach(function(key) {
+      if (key.startsWith("_") || key.startsWith("@")) {
+        // This excludes system attributes in examples
+        // and collections in bindVars
+        result[key] = doc[key];
+      } else {
+        result[key] = anonymize(doc[key]);
+      }
+    });
+    return result;
+  }
+  return doc;
+};
+
 var stringBuilder = {
   output: '',
 
@@ -1287,6 +1313,7 @@ function explain(data, options, shouldPrint) {
 function debug(query, bindVars, options) {
   'use strict';
   let input = {};
+
   if (query instanceof Object) {
     if (typeof query.toAQL === 'function') {
       query = query.toAQL();
@@ -1295,7 +1322,7 @@ function debug(query, bindVars, options) {
   } else {
     input.query = query;
     if (bindVars !== undefined) {
-      input.bindVars = bindVars;
+      input.bindVars = anonymize(bindVars);
     }
     if (options !== undefined) {
       input.options = options;
@@ -1304,27 +1331,6 @@ function debug(query, bindVars, options) {
   if (!input.options) {
     input.options = {};
   }
-
-  let anonymize = function(doc) {
-    if (Array.isArray(doc)) {
-      return doc.map(anonymize);
-    }
-    if (typeof doc === 'string') {
-      return Array(doc.length).join("X");
-    }
-    if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
-      return doc;
-    } 
-    if (typeof doc === 'object') {
-      let result = {};
-      Object.keys(doc).forEach(function(key) {
-        result[key] = anonymize(doc[key]);
-      });
-      return result;
-    }
-    return doc;
-  };
-
   let result = {
     engine: db._engine(),
     version: db._version(true),
