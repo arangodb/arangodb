@@ -1051,7 +1051,7 @@
       });
     },
 
-    downloadPost: function (url, body, callback) {
+    downloadPost: function (url, body, callback, errorCB) {
       var xhr = new XMLHttpRequest();
       xhr.onreadystatechange = function () {
         if (this.readyState === 4 && this.status === 200) {
@@ -1069,9 +1069,16 @@
             window.URL.revokeObjectURL(blobUrl);
             document.body.removeChild(a);
           }, 500);
+        } else {
+          if (errorCB !== undefined) {
+            errorCB(this.status, this.statusText);
+          }
         }
       };
       xhr.open('POST', url);
+      if (window.arangoHelper.getCurrentJwt()) {
+        xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
+      }
       xhr.responseType = 'blob';
       xhr.send(body);
     },

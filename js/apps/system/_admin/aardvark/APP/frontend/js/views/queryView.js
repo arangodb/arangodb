@@ -563,6 +563,10 @@
       var cbFunction = function () {
         window.modalView.hide();
       };
+      var errorFunction = function (errorCode, response) {
+        window.arangoHelper.arangoError('Debug Dump', errorCode + ": " + response);
+        window.modalView.hide();
+      };
 
       var query = this.aqlEditor.getValue();
       if (query !== '' && query !== undefined && query !== null) {
@@ -572,7 +576,7 @@
           bindVars: this.bindParamTableObj || {},
           examples: $('#debug-download-package-examples').is(':checked')
         };
-        arangoHelper.downloadPost(url, JSON.stringify(body), cbFunction);
+        arangoHelper.downloadPost(url, JSON.stringify(body), cbFunction, errorFunction);
       } else {
         arangoHelper.arangoError('Query error', 'Could not create a debug package.');
       }
