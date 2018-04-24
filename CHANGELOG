@@ -1,4 +1,4 @@
-v3.3.8 (XXXX-XX-XX)
+v3.3.8 (2018-04-24)
 -------------------
 
 * added arangod startup option `--dump-options` to print all configuration parameters
