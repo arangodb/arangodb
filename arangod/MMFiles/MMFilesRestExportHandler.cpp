@@ -197,14 +197,12 @@ void MMFilesRestExportHandler::createCursor() {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   VPackBuilder optionsBuilder;
 

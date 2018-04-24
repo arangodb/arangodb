@@ -88,7 +88,7 @@ void InternalRestTraverserHandler::createEngine() {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(
@@ -96,8 +96,9 @@ void InternalRestTraverserHandler::createEngine() {
         "Expected an object with traverser information as body parameter");
     return;
   }
-  TraverserEngineID id =
-    _registry->createNew(&_vocbase, parsedBody->slice(), true);
+
+  auto id = _registry->createNew(_vocbase, body, true);
+
   TRI_ASSERT(id != 0);
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(id));
@@ -160,7 +161,7 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(
@@ -169,7 +170,6 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  VPackSlice body = parsedBody->slice();
   VPackBuilder result;
   if (option == "edge") {
     VPackSlice keysSlice = body.get("keys");

@@ -85,7 +85,8 @@ void RestCollectionHandler::handleCommandGet() {
       ExecContext const* exec = ExecContext::CURRENT;
       bool canUse = exec == nullptr ||
                     exec->canUseCollection(coll->name(), auth::Level::RO);
-      if (canUse && (!excludeSystem || !coll->isSystem())) {
+
+      if (canUse && (!excludeSystem || !coll->system())) {
         collectionRepresentation(builder, coll,
                                  /*showProperties*/ false,
                                  /*showFigures*/ false, /*showCount*/ false,
@@ -216,13 +217,13 @@ void RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   VPackSlice nameSlice;
   if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
       nameSlice.getStringLength() == 0) {
@@ -250,7 +251,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   // for some "security" a white-list of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
-      parsedBody->slice(),
+      body,
       std::unordered_set<std::string>{
           "doCompact", "isSystem", "id", "isVolatile", "journalSize",
           "indexBuckets", "keyOptions", "waitForSync", "cacheEnabled",
@@ -289,13 +290,13 @@ void RestCollectionHandler::handleCommandPut() {
                   "expected PUT /_api/collection/<collection-name>/<action>");
     return;
   }
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return;
   }
-  VPackSlice body = parsedBody->slice();
+
   if (!body.isObject()) {
     body = VPackSlice::emptyObjectSlice();
   }
@@ -493,7 +494,7 @@ void RestCollectionHandler::collectionRepresentation(
   builder.add("type", VPackValue(coll->type()));
 
   if (!showProperties) {
-    builder.add("isSystem", VPackValue(coll->isSystem()));
+    builder.add("isSystem", VPackValue(coll->system()));
     builder.add("globallyUniqueId", VPackValue(coll->globallyUniqueId()));
   } else {
     Result res = methods::Collections::properties(coll, builder);

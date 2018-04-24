@@ -62,6 +62,26 @@ std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success
   return std::make_shared<VPackBuilder>();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses the body as VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
+  try {
+    success = true;
+    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
+    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+    return _request->payload(&optionsWithUniquenessCheck);
+  } catch (VPackException const& e) {
+    std::string errmsg("VPackError error: ");
+    errmsg.append(e.what());
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  errmsg);
+  }
+  success = false;
+  return VPackSlice::noneSlice();
+}
+
 void RestBaseHandler::handleError(Exception const& ex) {
   generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }

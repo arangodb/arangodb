@@ -34,7 +34,6 @@ ShutdownFeature::ShutdownFeature(
     std::vector<std::string> const& features)
     : ApplicationFeature(server, "Shutdown") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 
   for (auto feature : features) {

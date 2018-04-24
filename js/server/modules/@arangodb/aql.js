@@ -819,7 +819,7 @@ function COMPILE_LIKE (regex, modifiers) {
 // / @brief call a user function
 // //////////////////////////////////////////////////////////////////////////////
 
-function FCALL_USER (name, parameters) {
+function FCALL_USER (name, parameters, func) {
   'use strict';
 
   var prefix = DB_PREFIX(), reloaded = false;
@@ -834,7 +834,7 @@ function FCALL_USER (name, parameters) {
   }
 
   if (!UserFunctions[prefix].hasOwnProperty(name)) {
-    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
+    THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
   }
 
   try {
@@ -5835,7 +5835,6 @@ exports.AQL_WARN = AQL_WARN;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;
-exports.lookupFunction = GET_USERFUNCTION;
 exports.throwFromFunction = THROW;
 exports.fixValue = FIX_VALUE;
 

@@ -25,15 +25,12 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Logger/LogTopic.h"
 
 namespace arangodb {
 namespace iresearch {
 
 class IResearchFeature final : public application_features::ApplicationFeature {
  public:
-  static arangodb::LogTopic IRESEARCH;
-
   explicit IResearchFeature(application_features::ApplicationServer* server);
 
   void beginShutdown() override;
@@ -42,7 +39,6 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   void prepare() override;
   void start() override;
   void stop() override;
-  static std::string const& type();
   void unprepare() override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 

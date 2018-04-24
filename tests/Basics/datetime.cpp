@@ -1,6 +1,7 @@
 
 #include "Basics/datetime.h"
 #include "catch.hpp"
+#include <date/date.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;

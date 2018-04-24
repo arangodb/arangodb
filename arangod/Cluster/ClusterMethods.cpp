@@ -2607,7 +2607,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
     bool waitForSyncReplication,
     bool enforceReplicationFactor
 ) {
-  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, 0, true);
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, true, 0);
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
@@ -2647,7 +2647,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   } else {
     // system collections should never enforce replicationfactor
     // to allow them to come up with 1 dbserver
-    if (col->isSystem()) {
+    if (col->system()) {
       enforceReplicationFactor = false;
     }
 
@@ -2685,7 +2685,9 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
           }), dbServers.end());
     }
     std::random_shuffle(dbServers.begin(), dbServers.end());
-    shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor, dbServers, !col->isSystem());
+    shards = DistributeShardsEvenly(
+      ci, numberOfShards, replicationFactor, dbServers, !col->system()
+    );
   }
 
   if (shards->empty() && !col->isSmart()) {

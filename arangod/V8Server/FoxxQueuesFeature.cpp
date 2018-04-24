@@ -34,7 +34,6 @@ FoxxQueuesFeature::FoxxQueuesFeature(
       _pollInterval(1.0),
       _enabled(true) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("V8Platform");
 }
 

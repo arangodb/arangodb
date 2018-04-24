@@ -632,15 +632,16 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateError(rv);
       return;
     }
-  } else {
-    bool success;
-    std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
+  } else {    
+    bool success = false;
+    VPackSlice const parsedIds = this->parseVPackBody(success);
     if (!success) {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
 
-    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, maxChunkSize, lowKey, parsedIds->slice());
+    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk,
+                                   maxChunkSize, lowKey, parsedIds);
     if (rv.fail()) {
       generateError(rv);
       return;

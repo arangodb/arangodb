@@ -61,7 +61,6 @@ CacheManagerFeature::CacheManagerFeature(
                   : (256 << 20)),
       _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Scheduler");
 }
 

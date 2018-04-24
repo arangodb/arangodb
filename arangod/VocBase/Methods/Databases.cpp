@@ -80,12 +80,13 @@ std::vector<std::string> Databases::list(std::string const& user) {
     if (ServerState::instance()->isCoordinator()) {
       
       AuthenticationFeature* af = AuthenticationFeature::instance();
+      auth::UserManager* um = af->userManager();
       std::vector<std::string> names;
       std::vector<std::string> dbs =
           databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
-        if (!af->isActive() ||
-            af->userManager()->databaseAuthLevel(user, db) > auth::Level::NONE) {
+        if (!af->isActive() || (um != nullptr &&
+            um->databaseAuthLevel(user, db) > auth::Level::NONE)) {
           names.push_back(db);
         }
       }
@@ -141,7 +142,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 arangodb::Result Databases::create(std::string const& dbName,
                                    VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
-  AuthenticationFeature* af = AuthenticationFeature::instance();
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
@@ -262,9 +263,9 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_ASSERT(vocbase->name() == dbName);
 
     // we need to add the permissions before running the upgrade script
-    if (ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT != nullptr && um != nullptr) {
       // ignore errors here Result r =
-      af->userManager()->updateUser(
+      um->updateUser(
           ExecContext::CURRENT->user(), [&](auth::User& entry) {
             entry.grantDatabase(dbName, auth::Level::RW);
             entry.grantCollection(dbName, "*", auth::Level::RW);
@@ -295,10 +296,9 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_DEFER(vocbase->release());
 
     // we need to add the permissions before running the upgrade script
-    if (ServerState::instance()->isSingleServer() &&
-        ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT != nullptr && um != nullptr) {
       // ignore errors here Result r =
-      af->userManager()->updateUser(
+      um->updateUser(
           ExecContext::CURRENT->user(), [&](auth::User& entry) {
              entry.grantDatabase(dbName, auth::Level::RW);
              entry.grantCollection(dbName, "*", auth::Level::RW);
@@ -410,10 +410,9 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   }
 
   Result res;
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (ServerState::instance()->isCoordinator() ||
-      !ServerState::instance()->isRunningInCluster()) {
-    res = af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    res = um->enumerateUsers([&](auth::User& entry) -> bool {
       return entry.removeDatabase(dbName);
     });
   }

@@ -32,7 +32,6 @@ PageSizeFeature::PageSizeFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "PageSize") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 
