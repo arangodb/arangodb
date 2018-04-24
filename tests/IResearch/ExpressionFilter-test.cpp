@@ -432,8 +432,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -508,8 +511,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -584,8 +590,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -676,8 +685,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -768,8 +780,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -860,8 +875,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -936,8 +954,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1007,8 +1028,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1135,8 +1159,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1258,8 +1285,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();

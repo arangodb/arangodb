@@ -35,6 +35,7 @@
   #include "IResearch/IResearchMMFilesLink.h"
 #endif
 
+#include "IResearch/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
@@ -499,29 +500,6 @@ class AllIteratorMock final : public arangodb::IndexIterator {
   uint64_t _end;
 }; // AllIteratorMock
 
-bool mergeSlice(
-    arangodb::velocypack::Builder& builder,
-    arangodb::velocypack::Slice const& slice
-) {
-  if (builder.isOpenArray()) {
-    if (slice.isArray()) {
-      builder.add(arangodb::velocypack::ArrayIterator(slice));
-    } else {
-      builder.add(slice);
-    }
-
-    return true;
-  }
-
-  if (builder.isOpenObject() && slice.isObject()) {
-    builder.add(arangodb::velocypack::ObjectIterator(slice));
-
-    return true;
-  }
-
-  return false;
-}
-
 }
 
 void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
@@ -913,7 +891,7 @@ arangodb::Result PhysicalCollectionMock::update(arangodb::transaction::Methods* 
 
       builder.openObject();
 
-      if (!mergeSlice(builder, newSlice)) {
+      if (!arangodb::iresearch::mergeSlice(builder, newSlice)) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
 

@@ -35,7 +35,6 @@ double ReplicationTimeoutFeature::lowerLimit = 0.5;
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "ReplicationTimeout") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("EngineSelector");
   startsBefore("StorageEngine");
 }

@@ -227,6 +227,7 @@ void RestViewHandler::deleteView() {
   }
 
   std::string const& name = suffixes[0];
+  auto allowDropSystem = _request->parsedValue("isSystem", false);
   auto view = _vocbase.lookupView(name);
 
   if (!view) {
@@ -238,7 +239,7 @@ void RestViewHandler::deleteView() {
     return;
   }
 
-  auto res = _vocbase.dropView(*view).errorNumber();
+  auto res = _vocbase.dropView(view->id(), allowDropSystem).errorNumber();
 
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());

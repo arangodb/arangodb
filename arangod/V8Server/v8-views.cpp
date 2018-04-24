@@ -218,19 +218,36 @@ static void JS_DropViewVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  // we require exactly 1 argument
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_dropView(<name>)");
+  // we require exactly 1 string argument and an optional boolean argument
+  if (args.Length() < 1 || args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("_dropView(<name> [, allowDropSystem])");
   }
 
   PREVENT_EMBEDDED_TRANSACTION();
+
+  bool allowDropSystem = false;
+
+  if (args.Length() > 1) {
+    // options
+    if (args[1]->IsObject()) {
+      TRI_GET_GLOBALS();
+      v8::Handle<v8::Object> optionsObject = args[1].As<v8::Object>();
+      TRI_GET_GLOBAL_STRING(IsSystemKey);
+
+      if (optionsObject->Has(IsSystemKey)) {
+        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+      }
+    } else {
+      allowDropSystem = TRI_ObjectToBoolean(args[1]);
+    }
+  }
 
   // extract the name
   std::string const name = TRI_ObjectToString(args[0]);
   auto view = vocbase->lookupView(name);
 
   if (view) {
-    auto res = vocbase->dropView(*view).errorNumber();
+    auto res = vocbase->dropView(view->id(), allowDropSystem).errorNumber();
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -259,7 +276,25 @@ static void JS_DropViewVocbaseObj(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto res = view->vocbase().dropView(*view).errorNumber();
+  bool allowDropSystem = false;
+
+  if (args.Length() > 0) {
+    // options
+    if (args[0]->IsObject()) {
+      TRI_GET_GLOBALS();
+      v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
+      TRI_GET_GLOBAL_STRING(IsSystemKey);
+
+      if (optionsObject->Has(IsSystemKey)) {
+        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+      }
+    } else {
+      allowDropSystem = TRI_ObjectToBoolean(args[0]);
+    }
+  }
+
+  auto res =
+    view->vocbase().dropView(view->id(), allowDropSystem).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop view");

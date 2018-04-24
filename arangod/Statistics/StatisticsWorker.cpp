@@ -126,10 +126,18 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(garbageCollectionQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(garbageCollectionQuery),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
   auto queryResult = query.execute(_queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
@@ -244,13 +252,23 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
   if (!_clusterId.empty()) {
     bindVars->add("clusterId", VPackValue(_clusterId));
   }
+
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, 
-                             arangodb::aql::QueryString(_clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(
+      _clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery
+    ),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
   auto queryResult = query.execute(_queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
@@ -277,9 +295,17 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, 
-                             arangodb::aql::QueryString(_clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(
+      _clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery
+    ),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
   auto queryResult = query.execute(_queryRegistry);
   if (queryResult.code != TRI_ERROR_NO_ERROR) {

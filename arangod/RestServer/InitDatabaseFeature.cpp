@@ -45,7 +45,6 @@ InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server,
   : ApplicationFeature(server, "InitDatabase"),
     _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("DatabasePath");
 }
