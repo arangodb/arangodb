@@ -422,11 +422,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
     // FIXME - hash without additional builder!
 
     builder.clear();
-    builder.add(VPackValue(highKey.toString()));
+    builder.add(velocypack::ValuePair(highKey.data(),highKey.size(), velocypack::ValueType::String));
     hash ^= builder.slice().hashString();
     builder.clear();
     builder.add(VPackValue(docRev));
-    hash ^= builder.slice().hashString();
     hash ^= builder.slice().hash();
 
 
