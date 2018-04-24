@@ -46,7 +46,6 @@ LanguageFeature::LanguageFeature(
       _icuDataPtr(nullptr) {
   Instance = this;
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 

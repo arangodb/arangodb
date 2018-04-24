@@ -874,8 +874,9 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
       collectionKeys->dumpKeys(resultBuilder, chunk,
                                static_cast<size_t>(chunkSize));
     } else {
-      bool success;
-      std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
+      bool success = false;
+      VPackSlice parsedIds = this->parseVPackBody(success);
+
       if (!success) {
         // error already created
         collectionKeys->release();
@@ -883,7 +884,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
       }
       collectionKeys->dumpDocs(resultBuilder, chunk,
                                static_cast<size_t>(chunkSize), offsetInChunk,
-                               maxChunkSize, parsedIds->slice());
+                               maxChunkSize, parsedIds);
     }
 
     resultBuilder.close();

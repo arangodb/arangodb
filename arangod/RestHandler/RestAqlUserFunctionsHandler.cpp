@@ -44,15 +44,13 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
   if (type == rest::RequestType::POST) {
     // JSF_post_api_aqlfunction.md
     // POST /_api/aqlfunction
-    bool parsingSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parsingSuccess);
+    bool parsingSuccess = false;
+    VPackSlice body = this->parseVPackBody(parsingSuccess);
     if (!parsingSuccess) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting JSON object body");
       return RestStatus::DONE;
     }
-
-    VPackSlice body = parsedBody.get()->slice();
 
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,

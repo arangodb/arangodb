@@ -64,14 +64,11 @@ void RestExplainHandler::explainQuery() {
     return;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     return;
   }
-
-  VPackSlice body = parsedBody.get()->slice();
 
   auto badParamError = [&](std::string const& msg) -> void {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, msg);
@@ -111,7 +108,7 @@ void RestExplainHandler::explainQuery() {
 
   arangodb::aql::Query query(
     false,
-    &_vocbase,
+    _vocbase,
     aql::QueryString(queryString),
     bindBuilder,
     optionsBuilder,

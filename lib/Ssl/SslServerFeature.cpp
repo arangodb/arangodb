@@ -46,7 +46,6 @@ SslServerFeature::SslServerFeature(
       _sslOptions(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Ssl");
   startsAfter("Logger");
 }

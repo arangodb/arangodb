@@ -491,8 +491,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
   
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  bool success = false;
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -504,7 +504,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     databaseName = _vocbase.name();
   }
 
-  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(parsedBody->slice(), databaseName);
+  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(body, databaseName);
   configuration._skipCreateDrop = false;
 
   // will throw if invalid
@@ -909,7 +909,7 @@ Result RestReplicationHandler::processRestoreCollection(
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      Result res = _vocbase.dropCollection(col, true, -1.0);
+      auto res = _vocbase.dropCollection(col->id(), true, -1.0);
 
       if (res.errorNumber() == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
@@ -953,13 +953,14 @@ Result RestReplicationHandler::processRestoreCollection(
   ExecContext const* exe = ExecContext::CURRENT;
   if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-
-    af->userManager()->updateUser(exe->user(), [&](auth::User& entry) {
-      entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
-
-      return TRI_ERROR_NO_ERROR;
-    });
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    TRI_ASSERT(um != nullptr); // should not get here
+    if (um != nullptr) {
+      um->updateUser(exe->user(), [&](auth::User& entry) {
+        entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
+        return TRI_ERROR_NO_ERROR;
+      });
+    }
   }
 
   return Result();
@@ -1124,12 +1125,15 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
-      AuthenticationFeature* af = AuthenticationFeature::instance();
-      af->userManager()->updateUser(ExecContext::CURRENT->user(),
-                   [&](auth::User& entry) {
-                     entry.grantCollection(dbName, col->name(), auth::Level::RW);
-                     return TRI_ERROR_NO_ERROR;
-                   });
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      TRI_ASSERT(um != nullptr); // should not get here
+      if (um != nullptr) {
+        um->updateUser(ExecContext::CURRENT->user(),
+                       [&](auth::User& entry) {
+                         entry.grantCollection(dbName, col->name(), auth::Level::RW);
+                         return TRI_ERROR_NO_ERROR;
+                       });
+      }
     }
   } catch (basics::Exception const& ex) {
     // Error, report it.
@@ -1313,7 +1317,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   arangodb::aql::Query query(
     false,
-    &_vocbase,
+    _vocbase,
     arangodb::aql::QueryString(aql),
     bindVars,
     nullptr,
@@ -1324,8 +1328,12 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   auto queryResult = query.execute(queryRegistry);
 
+  // neither agency nor dbserver should get here
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  TRI_ASSERT(af->userManager() != nullptr);
+  if (af->userManager() != nullptr) {
+    af->userManager()->outdate();
+  }
   af->tokenCache()->invalidateBasicCache();
   
   return Result{queryResult.code};
@@ -1770,14 +1778,13 @@ void RestReplicationHandler::handleCommandSync() {
     return;
   }
   
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
 
-  VPackSlice const body = parsedBody->slice();
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
   if (endpoint.empty()) {
@@ -1876,9 +1883,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     return;
   }
 
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
-
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -1891,7 +1897,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   } 
 
   auto config = ReplicationApplierConfiguration::fromVelocyPack(applier->configuration(),
-                                                                parsedBody->slice(), databaseName);
+                                                                body, databaseName);
   // will throw if invalid
   config.validate();
 
@@ -1988,12 +1994,11 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 
 void RestReplicationHandler::handleCommandAddFollower() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'followerId' "
@@ -2118,12 +2123,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
 void RestReplicationHandler::handleCommandRemoveFollower() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'followerId' "
@@ -2163,14 +2167,11 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
-
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-
-  VPackSlice const body = parsedBody->slice();
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2306,12 +2307,12 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
 void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attribute 'id'");
@@ -2356,12 +2357,12 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
 
 void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attribute 'id'");
@@ -2554,7 +2555,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   }
 
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->isSystem() == (name[0] == '_'));
+  TRI_ASSERT(col->system() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");

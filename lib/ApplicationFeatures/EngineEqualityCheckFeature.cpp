@@ -34,7 +34,6 @@ EngineEqualityCheckFeature::EngineEqualityCheckFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "EngineEqualityCheck") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Bootstrap");
 }
 

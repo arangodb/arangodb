@@ -584,7 +584,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   col = vocbase->lookupCollection(name).get();
 
   if (col != nullptr) {
-    if (col->isSystem()) {
+    if (col->system()) {
       TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
       SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase),
@@ -606,7 +606,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
       return trx.finish(opRes.result);
     } else {
-      vocbase->dropCollection(col, false, -1.0);
+      vocbase->dropCollection(col->id(), false, -1.0);
     }
   }
 
@@ -665,7 +665,7 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return Result();
   }
 
-  return Result(vocbase->dropCollection(col, true, -1.0));
+  return vocbase->dropCollection(col->id(), true, -1.0);
 }
 
 /// @brief creates an index, based on the VelocyPack provided
@@ -923,7 +923,10 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
 void Syncer::reloadUsers() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  auth::UserManager* um = af->userManager();
+  if (um != nullptr) {
+    um->outdate();
+  }
 }
   
 bool Syncer::hasFailed(SimpleHttpResult* response) const {

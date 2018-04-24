@@ -35,7 +35,6 @@ VersionFeature::VersionFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Version"),
       _printVersion(false) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
 
   startsAfter("ShellColors");
 }
