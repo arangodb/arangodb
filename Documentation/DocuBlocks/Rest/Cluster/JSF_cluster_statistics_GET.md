@@ -8,7 +8,8 @@
 
 @RESTQUERYPARAM{DBserver,string,required}
 
-@RESTDESCRIPTION Queries the statistics of the given DBserver
+@RESTDESCRIPTION
+Queries the statistics of the given DBserver
 
 @RESTRETURNCODES
 

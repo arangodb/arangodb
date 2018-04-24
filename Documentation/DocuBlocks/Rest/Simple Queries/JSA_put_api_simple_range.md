@@ -28,7 +28,6 @@ The maximal amount of documents to return. The *skip*
 is applied before the *limit* restriction. (optional)
 
 @RESTDESCRIPTION
-
 This will find all documents within a given range. In order to execute a
 range query, a skip-list index on the queried attribute must be present.
 

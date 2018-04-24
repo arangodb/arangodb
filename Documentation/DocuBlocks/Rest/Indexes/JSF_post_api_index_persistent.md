@@ -22,7 +22,6 @@ if *true*, then create a unique index.
 if *true*, then create a sparse index.
 
 @RESTDESCRIPTION
-
 Creates a persistent index for the collection *collection-name*, if
 it does not already exist. The call expects an object containing the index
 details.

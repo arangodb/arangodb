@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/server/id, Return id of a server in a cluster}
 
 @RESTDESCRIPTION
-
 Returns the id of a server in a cluster.
 The id is empty if it is working in single server mode.
 
