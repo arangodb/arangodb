@@ -43,6 +43,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
                  int& exitCode);
 
  public:
+  // for documentation of virtual methods, see `ApplicationFeature`
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
@@ -62,15 +63,11 @@ class RestoreFeature final : public application_features::ApplicationFeature {
    */
   void reportError(Result const& error);
 
-  Result getFirstError() {
-    {
-      MUTEX_LOCKER(lock, _workerErrorLock);
-      if (!_workerErrors.empty()) {
-        return _workerErrors.front();
-      }
-    }
-    return {TRI_ERROR_NO_ERROR};
-  }
+  /**
+   * @brief Returns the first error from the worker errors list
+   * @return  First error from the list, or OK if none exist
+   */
+  Result getFirstError() const;
 
  public:
   /// @brief Holds configuration data to pass between methods
@@ -120,7 +117,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   int& _exitCode;
   Options _options;
   Stats _stats;
-  Mutex _workerErrorLock;
+  Mutex mutable _workerErrorLock;
   std::queue<Result> _workerErrors;
 };
 }  // namespace arangodb
