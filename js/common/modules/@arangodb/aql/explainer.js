@@ -1326,7 +1326,11 @@ function debug(query, bindVars, options) {
     if (typeof doc === 'object') {
       let result = {};
       Object.keys(doc).forEach(function(key) {
-        result[key] = anonymize(doc[key]);
+        if (key.startsWith("_")) {
+          result[key] = doc[key];
+        } else {
+          result[key] = anonymize(doc[key]);
+        }
       });
       return result;
     }
