@@ -33,7 +33,7 @@ You can also use the `aql.literal` helper to mark strings containing AQL snippet
 that should be inlined directly into the query rather than be treated as bind variables.
 
 {% hint 'warning' %}
-`aql.literal` allows to pass an arbitrary string into your AQL and thus will open
+`aql.literal` allows you to pass a arbitrary strings into your AQL and thus will open
 you to AQL injection attacks if you are passing in untrusted user input unsanitized.
 {% endhint %}
 
