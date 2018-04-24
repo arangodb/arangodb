@@ -7,7 +7,7 @@ Documentation readme can be found in directory [Documentation](https://github.co
 
 GIT
 ===
-Setting up git for automaticaly merging certain automatically generated files in the arangodb source tree:
+Setting up git for automatically merging certain automatically generated files in the arangodb source tree:
 
     git config --global merge.ours.driver true
 
