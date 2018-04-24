@@ -80,7 +80,10 @@ struct ReadWriteSpinLock {
     return false;
   }
 
+  bool tryWriteLock() { return writeLock(1); }
+
   void writeUnlock() { _writer.store(false, std::memory_order_release); }
+  void unlockWrite() { writeUnlock(); }
 
   bool readLock(uint64_t maxTries = UINT64_MAX) {
     uint64_t attempts = 0;
@@ -105,7 +108,10 @@ struct ReadWriteSpinLock {
     return false;
   }
 
+  bool tryReadLock() { return readLock(1); }
+
   void readUnlock() { _readers.sub(1, std::memory_order_release); }
+  void unlockRead() { readUnlock(); }
 
   bool isLocked() const {
     return (_readers.nonZero() || _writer.load());
