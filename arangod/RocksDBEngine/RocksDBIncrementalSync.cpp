@@ -453,6 +453,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
+
+  LOG_DEVEL << chunkSlice.toJson();
+
   getRemoteTimer.release();
   // remove all keys that are below first remote key or beyond last remote key
   if (numChunks > 0) {
@@ -515,12 +518,12 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
-            LOG_DEVEL << "lowKey not matching";
+            //LOG_DEVEL << "lowKey not matching";
           } else if (compare(docKey, highRef) > 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
-            LOG_DEVEL << "highKey not matching " << docKey.toString() << " - " << highRef.toString() << " compare: " << compare(docKey, highRef);
+            //LOG_DEVEL << "highKey not matching " << docKey.toString() << " - " << highRef.toString() << " compare: " << compare(docKey, highRef);
           }
         },
         UINT64_MAX);
@@ -606,16 +609,22 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       bool rangeUnequal = false;
       bool nextChunk = false;
 
+
       int cmp1 = key.compareString(lowKey.data(), lowKey.length());
       int cmp2 = key.compareString(highKey.data(), highKey.length());
+      //LOG_DEVEL  << "cmp1: " << cmp1 << " " << key.toJson() << " " << lowKey;
+      //LOG_DEVEL  << "cmp2: " << cmp2 << " " << key.toJson() << " " << highKey;
 
       if (cmp1 < 0) {
+        //LOG_DEVEL  << "values not on remote";
         // smaller values than lowKey mean they don't exist remotely
         trx.remove(col->name(), key, options);
         return;
       } else if (cmp1 >= 0 && cmp2 <= 0) {
+        //LOG_DEVEL  << "we are in range";
         // we only need to hash we are in the range
         if (cmp1 == 0) {
+          LOG_DEVEL  << "found low";
           foundLowKey = true;
         }
 
@@ -628,22 +637,31 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
           if (cmp2 == 0) {  // found highKey
             rangeUnequal = std::to_string(localHash) != hashString;
+            LOG_DEVEL  << "found high";
             nextChunk = true;
+            LOG_DEVEL  << "next chunk";
           }
         } else if (cmp2 == 0) {  // found high key, but not low key
+          LOG_DEVEL  << "found high but not low";
           rangeUnequal = true;
           nextChunk = true;
+            LOG_DEVEL  << "next chunk";
         }
       } else if (cmp2 > 0) {  // higher than highKey
+        LOG_DEVEL  << "high key is higher";
         // current range was unequal and we did not find the
         // high key. Load range and skip to next
         rangeUnequal = true;
         nextChunk = true;
+            LOG_DEVEL  << "next chunk";
       }
+
 
       TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
       if (nextChunk) {  // we are out of range, see next chunk
+        LOG_DEVEL << "range equal:" <<std::boolalpha << !rangeUnequal;
         if (rangeUnequal && currentChunkId < numChunks) {
+          LOG_DEVEL  << "sync 1";
           Result res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId,
                                         lowKey, highKey, markers);
           if (!res.ok()) {
@@ -677,6 +695,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     // we might have missed chunks, if the keys don't exist at all locally
     while (currentChunkId < numChunks) {
+      LOG_DEVEL  << "sync 2";
       Result res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId, lowKey,
                                     highKey, markers);
       if (!res.ok()) {
@@ -693,6 +712,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       return res;
     }
   }
+  LOG_DEVEL << chunkSlice.toJson();
 
   return Result();
 }

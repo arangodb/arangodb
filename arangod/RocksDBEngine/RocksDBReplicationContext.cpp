@@ -399,17 +399,17 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   TRI_ASSERT(_collection->sorted() && _lastIteratorOffset == 0);
 
   std::string lowKey;
-  StringRef highKey;  // points into document owned by _collection->mdr
+  std::string highKey;  // points into document owned by _collection->mdr
   VPackBuilder builder;
   uint64_t hash = 0x012345678;
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
 
-    highKey = RocksDBKey::primaryKey(rocksKey);
+    highKey = RocksDBKey::primaryKey(rocksKey).toString();
     TRI_voc_rid_t docRev = uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
 
     // set type
     if (lowKey.empty()) {
-      lowKey = highKey.toString();
+      lowKey = highKey;
     }
 
 
@@ -423,7 +423,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
     builder.add(velocypack::ValuePair(highKey.data(),highKey.size(), velocypack::ValueType::String));
     hash ^= builder.slice().hashString();
     builder.clear();
-    builder.add(VPackValue(docRev));
+    builder.add(VPackValue(TRI_RidToString(docRev)));
     hash ^= builder.slice().hash();
 
 
