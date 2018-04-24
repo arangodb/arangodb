@@ -25,6 +25,7 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <date/date.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -1290,13 +1291,10 @@ void HeartbeatThread::logThreadDeaths(bool force) {
     deadThreadsPosted = std::chrono::system_clock::now();
 
     LOG_TOPIC(INFO, Logger::HEARTBEAT) << "HeartbeatThread ok.";
-
+    std::string buffer;
+    buffer.reserve(40);
     for (auto const it : deadThreads) {
-      char buffer[40];
-      struct tm gmt;
-      time_t tt = std::chrono::system_clock::to_time_t(it.first);
-      gmtime_r(&tt, &gmt);
-      strftime(buffer, sizeof(buffer), "%FT%TZ", &gmt);
+      buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
 
       LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Prior crash of thread " << it.second
                                         << " occurred at " << buffer;
