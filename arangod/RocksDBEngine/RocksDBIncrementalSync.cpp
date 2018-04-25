@@ -454,8 +454,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
 
-  //LOG_DEVEL << chunkSlice.toJson();
-
   getRemoteTimer.release();
   // remove all keys that are below first remote key or beyond last remote key
   if (numChunks > 0) {
@@ -491,23 +489,11 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     StringRef lowRef(lowSlice);
     StringRef highRef(highSlice);
-    //LOG_DEVEL << chunk.toJson() << " " << highSlice.typeName() << " " << highSlice.toHex();
 
     LogicalCollection* coll = trx.documentCollection();
     auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
     std::unique_ptr<IndexIterator> iterator = ph->getSortedAllIterator(&trx);
     RocksDBGenericAllIndexIterator* gIterator = static_cast<RocksDBGenericAllIndexIterator*>(iterator.get());
-
-    //auto compare = [](StringRef const& a, StringRef const& b){
-    //  std::size_t compareLen = std::min(a.size(), b.size());
-    //  int res = memcmp(a.data(),b.data(),compareLen);
-    //  if (res == 0) {
-    //    if(a.size() != b.size()) {
-    //      return (a.size() > b.size()) ? 1 : -1;
-    //    }
-    //  }
-    //  return res;
-    //};
 
     VPackBuilder builder;
     gIterator->gnext(
@@ -515,17 +501,13 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           StringRef docKey(RocksDBKey::primaryKey(rocksKey));
 
           if (docKey.compare(lowRef) < 0) {
-          //if (compare(docKey, lowRef) < 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
-            //LOG_DEVEL << "lowKey not matching";
           } else if (docKey.compare(highRef) > 0) {
-          //} else if (compare(docKey, highRef) > 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
-            //LOG_DEVEL << "highKey not matching " << docKey.toString() << " - " << highRef.toString() << " compare: " << compare(docKey, highRef);
           }
         },
         UINT64_MAX);
@@ -549,8 +531,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       AccessMode::Type::EXCLUSIVE
     );
 
-    trx.addHint(
-        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
@@ -605,65 +586,61 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     // set to first chunk
     resetChunk();
 
-    std::function<void(VPackSlice, VPackSlice)> parseDoc = [&](VPackSlice doc,
-                                                               VPackSlice key) {
+    std::function<void(std::string, std::uint64_t)> compareChunk =
+      [&trx,&col,&options,&foundLowKey
+      ,&markers,&localHash,&hashString
+      ,&syncer, &currentChunkId
+      ,&numChunks, &keysId, &resetChunk, &compareChunk
+      ,&lowKey,&highKey]
+      (std::string const& docKey, std::uint64_t docRev){
 
       bool rangeUnequal = false;
       bool nextChunk = false;
 
-
-      int cmp1 = key.compareString(lowKey.data(), lowKey.length());
-      int cmp2 = key.compareString(highKey.data(), highKey.length());
-      //LOG_DEVEL  << "cmp1: " << cmp1 << " " << key.toJson() << " " << lowKey;
-      //LOG_DEVEL  << "cmp2: " << cmp2 << " " << key.toJson() << " " << highKey;
+      VPackBuilder docKeyBuilder;
+      docKeyBuilder.add(VPackValue(docKey));
+      VPackSlice docKeySlice(docKeyBuilder.slice());
+      int cmp1 = docKey.compare(lowKey);
+      int cmp2 = docKey.compare(highKey);
 
       if (cmp1 < 0) {
-        //LOG_DEVEL  << "values not on remote";
         // smaller values than lowKey mean they don't exist remotely
-        trx.remove(col->name(), key, options);
+        trx.remove(col->name(), docKeySlice, options);
         return;
       } else if (cmp1 >= 0 && cmp2 <= 0) {
-        //LOG_DEVEL  << "we are in range";
         // we only need to hash we are in the range
         if (cmp1 == 0) {
-          //LOG_DEVEL  << "found low";
           foundLowKey = true;
         }
 
-        markers.emplace_back(key.copyString(), TRI_ExtractRevisionId(doc));
+        markers.emplace_back(docKey, docRev); //revision as unit64
         // don't bother hashing if we have't found lower key
         if (foundLowKey) {
-          VPackSlice revision = doc.get(StaticStrings::RevString);
-          localHash ^= key.hashString();
+          VPackBuilder revBuilder;
+          revBuilder.add(VPackValue(TRI_RidToString(docRev)));
+          VPackSlice revision = revBuilder.slice(); //revision as string
+          localHash ^= docKeySlice.hashString();
           localHash ^= revision.hash();
 
           if (cmp2 == 0) {  // found highKey
             rangeUnequal = std::to_string(localHash) != hashString;
-            //LOG_DEVEL  << "found high";
             nextChunk = true;
-            //LOG_DEVEL  << "next chunk";
           }
         } else if (cmp2 == 0) {  // found high key, but not low key
-          //LOG_DEVEL  << "found high but not low";
           rangeUnequal = true;
           nextChunk = true;
-            //LOG_DEVEL  << "next chunk";
         }
       } else if (cmp2 > 0) {  // higher than highKey
-        //LOG_DEVEL  << "high key is higher";
         // current range was unequal and we did not find the
         // high key. Load range and skip to next
         rangeUnequal = true;
         nextChunk = true;
-        //LOG_DEVEL  << "next chunk";
       }
 
 
       TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
       if (nextChunk) {  // we are out of range, see next chunk
-        //LOG_DEVEL << "range equal:" <<std::boolalpha << !rangeUnequal;
         if (rangeUnequal && currentChunkId < numChunks) {
-          //LOG_DEVEL  << "sync 1";
           Result res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId,
                                         lowKey, highKey, markers);
           if (!res.ok()) {
@@ -675,29 +652,24 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           resetChunk();
           // key is higher than upper bound, recheck the current document
           if (cmp2 > 0) {
-            parseDoc(doc, key);
+            compareChunk(docKey, docRev);
           }
         }
       }
-    };
+    }; //comapre chunk - end
 
-    auto ph = static_cast<RocksDBCollection*>(col->getPhysical());
-    std::unique_ptr<IndexIterator> iterator =
-        ph->getSortedAllIterator(&trx);
-    iterator->next(
-        [&](LocalDocumentId const& token) {
-          if (col->readDocument(&trx, token, mmdr) == false) {
-            return;
-          }
-          VPackSlice doc(mmdr.vpack());
-          VPackSlice key = doc.get(StaticStrings::KeyString);
-          parseDoc(doc, key);
+    auto itr = static_cast<RocksDBCollection*>(col->getPhysical())->getSortedAllIterator(&trx);
+    auto iterator = static_cast<RocksDBGenericAllIndexIterator*>(itr.get());
+    iterator->gnext(
+        [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+          std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
+          TRI_voc_rid_t docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+          compareChunk(docKey, docRev);
         },
-        UINT64_MAX);
+        std::numeric_limits<std::uint64_t>::max()); // no limit on documents
 
     // we might have missed chunks, if the keys don't exist at all locally
     while (currentChunkId < numChunks) {
-      //LOG_DEVEL  << "sync 2";
       Result res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId, lowKey,
                                     highKey, markers);
       if (!res.ok()) {
@@ -714,7 +686,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       return res;
     }
   }
-  //LOG_DEVEL << chunkSlice.toJson();
 
   return Result();
 }
