@@ -655,7 +655,7 @@ function processQuery (query, explain) {
     stats.nodes.forEach(n => {
       if (parents.hasOwnProperty(n.id)) {
         parents[n.id].forEach(pid => {
-          nodes[pid].runtime -= nodes[n.id].runtime;
+          nodes[pid].runtime -= n.runtime;
         });
       }
     });
