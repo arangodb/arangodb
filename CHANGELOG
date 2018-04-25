@@ -1,3 +1,8 @@
+v3.3.9 (XXXX-XX-XX)
+-------------------
+
+* UI: fixed an unreasonable event bug within the modal view engine
+
 v3.3.8 (2018-04-24)
 -------------------
 
