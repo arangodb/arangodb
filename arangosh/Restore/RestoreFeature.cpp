@@ -655,13 +655,21 @@ namespace {
 arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
                             arangodb::RestoreFeature::JobData& jobData) {
   arangodb::Result result;
+  if (jobData.options.indexesFirst && jobData.options.importStructure) {
+    // restore indexes first if we are using rocksdb
+    result = ::restoreIndexes(httpClient, jobData);
+    if (result.fail()) {
+      return result;
+    }
+  }
   if (jobData.options.importData) {
     result = ::restoreData(httpClient, jobData);
     if (result.fail()) {
       return result;
     }
   }
-  if (jobData.options.importStructure) {
+  if (!jobData.options.indexesFirst && jobData.options.importStructure) {
+    // restore indexes second if we are using mmfiles
     result = ::restoreIndexes(httpClient, jobData);
     if (result.fail()) {
       return result;
@@ -899,6 +907,14 @@ void RestoreFeature::start() {
   // Version 1.4 did not yet have a cluster mode
   std::tie(result, _options.clusterMode) =
       _clientManager.getArangoIsCluster(*httpClient);
+  if (result.fail()) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << result.errorMessage();
+    _exitCode = EXIT_FAILURE;
+    return;
+  }
+
+  std::tie(result, _options.indexesFirst) =
+      _clientManager.getArangoIsUsingEngine(*httpClient, "rocksdb");
   if (result.fail()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << result.errorMessage();
     _exitCode = EXIT_FAILURE;

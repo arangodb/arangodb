@@ -86,6 +86,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool importData{true};
     bool importStructure{true};
     bool includeSystemCollections{false};
+    bool indexesFirst{false};
     bool overwrite{true};
     bool progress{true};
   };
