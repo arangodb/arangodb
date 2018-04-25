@@ -131,16 +131,18 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     data = Object.assign({}, data);
     if (data.collections && typeof data.collections === 'object') {
       data.collections = Object.assign({}, data.collections);
-      if (data.collections.read && data.collections.read.isArangoCollection) {
-        data.collections.read = [data.collections.read.name()];
-      } else if (Array.isArray(data.collections.read)) {
+      if (data.collections.read) {
+        if (!Array.isArray(data.collections.read)) {
+          data.collections.read = [data.collections.read];
+        }
         data.collections.read = data.collections.read.map(
           col => col.isArangoCollection ? col.name() : col
         );
       }
-      if (data.collections.write && data.collections.write.isArangoCollection) {
-        data.collections.write = [data.collections.write.name()];
-      } else if (Array.isArray(data.collections.write)) {
+      if (data.collections.write) {
+        if (!Array.isArray(data.collections.write)) {
+          data.collections.write = [data.collections.write];
+        }
         data.collections.write = data.collections.write.map(
           col => col.isArangoCollection ? col.name() : col
         );
