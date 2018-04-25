@@ -1570,7 +1570,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
   if (!replacements.empty()) {
     // finally replace the variables
     RedundantCalculationsReplacer finder(replacements);
-    plan->root()->walk(&finder);
+    plan->root()->walk(finder);
   }
 
   opt->addPlan(std::move(plan), rule, !replacements.empty());
@@ -1662,7 +1662,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
                                                    rootNode->getData()));
 
           RedundantCalculationsReplacer finder(replacements);
-          plan->root()->walk(&finder);
+          plan->root()->walk(finder);
           toUnlink.emplace(n);
           continue;
         }
@@ -1771,7 +1771,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt,
   bool hasEmptyResult = false;
   for (auto const& n : nodes) {
     ConditionFinder finder(plan.get(), &changes, &hasEmptyResult, false);
-    n->walk(&finder);
+    n->walk(finder);
   }
 
   if (!changes.empty()) {
@@ -2111,7 +2111,7 @@ void arangodb::aql::useIndexForSortRule(Optimizer* opt,
     auto sortNode = static_cast<SortNode*>(n);
 
     SortToIndexNode finder(plan.get());
-    sortNode->walk(&finder);
+    sortNode->walk(finder);
 
     if (finder._modified) {
       modified = true;
@@ -2148,15 +2148,15 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     auto conditionNode = calculationNode->expression()->node();
 
     // build the filter condition
-    auto condition = std::make_unique<Condition>(plan->getAst());
-    condition->andCombine(conditionNode);
-    condition->normalize(plan.get());
+    Condition condition(plan->getAst());
+    condition.andCombine(conditionNode);
+    condition.normalize(plan.get());
 
-    if (condition->root() == nullptr) {
+    if (condition.root() == nullptr) {
       continue;
     }
 
-    size_t const n = condition->root()->numMembers();
+    size_t const n = condition.root()->numMembers();
 
     if (n != 1) {
       // either no condition or multiple ORed conditions...
@@ -2178,7 +2178,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
-            auto newNode = condition->removeIndexCondition(
+            auto newNode = condition.removeIndexCondition(
                 plan.get(), indexNode->outVariable(), indexCondition->root());
 
             if (newNode == nullptr) {
@@ -2189,7 +2189,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               // still used by other nodes in the plan
               modified = true;
               handled = true;
-            } else if (newNode != condition->root()) {
+            } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
@@ -3633,7 +3633,7 @@ void arangodb::aql::undistributeRemoveAfterEnumCollRule(
 
   for (auto& n : nodes) {
     RemoveToEnumCollFinder finder(plan.get(), toUnlink);
-    n->walk(&finder);
+    n->walk(finder);
   }
 
   bool modified = false;
@@ -4343,7 +4343,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
     for (auto const& n : nodes) {
       TraversalConditionFinder finder(plan.get(), &modified);
-      n->walk(&finder);
+      n->walk(finder);
     }
   }
 
@@ -4380,15 +4380,15 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
     auto conditionNode = calculationNode->expression()->node();
 
     // build the filter condition
-    auto condition = std::make_unique<Condition>(plan->getAst());
-    condition->andCombine(conditionNode);
-    condition->normalize(plan.get());
+    Condition condition(plan->getAst());
+    condition.andCombine(conditionNode);
+    condition.normalize(plan.get());
 
-    if (condition->root() == nullptr) {
+    if (condition.root() == nullptr) {
       continue;
     }
 
-    size_t const n = condition->root()->numMembers();
+    size_t const n = condition.root()->numMembers();
 
     if (n != 1) {
       // either no condition or multiple ORed conditions...
@@ -4412,11 +4412,11 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
             // single index. this is something that we can handle
           Variable const* outVariable = traversalNode->pathOutVariable();
           std::unordered_set<Variable const*> varsUsedByCondition;
-          Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
+          Ast::getReferencedVariables(condition.root(), varsUsedByCondition);
           if (outVariable != nullptr &&
               varsUsedByCondition.find(outVariable) != varsUsedByCondition.end()) {
 
-            auto newNode = condition->removeTraversalCondition(plan.get(), outVariable, traversalCondition->root());
+            auto newNode = condition.removeTraversalCondition(plan.get(), outVariable, traversalCondition->root());
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed
@@ -4425,7 +4425,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
               // still used by other nodes in the plan
               modified = true;
               handled = true;
-            } else if (newNode != condition->root()) {
+            } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
@@ -4674,7 +4674,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           replacements.emplace(listNode->outVariable()->id,
                                returnNode->inVariable());
           RedundantCalculationsReplacer finder(replacements);
-          plan->root()->walk(&finder);
+          plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();
           plan->invalidateCost();

@@ -342,7 +342,7 @@ void handleViewsRule(
   bool hasEmptyResult = false;
   for (auto const& n : nodes) {
     IResearchViewConditionFinder finder(plan.get(), &changes, &hasEmptyResult);
-    n->walk(&finder);
+    n->walk(finder);
   }
 
   createdViewNodes.reserve(changes.size());

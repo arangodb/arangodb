@@ -118,7 +118,7 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
                            ManagedDocumentResult* mmdr,
                            arangodb::MMFilesEdgeIndex const* index,
                            TRI_MMFilesEdgeIndexHash_t const* indexImpl,
-                           std::unique_ptr<VPackBuilder>& keys);
+                           std::unique_ptr<VPackBuilder> keys);
 
   ~MMFilesEdgeIndexIterator();
 

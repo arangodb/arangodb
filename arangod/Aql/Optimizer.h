@@ -29,7 +29,6 @@
 #include "Basics/RollingVector.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace aql {
@@ -44,15 +43,11 @@ class Optimizer {
     int64_t rulesSkipped = 0;
     int64_t plansCreated = 1;  // 1 for the initial plan
 
-    std::shared_ptr<VPackBuilder> toVelocyPack() const {
-      auto result = std::make_shared<VPackBuilder>();
-      {
-        VPackObjectBuilder b(result.get());
-        result->add("rulesExecuted", VPackValue(rulesExecuted));
-        result->add("rulesSkipped", VPackValue(rulesSkipped));
-        result->add("plansCreated", VPackValue(plansCreated));
-      }
-      return result;
+    void toVelocyPack(velocypack::Builder& b) const {
+      velocypack::ObjectBuilder guard(&b, true);
+      b.add("rulesExecuted", velocypack::Value(rulesExecuted));
+      b.add("rulesSkipped", velocypack::Value(rulesSkipped));
+      b.add("plansCreated", velocypack::Value(plansCreated));
     }
   };
 

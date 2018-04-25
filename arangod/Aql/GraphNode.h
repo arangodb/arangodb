@@ -50,7 +50,7 @@ class GraphNode : public ExecutionNode {
   /// @brief constructor with a vocbase and a collection name
   GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             AstNode const* direction, AstNode const* graph,
-            std::unique_ptr<graph::BaseOptions>& options);
+            std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -60,7 +60,7 @@ class GraphNode : public ExecutionNode {
             std::vector<std::unique_ptr<Collection>> const& edgeColls,
             std::vector<std::unique_ptr<Collection>> const& vertexColls,
             std::vector<TRI_edge_direction_e> const& directions,
-            std::unique_ptr<graph::BaseOptions>& options);
+            std::unique_ptr<graph::BaseOptions> options);
 
  public:
   virtual ~GraphNode();

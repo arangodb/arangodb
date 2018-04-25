@@ -356,7 +356,7 @@ struct ClusterCommRequest {
 
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
-                     std::shared_ptr<std::string const> body)
+                     std::shared_ptr<std::string const> const& body)
       : destination(dest),
         requestType(type),
         path(path),
@@ -366,7 +366,7 @@ struct ClusterCommRequest {
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
                      std::shared_ptr<std::string const> body,
-                     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers)
+                     std::unique_ptr<std::unordered_map<std::string, std::string>> headers)
       : destination(dest),
         requestType(type),
         path(path),
@@ -377,7 +377,7 @@ struct ClusterCommRequest {
 
 
   void setHeaders(
-      std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
+      std::unique_ptr<std::unordered_map<std::string, std::string>> headers) {
     headerFields = std::move(headers);
   }
 };
@@ -460,8 +460,7 @@ class ClusterComm {
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
-      std::unique_ptr<std::unordered_map<std::string, std::string>>&
-          headerFields,
+      std::unordered_map<std::string, std::string> const& headerFields,
       std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
       bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 

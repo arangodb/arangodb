@@ -76,7 +76,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t /* messageId */) {
   HttpResponse response(code, leaseStringBuffer(0));
   response.setContentType(req.contentTypeResponse());
-  addResponse(&response, stealStatistics(1UL));
+  addResponse(response, stealStatistics(1UL));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, int errorNum,
@@ -96,7 +96,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
     HttpResponse resp(code, leaseStringBuffer(buffer.size()));
     resp.setContentType(req.contentTypeResponse());
     resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    addResponse(&resp, stealStatistics(1UL));
+    addResponse(resp, stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "handleSimpleError received an exception, closing connection:"
@@ -109,14 +109,13 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
   }
 }
 
-void HttpCommTask::addResponse(GeneralResponse* baseResponse,
+void HttpCommTask::addResponse(GeneralResponse& baseResponse,
                                RequestStatistics* stat) {
   _lock.assertLockedByCurrentThread();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  HttpResponse* response = dynamic_cast<HttpResponse*>(baseResponse);
-  TRI_ASSERT(response != nullptr);
+  HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
 #else
-  HttpResponse* response = static_cast<HttpResponse*>(baseResponse);
+  HttpResponse& response = static_cast<HttpResponse&>(baseResponse);
 #endif
 
   resetKeepAlive();
@@ -131,45 +130,45 @@ void HttpCommTask::addResponse(GeneralResponse* baseResponse,
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "handling CORS response";
 
     // send back original value of "Origin" header
-    response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin,
+    response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin,
                                   _origin);
 
     // send back "Access-Control-Allow-Credentials" header
-    response->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
+    response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
                                   (_denyCredentials ? "false" : "true"));
 
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
-    response->setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
+    response.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
                                   StaticStrings::ExposedCorsHeaders);
   }
 
   // use "IfNotSet"
-  response->setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
+  response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
                                 StaticStrings::NoSniff);
 
   // set "connection" header, keep-alive is the default
-  response->setConnectionType(_closeRequested
+  response.setConnectionType(_closeRequested
                                   ? rest::ConnectionType::C_CLOSE
                                   : rest::ConnectionType::C_KEEP_ALIVE);
 
-  size_t const responseBodyLength = response->bodySize();
+  size_t const responseBodyLength = response.bodySize();
 
   if (_requestType == rest::RequestType::HEAD) {
     // clear body if this is an HTTP HEAD request
     // HEAD must not return a body
-    response->headResponse(responseBodyLength);
+    response.headResponse(responseBodyLength);
   }
 
   // reserve a buffer with some spare capacity
   WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 128), stat);
 
   // write header
-  response->writeHeader(buffer._buffer);
+  response.writeHeader(buffer._buffer);
 
   // write body
   if (_requestType != rest::RequestType::HEAD) {
-    buffer._buffer->appendText(response->body());
+    buffer._buffer->appendText(response.body());
   }
 
   buffer._buffer->ensureNullTerminated();
@@ -193,7 +192,7 @@ void HttpCommTask::addResponse(GeneralResponse* baseResponse,
         << _connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_requestType) << "\",\""
         << HttpRequest::translateVersion(_protocolVersion) << "\","
-        << static_cast<int>(response->responseCode()) << ","
+        << static_cast<int>(response.responseCode()) << ","
         << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
         << "\"," << stat->timingsCsv();
   }
@@ -206,11 +205,11 @@ void HttpCommTask::addResponse(GeneralResponse* baseResponse,
       << _connectionInfo.clientAddress << "\",\""
       << HttpRequest::translateMethod(_requestType) << "\",\""
       << HttpRequest::translateVersion(_protocolVersion) << "\","
-      << static_cast<int>(response->responseCode()) << ","
+      << static_cast<int>(response.responseCode()) << ","
       << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
       << "\"," << Logger::FIXED(totalTime, 6);
 
-  std::unique_ptr<basics::StringBuffer> body = response->stealBody();
+  std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   returnStringBuffer(body.release()); // takes care of deleting
 }
 
@@ -597,12 +596,12 @@ bool HttpCommTask::processRead(double startTime) {
     if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
       HttpResponse resp(rest::ResponseCode::SERVICE_UNAVAILABLE, leaseStringBuffer(0));
       ReplicationFeature::prepareFollowerResponse(&resp, mode);
-      addResponse(&resp, nullptr);
+      addResponse(resp, nullptr);
     } else {
       std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
       HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
       resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-      addResponse(&resp, nullptr);
+      addResponse(resp, nullptr);
     }
   }
 
@@ -740,7 +739,7 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
                               StaticStrings::N1800);
   }
 
-  addResponse(&resp, nullptr);
+  addResponse(resp, nullptr);
 }
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(

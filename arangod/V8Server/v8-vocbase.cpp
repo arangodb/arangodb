@@ -550,11 +550,11 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(TRI_V8_ASCII_STRING(isolate, "ast"),
               TRI_VPackToV8(isolate, parseResult.result->slice()));
 
-  if (parseResult.warnings == nullptr) {
+  if (parseResult.extra == nullptr || !parseResult.extra->slice().hasKey("warnings")) {
     result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
   } else {
     result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"),
-                TRI_VPackToV8(isolate, parseResult.warnings->slice()));
+                TRI_VPackToV8(isolate, parseResult.extra->slice().get("warnings")));
   }
 
   TRI_V8_RETURN(result);
@@ -680,21 +680,23 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "cacheable"),
                   v8::Boolean::New(isolate, queryResult.cached));
     }
-
-    if (queryResult.warnings == nullptr) {
-      result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
-    } else {
-      result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"),
-                  TRI_VPackToV8(isolate, queryResult.warnings->slice()));
-    }
-    if (queryResult.stats != nullptr) {
-      VPackSlice stats = queryResult.stats->slice();
+    
+    if (queryResult.extra != nullptr) {
+      VPackSlice warnings = queryResult.extra->slice().get("warnings");
+      if (warnings.isNone()) {
+        result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
+      } else {
+        result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"),
+                    TRI_VPackToV8(isolate, queryResult.extra->slice().get("warnings")));
+      }
+      VPackSlice stats = queryResult.extra->slice().get("stats");
       if (stats.isNone()) {
         result->Set(TRI_V8_ASCII_STRING(isolate, "stats"), v8::Object::New(isolate));
       } else {
         result->Set(TRI_V8_ASCII_STRING(isolate, "stats"), TRI_VPackToV8(isolate, stats));
       }
     } else {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
       result->Set(TRI_V8_ASCII_STRING(isolate, "stats"), v8::Object::New(isolate));
     }
   }
@@ -767,22 +769,24 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      TRI_VPackToV8(isolate, queryResult.result->slice(),
                                    queryResult.context->getVPackOptions()));
   }
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
+  if (queryResult.extra != nullptr) {
+    VPackSlice stats = queryResult.extra->slice().get("stats");
     if (!stats.isNone()) {
       result->ForceSet(TRI_V8_ASCII_STRING(isolate, "stats"),
                        TRI_VPackToV8(isolate, stats));
     }
+    VPackSlice profile = queryResult.extra->slice().get("profile");
+    if (!profile.isNone()) {
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "profile"),
+                       TRI_VPackToV8(isolate, profile));
+    }
   }
-  if (queryResult.profile != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "profile"),
-                     TRI_VPackToV8(isolate, queryResult.profile->slice()));
-  }
-  if (queryResult.warnings == nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
+  
+  if (queryResult.extra == nullptr || !queryResult.extra->slice().hasKey("warnings")) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
   } else {
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "warnings"),
-                     TRI_VPackToV8(isolate, queryResult.warnings->slice()));
+    result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"),
+                TRI_VPackToV8(isolate, queryResult.extra->slice().get("warnings")));
   }
   result->ForceSet(TRI_V8_ASCII_STRING(isolate, "cached"),
                    v8::Boolean::New(isolate, queryResult.cached));
@@ -878,23 +882,30 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result->ForceSet(TRI_V8_ASCII_STRING(isolate, "json"), queryResult.result);
   }
 
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
+  if (queryResult.extra != nullptr) {
+    VPackSlice stats = queryResult.extra->slice().get("stats");
     if (!stats.isNone()) {
       result->ForceSet(TRI_V8_ASCII_STRING(isolate, "stats"),
                        TRI_VPackToV8(isolate, stats));
     }
+    VPackSlice warnings = queryResult.extra->slice().get("warnings");
+    if (warnings.isNone()) {
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
+    } else {
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "warnings"), TRI_VPackToV8(isolate,warnings));
+    }
+    VPackSlice profile = queryResult.extra->slice().get("profile");
+    if (!profile.isNone()) {
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "profile"),
+                       TRI_VPackToV8(isolate, profile));
+    }
+    VPackSlice plan = queryResult.extra->slice().get("plan");
+    if (!plan.isNone()) {
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "plan"),
+                       TRI_VPackToV8(isolate, plan));
+    }
   }
-  if (queryResult.profile != nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "profile"),
-                     TRI_VPackToV8(isolate, queryResult.profile->slice()));
-  }
-  if (queryResult.warnings == nullptr) {
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
-  } else {
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "warnings"),
-                     TRI_VPackToV8(isolate, queryResult.warnings->slice()));
-  }
+  
   result->ForceSet(TRI_V8_ASCII_STRING(isolate, "cached"),
                    v8::Boolean::New(isolate, queryResult.cached));
 
