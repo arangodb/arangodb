@@ -454,7 +454,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
 
-  LOG_DEVEL << chunkSlice.toJson();
+  //LOG_DEVEL << chunkSlice.toJson();
 
   getRemoteTimer.release();
   // remove all keys that are below first remote key or beyond last remote key
@@ -491,35 +491,37 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     StringRef lowRef(lowSlice);
     StringRef highRef(highSlice);
-    LOG_DEVEL << chunk.toJson() << " " << highSlice.typeName() << " " << highSlice.toHex();
+    //LOG_DEVEL << chunk.toJson() << " " << highSlice.typeName() << " " << highSlice.toHex();
 
     LogicalCollection* coll = trx.documentCollection();
     auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
     std::unique_ptr<IndexIterator> iterator = ph->getSortedAllIterator(&trx);
     RocksDBGenericAllIndexIterator* gIterator = static_cast<RocksDBGenericAllIndexIterator*>(iterator.get());
 
-    auto compare = [](StringRef const& a, StringRef const& b){
-      std::size_t compareLen = std::min(a.size(), b.size());
-      int res = memcmp(a.data(),b.data(),compareLen);
-      if (res == 0) {
-        if(a.size() != b.size()) {
-          return (a.size() > b.size()) ? 1 : -1;
-        }
-      }
-      return res;
-    };
+    //auto compare = [](StringRef const& a, StringRef const& b){
+    //  std::size_t compareLen = std::min(a.size(), b.size());
+    //  int res = memcmp(a.data(),b.data(),compareLen);
+    //  if (res == 0) {
+    //    if(a.size() != b.size()) {
+    //      return (a.size() > b.size()) ? 1 : -1;
+    //    }
+    //  }
+    //  return res;
+    //};
 
     VPackBuilder builder;
     gIterator->gnext(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           StringRef docKey(RocksDBKey::primaryKey(rocksKey));
 
-          if (compare(docKey, lowRef) < 0) {
+          if (docKey.compare(lowRef) < 0) {
+          //if (compare(docKey, lowRef) < 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
             //LOG_DEVEL << "lowKey not matching";
-          } else if (compare(docKey, highRef) > 0) {
+          } else if (docKey.compare(highRef) > 0) {
+          //} else if (compare(docKey, highRef) > 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
@@ -624,7 +626,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         //LOG_DEVEL  << "we are in range";
         // we only need to hash we are in the range
         if (cmp1 == 0) {
-          LOG_DEVEL  << "found low";
+          //LOG_DEVEL  << "found low";
           foundLowKey = true;
         }
 
@@ -637,31 +639,31 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
           if (cmp2 == 0) {  // found highKey
             rangeUnequal = std::to_string(localHash) != hashString;
-            LOG_DEVEL  << "found high";
+            //LOG_DEVEL  << "found high";
             nextChunk = true;
-            LOG_DEVEL  << "next chunk";
+            //LOG_DEVEL  << "next chunk";
           }
         } else if (cmp2 == 0) {  // found high key, but not low key
-          LOG_DEVEL  << "found high but not low";
+          //LOG_DEVEL  << "found high but not low";
           rangeUnequal = true;
           nextChunk = true;
-            LOG_DEVEL  << "next chunk";
+            //LOG_DEVEL  << "next chunk";
         }
       } else if (cmp2 > 0) {  // higher than highKey
-        LOG_DEVEL  << "high key is higher";
+        //LOG_DEVEL  << "high key is higher";
         // current range was unequal and we did not find the
         // high key. Load range and skip to next
         rangeUnequal = true;
         nextChunk = true;
-            LOG_DEVEL  << "next chunk";
+        //LOG_DEVEL  << "next chunk";
       }
 
 
       TRI_ASSERT(!rangeUnequal || nextChunk);  // A => B
       if (nextChunk) {  // we are out of range, see next chunk
-        LOG_DEVEL << "range equal:" <<std::boolalpha << !rangeUnequal;
+        //LOG_DEVEL << "range equal:" <<std::boolalpha << !rangeUnequal;
         if (rangeUnequal && currentChunkId < numChunks) {
-          LOG_DEVEL  << "sync 1";
+          //LOG_DEVEL  << "sync 1";
           Result res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId,
                                         lowKey, highKey, markers);
           if (!res.ok()) {
@@ -695,7 +697,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     // we might have missed chunks, if the keys don't exist at all locally
     while (currentChunkId < numChunks) {
-      LOG_DEVEL  << "sync 2";
+      //LOG_DEVEL  << "sync 2";
       Result res = syncChunkRocksDB(syncer, &trx, keysId, currentChunkId, lowKey,
                                     highKey, markers);
       if (!res.ok()) {
@@ -712,7 +714,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       return res;
     }
   }
-  LOG_DEVEL << chunkSlice.toJson();
+  //LOG_DEVEL << chunkSlice.toJson();
 
   return Result();
 }

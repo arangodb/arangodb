@@ -399,11 +399,11 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   TRI_ASSERT(_collection->sorted() && _lastIteratorOffset == 0);
 
   std::string lowKey;
-  std::string highKey;  // points into document owned by _collection->mdr
+  std::string highKey;  // needs to be a string (not ref) as the rocksdb slice will not be valid outside the callback
   VPackBuilder builder;
   uint64_t hash = 0x012345678;
-  auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
 
+  auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     highKey = RocksDBKey::primaryKey(rocksKey).toString();
     TRI_voc_rid_t docRev = uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
 
@@ -412,22 +412,16 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       lowKey = highKey;
     }
 
-
-
     // we can get away with the fast hash function here, as key values are
     // restricted to strings
 
-    // FIXME - hash without additional builder!
-
     builder.clear();
-    builder.add(velocypack::ValuePair(highKey.data(),highKey.size(), velocypack::ValueType::String));
+    builder.add(VPackValue(highKey));
     hash ^= builder.slice().hashString();
     builder.clear();
     builder.add(VPackValue(TRI_RidToString(docRev)));
     hash ^= builder.slice().hash();
-
-
-  };
+  }; //cb
 
   b.openArray();
   while (_collection->hasMore) {
@@ -440,7 +434,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       }
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
-      b.add("high", velocypack::ValuePair(highKey.data(), highKey.size(), velocypack::ValueType::String));
+      b.add("high", VPackValue(highKey));
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
       lowKey.clear();      // reset string
