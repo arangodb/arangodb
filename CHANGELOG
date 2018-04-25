@@ -1,6 +1,7 @@
 devel
 -----
 
+* UI: fixed an unreasonable event bug within the modal view engine
 
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
