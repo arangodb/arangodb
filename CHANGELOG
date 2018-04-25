@@ -1,10 +1,11 @@
-v3.3.8 (XXXX-XX-XX)
+v3.3.9 (XXXX-XX-XX)
 -------------------
 
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
 
-* fixed issue #4934: Wrong used GeoIndex depending on FILTER order
+v3.3.8 (XXXX-XX-XX)
+-------------------
 
 * added arangod startup option `--dump-options` to print all configuration parameters
   as a JSON object
