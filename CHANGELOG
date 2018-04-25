@@ -4,7 +4,7 @@ v3.3.9 (XXXX-XX-XX)
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
 
-v3.3.8 (XXXX-XX-XX)
+v3.3.8 (2018-04-24)
 -------------------
 
 * added arangod startup option `--dump-options` to print all configuration parameters
