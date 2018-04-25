@@ -49,7 +49,7 @@ class ShortestPathNode : public GraphNode {
  public:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start, AstNode const* target,
-                AstNode const* graph, std::unique_ptr<graph::BaseOptions>& options);
+                AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
 
   ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -65,7 +65,7 @@ class ShortestPathNode : public GraphNode {
                    std::string const& startVertexId,
                    Variable const* inTargetVariable,
                    std::string const& targetVertexId,
-                   std::unique_ptr<graph::BaseOptions>& options);
+                   std::unique_ptr<graph::BaseOptions> options);
 
  public:
   /// @brief return the type of the node

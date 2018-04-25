@@ -362,12 +362,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
   _varsUsedLater.reserve(varsUsedLater.length());
   for (auto const& it : VPackArrayIterator(varsUsedLater)) {
-    auto oneVarUsedLater = std::make_unique<Variable>(it);
-    Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
+    Variable oneVarUsedLater(it);
+    Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
     if (oneVariable == nullptr) {
       std::string errmsg = "varsUsedLater: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarUsedLater->id);
+                           StringUtils::itoa(oneVarUsedLater.id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
     _varsUsedLater.emplace(oneVariable);
@@ -382,12 +382,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
   _varsValid.reserve(varsValidList.length());
   for (auto const& it : VPackArrayIterator(varsValidList)) {
-    auto oneVarValid = std::make_unique<Variable>(it);
-    Variable* oneVariable = allVars->getVariable(oneVarValid->id);
+    Variable oneVarValid(it);
+    Variable* oneVariable = allVars->getVariable(oneVarValid.id);
 
     if (oneVariable == nullptr) {
       std::string errmsg = "varsValid: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarValid->id);
+                           StringUtils::itoa(oneVarValid.id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
     _varsValid.emplace(oneVariable);
@@ -525,17 +525,17 @@ void ExecutionNode::invalidateCost() {
 }
 
 /// @brief functionality to walk an execution plan recursively
-bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
+bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Only do every node exactly once
   // note: this check is not required normally because execution
   // plans do not contain cycles
-  if (worker->done(this)) {
+  if (worker.done(this)) {
     return false;
   }
 #endif
 
-  if (worker->before(this)) {
+  if (worker.before(this)) {
     return true;
   }
 
@@ -551,9 +551,9 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
     auto p = static_cast<SubqueryNode*>(this);
     auto subquery = p->getSubquery();
 
-    if (worker->enterSubquery(this, subquery)) {
+    if (worker.enterSubquery(this, subquery)) {
       bool shouldAbort = subquery->walk(worker);
-      worker->leaveSubquery(this, subquery);
+      worker.leaveSubquery(this, subquery);
 
       if (shouldAbort) {
         return true;
@@ -561,7 +561,7 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
     }
   }
 
-  worker->after(this);
+  worker.after(this);
 
   return false;
 }
@@ -762,7 +762,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   }
   v->setSharedPtr(&v);
 
-  walk(v.get());
+  walk(*v);
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     auto sq = static_cast<SubqueryNode*>(s);
@@ -774,7 +774,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   /*
   std::cout << std::endl;
   RegisterPlanningDebugger debugger;
-  walk(&debugger);
+  walk(debugger);
   std::cout << std::endl;
   */
 }
@@ -1257,6 +1257,10 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(incoming);
   transaction::Methods* trx = _plan->getAst()->query()->trx();
+  if (trx->status() != transaction::Status::RUNNING) {
+    nrItems = 0;
+    return 0.0;
+  }
   size_t count = _collection->count(trx);
   nrItems = incoming * count;
   // We do a full collection scan for each incoming item.
@@ -1609,7 +1613,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
     SubqueryVarUsageFinder subfinder;
-    sub->walk(&subfinder);
+    sub->walk(subfinder);
 
     // keep track of all variables used by a (dependent) subquery
     // this is, all variables in the subqueries _usedLater that are not in
@@ -1630,7 +1634,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 /// @brief getVariablesUsedHere, returning a vector
 std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
   SubqueryVarUsageFinder finder;
-  _subquery->walk(&finder);
+  _subquery->walk(finder);
 
   std::vector<Variable const*> v;
   for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
@@ -1647,7 +1651,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
 void SubqueryNode::getVariablesUsedHere(
     std::unordered_set<Variable const*>& vars) const {
   SubqueryVarUsageFinder finder;
-  _subquery->walk(&finder);
+  _subquery->walk(finder);
 
   for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
        ++it) {
@@ -1700,13 +1704,13 @@ struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
 
 bool SubqueryNode::canThrow() {
   CanThrowFinder finder;
-  _subquery->walk(&finder);
+  _subquery->walk(finder);
   return finder._canThrow;
 }
 
 bool SubqueryNode::isDeterministic() {
   IsDeterministicFinder finder;
-  _subquery->walk(&finder);
+  _subquery->walk(finder);
   return finder._isDeterministic;
 }
 

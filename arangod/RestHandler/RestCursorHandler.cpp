@@ -197,12 +197,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         result.add("count", VPackValue(n));
       }
       result.add("cached", VPackValue(queryResult.cached));
-      if (queryResult.cached) {
+      if (queryResult.cached || !queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
         result.close();
       } else {
-        auto extra = queryResult.extra();
-        result.add("extra", extra->slice());
+        result.add("extra", queryResult.extra->slice());
       }
       result.add(StaticStrings::Error, VPackValue(false));
       result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));

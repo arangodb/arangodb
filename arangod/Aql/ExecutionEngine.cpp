@@ -428,7 +428,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ///        clean out their snippets after a TTL.
   ///        Returns the First Coordinator Engine, the one not in the registry.
   ExecutionEngineResult buildEngines(
-      QueryRegistry* registry, std::unordered_set<ShardID>* lockedShards) {
+      QueryRegistry* registry, std::unordered_set<ShardID>& lockedShards) {
     // QueryIds are filled by responses of DBServer parts.
     std::unordered_map<std::string, std::string> queryIds;
 
@@ -506,19 +506,16 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
     if (isCoordinator) {
       try {
-        std::unique_ptr<std::unordered_set<std::string>> lockedShards;
+        std::unordered_set<std::string> lockedShards;
         if (CollectionLockState::_noLockHeaders != nullptr) {
-          lockedShards = std::make_unique<std::unordered_set<std::string>>(
-              *CollectionLockState::_noLockHeaders);
-        } else {
-          lockedShards = std::make_unique<std::unordered_set<std::string>>();
+          lockedShards = *CollectionLockState::_noLockHeaders;
         }
 
-        auto inst = std::make_unique<CoordinatorInstanciator>(query);
+        CoordinatorInstanciator inst(query);
 
-        plan->root()->walk(inst.get());
+        plan->root()->walk(inst);
 
-        auto result = inst->buildEngines(queryRegistry, lockedShards.get());
+        auto result = inst.buildEngines(queryRegistry, lockedShards);
         if (!result.ok()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
                                          result.errorMessage());
@@ -553,10 +550,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       }
     } else {
       // instantiate the engine on a local server
-      engine = new ExecutionEngine(query);
-      auto inst = std::make_unique<Instanciator>(engine);
-      plan->root()->walk(inst.get());
-      root = inst.get()->root;
+      engine = new ExecutionEngine(query); 
+      auto inst = std::make_unique<Instanciator>(engine); 
+      plan->root()->walk(*inst); 
+      root = inst.get()->root; 
       TRI_ASSERT(root != nullptr);
     }
 
