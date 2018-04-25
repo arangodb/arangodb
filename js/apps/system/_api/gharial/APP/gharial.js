@@ -789,7 +789,7 @@ router.post('/:graph/edge/:collection', function (req, res) {
     } else {
       throw Object.assign(
         new httperr.Gone('_from: ' + e.errorMessage),
-        {errorNum: errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, cause: e}
+        {errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, cause: e}
       );
     }
   }
@@ -806,7 +806,7 @@ router.post('/:graph/edge/:collection', function (req, res) {
     } else {
       throw Object.assign(
         new httperr.Gone('_to: ' + e.errorMessage),
-        {errorNum: errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, cause: e}
+        {errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, cause: e}
       );
     }
   }
