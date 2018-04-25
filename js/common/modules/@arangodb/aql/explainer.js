@@ -617,8 +617,23 @@ function processQuery (query, explain) {
       }
     });
 
-    if (profileMode) { // merge runtime info into plan
-      stats.nodes.forEach(n => {
+    var count = n.length, site = 'COOR';
+    while (count > 0) {
+      --count;
+      var node = n[count];
+      // get location of execution node in cluster
+      node.site = site;
+
+      if (node.type === 'RemoteNode') {
+        site = (site === 'COOR' ? 'DBS' : 'COOR');
+      }
+    }
+  };
+  recursiveWalk(plan.nodes, 0);
+
+  if (profileMode) { // merge runtime info into plan
+    stats.nodes.forEach(n => {
+      if (nodes.hasOwnProperty(n.id)) {
         nodes[n.id].calls = n.calls;
         nodes[n.id].items = n.items;
         nodes[n.id].runtime = n.runtime;
@@ -633,31 +648,18 @@ function processQuery (query, explain) {
         if (l > maxRuntimeLen) {
           maxCallsLen = l;
         }
-      });
-      // by design the runtime is cumulative right now.
-      // by subtracting the dependencies from parent runtime we get the runtime per node
-      stats.nodes.forEach(n => {
-        if (parents.hasOwnProperty(n.id)) {
-          parents[n.id].forEach(pid => {
-            nodes[pid].runtime -= nodes[n.id].runtime;
-          });
-        }
-      });
-    }  
-
-    var count = n.length, site = 'COOR';
-    while (count > 0) {
-      --count;
-      var node = n[count];
-      // get location of execution node in cluster
-      node.site = site;
-
-      if (node.type === 'RemoteNode') {
-        site = (site === 'COOR' ? 'DBS' : 'COOR');
       }
-    }
-  };
-  recursiveWalk(plan.nodes, 0);
+    });
+    // by design the runtime is cumulative right now.
+    // by subtracting the dependencies from parent runtime we get the runtime per node
+    stats.nodes.forEach(n => {
+      if (parents.hasOwnProperty(n.id)) {
+        parents[n.id].forEach(pid => {
+          nodes[pid].runtime -= n.runtime;
+        });
+      }
+    });
+  }
 
   var references = { },
     collectionVariables = { },

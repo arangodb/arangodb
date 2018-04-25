@@ -296,6 +296,26 @@ Enabling and disabling optimizer rules
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
+Execute instrumented query and return result together with
+execution plan and profiling information
+
+@EXAMPLE_ARANGOSH_RUN{RestCursorProfileQuery}
+    var url = "/_api/cursor";
+    var body = {
+      query: "LET s = SLEEP(0.25) LET t = SLEEP(0.5) RETURN 1",
+      count: true,
+      options: {
+        profile: 2
+      }
+    };
+
+    var response = logCurlRequest('POST', url, body);
+
+    assert(response.code === 201);
+
+    logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
+
 Execute a data-modification query and retrieve the number of
 modified documents
 
