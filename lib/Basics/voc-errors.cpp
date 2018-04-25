@@ -74,7 +74,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
   REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
@@ -274,6 +273,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
+  REG_ERROR(ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION, " is not an ArangoCollection");
   REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING, "Invalid example type. Has to be String, Array or Object");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT, "Invalid example type. Has to be Array or Object");
