@@ -652,8 +652,6 @@
 ///   The collection is already used in an edge definition of the graph.
 /// - 1930: @LIT{edge collection not used in graph}
 ///   The edge collection is not used in any edge definition of the graph.
-/// - 1931: @LIT{ is not an ArangoCollection}
-///   The collection is not an ArangoCollection.
 /// - 1932: @LIT{collection _graphs does not exist}
 ///   collection _graphs does not exist.
 /// - 1933: @LIT{Invalid example type. Has to be String, Array or Object}
@@ -1806,16 +1804,6 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 (1239)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1240: ERROR_ARANGO_COLLECTION_NOT_FOUND
-///
-/// collection not found
-///
-/// Will be raised when a collection with a given identifier or handle is unknown.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               (1240)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1300: ERROR_ARANGO_DATAFILE_FULL
@@ -3525,26 +3513,11 @@ void TRI_InitializeErrorMessages ();
 
 #define TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          (1930)
 
-<<<<<<< HEAD
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
-///
-///  is not an ArangoCollection
-///
-/// The collection is not an ArangoCollection.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          (1931)
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
 ///
 /// collection _graphs does not exist
 ///
-=======
-/// 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
-/// "collection _graphs does not exist"
->>>>>>> 125c587772... added more tests, changed error message
 /// collection _graphs does not exist.
 ////////////////////////////////////////////////////////////////////////////////
 
