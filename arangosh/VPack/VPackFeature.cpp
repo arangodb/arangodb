@@ -161,13 +161,13 @@ void VPackFeature::start() {
     s = ConvertFromHex(s);
   }
 
-  auto customTypeHandler = std::make_unique<CustomTypeHandler>();
+  CustomTypeHandler customTypeHandler;
   
   VPackOptions options;
   options.prettyPrint = _prettyPrint;
   options.unsupportedTypeBehavior = 
     (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
-  options.customTypeHandler = customTypeHandler.get();
+  options.customTypeHandler = &customTypeHandler;
 
   try {
     VPackValidator validator(&options);

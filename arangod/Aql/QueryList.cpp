@@ -131,7 +131,7 @@ void QueryList::remove(Query* query) {
       double loadTime = 0.0;
 
       if (profile != nullptr) {
-        loadTime = profile->timers[QueryExecutionState::toNumber(QueryExecutionState::ValueType::LOADING_COLLECTIONS)];
+        loadTime = profile->timer(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
       }
 
       std::string bindParameters;

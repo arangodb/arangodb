@@ -979,7 +979,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           query->getStats(answerBuilder);
 
           // return warnings if present
-          query->addWarningsToVelocyPackObject(answerBuilder);
+          query->addWarningsToVelocyPack(answerBuilder);
 
           // return the query to the registry
           _queryRegistry->close(&_vocbase, _qId);

@@ -101,22 +101,21 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       ->vstMaxSize();
 }
 
-void VstCommTask::addResponse(GeneralResponse* baseResponse,
+void VstCommTask::addResponse(GeneralResponse& baseResponse,
                               RequestStatistics* stat) {
     _lock.assertLockedByCurrentThread();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    VstResponse* response = dynamic_cast<VstResponse*>(baseResponse);
-    TRI_ASSERT(response != nullptr);
+    VstResponse& response = dynamic_cast<VstResponse&>(baseResponse);
 #else
-    VstResponse* response = static_cast<VstResponse*>(baseResponse);
+    VstResponse& response = static_cast<VstResponse&>(baseResponse);
 #endif
 
-  VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
+  VPackMessageNoOwnBuffer response_message = response.prepareForNetwork();
   uint64_t const mid = response_message._id;
 
   std::vector<VPackSlice> slices;
 
-  if (response->generateBody()) {
+  if (response.generateBody()) {
     slices.reserve(1 + response_message._payloads.size());
     slices.push_back(response_message._header);
 
@@ -142,7 +141,7 @@ void VstCommTask::addResponse(GeneralResponse* baseResponse,
     LOG_TOPIC(TRACE, Logger::REQUESTS)
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << VstRequest::translateVersion(_protocolVersion) << "\","
-        << static_cast<int>(response->responseCode()) << ","
+        << static_cast<int>(response.responseCode()) << ","
         << _connectionInfo.clientAddress << "\"," << stat->timingsCsv();
   }
 
@@ -170,7 +169,7 @@ void VstCommTask::addResponse(GeneralResponse* baseResponse,
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VstRequest::translateVersion(_protocolVersion) << "\","
-      << static_cast<int>(response->responseCode()) << ","
+      << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
 }
 
@@ -295,7 +294,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
         VstResponse resp(ResponseCode::SERVICE_UNAVAILABLE, messageId);
         resp.setContentType(fakeRequest.contentTypeResponse());
         ReplicationFeature::prepareFollowerResponse(&resp, mode);
-        addResponse(&resp, nullptr);
+        addResponse(resp, nullptr);
       } catch (basics::Exception const& ex) {
         LOG_TOPIC(ERR, Logger::FIXME) << "Error while preparing follower response " << ex.message();
         closeStream(); // same as in handleSimpleError
@@ -492,7 +491,7 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
 
   try {
     resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    addResponse(&resp, nullptr);
+    addResponse(resp, nullptr);
   } catch (...) {
     closeStream();
   }

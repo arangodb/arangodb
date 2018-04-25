@@ -66,7 +66,7 @@ constexpr bool EdgeIndexFillBlockCache = false;
 }
 
 RocksDBEdgeIndexWarmupTask::RocksDBEdgeIndexWarmupTask(
-    std::shared_ptr<basics::LocalTaskQueue> queue,
+    std::shared_ptr<basics::LocalTaskQueue> const& queue,
     RocksDBEdgeIndex* index,
     transaction::Methods* trx,
     rocksdb::Slice const& lower,
@@ -89,15 +89,14 @@ void RocksDBEdgeIndexWarmupTask::run() {
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBEdgeIndex const* index,
-    std::unique_ptr<VPackBuilder>& keys, std::shared_ptr<cache::Cache> cache)
+    std::unique_ptr<VPackBuilder> keys, std::shared_ptr<cache::Cache> cache)
     : IndexIterator(collection, trx, index),
-      _keys(keys.get()),
+      _keys(std::move(keys)),
       _keysIterator(_keys->slice()),
       _index(index),
       _bounds(RocksDBKeyBounds::EdgeIndex(0)),
-      _cache(cache),
+      _cache(std::move(cache)),
       _builderIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue()) {
-  keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys != nullptr);
   TRI_ASSERT(_keys->slice().isArray());
 
@@ -913,7 +912,7 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, this, keys, _cache);
+  return new RocksDBEdgeIndexIterator(_collection, trx, this, std::move(keys), _cache);
 }
 
 /// @brief create the iterator
@@ -939,7 +938,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, this, keys, _cache);
+  return new RocksDBEdgeIndexIterator(_collection, trx, this, std::move(keys), _cache);
 }
 
 /// @brief add a single value node to the iterator's keys

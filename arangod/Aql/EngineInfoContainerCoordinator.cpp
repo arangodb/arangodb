@@ -65,9 +65,8 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_map<std::string, std::string> const& dbServerQueryIds,
     std::vector<uint64_t>& coordinatorQueryIds,
-    std::unordered_set<ShardID> const* lockedShards) const {
+    std::unordered_set<ShardID> const& lockedShards) const {
   TRI_ASSERT(!_nodes.empty());
-  TRI_ASSERT(lockedShards != nullptr);
   {
     auto uniqEngine = std::make_unique<ExecutionEngine>(query);
     query->setEngine(uniqEngine.release());
@@ -77,7 +76,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   {
     auto cpyLockedShards =
-        std::make_unique<std::unordered_set<std::string>>(*lockedShards);
+        std::make_unique<std::unordered_set<std::string>>(lockedShards);
     engine->setLockedShards(cpyLockedShards.release());
   }
 
@@ -144,7 +143,7 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_map<std::string, std::string>& dbServerQueryIds,
-    std::unordered_set<ShardID> const* lockedShards) const {
+    std::unordered_set<ShardID> const& lockedShards) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
