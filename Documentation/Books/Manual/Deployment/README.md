@@ -17,4 +17,4 @@ By technology:
 - [ArangoDB Starter](ArangoDBStarter/README.md)
 - [Docker](Docker/README.md)
 - [Kubernetes](Kubernetes/README.md)
-- [DC/OS](DCOS/README.md)
+- [Mesos, DC/OS](DCOS/README.md)
