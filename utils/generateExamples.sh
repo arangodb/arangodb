@@ -30,7 +30,7 @@ if [ -z "${ARANGOSH}" ];  then
         ARANGOSH="build/bin/arangosh${EXT}"
         BIN_PATH=build/bin/
     elif [ -x "build/bin/RelWithDebInfo/arangosh${EXT}" ];  then
-        ARANGOSH="build/bin/arangosh${EXT}"
+        ARANGOSH="build/bin/RelWithDebInfo/arangosh${EXT}"
         BIN_PATH=build/bin/RelWithDebInfo/
     elif [ -x "bin/arangosh${EXT}" ];  then
         ARANGOSH=bin/arangosh
@@ -49,9 +49,9 @@ fi
 [ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
 
-ALLPROGRAMMS="arangobench arangod arangodump arangoexport arangoimp arangoimport arangorestore arangosh"
+ALLPROGRAMS="arangobench arangod arangodump arangoexport arangoimp arangoimport arangorestore arangosh"
 
-for HELPPROGRAM in ${ALLPROGRAMMS}; do
+for HELPPROGRAM in ${ALLPROGRAMS}; do
     "${BIN_PATH}/${HELPPROGRAM}${EXT}" --dump-options > "Documentation/Examples/${HELPPROGRAM}.json"
 done
 
