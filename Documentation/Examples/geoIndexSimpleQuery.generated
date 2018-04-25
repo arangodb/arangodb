@@ -15,7 +15,7 @@ arangosh&gt; db.complex.ensureIndex({ <span class="hljs-attr">type</span>: <span
     <span class="hljs-string">"home"</span> 
   ], 
   <span class="hljs-string">"geoJson"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"complex/35127"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"complex/35307"</span>, 
   <span class="hljs-string">"ignoreNull"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
@@ -26,9 +26,9 @@ arangosh&gt; db.complex.ensureIndex({ <span class="hljs-attr">type</span>: <span
 arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hljs-number">170</span>).limit(<span class="hljs-number">5</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34121"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34121"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-a--D"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34301"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34301"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuLK--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -40,9 +40,9 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34124"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34124"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-a--F"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34304"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34304"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuLO--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/180"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -54,9 +54,9 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34232"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34232"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-u--D"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34412"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34412"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuNS--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/10/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">10</span>, 
@@ -68,9 +68,9 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34010"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34010"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-G--J"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34190"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34190"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuJK--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">-10</span>, 
@@ -82,9 +82,9 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34016"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34016"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-G--N"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34196"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34196"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuJS--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/-180"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -105,7 +105,7 @@ arangosh&gt; db.complex.ensureIndex({ <span class="hljs-attr">type</span>: <span
     <span class="hljs-string">"work"</span> 
   ], 
   <span class="hljs-string">"geoJson"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"complex/35135"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"complex/35315"</span>, 
   <span class="hljs-string">"ignoreNull"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
@@ -116,9 +116,9 @@ arangosh&gt; db.complex.ensureIndex({ <span class="hljs-attr">type</span>: <span
 arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span class="hljs-number">0</span>, <span class="hljs-number">170</span>).limit(<span class="hljs-number">5</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34121"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34121"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-a--D"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34301"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34301"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuLK--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -130,9 +130,9 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34124"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34124"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-a--F"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34304"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34304"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuLO--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/180"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -144,9 +144,9 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34232"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34232"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-u--D"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34412"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34412"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuNS--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/10/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">10</span>, 
@@ -158,9 +158,9 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34010"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34010"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-G--J"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34190"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34190"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuJK--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">-10</span>, 
@@ -172,9 +172,9 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34016"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34016"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWXF-G--N"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34196"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/34196"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WttiuJS--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/-180"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
