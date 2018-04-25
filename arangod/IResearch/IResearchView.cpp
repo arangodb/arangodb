@@ -78,12 +78,6 @@ arangodb::aql::AstNode ALL(true, arangodb::aql::VALUE_TYPE_BOOL);
 ////////////////////////////////////////////////////////////////////////////////
 const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the iResearch View definition denoting the
-///        corresponding link definitions
-////////////////////////////////////////////////////////////////////////////////
-const std::string LINKS_FIELD("links");
-
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -1553,7 +1547,7 @@ void IResearchView::getPropertiesVPack(
     return; // do not add 'links' section
   }
 
-  builder.add(LINKS_FIELD, linksBuilder.slice());
+  builder.add(StaticStrings::LinksField, linksBuilder.slice());
 }
 
 int IResearchView::insert(
@@ -2103,7 +2097,7 @@ arangodb::Result IResearchView::updateProperties(
     _meta = std::move(meta);
   }
 
-  if (!slice.hasKey(LINKS_FIELD)) {
+  if (!slice.hasKey(StaticStrings::LinksField)) {
     return res;
   }
 
@@ -2116,7 +2110,7 @@ arangodb::Result IResearchView::updateProperties(
   std::unordered_set<TRI_voc_cid_t> collections;
 
   if (partialUpdate) {
-    return updateLinks(collections, vocbase(), *this, slice.get(LINKS_FIELD));
+    return updateLinks(collections, vocbase(), *this, slice.get(StaticStrings::LinksField));
   }
 
   arangodb::velocypack::Builder builder;
@@ -2126,7 +2120,7 @@ arangodb::Result IResearchView::updateProperties(
   // FIXME do not blindly drop links in case if
   // current and expected metas are same
   if (!appendLinkRemoval(builder, _meta)
-      || !mergeSlice(builder, slice.get(LINKS_FIELD))) {
+      || !mergeSlice(builder, slice.get(StaticStrings::LinksField))) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failed to construct link update directive while updating IResearch View '") + name() + "'"

@@ -232,7 +232,7 @@ TEST_CASE("IResearchLinkCoordinatorTest", "[iresearch][iresearch-link]") {
   IResearchLinkCoordinatorSetup s;
   UNUSED(s);
 
-SECTION("test_defaults") {
+SECTION("test_create_drop") {
   auto* database = arangodb::DatabaseFeature::DATABASE;
   REQUIRE(nullptr != database);
 

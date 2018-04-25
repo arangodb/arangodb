@@ -40,8 +40,11 @@
 
 namespace {
 
+using namespace arangodb::basics;
+using namespace arangodb::iresearch;
+
 arangodb::Result dropLink(
-    arangodb::iresearch::IResearchLinkCoordinator const& link,
+    IResearchLinkCoordinator const& link,
     arangodb::LogicalCollection& collection,
     VPackBuilder& builder
 ) {
@@ -56,16 +59,16 @@ arangodb::Result dropLink(
 
 arangodb::Result createLink(
     arangodb::LogicalCollection& collection,
-    arangodb::iresearch::IResearchViewCoordinator const& view,
+    IResearchViewCoordinator const& view,
     VPackSlice link,
     VPackBuilder& builder
 ) {
   TRI_ASSERT(builder.isEmpty());
 
   builder.openObject();
-  if (!arangodb::iresearch::mergeSlice(builder, link)
-      || !arangodb::iresearch::IResearchLinkHelper::setType(builder)
-      || !arangodb::iresearch::IResearchLinkHelper::setView(builder, view.id())) {
+  if (!mergeSlice(builder, link)
+      || !IResearchLinkHelper::setType(builder)
+      || !IResearchLinkHelper::setView(builder, view.id())) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failed to update link definition with the view name while updating IResearch view '")
@@ -79,6 +82,134 @@ arangodb::Result createLink(
   return arangodb::methods::Indexes::ensureIndex(
     &collection, builder.slice(), true, tmp
   );
+}
+
+arangodb::Result updateLinks(
+    VPackSlice properties,
+    bool partialUpdate,
+    IResearchViewCoordinator const& view,
+    VPackBuilder& viewProperties,
+    std::unordered_set<TRI_voc_cid_t>& cids
+) {
+  auto links = properties.get(StaticStrings::LinksField);
+
+  if (links.isNone()) {
+    return {};
+  }
+
+  arangodb::CollectionNameResolver resolver(&view.vocbase());
+
+  auto collections = partialUpdate
+    ? cids
+    : std::unordered_set<TRI_voc_cid_t>{};
+  cids.clear();
+
+  arangodb::Result res;
+  std::string error;
+  VPackBuilder builder;
+  IResearchLinkMeta linkMeta;
+
+  for (VPackObjectIterator linksItr(links); linksItr.valid(); ++linksItr) {
+    auto const collectionNameOrIdSlice = linksItr.key();
+
+    if (!collectionNameOrIdSlice.isString()) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("error parsing link parameters from json for IResearch view '")
+          + StringUtils::itoa(view.id())
+          + "' offset '"
+          + StringUtils::itoa(linksItr.index()) + '"'
+      };
+    }
+
+    auto const collectionNameOrId = collectionNameOrIdSlice.copyString();
+    auto const collection = resolver.getCollection(collectionNameOrId);
+
+    if (!collection) {
+      return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
+    }
+
+    auto const link = linksItr.value();
+
+    builder.clear();
+    res.reset();
+
+    auto const existingLink = IResearchLinkCoordinator::find(*collection, view);
+
+    if (link.isNull()) {
+      if (existingLink && partialUpdate) {
+        res = dropLink(*existingLink, *collection, builder);
+
+        // do not need to drop link afterwards
+        collections.erase(collection->id());
+      }
+    } else {
+      if (!linkMeta.init(link, error)) {
+        return { TRI_ERROR_BAD_PARAMETER, error } ;
+      }
+
+      // append link definition
+      {
+        VPackObjectBuilder const guard(&viewProperties, collectionNameOrId);
+        linkMeta.json(viewProperties);
+        cids.emplace(collection->id());
+      }
+
+      if (existingLink) {
+        // do not need to drop link afterwards
+        collections.erase(collection->id());
+
+        if (*existingLink == linkMeta) {
+          // nothing to do
+          continue;
+        }
+
+        res = dropLink(*existingLink, *collection, builder);
+
+        if (!res.ok()) {
+          return res;
+        }
+
+        builder.clear();
+      }
+
+      res = createLink(*collection, view, link, builder);
+    }
+
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  // in case of full update drop unprocessed links
+  for (auto const cid : collections) {
+    auto const collection = resolver.getCollection(cid);
+
+    if (!collection) {
+      return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
+    }
+
+    auto const link = IResearchLinkCoordinator::find(*collection, view);
+
+    if (!link) {
+      return {
+        TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+        std::string("no link between view '")
+          + StringUtils::itoa(view.id())
+          + "' and collection '" + StringUtils::itoa(cid)
+          + "' found"
+      };
+    }
+
+    builder.clear();
+    res = dropLink(*link, *collection, builder);
+
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  return res;
 }
 
 }
@@ -117,16 +248,18 @@ namespace iresearch {
     return nullptr;
   }
 
-  auto const links = info.get(StaticStrings::LinksField);
+  auto const links = properties.get(StaticStrings::LinksField);
+  IResearchLinkMeta linkMeta;
 
   if (links.isObject()) {
     auto& builder = view->_links;
+    VPackObjectBuilder guard(&builder);
 
     size_t idx = 0;
     for (auto link : velocypack::ObjectIterator(links)) {
-      auto name = link.key;
+      auto const nameSlice = link.key;
 
-      if (!name.isString()) {
+      if (!nameSlice.isString()) {
         LOG_TOPIC(WARN, iresearch::TOPIC)
             << "failed to initialize IResearch view link from definition at index " << idx
             << ", link name is not string";
@@ -134,18 +267,23 @@ namespace iresearch {
         return nullptr;
       }
 
-      builder.add(name);
-      builder.openObject();
-      auto const res = IResearchLinkHelper::normalize(builder, link.value, false);
-
-      if (!res.ok()) {
+      if (!linkMeta.init(link.value, error)) {
         LOG_TOPIC(WARN, iresearch::TOPIC)
             << "failed to initialize IResearch view link from definition at index " << idx
             << ", error: " << error;
 
         return nullptr;
       }
-      builder.close();
+
+      // append normalized link definition
+      {
+        VPackValueLength length;
+        char const* name = nameSlice.getString(length);
+
+        builder.add(name, length, VPackValue(VPackValueType::Object));
+        linkMeta.json(builder);
+        builder.close();
+      }
     }
   }
 
@@ -191,18 +329,18 @@ void IResearchViewCoordinator::toVelocyPack(
   }
 
   if (includeProperties) {
-    result.add(StaticStrings::PropertiesField, VPackValue(VPackValueType::Object)); // properties: {
+    VPackObjectBuilder guard(&result, StaticStrings::PropertiesField);
 
     // regular properites
     _meta.json(result);
 
     // view links
     auto const links = _links.slice();
-    if (links.isObject()) {
+
+    if (links.isObject() && links.length()) {
+      VPackObjectBuilder guard(&result, StaticStrings::LinksField);
       mergeSlice(result, links);
     }
-
-    result.close(); // }
   }
 
   TRI_ASSERT(result.isOpenObject()); // We leave the object open
@@ -225,27 +363,44 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       return { TRI_ERROR_BAD_PARAMETER, error };
     }
 
-    if (meta != _meta) {
-      VPackBuilder builder;
-      builder.openObject(); // {
-      toVelocyPack(builder, false, true); // only system properties
-      builder.add(StaticStrings::PropertiesField, VPackValue(VPackValueType::Object)); // "properties" : {
-      meta.json(builder);
-      builder.close(); // }
-      builder.close(); // }
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder const guard(&builder);
 
-      auto res = ClusterInfo::instance()->setViewPropertiesCoordinator(
-        vocbase().name(), // database name,
-        StringUtils::itoa(id()), // cluster-wide view id
-        builder.slice()
-      );
+      // system properties
+      toVelocyPack(builder, false, true);
 
-      if (!res.ok()) {
-        return res;
+      // properties
+      {
+        VPackObjectBuilder const guard(&builder, StaticStrings::PropertiesField);
+
+        // links
+        {
+          VPackObjectBuilder const guard(&builder, StaticStrings::LinksField);
+
+          auto const res = updateLinks(
+            properties,
+            partialUpdate,
+            *this,
+            builder,
+            meta._collections
+          );
+
+          if (!res.ok()) {
+            return res;
+          }
+        }
+
+        // meta
+        meta.json(builder);
       }
     }
 
-    return updateLinks(properties, partialUpdate);
+    return ClusterInfo::instance()->setViewPropertiesCoordinator(
+      vocbase().name(), // database name,
+      StringUtils::itoa(id()), // cluster-wide view id
+      builder.slice()
+    );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
       << "caught exception while updating properties for IResearch view '" << id() << "': " << e.what();
@@ -299,114 +454,6 @@ Result IResearchViewCoordinator::drop() {
   return {};
 }
 
-arangodb::Result IResearchViewCoordinator::updateLinks(
-    VPackSlice properties, bool partialUpdate
-) {
-  auto links = properties.get(StaticStrings::LinksField);
-
-  if (links.isNone()) {
-    return {};
-  }
-
-  CollectionNameResolver resolver(&vocbase());
-
-  auto collections = partialUpdate
-    ? _meta._collections
-    : decltype(_meta._collections){};
-
-  arangodb::Result res;
-  std::string error;
-  VPackBuilder builder;
-  IResearchLinkMeta linkMeta;
-
-  for (VPackObjectIterator linksItr(links); linksItr.valid(); ++linksItr) {
-    auto const collectionNameOrIdSlice = linksItr.key();
-
-    if (!collectionNameOrIdSlice.isString()) {
-      return {
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing link parameters from json for IResearch view '")
-          + StringUtils::itoa(id())
-          + "' offset '"
-          + StringUtils::itoa(linksItr.index()) + '"'
-      };
-    }
-
-    auto const collectionNameOrId = collectionNameOrIdSlice.copyString();
-    auto const collection = resolver.getCollection(collectionNameOrId);
-
-    if (!collection) {
-      return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
-    }
-
-    auto const link = linksItr.value();
-
-    builder.clear();
-    res.reset();
-
-    auto existingLink = IResearchLinkCoordinator::find(*collection, *this);
-
-    if (link.isNull() && existingLink && partialUpdate) {
-      res = dropLink(*existingLink, *collection, builder);
-    } else {
-      if (existingLink) {
-        if (!linkMeta.init(link, error)) {
-          return { TRI_ERROR_BAD_PARAMETER, error } ;
-        }
-
-        // do not need to drop link afterwards
-        collections.erase(collection->id());
-
-        if (*existingLink == linkMeta) {
-          // nothing to do
-          continue;
-        }
-
-        res = dropLink(*existingLink, *collection, builder);
-
-        if (!res.ok()) {
-          return res;
-        }
-
-        builder.clear();
-      }
-
-      res = createLink(*collection, *this, link, builder);
-    }
-
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  // in case of full update drop unprocessed links
-  for (auto const cid : collections) {
-    auto collection = resolver.getCollection(cid);
-
-    if (!collection) {
-      return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
-    }
-
-    auto link = IResearchLinkCoordinator::find(*collection, *this);
-
-    if (!link) {
-      return {
-        TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-        std::string("no link between view '") + std::to_string(id()) +
-        "' and collection '" + std::to_string(cid) + "' found"
-      };
-    }
-
-    res = dropLink(*link, *collection, builder);
-
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  return res;
-}
-
 Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
   auto cid_itr = _meta._collections.find(cid);
 
@@ -416,13 +463,15 @@ Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
   }
 
   VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
-  builder.add(StringUtils::itoa(cid), VPackSlice::nullSlice());
-  builder.close();
-  builder.close();
+  {
+    VPackObjectBuilder const guard(&builder);
+    {
+      VPackObjectBuilder const guard(&builder, StaticStrings::LinksField);
+      builder.add(StringUtils::itoa(cid), VPackSlice::nullSlice());
+    }
+  }
 
-  return updateLinks(builder.slice(), true);
+  return updateProperties(builder.slice(), true, true);
 }
 
 } // iresearch

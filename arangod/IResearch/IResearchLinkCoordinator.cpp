@@ -407,9 +407,8 @@ bool IResearchLinkCoordinator::operator==(LogicalView const& view) const noexcep
 
 bool IResearchLinkCoordinator::init(VPackSlice definition) {
   std::string error;
-  IResearchLinkMeta meta;
 
-  if (!meta.init(definition, error)) {
+  if (!_meta.init(definition, error)) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error parsing view link parameters from json: " << error;
     TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
