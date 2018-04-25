@@ -377,3 +377,103 @@ bool RocksDBGenericAllIndexIterator::gnext(GenericCallback const& cb, size_t lim
 
   return true;
 }
+
+RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db
+                                              ,rocksdb::ColumnFamilyHandle* columnFamily
+                                              ,rocksdb::ReadOptions& options
+                                              ,RocksDBKeyBounds const& bounds
+                                              ,bool reverse)
+    : _reverse(reverse)
+    , _bounds(bounds)
+    , _iterator(db->NewIterator(options, columnFamily))
+    , _cmp(columnFamily->GetComparator())
+  {};
+
+  //return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts, cf));
+RocksDBGenericIterator createGenericIterator(transaction::Methods* trx
+                                            ,rocksdb::ColumnFamilyHandle* columnFamily
+                                            ,LogicalCollection* col = nullptr
+                                            ,bool reverse = false
+                                            ){
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
+
+  // intentional copy of the read options
+  rocksdb::ReadOptions options = mthds->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
+  TRI_ASSERT(options.prefix_same_as_start);
+  options.fill_cache = AllIteratorFillBlockCache;
+  options.verify_checksums = false;  // TODO evaluate
+  // options.readahead_size = 4 * 1024 * 1024;
+  RocksDBKeyBounds bounds(RocksDBKeyBounds::Empty());
+
+  // TODO FIXME - more create functions or kind of switch
+  // over columenfamiles or create functions that takes bounds..
+  // ask jan
+  if(columnFamily == RocksDBColumnFamily::documents() && col){
+    bounds = RocksDBKeyBounds::CollectionDocuments(static_cast<RocksDBCollection*>(col->getPhysical())->objectId());
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL); //result? - guess exception is ok here as it should not happen
+  }
+
+  return RocksDBGenericIterator(arangodb::rocksutils::globalRocksDB(), columnFamily, options, bounds, reverse);
+
+}
+
+bool RocksDBGenericIterator::outOfRange() const {
+  if (_reverse) {
+    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
+  } else {
+    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
+  }
+}
+
+void RocksDBGenericIterator::reset() {
+  if (_reverse) {
+    _iterator->SeekForPrev(_bounds.end());
+  } else {
+    _iterator->Seek(_bounds.start());
+  }
+}
+
+void RocksDBGenericIterator::skip(uint64_t count, uint64_t& skipped) {
+  while (count > 0 && _iterator->Valid()) {
+    --count;
+    ++skipped;
+
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+  }
+}
+
+bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
+
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  while (limit > 0) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
+#endif
+
+    cb(_iterator->key(),_iterator->value());
+    --limit;
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+
+  return true;
+}

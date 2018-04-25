@@ -26,6 +26,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -33,6 +34,7 @@
 namespace rocksdb {
 class Iterator;
 class Comparator;
+class TransactionDB;
 }
 
 namespace arangodb {
@@ -151,6 +153,33 @@ class RocksDBSortedAllIterator final : public IndexIterator {
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
 };
-}
 
+
+
+class RocksDBGenericIterator {
+ public:
+  RocksDBGenericIterator(rocksdb::TransactionDB* db
+                        ,rocksdb::ColumnFamilyHandle* columnFamily
+                        ,rocksdb::ReadOptions& options
+                        ,RocksDBKeyBounds const& bounds
+                        ,bool reverse=false);
+  RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
+
+  ~RocksDBGenericIterator() {}
+
+  bool next(GenericCallback const& cb, size_t limit);
+  void skip(uint64_t count, uint64_t& skipped);
+  void reset();
+
+ private:
+  bool outOfRange() const;
+  bool _reverse;
+  RocksDBKeyBounds const _bounds;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+  rocksdb::Comparator const* _cmp;
+};
+
+RocksDBGenericIterator createGenericIterator(transaction::Methods* trx, bool reverse = false);
+
+} //namespace arangodb
 #endif
