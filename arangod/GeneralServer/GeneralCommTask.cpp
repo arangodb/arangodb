@@ -262,7 +262,11 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   if (isPrio) {
-    SchedulerFeature::SCHEDULER->post([self, this, handler]() {
+    /*JobGuard guard(_loop);
+    guard.queue();*/
+    this->strand().post([self, this, handler]() {
+      JobGuard guard(_loop);
+      guard.work();
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
                             std::move(handler));
     });
@@ -273,15 +277,14 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
                                     << _loop._scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
-
-  std::unique_ptr<Job> job(new Job(
-      _server, std::move(handler),
-      [self, this](std::shared_ptr<RestHandler> h) {
-        handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
-      }));
+  auto job = std::make_unique<Job>(_server, std::move(handler),
+                                   this->strand().wrap([self, this](std::shared_ptr<RestHandler> h) {
+    JobGuard guard(_loop);
+    guard.work();
+    handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
+  }));
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
-
   if (!ok) {
     handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                       *(handler->request()), TRI_ERROR_QUEUE_FULL,
@@ -293,18 +296,30 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
 void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
-  if (!doLock) {
+  /*if (!doLock) {
     _lock.assertLockedByCurrentThread();
-  }
+  }*/
+  TRI_ASSERT(!doLock || strand().running_in_this_thread());
 
   auto self = shared_from_this();
   handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
     RequestStatistics* stat = h->stealStatistics();
-
-    CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
-    _lock.assertLockedByCurrentThread();
-
-    addResponse(*h->response(), stat);
+    // TODO we could reduce all of this to strand::post
+    if (doLock) {
+      std::unique_ptr<GeneralResponse> resp = h->stealResponse();
+      std::shared_ptr<GeneralResponse> sresp(resp.get());
+      resp.release();
+      // strand::post guarantees it returns immediately
+      this->strand().post([self, this, stat, sresp]() {
+        addResponse(*sresp, stat);
+      });
+    } else {
+      addResponse(*h->response(), stat);
+    }
+    
+    /*CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
+    _lock.assertLockedByCurrentThread();*/
+    
   });
 
   HandlerWorkStack monitor(handler);

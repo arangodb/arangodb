@@ -35,7 +35,6 @@ class AcceptorUnixDomain final : public Acceptor {
     void open() override;
     void close() override;
     void asyncAccept(AcceptHandler const& handler) override;
-    void createPeer() override;
 
   private:
     boost::asio::local::stream_protocol::acceptor _acceptor;

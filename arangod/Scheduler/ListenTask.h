@@ -52,9 +52,6 @@ class ListenTask : virtual public rest::Task {
   void stop();
 
  private:
-  void createPeer();
-
- private:
   Endpoint* _endpoint;
   size_t _acceptFailures = 0;
   

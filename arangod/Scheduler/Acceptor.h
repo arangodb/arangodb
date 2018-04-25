@@ -46,9 +46,6 @@ class Acceptor {
         boost::asio::io_service& _ioService, Endpoint* endpoint);
   
   protected:
-    virtual void createPeer() = 0;
-  
-  protected:
     boost::asio::io_service& _ioService;
     Endpoint* _endpoint;
     std::unique_ptr<Socket> _peer;

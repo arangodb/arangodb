@@ -36,7 +36,6 @@ class AcceptorTcp final : public Acceptor {
     void open() override;
     void close() override { _acceptor.close(); };
     void asyncAccept(Acceptor::AcceptHandler const& handler) override;
-    void createPeer() override;
 
   private:
     boost::asio::ip::tcp::acceptor _acceptor;

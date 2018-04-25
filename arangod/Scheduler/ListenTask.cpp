@@ -91,7 +91,7 @@ bool ListenTask::start() {
 
     ConnectionInfo info;
 
-    auto peer = _acceptor->movePeer();
+    std::unique_ptr<Socket> peer = _acceptor->movePeer();
 
     // set the endpoint
     info.endpoint = _endpoint->specification();

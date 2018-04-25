@@ -26,20 +26,20 @@
 
 using namespace arangodb;
 
-size_t SocketUnixDomain::write(basics::StringBuffer* buffer, boost::system::error_code& ec) {
-  return socketcommon::doWrite(_socket, buffer, ec);
+size_t SocketUnixDomain::writeSome(basics::StringBuffer* buffer, boost::system::error_code& ec) {
+  return _socket.write_some(boost::asio::buffer(buffer->begin(), buffer->length()), ec);
 }
 void SocketUnixDomain::asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
-  return socketcommon::doAsyncWrite(_socket, buffer, handler);
+  return boost::asio::async_write(_socket, buffer, handler);
 }
-size_t SocketUnixDomain::read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) {
-  return socketcommon::doRead(_socket, buffer, ec);
+size_t SocketUnixDomain::readSome(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) {
+  return _socket.read_some(buffer, ec);
 }
 std::size_t SocketUnixDomain::available(boost::system::error_code& ec) {
   return _socket.available(ec);
 }
 void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
-  return socketcommon::doAsyncRead(_socket, buffer, handler);
+  return _socket.async_read_some(buffer, handler);
 }
 void SocketUnixDomain::shutdownReceive(boost::system::error_code& ec) {
   _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_receive, ec);

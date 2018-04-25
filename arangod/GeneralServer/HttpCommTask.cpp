@@ -111,7 +111,8 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
 
 void HttpCommTask::addResponse(GeneralResponse& baseResponse,
                                RequestStatistics* stat) {
-  _lock.assertLockedByCurrentThread();
+  //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(strand().running_in_this_thread());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
 #else
@@ -119,9 +120,6 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 #endif
 
   resetKeepAlive();
-
-  // response has been queued, allow further requests
-  _requestPending = false;
 
   // CORS response handling
   if (!_origin.empty()) {
@@ -197,6 +195,9 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
         << "\"," << stat->timingsCsv();
   }
 
+  // response has been queued, allow further requests
+  _requestPending = false;
+  
   addWriteBuffer(std::move(buffer));
 
   // and give some request information
@@ -216,7 +217,8 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 // reads data from the socket
 // caller must hold the _lock
 bool HttpCommTask::processRead(double startTime) {
-  _lock.assertLockedByCurrentThread();
+  //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(strand().running_in_this_thread());
   
   cancelKeepAlive();
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
@@ -292,6 +294,7 @@ bool HttpCommTask::processRead(double startTime) {
       ProtocolVersion protocolVersion = _readBuffer.c_str()[6] == '0' 
           ? ProtocolVersion::VST_1_0 : ProtocolVersion::VST_1_1;
 
+      // mark task as abandoned, no more reads will happen on _peer
       if (!abandon()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "task is already abandoned");
       }
@@ -303,8 +306,11 @@ bool HttpCommTask::processRead(double startTime) {
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
                                 _readBuffer.length() - 11);
       {
-        MUTEX_LOCKER(locker, commTask->_lock);
-        commTask->processAll();
+        // MUTEX_LOCKER(locker, commTask->_lock);
+        // strand::post guarantees it returns immediately
+        commTask->strand().post([commTask]{
+          commTask->processAll();
+        });
       }
       commTask->start();
       return false;
@@ -610,7 +616,8 @@ bool HttpCommTask::processRead(double startTime) {
 }
 
 void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
-  _lock.assertLockedByCurrentThread();
+  //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(strand().running_in_this_thread());
   {
     LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""

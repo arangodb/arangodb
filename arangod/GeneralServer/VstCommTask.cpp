@@ -103,12 +103,16 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
 
 void VstCommTask::addResponse(GeneralResponse& baseResponse,
                               RequestStatistics* stat) {
-    _lock.assertLockedByCurrentThread();
+  TRI_ASSERT(this->strand().running_in_this_thread());
+    //_lock.assertLockedByCurrentThread();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     VstResponse& response = dynamic_cast<VstResponse&>(baseResponse);
 #else
     VstResponse& response = static_cast<VstResponse&>(baseResponse);
 #endif
+  
+#warning TODO Discuss
+  resetKeepAlive();
 
   VPackMessageNoOwnBuffer response_message = response.prepareForNetwork();
   uint64_t const mid = response_message._id;
@@ -312,10 +316,10 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
 
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
-  _lock.assertLockedByCurrentThread();
-
+  TRI_ASSERT(this->strand().running_in_this_thread());
+  //_lock.assertLockedByCurrentThread();
+  
   auto& prv = _processReadVariables;
-
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
   if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
     return false;  // no data or incomplete
@@ -338,12 +342,12 @@ bool VstCommTask::processRead(double startTime) {
     // CASE 1: message is in one chunk
     if (!getMessageFromSingleChunk(chunkHeader, message, doExecute,
                                    vpackBegin, chunkEnd)) {
-      return false;
+      return false; // error, closeTask was called
     }
   } else {
     if (!getMessageFromMultiChunks(chunkHeader, message, doExecute,
                                    vpackBegin, chunkEnd)) {
-      return false;
+      return false; // error, closeTask was called
     }
   }
 
@@ -383,11 +387,15 @@ bool VstCommTask::processRead(double startTime) {
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
-
+    
     // handle request types
     if (type == 1000) {
       handleAuthHeader(header, chunkHeader._messageID);
     } else {
+      
+#warning Discuss placement of keep-alive handler
+      cancelKeepAlive();
+      
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
@@ -428,7 +436,7 @@ bool VstCommTask::processRead(double startTime) {
             request->setClientTaskId(_taskId);
 
             // temporarily release the mutex
-            MUTEX_UNLOCKER(locker, _lock);
+            //MUTEX_UNLOCKER(locker, _lock);
 
             std::unique_ptr<VstResponse> response(new VstResponse(
                  rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));

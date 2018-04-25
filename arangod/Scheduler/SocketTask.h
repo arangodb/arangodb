@@ -27,7 +27,6 @@
 
 #include "Scheduler/Task.h"
 
-#include <boost/asio/ssl.hpp>
 #include <list>
 #include <utility>
 
@@ -66,6 +65,8 @@ class SocketTask : virtual public Task {
   // caller will hold the _lock
   virtual bool processRead(double startTime) = 0;
   virtual void compactify() {}
+  
+  boost::asio::io_service::strand& strand() { return _peer->strand(); }
 
   // This function is used during the protocol switch from http
   // to VelocyStream. This way we do not require additional
@@ -114,22 +115,14 @@ class SocketTask : virtual public Task {
       _buffer = nullptr;
       _statistics = nullptr;
     }
-
-    void release() noexcept {
-      if (_buffer != nullptr) {
-        delete _buffer;
-        _buffer = nullptr;
-      }
-
-      if (_statistics != nullptr) {
-        _statistics->release();
-        _statistics = nullptr;
-      }
-    }
     
-    void release(SocketTask* task) {
+    void release(SocketTask* task = nullptr) {
       if (_buffer != nullptr) {
-        task->returnStringBuffer(_buffer);
+        if (task != nullptr) {
+          task->returnStringBuffer(_buffer);
+        } else {
+          delete _buffer;
+        }
         _buffer = nullptr;
       }
 
@@ -140,44 +133,50 @@ class SocketTask : virtual public Task {
     }
   };
 
-  // will acquire the _lock
+  // will be run in strand
   void addWriteBuffer(WriteBuffer&&);
-
-  // will acquire the _lock
+  // will be run in strand
   void closeStream();
-
-  // caller must hold the _lock
+  // caller must run in _peer->strand()
   void closeStreamNoLock();
 
-  // caller must hold the _lock
+  /// starts the keep alive time, no need to run on strand
   void resetKeepAlive();
-
-  // caller must hold the _lock
+  /// cancels the keep alive timer
   void cancelKeepAlive();
 
+  // abandon the task. if the task was already abandoned, this
+  // method returns false. if abandoing was successful, this
+  // method returns true. Used for VST upgrade
+  bool abandon() {
+    return !(_abandoned.exchange(true));
+  }
 
+  /// lease a string buffer from pool
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
 
  private:
-  void writeWriteBuffer();
+  
   bool completedWriteBuffer();
 
   bool reserveMemory();
   bool trySyncRead();
   bool processAll();
+  
   void asyncReadSome();
-  bool abandon();
-
+  void asyncWriteSome();
+  
  protected:
-  Mutex _lock;
+  //Mutex _lock;
   ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
   basics::StringBuffer _readBuffer; // needs _lock
   
  private:
+  Mutex _bufferLock;
   SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
-  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _lock
+  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _bufferLock
 
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
@@ -186,11 +185,15 @@ class SocketTask : virtual public Task {
   boost::posix_time::milliseconds _keepAliveTimeout;
   boost::asio::deadline_timer _keepAliveTimer;
   bool const _useKeepAliveTimer;
-  bool _keepAliveTimerActive;
-  bool _closeRequested;
-  bool _abandoned;
-  bool _closedSend;
-  bool _closedReceive;
+  
+  std::atomic<bool> _keepAliveTimerActive;
+  std::atomic<bool> _closeRequested;
+  /// Was task abandoned for another task
+  std::atomic<bool> _abandoned;
+  /// Close was send
+  std::atomic<bool> _closedSend;
+  /// We received a close
+  std::atomic<bool> _closedReceive;
 };
 }
 }

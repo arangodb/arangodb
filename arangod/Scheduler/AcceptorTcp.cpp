@@ -78,7 +78,6 @@ void AcceptorTcp::open() {
   _acceptor.set_option(
       boost::asio::ip::tcp::acceptor::reuse_address(
         ((EndpointIp*)_endpoint)->reuseAddress()));
-
 #endif
 
   _acceptor.bind(asioEndpoint, err);
@@ -94,21 +93,14 @@ void AcceptorTcp::open() {
 }
 
 void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
-  createPeer();
-  auto peer = dynamic_cast<SocketTcp*>(_peer.get());
-  if (peer == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected socket type");
+  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
+    _peer.reset(new SocketSslTcp(_ioService, SslServerFeature::SSL->createSslContext()));
+    SocketSslTcp* peer = static_cast<SocketSslTcp*>(_peer.get());
+    _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
+  } else {
+    _peer.reset(new SocketTcp(_ioService));
+    SocketTcp* peer = static_cast<SocketTcp*>(_peer.get());
+    _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
   }
-  _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
 }
 
-void AcceptorTcp::createPeer() {
-  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    _peer.reset(new SocketTcp(_ioService, SslServerFeature::SSL->createSslContext(), true));
-  } else {
-    _peer.reset(new SocketTcp(
-        _ioService,
-        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23),
-        false));
-  }
-}

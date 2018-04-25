@@ -51,18 +51,12 @@ void AcceptorUnixDomain::open() {
 }
 
 void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
-  createPeer();
+  _peer.reset(new SocketUnixDomain(_ioService));
   auto peer = dynamic_cast<SocketUnixDomain*>(_peer.get());
   if (peer == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected socket type");
   }
   _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
-}
-
-void AcceptorUnixDomain::createPeer() {
-  _peer.reset(new SocketUnixDomain(
-        _ioService,
-        boost::asio::ssl::context(boost::asio::ssl::context::method::sslv23)));
 }
 
 void AcceptorUnixDomain::close() {
