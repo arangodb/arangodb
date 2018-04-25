@@ -161,11 +161,11 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 #warning FIXME try to get rid of this call for VST
     // strand::post guarantees this is not called directly
     auto self = shared_from_this();
-    //_loop.scheduler->_nrQueued++;
+    _loop.scheduler->_nrQueued++;
     _peer->strand().post([self, this]() {
-      /*_loop.scheduler->_nrQueued--;
+      _loop.scheduler->_nrQueued--;
       JobGuard guard(_loop);
-      guard.work();*/
+      guard.work();
       //MUTEX_LOCKER(locker, _lock);
       processAll();
     });
@@ -540,28 +540,21 @@ void SocketTask::asyncWriteSome() {
                       
                       // FIXME: this is a behaviour change, previously completedWriteBuffer
                       // would run immediately in the previous handler
+                      _loop.scheduler->_nrQueued++;
                       _peer->strand().post([self, this, transferred] {
+                        _loop.scheduler->_nrQueued--;
+                        JobGuard guard(_loop);
+                        guard.work();
+                        
                         if (_abandoned.load(std::memory_order_acquire)) {
                           return;
                         }
                         
-                        JobGuard guard(_loop);
-                        guard.work();
-                        
                         RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
                         
-                        if (completedWriteBuffer()) {
-
-                            if(!_abandoned.load(std::memory_order_acquire)){
-                              asyncWriteSome();
-                            }
-                          //});
-                          /*_loop._scheduler->post([self, this]() {
-                           MUTEX_LOCKER(locker, _lock);
-                           if(!_abandoned){
-                           asyncWriteSome();
-                           }
-                           });*/
+                        if (completedWriteBuffer() &&
+                            !_abandoned.load(std::memory_order_acquire)) {
+                          asyncWriteSome();
                         }
                       });
                     });
