@@ -56,7 +56,7 @@ void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
   if (peer == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected socket type");
   }
-  _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
+  _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, peer->strand().wrap(handler));
 }
 
 void AcceptorUnixDomain::close() {

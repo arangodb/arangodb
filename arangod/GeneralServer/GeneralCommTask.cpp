@@ -238,7 +238,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   if (handler->isDirect()) {
     isDirect = true;
-  } else if (_loop._scheduler->hasQueueCapacity()) {
+  } else if (_loop.scheduler->hasQueueCapacity()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
@@ -262,9 +262,9 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   if (isPrio) {
-    /*JobGuard guard(_loop);
-    guard.queue();*/
+    _loop.scheduler->_nrQueued++;
     this->strand().post([self, this, handler]() {
+      _loop.scheduler->_nrQueued--;
       JobGuard guard(_loop);
       guard.work();
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
@@ -275,12 +275,12 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   // ok, we need to queue the request
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _loop._scheduler->infoStatus();
+                                    << _loop.scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
   auto job = std::make_unique<Job>(_server, std::move(handler),
                                    this->strand().wrap([self, this](std::shared_ptr<RestHandler> h) {
-    JobGuard guard(_loop);
-    guard.work();
+    /*JobGuard guard(_loop);
+    guard.work();*/
     handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
   }));
 
@@ -319,7 +319,6 @@ void GeneralCommTask::handleRequestDirectly(
     
     /*CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
     _lock.assertLockedByCurrentThread();*/
-    
   });
 
   HandlerWorkStack monitor(handler);

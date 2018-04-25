@@ -57,7 +57,7 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _writeBuffer(nullptr, nullptr),
       _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
-      _keepAliveTimer(*_loop._ioService, _keepAliveTimeout),
+      _keepAliveTimer(*_loop.ioService, _keepAliveTimeout),
       _useKeepAliveTimer(keepAliveTimeout > 0.0),
       _keepAliveTimerActive(false),
       _closeRequested(false),
@@ -133,7 +133,9 @@ void SocketTask::start() {
   auto self = shared_from_this();
   /*JobGuard guard(_loop);
   guard.queue();*/
-  _peer->strand().dispatch([self, this]() {
+  _loop.scheduler->_nrQueued++;
+  _peer->strand().post([self, this]() {
+    _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
     asyncReadSome();
@@ -159,7 +161,11 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 #warning FIXME try to get rid of this call for VST
     // strand::post guarantees this is not called directly
     auto self = shared_from_this();
+    //_loop.scheduler->_nrQueued++;
     _peer->strand().post([self, this]() {
+      /*_loop.scheduler->_nrQueued--;
+      JobGuard guard(_loop);
+      guard.work();*/
       //MUTEX_LOCKER(locker, _lock);
       processAll();
     });
@@ -255,8 +261,8 @@ void SocketTask::resetKeepAlive() {
     _keepAliveTimer.async_wait([self, this](const boost::system::error_code& error) {
       LOG_TOPIC(TRACE, Logger::COMMUNICATION)
       << "keepAliveTimerCallback - called with: " << error.message();
-      if (!error) {
-        LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "keep alive timout - closing stream!";
+      if (!error) { // error will be true if timer was canceled
+        LOG_TOPIC(ERR, Logger::COMMUNICATION) << "keep alive timout - closing stream!";
         closeStream();// <-- uses strand.dispatch
       }
     });
@@ -434,29 +440,28 @@ void SocketTask::asyncReadSome() {
 
         if (_abandoned.load(std::memory_order_acquire)) {
           return;
+        } else if (ec) {
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "read on stream failed with: " << ec.message();
+          closeStream();
         }
         
         // dispatch will execute this directly if possible
-        _peer->strand().dispatch([self, this, ec, transferred] {
+        _peer->strand().post([self, this, transferred] {
           JobGuard guard(_loop);
           guard.work();
-          if (ec) {
-            LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-            << "read on stream failed with: " << ec.message();
-            closeStreamNoLock();
-          } else {
-            _readBuffer.increaseLength(transferred);
-            if (processAll()) {
-              /*JobGuard guard(_loop);
-              guard.queue();*/
-              _peer->strand().post([self, this]() {
-                JobGuard guard(_loop);
-                guard.work();
-                asyncReadSome();
-              });
-            }
-            compactify();
+          
+          _readBuffer.increaseLength(transferred);
+          if (processAll()) {
+            //_loop.scheduler->_nrQueued++;
+            _peer->strand().post([self, this]() {
+              /*_loop.scheduler->_nrQueued--;
+              JobGuard guard(_loop);
+              guard.work();*/
+              asyncReadSome();
+            });
           }
+          compactify();
         });
       });
 
@@ -540,13 +545,12 @@ void SocketTask::asyncWriteSome() {
                           return;
                         }
                         
-                        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
-                        
                         JobGuard guard(_loop);
                         guard.work();
                         
+                        RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
+                        
                         if (completedWriteBuffer()) {
-                          //_peer->strand().post([self, this]() {
 
                             if(!_abandoned.load(std::memory_order_acquire)){
                               asyncWriteSome();

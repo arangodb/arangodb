@@ -424,7 +424,7 @@ void Scheduler::rebalanceThreads() {
         break;
       }
       
-      // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. nrRunning: " << nrRunning << ", nrWorking: " << nrWorking << ", nrBlocked: " << nrBlocked << ", nrQueued: " << nrQueued;
+      LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. nrRunning: " << nrRunning << ", nrWorking: " << nrWorking << ", nrBlocked: " << nrBlocked << ", nrQueued: " << nrQueued;
 
       // all threads are maxed out
       _lastAllBusyStamp = now;

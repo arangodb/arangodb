@@ -35,13 +35,13 @@ class Scheduler;
 }
 
 struct EventLoop {
-  EventLoop(boost::asio::io_service* ioService, rest::Scheduler* scheduler)
-      : _ioService(ioService), _scheduler(scheduler) {}
+  EventLoop(boost::asio::io_service* service, rest::Scheduler* schdlr)
+      : ioService(service), scheduler(schdlr) {}
 
   EventLoop() : EventLoop(nullptr, nullptr) {}
 
-  boost::asio::io_service* _ioService;
-  rest::Scheduler* _scheduler;
+  boost::asio::io_service* ioService;
+  rest::Scheduler* scheduler;
 };
 }
 

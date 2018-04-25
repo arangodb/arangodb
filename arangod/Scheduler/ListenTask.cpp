@@ -40,7 +40,7 @@ ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
     : Task(loop, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
-      _acceptor(Acceptor::factory(*loop._ioService, endpoint)) {}
+      _acceptor(Acceptor::factory(*loop.ioService, endpoint)) {}
 
 ListenTask::~ListenTask() {}
 

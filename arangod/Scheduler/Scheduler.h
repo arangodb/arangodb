@@ -45,11 +45,16 @@ class Builder;
 
 namespace rest {
 
+  class GeneralCommTask;
+  class SocketTask;
+  
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
   friend class arangodb::JobGuard;
+  friend class arangodb::rest::GeneralCommTask;
+  friend class arangodb::rest::SocketTask;
 
  public:
   Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
