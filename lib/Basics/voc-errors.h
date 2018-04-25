@@ -537,11 +537,6 @@ constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            
 /// needed.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 = 1239;
 
-/// 1240: ERROR_ARANGO_COLLECTION_NOT_FOUND
-/// "collection not found"
-/// Will be raised when a collection with a given identifier or handle is unknown.
-constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                               = 1240;
-
 /// 1300: ERROR_ARANGO_DATAFILE_FULL
 /// "datafile full"
 /// Will be raised when the datafile reaches its limit.
@@ -1455,6 +1450,11 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF                       
 /// "edge collection not used in graph"
 /// The edge collection is not used in any edge definition of the graph.
 constexpr int TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          = 1930;
+
+/// 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
+/// " is not an ArangoCollection"
+/// The collection is not an ArangoCollection.
+constexpr int TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          = 1931;
 
 /// 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
 /// "collection _graphs does not exist"
