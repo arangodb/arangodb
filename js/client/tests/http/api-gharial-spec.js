@@ -187,7 +187,7 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(410);
+    expect(req.statusCode).to.equal(404);
     expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
@@ -211,7 +211,7 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(410);
+    expect(req.statusCode).to.equal(404);
     expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
@@ -235,7 +235,7 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(410);
+    expect(req.statusCode).to.equal(404);
     expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
@@ -259,7 +259,7 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(410);
+    expect(req.statusCode).to.equal(404);
     expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
@@ -283,7 +283,7 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(410);
+    expect(req.statusCode).to.equal(404);
     expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
@@ -307,7 +307,7 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(410);
+    expect(req.statusCode).to.equal(404);
     expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
