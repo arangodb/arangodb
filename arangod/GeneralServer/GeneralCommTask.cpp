@@ -298,7 +298,7 @@ void GeneralCommTask::handleRequestDirectly(
   auto self = shared_from_this();
   handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
     RequestStatistics* stat = h->stealStatistics();
-    // TODO we could reduce all of this to strand::post
+    // TODO we could reduce all of this to strand::post / dispatch
     if (doLock) {
       std::unique_ptr<GeneralResponse> resp = h->stealResponse();
       std::shared_ptr<GeneralResponse> sresp(resp.get());

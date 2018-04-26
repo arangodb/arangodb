@@ -185,6 +185,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 // caller must hold the _lock
 bool SocketTask::completedWriteBuffer() {
   //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand().running_in_this_thread());
 
   RequestStatistics::SET_WRITE_END(_writeBuffer._statistics);
@@ -220,6 +221,7 @@ void SocketTask::closeStream() {
 // caller must hold the _lock
 void SocketTask::closeStreamNoLock() {
   //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand().running_in_this_thread());
 
   bool mustCloseSend = !_closedSend.load(std::memory_order_acquire);
@@ -244,6 +246,7 @@ void SocketTask::closeStreamNoLock() {
 // will acquire the _lock
 void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
   //MUTEX_LOCKER(locker, _lock);
+  TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand().running_in_this_thread());
   //LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << std::string(data, len);
   _readBuffer.appendText(data, len);
@@ -287,6 +290,7 @@ void SocketTask::cancelKeepAlive() {
 // caller must hold the _lock
 bool SocketTask::reserveMemory() {
   //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand().running_in_this_thread());
   if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "out of memory while reading from client";
@@ -300,12 +304,13 @@ bool SocketTask::reserveMemory() {
 // caller must be on _peer->strand()
 bool SocketTask::trySyncRead() {
   //_lock.assertLockedByCurrentThread();
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
-  
   if (_abandoned.load(std::memory_order_acquire)) {
     return false;
   }
-
+  
+  TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  
   boost::system::error_code err;
   TRI_ASSERT(_peer != nullptr);
   if (0 == _peer->available(err)) {
@@ -382,14 +387,14 @@ bool SocketTask::processAll() {
 // must be invoked on strand
 void SocketTask::asyncReadSome() {
   //MUTEX_LOCKER(locker, _lock);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
   if (_abandoned.load(std::memory_order_acquire)) {
     return;
   }
-
+  
   TRI_ASSERT(_peer != nullptr);
+  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  
   if (!_peer->isEncrypted()) {
-    
     JobGuard guard(_loop);
     guard.work();
     
@@ -402,10 +407,13 @@ void SocketTask::asyncReadSome() {
           if (n < MAX_DIRECT_TRIES) {
             std::this_thread::yield();
           }
-
           continue;
         }
-
+        
+        if (_abandoned.load(std::memory_order_acquire)) {
+          return;
+        }
+        
         // ignore the result of processAll, try to read more bytes down below
         processAll();
         compactify();
@@ -413,7 +421,6 @@ void SocketTask::asyncReadSome() {
     } catch (boost::system::system_error const& err) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "i/o stream failed with: "
         << err.what();
-
       closeStreamNoLock();
       return;
     } catch (...) {
@@ -427,8 +434,7 @@ void SocketTask::asyncReadSome() {
   // try to read more bytes
   if (_abandoned.load(std::memory_order_acquire)) {
     return;
-  }
-  if (!reserveMemory()) {
+  } else if (!reserveMemory()) {
     LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
     return;
   }
@@ -499,7 +505,7 @@ void SocketTask::asyncWriteSome() {
     
     boost::system::error_code err;
     err.clear();
-    while (true) {
+    while (!_abandoned.load(std::memory_order_acquire)) {
       RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
       written = _peer->writeSome(_writeBuffer._buffer, err);
       
@@ -531,6 +537,10 @@ void SocketTask::asyncWriteSome() {
       closeStreamNoLock();
       return;
     }
+  }
+  
+  if (_abandoned.load(std::memory_order_acquire)) {
+    return;
   }
   
   // so the code could have blocked at this point or not all data
@@ -567,8 +577,8 @@ void SocketTask::asyncWriteSome() {
                         
                         RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
                         
-                        if (completedWriteBuffer() &&
-                            !_abandoned.load(std::memory_order_acquire)) {
+                        if (!_abandoned.load(std::memory_order_acquire) &&
+                            completedWriteBuffer()) {
                           asyncWriteSome();
                         }
                       });

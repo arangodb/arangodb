@@ -305,13 +305,7 @@ bool HttpCommTask::processRead(double startTime) {
           protocolVersion, /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
                                 _readBuffer.length() - 11);
-      {
-        // MUTEX_LOCKER(locker, commTask->_lock);
-        // strand::dispatch can run immediately
-        //commTask->strand().dispatch([commTask]{
-          commTask->processAll();
-        //});
-      }
+      commTask->processAll();
       commTask->start();
       return false;
     }
