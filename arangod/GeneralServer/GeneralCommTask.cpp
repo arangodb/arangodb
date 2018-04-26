@@ -274,11 +274,9 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
                                     << _loop.scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
   auto job = std::make_unique<Job>(_server, std::move(handler),
-                                   this->strand().wrap([self, this](std::shared_ptr<RestHandler> h) {
-    /*JobGuard guard(_loop);
-    guard.work();*/
+                                   [self, this](std::shared_ptr<RestHandler> h) {
     handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
-  }));
+  });
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
   if (!ok) {

@@ -120,6 +120,9 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 #endif
 
   resetKeepAlive();
+  
+  // response has been queued, allow further requests
+  _requestPending = false;
 
   // CORS response handling
   if (!_origin.empty()) {
@@ -194,9 +197,6 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
         << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
         << "\"," << stat->timingsCsv();
   }
-
-  // response has been queued, allow further requests
-  _requestPending = false;
   
   addWriteBuffer(std::move(buffer));
 
