@@ -128,7 +128,6 @@ void AuthenticationFeature::prepare() {
   TRI_ASSERT(_userManager == nullptr);
   
   ServerState::RoleEnum role = ServerState::instance()->getRole();
-  TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
     if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
@@ -141,7 +140,9 @@ void AuthenticationFeature::prepare() {
     _userManager = new auth::UserManager();
 #endif
   } else {
-    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
+    // We always need a user manager, even if ROLE is undefined
+    // Happens with `database.check-version true`
+    _userManager = new auth::UserManager();
   }
   
   TRI_ASSERT(_authCache == nullptr);
