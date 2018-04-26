@@ -4,8 +4,6 @@
 
 @RESTHEADER{PUT /_api/simple/all-keys, Read all documents}
 
-@RESTQUERYPARAMETERS
-
 @RESTBODYPARAM{collection,string,optional,}
 The name of the collection. This is only for backward compatibility.
 In ArangoDB versions < 3.0, the URL path was */_api/document* and
