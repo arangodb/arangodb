@@ -491,12 +491,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     StringRef highRef(highSlice);
 
     LogicalCollection* coll = trx.documentCollection();
-    auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
-    std::unique_ptr<IndexIterator> iterator = ph->getSortedAllIterator(&trx);
-    RocksDBGenericAllIndexIterator* gIterator = static_cast<RocksDBGenericAllIndexIterator*>(iterator.get());
+    auto iterator = createGenericIterator(&trx, RocksDBColumnFamily::documents(), coll);
 
     VPackBuilder builder;
-    gIterator->gnext(
+    iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           StringRef docKey(RocksDBKey::primaryKey(rocksKey));
 
@@ -658,9 +656,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       }
     }; //comapre chunk - end
 
-    auto itr = static_cast<RocksDBCollection*>(col->getPhysical())->getSortedAllIterator(&trx);
-    auto iterator = static_cast<RocksDBGenericAllIndexIterator*>(itr.get());
-    iterator->gnext(
+    LogicalCollection* coll = trx.documentCollection();
+    auto iterator = createGenericIterator(&trx, RocksDBColumnFamily::documents(), coll);
+    iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
           TRI_voc_rid_t docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));

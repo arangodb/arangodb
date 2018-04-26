@@ -69,35 +69,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 };
 
 
-/// @brief iterator over all documents in the collection
-/// basically sorted after revision ID
-class RocksDBGenericAllIndexIterator final : public IndexIterator {
- public:
-  RocksDBGenericAllIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          RocksDBPrimaryIndex const* index, bool reverse);
-
-  ~RocksDBGenericAllIndexIterator() {}
-
-  char const* typeName() const override { return "generic-all-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override { return false;}
-  bool gnext(GenericCallback const& cb, size_t limit);
-  void seek(StringRef const& key);
-  //bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-  //void skip(uint64_t count, uint64_t& skipped) override;
-
-  void reset() override;
-
- private:
-  bool outOfRange() const;
-
-  bool const _reverse;
-  RocksDBKeyBounds const _bounds;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  rocksdb::Comparator const* _cmp;
-};
-
 class RocksDBAnyIndexIterator final : public IndexIterator {
  public:
   RocksDBAnyIndexIterator(LogicalCollection* collection,
@@ -169,9 +140,9 @@ class RocksDBGenericIterator {
 
   bool next(GenericCallback const& cb, size_t limit);
   void skip(uint64_t count, uint64_t& skipped);
-  void seek(StringRef const& key);
-  void seek(std::string const& key) { seek(StringRef(key)); }
+  void seek(rocksdb::Slice const& key);
   void reset();
+  RocksDBKeyBounds const& bounds() const { return _bounds; }
 
  private:
   bool outOfRange() const;
