@@ -496,8 +496,12 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     VPackBuilder builder;
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-          StringRef docKey(RocksDBKey::primaryKey(rocksKey));
+          auto documentId = RocksDBKey::documentId(RocksDBEntryType::Document, rocksKey);
+          if(col->readDocument(&trx, documentId, mmdr) == false) {
+            return;
+          }
 
+          StringRef docKey(RocksDBKey::primaryKey(rocksKey));
           if (docKey.compare(lowRef) < 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
@@ -508,7 +512,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             trx.remove(col->name(), builder.slice(), options);
           }
         },
-        UINT64_MAX);
+        std::numeric_limits<std::uint64_t>::max());
 
     res = trx.commit();
 
@@ -660,6 +664,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     auto iterator = createDocumentIterator(&trx, coll);
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+          auto documentId = RocksDBKey::documentId(RocksDBEntryType::Document, rocksKey);
+          if(col->readDocument(&trx, documentId, mmdr) == false) {
+            return;
+          }
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
           TRI_voc_rid_t docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
           compareChunk(docKey, docRev);

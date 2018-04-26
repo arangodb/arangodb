@@ -360,9 +360,9 @@ bool RocksDBGenericIterator::outOfRange() const {
 
 void RocksDBGenericIterator::reset() {
   if (_reverse) {
-    _iterator->SeekForPrev(_bounds.end());
+    seek(_bounds.end());
   } else {
-    _iterator->Seek(_bounds.start());
+    seek(_bounds.start());
   }
 }
 
@@ -380,9 +380,12 @@ void RocksDBGenericIterator::skip(uint64_t count, uint64_t& skipped) {
 }
 
 void RocksDBGenericIterator::seek(rocksdb::Slice const& key) {
-  // add reverse
-  _iterator->Seek(key);
-  TRI_ASSERT(_iterator->Valid());
+  if (_reverse) {
+    _iterator->SeekForPrev(key);
+  } else {
+    _iterator->Seek(key);
+  }
+  //TRI_ASSERT(_iterator->Valid());
 }
 
 bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
