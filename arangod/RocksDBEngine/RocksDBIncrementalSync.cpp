@@ -438,8 +438,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   VPackSlice const chunkSlice = builder.slice();
 
-  LOG_DEVEL << chunkSlice.toJson();
-
   if (!chunkSlice.isArray()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
   }
@@ -493,7 +491,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     StringRef highRef(highSlice);
 
     LogicalCollection* coll = trx.documentCollection();
-    auto iterator = createGenericIterator(&trx, RocksDBColumnFamily::documents(), coll);
+    auto iterator = createDocumentIterator(&trx, coll);
 
     VPackBuilder builder;
     iterator.next(
@@ -659,7 +657,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     }; //comapre chunk - end
 
     LogicalCollection* coll = trx.documentCollection();
-    auto iterator = createGenericIterator(&trx, RocksDBColumnFamily::documents(), coll);
+    auto iterator = createDocumentIterator(&trx, coll);
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();

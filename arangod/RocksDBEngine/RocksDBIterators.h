@@ -153,9 +153,8 @@ class RocksDBGenericIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-RocksDBGenericIterator createGenericIterator(transaction::Methods* trx
-                                            ,rocksdb::ColumnFamilyHandle* columnFamily
-                                            ,LogicalCollection* col = nullptr
+RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx
+                                            ,LogicalCollection* col
                                             ,bool reverse = false
                                             );
 
