@@ -72,11 +72,14 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   _options.evaluateFCalls = basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
   _options.fullRange = basics::VelocyPackHelper::readBooleanValue(base, "fullRange", false);
   _options.limit = basics::VelocyPackHelper::readNumericValue(base, "limit", 0);
-  if (_options.sorted && base.isObject() && base.get("reverse").isBool()) { // legacy
+  if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
+    // legacy
     _options.sorted = true;
     _options.ascending = !(base.get("reverse").getBool());
   }
-  _options.needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)) {
+  _options.needsGatherNodeSort =
+      basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort",
+                                                 false);
 
   if (_collection == nullptr) {
     std::string msg("collection '");
