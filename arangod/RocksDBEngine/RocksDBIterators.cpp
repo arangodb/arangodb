@@ -390,35 +390,6 @@ RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db
   {};
 
   //return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts, cf));
-RocksDBGenericIterator createGenericIterator(transaction::Methods* trx
-                                            ,rocksdb::ColumnFamilyHandle* columnFamily
-                                            ,LogicalCollection* col = nullptr
-                                            ,bool reverse = false
-                                            ){
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
-
-  // intentional copy of the read options
-  rocksdb::ReadOptions options = mthds->readOptions();
-  TRI_ASSERT(options.snapshot != nullptr);
-  TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = AllIteratorFillBlockCache;
-  options.verify_checksums = false;  // TODO evaluate
-  // options.readahead_size = 4 * 1024 * 1024;
-  RocksDBKeyBounds bounds(RocksDBKeyBounds::Empty());
-
-  // TODO FIXME - more create functions or kind of switch
-  // over columenfamiles or create functions that takes bounds..
-  // ask jan
-  if(columnFamily == RocksDBColumnFamily::documents() && col){
-    bounds = RocksDBKeyBounds::CollectionDocuments(static_cast<RocksDBCollection*>(col->getPhysical())->objectId());
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL); //result? - guess exception is ok here as it should not happen
-  }
-
-  return RocksDBGenericIterator(arangodb::rocksutils::globalRocksDB(), columnFamily, options, bounds, reverse);
-
-}
-
 bool RocksDBGenericIterator::outOfRange() const {
   if (_reverse) {
     return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
@@ -448,6 +419,13 @@ void RocksDBGenericIterator::skip(uint64_t count, uint64_t& skipped) {
   }
 }
 
+void RocksDBGenericIterator::seek(StringRef const& key) {
+  uint64_t objectId = _bounds.objectId();
+  RocksDBKey primaryKey;
+  primaryKey.constructPrimaryIndexValue(objectId, key);
+  _iterator->Seek(primaryKey.string());
+  TRI_ASSERT(_iterator->Valid());
+}
 bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -477,3 +455,33 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
 
   return true;
 }
+
+RocksDBGenericIterator arangodb::createGenericIterator(transaction::Methods* trx
+                                            ,rocksdb::ColumnFamilyHandle* columnFamily
+                                            ,LogicalCollection* col
+                                            ,bool reverse
+                                            ){
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
+
+  // intentional copy of the read options
+  rocksdb::ReadOptions options = mthds->readOptions();
+  TRI_ASSERT(options.snapshot != nullptr);
+  TRI_ASSERT(options.prefix_same_as_start);
+  options.fill_cache = AllIteratorFillBlockCache;
+  options.verify_checksums = false;  // TODO evaluate
+  // options.readahead_size = 4 * 1024 * 1024;
+  RocksDBKeyBounds bounds(RocksDBKeyBounds::Empty());
+
+  // TODO FIXME - more create functions or kind of switch
+  // over columenfamiles or create functions that takes bounds..
+  // ask jan
+  if(columnFamily == RocksDBColumnFamily::documents() && col){
+    bounds = RocksDBKeyBounds::CollectionDocuments(static_cast<RocksDBCollection*>(col->getPhysical())->objectId());
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL); //result? - guess exception is ok here as it should not happen
+  }
+
+  return RocksDBGenericIterator(arangodb::rocksutils::globalRocksDB(), columnFamily, options, bounds, reverse);
+
+}
+

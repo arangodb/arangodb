@@ -169,6 +169,8 @@ class RocksDBGenericIterator {
 
   bool next(GenericCallback const& cb, size_t limit);
   void skip(uint64_t count, uint64_t& skipped);
+  void seek(StringRef const& key);
+  void seek(std::string const& key) { seek(StringRef(key)); }
   void reset();
 
  private:
