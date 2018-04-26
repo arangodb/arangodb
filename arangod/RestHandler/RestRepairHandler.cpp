@@ -21,13 +21,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestRepairHandler.h"
-#include <arangod/Cluster/ServerState.h>
-#include <arangod/GeneralServer/AsyncJobManager.h>
-#include <arangod/VocBase/LogicalCollection.h>
+
 #include <chrono>
 #include <list>
 #include <thread>
 #include <valarray>
+
+#include "Cluster/ServerState.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

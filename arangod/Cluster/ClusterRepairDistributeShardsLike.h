@@ -23,14 +23,13 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_REPAIR_DISTRIBUTE_SHARDS_LIKE_H
 #define ARANGOD_CLUSTER_CLUSTER_REPAIR_DISTRIBUTE_SHARDS_LIKE_H
 
-#include <arangod/Agency/AgencyComm.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
-
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
 
+#include "Agency/AgencyComm.h"
 #include "ClusterInfo.h"
 #include "ClusterRepairOperations.h"
 
