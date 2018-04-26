@@ -482,10 +482,9 @@ ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(
   // matters: if e.g. finished was checked before pending, this would
   // introduce a race condition which would result in JobStatus::missing
   // despite it being finished.
-  auto rv = getFromAgency<4>({
-      "Target/ToDo/" + jobId, "Target/Pending/" + jobId,
-      "Target/Finished/" + jobId, "Target/Failed/" + jobId
-  });
+  auto rv =
+      getFromAgency<4>({"Target/ToDo/" + jobId, "Target/Pending/" + jobId,
+                        "Target/Finished/" + jobId, "Target/Failed/" + jobId});
 
   if (rv.fail()) {
     return ResultT<JobStatus>(rv);

@@ -51,5 +51,4 @@ std::shared_ptr<VPackBuffer<uint8_t>> supervisionHealth3Healthy0Bad = R"=(
 )="_vpack;
 
 std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
-expectedResultsWithDeletedCollection{
-};
+    expectedResultsWithDeletedCollection{};

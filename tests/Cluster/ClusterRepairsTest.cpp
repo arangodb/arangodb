@@ -477,8 +477,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           _protoCollectionName = "myProtoCollection",
           _collectionReplicationFactor = 3,
           _protoReplicationFactor = 3,
-          _renameDistributeShardsLike = true
-      };
+          _renameDistributeShardsLike = true};
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -496,37 +495,27 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
             std::vector<AgencyOperation>{
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencySimpleOperationType::DELETE_OP
-                },
-                AgencyOperation{
-                    "Plan/Collections/myDbName/123456/"
-                    "repairingDistributeShardsLike",
-                    AgencyValueOperationType::SET, protoCollIdSlice
-                },
+                    AgencySimpleOperationType::DELETE_OP},
+                AgencyOperation{"Plan/Collections/myDbName/123456/"
+                                "repairingDistributeShardsLike",
+                                AgencyValueOperationType::SET,
+                                protoCollIdSlice},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyValueOperationType::SET, replicationFactorSlice
-                }
-            },
+                    AgencyValueOperationType::SET, replicationFactorSlice}},
             std::vector<AgencyPrecondition>{
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/"
-                    "repairingDistributeShardsLike",
-                    AgencyPrecondition::Type::EMPTY, true
-                },
+                AgencyPrecondition{"Plan/Collections/myDbName/123456/"
+                                   "repairingDistributeShardsLike",
+                                   AgencyPrecondition::Type::EMPTY, true},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyPrecondition::Type::VALUE, protoCollIdSlice
-                },
+                    AgencyPrecondition::Type::VALUE, protoCollIdSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice
-                },
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/789876/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice
-                }
-            }};
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
 
         trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
@@ -570,8 +559,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           _protoCollectionName = "myProtoCollection",
           _collectionReplicationFactor = 5,
           _protoReplicationFactor = 4,
-          _renameDistributeShardsLike = false
-      };
+          _renameDistributeShardsLike = false};
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -590,22 +578,17 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyPrecondition::Type::EMPTY, true
-                },
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/"
-                    "repairingDistributeShardsLike",
-                    AgencyPrecondition::Type::VALUE, protoCollIdSlice
-                },
+                    AgencyPrecondition::Type::EMPTY, true},
+                AgencyPrecondition{"Plan/Collections/myDbName/123456/"
+                                   "repairingDistributeShardsLike",
+                                   AgencyPrecondition::Type::VALUE,
+                                   protoCollIdSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice
-                },
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/789876/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice
-                }
-            }};
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
 
         trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
@@ -624,8 +607,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           _protoCollectionName = "myProtoCollection",
           _collectionReplicationFactor = 2,
           _protoReplicationFactor = 5,
-          _renameDistributeShardsLike = true
-      };
+          _renameDistributeShardsLike = true};
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -646,37 +628,28 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
             std::vector<AgencyOperation>{
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencySimpleOperationType::DELETE_OP
-                },
-                AgencyOperation{
-                    "Plan/Collections/myDbName/123456/"
-                    "repairingDistributeShardsLike",
-                    AgencyValueOperationType::SET, protoCollIdSlice
-                },
+                    AgencySimpleOperationType::DELETE_OP},
+                AgencyOperation{"Plan/Collections/myDbName/123456/"
+                                "repairingDistributeShardsLike",
+                                AgencyValueOperationType::SET,
+                                protoCollIdSlice},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyValueOperationType::SET, replicationFactorSlice
-                }
-            },
+                    AgencyValueOperationType::SET, replicationFactorSlice}},
             std::vector<AgencyPrecondition>{
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/"
-                    "repairingDistributeShardsLike",
-                    AgencyPrecondition::Type::EMPTY, true
-                },
+                AgencyPrecondition{"Plan/Collections/myDbName/123456/"
+                                   "repairingDistributeShardsLike",
+                                   AgencyPrecondition::Type::EMPTY, true},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyPrecondition::Type::VALUE, protoCollIdSlice
-                },
+                    AgencyPrecondition::Type::VALUE, protoCollIdSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, prevReplicationFactorSlice
-                },
+                    AgencyPrecondition::Type::VALUE,
+                    prevReplicationFactorSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/789876/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice
-                }
-            }};
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
 
         trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
@@ -694,10 +667,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                   std::make_tuple<ShardID, ShardID, DBServers>(
                       "shard1", "protoShard1", {"dbServer1", "dbServer2"}),
                   std::make_tuple<ShardID, ShardID, DBServers>(
-                      "shard2", "protoShard2", {"dbServer2", "dbServer3"})
-              },
-          _replicationFactor = 3
-      };
+                      "shard2", "protoShard2", {"dbServer2", "dbServer3"})},
+          _replicationFactor = 3};
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -720,52 +691,38 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         AgencyWriteTransaction expectedTrx{
             std::vector<AgencyOperation>{
-                AgencyOperation{
-                    "Plan/Collections/myDbName/123456/"
-                    "repairingDistributeShardsLike",
-                    AgencySimpleOperationType::DELETE_OP
-                },
+                AgencyOperation{"Plan/Collections/myDbName/123456/"
+                                "repairingDistributeShardsLike",
+                                AgencySimpleOperationType::DELETE_OP},
                 AgencyOperation{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyValueOperationType::SET, protoIdSlice
-                }
-            },
+                    AgencyValueOperationType::SET, protoIdSlice}},
             std::vector<AgencyPrecondition>{
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyPrecondition::Type::EMPTY, true
-                },
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/"
-                    "repairingDistributeShardsLike",
-                    AgencyPrecondition::Type::VALUE, protoIdSlice
-                },
+                    AgencyPrecondition::Type::EMPTY, true},
+                AgencyPrecondition{"Plan/Collections/myDbName/123456/"
+                                   "repairingDistributeShardsLike",
+                                   AgencyPrecondition::Type::VALUE,
+                                   protoIdSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice
-                },
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/789876/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice
-                },
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/shards/shard1",
-                    AgencyPrecondition::Type::VALUE, serverOrderSlice1
-                },
+                    AgencyPrecondition::Type::VALUE, serverOrderSlice1},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/789876/shards/protoShard1",
-                    AgencyPrecondition::Type::VALUE, serverOrderSlice1
-                },
+                    AgencyPrecondition::Type::VALUE, serverOrderSlice1},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/123456/shards/shard2",
-                    AgencyPrecondition::Type::VALUE, serverOrderSlice2
-                },
+                    AgencyPrecondition::Type::VALUE, serverOrderSlice2},
                 AgencyPrecondition{
                     "Plan/Collections/myDbName/789876/shards/protoShard2",
-                    AgencyPrecondition::Type::VALUE, serverOrderSlice2
-                }
-            }
-        };
+                    AgencyPrecondition::Type::VALUE, serverOrderSlice2}}};
 
         trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
@@ -800,10 +757,13 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN("A MoveShardOperation") {
       ServerState::instance()->setId("CurrentCoordinatorServerId");
 
-      MoveShardOperation operation {
-          _database = "myDbName", _collectionId = "123456",
-          _collectionName = "myCollection", _shard = "s1",
-          _from = "db-from-server", _to = "db-to-server", _isLeader = true};
+      MoveShardOperation operation{_database = "myDbName",
+                                   _collectionId = "123456",
+                                   _collectionName = "myCollection",
+                                   _shard = "s1",
+                                   _from = "db-from-server",
+                                   _to = "db-to-server",
+                                   _isLeader = true};
 
       WHEN("Converted into an AgencyTransaction") {
         uint64_t nextJobId = 41;
@@ -850,15 +810,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         Slice todoSlice = Slice(todoVpack->data());
 
         AgencyWriteTransaction expectedTrx{
-            AgencyOperation{
-                "Target/ToDo/" + std::to_string(jobId.get()),
-                AgencyValueOperationType::SET, todoSlice
-            },
-            AgencyPrecondition{
-                "Target/ToDo/" + std::to_string(jobId.get()),
-                AgencyPrecondition::Type::EMPTY, true
-            }
-        };
+            AgencyOperation{"Target/ToDo/" + std::to_string(jobId.get()),
+                            AgencyValueOperationType::SET, todoSlice},
+            AgencyPrecondition{"Target/ToDo/" + std::to_string(jobId.get()),
+                               AgencyPrecondition::Type::EMPTY, true}};
 
         trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
@@ -893,17 +848,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           _collectionName = "myCollection", _protoCollectionId = "789876",
           _protoCollectionName = "myProtoCollection", _shard = "s1",
           _protoShard = "s7", _leader = "db-leader-server",
-          _followers =
-              {
-                  "db-follower-3-server", "db-follower-2-server",
-                  "db-follower-4-server", "db-follower-1-server"
-              },
-          _protoFollowers =
-              {
-                  "db-follower-1-server", "db-follower-2-server",
-                  "db-follower-3-server", "db-follower-4-server"
-              }
-      };
+          _followers = {"db-follower-3-server", "db-follower-2-server",
+                        "db-follower-4-server", "db-follower-1-server"},
+          _protoFollowers = {"db-follower-1-server", "db-follower-2-server",
+                             "db-follower-3-server", "db-follower-4-server"}};
 
       WHEN("Converted into an AgencyTransaction") {
         VPackBufferPtr previousServerOrderVpack = R"=([
@@ -931,21 +879,15 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         REQUIRE_FALSE(jobid.is_initialized());
 
         AgencyWriteTransaction expectedTrx{
-            AgencyOperation{
-                "Plan/Collections/myDbName/123456/shards/s1",
-                AgencyValueOperationType::SET, correctServerOrderSlice
-            },
-            {
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/shards/s1",
-                    AgencyPrecondition::Type::VALUE, previousServerOrderSlice
-                },
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/789876/shards/s7",
-                    AgencyPrecondition::Type::VALUE, correctServerOrderSlice
-                }
-            }
-        };
+            AgencyOperation{"Plan/Collections/myDbName/123456/shards/s1",
+                            AgencyValueOperationType::SET,
+                            correctServerOrderSlice},
+            {AgencyPrecondition{"Plan/Collections/myDbName/123456/shards/s1",
+                                AgencyPrecondition::Type::VALUE,
+                                previousServerOrderSlice},
+             AgencyPrecondition{"Plan/Collections/myDbName/789876/shards/s7",
+                                AgencyPrecondition::Type::VALUE,
+                                correctServerOrderSlice}}};
 
         trx.clientId = expectedTrx.clientId = "dummy-client-id";
 

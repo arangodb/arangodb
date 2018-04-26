@@ -21,8 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRepairOperations.h"
-#include "ServerState.h"
 #include <utility>
+#include "ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -208,7 +208,8 @@ class StreamRepairOperationVisitor
  public:
   StreamRepairOperationVisitor() = delete;
 
-  explicit StreamRepairOperationVisitor(std::ostream& stream_) : _stream(stream_){};
+  explicit StreamRepairOperationVisitor(std::ostream& stream_)
+      : _stream(stream_){};
 
   std::ostream& operator()(BeginRepairsOperation const& op) {
     return _stream << op;
@@ -340,63 +341,50 @@ RepairOperationToTransactionVisitor::operator()(
     // is not
     preconditions.emplace_back(AgencyPrecondition{
         distributeShardsLikePath, AgencyPrecondition::Type::VALUE,
-        protoCollectionIdSlice
-    });
-    preconditions.emplace_back(AgencyPrecondition{
-        repairingDistributeShardsLikePath, AgencyPrecondition::Type::EMPTY,
-        true
-    });
+        protoCollectionIdSlice});
+    preconditions.emplace_back(
+        AgencyPrecondition{repairingDistributeShardsLikePath,
+                           AgencyPrecondition::Type::EMPTY, true});
 
     // rename distributeShardsLike to repairingDistributeShardsLike
+    operations.emplace_back(AgencyOperation{repairingDistributeShardsLikePath,
+                                            AgencyValueOperationType::SET,
+                                            protoCollectionIdSlice});
     operations.emplace_back(AgencyOperation{
-        repairingDistributeShardsLikePath, AgencyValueOperationType::SET,
-        protoCollectionIdSlice
-    });
-    operations.emplace_back(AgencyOperation{
-        distributeShardsLikePath, AgencySimpleOperationType::DELETE_OP
-    });
+        distributeShardsLikePath, AgencySimpleOperationType::DELETE_OP});
 
     // assert replicationFactors
     preconditions.emplace_back(AgencyPrecondition{
         replicationFactorPath, AgencyPrecondition::Type::VALUE,
-        collectionReplicationFactorSlice
-    });
+        collectionReplicationFactorSlice});
     preconditions.emplace_back(AgencyPrecondition{
         protoReplicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice
-    });
+        protoReplicationFactorSlice});
 
     // set collection.replicationFactor = proto.replicationFactor
-    operations.emplace_back(AgencyOperation{
-        replicationFactorPath, AgencyValueOperationType::SET,
-        protoReplicationFactorSlice
-    });
+    operations.emplace_back(AgencyOperation{replicationFactorPath,
+                                            AgencyValueOperationType::SET,
+                                            protoReplicationFactorSlice});
   } else {
     // assert that repairingDistributeShardsLike is set, but
     // distributeShardsLike
     // is not
     preconditions.emplace_back(AgencyPrecondition{
         repairingDistributeShardsLikePath, AgencyPrecondition::Type::VALUE,
-        protoCollectionIdSlice
-    });
+        protoCollectionIdSlice});
     preconditions.emplace_back(AgencyPrecondition{
-        distributeShardsLikePath, AgencyPrecondition::Type::EMPTY, true
-    });
+        distributeShardsLikePath, AgencyPrecondition::Type::EMPTY, true});
 
     // assert replicationFactors to match
     preconditions.emplace_back(AgencyPrecondition{
         replicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice
-    });
+        protoReplicationFactorSlice});
     preconditions.emplace_back(AgencyPrecondition{
         protoReplicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice
-    });
+        protoReplicationFactorSlice});
   }
 
-  return {
-      AgencyWriteTransaction{operations, preconditions}, boost::none
-  };
+  return {AgencyWriteTransaction{operations, preconditions}, boost::none};
 }
 
 RepairOperationToTransactionVisitor::ReturnValueT
@@ -421,21 +409,14 @@ RepairOperationToTransactionVisitor::operator()(
       createSingleValueVpack(op.replicationFactor);
 
   std::vector<AgencyPrecondition> preconditions{
-      AgencyPrecondition{
-          oldAttrPath, AgencyPrecondition::Type::VALUE, protoCollectionIdSlice
-      },
-      AgencyPrecondition{
-          newAttrPath, AgencyPrecondition::Type::EMPTY, true
-      },
-      AgencyPrecondition{
-          replicationFactorPath, AgencyPrecondition::Type::VALUE,
-          replicationFactorSlice
-      },
-      AgencyPrecondition{
-          protoReplicationFactorPath, AgencyPrecondition::Type::VALUE,
-          replicationFactorSlice
-      }
-  };
+      AgencyPrecondition{oldAttrPath, AgencyPrecondition::Type::VALUE,
+                         protoCollectionIdSlice},
+      AgencyPrecondition{newAttrPath, AgencyPrecondition::Type::EMPTY, true},
+      AgencyPrecondition{replicationFactorPath, AgencyPrecondition::Type::VALUE,
+                         replicationFactorSlice},
+      AgencyPrecondition{protoReplicationFactorPath,
+                         AgencyPrecondition::Type::VALUE,
+                         replicationFactorSlice}};
 
   for (auto const& it : op.shards) {
     ShardID shardId, protoShardId;
@@ -469,10 +450,7 @@ RepairOperationToTransactionVisitor::operator()(
   std::vector<AgencyOperation> operations{
       AgencyOperation{newAttrPath, AgencyValueOperationType::SET,
                       protoCollectionIdSlice},
-      AgencyOperation{
-          oldAttrPath, AgencySimpleOperationType::DELETE_OP
-      }
-  };
+      AgencyOperation{oldAttrPath, AgencySimpleOperationType::DELETE_OP}};
 
   return {AgencyWriteTransaction{operations, preconditions}, boost::none};
 }
@@ -493,9 +471,7 @@ RepairOperationToTransactionVisitor::operator()(MoveShardOperation const& op) {
       AgencyWriteTransaction{
           AgencyOperation{agencyKey, AgencyValueOperationType::SET,
                           VPackSlice(vpackTodo->data())},
-          AgencyPrecondition{
-              agencyKey, AgencyPrecondition::Type::EMPTY, true
-          }},
+          AgencyPrecondition{agencyKey, AgencyPrecondition::Type::EMPTY, true}},
       jobId);
 }
 
@@ -520,8 +496,7 @@ RepairOperationToTransactionVisitor::operator()(
       AgencyPrecondition{agencyShardId, AgencyPrecondition::Type::VALUE,
                          oldDbServerSlice},
       AgencyPrecondition{agencyProtoShardId, AgencyPrecondition::Type::VALUE,
-                         protoDbServerSlice}
-  };
+                         protoDbServerSlice}};
 
   AgencyOperation agencyOperation{agencyShardId, AgencyValueOperationType::SET,
                                   protoDbServerSlice};
@@ -701,19 +676,20 @@ FinishRepairsOperation::FinishRepairsOperation(
       replicationFactor(replicationFactor_.value) {}
 
 MoveShardOperation::MoveShardOperation(
-  const tagged_argument<tag::database, DatabaseID> database_,
-  const tagged_argument<tag::collectionId, CollectionID> collectionId_,
-  const tagged_argument<tag::collectionName, std::string> collectionName_,
-  const tagged_argument<tag::shard, ShardID> shard_, const tagged_argument<tag::from, ServerID> from_,
-  const tagged_argument<tag::to, ServerID> to_, const tagged_argument<tag::isLeader, bool> isLeader_
-)
-  : database(database_.value),
-    collectionId(collectionId_.value),
-    collectionName(collectionName_.value),
-    shard(shard_.value),
-    from(from_.value),
-    to(to_.value),
-    isLeader(isLeader_.value) {}
+    const tagged_argument<tag::database, DatabaseID> database_,
+    const tagged_argument<tag::collectionId, CollectionID> collectionId_,
+    const tagged_argument<tag::collectionName, std::string> collectionName_,
+    const tagged_argument<tag::shard, ShardID> shard_,
+    const tagged_argument<tag::from, ServerID> from_,
+    const tagged_argument<tag::to, ServerID> to_,
+    const tagged_argument<tag::isLeader, bool> isLeader_)
+    : database(database_.value),
+      collectionId(collectionId_.value),
+      collectionName(collectionName_.value),
+      shard(shard_.value),
+      from(from_.value),
+      to(to_.value),
+      isLeader(isLeader_.value) {}
 
 FixServerOrderOperation::FixServerOrderOperation(
     const tagged_argument<tag::database, DatabaseID> database_,

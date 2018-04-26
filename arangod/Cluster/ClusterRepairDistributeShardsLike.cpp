@@ -309,15 +309,13 @@ DBServers DistributeShardsLikeRepairer::serverSetSymmetricDifference(
 MoveShardOperation DistributeShardsLikeRepairer::createMoveShardOperation(
     struct cluster_repairs::Collection& collection, ShardID const& shardId,
     ServerID const& fromServerId, ServerID const& toServerId, bool isLeader) {
-  MoveShardOperation moveShardOperation{
-      _database = collection.database,
-      _collectionId = collection.id,
-      _collectionName = collection.name,
-      _shard = shardId,
-      _from = fromServerId,
-      _to = toServerId,
-      _isLeader = isLeader
-  };
+  MoveShardOperation moveShardOperation{_database = collection.database,
+                                        _collectionId = collection.id,
+                                        _collectionName = collection.name,
+                                        _shard = shardId,
+                                        _from = fromServerId,
+                                        _to = toServerId,
+                                        _isLeader = isLeader};
 
   {  // "Move" the shard in `collection`
     DBServers& dbServers = collection.shardsById.at(shardId);
@@ -678,8 +676,7 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
       _protoShard = protoShardId, _leader = leader,
       _followers = DBServers{dbServers.begin() + 1, dbServers.end()},
       _protoFollowers =
-          DBServers{protoDbServers.begin() + 1, protoDbServers.end()}
-  };
+          DBServers{protoDbServers.begin() + 1, protoDbServers.end()}};
 
   // Change order for the rest of the repairs as well
   dbServers = protoDbServers;
@@ -781,8 +778,7 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
       _protoCollectionId = proto.id,
       _protoCollectionName = proto.name,
       _shards = createShardVector(collection.shardsById, proto.shardsById),
-      _replicationFactor = proto.replicationFactor
-  };
+      _replicationFactor = proto.replicationFactor};
 }
 
 std::vector<cluster_repairs::ShardWithProtoAndDbServers>
