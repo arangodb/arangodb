@@ -395,7 +395,7 @@ void SocketTask::asyncReadSome() {
   TRI_ASSERT(_peer->strand().running_in_this_thread());
   
   if (!_peer->isEncrypted()) {
-    JobGuard guard(_loop);
+    JobGuard guard(_loop); // TODO remove ?
     guard.work();
     
     try {
@@ -500,7 +500,7 @@ void SocketTask::asyncWriteSome() {
   
   if (!_peer->isEncrypted()) {
     
-    JobGuard guard(_loop);
+    JobGuard guard(_loop); // TODO remove ?
     guard.work();
     
     boost::system::error_code err;

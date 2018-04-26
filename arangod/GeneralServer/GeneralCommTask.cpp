@@ -296,10 +296,10 @@ void GeneralCommTask::handleRequestDirectly(
   TRI_ASSERT(doLock || strand().running_in_this_thread());
 
   auto self = shared_from_this();
-  handler->initEngine(_loop, [self, this](std::shared_ptr<rest::RestHandler> h) {
+  handler->initEngine(_loop, [self, this, doLock](std::shared_ptr<rest::RestHandler> h) {
     RequestStatistics* stat = h->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
-    //if (doLock) {
+    if (doLock) {
       _loop.scheduler->_nrQueued++;
       this->strand().post([self, this, stat, h]() {
         _loop.scheduler->_nrQueued--;
@@ -307,10 +307,10 @@ void GeneralCommTask::handleRequestDirectly(
         guard.work();
         addResponse(*(h->response()), stat);
       });
-    /*} else {
+    } else {
       TRI_ASSERT(strand().running_in_this_thread());
       addResponse(*h->response(), stat);
-    }*/
+    }
   });
 
   HandlerWorkStack monitor(handler);
