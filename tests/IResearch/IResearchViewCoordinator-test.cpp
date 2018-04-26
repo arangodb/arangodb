@@ -233,6 +233,28 @@ SECTION("test_type") {
   CHECK((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
 
+SECTION("test_rename") {
+  auto json = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"properties\": { \"collections\": [1,2,3] } }");
+
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
+
+  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(0 == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(1 == view->id());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(&vocbase == &view->vocbase());
+
+  auto const res = view->rename("otherName", true);
+  CHECK(res.fail());
+  CHECK(TRI_ERROR_NOT_IMPLEMENTED == res.errorNumber());
+}
+
 SECTION("visit_collections") {
   auto json = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"properties\": { \"collections\": [1,2,3] } }");
