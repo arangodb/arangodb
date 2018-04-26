@@ -20,8 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB3_CLUSTERREPAIROPERATIONS_H
-#define ARANGODB3_CLUSTERREPAIROPERATIONS_H
+#ifndef ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H
+#define ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H
 
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
@@ -373,4 +373,4 @@ class RepairOperationToVPackVisitor : public boost::static_visitor<void> {
 }
 }
 
-#endif  // ARANGODB3_CLUSTERREPAIROPERATIONS_H
+#endif  // ARANGOD_CLUSTER_CLUSTER_REPAIR_OPERATIONS_H

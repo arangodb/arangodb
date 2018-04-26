@@ -20,8 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB3_CLUSTERREPAIRDISTRIBUTESHARDSLIKE_H
-#define ARANGODB3_CLUSTERREPAIRDISTRIBUTESHARDSLIKE_H
+#ifndef ARANGOD_CLUSTER_CLUSTER_REPAIR_DISTRIBUTE_SHARDS_LIKE_H
+#define ARANGOD_CLUSTER_CLUSTER_REPAIR_DISTRIBUTE_SHARDS_LIKE_H
 
 #include <arangod/Agency/AgencyComm.h>
 #include <velocypack/Compare.h>
@@ -255,4 +255,4 @@ class DistributeShardsLikeRepairer {
 }
 }
 
-#endif  // ARANGODB3_CLUSTERREPAIRDISTRIBUTESHARDSLIKE_H
+#endif  // ARANGOD_CLUSTER_CLUSTER_REPAIR_DISTRIBUTE_SHARDS_LIKE_H

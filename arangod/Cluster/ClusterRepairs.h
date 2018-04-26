@@ -20,9 +20,9 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB3_CLUSTERREPAIRS_H
-#define ARANGODB3_CLUSTERREPAIRS_H
+#ifndef ARANGOD_CLUSTER_CLUSTER_REPAIRS_H
+#define ARANGOD_CLUSTER_CLUSTER_REPAIRS_H
 
 #include "ClusterRepairDistributeShardsLike.h"
 
-#endif  // ARANGODB3_CLUSTERREPAIRS_H
+#endif  // ARANGOD_CLUSTER_CLUSTER_REPAIRS_H

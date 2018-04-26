@@ -20,8 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB3_RESTREPAIRHANDLER_H
-#define ARANGODB3_RESTREPAIRHANDLER_H
+#ifndef ARANGOD_REST_HANDLER_REST_REPAIR_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_REPAIR_HANDLER_H
 
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterRepairs.h"
@@ -116,4 +116,4 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 };
 }
 
-#endif  // ARANGODB3_RESTREPAIRHANDLER_H
+#endif  // ARANGOD_REST_HANDLER_REST_REPAIR_HANDLER_H
