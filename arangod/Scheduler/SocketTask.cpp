@@ -368,7 +368,7 @@ bool SocketTask::processAll() {
       return false;
     }
 
-    if(res.fail()){
+    if (res.fail()) {
       LOG_TOPIC(ERR, Logger::COMMUNICATION) << res.errorMessage();
       _closeRequested.store(true, std::memory_order_release);
       break;

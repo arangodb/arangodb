@@ -300,9 +300,8 @@ void GeneralCommTask::handleRequestDirectly(
     RequestStatistics* stat = h->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
     //if (doLock) {
-      // strand::post guarantees it returns immediately
       _loop.scheduler->_nrQueued++;
-      this->strand().dispatch([self, this, stat, h]() {
+      this->strand().post([self, this, stat, h]() {
         _loop.scheduler->_nrQueued--;
         JobGuard guard(_loop);
         guard.work();
