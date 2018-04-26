@@ -25,7 +25,6 @@ of documents in the collection, it is undefined which of the documents
 will be deleted.
 
 @RESTDESCRIPTION
-
 This will find all documents in the collection that match the specified
 example object.
 

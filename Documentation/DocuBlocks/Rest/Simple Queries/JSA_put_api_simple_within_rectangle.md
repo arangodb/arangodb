@@ -30,7 +30,6 @@ applied before the *limit* restriction. The default is 100. (optional)
 If given, the identifier of the geo-index to use. (optional)
 
 @RESTDESCRIPTION
-
 This will find all documents within the specified rectangle (determined by
 the given coordinates (*latitude1*, *longitude1*, *latitude2*, *longitude2*). 
 

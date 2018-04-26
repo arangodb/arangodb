@@ -1,8 +1,29 @@
-v3.2.13 (XXXX-XX-XX)
+v3.2.14 (2018-04-20)
 --------------------
 
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
+
+* field "$schema" in Foxx manifest.json files no longer produce warnings
+
+* added `@arangodb/locals` module to expose the Foxx service context as an
+  alternative to using `module.context` directly.
+
+* the internal implementation of REST API `/_api/simple/by-example` now uses
+  C++ instead of JavaScript
+
+* supervision can be switched to maintenance mode f.e. for rolling upgrades
+
+
+v3.2.13 (2018-04-13)
+--------------------
+
+* improve startup resilience in case there are datafile errors (MMFiles)
+
+  also allow repairing broken VERSION files automatically on startup by
+  specifying the option `--database.ignore-datafile-errors true`
+
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
 
@@ -10,6 +31,11 @@ v3.2.13 (XXXX-XX-XX)
 
 * fixed the bahaviour of clusterinfo when waiting for current to catch
   up with plan in create collection.
+
+* fix for internal issue #2215. supervision will now wait for agent to
+  fully prepare before adding 10 second grace period after leadership change
+
+* fixed interal issue #2215 FailedLeader timeout bug
 
 
 v3.2.12 (2018-02-27)

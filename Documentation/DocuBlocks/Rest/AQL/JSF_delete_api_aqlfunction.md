@@ -18,7 +18,6 @@ If set to *false*, the function name provided in *name* must be fully
 qualified, including any namespaces.
 
 @RESTDESCRIPTION
-
 Removes an existing AQL user function, identified by *name*.
 
 In case of success, the returned JSON object has the following properties:

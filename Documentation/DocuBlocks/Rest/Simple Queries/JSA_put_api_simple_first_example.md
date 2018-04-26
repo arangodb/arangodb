@@ -11,7 +11,6 @@ The name of the collection to query.
 The example document.
 
 @RESTDESCRIPTION
-
 This will return the first document matching a given example.
 
 Returns a result containing the document or *HTTP 404* if no

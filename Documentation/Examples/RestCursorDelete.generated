@@ -15,20 +15,20 @@ x-content-type-options: nosniff
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span>, 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10300"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10300"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WaHkOx2--B"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10290"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10290"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WsKMKS6--B"</span>, 
       <span class="hljs-string">"hello4"</span> : <span class="hljs-string">"world1"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10297"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10297"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WaHkOx2--A"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10287"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/10287"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WsKMKS6--A"</span>, 
       <span class="hljs-string">"hello3"</span> : <span class="hljs-string">"world1"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10306"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10296"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -44,5 +44,5 @@ x-content-type-options: nosniff
   }, 
   <span class="hljs-string">"cached"</span> : <span class="hljs-literal">false</span> 
 }
-shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/10306
+shell> curl -X DELETE --dump - http://localhost:8529/_api/cursor/10296
 

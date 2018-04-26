@@ -132,7 +132,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
   if (it == _stats.end()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                   "required datafile statistics not found");
+                                   "required datafile statistics not found on update");
   }
 
   auto& dst = (*it).second;
@@ -150,7 +150,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   if (it == _stats.end()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                   "required datafile statistics not found");
+                                   "required datafile statistics not found for update target");
   }
 
   auto& dst = (*it).second;
@@ -160,7 +160,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src) {
   if (it == _stats.end()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for source datafile " << src;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                   "required datafile statistics not found");
+                                   "required datafile statistics not found for update source");
   }
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "updating statistics for datafile " << fid;
@@ -177,7 +177,7 @@ void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
   if (it == _stats.end()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for datafile " << fid;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                   "required datafile statistics not found");
+                                   "required datafile statistics not found on replace");
   }
 
   auto& dst = (*it).second;
@@ -233,7 +233,7 @@ MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t 
     if (it == _stats.end()) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "did not find required statistics for datafile " << fid;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
-                                     "required datafile statistics not found");
+                                     "required datafile statistics not found on get");
     }
 
     result = *(*it).second;

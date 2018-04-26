@@ -10,7 +10,6 @@
 wait `duration` seconds until the reply is sent.
 
 @RESTDESCRIPTION
-
 The call returns an object with the attribute *duration*. This takes
 as many seconds as the duration argument says.
 

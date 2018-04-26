@@ -25,7 +25,6 @@ if *true*, then create a sparse index.
 if *false*, the deduplication of array values is turned off.
 
 @RESTDESCRIPTION
-
 Creates a skip-list index for the collection *collection-name*, if
 it does not already exist. The call expects an object containing the index
 details.
