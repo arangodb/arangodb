@@ -179,7 +179,11 @@ class RocksDBGenericIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-RocksDBGenericIterator createGenericIterator(transaction::Methods* trx, bool reverse = false);
+RocksDBGenericIterator createGenericIterator(transaction::Methods* trx
+                                            ,rocksdb::ColumnFamilyHandle* columnFamily
+                                            ,LogicalCollection* col = nullptr
+                                            ,bool reverse = false
+                                            );
 
 } //namespace arangodb
 #endif
