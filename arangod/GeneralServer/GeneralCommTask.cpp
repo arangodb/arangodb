@@ -306,11 +306,11 @@ void GeneralCommTask::handleRequestDirectly(
       std::shared_ptr<GeneralResponse> sresp(resp.get());
       resp.release();
       // strand::post guarantees it returns immediately
-      //_loop.scheduler->_nrQueued++;
-      this->strand().dispatch([self, this, stat, sresp]() {
-        /*_loop.scheduler->_nrQueued--;
+      _loop.scheduler->_nrQueued++;
+      this->strand().post([self, this, stat, sresp]() {
+        _loop.scheduler->_nrQueued--;
         JobGuard guard(_loop);
-        guard.work();*/
+        guard.work();
         addResponse(*sresp, stat);
       });
     } else {
