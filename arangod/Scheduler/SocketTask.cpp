@@ -452,21 +452,22 @@ void SocketTask::asyncReadSome() {
           return;
         }
         
-        //_loop.scheduler->_nrQueued++;
+        _loop.scheduler->_nrQueued++;
         _peer->strand().post([self, this, transferred] {
-          //_loop.scheduler->_nrQueued--;
+          _loop.scheduler->_nrQueued--;
           JobGuard guard(_loop);
           guard.work();
           
           _readBuffer.increaseLength(transferred);
           if (processAll()) {
-            //_loop.scheduler->_nrQueued++;
-            _//peer->strand().post([self, this]() {
-              //_loop.scheduler->_nrQueued--;
-              /*JobGuard guard(_loop);
-              guard.work();*/
+            //asyncReadSome();
+            _loop.scheduler->_nrQueued++;
+            _peer->strand().post([self, this]() {
+              _loop.scheduler->_nrQueued--;
+              JobGuard guard(_loop);
+              guard.work();
               asyncReadSome();
-            //});
+            });
           }
           compactify();
         });
