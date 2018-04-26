@@ -166,6 +166,22 @@ keyword<tag::deleted, bool> _deleted = decltype(_deleted)::instance;
 keyword<tag::isSmart, bool> _isSmart = decltype(_isSmart)::instance;
 }
 
+// Applies the following changes iff renameDistributeShardsLike is true:
+//  * Renames "distributeShardsLike" to "repairingDistributeShardsLike"
+//  * Sets collection.replicationFactor = `protoReplicationFactor`
+// Asserts the following preconditions:
+//  if renameDistributeShardsLike:
+//    * collection.distributeShardsLike == `protoCollectionId`
+//    * collection.repairingDistributeShardsLike == undefined
+//    * collection.replicationFactor == `collectionReplicationFactor`
+//    * protoCollection.replicationFactor == `protoReplicationFactor`
+//  else:
+//    * collection.repairingDistributeShardsLike == `protoCollectionId`
+//    * collection.distributeShardsLike == undefined
+//    * collection.replicationFactor == `protoReplicationFactor` (sic!)
+//    * protoCollection.replicationFactor == `protoReplicationFactor`
+//
+// See RepairOperationToTransactionVisitor for the implementation.
 struct BeginRepairsOperation {
   DatabaseID database;
   CollectionID collectionId;
@@ -194,6 +210,16 @@ struct BeginRepairsOperation {
           renameDistributeShardsLike_);
 };
 
+// Applies the following changes:
+//  * Renames "repairingDistributeShardsLike" to "distributeShardsLike"
+// Asserts the following preconditions:
+//  * collection.repairingDistributeShardsLike == `protoCollectionId`
+//  * collection.distributeShardsLike == undefined
+//  * collection.replicationFactor == `replicationFactor`
+//  * protoCollection.replicationFactor == `replicationFactor`
+//  * shards of both collection and protoCollection match `shards`
+//
+// See RepairOperationToTransactionVisitor for the implementation.
 struct FinishRepairsOperation {
   DatabaseID database;
   CollectionID collectionId;
@@ -218,6 +244,10 @@ struct FinishRepairsOperation {
       tagged_argument<tag::replicationFactor, size_t> replicationFactor_);
 };
 
+// Writes a moveShard job in Target/ToDo/ to move
+// the `shard` from the server `from` to server `to`.
+//
+// See RepairOperationToTransactionVisitor for the implementation.
 struct MoveShardOperation {
   DatabaseID database;
   CollectionID collectionId;
@@ -244,6 +274,13 @@ struct MoveShardOperation {
       std::chrono::system_clock::time_point jobCreationTimestamp) const;
 };
 
+// Applies the following changes:
+//  * Sets collection/shards/`shard` to leader :: protoFollowers
+// Asserts the following preconditions:
+//  * collection/shards/`shard` == leader :: followers
+//  * collection/shards/`shard` == leader :: protoFollowers
+//
+// See RepairOperationToTransactionVisitor for the implementation.
 struct FixServerOrderOperation {
   DatabaseID database;
   CollectionID collectionId;
