@@ -27,7 +27,6 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
-#include "MMFiles/MMFilesGeoIndex.h"
 #include "MMFiles/MMFilesGeoS2Index.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
@@ -59,7 +58,7 @@ static arangodb::MMFilesGeoS2Index* getGeoIndex(
   // It is save to return the Raw pointer.
   // It can only be used until trx is finished.
   trx->addCollectionAtRuntime(cid, collectionName);
-  
+
   arangodb::MMFilesGeoS2Index* index = nullptr;
   auto indexes = trx->indexesForCollection(collectionName);
   for (auto const& idx : indexes) {

@@ -5,7 +5,6 @@ set(MMFILES_SOURCES
   MMFiles/mmfiles-fulltext-index.cpp
   MMFiles/mmfiles-fulltext-list.cpp
   MMFiles/mmfiles-fulltext-query.cpp
-  MMFiles/mmfiles-geo-index.cpp
   MMFiles/MMFilesAllocatorThread.cpp
   MMFiles/MMFilesAqlFunctions.cpp
   MMFiles/MMFilesCleanupThread.cpp
@@ -27,7 +26,6 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesIndexFactory.cpp
   MMFiles/MMFilesLogfileManager.cpp
   MMFiles/MMFilesFulltextIndex.cpp
-  MMFiles/MMFilesGeoIndex.cpp
   MMFiles/MMFilesGeoS2Index.cpp
   MMFiles/MMFilesHashIndex.cpp
   MMFiles/MMFilesOptimizerRules.cpp

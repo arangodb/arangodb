@@ -27,7 +27,6 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
-#include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBGeoS2Index.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -190,7 +189,7 @@ static arangodb::RocksDBGeoS2Index* getGeoIndex(
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   arangodb::RocksDBGeoS2Index* index = nullptr;
   auto indexes = trx->indexesForCollection(collectionName);
   for (auto const& idx : indexes) {

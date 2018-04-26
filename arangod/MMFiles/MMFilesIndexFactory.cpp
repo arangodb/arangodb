@@ -31,7 +31,6 @@
 #include "Indexes/Index.h"
 #include "MMFiles/MMFilesEdgeIndex.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
-#include "MMFiles/MMFilesGeoIndex.h"
 #include "MMFiles/MMFilesGeoS2Index.h"
 #include "MMFiles/MMFilesHashIndex.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
@@ -322,7 +321,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   )->std::shared_ptr<Index> {
     return std::make_shared<MMFilesGeoS2Index>(id, collection, definition, "geo2");
   });
-  
+
   emplaceFactory("s2index", [](
     LogicalCollection* collection,
     velocypack::Slice const& definition,
@@ -442,7 +441,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
 
     return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
   });
-  
+
   emplaceNormalizer("s2index", [](
     velocypack::Builder& normalized,
     velocypack::Slice definition,
@@ -450,7 +449,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
   )->arangodb::Result {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_S2_INDEX)));
-    
+
     return EnhanceJsonIndexGeoS2(definition, normalized, isCreation);
   });
 

@@ -29,7 +29,6 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
-#include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBGeoS2Index.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
 #include "RocksDBEngine/RocksDBPersistentIndex.h"
@@ -301,7 +300,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
   )->std::shared_ptr<Index> {
     return std::make_shared<RocksDBGeoS2Index>(id, collection, definition, "geo2");
   });
-  
+
   emplaceFactory("s2index", [](
     LogicalCollection* collection,
     velocypack::Slice const& definition,
@@ -438,19 +437,19 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
 
     return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
   });
-  
+
   emplaceNormalizer("s2index", [](
     velocypack::Builder& normalized,
     velocypack::Slice definition,
     bool isCreation
   )->arangodb::Result {
     TRI_ASSERT(normalized.isOpenObject());
-    
+
     if (!ServerState::instance()->isCoordinator() && isCreation && !definition.hasKey("objectId")) {
       normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
     normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_S2_INDEX)));
-    
+
     return EnhanceJsonIndexGeoS2(definition, normalized, isCreation);
   });
 
