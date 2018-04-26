@@ -1,8 +1,6 @@
 .replicationContent {
-  padding-bottom: 15px;
 
   .pure-table {
-    margin-left: 15px;
 
     thead {
       th {
@@ -14,8 +12,62 @@
       tr {
         td:first-child {
           padding-right: 15px;
+          width: 200px;
         }
       }
     }
+  }
+
+  span {
+    background: rgba(62, 74, 82, 0.8);
+    border-radius: 10px;
+    color: $c-white;
+    font-weight: 100;
+    margin-left: -6px;
+    margin-right: 15px;
+    padding: 4px 6px;
+
+    &:hover {
+      background: rgba(62, 74, 82, 1);
+      cursor: pointer;
+    }
+  }
+
+  .half-split {
+
+    div {
+      text-align: center;
+
+      &:first-child {
+        padding-top: 20px;
+      }
+
+      &:last-child {
+        padding-bottom: 20px;
+      }
+
+      i {
+        font-size: 50pt;
+      }
+    }
+
+    tbody {
+      tr {
+        td:first-child {
+          width: auto;
+        }
+      }
+    }
+  }
+
+}
+
+#replicationContent,
+#applierContent {
+  padding-top: 0;
+
+  h4 {
+    margin-top: 0;
+    margin-bottom: 0;
   }
 }

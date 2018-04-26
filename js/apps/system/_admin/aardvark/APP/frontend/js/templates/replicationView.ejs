@@ -2,15 +2,17 @@
   <div id="replicationContent" class="innerContent replicationContent">
     
     <div class="repl-state">
-      <table class="pure-table">
+      <table class="pure-table half-split">
           <tbody>
             <tr>
-              <td><i class="fa fa-server"></i></td>
-              <td id="info-state-id"><%=info.state%></td>
-            </tr>
-            <tr>
-              <td state-status-id><i class="fa fa-check-circle"></i></td>
-              <td id="info-state-id"><%=info.msg%></td>
+              <td>
+                <div><i class="fa fa-server"></i></div>
+                <div id="info-state-id"><%=info.state%></div>
+              </td>
+              <td>
+                <div state-status-id><i class="fa fa-check-circle"></i></div>
+                <div id="info-state-id"><%=info.msg%></div>
+              </td>
             </tr>
           </tbody>
       </table>

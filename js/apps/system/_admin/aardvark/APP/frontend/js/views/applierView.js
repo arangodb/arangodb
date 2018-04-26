@@ -19,8 +19,26 @@
       this.getMode();
     },
 
+    breadcrumb: function (name) {
+      var self = this;
+
+      console.log(false);
+      if (window.App.naviView) {
+        var string = 'Follower State';
+        if (name) {
+          string = string + ': ' + name;
+        }
+        $('#subNavigationBar .breadcrumb').html(string);
+      } else {
+        window.setTimeout(function () {
+          self.breadcrumb();
+        }, 100);
+      }
+    },
+
     continueRender: function () {
       this.$el.html(this.template.render({}));
+      this.breadcrumb();
     },
 
     getApplierState: function (endpoint, global) {
