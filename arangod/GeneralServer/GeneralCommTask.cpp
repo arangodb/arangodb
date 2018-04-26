@@ -296,25 +296,22 @@ void GeneralCommTask::handleRequestDirectly(
   TRI_ASSERT(doLock || strand().running_in_this_thread());
 
   auto self = shared_from_this();
-  handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
+  handler->initEngine(_loop, [self, this](std::shared_ptr<rest::RestHandler> h) {
     RequestStatistics* stat = h->stealStatistics();
-    // TODO we could reduce all of this to strand::post / dispatch
-    if (doLock) {
-      std::unique_ptr<GeneralResponse> resp = h->stealResponse();
-      std::shared_ptr<GeneralResponse> sresp(resp.get());
-      resp.release();
+    // TODO we could reduce all of this to strand::dispatch ?
+    //if (doLock) {
       // strand::post guarantees it returns immediately
       _loop.scheduler->_nrQueued++;
-      this->strand().post([self, this, stat, sresp]() {
+      this->strand().dispatch([self, this, stat, h]() {
         _loop.scheduler->_nrQueued--;
         JobGuard guard(_loop);
         guard.work();
-        addResponse(*sresp, stat);
+        addResponse(*(h->response()), stat);
       });
-    } else {
+    /*} else {
       TRI_ASSERT(strand().running_in_this_thread());
       addResponse(*h->response(), stat);
-    }
+    }*/
   });
 
   HandlerWorkStack monitor(handler);
@@ -329,12 +326,12 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
     // callback will persist the response with the AsyncJobManager
-    handler->initEngine(_loop, [self](RestHandler* handler) {
-      GeneralServerFeature::JOB_MANAGER->finishAsyncJob(handler);
+    handler->initEngine(_loop, [self](std::shared_ptr<RestHandler> h) {
+      GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h.get());
     });
   } else {
     // here the response will just be ignored
-    handler->initEngine(_loop, [](RestHandler* handler) {});
+    handler->initEngine(_loop, [](std::shared_ptr<RestHandler>) {});
   }
 
   // queue this job, asyncRunEngine will later call above lambdas
