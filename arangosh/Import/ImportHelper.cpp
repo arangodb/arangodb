@@ -142,9 +142,12 @@ double const ImportHelper::ProgressStep = 3.0;
 ImportHelper::ImportHelper(ClientFeature const* client,
                            std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
-                           uint64_t maxUploadSize, uint32_t threadCount)
+                           uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
     : _httpClient(client->createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
+      _periodByteCount(0),
+      _autoUploadSize(autoUploadSize),
+      _threadCount(threadCount),
       _separator(","),
       _quote("\""),
       _createCollectionType("document"),
@@ -175,8 +178,14 @@ ImportHelper::ImportHelper(ClientFeature const* client,
     }));
     _senderThreads.back()->start();
   }
- 
-  // wait until all sender threads are ready 
+
+  // should self tuning code activate?
+  if (_autoUploadSize) {
+    _autoTuneThread.reset(new AutoTuneThread(*this));
+    _autoTuneThread->start();
+  } // if
+
+  // wait until all sender threads are ready
   while (true) {
     uint32_t numReady = 0;
     for (auto const& t : _senderThreads) {
@@ -306,7 +315,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   waitForSenders();
   reportProgress(totalLength, totalRead, nextProgress);
-  
+
   _outputBuffer.clear();
   return !_hasError;
 }
@@ -432,7 +441,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
   waitForSenders();
   reportProgress(totalLength, totalRead, nextProgress);
-  
+
   MUTEX_LOCKER(guard, _stats._mutex);
   // this is an approximation only. _numberLines is more meaningful for CSV
   // imports
@@ -540,11 +549,11 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
       _removeAttributes.find(_columnNames[column]) != _removeAttributes.end()) {
     return;
   }
-  
+
   if (column > 0) {
     _lineBuffer.appendChar(',');
   }
-  
+
   if (_keyColumn == -1 && row == _rowsToSkip && fieldLength == 4 &&
       memcmp(field, "_key", 4) == 0) {
     _keyColumn = column;
@@ -806,6 +815,7 @@ void ImportHelper::sendCsvBuffer() {
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
     t->sendData(url, &_outputBuffer);
+    addPeriodByteCount(_outputBuffer.length() + url.length());
   }
 
   _outputBuffer.reset();
@@ -847,13 +857,34 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   if (t != nullptr) {
     StringBuffer buff(len, false);
     buff.appendText(str, len);
+    uint64_t tmp_length = buff.length();
     t->sendData(url, &buff);
+    addPeriodByteCount(tmp_length + url.length());
   }
 }
+
+static auto next_send(std::chrono::steady_clock::now());
 
 /// Should return an idle sender, collect all errors
 /// and return nullptr, if there was an error
 SenderThread* ImportHelper::findIdleSender() {
+  static std::chrono::microseconds pace=std::chrono::microseconds(1000000/_threadCount);
+
+  auto now = std::chrono::steady_clock::now();
+  bool next_reset(false);
+
+  while(next_send <= now) {
+    next_send += pace;
+    next_reset = true;
+  }
+
+  std::this_thread::sleep_until(next_send);
+
+  if (!next_reset && pace/2 < next_send - now )
+    next_send = next_send + pace/2;
+  else
+    next_send = next_send + pace;
+
   while (!_senderThreads.empty()) {
     for (auto const& t : _senderThreads) {
       if (t->hasError()) {
