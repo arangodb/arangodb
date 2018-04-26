@@ -257,7 +257,7 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
             "collection": localColName,
             "distributeShardsLike": protoColName,
             "renameDistributeShardsLike": true,
-            "replicationFactor": replicationFactor,
+            "replicationFactor": replicationFactor
           }
         },
         {
@@ -267,7 +267,7 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
             "shard": shard,
             "from": leaderDbServer,
             "to": followerDbServer,
-            "isLeader": false,
+            "isLeader": false
           }
         },
         {
@@ -277,7 +277,7 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
             "shard": shard,
             "from": freeDbServer,
             "to": leaderDbServer,
-            "isLeader": true,
+            "isLeader": true
           }
         },
         {
@@ -305,7 +305,7 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
                   .concat(protoShardDist[protoShard].followers)
                   .map(server => dbServerIdByName[server])
               })
-            ),
+            )
           }
         }
       ],
@@ -453,7 +453,7 @@ describe('Collections with distributeShardsLike', function () {
     const postJobRes = request.post(
       coordinator.url + '/_admin/repair/distributeShardsLike',
       {
-        headers: { "x-arango-async": "store" },
+        headers: { "x-arango-async": "store" }
       }
     );
     const jobRes = waitForJob(postJobRes);
@@ -497,7 +497,7 @@ describe('Collections with distributeShardsLike', function () {
         const postJobRes = request.post(
           coordinator.url + '/_admin/repair/distributeShardsLike',
           {
-            headers: {"x-arango-async": "store"},
+            headers: {"x-arango-async": "store"}
           }
         );
         const jobRes = waitForJob(postJobRes);
@@ -527,7 +527,7 @@ describe('Collections with distributeShardsLike', function () {
         const postJobRes = request.post(
           coordinator.url + '/_admin/repair/distributeShardsLike',
           {
-            headers: {"x-arango-async": "store"},
+            headers: {"x-arango-async": "store"}
           }
         );
         const jobRes = waitForJob(postJobRes);
@@ -553,7 +553,7 @@ describe('Collections with distributeShardsLike', function () {
           "collection": collection.name(),
           "distributeShardsLike": protoCollection.name(),
           "renameDistributeShardsLike": false,
-          "replicationFactor": protoCollection.properties().replicationFactor,
+          "replicationFactor": protoCollection.properties().replicationFactor
         });
         expect(plannedOperations[1]).to.have.property('MoveShardOperation');
         expect(plannedOperations[1]).to.eql(originalExpectedOperations[2]);

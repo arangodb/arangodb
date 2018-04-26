@@ -204,14 +204,14 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                _protoCollectionId = "10000002",
                _protoCollectionName = "prototype10000002",
                _collectionReplicationFactor = 2, _protoReplicationFactor = 2,
-               _renameDistributeShardsLike = true,
+               _renameDistributeShardsLike = true
            },
            MoveShardOperation{
                _database = "someDb", _collectionId = "10000001",
                _collectionName = "follower10000001of10000002", _shard = "s11",
                _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-               _isLeader = false,
+               _isLeader = false
            },
            FinishRepairsOperation{
                _database = "someDb", _collectionId = "10000001",
@@ -223,9 +223,9 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                        std::make_tuple<ShardID, ShardID, DBServers>(
                            "s11", "s21",
                            {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                            "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
+                            "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"})
                    },
-               _replicationFactor = 2,
+               _replicationFactor = 2
            }}}},
         {"10000003",
          {{BeginRepairsOperation{
@@ -234,14 +234,14 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                _protoCollectionId = "10000002",
                _protoCollectionName = "prototype10000002",
                _collectionReplicationFactor = 2, _protoReplicationFactor = 2,
-               _renameDistributeShardsLike = true,
+               _renameDistributeShardsLike = true
            },
            MoveShardOperation{
                _database = "someDb", _collectionId = "10000003",
                _collectionName = "follower10000003of10000002", _shard = "s31",
                _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-               _isLeader = true,
+               _isLeader = true
            },
            FinishRepairsOperation{
                _database = "someDb", _collectionId = "10000003",
@@ -253,9 +253,9 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                        std::make_tuple<ShardID, ShardID, DBServers>(
                            "s31", "s21",
                            {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                            "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
+                            "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"})
                    },
-               _replicationFactor = 2,
+               _replicationFactor = 2
            }}}},
         {"10000005",
          ResultT<std::vector<RepairOperation>>::error(
@@ -288,7 +288,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                     _protoCollectionName = "prototype10000098",
                     _collectionReplicationFactor = 1,
                     _protoReplicationFactor = 1,
-                    _renameDistributeShardsLike = true,
+                    _renameDistributeShardsLike = true
                 },
                 MoveShardOperation{
                     _database = "someDb", _collectionId = "10000099",
@@ -296,7 +296,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                     _shard = "s991",
                     _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                     _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                    _isLeader = true,
+                    _isLeader = true
                 },
                 FinishRepairsOperation{
                     _database = "someDb", _collectionId = "10000099",
@@ -307,9 +307,9 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                         {
                             std::make_tuple<ShardID, ShardID, DBServers>(
                                 "s991", "s981",
-                                {"PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"}),
+                                {"PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"})
                         },
-                    _replicationFactor = 1,
-                },
-            }}},
+                    _replicationFactor = 1
+                }
+            }}}
         }};

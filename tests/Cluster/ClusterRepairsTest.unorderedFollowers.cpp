@@ -60,7 +60,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _protoCollectionId = "11111111",
                  _protoCollectionName = "leadingCollection",
                  _collectionReplicationFactor = 4, _protoReplicationFactor = 4,
-                 _renameDistributeShardsLike = true,
+                 _renameDistributeShardsLike = true
              },
              // fix server order
              FixServerOrderOperation{
@@ -74,14 +74,14 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                      {
                          "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
                          "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                         "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                         "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
                      },
                  _protoFollowers =
                      {
                          "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
                          "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                         "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
-                     },
+                         "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD"
+                     }
              },
              // rename repairingDistributeShardsLike to distributeShardsLike
              FinishRepairsOperation{
@@ -96,9 +96,9 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                              {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                               "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
                               "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                              "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD"}),
+                              "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD"})
                      },
-                 _replicationFactor = 4,
-             },
-         }}},
+                 _replicationFactor = 4
+             }
+         }}}
     };

@@ -484,7 +484,7 @@ ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(
   // despite it being finished.
   auto rv = getFromAgency<4>({
       "Target/ToDo/" + jobId, "Target/Pending/" + jobId,
-      "Target/Finished/" + jobId, "Target/Failed/" + jobId,
+      "Target/Finished/" + jobId, "Target/Failed/" + jobId
   });
 
   if (rv.fail()) {

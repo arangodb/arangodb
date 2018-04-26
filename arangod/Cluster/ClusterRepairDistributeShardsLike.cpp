@@ -316,7 +316,7 @@ MoveShardOperation DistributeShardsLikeRepairer::createMoveShardOperation(
       _shard = shardId,
       _from = fromServerId,
       _to = toServerId,
-      _isLeader = isLeader,
+      _isLeader = isLeader
   };
 
   {  // "Move" the shard in `collection`
@@ -678,7 +678,7 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
       _protoShard = protoShardId, _leader = leader,
       _followers = DBServers{dbServers.begin() + 1, dbServers.end()},
       _protoFollowers =
-          DBServers{protoDbServers.begin() + 1, protoDbServers.end()},
+          DBServers{protoDbServers.begin() + 1, protoDbServers.end()}
   };
 
   // Change order for the rest of the repairs as well
@@ -781,7 +781,7 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
       _protoCollectionId = proto.id,
       _protoCollectionName = proto.name,
       _shards = createShardVector(collection.shardsById, proto.shardsById),
-      _replicationFactor = proto.replicationFactor,
+      _replicationFactor = proto.replicationFactor
   };
 }
 

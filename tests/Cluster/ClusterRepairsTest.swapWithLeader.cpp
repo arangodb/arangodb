@@ -59,7 +59,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_frontend", _protoCollectionId = "22222222",
                  _protoCollectionName = "_graphs",
                  _collectionReplicationFactor = 2, _protoReplicationFactor = 2,
-                 _renameDistributeShardsLike = true,
+                 _renameDistributeShardsLike = true
              },
              // shard s11 of collection 11111111
              // make room on the dbserver where the leader should be
@@ -68,7 +68,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_frontend", _shard = "s11",
                  _from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
                  _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 _isLeader = false,
+                 _isLeader = false
              },
              // move leader to the correct dbserver
              MoveShardOperation{
@@ -76,7 +76,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_frontend", _shard = "s11",
                  _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                  _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 _isLeader = true,
+                 _isLeader = true
              },
              // fix the remaining shard
              MoveShardOperation{
@@ -84,7 +84,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_frontend", _shard = "s11",
                  _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                  _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 _isLeader = false,
+                 _isLeader = false
              },
              // rename repairingDistributeShardsLike to distributeShardsLike
              FinishRepairsOperation{
@@ -96,9 +96,9 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s11", "s22",
                              {"PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                              "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"}),
+                              "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"})
                      },
-                 _replicationFactor = 2,
-             },
-         }}},
+                 _replicationFactor = 2
+             }
+         }}}
     };

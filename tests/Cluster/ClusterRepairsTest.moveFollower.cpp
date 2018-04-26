@@ -93,7 +93,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                _collectionName = "follower", _protoCollectionId = "10000001",
                _protoCollectionName = "prototype",
                _collectionReplicationFactor = 3, _protoReplicationFactor = 3,
-               _renameDistributeShardsLike = true,
+               _renameDistributeShardsLike = true
            },
            // After a move, the new follower (here PRMR-C) will appear *last*
            // in the list, while the old (here PRMR-D) is removed. Thus the
@@ -104,7 +104,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                _collectionName = "follower", _shard = "s21",
                _from = "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
                _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-               _isLeader = false,
+               _isLeader = false
            },
            // No FixServerOrder should be necessary for s22, either.
            MoveShardOperation{
@@ -112,7 +112,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                _collectionName = "follower", _shard = "s22",
                _from = "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
                _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-               _isLeader = false,
+               _isLeader = false
            },
            // In contrast, for both s23 and s24 the order is wrong afterwards
            // and must be fixed!
@@ -121,7 +121,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                _collectionName = "follower", _shard = "s23",
                _from = "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
                _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-               _isLeader = false,
+               _isLeader = false
            },
            FixServerOrderOperation{
                _database = "someDb", _collectionId = "10000002",
@@ -132,20 +132,20 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                _followers =
                    {
                        "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                       "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                       "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
                    },
                _protoFollowers =
                    {
                        "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                       "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                   },
+                       "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
+                   }
            },
            MoveShardOperation{
                _database = "someDb", _collectionId = "10000002",
                _collectionName = "follower", _shard = "s24",
                _from = "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
                _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-               _isLeader = false,
+               _isLeader = false
            },
            FixServerOrderOperation{
                _database = "someDb", _collectionId = "10000002",
@@ -156,13 +156,13 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                _followers =
                    {
                        "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                       "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                       "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
                    },
                _protoFollowers =
                    {
                        "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                       "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                   },
+                       "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
+                   }
            },
            FinishRepairsOperation{
                _database = "someDb", _collectionId = "10000002",
@@ -180,23 +180,23 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                            {
                                "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                                "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                               "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                               "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
                            }),
                        std::make_tuple<ShardID, ShardID, DBServers>(
                            "s23", "s13",
                            {
                                "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                                "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                               "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                               "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
                            }),
                        std::make_tuple<ShardID, ShardID, DBServers>(
                            "s24", "s14",
                            {
                                "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                                "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                               "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                           }),
+                               "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
+                           })
                    },
-               _replicationFactor = 3,
-           }}}},
+               _replicationFactor = 3
+           }}}}
     };

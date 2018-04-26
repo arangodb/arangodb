@@ -59,7 +59,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _protoCollectionId = "10000001",
                  _protoCollectionName = "prototype",
                  _collectionReplicationFactor = 4, _protoReplicationFactor = 2,
-                 _renameDistributeShardsLike = true,
+                 _renameDistributeShardsLike = true
              },
              // shard s21 of collection 10000002
              // move follower
@@ -68,7 +68,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _shard = "s21",
                  _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                  _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 _isLeader = false,
+                 _isLeader = false
              },
              // rename repairingDistributeShardsLike to distributeShardsLike
              FinishRepairsOperation{
@@ -80,9 +80,9 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s21", "s11",
                              {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
+                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"})
                      },
-                 _replicationFactor = 2,
-             },
-         }}},
+                 _replicationFactor = 2
+             }
+         }}}
     };

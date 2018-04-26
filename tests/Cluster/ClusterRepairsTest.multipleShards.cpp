@@ -107,7 +107,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _protoCollectionId = "11111111",
                  _protoCollectionName = "prototype",
                  _collectionReplicationFactor = 2, _protoReplicationFactor = 2,
-                 _renameDistributeShardsLike = true,
+                 _renameDistributeShardsLike = true
              },
              // "s1",   "s1"
              MoveShardOperation{
@@ -115,7 +115,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _shard = "s1",
                  _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                  _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 _isLeader = true,
+                 _isLeader = true
              },
              // "s2",  "s2"
              MoveShardOperation{
@@ -123,7 +123,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _shard = "s2",
                  _from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
                  _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 _isLeader = false,
+                 _isLeader = false
              },
              // "s11",   "s3"
              MoveShardOperation{
@@ -131,7 +131,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _shard = "s3",
                  _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                  _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 _isLeader = true,
+                 _isLeader = true
              },
              // "s20",  "s4"
              MoveShardOperation{
@@ -139,7 +139,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _shard = "s4",
                  _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                  _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 _isLeader = false,
+                 _isLeader = false
              },
              // "s35",  "s5"
              MoveShardOperation{
@@ -147,7 +147,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _shard = "s5",
                  _from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
                  _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 _isLeader = true,
+                 _isLeader = true
              },
              // "s346", "s6"
              MoveShardOperation{
@@ -155,7 +155,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "follower", _shard = "s6",
                  _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                  _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 _isLeader = false,
+                 _isLeader = false
              },
 
              FinishRepairsOperation{
@@ -187,9 +187,9 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s6", "s346",
                              {"PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
+                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"})
                      },
-                 _replicationFactor = 2,
-             },
-         }}},
+                 _replicationFactor = 2
+             }
+         }}}
     };

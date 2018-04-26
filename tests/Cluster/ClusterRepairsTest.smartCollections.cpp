@@ -92,7 +92,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_local_E", _protoCollectionId = "10000001",
                  _protoCollectionName = "V", _collectionReplicationFactor = 2,
                  _protoReplicationFactor = 2,
-                 _renameDistributeShardsLike = true,
+                 _renameDistributeShardsLike = true
              },
              // shard s31 of collection 10000003
              // move follower
@@ -101,7 +101,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_local_E", _shard = "s31",
                  _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                  _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 _isLeader = false,
+                 _isLeader = false
              },
              // rename repairingDistributeShardsLike to distributeShardsLike
              FinishRepairsOperation{
@@ -113,10 +113,10 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s31", "s11",
                              {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
+                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"})
                      },
-                 _replicationFactor = 2,
-             },
+                 _replicationFactor = 2
+             }
          }}},
         {"10000005",
          {{
@@ -126,7 +126,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_from_E", _protoCollectionId = "10000001",
                  _protoCollectionName = "V", _collectionReplicationFactor = 2,
                  _protoReplicationFactor = 2,
-                 _renameDistributeShardsLike = true,
+                 _renameDistributeShardsLike = true
              },
              // shard s51 of collection 10000005
              // move leader
@@ -135,7 +135,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_from_E", _shard = "s51",
                  _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                  _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 _isLeader = true,
+                 _isLeader = true
              },
              // rename repairingDistributeShardsLike to distributeShardsLike
              FinishRepairsOperation{
@@ -147,9 +147,9 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s51", "s11",
                              {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
+                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"})
                      },
-                 _replicationFactor = 2,
-             },
-         }}},
+                 _replicationFactor = 2
+             }
+         }}}
     };

@@ -58,7 +58,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _protoCollectionId = "11111111",
                  _protoCollectionName = "leadingCollection",
                  _collectionReplicationFactor = 3, _protoReplicationFactor = 3,
-                 _renameDistributeShardsLike = false,
+                 _renameDistributeShardsLike = false
              },
              // rename repairingDistributeShardsLike to distributeShardsLike
              FinishRepairsOperation{
@@ -72,8 +72,8 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                              "s22", "s11",
                              {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                               "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                              "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"}),
+                              "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"})
                      },
-                 _replicationFactor = 3,
-             },
+                 _replicationFactor = 3
+             }
          }}}};

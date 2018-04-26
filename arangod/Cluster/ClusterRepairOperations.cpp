@@ -340,36 +340,36 @@ RepairOperationToTransactionVisitor::operator()(
     // is not
     preconditions.emplace_back(AgencyPrecondition{
         distributeShardsLikePath, AgencyPrecondition::Type::VALUE,
-        protoCollectionIdSlice,
+        protoCollectionIdSlice
     });
     preconditions.emplace_back(AgencyPrecondition{
         repairingDistributeShardsLikePath, AgencyPrecondition::Type::EMPTY,
-        true,
+        true
     });
 
     // rename distributeShardsLike to repairingDistributeShardsLike
     operations.emplace_back(AgencyOperation{
         repairingDistributeShardsLikePath, AgencyValueOperationType::SET,
-        protoCollectionIdSlice,
+        protoCollectionIdSlice
     });
     operations.emplace_back(AgencyOperation{
-        distributeShardsLikePath, AgencySimpleOperationType::DELETE_OP,
+        distributeShardsLikePath, AgencySimpleOperationType::DELETE_OP
     });
 
     // assert replicationFactors
     preconditions.emplace_back(AgencyPrecondition{
         replicationFactorPath, AgencyPrecondition::Type::VALUE,
-        collectionReplicationFactorSlice,
+        collectionReplicationFactorSlice
     });
     preconditions.emplace_back(AgencyPrecondition{
         protoReplicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice,
+        protoReplicationFactorSlice
     });
 
     // set collection.replicationFactor = proto.replicationFactor
     operations.emplace_back(AgencyOperation{
         replicationFactorPath, AgencyValueOperationType::SET,
-        protoReplicationFactorSlice,
+        protoReplicationFactorSlice
     });
   } else {
     // assert that repairingDistributeShardsLike is set, but
@@ -377,25 +377,25 @@ RepairOperationToTransactionVisitor::operator()(
     // is not
     preconditions.emplace_back(AgencyPrecondition{
         repairingDistributeShardsLikePath, AgencyPrecondition::Type::VALUE,
-        protoCollectionIdSlice,
+        protoCollectionIdSlice
     });
     preconditions.emplace_back(AgencyPrecondition{
-        distributeShardsLikePath, AgencyPrecondition::Type::EMPTY, true,
+        distributeShardsLikePath, AgencyPrecondition::Type::EMPTY, true
     });
 
     // assert replicationFactors to match
     preconditions.emplace_back(AgencyPrecondition{
         replicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice,
+        protoReplicationFactorSlice
     });
     preconditions.emplace_back(AgencyPrecondition{
         protoReplicationFactorPath, AgencyPrecondition::Type::VALUE,
-        protoReplicationFactorSlice,
+        protoReplicationFactorSlice
     });
   }
 
   return {
-      AgencyWriteTransaction{operations, preconditions}, boost::none,
+      AgencyWriteTransaction{operations, preconditions}, boost::none
   };
 }
 
@@ -422,19 +422,19 @@ RepairOperationToTransactionVisitor::operator()(
 
   std::vector<AgencyPrecondition> preconditions{
       AgencyPrecondition{
-          oldAttrPath, AgencyPrecondition::Type::VALUE, protoCollectionIdSlice,
+          oldAttrPath, AgencyPrecondition::Type::VALUE, protoCollectionIdSlice
       },
       AgencyPrecondition{
-          newAttrPath, AgencyPrecondition::Type::EMPTY, true,
+          newAttrPath, AgencyPrecondition::Type::EMPTY, true
       },
       AgencyPrecondition{
           replicationFactorPath, AgencyPrecondition::Type::VALUE,
-          replicationFactorSlice,
+          replicationFactorSlice
       },
       AgencyPrecondition{
           protoReplicationFactorPath, AgencyPrecondition::Type::VALUE,
-          replicationFactorSlice,
-      },
+          replicationFactorSlice
+      }
   };
 
   for (auto const& it : op.shards) {
@@ -470,8 +470,8 @@ RepairOperationToTransactionVisitor::operator()(
       AgencyOperation{newAttrPath, AgencyValueOperationType::SET,
                       protoCollectionIdSlice},
       AgencyOperation{
-          oldAttrPath, AgencySimpleOperationType::DELETE_OP,
-      },
+          oldAttrPath, AgencySimpleOperationType::DELETE_OP
+      }
   };
 
   return {AgencyWriteTransaction{operations, preconditions}, boost::none};
@@ -494,7 +494,7 @@ RepairOperationToTransactionVisitor::operator()(MoveShardOperation const& op) {
           AgencyOperation{agencyKey, AgencyValueOperationType::SET,
                           VPackSlice(vpackTodo->data())},
           AgencyPrecondition{
-              agencyKey, AgencyPrecondition::Type::EMPTY, true,
+              agencyKey, AgencyPrecondition::Type::EMPTY, true
           }},
       jobId);
 }
@@ -520,7 +520,7 @@ RepairOperationToTransactionVisitor::operator()(
       AgencyPrecondition{agencyShardId, AgencyPrecondition::Type::VALUE,
                          oldDbServerSlice},
       AgencyPrecondition{agencyProtoShardId, AgencyPrecondition::Type::VALUE,
-                         protoDbServerSlice},
+                         protoDbServerSlice}
   };
 
   AgencyOperation agencyOperation{agencyShardId, AgencyValueOperationType::SET,
