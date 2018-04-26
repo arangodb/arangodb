@@ -152,7 +152,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     VPackBuilder response;
     response.add(VPackValue(VPackValueType::Object));
 
-    bool errorOccurred;
+    bool errorOccurred = true;
 
     if (repairOperationsByCollection.empty()) {
       response.add("message", VPackValue("Nothing to do."));
