@@ -131,8 +131,6 @@ void SocketTask::start() {
       << _connectionInfo.clientPort;
 
   auto self = shared_from_this();
-  /*JobGuard guard(_loop);
-  guard.queue();*/
   _loop.scheduler->_nrQueued++;
   _peer->strand().post([self, this]() {
     _loop.scheduler->_nrQueued--;
@@ -157,6 +155,16 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
     return;
   }
 
+  if (!buffer.empty()) {
+    if (!_writeBuffer.empty()) {
+      _writeBuffers.emplace_back(std::move(buffer));
+      return;
+    }
+    _writeBuffer = std::move(buffer);
+  }
+
+  asyncWriteSome();
+  
   { // if (_readBuffer.size() > 0)
 #warning FIXME try to get rid of this call for VST
     // strand::post guarantees this is not called directly
@@ -170,16 +178,6 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
       processAll();
     });
   }
-
-  if (!buffer.empty()) {
-    if (!_writeBuffer.empty()) {
-      _writeBuffers.emplace_back(std::move(buffer));
-      return;
-    }
-    _writeBuffer = std::move(buffer);
-  }
-
-  asyncWriteSome();
 }
 
 // caller must hold the _lock
@@ -206,11 +204,14 @@ bool SocketTask::completedWriteBuffer() {
 // caller must not hold the _lock
 void SocketTask::closeStream() {
   //MUTEX_LOCKER(locker, _lock);
+  if (_abandoned.load(std::memory_order_acquire)) {
+    return;
+  }
   // strand::dispatch may execute this immediately if this
   // is called on a thread inside the same strand
   auto self = shared_from_this();
   _loop.scheduler->_nrQueued++;
-  _peer->strand().dispatch([self, this] {
+  _peer->strand().post([self, this] {
     _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
@@ -270,7 +271,7 @@ void SocketTask::resetKeepAlive() {
       << "keepAliveTimerCallback - called with: " << error.message();
       if (!error) { // error will be true if timer was canceled
         LOG_TOPIC(ERR, Logger::COMMUNICATION) << "keep alive timout - closing stream!";
-        closeStream();// <-- uses strand.dispatch
+        closeStream();
       }
     });
   }
@@ -387,22 +388,16 @@ bool SocketTask::processAll() {
 // must be invoked on strand
 void SocketTask::asyncReadSome() {
   //MUTEX_LOCKER(locker, _lock);
-  if (_abandoned.load(std::memory_order_acquire)) {
-    return;
-  }
-  
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand().running_in_this_thread());
   
   if (!_peer->isEncrypted()) {
-    JobGuard guard(_loop); // TODO remove ?
-    guard.work();
-    
     try {
       size_t const MAX_DIRECT_TRIES = 2;
       size_t n = 0;
 
-      while (++n <= MAX_DIRECT_TRIES) {
+      while (++n <= MAX_DIRECT_TRIES &&
+             !_abandoned.load(std::memory_order_acquire)) {
         if (!trySyncRead()) {
           if (n < MAX_DIRECT_TRIES) {
             std::this_thread::yield();
@@ -499,10 +494,6 @@ void SocketTask::asyncWriteSome() {
   TRI_ASSERT(_peer != nullptr);
   
   if (!_peer->isEncrypted()) {
-    
-    JobGuard guard(_loop); // TODO remove ?
-    guard.work();
-    
     boost::system::error_code err;
     err.clear();
     while (!_abandoned.load(std::memory_order_acquire)) {
@@ -554,12 +545,10 @@ void SocketTask::asyncWriteSome() {
                       
                       if (_abandoned.load(std::memory_order_acquire)) {
                         return;
-                      }
-                      if (ec) {
+                      } else if (ec) {
                         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
                         << "write on stream failed with: " << ec.message();
-                        //closeStreamNoLock();
-                        closeStream(); // <-- uses strand.dispatch
+                        closeStream();
                         return;
                       }
                       
