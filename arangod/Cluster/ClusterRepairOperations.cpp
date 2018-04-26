@@ -431,7 +431,7 @@ RepairOperationToTransactionVisitor::operator()(
     VPackSlice dbServersSlice;
     {
       VPackBuilder dbServerBuilder;
-      dbServerBuilder.add(VPackValue(velocypack::ValueType::Array));
+      dbServerBuilder.openArray();
       for (auto const& dbServer : dbServers) {
         dbServerBuilder.add(VPackValue(dbServer));
       }
