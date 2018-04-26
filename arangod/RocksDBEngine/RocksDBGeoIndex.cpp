@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBGeoS2Index.h"
+#include "RocksDBGeoIndex.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -48,7 +48,7 @@ class RDBNearIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
-                  ManagedDocumentResult* mmdr, RocksDBGeoS2Index const* index,
+                  ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
                   geo::QueryParams&& params)
       : IndexIterator(collection, trx, index),
         _index(index),
@@ -226,14 +226,14 @@ class RDBNearIterator final : public IndexIterator {
   }
 
  private:
-  RocksDBGeoS2Index const* _index;
+  RocksDBGeoIndex const* _index;
   ManagedDocumentResult* _mmdr;
   geo_index::NearUtils<CMP> _near;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
 typedef RDBNearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
+RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
                                      VPackSlice const& info,
                                      std::string const& typeName)
@@ -247,7 +247,7 @@ RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
 }
 
 /// @brief return a JSON representation of the index
-void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
+void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                      bool forPersistence) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
@@ -269,7 +269,7 @@ void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
 }
 
 /// @brief Test if this index matches the definition
-bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
+bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -338,7 +338,7 @@ bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
+IndexIterator* RocksDBGeoIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
@@ -382,7 +382,7 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
 }
 
 /// internal insert function, set batch or trx before calling
-Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
+Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
                                          RocksDBMethods* mthd,
                                          LocalDocumentId const& documentId,
                                          velocypack::Slice const& doc,
@@ -416,7 +416,7 @@ Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
 }
 
 /// internal remove function, set batch or trx before calling
-Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
+Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
                                          RocksDBMethods* mthd,
                                          LocalDocumentId const& documentId,
                                          VPackSlice const& doc,
@@ -445,7 +445,7 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
 }
 
 namespace {
-void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
+void retrieveNear(RocksDBGeoIndex const& index, transaction::Methods* trx,
                   double lat, double lon, double radius, size_t count,
                   std::string const& attributeName, VPackBuilder& builder) {
   geo::QueryParams params;
@@ -494,7 +494,7 @@ void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
 }  // namespace
 
 /// @brief looks up all points within a given radius
-void RocksDBGeoS2Index::withinQuery(transaction::Methods* trx, double lat,
+void RocksDBGeoIndex::withinQuery(transaction::Methods* trx, double lat,
                                     double lon, double radius,
                                     std::string const& attributeName,
                                     VPackBuilder& builder) const {
@@ -502,7 +502,7 @@ void RocksDBGeoS2Index::withinQuery(transaction::Methods* trx, double lat,
 }
 
 /// @brief looks up the nearest points
-void RocksDBGeoS2Index::nearQuery(transaction::Methods* trx, double lat,
+void RocksDBGeoIndex::nearQuery(transaction::Methods* trx, double lat,
                                   double lon, size_t count,
                                   std::string const& attributeName,
                                   VPackBuilder& builder) const {

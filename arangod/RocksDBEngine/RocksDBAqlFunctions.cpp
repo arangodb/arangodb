@@ -27,7 +27,7 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
-#include "RocksDBEngine/RocksDBGeoS2Index.h"
+#include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
@@ -176,7 +176,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
 }
 
 /// @brief Load geoindex for collection name
-static arangodb::RocksDBGeoS2Index* getGeoIndex(
+static arangodb::RocksDBGeoIndex* getGeoIndex(
     transaction::Methods* trx, TRI_voc_cid_t const& cid,
     std::string const& collectionName) {
   // NOTE:
@@ -190,11 +190,11 @@ static arangodb::RocksDBGeoS2Index* getGeoIndex(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  arangodb::RocksDBGeoS2Index* index = nullptr;
+  arangodb::RocksDBGeoIndex* index = nullptr;
   auto indexes = trx->indexesForCollection(collectionName);
   for (auto const& idx : indexes) {
     if (arangodb::Index::isGeoIndex(idx->type())) {
-      index = static_cast<arangodb::RocksDBGeoS2Index*>(idx.get());
+      index = static_cast<arangodb::RocksDBGeoIndex*>(idx.get());
       break;
     }
   }
@@ -259,7 +259,7 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::RocksDBGeoS2Index* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::RocksDBGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
@@ -321,7 +321,7 @@ AqlValue RocksDBAqlFunctions::Within(
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::RocksDBGeoS2Index* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::RocksDBGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));

@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_GEO_S2_INDEX_H
-#define ARANGOD_ROCKSDB_GEO_S2_INDEX_H 1
+#ifndef ARANGOD_ROCKSDB_GEO_INDEX_H
+#define ARANGOD_ROCKSDB_GEO_INDEX_H 1
 
 #include "Basics/Result.h"
 #include "GeoIndex/Index.h"
@@ -34,16 +34,16 @@
 class S2Region;
 
 namespace arangodb {
-class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
+class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
   friend class RocksDBSphericalIndexIterator;
 
  public:
-  RocksDBGeoS2Index() = delete;
+  RocksDBGeoIndex() = delete;
 
-  RocksDBGeoS2Index(TRI_idx_iid_t, arangodb::LogicalCollection*,
+  RocksDBGeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
                     velocypack::Slice const&, std::string const& typeName);
 
-  ~RocksDBGeoS2Index() override {}
+  ~RocksDBGeoIndex() override {}
 
  public:
   IndexType type() const override {

@@ -29,7 +29,7 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
-#include "RocksDBEngine/RocksDBGeoS2Index.h"
+#include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
 #include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -289,7 +289,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<RocksDBGeoS2Index>(id, collection, definition, "geo1");
+    return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo1");
   });
 
   emplaceFactory("geo2", [](
@@ -298,7 +298,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<RocksDBGeoS2Index>(id, collection, definition, "geo2");
+    return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "geo2");
   });
 
   emplaceFactory("s2index", [](
@@ -307,7 +307,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<RocksDBGeoS2Index>(id, collection, definition, "s2index");
+    return std::make_shared<RocksDBGeoIndex>(id, collection, definition, "s2index");
   });
 
   emplaceFactory("hash", [](
