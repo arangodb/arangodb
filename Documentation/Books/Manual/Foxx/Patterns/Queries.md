@@ -75,7 +75,7 @@ router.get('/users', function (req, res) {
 ```
 
 The `aql.literal` helper
---------------------
+------------------------
 
 You can use the `aql.literal` helper to mark strings containing AQL snippets that should be inlined directly into the query rather than be treated as bind variables.
 
