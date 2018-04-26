@@ -7,7 +7,7 @@ The OAuth2 module provides abstractions over OAuth 2.0 providers like Facebook, 
 
 **Examples**
 
-The following extends the [user management example](Users.md):
+The following extends the [user management example](../Users.md):
 
 ```js
 const crypto = require('@arangodb/crypto');

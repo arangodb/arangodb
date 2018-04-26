@@ -404,9 +404,9 @@ class ExecutionNode {
     }
     return _estimatedCost;
   }
-  
+
   /// @brief walk a complete execution plan recursively
-  bool walk(WalkerWorker<ExecutionNode>* worker);
+  bool walk(WalkerWorker<ExecutionNode>& worker);
 
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool, bool = false) const;
@@ -441,7 +441,7 @@ class ExecutionNode {
     }
     return ids;
   }
-  
+
   /// @brief tests whether the node sets one of the passed variables
   bool setsVariable(std::unordered_set<Variable const*> const& which) const {
     for (auto const& v : getVariablesSetHere()) {
@@ -500,7 +500,7 @@ class ExecutionNode {
   ExecutionPlan const* plan() const {
     return _plan;
   }
-  
+
   ExecutionPlan* plan() {
     return _plan;
   }
@@ -907,13 +907,13 @@ class LimitNode : public ExecutionNode {
 
   /// @brief return the offset value
   size_t offset() const { return _offset; }
-  
+
   /// @brief set the offset value
   void setOffset(size_t offset) { _offset = offset; }
 
   /// @brief return the limit value
   size_t limit() const { return _limit; }
-  
+
   /// @brief set the limit value
   void setLimit(size_t limit) { _limit = limit; }
 

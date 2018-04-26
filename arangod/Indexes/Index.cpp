@@ -34,7 +34,7 @@
 #include "Cluster/ServerState.h"
 
 #ifdef USE_IRESEARCH
-  #include "IResearch/IResearchFeature.h"
+  #include "IResearch/IResearchCommon.h"
 #endif
 
 #include "VocBase/LogicalCollection.h"
@@ -176,7 +176,7 @@ Index::IndexType Index::type(char const* type) {
     return TRI_IDX_TYPE_S2_INDEX;
   }
 #ifdef USE_IRESEARCH
-  if (arangodb::iresearch::IResearchFeature::type() == type) {
+  if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
 #endif
@@ -214,7 +214,7 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "s2index";
 #ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-      return arangodb::iresearch::IResearchFeature::type().c_str();
+      return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
 #endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";

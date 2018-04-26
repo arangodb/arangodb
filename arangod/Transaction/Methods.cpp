@@ -1261,7 +1261,7 @@ OperationResult transaction::Methods::documentCoordinator(
   }
 
   int res = arangodb::getDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, headers, responseCode,
+      databaseName(), collectionName, value, options, std::move(headers), responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -3216,6 +3216,25 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+Result transaction::Methods::resolveId(char const* handle, size_t length,
+                                       std::shared_ptr<LogicalCollection>& collection, char const*& key,
+                                       size_t& outLength) {
+  char const* p = static_cast<char const*>(
+      memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
+
+  if (p == nullptr || *p == '\0') {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  std::string const name(handle, p - handle);
+  collection = resolver()->getCollectionStructCluster(name);
+
+  if (collection == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  key = p + 1;
+  outLength = length - (key - handle);
+
+  return TRI_ERROR_NO_ERROR;
+}

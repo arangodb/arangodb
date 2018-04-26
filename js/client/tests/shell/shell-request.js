@@ -295,7 +295,7 @@ function RequestSuite () {
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('headers');
       expect(obj.headers).to.have.property('authorization');
-      expect(obj.headers.authorization).to.equal('Bearer ' + auth.bearer);
+      expect(obj.headers.authorization).to.equal('bearer ' + auth.bearer);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

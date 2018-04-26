@@ -297,7 +297,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  bool isSystem = coll->isSystem();
+  bool isSystem = coll->system();
+
   // extract "data"
   VPackSlice const doc = slice.get("data");
 
@@ -444,7 +445,7 @@ Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction "
                                         << tid;
 
-  auto trx = std::make_unique<ReplicationTransaction>(vocbase);
+  auto trx = std::make_unique<ReplicationTransaction>(*vocbase);
   Result res = trx->begin();
 
   if (res.ok()) {
@@ -576,7 +577,7 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
     TRI_ASSERT(col == nullptr);
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unable to identify collection");
   }
-  if (col->isSystem()) {
+  if (col->system()) {
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
   }
   return Result(vocbase->renameCollection(col, name, true));

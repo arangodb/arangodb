@@ -91,6 +91,7 @@ class LogicalDataSource {
       TRI_voc_cid_t planId,
       std::string&& name,
       uint64_t planVersion,
+      bool system,
       bool deleted
   ) noexcept
     : _name(std::move(name)),
@@ -100,7 +101,8 @@ class LogicalDataSource {
       _id(id),
       _planId(planId ? planId : id),
       _planVersion(planVersion),
-      _deleted(deleted) {
+      _deleted(deleted),
+      _system(system) {
   }
 
   LogicalDataSource(LogicalDataSource const& other)
@@ -111,7 +113,8 @@ class LogicalDataSource {
       _id(other._id),
       _planId(other._planId),
       _planVersion(other._planVersion),
-      _deleted(other._deleted) {
+      _deleted(other._deleted),
+      _system(other._system) {
   }
 
   virtual ~LogicalDataSource() = default;
@@ -124,6 +127,7 @@ class LogicalDataSource {
   TRI_voc_cid_t planId() const noexcept { return _planId; }
   uint64_t planVersion() const noexcept { return _planVersion; }
   virtual Result rename(std::string&& newName, bool doSync) = 0;
+  bool system() const noexcept { return _system; }
   Type const& type() const noexcept { return _type; }
   TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
@@ -145,6 +149,7 @@ class LogicalDataSource {
                            // then the version in the agency Plan that underpins
                            // the information in this object. Otherwise 0.
   bool _deleted; // data-source marked as deleted
+  bool const _system; // this instance represents a system data-source
 };
 
 } // arangodb

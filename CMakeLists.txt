@@ -52,7 +52,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 option(SKIP_PACKAGING "" OFF)
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "-static")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 endif()
 
 # be verbose about flags used
@@ -438,13 +438,13 @@ endif ()
 ## INCLUDE DIRECTORIES
 ################################################################################
 
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/16d2585/src)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/16d2585/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -874,14 +874,14 @@ endif ()
 ## V8
 ################################################################################
 
-include_directories(${V8_INCLUDE_DIR})
+include_directories(SYSTEM ${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
 ################################################################################
 ## ZLIB
 ################################################################################
 
-include_directories(${ZLIB_INCLUDE_DIR})
+include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 ################################################################################
@@ -890,7 +890,7 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 
 # This does not belong here! it should be handled in 3rdParty!
 add_definitions(-DCURL_STATICLIB=1)
-include_directories(
+include_directories(SYSTEM
   ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.57.0/include/
   ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.57.0/include/curl/
 )

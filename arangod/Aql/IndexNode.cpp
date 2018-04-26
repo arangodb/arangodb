@@ -76,6 +76,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     _options.sorted = true;
     _options.ascending = !(base.get("reverse").getBool());
   }
+  _options.needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)) {
 
   if (_collection == nullptr) {
     std::string msg("collection '");
@@ -136,6 +137,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("evalFCalls", VPackValue(_options.evaluateFCalls));
   nodes.add("fullRange", VPackValue(_options.fullRange));
   nodes.add("limit", VPackValue(_options.limit));
+  nodes.add("needsGatherNodeSort", VPackValue(_options.needsGatherNodeSort));
 
   // And close it:
   nodes.close();
@@ -160,6 +162,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
                          _indexes, _condition->clone(), _options);
+
+  c->needsGatherNodeSort(_options.needsGatherNodeSort);
 
   cloneHelper(c, withDependencies, withProperties);
 

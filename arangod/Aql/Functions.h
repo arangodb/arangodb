@@ -51,17 +51,8 @@ typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
     FunctionImplementation;
 
 struct Functions {
-  
- public:
-  /// @brief register warning
-  static void RegisterWarning(arangodb::aql::Query* query,
-                              char const* functionName, int code);
-  static void RegisterWarning(arangodb::aql::Query* query,
-                              char const* functionName, Result res);
-  /// @brief register usage of an invalid function argument
-  static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
-                                             char const* functionName);
 
+ public:
     static AqlValue AddOrSubtractUnitFromTimestamp(arangodb::aql::Query* query,
                                                    tp_sys_clock_ms const& tp,
                                                    arangodb::velocypack::Slice durationUnits,
@@ -80,6 +71,19 @@ struct Functions {
 
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams);
+
+   /// @brief register warning
+   static void RegisterWarning(arangodb::aql::Query* query,
+                       char const* functionName, int code);
+   static void RegisterWarning(arangodb::aql::Query* query,
+                       char const* functionName, Result res);
+   /// @brief register error
+   static void RegisterError(arangodb::aql::Query* query,
+                             char const* functionName, int code);
+   /// @brief register usage of an invalid function argument
+   static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
+                                              char const* functionName);
+
 
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
@@ -478,6 +482,16 @@ struct Functions {
                           VPackFunctionParameters const&);
     static AqlValue Position(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
+    static AqlValue CallApplyBackend(arangodb::aql::Query* query,
+                                     transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters,
+                                     char const* AFN,
+                                     AqlValue const& invokeFN,
+                                     VPackFunctionParameters const& invokeParams);
+    static AqlValue Call(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+    static AqlValue Apply(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
     static AqlValue IsSameCollection(arangodb::aql::Query*,
                                      transaction::Methods*,
                                      VPackFunctionParameters const&);
@@ -486,7 +500,7 @@ struct Functions {
     static AqlValue Warn(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
 };
-  
+
 }
 }
 

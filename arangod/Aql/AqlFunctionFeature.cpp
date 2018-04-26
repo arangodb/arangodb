@@ -366,8 +366,10 @@ void AqlFunctionFeature::addListFunctions() {
        &Functions::Nth});
   add({"POSITION", ".,.|.", true, false, true, true,
        &Functions::Position});
-  add({"CALL", ".|.+", false, true, false, true});
-  add({"APPLY", ".|.", false, true, false, false});
+  add({"CALL", ".|.+", false, true, false, true,
+        &Functions::Call});
+  add({"APPLY", ".|.", false, true, false, false,
+        &Functions::Apply});
   add({"PUSH", ".,.|.", true, false, true, false,
        &Functions::Push});
   add({"APPEND", ".,.|.", true, false, true, true,

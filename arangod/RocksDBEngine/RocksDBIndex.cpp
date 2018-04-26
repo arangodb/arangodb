@@ -58,7 +58,7 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection->system()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
   if (_cacheEnabled) {
     createCache();
@@ -79,7 +79,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection->system()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {
@@ -163,8 +163,9 @@ void RocksDBIndex::createCache() {
     return;
   }
 
-  TRI_ASSERT(!_collection->isSystem() &&
-             !ServerState::instance()->isCoordinator());
+  TRI_ASSERT(
+    !_collection->system() && !ServerState::instance()->isCoordinator()
+  );
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating index cache";

@@ -183,7 +183,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _status(other.status()),
       _isSmart(other.isSmart()),
       _isLocal(false),
-      _isSystem(other.isSystem()),
       _waitForSync(other.waitForSync()),
       _version(other._version),
       _replicationFactor(other.replicationFactor()),
@@ -220,6 +219,8 @@ LogicalCollection::LogicalCollection(
      ReadPlanId(info, 0),
      ReadStringValue(info, "name", ""),
      planVersion,
+     TRI_vocbase_t::IsSystemName(ReadStringValue(info, "name", ""))
+       && Helper::readBooleanValue(info, "isSystem", false),
      Helper::readBooleanValue(info, "deleted", false)
    ),
       _internalVersion(0),
@@ -231,8 +232,6 @@ LogicalCollection::LogicalCollection(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
       _isLocal(!ServerState::instance()->isCoordinator()),
-      _isSystem(TRI_vocbase_t::IsSystemName(ReadStringValue(info, "name", "")) &&
-                Helper::readBooleanValue(info, "isSystem", false)),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _version(Helper::readNumericValue<uint32_t>(info, "version",
                                                   currentVersion())),
@@ -542,8 +541,6 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
 
 bool LogicalCollection::isLocal() const { return _isLocal; }
 
-bool LogicalCollection::isSystem() const { return _isSystem; }
-
 bool LogicalCollection::waitForSync() const { return _waitForSync; }
 
 bool LogicalCollection::isSmart() const { return _isSmart; }
@@ -707,7 +704,7 @@ Result LogicalCollection::rename(std::string&& newName, bool doSync) {
     TRI_ASSERT(engine != nullptr);
 
     name(std::move(newName));
-    engine->changeCollection(&vocbase(), id(), this, doSync);
+    engine->changeCollection(vocbase(), id(), this, doSync);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -746,7 +743,7 @@ arangodb::Result LogicalCollection::drop() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  engine->destroyCollection(&vocbase(), this);
+  engine->destroyCollection(vocbase(), this);
   deleted(true);
   _physical->drop();
 
@@ -765,9 +762,10 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
                                                         bool isReady,
                                                         bool allInSync) const {
-  if (_isSystem && !useSystem) {
+  if (system() && !useSystem) {
     return;
   }
+
   result.openObject();
   result.add(VPackValue("parameters"));
 
@@ -813,7 +811,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
 
   // Collection Flags
   result.add("deleted", VPackValue(deleted()));
-  result.add("isSystem", VPackValue(_isSystem));
+  result.add("isSystem", VPackValue(system()));
   result.add("waitForSync", VPackValue(_waitForSync));
   result.add("globallyUniqueId", VPackValue(_globallyUniqueId));
 
@@ -1002,7 +1000,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->changeCollection(&vocbase(), id(), this, doSync);
+  engine->changeCollection(vocbase(), id(), this, doSync);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1095,7 +1093,7 @@ void LogicalCollection::persistPhysicalCollection() {
   // We have not yet persisted this collection!
   TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(&vocbase(), id(), this);
+  auto path = engine->createCollection(vocbase(), id(), this);
 
   getPhysical()->setPath(path);
 }
@@ -1362,7 +1360,7 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
     result.push_back('/');
     result.append(name());
   } else { // single server
-    if (isSystem()) { // system collection can't be renamed
+    if (system()) { // system collection can't be renamed
       result.append(name());
     } else {
       TRI_ASSERT(id());

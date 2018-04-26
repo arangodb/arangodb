@@ -33,18 +33,25 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+
 class IndexIterator;
 class SingleCollectionTransaction;
 
 class RocksDBExportCursor final : public Cursor {
  public:
-  RocksDBExportCursor(TRI_vocbase_t*, std::string const&,
-                      CollectionExport::Restrictions const&, CursorId, size_t,
-                      size_t, double, bool);
+  RocksDBExportCursor(
+    TRI_vocbase_t& vocbase,
+    std::string const& name,
+    CollectionExport::Restrictions const& restrictions,
+    CursorId id,
+    size_t limit,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+  );
 
   ~RocksDBExportCursor();
 
- public:
   CursorType type() const override final { return CURSOR_EXPORT; }
 
   bool hasNext();
@@ -56,7 +63,7 @@ class RocksDBExportCursor final : public Cursor {
   Result dump(velocypack::Builder&) override final;
 
   std::shared_ptr<transaction::Context> context() const override final;
-  
+
  private:
   DatabaseGuard _guard;
   arangodb::CollectionNameResolver _resolver;
@@ -67,6 +74,7 @@ class RocksDBExportCursor final : public Cursor {
   size_t _position;
   size_t _size;
 };
+
 }
 
 #endif

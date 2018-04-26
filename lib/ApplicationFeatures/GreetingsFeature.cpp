@@ -30,7 +30,6 @@ GreetingsFeature::GreetingsFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Greetings") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 

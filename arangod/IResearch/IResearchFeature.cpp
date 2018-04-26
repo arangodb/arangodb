@@ -22,16 +22,30 @@
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "search/scorers.hpp"
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
+#if defined(_MSC_VER)
+  #include "date/date.h"
+  #undef NOEXCEPT
+#endif
 
+#include "search/scorers.hpp"
+#include "utils/log.hpp"
+
+#include "ApplicationServerHelper.h"
+#include "IResearchCommon.h"
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
 #include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
-#include "ApplicationServerHelper.h"
-
+#include "IResearchViewDBServer.h"
+#include "Aql/AqlValue.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Function.h"
+#include "Basics/SmallVector.h"
+#include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,18 +53,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
-#include "Cluster/ServerState.h"
-
-#include "Aql/AqlValue.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/Function.h"
-
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
-
-#include "Basics/SmallVector.h"
-
-#include "utils/log.hpp"
 
 NS_BEGIN(arangodb)
 
@@ -139,7 +141,7 @@ void registerIndexFactory() {
     { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
     { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
   };
-  static const auto& indexType = arangodb::iresearch::IResearchFeature::type();
+  static const auto& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
   // register 'arangosearch' link
   for (auto& entry: factories) {
@@ -147,23 +149,15 @@ void registerIndexFactory() {
 
     // valid situation if not running with the specified storage engine
     if (!engine) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to find feature '" << entry.first << "' while registering index type '" << indexType << "', skipping";
       continue;
     }
 
     // ok to const-cast since this should only be called on startup
-    auto* indexFactory =
-      const_cast<arangodb::IndexFactory*>(engine->indexFactory());
-
-    if (!indexFactory) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to retieve index factory from feature '") + entry.first + "' while registering index type '" + indexType + "'"
-      );
-    }
-
-    auto res = indexFactory->emplaceFactory(indexType, entry.second);
+    auto& indexFactory =
+      const_cast<arangodb::IndexFactory&>(engine->indexFactory());
+    auto res = indexFactory.emplaceFactory(indexType, entry.second);
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -172,7 +166,7 @@ void registerIndexFactory() {
       );
     }
 
-    res = indexFactory->emplaceNormalizer(
+    res = indexFactory.emplaceNormalizer(
       indexType, arangodb::iresearch::IResearchLink::normalize
     );
 
@@ -222,7 +216,7 @@ void registerRecoveryHelper() {
 }
 
 void registerViewFactory() {
-  auto& viewType = arangodb::iresearch::IResearchView::type();
+  auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
   auto* viewTypes = arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>();
 
   if (!viewTypes) {
@@ -232,11 +226,16 @@ void registerViewFactory() {
     );
   }
 
+  arangodb::Result res;
+
   // DB server in custer or single-server
-  auto res = arangodb::ServerState::instance()->isCoordinator()
-    ? viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make)
-    : viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make)
-    ;
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make);
+  } else if (arangodb::ServerState::instance()->isDBServer()) {
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
+  } else {
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make);
+  }
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -250,7 +249,7 @@ arangodb::Result transactionStateRegistrationCallback(
     arangodb::LogicalDataSource& dataSource,
     arangodb::TransactionState& state
 ) {
-  if (arangodb::iresearch::IResearchView::type() != dataSource.type()) {
+  if (arangodb::iresearch::DATA_SOURCE_TYPE != dataSource.type()) {
     return arangodb::Result(); // not an IResearchView (noop)
   }
 
@@ -262,7 +261,7 @@ arangodb::Result transactionStateRegistrationCallback(
   #endif
 
   if (!view) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure to get LogicalView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' name '" << dataSource.name() << "'";
 
     return arangodb::Result(TRI_ERROR_INTERNAL);
@@ -276,7 +275,7 @@ arangodb::Result transactionStateRegistrationCallback(
   #endif
 
   if (!impl) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << dataSource.name() << "'";
 
     return arangodb::Result(TRI_ERROR_INTERNAL);
@@ -295,13 +294,10 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-/*static*/ arangodb::LogTopic IResearchFeature::IRESEARCH(IResearchFeature::type(), LogLevel::INFO);
-
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer* server)
   : ApplicationFeature(server, IResearchFeature::name()),
     _running(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("ViewTypes");
   startsAfter("Logger");
   startsAfter("Database");
@@ -368,7 +364,8 @@ void IResearchFeature::start() {
       registerFilters(*functions);
       registerScorers(*functions);
     } else {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failure to find feature 'AQLFunctions' while registering iresearch filters";
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failure to find feature 'AQLFunctions' while registering iresearch filters";
     }
 
   }
@@ -379,12 +376,6 @@ void IResearchFeature::start() {
 void IResearchFeature::stop() {
   _running = false;
   ApplicationFeature::stop();
-}
-
-/*static*/ std::string const& IResearchFeature::type() {
-  static const std::string value("arangosearch");
-
-  return value;
 }
 
 void IResearchFeature::unprepare() {

@@ -317,9 +317,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     generateError(rest::ResponseCode::BAD,
@@ -329,7 +328,6 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     // A body is required
     return false;
   }
-  VPackSlice body = parsedBody->slice();
 
   if (!body.isArray()) {
     generateError(rest::ResponseCode::BAD,

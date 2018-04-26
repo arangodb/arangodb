@@ -175,6 +175,9 @@ struct IndexIteratorOptions {
   bool fullRange = false;
   /// @brief Limit used in a parent LIMIT node (if non-zero)
   size_t limit = 0;
+  /// @brief Whether a gather node will need to post-sort elements
+  bool needsGatherNodeSort = false;
+
 };
 }
 #endif

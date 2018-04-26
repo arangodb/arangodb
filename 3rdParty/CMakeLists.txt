@@ -238,7 +238,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 
 if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories("${JEMALLOC_HOME}/include")
+  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
   set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
 endif ()

@@ -75,9 +75,14 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief whether or not all indexes are accessed in reverse order
   IndexIteratorOptions options() const { return _options; }
- 
-  /// @brief set reverse mode  
+
+  /// @brief set reverse mode
   void setAscending(bool value) { _options.ascending = value; }
+
+  /// @brief whether or not the index node needs a post sort of the results
+  /// of multiple shards in the cluster
+  bool needsGatherNodeSort() const { return _options.needsGatherNodeSort; }
+  void needsGatherNodeSort(bool value) { _options.needsGatherNodeSort = value; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,

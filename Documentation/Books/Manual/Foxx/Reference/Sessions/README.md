@@ -3,7 +3,7 @@ Session Middleware
 
 `const sessionMiddleware = require('@arangodb/foxx/sessions');`
 
-The session middleware adds the `session` and `sessionStorage` properties to the [request object](../Router/Request.md) and deals with serializing and deserializing the session as well as extracting session identifiers from incoming requests and injecting them into outgoing responses.
+The session middleware adds the `session` and `sessionStorage` properties to the [request object](../Routers/Request.md) and deals with serializing and deserializing the session as well as extracting session identifiers from incoming requests and injecting them into outgoing responses.
 
 **Examples**
 

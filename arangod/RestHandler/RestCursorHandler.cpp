@@ -135,7 +135,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
   aql::Query query(
     false,
-    &_vocbase,
+    _vocbase,
     arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
     bindVarsBuilder,
     options,
@@ -197,12 +197,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         result.add("count", VPackValue(n));
       }
       result.add("cached", VPackValue(queryResult.cached));
-      if (queryResult.cached) {
+      if (queryResult.cached || !queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
         result.close();
       } else {
-        auto extra = queryResult.extra();
-        result.add("extra", extra->slice());
+        result.add("extra", queryResult.extra->slice());
       }
       result.add(StaticStrings::Error, VPackValue(false));
       result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));
@@ -380,20 +379,17 @@ void RestCursorHandler::createQueryCursor() {
   }
 
   try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parseSuccess);
+    bool parseSuccess = false;
+    VPackSlice body = this->parseVPackBody(parseSuccess);
 
     if (!parseSuccess) {
-      // error message generated in parseVelocyPackBody
+      // error message generated in parseVPackBody
       return;
     }
     
     // tell RestCursorHandler::finalizeExecute that the request
     // could be parsed successfully and that it may look at it
     _isValidForFinalize = true;
-
-    VPackSlice body = parsedBody.get()->slice();
 
     processQuery(body);
   } catch (...) {

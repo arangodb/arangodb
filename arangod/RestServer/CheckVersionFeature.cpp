@@ -45,7 +45,6 @@ CheckVersionFeature::CheckVersionFeature(
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("EngineSelector");
   startsAfter("ServerId");

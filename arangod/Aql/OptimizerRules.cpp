@@ -1076,7 +1076,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // no need to run this specific rule again on the cloned plan
         opt->addPlan(std::move(newPlan), rule, true);
       }
-    } else if (groupVariables.empty() && 
+    } else if (groupVariables.empty() &&
                collectNode->aggregateVariables().empty() &&
                collectNode->count()) {
       collectNode->aggregationMethod(CollectOptions::CollectMethod::COUNT);
@@ -1084,7 +1084,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
       modified = true;
       continue;
     }
-      
+
     // mark node as specialized, so we do not process it again
     collectNode->specialized();
 
@@ -1572,7 +1572,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
   if (!replacements.empty()) {
     // finally replace the variables
     RedundantCalculationsReplacer finder(replacements);
-    plan->root()->walk(&finder);
+    plan->root()->walk(finder);
   }
 
   opt->addPlan(std::move(plan), rule, !replacements.empty());
@@ -1664,7 +1664,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
                                                    rootNode->getData()));
 
           RedundantCalculationsReplacer finder(replacements);
-          plan->root()->walk(&finder);
+          plan->root()->walk(finder);
           toUnlink.emplace(n);
           continue;
         }
@@ -1773,7 +1773,7 @@ void arangodb::aql::useIndexesRule(Optimizer* opt,
   bool hasEmptyResult = false;
   for (auto const& n : nodes) {
     ConditionFinder finder(plan.get(), &changes, &hasEmptyResult, false);
-    n->walk(&finder);
+    n->walk(finder);
   }
 
   if (!changes.empty()) {
@@ -1947,6 +1947,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // sort condition is fully covered by index... now we can remove the
         // sort node from the plan
         _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+        indexNode->needsGatherNodeSort(true);
         _modified = true;
         handled = true;
       }
@@ -2021,6 +2022,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
             // no need to sort
             _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
             indexNode->setAscending(sortCondition.isAscending());
+            indexNode->needsGatherNodeSort(true);
             _modified = true;
           } else if (numCovered > 0 && sortCondition.isUnidirectional()) {
             // remove the first few attributes if they are constant
@@ -2112,7 +2114,7 @@ void arangodb::aql::useIndexForSortRule(Optimizer* opt,
     auto sortNode = static_cast<SortNode*>(n);
 
     SortToIndexNode finder(plan.get());
-    sortNode->walk(&finder);
+    sortNode->walk(finder);
 
     if (finder._modified) {
       modified = true;
@@ -2149,15 +2151,15 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     auto conditionNode = calculationNode->expression()->node();
 
     // build the filter condition
-    auto condition = std::make_unique<Condition>(plan->getAst());
-    condition->andCombine(conditionNode);
-    condition->normalize(plan.get());
+    Condition condition(plan->getAst());
+    condition.andCombine(conditionNode);
+    condition.normalize(plan.get());
 
-    if (condition->root() == nullptr) {
+    if (condition.root() == nullptr) {
       continue;
     }
 
-    size_t const n = condition->root()->numMembers();
+    size_t const n = condition.root()->numMembers();
 
     if (n != 1) {
       // either no condition or multiple ORed conditions...
@@ -2179,7 +2181,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
           if (indexesUsed.size() == 1) {
             // single index. this is something that we can handle
-            auto newNode = condition->removeIndexCondition(
+            auto newNode = condition.removeIndexCondition(
                 plan.get(), indexNode->outVariable(), indexCondition->root());
 
             if (newNode == nullptr) {
@@ -2190,7 +2192,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               // still used by other nodes in the plan
               modified = true;
               handled = true;
-            } else if (newNode != condition->root()) {
+            } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
@@ -2750,7 +2752,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
       // Using Index for sort only works if all indexes are equal.
       auto first = allIndexes[0].getIndex();
-      if (first->isSorted()) {
+      if (first->isSorted() && idxNode->needsGatherNodeSort()) {
         for (auto const& path : first->fieldNames()) {
           elements.emplace_back(sortVariable, isSortAscending, path);
         }
@@ -2811,7 +2813,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
-    if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
+    // On SmartEdge collections we have 0 shards and we need the elements
+    // to be injected here as well. So do not replace it with > 1
+    if (!elements.empty() && gatherNode->collection()->numberOfShards() != 1) {
       gatherNode->setElements(elements);
     }
 
@@ -3097,7 +3101,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
     TRI_ASSERT(deps.size() == 1);
 
     auto collectNode = static_cast<CollectNode*>(node);
-    
+
     if (collectNode->aggregationMethod() != CollectOptions::CollectMethod::COUNT) {
       // we can only optimize count so far
       continue;
@@ -3117,12 +3121,12 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
           // add a new CollectNode on the DB server to do the actual counting
           auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
           auto dbCollectNode = new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(), collectNode->groupVariables(), collectNode->aggregateVariables(), nullptr, outVariable, std::vector<Variable const*>(), collectNode->variableMap(), true, false);
-      
+
           plan->registerNode(dbCollectNode);
-      
+
           dbCollectNode->addDependency(previous);
           current->replaceDependency(previous, dbCollectNode);
-          
+
           dbCollectNode->specialized();
           dbCollectNode->aggregationMethod(CollectOptions::CollectMethod::COUNT);
 
@@ -3337,7 +3341,9 @@ void arangodb::aql::distributeSortToClusterRule(
           if (thisSortNode->_reinsertInCluster) {
             plan->insertDependency(rn, inspectNode);
           }
-          if (gatherNode->collection()->numberOfShards() > 1) {
+          // On SmartEdge collections we have 0 shards and we need the elements
+          // to be injected here as well. So do not replace it with > 1
+          if (gatherNode->collection()->numberOfShards() != 1) {
             gatherNode->setElements(thisSortNode->getElements());
           }
           modified = true;
@@ -3614,7 +3620,7 @@ void arangodb::aql::undistributeRemoveAfterEnumCollRule(
 
   for (auto& n : nodes) {
     RemoveToEnumCollFinder finder(plan.get(), toUnlink);
-    n->walk(&finder);
+    n->walk(finder);
   }
 
   bool modified = false;
@@ -4324,7 +4330,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
     for (auto const& n : nodes) {
       TraversalConditionFinder finder(plan.get(), &modified);
-      n->walk(&finder);
+      n->walk(finder);
     }
   }
 
@@ -4361,15 +4367,15 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
     auto conditionNode = calculationNode->expression()->node();
 
     // build the filter condition
-    auto condition = std::make_unique<Condition>(plan->getAst());
-    condition->andCombine(conditionNode);
-    condition->normalize(plan.get());
+    Condition condition(plan->getAst());
+    condition.andCombine(conditionNode);
+    condition.normalize(plan.get());
 
-    if (condition->root() == nullptr) {
+    if (condition.root() == nullptr) {
       continue;
     }
 
-    size_t const n = condition->root()->numMembers();
+    size_t const n = condition.root()->numMembers();
 
     if (n != 1) {
       // either no condition or multiple ORed conditions...
@@ -4393,11 +4399,11 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
             // single index. this is something that we can handle
           Variable const* outVariable = traversalNode->pathOutVariable();
           std::unordered_set<Variable const*> varsUsedByCondition;
-          Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
+          Ast::getReferencedVariables(condition.root(), varsUsedByCondition);
           if (outVariable != nullptr &&
               varsUsedByCondition.find(outVariable) != varsUsedByCondition.end()) {
 
-            auto newNode = condition->removeTraversalCondition(plan.get(), outVariable, traversalCondition->root());
+            auto newNode = condition.removeTraversalCondition(plan.get(), outVariable, traversalCondition->root());
             if (newNode == nullptr) {
               // no condition left...
               // FILTER node can be completely removed
@@ -4406,7 +4412,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
               // still used by other nodes in the plan
               modified = true;
               handled = true;
-            } else if (newNode != condition->root()) {
+            } else if (newNode != condition.root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
               auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
@@ -4655,7 +4661,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           replacements.emplace(listNode->outVariable()->id,
                                returnNode->inVariable());
           RedundantCalculationsReplacer finder(replacements);
-          plan->root()->walk(&finder);
+          plan->root()->walk(finder);
 
           plan->clearVarUsageComputed();
           plan->invalidateCost();
@@ -5459,7 +5465,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   TRI_ASSERT(info.collection != nullptr);
   TRI_ASSERT(info.collectionNodeToReplace != nullptr);
   TRI_ASSERT(info.index);
-  
+
   // verify that all vars used in the index condition are valid
   auto const& valid = info.collectionNodeToReplace->getVarsValid();
   auto checkVars = [&valid](AstNode const* expr) {
@@ -5478,7 +5484,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
       !checkVars(info.distCenterLngExpr) || !checkVars(info.filterExpr)) {
     return false;
   }
-  
+
   IndexIteratorOptions opts;
   opts.sorted = info.sorted;
   opts.ascending = info.ascending;

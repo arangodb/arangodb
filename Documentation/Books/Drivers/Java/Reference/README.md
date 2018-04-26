@@ -8,7 +8,6 @@ Setup with default configuration, this automatically loads a properties file ara
 ```Java
   // this instance is thread-safe
   ArangoDB arangoDB = new ArangoDB.Builder().build();
-
 ```
 
 The driver is configured with some default values:
@@ -29,22 +28,21 @@ To customize the configuration the parameters can be changed in the code...
 
 ```Java
   ArangoDB arangoDB = new ArangoDB.Builder().host("192.168.182.50", 8888).build();
-
 ```
+
 ... or with a custom properties file (my.properties)
 
 ```Java
   InputStream in = MyClass.class.getResourceAsStream("my.properties");
   ArangoDB arangoDB = new ArangoDB.Builder().loadProperties(in).build();
-
 ```
 
 Example for arangodb.properties:
+
 ```Java
   arangodb.hosts=127.0.0.1:8529,127.0.0.1:8529
   arangodb.user=root
   arangodb.password=
-
 ```
 
 ## Network protocol
@@ -52,9 +50,7 @@ Example for arangodb.properties:
 The drivers default used network protocol is the binary protocol VelocyStream which offers the best performance within the driver. To use HTTP, you have to set the configuration `useProtocol` to `Protocol.HTTP_JSON` for HTTP with Json content or `Protocol.HTTP_VPACK` for HTTP with [VelocyPack](https://github.com/arangodb/velocypack/blob/master/VelocyPack.md) content.
 
 ```Java
-
   ArangoDB arangoDB = new ArangoDB.Builder().useProtocol(Protocol.VST).build();
-
 ```
 
 In addition to set the configuration for HTTP you have to add the apache httpclient to your classpath.
@@ -74,9 +70,7 @@ In addition to set the configuration for HTTP you have to add the apache httpcli
 To use SSL, you have to set the configuration `useSsl` to `true` and set a `SSLContext`. (see [example code](../src/test/java/com/arangodb/example/ssl/SslExample.java))
 
 ```Java
-
   ArangoDB arangoDB = new ArangoDB.Builder().useSsl(true).sslContext(sc).build();
-
 ```
 
 ## Connection Pooling
@@ -84,9 +78,13 @@ To use SSL, you have to set the configuration `useSsl` to `true` and set a `SSLC
 The driver supports connection pooling for VelocyStream with a default of 1 and HTTP with a default of 20 maximum connections. To change this value use the method `maxConnections(Integer)` in `ArangoDB.Builder`.
 
 ```Java
-
   ArangoDB arangoDB = new ArangoDB.Builder().maxConnections(8).build();
+```
 
+The driver does not explicitly release connections. To avoid exhaustion of resources when no connection is needed, you can clear the connection pool (close all connections to the server) or use [connection TTL](#connection-time-to-live).
+
+```Java
+arangoDB.shutdown();
 ```
 
 ## Fallback hosts
@@ -94,17 +92,13 @@ The driver supports connection pooling for VelocyStream with a default of 1 and 
 The driver supports configuring multiple hosts. The first host is used to open a connection to. When this host is not reachable the next host from the list is used. To use this feature just call the method `host(String, int)` multiple times.
 
 ```Java
-
   ArangoDB arangoDB = new ArangoDB.Builder().host("host1", 8529).host("host2", 8529).build();
-
 ```
 
 Since version 4.3 the driver support acquiring a list of known hosts in a cluster setup or a single server setup with followers. For this the driver has to be able to successfully open a connection to at least one host to get the list of hosts. Then it can use this list when fallback is needed. To use this feature just pass `true` to the method `acquireHostList(boolean)`.
 
 ```Java
-
   ArangoDB arangoDB = new ArangoDB.Builder().acquireHostList(true).build();
-
 ```
 
 ## Load Balancing
@@ -114,27 +108,30 @@ Since version 4.3 the driver supports load balancing for cluster setups in two d
 The first one is a round robin load balancing where the driver iterates through a list of known hosts and performs every request on a different host than the request before. This load balancing strategy only work when the maximun of connections is greater 1.
 
 ```Java
-
   ArangoDB arangoDB = new ArangoDB.Builder().loadBalancingStrategy(LoadBalancingStrategy.ROUND_ROBIN).maxConnections(8).build();
-
 ```
 
 Just like the Fallback hosts feature the round robin load balancing strategy can use the `acquireHostList` configuration to acquire a list of all known hosts in the cluster. Do so only requires the manually configuration of only one host. Because this list is updated frequently it makes load balancing over the whole cluster very comfortable.
 
 ```Java
-
   ArangoDB arangoDB = new ArangoDB.Builder().loadBalancingStrategy(LoadBalancingStrategy.ROUND_ROBIN).maxConnections(8).acquireHostList(true).build();
-
 ```
 
 The second load balancing strategy allows to pick a random host from the configured or acquired list of hosts and sticks to that host as long as the connection is open. This strategy is useful for an application - using the driver - which provides a session management where each session has its own instance of `ArangoDB` build from a global configured list of hosts. In this case it could be wanted that every sessions sticks with all its requests to the same host but not all sessions should use the same host. This load balancing strategy also works together with `acquireHostList`.
 
+```Java
+  ArangoDB arangoDB = new ArangoDB.Builder().loadBalancingStrategy(LoadBalancingStrategy.ONE_RANDOM).acquireHostList(true).build();
+```
+
+## Connection time to live
+
+Since version 4.4 the driver supports setting a TTL for connections managed by the internal connection pool. Setting a TTL helps when using load balancing strategy `ROUND_ROBIN`, because as soon as a coordinator goes down, every open connection to that host will be closed and opened again with another target coordinator. As long as the driver does not have to open new connections (all connections in the pool are used) it will use only the coordinators which never went down. To use the downed coordinator again, when it is running again, the connections in the connection pool have to be closed and opened again with the target host mentioned by the load balancing startegy. To achieve this you can manually call `ArangoDB.shutdown` in your client code or use the TTL for connection so that a downed coordinator (which is then brought up again) will be used again after a certain time.
 
 ```Java
-
-  ArangoDB arangoDB = new ArangoDB.Builder().loadBalancingStrategy(LoadBalancingStrategy.ONE_RANDOM).acquireHostList(true).build();
-
+ArangoDB arango = new ArangoDB.Builder().connectionTtl(5 * 60 * 1000).build();
 ```
+
+In this example all connections will be closed/reopened after 5 minutes.
 
 ## configure VelocyPack serialization
 
@@ -143,6 +140,7 @@ Since version `4.1.11` you can extend the VelocyPack serialization by registerin
 ### Java 8 types
 
 Added support for:
+
 * java.time.Instant
 * java.time.LocalDate
 * java.time.LocalDateTime
@@ -168,6 +166,7 @@ ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackJdk8Module())
 ### Scala types
 
 Added support for:
+
 * scala.Option
 * scala.collection.immutable.List
 * scala.collection.immutable.Map
@@ -189,6 +188,7 @@ val arangoDB: ArangoDB = new ArangoDB.Builder().registerModule(new VPackScalaMod
 ### Joda-Time
 
 Added support for:
+
 * org.joda.time.DateTime;
 * org.joda.time.Instant;
 * org.joda.time.LocalDate;
@@ -209,6 +209,7 @@ ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackJodaModule())
 ```
 
 ## custom serializer
+
 ```Java
   ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackModule() {
     @Override
@@ -235,40 +236,40 @@ ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackJodaModule())
   }).build();
 ```
 
-
 # Manipulating databases
 
 ## create database
+
 ```Java
   // create database
   arangoDB.createDatabase("myDatabase");
-
 ```
 
 ## drop database
+
 ```Java
   // drop database
   arangoDB.db("myDatabase").drop();
-
 ```
 
 # Manipulating collections
 
 ## create collection
+
 ```Java
   // create collection
   arangoDB.db("myDatabase").createCollection("myCollection", null);
-
 ```
 
 ## drop collection
+
 ```Java
   // delete collection
   arangoDB.db("myDatabase").collection("myCollection").drop();
-
 ```
 
 ## truncate collection
+
 ```Java
   arangoDB.db("myDatabase").collection("myCollection").truncate();
 ```
@@ -304,111 +305,112 @@ For the next examples we use a small object:
 ```
 
 ## insert document
+
 ```Java
   MyObject myObject = new MyObject("Homer", 38);
   arangoDB.db("myDatabase").collection("myCollection").insertDocument(myObject);
-
 ```
 
 When creating a document, the attributes of the object will be stored as key-value pair
 E.g. in the previous example the object was stored as follows:
+
 ```properties
   "name" : "Homer"
   "age" : "38"
 ```
 
 ## delete document
+
 ```Java
   arangoDB.db("myDatabase").collection("myCollection").deleteDocument(myObject.getKey());
-
 ```
 
 ## update document
+
 ```Java
   arangoDB.db("myDatabase").collection("myCollection").updateDocument(myObject.getKey(), myUpdatedObject);
-
 ```
 
 ## replace document
+
 ```Java
   arangoDB.db("myDatabase").collection("myCollection").replaceDocument(myObject.getKey(), myObject2);
-
 ```
 
 ## read document as JavaBean
+
 ```Java
   MyObject document = arangoDB.db("myDatabase").collection("myCollection").getDocument(myObject.getKey(), MyObject.class);
   document.getName();
   document.getAge();
-
 ```
 
 ## read document as VelocyPack
+
 ```Java
   VPackSlice document = arangoDB.db("myDatabase").collection("myCollection").getDocument(myObject.getKey(), VPackSlice.class);
   document.get("name").getAsString();
   document.get("age").getAsInt();
-
 ```
 
 ## read document as Json
+
 ```Java
   String json = arangoDB.db("myDatabase").collection("myCollection").getDocument(myObject.getKey(), String.class);
-
 ```
 
 ## read document by key
+
 ```Java
   arangoDB.db("myDatabase").collection("myCollection").getDocument("myKey", MyObject.class);
-
 ```
 
 ## read document by id
+
 ```Java
   arangoDB.db("myDatabase").getDocument("myCollection/myKey", MyObject.class);
-
 ```
 
 # Multi Document operations
 
 ## insert documents
+
 ```Java
   Collection<MyObject> documents = new ArrayList<>;
   documents.add(myObject1);
   documents.add(myObject2);
   documents.add(myObject3);
   arangoDB.db("myDatabase").collection("myCollection").insertDocuments(documents);
-
 ```
 
 ## delete documents
+
 ```Java
   Collection<String> keys = new ArrayList<>;
   keys.add(myObject1.getKey());
   keys.add(myObject2.getKey());
   keys.add(myObject3.getKey());
   arangoDB.db("myDatabase").collection("myCollection").deleteDocuments(keys);
-
 ```
 
 ## update documents
+
 ```Java
   Collection<MyObject> documents = new ArrayList<>;
   documents.add(myObject1);
   documents.add(myObject2);
   documents.add(myObject3);
   arangoDB.db("myDatabase").collection("myCollection").updateDocuments(documents);
-
 ```
 
 ## replace documents
+
 ```Java
   Collection<MyObject> documents = new ArrayList<>;
   documents.add(myObject1);
   documents.add(myObject2);
   documents.add(myObject3);
   arangoDB.db("myDatabase").collection("myCollection").replaceDocuments(documents);
-
 ```
 
 # AQL
@@ -463,6 +465,7 @@ The driver supports the [graph api](https://docs.arangodb.com/HTTP/Gharial/index
 Some of the basic graph operations are described in the following:
 
 ## add graph
+
 A graph consists of vertices and edges (stored in collections). Which collections are used within a graph is defined via edge definitions. A graph can contain more than one edge definition, at least one is needed.
 
 ```Java
@@ -484,7 +487,6 @@ A graph consists of vertices and edges (stored in collections). Which collection
 
   // now it's possible to create a graph
   arangoDB.db("myDatabase").createGraph("myGraph", edgeDefinitions, options);
-
 ```
 
 ## delete graph
@@ -504,7 +506,6 @@ Vertices are stored in the vertex collections defined above.
   MyObject myObject2 = new MyObject("Marge", 36);
   arangoDB.db("myDatabase").graph("myGraph").vertexCollection("collection1").insertVertex(myObject1, null);
   arangoDB.db("myDatabase").graph("myGraph").vertexCollection("collection3").insertVertex(myObject2, null);
-
 ```
 
 ## add edge
@@ -513,34 +514,36 @@ Now an edge can be created to set a relation between vertices
 
 ```Java
   arangoDB.db("myDatabase").graph("myGraph").edgeCollection("myEdgeCollection").insertEdge(myEdgeObject, null);
-
 ```
 
 # Foxx
 
 ## call a service
+
 ```Java
   Request request = new Request("mydb", RequestType.GET, "/my/foxx/service")
   Response response = arangoDB.execute(request);
-
 ```
 
 # User management
 
-If you are using [authentication] (https://docs.arangodb.com/Manual/GettingStarted/Authentication.html) you can manage users with the driver.
+If you are using [authentication](https://docs.arangodb.com/Manual/GettingStarted/Authentication.html) you can manage users with the driver.
 
 ## add user
+
 ```Java
   //username, password
   arangoDB.createUser("myUser", "myPassword");
 ```
 
 ## delete user
+
 ```Java
   arangoDB.deleteUser("myUser");
 ```
 
 ## list users
+
 ```Java
   Collection<UserResult> users = arangoDB.getUsers();
   for(UserResult user : users) {
@@ -549,18 +552,21 @@ If you are using [authentication] (https://docs.arangodb.com/Manual/GettingStart
 ```
 
 ## grant user access
+
 ```Java
   arangoDB.db("myDatabase").grantAccess("myUser");
-````
+```
 
 ## revoke user access
+
 ```Java
   arangoDB.db("myDatabase").revokeAccess("myUser");
-````
+```
 
 # Serialization
 
 ## JavaBeans
+
 The driver can serialize/deserialize JavaBeans. They need at least a constructor without parameter.
 
 ```Java
@@ -578,7 +584,8 @@ The driver can serialize/deserialize JavaBeans. They need at least a constructor
 ```
 
 ## internal fields
-To use Arango-internal fields (like _id, _key, _rev, _from, _to) in your JavaBeans, use the annotation `DocumentField`.
+
+To use Arango-internal fields (like \_id, \_key, \_rev, \_from, \_to) in your JavaBeans, use the annotation `DocumentField`.
 
 ```Java
   public class MyObject {
@@ -598,6 +605,7 @@ To use Arango-internal fields (like _id, _key, _rev, _from, _to) in your JavaBea
 ```
 
 ## serialized fieldnames
+
 To use a different serialized name for a field, use the annotation `SerializedName`.
 
 ```Java
@@ -617,6 +625,7 @@ To use a different serialized name for a field, use the annotation `SerializedNa
 ```
 
 ## ignore fields
+
 To ignore fields at serialization/deserialization, use the annotation `Expose`
 
 ```Java
@@ -636,6 +645,7 @@ To ignore fields at serialization/deserialization, use the annotation `Expose`
 ```
 
 ## custom serializer
+
 ```Java
   ArangoDB arangoDB = new ArangoDB.Builder().registerModule(new VPackModule() {
     @Override
@@ -663,6 +673,7 @@ To ignore fields at serialization/deserialization, use the annotation `Expose`
 ```
 
 ## manually serialization
+
 To de-/serialize from and to VelocyPack before or after a database call, use the `ArangoUtil` from the method `util()` in `ArangoDB`, `ArangoDatabase`, `ArangoCollection`, `ArangoGraph`, `ArangoEdgeCollection`or `ArangoVertexCollection`.
 
 ```Java
