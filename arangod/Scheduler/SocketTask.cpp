@@ -157,7 +157,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
     return;
   }
 
-  {
+  { // if (_readBuffer.size() > 0)
 #warning FIXME try to get rid of this call for VST
     // strand::post guarantees this is not called directly
     auto self = shared_from_this();
@@ -385,6 +385,10 @@ void SocketTask::asyncReadSome() {
 
   TRI_ASSERT(_peer != nullptr);
   if (!_peer->isEncrypted()) {
+    
+    JobGuard guard(_loop);
+    guard.work();
+    
     try {
       size_t const MAX_DIRECT_TRIES = 2;
       size_t n = 0;
@@ -446,8 +450,9 @@ void SocketTask::asyncReadSome() {
           closeStream();
         }
         
-        // dispatch will execute this directly if possible
+        //_loop.scheduler->_nrQueued++;
         _peer->strand().post([self, this, transferred] {
+          //_loop.scheduler->_nrQueued--;
           JobGuard guard(_loop);
           guard.work();
           
@@ -455,8 +460,8 @@ void SocketTask::asyncReadSome() {
           if (processAll()) {
             //_loop.scheduler->_nrQueued++;
             _peer->strand().post([self, this]() {
-              /*_loop.scheduler->_nrQueued--;
-              JobGuard guard(_loop);
+              //_loop.scheduler->_nrQueued--;
+              /*JobGuard guard(_loop);
               guard.work();*/
               asyncReadSome();
             });
@@ -481,9 +486,12 @@ void SocketTask::asyncWriteSome() {
   TRI_ASSERT(_peer != nullptr);
   
   if (!_peer->isEncrypted()) {
+    
+    JobGuard guard(_loop);
+    guard.work();
+    
     boost::system::error_code err;
     err.clear();
-    
     while (true) {
       RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
       written = _peer->writeSome(_writeBuffer._buffer, err);
@@ -543,8 +551,8 @@ void SocketTask::asyncWriteSome() {
                       _loop.scheduler->_nrQueued++;
                       _peer->strand().post([self, this, transferred] {
                         _loop.scheduler->_nrQueued--;
-                        JobGuard guard(_loop);
-                        guard.work();
+                        /*JobGuard guard(_loop);
+                        guard.work();*/
                         
                         if (_abandoned.load(std::memory_order_acquire)) {
                           return;

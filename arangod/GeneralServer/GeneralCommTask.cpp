@@ -262,11 +262,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   if (isPrio) {
-    _loop.scheduler->_nrQueued++;
-    this->strand().post([self, this, handler]() {
-      _loop.scheduler->_nrQueued--;
-      JobGuard guard(_loop);
-      guard.work();
+    _loop.scheduler->post([self, this, handler]() {
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
                             std::move(handler));
     });
@@ -299,7 +295,7 @@ void GeneralCommTask::handleRequestDirectly(
   /*if (!doLock) {
     _lock.assertLockedByCurrentThread();
   }*/
-  TRI_ASSERT(!doLock || strand().running_in_this_thread());
+  TRI_ASSERT(doLock || strand().running_in_this_thread());
 
   auto self = shared_from_this();
   handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
@@ -310,15 +306,17 @@ void GeneralCommTask::handleRequestDirectly(
       std::shared_ptr<GeneralResponse> sresp(resp.get());
       resp.release();
       // strand::post guarantees it returns immediately
-      this->strand().post([self, this, stat, sresp]() {
+      //_loop.scheduler->_nrQueued++;
+      this->strand().dispatch([self, this, stat, sresp]() {
+        /*_loop.scheduler->_nrQueued--;
+        JobGuard guard(_loop);
+        guard.work();*/
         addResponse(*sresp, stat);
       });
     } else {
+      TRI_ASSERT(strand().running_in_this_thread());
       addResponse(*h->response(), stat);
     }
-    
-    /*CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
-    _lock.assertLockedByCurrentThread();*/
   });
 
   HandlerWorkStack monitor(handler);
