@@ -438,6 +438,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   VPackSlice const chunkSlice = builder.slice();
 
+  LOG_DEVEL << chunkSlice.toJson();
+
   if (!chunkSlice.isArray()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
   }

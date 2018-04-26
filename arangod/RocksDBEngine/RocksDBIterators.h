@@ -148,6 +148,7 @@ class RocksDBGenericIterator {
   bool outOfRange() const;
   bool _reverse;
   RocksDBKeyBounds const _bounds;
+  rocksdb::ReadOptions const _options;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;
 };

@@ -342,9 +342,16 @@ RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db
                                               ,bool reverse)
     : _reverse(reverse)
     , _bounds(bounds)
-    , _iterator(db->NewIterator(options, columnFamily))
+    , _options(options)
+    , _iterator(db->NewIterator(_options, columnFamily))
     , _cmp(columnFamily->GetComparator())
-  {};
+  {
+    if (reverse) {
+      _iterator->SeekForPrev(_bounds.end());
+    } else {
+      _iterator->Seek(_bounds.start());
+    }
+  };
 
   //return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts, cf));
 bool RocksDBGenericIterator::outOfRange() const {
@@ -377,16 +384,20 @@ void RocksDBGenericIterator::skip(uint64_t count, uint64_t& skipped) {
 }
 
 void RocksDBGenericIterator::seek(rocksdb::Slice const& key) {
+  // add reverse
   _iterator->Seek(key);
   TRI_ASSERT(_iterator->Valid());
 }
 
 bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
+  LOG_DEVEL << "enter next";
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    LOG_DEVEL_IF(! _iterator->Valid()) << "iterator not valid";
+    LOG_DEVEL_IF(_iterator->Valid() && outOfRange()) << "iterator out of range";
     return false;
   }
 
@@ -404,10 +415,12 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
     }
 
     if (!_iterator->Valid() || outOfRange()) {
+      LOG_DEVEL << "end";
       return false;
     }
   }
 
+  LOG_DEVEL << "has more!";
   return true;
 }
 
@@ -416,6 +429,7 @@ RocksDBGenericIterator arangodb::createGenericIterator(transaction::Methods* trx
                                             ,LogicalCollection* col
                                             ,bool reverse
                                             ){
+
   auto* mthds = RocksDBTransactionState::toMethods(trx);
 
   // intentional copy of the read options
@@ -425,13 +439,14 @@ RocksDBGenericIterator arangodb::createGenericIterator(transaction::Methods* trx
   options.fill_cache = AllIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
   // options.readahead_size = 4 * 1024 * 1024;
-  RocksDBKeyBounds bounds(RocksDBKeyBounds::Empty());
 
+  RocksDBKeyBounds bounds(RocksDBKeyBounds::Empty());
   // TODO FIXME - more create functions or kind of switch
   // over columenfamiles or create functions that takes bounds..
   // ask jan
   if(columnFamily == RocksDBColumnFamily::documents() && col){
     bounds = RocksDBKeyBounds::CollectionDocuments(static_cast<RocksDBCollection*>(col->getPhysical())->objectId());
+    LOG_DEVEL << "created bounds";
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL); //result? - guess exception is ok here as it should not happen
   }
