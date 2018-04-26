@@ -486,10 +486,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         REQUIRE_FALSE(jobid.is_initialized());
 
-        VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
-        Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
-        VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
-        Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
+        VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
+        Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
+        VPackBufferPtr replicationFactorVPack = R"=(3)="_vpack;
+        Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
 
         AgencyWriteTransaction expectedTrx{
             std::vector<AgencyOperation>{
@@ -568,10 +568,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         REQUIRE_FALSE(jobid.is_initialized());
 
-        VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
-        Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
-        VPackBufferPtr replicationFactorVpack = R"=(4)="_vpack;
-        Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
+        VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
+        Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
+        VPackBufferPtr replicationFactorVPack = R"=(4)="_vpack;
+        Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
 
         AgencyWriteTransaction expectedTrx{
             {},
@@ -616,13 +616,13 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         REQUIRE_FALSE(jobid.is_initialized());
 
-        VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
-        Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
-        VPackBufferPtr replicationFactorVpack = R"=(5)="_vpack;
-        Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
-        VPackBufferPtr prevReplicationFactorVpack = R"=(2)="_vpack;
+        VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
+        Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
+        VPackBufferPtr replicationFactorVPack = R"=(5)="_vpack;
+        Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
+        VPackBufferPtr prevReplicationFactorVPack = R"=(2)="_vpack;
         Slice prevReplicationFactorSlice =
-            Slice(prevReplicationFactorVpack->data());
+            Slice(prevReplicationFactorVPack->data());
 
         AgencyWriteTransaction expectedTrx{
             std::vector<AgencyOperation>{
@@ -677,17 +677,17 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         REQUIRE_FALSE(jobid.is_initialized());
 
-        VPackBufferPtr protoIdVpack = R"=("789876")="_vpack;
-        Slice protoIdSlice = Slice(protoIdVpack->data());
-        VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
-        Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
+        VPackBufferPtr protoIdVPack = R"=("789876")="_vpack;
+        Slice protoIdSlice = Slice(protoIdVPack->data());
+        VPackBufferPtr replicationFactorVPack = R"=(3)="_vpack;
+        Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
 
-        VPackBufferPtr serverOrderVpack1 =
+        VPackBufferPtr serverOrderVPack1 =
             R"=(["dbServer1", "dbServer2"])="_vpack;
-        VPackBufferPtr serverOrderVpack2 =
+        VPackBufferPtr serverOrderVPack2 =
             R"=(["dbServer2", "dbServer3"])="_vpack;
-        Slice serverOrderSlice1 = Slice(serverOrderVpack1->data());
-        Slice serverOrderSlice2 = Slice(serverOrderVpack2->data());
+        Slice serverOrderSlice1 = Slice(serverOrderVPack1->data());
+        Slice serverOrderSlice2 = Slice(serverOrderVPack2->data());
 
         AgencyWriteTransaction expectedTrx{
             std::vector<AgencyOperation>{
@@ -793,7 +793,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         REQUIRE(jobId.is_initialized());
         // "timeCreated": "2018-03-07T15:20:01.284Z",
-        VPackBufferPtr todoVpack = R"=(
+        VPackBufferPtr todoVPack = R"=(
           {
             "type": "moveShard",
             "database": "myDbName",
@@ -807,7 +807,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
             "isLeader": true
           }
         )="_vpack;
-        Slice todoSlice = Slice(todoVpack->data());
+        Slice todoSlice = Slice(todoVPack->data());
 
         AgencyWriteTransaction expectedTrx{
             AgencyOperation{"Target/ToDo/" + std::to_string(jobId.get()),
@@ -854,14 +854,14 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                              "db-follower-3-server", "db-follower-4-server"}};
 
       WHEN("Converted into an AgencyTransaction") {
-        VPackBufferPtr previousServerOrderVpack = R"=([
+        VPackBufferPtr previousServerOrderVPack = R"=([
           "db-leader-server",
           "db-follower-3-server",
           "db-follower-2-server",
           "db-follower-4-server",
           "db-follower-1-server"
         ])="_vpack;
-        VPackBufferPtr correctServerOrderVpack = R"=([
+        VPackBufferPtr correctServerOrderVPack = R"=([
           "db-leader-server",
           "db-follower-1-server",
           "db-follower-2-server",
@@ -869,8 +869,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           "db-follower-4-server"
         ])="_vpack;
         Slice previousServerOrderSlice =
-            Slice(previousServerOrderVpack->data());
-        Slice correctServerOrderSlice = Slice(correctServerOrderVpack->data());
+            Slice(previousServerOrderVPack->data());
+        Slice correctServerOrderSlice = Slice(correctServerOrderVPack->data());
 
         AgencyWriteTransaction trx;
         boost::optional<uint64_t> jobid;

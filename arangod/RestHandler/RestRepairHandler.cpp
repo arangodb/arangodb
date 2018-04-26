@@ -259,9 +259,9 @@ bool RestRepairHandler::repairCollection(
   response.add("PlannedOperations", VPackValue(velocypack::ValueType::Array));
 
   for (auto const& op : repairOperations) {
-    RepairOperationToVPackVisitor addToVpack(response);
+    RepairOperationToVPackVisitor addToVPack(response);
 
-    boost::apply_visitor(addToVpack, op);
+    boost::apply_visitor(addToVPack, op);
   }
 
   response.close();

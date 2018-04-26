@@ -273,7 +273,7 @@ std::string cluster_repairs::getTypeAsString(RepairOperation const& op) {
   return boost::apply_visitor(RepairOperationTypeStringVisitor(), op);
 }
 
-VPackBufferPtr MoveShardOperation::toVpackTodo(
+VPackBufferPtr MoveShardOperation::toVPackTodo(
     uint64_t jobId,
     std::chrono::system_clock::time_point jobCreationTimestamp) const {
   std::string const serverId = ServerState::instance()->getId();
@@ -301,7 +301,7 @@ VPackBufferPtr MoveShardOperation::toVpackTodo(
 }
 
 template <typename T>
-VPackSlice RepairOperationToTransactionVisitor::createSingleValueVpack(T val) {
+VPackSlice RepairOperationToTransactionVisitor::createSingleValueVPack(T val) {
   VPackBuilder builder;
   builder.add(VPackValue(val));
   VPackSlice slice = builder.slice();
@@ -326,11 +326,11 @@ RepairOperationToTransactionVisitor::operator()(
       "replicationFactor";
 
   VPackSlice protoCollectionIdSlice =
-      createSingleValueVpack(op.protoCollectionId);
+      createSingleValueVPack(op.protoCollectionId);
   VPackSlice collectionReplicationFactorSlice =
-      createSingleValueVpack(op.collectionReplicationFactor);
+      createSingleValueVPack(op.collectionReplicationFactor);
   VPackSlice protoReplicationFactorSlice =
-      createSingleValueVpack(op.protoReplicationFactor);
+      createSingleValueVPack(op.protoReplicationFactor);
 
   std::vector<AgencyPrecondition> preconditions;
   std::vector<AgencyOperation> operations;
@@ -404,9 +404,9 @@ RepairOperationToTransactionVisitor::operator()(
       "replicationFactor";
 
   VPackSlice protoCollectionIdSlice =
-      createSingleValueVpack(op.protoCollectionId);
+      createSingleValueVPack(op.protoCollectionId);
   VPackSlice replicationFactorSlice =
-      createSingleValueVpack(op.replicationFactor);
+      createSingleValueVPack(op.replicationFactor);
 
   std::vector<AgencyPrecondition> preconditions{
       AgencyPrecondition{oldAttrPath, AgencyPrecondition::Type::VALUE,
@@ -461,7 +461,7 @@ RepairOperationToTransactionVisitor::operator()(MoveShardOperation const& op) {
   std::chrono::system_clock::time_point jobCreationTimestamp =
       _getJobCreationTimestamp();
 
-  VPackBufferPtr vpackTodo = op.toVpackTodo(jobId, jobCreationTimestamp);
+  VPackBufferPtr vpackTodo = op.toVPackTodo(jobId, jobCreationTimestamp);
 
   _vpackBufferArray.push_back(vpackTodo);
 

@@ -239,7 +239,7 @@ struct MoveShardOperation {
       tagged_argument<tag::to, ServerID> to_,
       tagged_argument<tag::isLeader, bool> isLeader_);
 
-  VPackBufferPtr toVpackTodo(
+  VPackBufferPtr toVPackTodo(
       uint64_t jobId,
       std::chrono::system_clock::time_point jobCreationTimestamp) const;
 };
@@ -345,7 +345,7 @@ class RepairOperationToTransactionVisitor
                                           DBServers const& followers) const;
 
   template <typename T>
-  VPackSlice createSingleValueVpack(T val);
+  VPackSlice createSingleValueVPack(T val);
 };
 
 // Adds any RepairOperation to a VPack as an object, suitable for users to see.
