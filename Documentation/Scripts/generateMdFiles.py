@@ -172,6 +172,7 @@ def validatePathParameters():
     for nParam in range(0, len(thisVerb['parameters'])):
         if thisVerb['parameters'][nParam]['in'] == 'path':
             found = True;
+            break
     if not found:
         raise Exception("@RESTPATHPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
     return
@@ -181,6 +182,7 @@ def validateQueryParams():
     for nParam in range(0, len(thisVerb['parameters'])):
         if thisVerb['parameters'][nParam]['in'] == 'query':
             found = True;
+            break
     if not found:
         raise Exception("@RESTQUERYPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
     return
@@ -190,6 +192,7 @@ def validateHeaderParams():
     for nParam in range(0, len(thisVerb['parameters'])):
         if thisVerb['parameters'][nParam]['in'] == 'header':
             found = True;
+            break
     if not found:
         raise Exception("@RESTHEADERPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
     return
@@ -199,6 +202,7 @@ def validateReturnCodes():
     for nParam in range(0, len(thisVerb['responses'])):
         if len(thisVerb['responses'].keys()) != 0:
             found = True;
+            break
     if not found:
         raise Exception("@RESTRETURNCODES found without any documented returncodes %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
     return
