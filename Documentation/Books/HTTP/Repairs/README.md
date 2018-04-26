@@ -16,7 +16,6 @@ job is running,
 - the `replicationFactor` *must not be changed* for any affected collection or
   prototype collection (i.e. set in `distributeShardsLike`, including
   [SmartGraphs](../../Manual/Graphs/SmartGraphs/)),
-- affected collections or prototype collections *should not be renamed*,
 - *neither should shards be moved* of one of those prototypes
 - and shutdown of DBServers *should be avoided*
 during the repairs. Also only one repair job should run at any given time.
@@ -42,7 +41,7 @@ current state.
 
 ### Testing with `GET /_admin/repairs/distributeShardsLike`
 
-Using `GET` will **not** to any repairs, but only calculate and return
+Using `GET` will **not** trigger any repairs, but only calculate and return
 the operations necessary to repair the cluster. This way, you can also
 check if there is something to repair.
 
