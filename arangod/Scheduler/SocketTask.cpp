@@ -208,7 +208,11 @@ void SocketTask::closeStream() {
   // strand::dispatch may execute this immediately if this
   // is called on a thread inside the same strand
   auto self = shared_from_this();
+  _loop.scheduler->_nrQueued++;
   _peer->strand().dispatch([self, this] {
+    _loop.scheduler->_nrQueued--;
+    JobGuard guard(_loop);
+    guard.work();
     closeStreamNoLock();
   });
 }
@@ -554,8 +558,8 @@ void SocketTask::asyncWriteSome() {
                       _loop.scheduler->_nrQueued++;
                       _peer->strand().post([self, this, transferred] {
                         _loop.scheduler->_nrQueued--;
-                        /*JobGuard guard(_loop);
-                        guard.work();*/
+                        JobGuard guard(_loop);
+                        guard.work();
                         
                         if (_abandoned.load(std::memory_order_acquire)) {
                           return;

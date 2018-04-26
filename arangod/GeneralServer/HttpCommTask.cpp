@@ -308,9 +308,9 @@ bool HttpCommTask::processRead(double startTime) {
       {
         // MUTEX_LOCKER(locker, commTask->_lock);
         // strand::dispatch can run immediately
-        commTask->strand().dispatch([commTask]{
+        //commTask->strand().dispatch([commTask]{
           commTask->processAll();
-        });
+        //});
       }
       commTask->start();
       return false;
