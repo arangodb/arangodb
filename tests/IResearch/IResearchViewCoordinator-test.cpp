@@ -683,9 +683,1360 @@ SECTION("test_update_properties") {
   }
 }
 
-SECTION("test_update_links") {
-  // FIXME TODO
-  // FIXME check we don't change plan version if object didn't change
+SECTION("test_update_links_replace") {
+  auto* database = arangodb::DatabaseFeature::DATABASE;
+  REQUIRE(nullptr != database);
+
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
+  std::string error;
+  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+
+  // create database
+  {
+    // simulate heartbeat thread
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+
+    REQUIRE(nullptr != vocbase);
+    CHECK("testDatabase" == vocbase->name());
+    CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    CHECK(1 == vocbase->id());
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
+      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
+    ));
+    CHECK("no error" == error);
+  }
+
+  // create collections
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  {
+    auto const collectionId = "1";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection1);
+  }
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+  {
+    auto const collectionId = "2";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection2);
+  }
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
+  {
+    auto const collectionId = "3";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection3);
+  }
+
+  auto const currentCollection1Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id());
+  auto const currentCollection2Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection2->id());
+  auto const currentCollection3Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection3->id());
+
+  // get current plan version
+  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+
+  ci->loadCurrent();
+
+  // create view
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
+  auto view = vocbase->createView(viewJson->slice());
+  REQUIRE(view);
+  auto const viewId = std::to_string(view->planId());
+  CHECK("42" == viewId);
+
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection1Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
+  }
+
+  // explicitly specify id for the sake of tests
+  auto linksJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"links\" : {"
+    "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
+    "  \"testCollection3\" : { \"id\": \"3\" } "
+    "} }"
+  );
+  CHECK(view->updateProperties(linksJson->slice(), false, true).ok()); // add link
+  CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto oldView = view;
+  view = ci->getView(vocbase->name(), viewId); // get new version of the view
+  CHECK(view != oldView); // different objects
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(planVersion == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(42 == view->id());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(vocbase == &view->vocbase());
+
+  // visit collections
+  {
+    std::set<TRI_voc_cid_t> expectedLinks{
+      logicalCollection1->id(),
+      logicalCollection3->id()
+    };
+    CHECK(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+      return 1 == expectedLinks.erase(cid);
+    }));
+    CHECK(expectedLinks.empty());
+  }
+
+  // check properties
+  {
+    VPackBuilder info;
+    info.openObject();
+    view->toVelocyPack(info, true, false);
+    info.close();
+
+    auto const properties = info.slice().get("properties");
+    CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
+    auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
+    CHECK(linksSlice.isObject());
+
+    VPackObjectIterator it(linksSlice);
+    CHECK(it.valid());
+    CHECK(2 == it.size());
+
+    // testCollection1
+    {
+      auto const value = linksSlice.get(logicalCollection1->name());
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      expectedMeta._includeAllFields = true;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+
+    // testCollection3
+    {
+      auto const value = linksSlice.get(logicalCollection3->name());
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+  }
+
+  // test index in testCollection1
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    expectedMeta._includeAllFields = true;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  // test index in testCollection3
+  {
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  CHECK(view->updateProperties(linksJson->slice(), false, true).ok()); // same properties -> should not affect plan version
+  CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
+
+  CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // same properties -> should not affect plan version
+  CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
+
+  // replace links with testCollection2 link
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection1Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection2Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
+  }
+
+  auto const updateJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"links\" : {"
+    "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true } "
+    "} }"
+  );
+  CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
+  CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion();
+  oldView = view;
+  view = ci->getView(vocbase->name(), viewId); // get new version of the view
+  CHECK(view != oldView); // different objects
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(planVersion == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(42 == view->id());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(vocbase == &view->vocbase());
+
+  // visit collections
+  {
+    std::set<TRI_voc_cid_t> expectedLinks{
+      logicalCollection2->id()
+    };
+    CHECK(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+      return 1 == expectedLinks.erase(cid);
+    }));
+    CHECK(expectedLinks.empty());
+  }
+
+  // check properties
+  {
+    VPackBuilder info;
+    info.openObject();
+    view->toVelocyPack(info, true, false);
+    info.close();
+
+    auto const properties = info.slice().get("properties");
+    CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
+    auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
+    CHECK(linksSlice.isObject());
+
+    VPackObjectIterator it(linksSlice);
+    CHECK(it.valid());
+    CHECK(1 == it.size());
+
+    // testCollection2
+    {
+      auto const value = linksSlice.get(std::to_string(logicalCollection2->id()));
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      expectedMeta._trackListPositions = true;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+  }
+
+  // test index in testCollection2
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    expectedMeta._trackListPositions = true;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+}
+
+SECTION("test_update_links_partial_remove") {
+  auto* database = arangodb::DatabaseFeature::DATABASE;
+  REQUIRE(nullptr != database);
+
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
+  std::string error;
+  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+
+  // create database
+  {
+    // simulate heartbeat thread
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+
+    REQUIRE(nullptr != vocbase);
+    CHECK("testDatabase" == vocbase->name());
+    CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    CHECK(1 == vocbase->id());
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
+      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
+    ));
+    CHECK("no error" == error);
+  }
+
+  // create collections
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  {
+    auto const collectionId = "1";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection1);
+  }
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+  {
+    auto const collectionId = "2";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection2);
+  }
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
+  {
+    auto const collectionId = "3";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection3);
+  }
+
+  auto const currentCollection1Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id());
+  auto const currentCollection2Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection2->id());
+  auto const currentCollection3Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection3->id());
+
+  // get current plan version
+  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+
+  ci->loadCurrent();
+
+  // create view
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
+  auto view = vocbase->createView(viewJson->slice());
+  REQUIRE(view);
+  auto const viewId = std::to_string(view->planId());
+  CHECK("42" == viewId);
+
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection1Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection2Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
+  }
+
+  // explicitly specify id for the sake of tests
+  auto linksJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"links\" : {"
+    "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
+    "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
+    "  \"testCollection3\" : { \"id\": \"3\" } "
+    "} }"
+  );
+  CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // add links
+  CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto oldView = view;
+  view = ci->getView(vocbase->name(), viewId); // get new version of the view
+  CHECK(view != oldView); // different objects
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(planVersion == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(42 == view->id());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(vocbase == &view->vocbase());
+
+  // visit collections
+  {
+    std::set<TRI_voc_cid_t> expectedLinks{
+      logicalCollection1->id(),
+      logicalCollection2->id(),
+      logicalCollection3->id()
+    };
+    CHECK(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+      return 1 == expectedLinks.erase(cid);
+    }));
+    CHECK(expectedLinks.empty());
+  }
+
+  // check properties
+  {
+    VPackBuilder info;
+    info.openObject();
+    view->toVelocyPack(info, true, false);
+    info.close();
+
+    auto const properties = info.slice().get("properties");
+    CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
+    auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
+    CHECK(linksSlice.isObject());
+
+    VPackObjectIterator it(linksSlice);
+    CHECK(it.valid());
+    CHECK(3 == it.size());
+
+    // testCollection1
+    {
+      auto const value = linksSlice.get(logicalCollection1->name());
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      expectedMeta._includeAllFields = true;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+
+    // testCollection2
+    {
+      auto const value = linksSlice.get(std::to_string(logicalCollection2->id()));
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      expectedMeta._trackListPositions = true;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+
+    // testCollection3
+    {
+      auto const value = linksSlice.get(logicalCollection3->name());
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+  }
+
+  // test index in testCollection1
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    expectedMeta._includeAllFields = true;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  // test index in testCollection2
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    expectedMeta._trackListPositions = true;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  // test index in testCollection3
+  {
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // same properties -> should not affect plan version
+  CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
+
+  // remove testCollection2 link
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection2Path, value->slice(), 0.0).successful());
+  }
+
+  auto const updateJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"links\" : {"
+    "  \"2\" : null "
+    "} }"
+  );
+  CHECK(view->updateProperties(updateJson->slice(), true, true).ok());
+  CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion();
+  oldView = view;
+  view = ci->getView(vocbase->name(), viewId); // get new version of the view
+  CHECK(view != oldView); // different objects
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(planVersion == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(42 == view->id());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(vocbase == &view->vocbase());
+
+  // visit collections
+  {
+    std::set<TRI_voc_cid_t> expectedLinks{
+      logicalCollection1->id(),
+      logicalCollection3->id()
+    };
+    CHECK(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+      return 1 == expectedLinks.erase(cid);
+    }));
+    CHECK(expectedLinks.empty());
+  }
+
+  // check properties
+  {
+    VPackBuilder info;
+    info.openObject();
+    view->toVelocyPack(info, true, false);
+    info.close();
+
+    auto const properties = info.slice().get("properties");
+    CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
+    auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
+    CHECK(linksSlice.isObject());
+
+    VPackObjectIterator it(linksSlice);
+    CHECK(it.valid());
+    CHECK(2 == it.size());
+
+    // testCollection1
+    {
+      auto const value = linksSlice.get(logicalCollection1->name());
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      expectedMeta._includeAllFields = true;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+
+    // testCollection3
+    {
+      auto const value = linksSlice.get(logicalCollection3->name());
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+  }
+
+  // test index in testCollection1
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    expectedMeta._includeAllFields = true;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  // test index in testCollection3
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+}
+
+SECTION("test_update_links_clear") {
+  auto* database = arangodb::DatabaseFeature::DATABASE;
+  REQUIRE(nullptr != database);
+
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
+  std::string error;
+  TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+
+  // create database
+  {
+    // simulate heartbeat thread
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+
+    REQUIRE(nullptr != vocbase);
+    CHECK("testDatabase" == vocbase->name());
+    CHECK(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR == vocbase->type());
+    CHECK(1 == vocbase->id());
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(
+      vocbase->name(), VPackSlice::emptyObjectSlice(), error, 0.0
+    ));
+    CHECK("no error" == error);
+  }
+
+  // create collections
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  {
+    auto const collectionId = "1";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection1 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection1);
+  }
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+  {
+    auto const collectionId = "2";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection2 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection2);
+  }
+
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection3;
+  {
+    auto const collectionId = "3";
+
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 0 }"
+    );
+
+    CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
+      vocbase->name(), collectionId, 0, 1, false, collectionJson->slice(), error, 0.0
+    ));
+
+    logicalCollection3 = ci->getCollection(vocbase->name(), collectionId);
+    REQUIRE(nullptr != logicalCollection3);
+  }
+
+  auto const currentCollection1Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection1->id());
+  auto const currentCollection2Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection2->id());
+  auto const currentCollection3Path =
+      "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection3->id());
+
+  // get current plan version
+  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+
+  ci->loadCurrent();
+
+  // create view
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" }");
+  auto view = vocbase->createView(viewJson->slice());
+  REQUIRE(view);
+  auto const viewId = std::to_string(view->planId());
+  CHECK("42" == viewId);
+
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection1Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection2Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
+  }
+
+  // explicitly specify id for the sake of tests
+  auto linksJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"links\" : {"
+    "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : true }, "
+    "  \"2\" : { \"id\": \"2\", \"trackListPositions\" : true }, "
+    "  \"testCollection3\" : { \"id\": \"3\" } "
+    "} }"
+  );
+  CHECK(view->updateProperties(linksJson->slice(), false, true).ok()); // add link
+  CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion();
+  auto oldView = view;
+  view = ci->getView(vocbase->name(), viewId); // get new version of the view
+  CHECK(view != oldView); // different objects
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(planVersion == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(42 == view->id());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(vocbase == &view->vocbase());
+
+  // visit collections
+  {
+    std::set<TRI_voc_cid_t> expectedLinks{
+      logicalCollection1->id(),
+      logicalCollection2->id(),
+      logicalCollection3->id()
+    };
+    CHECK(view->visitCollections([&expectedLinks](TRI_voc_cid_t cid) mutable {
+      return 1 == expectedLinks.erase(cid);
+    }));
+    CHECK(expectedLinks.empty());
+  }
+
+  // check properties
+  {
+    VPackBuilder info;
+    info.openObject();
+    view->toVelocyPack(info, true, false);
+    info.close();
+
+    auto const properties = info.slice().get("properties");
+    CHECK(properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
+    auto const linksSlice = properties.get(arangodb::iresearch::StaticStrings::LinksField);
+    CHECK(linksSlice.isObject());
+
+    VPackObjectIterator it(linksSlice);
+    CHECK(it.valid());
+    CHECK(3 == it.size());
+
+    // testCollection1
+    {
+      auto const value = linksSlice.get(logicalCollection1->name());
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      expectedMeta._includeAllFields = true;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+
+    // testCollection2
+    {
+      auto const value = linksSlice.get(std::to_string(logicalCollection2->id()));
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      expectedMeta._trackListPositions = true;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+
+    // testCollection3
+    {
+      auto const value = linksSlice.get(logicalCollection3->name());
+      CHECK(value.isObject());
+
+      arangodb::iresearch::IResearchLinkMeta expectedMeta;
+      arangodb::iresearch::IResearchLinkMeta actualMeta;
+      error.clear();
+      CHECK(actualMeta.init(value, error));
+      CHECK(error.empty());
+      CHECK(expectedMeta == actualMeta);
+    }
+  }
+
+  // test index in testCollection1
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    expectedMeta._includeAllFields = true;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  // test index in testCollection2
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    expectedMeta._trackListPositions = true;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  // test index in testCollection3
+  {
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(link);
+
+    auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
+    REQUIRE((false == !index));
+    CHECK((true == index->allowExpansion()));
+    CHECK((true == index->canBeDropped()));
+    CHECK((updatedCollection.get() == index->collection()));
+    CHECK((index->fieldNames().empty()));
+    CHECK((index->fields().empty()));
+    CHECK((true == index->hasBatchInsert()));
+    CHECK((false == index->hasExpansion()));
+    CHECK((false == index->hasSelectivityEstimate()));
+    CHECK((false == index->implicitlyUnique()));
+    CHECK((true == index->isPersistent()));
+    CHECK((false == index->isSorted()));
+    CHECK((0 < index->memory()));
+    CHECK((true == index->sparse()));
+    CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == index->typeName()));
+    CHECK((false == index->unique()));
+
+    arangodb::iresearch::IResearchLinkMeta expectedMeta;
+    arangodb::iresearch::IResearchLinkMeta actualMeta;
+    auto builder = index->toVelocyPack(true, false);
+
+    error.clear();
+    CHECK(actualMeta.init(builder->slice(), error));
+    CHECK(error.empty());
+    CHECK(expectedMeta == actualMeta);
+    auto const slice = builder->slice();
+    CHECK(slice.hasKey("view"));
+    CHECK(slice.get("view").isNumber());
+    CHECK(TRI_voc_cid_t(42) == slice.get("view").getNumber<TRI_voc_cid_t>());
+    CHECK(slice.hasKey("figures"));
+    CHECK(slice.get("figures").isObject());
+    CHECK(slice.get("figures").hasKey("memory"));
+    CHECK(slice.get("figures").get("memory").isNumber());
+    CHECK(0 < slice.get("figures").get("memory").getUInt());
+  }
+
+  CHECK(view->updateProperties(linksJson->slice(), false, true).ok()); // same properties -> should not affect plan version
+  CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
+
+  CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // same properties -> should not affect plan version
+  CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
+
+  // remove all links
+  // simulate heartbeat thread (create index in current)
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection1Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection2Path, value->slice(), 0.0).successful());
+  }
+  {
+    auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+    CHECK(arangodb::AgencyComm().setValue(currentCollection3Path, value->slice(), 0.0).successful());
+  }
+
+  auto const updateJson = arangodb::velocypack::Parser::fromJson("{}");
+  CHECK(view->updateProperties(updateJson->slice(), false, true).ok());
+  CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
+  planVersion = arangodb::tests::getCurrentPlanVersion();
+  oldView = view;
+  view = ci->getView(vocbase->name(), viewId); // get new version of the view
+  CHECK(view != oldView); // different objects
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(planVersion == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(42 == view->id());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(vocbase == &view->vocbase());
+
+  // visit collections
+  {
+    CHECK(view->visitCollections([](TRI_voc_cid_t cid) mutable {
+      return false;
+    }));
+  }
+
+  // check properties
+  {
+    VPackBuilder info;
+    info.openObject();
+    view->toVelocyPack(info, true, false);
+    info.close();
+
+    auto const properties = info.slice().get("properties");
+    CHECK(!properties.hasKey(arangodb::iresearch::StaticStrings::LinksField));
+  }
+
+  // test index in testCollection1
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection1->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(!link);
+  }
+
+  // test index in testCollection2
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection2->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(!link);
+  }
+
+  // test index in testCollection3
+  {
+    // get new version from plan
+    auto updatedCollection = ci->getCollection(vocbase->name(), std::to_string(logicalCollection3->id()));
+    REQUIRE(updatedCollection);
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::find(*updatedCollection, *view);
+    CHECK(!link);
+  }
 }
 
 SECTION("test_drop_link") {
@@ -859,6 +2210,9 @@ SECTION("test_drop_link") {
       CHECK(0 < slice.get("figures").get("memory").getUInt());
     }
 
+    CHECK(view->updateProperties(linksJson->slice(), true, true).ok()); // same properties -> should not affect plan version
+    CHECK(planVersion == arangodb::tests::getCurrentPlanVersion()); // plan did't change version
+
     // simulate heartbeat thread (drop index from current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson("{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
@@ -867,6 +2221,7 @@ SECTION("test_drop_link") {
 
     // drop link
     CHECK(view->drop(logicalCollection->id()).ok());
+    CHECK(planVersion < arangodb::tests::getCurrentPlanVersion()); // plan version changed
     planVersion = arangodb::tests::getCurrentPlanVersion();
     oldView = view;
     view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(ci->getView(vocbase->name(), viewId)); // get new version of the view

@@ -85,31 +85,28 @@ arangodb::Result createLink(
 }
 
 arangodb::Result updateLinks(
-    VPackSlice properties,
-    bool partialUpdate,
+    VPackSlice newLinks,
+    VPackSlice currentLinks,
     IResearchViewCoordinator const& view,
-    VPackBuilder& viewProperties,
-    std::unordered_set<TRI_voc_cid_t>& cids
+    bool partialUpdate,
+    std::unordered_set<TRI_voc_cid_t> currentCids, // intentional copy
+    bool& modified,
+    VPackBuilder& viewNewProperties,
+    std::unordered_set<TRI_voc_cid_t>& newCids
 ) {
-  auto links = properties.get(StaticStrings::LinksField);
-
-  if (links.isNone()) {
-    return {};
+  if (!newLinks.isObject()) {
+    newLinks = VPackSlice::emptyObjectSlice();
   }
 
   arangodb::CollectionNameResolver resolver(&view.vocbase());
-
-  auto collections = partialUpdate
-    ? cids
-    : std::unordered_set<TRI_voc_cid_t>{};
-  cids.clear();
 
   arangodb::Result res;
   std::string error;
   VPackBuilder builder;
   IResearchLinkMeta linkMeta;
 
-  for (VPackObjectIterator linksItr(links); linksItr.valid(); ++linksItr) {
+  // process new links
+  for (VPackObjectIterator linksItr(newLinks); linksItr.valid(); ++linksItr) {
     auto const collectionNameOrIdSlice = linksItr.key();
 
     if (!collectionNameOrIdSlice.isString()) {
@@ -137,28 +134,28 @@ arangodb::Result updateLinks(
     auto const existingLink = IResearchLinkCoordinator::find(*collection, view);
 
     if (link.isNull()) {
-      if (existingLink && partialUpdate) {
+      if (existingLink) {
         res = dropLink(*existingLink, *collection, builder);
 
         // do not need to drop link afterwards
-        collections.erase(collection->id());
+        currentCids.erase(collection->id());
+        modified = true;
       }
     } else {
       if (!linkMeta.init(link, error)) {
-        return { TRI_ERROR_BAD_PARAMETER, error } ;
+        return { TRI_ERROR_BAD_PARAMETER, error };
       }
 
       // append link definition
       {
-        VPackObjectBuilder const guard(&viewProperties, collectionNameOrId);
-        linkMeta.json(viewProperties);
-        cids.emplace(collection->id());
+        VPackObjectBuilder const guard(&viewNewProperties, collectionNameOrId);
+        linkMeta.json(viewNewProperties);
       }
 
-      if (existingLink) {
-        // do not need to drop link afterwards
-        collections.erase(collection->id());
+      currentCids.erase(collection->id()); // already processed
+      newCids.emplace(collection->id()); // new collection
 
+      if (existingLink) {
         if (*existingLink == linkMeta) {
           // nothing to do
           continue;
@@ -174,6 +171,7 @@ arangodb::Result updateLinks(
       }
 
       res = createLink(*collection, view, link, builder);
+      modified = true;
     }
 
     if (!res.ok()) {
@@ -181,28 +179,49 @@ arangodb::Result updateLinks(
     }
   }
 
-  // in case of full update drop unprocessed links
-  for (auto const cid : collections) {
+  // process the rest of the nonprocessed collections
+  for (auto const cid : currentCids) {
     auto const collection = resolver.getCollection(cid);
 
     if (!collection) {
       return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
     }
 
-    auto const link = IResearchLinkCoordinator::find(*collection, view);
+    if (!partialUpdate) {
+      auto const link = IResearchLinkCoordinator::find(*collection, view);
 
-    if (!link) {
-      return {
-        TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-        std::string("no link between view '")
-          + StringUtils::itoa(view.id())
-          + "' and collection '" + StringUtils::itoa(cid)
-          + "' found"
-      };
+      if (!link) {
+        return {
+          TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
+          std::string("no link between view '")
+            + StringUtils::itoa(view.id())
+            + "' and collection '" + StringUtils::itoa(cid)
+            + "' found"
+        };
+      }
+
+      builder.clear();
+      res = dropLink(*link, *collection, builder);
+      modified = true;
+    } else {
+      auto link = currentLinks.get(collection->name());
+
+      if (!link.isObject()) {
+        auto const collectiondId = StringUtils::itoa(collection->id());
+        link = currentLinks.get(collectiondId);
+
+        if (!link.isObject()) {
+          // inconsistent links
+          return { TRI_ERROR_BAD_PARAMETER };
+        }
+
+        viewNewProperties.add(collectiondId, link);
+      } else {
+        viewNewProperties.add(collection->name(), link);
+      }
+
+      newCids.emplace(collection->id());
     }
-
-    builder.clear();
-    res = dropLink(*link, *collection, builder);
 
     if (!res.ok()) {
       return res;
@@ -378,16 +397,27 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
         {
           VPackObjectBuilder const guard(&builder, StaticStrings::LinksField);
 
+          bool modified = false;
+          meta._collections.clear();
+
           auto const res = updateLinks(
-            properties,
-            partialUpdate,
+            properties.get(StaticStrings::LinksField),
+            _links.slice(),
             *this,
+            partialUpdate,
+            _meta._collections,
+            modified,
             builder,
             meta._collections
           );
 
           if (!res.ok()) {
             return res;
+          }
+
+          if (!modified && _meta == meta) {
+            // nothing to do
+            return {};
           }
         }
 
