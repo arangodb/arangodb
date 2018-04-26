@@ -165,49 +165,42 @@ def getRestReplyBodyParam(param):
 
 
 def noValidation():
-    return
+    pass
+
 def validatePathParameters():
-    found = False
     # print thisVerb
     for nParam in range(0, len(thisVerb['parameters'])):
         if thisVerb['parameters'][nParam]['in'] == 'path':
-            found = True;
             break
-    if not found:
+    else:
         raise Exception("@RESTPATHPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
-    return
+
 def validateQueryParams():
-    found = False
     # print thisVerb
     for nParam in range(0, len(thisVerb['parameters'])):
         if thisVerb['parameters'][nParam]['in'] == 'query':
-            found = True;
             break
-    if not found:
+    else:
         raise Exception("@RESTQUERYPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
-    return
+
 def validateHeaderParams():
-    found = False
     # print thisVerb
     for nParam in range(0, len(thisVerb['parameters'])):
         if thisVerb['parameters'][nParam]['in'] == 'header':
-            found = True;
             break
-    if not found:
+    else:
         raise Exception("@RESTHEADERPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
-    return
+
 def validateReturnCodes():
-    found = False
     # print thisVerb
     for nParam in range(0, len(thisVerb['responses'])):
         if len(thisVerb['responses'].keys()) != 0:
-            found = True;
             break
-    if not found:
+    else:
         raise Exception("@RESTRETURNCODES found without any documented returncodes %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
-    return
+
 def validateExamples():
-    return
+    pass
 
 SIMPL_REPL_VALIDATE_DICT = {
     "@RESTDESCRIPTION"      : noValidation,
