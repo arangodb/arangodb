@@ -43,10 +43,11 @@ std::string const planColPrefix = "/Plan/Collections/";
 std::string const curColPrefix = "/Current/Collections/";
 std::string const blockedServersPrefix = "/Supervision/DBServers/";
 std::string const blockedShardsPrefix = "/Supervision/Shards/";
-std::string const serverStatePrefix = "/Sync/ServerStates/";
 std::string const planVersion = "/Plan/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
+std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
+std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 
 }  // namespace arangodb::consensus
 }  // namespace arangodb
@@ -239,6 +240,20 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   
 }
 
+/// @brief Get servers from Supervision with health status GOOD
+std::vector<std::string> Job::healthyServers(arangodb::consensus::Node const& snapshot) {
+  std::vector<std::string> ret;
+  for (auto const& srv : snapshot(healthPrefix).children()) {
+    if (srv.second->has("Status")) {
+      VPackSlice hs = srv.second->get("Status").slice();
+      if (hs.isString() && hs.isEqualString(Supervision::HEALTH_STATUS_GOOD)) {
+        ret.emplace_back(srv.first);
+      }
+    }
+  }
+  return ret;
+}
+
 template<typename T> std::vector<size_t> idxsort (const std::vector<T> &v) {
 
   std::vector<size_t> idx(v.size());
@@ -404,9 +419,10 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   if (!job.has("type")) {
     return false;
   }
-  auto const& type = job("type").getString();
+  std::string type = job("type").getString();
 
-  if (type == "failedServer" || type == "failedLeader") {
+  if (type == "failedServer" || type == "failedLeader" ||
+      type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer") {

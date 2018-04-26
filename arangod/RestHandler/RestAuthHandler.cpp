@@ -91,9 +91,12 @@ RestStatus RestAuthHandler::execute() {
   _username = usernameSlice.copyString();
   std::string const password = passwordSlice.copyString();
   
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  TRI_ASSERT(af != nullptr);
-  if (af->userManager()->checkPassword(_username, password)) {
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um == nullptr) {
+    std::string msg = "This server does not support users";
+    LOG_TOPIC(ERR, Logger::AUTHENTICATION) << msg;
+    generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED, msg);
+  } else if (um->checkPassword(_username, password)) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);
@@ -103,13 +106,12 @@ RestStatus RestAuthHandler::execute() {
 
     _isValid = true;
     generateDocument(resultBuilder.slice(), true, &VPackOptions::Defaults);
-    return RestStatus::DONE;
   } else {
     // mop: rfc 2616 10.4.2 (if credentials wrong 401)
     generateError(rest::ResponseCode::UNAUTHORIZED,
                   TRI_ERROR_HTTP_UNAUTHORIZED, "Wrong credentials");
-    return RestStatus::DONE;
   }
+  return RestStatus::DONE;
 }
 
 RestStatus RestAuthHandler::badRequest() {
