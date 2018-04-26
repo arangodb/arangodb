@@ -1,6 +1,10 @@
 devel
 -----
 
+
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
+
 * There is new method `_profileQuery` on the database object to execute a query and
   print an explain with annotated runtime information.
 
