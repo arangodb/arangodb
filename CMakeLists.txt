@@ -442,7 +442,7 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/16d2585/src)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/552f562/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 
