@@ -51,7 +51,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   RocksDBEdgeIndexIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
                            arangodb::RocksDBEdgeIndex const* index,
-                           std::unique_ptr<VPackBuilder>& keys,
+                           std::unique_ptr<VPackBuilder> keys,
                            std::shared_ptr<cache::Cache>);
   ~RocksDBEdgeIndexIterator();
   char const* typeName() const override { return "edge-index-iterator"; }
@@ -87,7 +87,7 @@ class RocksDBEdgeIndexWarmupTask : public basics::LocalTask {
 
  public:
   RocksDBEdgeIndexWarmupTask(
-      std::shared_ptr<basics::LocalTaskQueue> queue,
+      std::shared_ptr<basics::LocalTaskQueue> const& queue,
       RocksDBEdgeIndex* index,
       transaction::Methods* trx,
       rocksdb::Slice const& lower,

@@ -230,7 +230,6 @@ SET(ARANGOD_SOURCES
   Aql/QueryOptions.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
-  Aql/QueryResult.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RegexCache.cpp

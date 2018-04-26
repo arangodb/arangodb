@@ -255,12 +255,8 @@ class Query {
   /// @brief add the list of warnings to VelocyPack.
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
   ///        warnings. If there are none it will not modify the builder
-  void addWarningsToVelocyPackObject(arangodb::velocypack::Builder&) const;
+  void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
-  /// @brief transform the list of warnings to VelocyPack.
-  ///        NOTE: returns nullptr if there are no warnings.
-  std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
-  
   /// @brief get a description of the query's current state
   std::string getStateString() const;
 

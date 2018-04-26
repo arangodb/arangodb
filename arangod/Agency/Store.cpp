@@ -347,8 +347,7 @@ std::vector<bool> Store::applyLogEntries(
 
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
-        auto headerFields =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
+        std::unordered_map<std::string, std::string> headerFields;
 
         arangodb::ClusterComm::instance()->asyncRequest(
           "1", 1, endpoint, rest::RequestType::POST, path,

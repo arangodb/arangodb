@@ -1619,8 +1619,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
-  auto headerFields =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
+  std::unordered_map<std::string, std::string> headerFields;
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
@@ -1628,7 +1627,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool singleRequest = false;
 
   PrepareClusterCommRequest(args, reqType, destination, path, *body,
-                            *headerFields, clientTransactionID,
+                            headerFields, clientTransactionID,
                             coordTransactionID, timeout, singleRequest,
                             initTimeout);
 

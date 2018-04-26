@@ -117,8 +117,8 @@ Query::Query(
 
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
   // queryString << "\n";
-  int64_t tracing = _queryOptions.tracing;
-  if (tracing > 0) {
+  ProfileLevel level = _queryOptions.profile;
+  if (level >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC(INFO, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::Query queryString: " << _queryString
@@ -132,7 +132,7 @@ Query::Query(
 
   if (bindParameters != nullptr && !bindParameters->isEmpty() &&
       !bindParameters->slice().isNone()) {
-    if (tracing > 0) {
+    if (level >= PROFILE_LEVEL_TRACE_1) {
       LOG_TOPIC(INFO, Logger::QUERIES)
           << "bindParameters: " << bindParameters->slice().toJson();
     } else {
@@ -142,7 +142,7 @@ Query::Query(
   }
 
   if (options != nullptr && !options->isEmpty() && !options->slice().isNone()) {
-    if (tracing > 0) {
+    if (level >= PROFILE_LEVEL_TRACE_1) {
       LOG_TOPIC(INFO, Logger::QUERIES)
           << "options: " << options->slice().toJson();
     } else {
@@ -205,7 +205,7 @@ Query::Query(
 
 /// @brief destroys a query
 Query::~Query() {
-  if (_queryOptions.tracing > 0) {
+  if (_queryOptions.profile >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC(INFO, Logger::QUERIES)
       << TRI_microtime() - _startTime << " "
       << "Query::~Query queryString: "
@@ -563,8 +563,11 @@ QueryResult Query::execute(QueryRegistry* registry) {
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
         res.context = transaction::StandaloneContext::Create(&_vocbase);
-
-        res.warnings = warningsToVelocyPack();
+        res.extra = std::make_shared<VPackBuilder>();
+        {
+          VPackObjectBuilder guard(res.extra.get(), true);
+          addWarningsToVelocyPack(*res.extra);
+        }
         TRI_ASSERT(cacheEntry->_queryResult != nullptr);
         res.result = cacheEntry->_queryResult;
         res.cached = true;
@@ -869,22 +872,28 @@ void Query::finalize(QueryResult& result) {
   _engine->_stats.setExecutionTime(runTime());
   enterState(QueryExecutionState::ValueType::FINALIZATION);
   
-  auto stats = std::make_shared<VPackBuilder>();
-  cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
-  
-  result.warnings = warningsToVelocyPack();
-  result.stats = std::move(stats);
+  double now;
+  result.extra = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder extras(result.extra.get(), true);
+    if (_queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+      result.extra->add(VPackValue("plan"));
+      _plan->toVelocyPack(*result.extra, _ast.get(), false);
+      // needed to happen before plan cleanup
+    }
+    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, result.extra.get());
+    addWarningsToVelocyPack(*result.extra);
+    now = TRI_microtime();
+    if (_profile != nullptr && _queryOptions.profile >= PROFILE_LEVEL_BASIC) {
+      _profile->setStateEnd(QueryExecutionState::ValueType::FINALIZATION, now);
+      _profile->toVelocyPack(*(result.extra));
+    }
+  }
   
   // patch executionTime stats value in place
   // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
-  double now = TRI_microtime();
   double const rt = runTime(now);
-  basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), rt);
-  
-  if (_profile != nullptr && _queryOptions.profile) {
-    _profile->setEnd(QueryExecutionState::ValueType::FINALIZATION, now);
-    result.profile = _profile->toVelocyPack();
-  }
+  basics::VelocyPackHelper::patchDouble(result.extra->slice().get("stats").get("executionTime"), rt);
   
   LOG_TOPIC(DEBUG, Logger::QUERIES) << rt << " "
   << "Query::finalize:returning"
@@ -942,7 +951,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
     parser.ast()->validateAndOptimize();
 
-
+    
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     ExecutionPlan* plan = ExecutionPlan::instantiateFromAst(parser.ast());
 
@@ -999,9 +1008,13 @@ QueryResult Query::explain() {
         THROW_ARANGO_EXCEPTION(commitResult);
     }
     
-    result.warnings = warningsToVelocyPack();
-
-    result.stats = opt._stats.toVelocyPack();
+    result.extra = std::make_shared<VPackBuilder>();
+    {
+      VPackObjectBuilder guard(result.extra.get(), true);
+      addWarningsToVelocyPack(*result.extra);
+      result.extra->add(VPackValue("stats"));
+      opt._stats.toVelocyPack(*result.extra);
+    }
 
     return result;
   } catch (arangodb::basics::Exception const& ex) {
@@ -1117,8 +1130,7 @@ void Query::getStats(VPackBuilder& builder) {
 /// @brief convert the list of warnings to VelocyPack.
 ///        Will add a new entry { ..., warnings: <warnings>, } if there are
 ///        warnings. If there are none it will not modify the builder
-void Query::addWarningsToVelocyPackObject(
-    arangodb::velocypack::Builder& builder) const {
+void Query::addWarningsToVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   if (_warnings.empty()) {
     return;
@@ -1133,24 +1145,6 @@ void Query::addWarningsToVelocyPackObject(
       builder.add("message", VPackValue(_warnings[i].second));
     }
   }
-}
-
-/// @brief transform the list of warnings to VelocyPack.
-std::shared_ptr<VPackBuilder> Query::warningsToVelocyPack() const {
-  if (_warnings.empty()) {
-    return nullptr;
-  }
-  auto result = std::make_shared<VPackBuilder>();
-  {
-    VPackArrayBuilder guard(result.get());
-    size_t const n = _warnings.size();
-    for (size_t i = 0; i < n; ++i) {
-      VPackObjectBuilder objGuard(result.get());
-      result->add("code", VPackValue(_warnings[i].first));
-      result->add("message", VPackValue(_warnings[i].second));
-    }
-  }
-  return result;
 }
 
 /// @brief initializes the query
@@ -1258,7 +1252,7 @@ void Query::enterState(QueryExecutionState::ValueType state) {
                                     << " this: " << (uintptr_t) this;
   if (_profile != nullptr) {
     // record timing for previous state
-    _profile->setDone(_state);
+    _profile->setStateDone(_state);
   }
 
   // and adjust the state
@@ -1271,6 +1265,8 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
     try {
       _engine->shutdown(errorCode);
       if (statsBuilder != nullptr) {
+        TRI_ASSERT(statsBuilder->isOpenObject());
+        statsBuilder->add(VPackValue("stats"));
         _engine->_stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
       }
     } catch (...) {

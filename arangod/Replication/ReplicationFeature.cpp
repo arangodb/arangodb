@@ -162,10 +162,10 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
 
 // replace tcp:// with http://, and ssl:// with https://
 static std::string FixEndpointProto(std::string const& endpoint) {
-  if (endpoint.find("tcp://", 0, 6) == 0) {
+  if (endpoint.compare(0, 6, "tcp://") == 0) { //  find("tcp://", 0, 6)
     return "http://" + endpoint.substr(6); // strlen("tcp://")
   }
-  if (endpoint.find("ssl://", 0, 6) == 0) {
+  if (endpoint.compare(0, 6, "ssl://") == 0) { // find("ssl://", 0, 6) == 0
     return "https://" + endpoint.substr(6); // strlen("ssl://")
   }
   return endpoint;
