@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesGeoS2Index.h"
+#include "MMFilesGeoIndex.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -45,7 +45,7 @@ template <typename CMP = geo_index::DocumentsAscending>
 struct NearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
-               ManagedDocumentResult* mmdr, MMFilesGeoS2Index const* index,
+               ManagedDocumentResult* mmdr, MMFilesGeoIndex const* index,
                geo::QueryParams&& params)
       : IndexIterator(collection, trx, index),
         _index(index),
@@ -146,7 +146,7 @@ struct NearIterator final : public IndexIterator {
   // around our target point. We need to fetch them ALL and then sort
   // found results in a priority list according to their distance
   void performScan() {
-    MMFilesGeoS2Index::IndexTree const& tree = _index->tree();
+    MMFilesGeoIndex::IndexTree const& tree = _index->tree();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
 
@@ -186,7 +186,7 @@ struct NearIterator final : public IndexIterator {
   /// find the first indexed entry to estimate the # of entries
   /// around our target coordinates
   void estimateDensity() {
-    MMFilesGeoS2Index::IndexTree const& tree = _index->tree();
+    MMFilesGeoIndex::IndexTree const& tree = _index->tree();
     if (!tree.empty()) {
       S2CellId cell = S2CellId(_near.origin());
       auto it = tree.upper_bound(cell);
@@ -200,13 +200,13 @@ struct NearIterator final : public IndexIterator {
   }
 
  private:
-  MMFilesGeoS2Index const* _index;
+  MMFilesGeoIndex const* _index;
   geo_index::NearUtils<CMP> _near;
   ManagedDocumentResult* _mmdr;
 };
 typedef NearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
-MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
+MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
                                      VPackSlice const& info,
                                      std::string const& typeName)
@@ -219,10 +219,10 @@ MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
 }
 
-size_t MMFilesGeoS2Index::memory() const { return _tree.bytes_used(); }
+size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
-void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
+void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                      bool forPersistence) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
@@ -245,7 +245,7 @@ void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
 }
 
 /// @brief Test if this index matches the definition
-bool MMFilesGeoS2Index::matchesDefinition(VPackSlice const& info) const {
+bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -312,7 +312,7 @@ bool MMFilesGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesGeoS2Index::insert(transaction::Methods*,
+Result MMFilesGeoIndex::insert(transaction::Methods*,
                                  LocalDocumentId const& documentId,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
@@ -339,7 +339,7 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
   return IndexResult();
 }
 
-Result MMFilesGeoS2Index::remove(transaction::Methods*,
+Result MMFilesGeoIndex::remove(transaction::Methods*,
                                  LocalDocumentId const& documentId,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
@@ -370,7 +370,7 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
+IndexIterator* MMFilesGeoIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
@@ -413,12 +413,12 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   }
 }
 
-void MMFilesGeoS2Index::unload() {
+void MMFilesGeoIndex::unload() {
   _tree.clear();  // TODO: do we need load?
 }
 
 namespace {
-void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
+void retrieveNear(MMFilesGeoIndex const& index, transaction::Methods* trx,
                   double lat, double lon, double radius, size_t count,
                   std::string const& attributeName, VPackBuilder& builder) {
   geo::QueryParams params;
@@ -467,14 +467,14 @@ void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
 }  // namespace
 
 /// @brief looks up all points within a given radius
-void MMFilesGeoS2Index::withinQuery(transaction::Methods* trx, double lat,
+void MMFilesGeoIndex::withinQuery(transaction::Methods* trx, double lat,
                                     double lon, double radius,
                                     std::string const& attributeName,
                                     VPackBuilder& builder) const {
   ::retrieveNear(*this, trx, lat, lon, radius, 0, attributeName, builder);
 }
 
-void MMFilesGeoS2Index::nearQuery(transaction::Methods* trx, double lat,
+void MMFilesGeoIndex::nearQuery(transaction::Methods* trx, double lat,
                                   double lon, size_t count,
                                   std::string const& attributeName,
                                   VPackBuilder& builder) const {

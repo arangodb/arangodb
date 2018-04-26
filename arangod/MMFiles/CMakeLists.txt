@@ -26,7 +26,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesIndexFactory.cpp
   MMFiles/MMFilesLogfileManager.cpp
   MMFiles/MMFilesFulltextIndex.cpp
-  MMFiles/MMFilesGeoS2Index.cpp
+  MMFiles/MMFilesGeoIndex.cpp
   MMFiles/MMFilesHashIndex.cpp
   MMFiles/MMFilesOptimizerRules.cpp
   MMFiles/MMFilesPathBasedIndex.cpp

@@ -21,8 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_GEO_S2_INDEX_H
-#define ARANGOD_MMFILES_GEO_S2_INDEX_H 1
+#ifndef ARANGOD_MMFILES_GEO_INDEX_H
+#define ARANGOD_MMFILES_GEO_INDEX_H 1
 
 #include "Geo/GeoParams.h"
 #include "GeoIndex/Index.h"
@@ -36,11 +36,11 @@
 
 namespace arangodb {
 
-class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
+class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
  public:
-  MMFilesGeoS2Index() = delete;
+  MMFilesGeoIndex() = delete;
 
-  MMFilesGeoS2Index(TRI_idx_iid_t, LogicalCollection*,
+  MMFilesGeoIndex(TRI_idx_iid_t, LogicalCollection*,
                     arangodb::velocypack::Slice const&,
                     std::string const& typeName);
 
@@ -115,7 +115,7 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
   IndexTree const& tree() const { return _tree; }
 
  private:
-  MMFilesGeoS2Index::IndexTree _tree;
+  MMFilesGeoIndex::IndexTree _tree;
   std::string const _typeName;
 };
 }  // namespace arangodb

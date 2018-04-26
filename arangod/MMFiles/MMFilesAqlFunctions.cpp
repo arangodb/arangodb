@@ -27,7 +27,7 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
-#include "MMFiles/MMFilesGeoS2Index.h"
+#include "MMFiles/MMFilesGeoIndex.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
 #include "Transaction/Helpers.h"
@@ -49,7 +49,7 @@ static ExecutionCondition const NotInCoordinator = [] {
 };
 
 /// @brief Load geoindex for collection name
-static arangodb::MMFilesGeoS2Index* getGeoIndex(
+static arangodb::MMFilesGeoIndex* getGeoIndex(
     transaction::Methods* trx, TRI_voc_cid_t const& cid,
     std::string const& collectionName) {
   // NOTE:
@@ -59,11 +59,11 @@ static arangodb::MMFilesGeoS2Index* getGeoIndex(
   // It can only be used until trx is finished.
   trx->addCollectionAtRuntime(cid, collectionName);
 
-  arangodb::MMFilesGeoS2Index* index = nullptr;
+  arangodb::MMFilesGeoIndex* index = nullptr;
   auto indexes = trx->indexesForCollection(collectionName);
   for (auto const& idx : indexes) {
     if (arangodb::Index::isGeoIndex(idx->type())) {
-      index = static_cast<arangodb::MMFilesGeoS2Index*>(idx.get());
+      index = static_cast<arangodb::MMFilesGeoIndex*>(idx.get());
       break;
     }
   }
@@ -252,7 +252,7 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::MMFilesGeoS2Index* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
@@ -314,7 +314,7 @@ AqlValue MMFilesAqlFunctions::Within(
   }
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(collectionName);
-  arangodb::MMFilesGeoS2Index* index = getGeoIndex(trx, cid, collectionName);
+  arangodb::MMFilesGeoIndex* index = getGeoIndex(trx, cid, collectionName);
 
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));

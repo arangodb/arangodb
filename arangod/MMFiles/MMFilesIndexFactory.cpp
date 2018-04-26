@@ -31,7 +31,7 @@
 #include "Indexes/Index.h"
 #include "MMFiles/MMFilesEdgeIndex.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
-#include "MMFiles/MMFilesGeoS2Index.h"
+#include "MMFiles/MMFilesGeoIndex.h"
 #include "MMFiles/MMFilesHashIndex.h"
 #include "MMFiles/MMFilesPersistentIndex.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
@@ -310,7 +310,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<MMFilesGeoS2Index>(id, collection, definition, "geo1");
+    return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "geo1");
   });
 
   emplaceFactory("geo2", [](
@@ -319,7 +319,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<MMFilesGeoS2Index>(id, collection, definition, "geo2");
+    return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "geo2");
   });
 
   emplaceFactory("s2index", [](
@@ -328,7 +328,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
     )->std::shared_ptr<Index> {
-    return std::make_shared<MMFilesGeoS2Index>(id, collection, definition, "s2index");
+    return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "s2index");
   });
 
   emplaceFactory("hash", [](
