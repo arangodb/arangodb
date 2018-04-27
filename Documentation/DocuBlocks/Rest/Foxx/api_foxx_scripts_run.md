@@ -19,7 +19,7 @@ Name of the script to run.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{mount,string,required}
+@RESTQUERYPARAM{mount,string,required}
 Mount path of the installed service.
 
 @RESTRETURNCODES
