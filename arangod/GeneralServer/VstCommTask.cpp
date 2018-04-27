@@ -39,7 +39,6 @@
 #include "Meta/conversion.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/ServerFeature.h"
-#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/Events.h"
@@ -169,7 +168,6 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
     }
   }
   
-  didAddResponse();
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
@@ -177,6 +175,9 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
+  
+  // process remaining requests ?
+  //processAll();
 }
 
 static uint32_t readLittleEndian32bit(char const* p) {

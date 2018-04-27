@@ -158,14 +158,13 @@ class SocketTask : virtual public Task {
   
 protected:
   
-  void didAddResponse();
+  bool processAll();
 
  private:
   
   bool completedWriteBuffer();
 
   bool reserveMemory();
-  bool processAll();
   bool trySyncRead();
   
   void asyncReadSome();

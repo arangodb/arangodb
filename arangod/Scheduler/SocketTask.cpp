@@ -625,17 +625,3 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
     delete buffer;
   }
 }
-
-void SocketTask::didAddResponse() {
-  // lets try to process some new data directly
-  //if (_readBuffer.size() > 0) {
-  _loop.scheduler->_nrQueued++;
-  auto self = shared_from_this();
-  this->strand().post([self, this] {
-    _loop.scheduler->_nrQueued--;
-    JobGuard guard(_loop);
-    guard.work();
-    processAll();
-  });
-  //}
-}

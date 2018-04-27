@@ -212,7 +212,11 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   returnStringBuffer(body.release()); // takes care of deleting
   
-  didAddResponse();
+  // try to process remaining request data
+  auto self = shared_from_this();
+  this->strand().post([self, this] {
+    processAll();
+  });
 }
 
 // reads data from the socket
