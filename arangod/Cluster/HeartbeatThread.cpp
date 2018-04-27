@@ -588,7 +588,10 @@ void HeartbeatThread::runSingleServer() {
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
-        ServerState::setServerMode(ServerState::Mode::DEFAULT);
+        auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
+        if (prv == ServerState::Mode::REDIRECT) {
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Sucessfull leadership takeover";
+        }
         continue; // nothing more to do
       }
 
