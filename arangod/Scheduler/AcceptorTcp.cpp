@@ -96,11 +96,11 @@ void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
   if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
     _peer.reset(new SocketSslTcp(_ioService, SslServerFeature::SSL->createSslContext()));
     SocketSslTcp* peer = static_cast<SocketSslTcp*>(_peer.get());
-    _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
+    _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, peer->strand().wrap(handler));
   } else {
     _peer.reset(new SocketTcp(_ioService));
     SocketTcp* peer = static_cast<SocketTcp*>(_peer.get());
-    _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
+    _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, peer->strand().wrap(handler));
   }
 }
 
