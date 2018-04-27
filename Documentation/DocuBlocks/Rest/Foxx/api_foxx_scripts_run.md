@@ -12,7 +12,7 @@ Returns the exports of the script, if any.
 An arbitrary JSON value that will be parsed and passed to the
 script as its first argument.
 
-@RESTURLPARAMETERS
+@RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{name,string,required}
 Name of the script to run.
