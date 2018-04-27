@@ -86,14 +86,14 @@ static rocksdb::Slice FulltextIndexValue(
         &fulltextIndexValue),
     1);
 
-static RocksDBEntryType geoIndexValue = RocksDBEntryType::GeoIndexValue;
-static rocksdb::Slice GeoIndexValue(
+static RocksDBEntryType geoIndexValue = RocksDBEntryType::LegacyGeoIndexValue;
+static rocksdb::Slice LegacyGeoIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &geoIndexValue),
     1);
-  
-static RocksDBEntryType s2IndexValue = RocksDBEntryType::S2IndexValue;
-static rocksdb::Slice S2IndexValue(
+
+static RocksDBEntryType s2IndexValue = RocksDBEntryType::GeoIndexValue;
+static rocksdb::Slice GeoIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &s2IndexValue),
     1);
@@ -157,9 +157,9 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "ReplicationApplierConfig";
     case arangodb::RocksDBEntryType::FulltextIndexValue:
       return "FulltextIndexValue";
+    case arangodb::RocksDBEntryType::LegacyGeoIndexValue:
+      return "LegacyGeoIndexValue";
     case arangodb::RocksDBEntryType::GeoIndexValue:
-      return "GeoIndexValue";
-    case arangodb::RocksDBEntryType::S2IndexValue:
       return "SphericalIndexValue";
     case arangodb::RocksDBEntryType::IndexEstimateValue:
       return "IndexEstimateValue";
@@ -245,10 +245,10 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return UniqueVPackIndexValue;
     case RocksDBEntryType::FulltextIndexValue:
       return FulltextIndexValue;
+    case RocksDBEntryType::LegacyGeoIndexValue:
+      return LegacyGeoIndexValue;
     case RocksDBEntryType::GeoIndexValue:
       return GeoIndexValue;
-    case RocksDBEntryType::S2IndexValue:
-      return S2IndexValue;
     case RocksDBEntryType::View:
       return View;
     case RocksDBEntryType::SettingsValue:

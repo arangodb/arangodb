@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBValue.h"
@@ -153,7 +153,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
                      static_cast<size_t>(data.byteSize()));
       break;
     }
-      
+
     case RocksDBEntryType::Document:
       TRI_ASSERT(false);// use for document => get free schellen
       break;
@@ -178,7 +178,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
 }
 
 RocksDBValue::RocksDBValue(S2Point const& p)
-  : _type(RocksDBEntryType::S2IndexValue), _buffer() {
+  : _type(RocksDBEntryType::GeoIndexValue), _buffer() {
       _buffer.reserve(sizeof(uint64_t) * 3);
   uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.x()));
   uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.y()));

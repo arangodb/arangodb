@@ -197,6 +197,17 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief process the legacy flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessIndexLegacyFlag(VPackSlice const definition,
+                                       VPackBuilder& builder, bool legacy) {
+  legacy = basics::VelocyPackHelper::getBooleanValue(
+      definition, "legacy", legacy);
+  builder.add("legacy", VPackValue(legacy));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a geo1 index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -211,6 +222,7 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, false);
+    ProcessIndexLegacyFlag(definition, builder, true);
   }
   return res;
 }
@@ -230,6 +242,7 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, false);
+    ProcessIndexLegacyFlag(definition, builder, true);
   }
   return res;
 }
@@ -238,7 +251,7 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 /// @brief enhances the json of a s2 index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexGeoS2(VPackSlice const definition,
+static int EnhanceJsonIndexGeo(VPackSlice const definition,
                                  VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
@@ -249,6 +262,7 @@ static int EnhanceJsonIndexGeoS2(VPackSlice const definition,
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, true);
+    ProcessIndexLegacyFlag(definition, builder, false);
   }
   return res;
 }
@@ -322,13 +336,13 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "geo2");
   });
 
-  emplaceFactory("s2index", [](
+  emplaceFactory("geo", [](
     LogicalCollection* collection,
     velocypack::Slice const& definition,
     TRI_idx_iid_t id,
     bool isClusterConstructor
     )->std::shared_ptr<Index> {
-    return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "s2index");
+    return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "geo");
   });
 
   emplaceFactory("hash", [](
@@ -406,18 +420,38 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     velocypack::Slice definition,
     bool isCreation
   )->arangodb::Result {
-    auto current = definition.get("fields");
+    auto fields = definition.get("fields");
+    auto legacy = basics::VelocyPackHelper::getBooleanValue(
+        definition, "legacy", true);
     TRI_ASSERT(normalized.isOpenObject());
 
-    if (current.isArray() && current.length() == 2) {
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
-
-      return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(
+                                     std::to_string(TRI_NewTickServer())));
     }
 
-    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
+    if (legacy) {
+      if (fields.isArray() && fields.length() == 2) {
+        normalized.add(
+            "type",
+            VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
 
-    return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
+        return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
+      }
+
+      normalized.add(
+          "type",
+          VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
+
+      return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
+    }
+
+    normalized.add(
+        "type",
+        VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+
+    return EnhanceJsonIndexGeo(definition, normalized, isCreation);
   });
 
   emplaceNormalizer("geo1", [](
@@ -442,15 +476,15 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
   });
 
-  emplaceNormalizer("s2index", [](
+  emplaceNormalizer("geo", [](
     velocypack::Builder& normalized,
     velocypack::Slice definition,
     bool isCreation
   )->arangodb::Result {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_S2_INDEX)));
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
 
-    return EnhanceJsonIndexGeoS2(definition, normalized, isCreation);
+    return EnhanceJsonIndexGeo(definition, normalized, isCreation);
   });
 
   emplaceNormalizer("hash", [](
@@ -529,8 +563,8 @@ void MMFilesIndexFactory::fillSystemIndexes(
 }
 
 std::vector<std::string> MMFilesIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent",
-                                  "geo", "s2index", "fulltext" };
+  return std::vector<std::string>{ "primary",    "edge", "hash", "skiplist",
+                                   "persistent", "geo",  "fulltext" };
 }
 
 // -----------------------------------------------------------------------------

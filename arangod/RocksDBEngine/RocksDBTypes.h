@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -48,11 +48,11 @@ enum class RocksDBEntryType : char {
   SettingsValue = '8',
   ReplicationApplierConfig = '9',
   FulltextIndexValue = ':',
-  GeoIndexValue = ';',
+  LegacyGeoIndexValue = ';',
   IndexEstimateValue = '<',
   KeyGeneratorValue = '=',
   View = '>',
-  S2IndexValue = '?'
+  GeoIndexValue = '?'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);

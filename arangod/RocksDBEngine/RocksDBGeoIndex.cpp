@@ -164,7 +164,7 @@ class RDBNearIterator final : public IndexIterator {
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& it = scan[i];
       TRI_ASSERT(it.min <= it.max);
-      RocksDBKeyBounds bds = RocksDBKeyBounds::S2Index(
+      RocksDBKeyBounds bds = RocksDBKeyBounds::GeoIndex(
           _index->objectId(), it.min.id(), it.max.id());
 
       // intervals are sorted and likely consecutive, try to avoid seeks
@@ -199,7 +199,7 @@ class RDBNearIterator final : public IndexIterator {
 
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
         LocalDocumentId documentId = RocksDBKey::documentId(
-            RocksDBEntryType::S2IndexValue, _iter->key());
+            RocksDBEntryType::GeoIndexValue, _iter->key());
         _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
@@ -215,7 +215,7 @@ class RDBNearIterator final : public IndexIterator {
     S2CellId cell = S2CellId(_near.origin());
 
     RocksDBKeyLeaser key(_trx);
-    key->constructS2IndexValue(_index->objectId(), cell.id(), LocalDocumentId(1));
+    key->constructGeoIndexValue(_index->objectId(), cell.id(), LocalDocumentId(1));
     _iter->Seek(key->string());
     if (!_iter->Valid()) {
       _iter->SeekForPrev(key->string());
@@ -255,6 +255,7 @@ void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
+  builder.add("pointsOnly", VPackValue(_typeName != "geo"));
   // geo indexes are always non-unique
   builder.add("unique", VPackValue(false));
   // geo indexes are always sparse.
@@ -405,7 +406,7 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    key->constructS2IndexValue(_objectId, cell.id(), documentId);
+    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
     Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
     if (r.fail()) {
       return r;
@@ -435,7 +436,7 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    key->constructS2IndexValue(_objectId, cell.id(), documentId);
+    key->constructGeoIndexValue(_objectId, cell.id(), documentId);
     Result r = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (r.fail()) {
       return r;

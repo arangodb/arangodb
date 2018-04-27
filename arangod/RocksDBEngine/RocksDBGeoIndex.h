@@ -52,11 +52,11 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
     } else if ("geo2" == _typeName) {
       return TRI_IDX_TYPE_GEO2_INDEX;
     }
-    return TRI_IDX_TYPE_S2_INDEX;
+    return TRI_IDX_TYPE_GEO_INDEX;
   }
 
   bool pointsOnly() const {
-    return (_typeName != "s2index");
+    return (_typeName != "geo");
   }
 
   char const* typeName() const override { return _typeName.c_str(); }

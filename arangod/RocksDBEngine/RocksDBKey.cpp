@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBKey.h"
@@ -58,7 +58,6 @@ void RocksDBKey::constructCollection(TRI_voc_tick_t databaseId,
   TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
-
 
 void RocksDBKey::constructDocument(uint64_t collectionId,
                                    LocalDocumentId documentId) {
@@ -156,12 +155,12 @@ void RocksDBKey::constructFulltextIndexValue(uint64_t indexId,
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
-void RocksDBKey::constructGeoIndexValue(uint64_t indexId, int32_t offset,
-                                        bool isSlot) {
+void RocksDBKey::constructLegacyGeoIndexValue(uint64_t indexId, int32_t offset,
+                                              bool isSlot) {
   TRI_ASSERT(indexId != 0);
   uint64_t norm = uint64_t(offset) << 32;
   norm |= isSlot ? 0xFFU : 0;  // encode slot|pot in lowest bit
-  _type = RocksDBEntryType::GeoIndexValue;
+  _type = RocksDBEntryType::LegacyGeoIndexValue;
   size_t keyLength = 2 * sizeof(uint64_t);
   _buffer.clear();
   _buffer.reserve(keyLength);
@@ -174,10 +173,10 @@ void RocksDBKey::constructGeoIndexValue(uint64_t indexId, int32_t offset,
 //////////////////////////////////////////////////////////////////////////////
 /// @brief Create a fully-specified key for an S2CellId
 //////////////////////////////////////////////////////////////////////////////
-void RocksDBKey::constructS2IndexValue(uint64_t indexId, uint64_t value,
-                                       LocalDocumentId documentId) {
+void RocksDBKey::constructGeoIndexValue(uint64_t indexId, uint64_t value,
+                                        LocalDocumentId documentId) {
   TRI_ASSERT(indexId != 0);
-  _type = RocksDBEntryType::S2IndexValue;
+  _type = RocksDBEntryType::GeoIndexValue;
   size_t keyLength = 3 * sizeof(uint64_t);
   _buffer.clear();
   _buffer.reserve(keyLength);
@@ -188,7 +187,8 @@ void RocksDBKey::constructS2IndexValue(uint64_t indexId, uint64_t value,
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
-void RocksDBKey::constructView(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
+void RocksDBKey::constructView(TRI_voc_tick_t databaseId,
+                               TRI_voc_cid_t viewId) {
   TRI_ASSERT(databaseId != 0 && viewId != 0);
   _type = RocksDBEntryType::View;
   size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
@@ -337,18 +337,18 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
   return indexedVPack(slice.data(), slice.size());
 }
 
-std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
+std::pair<bool, int32_t> RocksDBKey::legacyGeoValues(
+    rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() == sizeof(uint64_t) * 2);
   uint64_t val = uint64FromPersistent(slice.data() + sizeof(uint64_t));
   bool isSlot = ((val & 0xFFULL) > 0);  // lowest byte is 0xFF if true
   return std::pair<bool, int32_t>(isSlot, static_cast<int32_t>(val >> 32));
 }
 
-uint64_t RocksDBKey::S2Value(rocksdb::Slice const& slice) {
+uint64_t RocksDBKey::geoValue(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() == sizeof(uint64_t) * 3);
   return uint64FromBigEndianPersistent(slice.data() + sizeof(uint64_t));
 }
-
 
 // ====================== Private Methods ==========================
 
@@ -408,24 +408,25 @@ TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
 }
 
 LocalDocumentId RocksDBKey::documentId(RocksDBEntryType type, char const* data,
-                                     size_t size) {
+                                       size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   switch (type) {
     case RocksDBEntryType::Document:
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::FulltextIndexValue:
-    case RocksDBEntryType::S2IndexValue: {
+    case RocksDBEntryType::GeoIndexValue: {
       TRI_ASSERT(size >= (2 * sizeof(uint64_t)));
       // last 8 bytes should be the revision
-      return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t)));
+      return LocalDocumentId(
+          uint64FromPersistent(data + size - sizeof(uint64_t)));
     }
     case RocksDBEntryType::EdgeIndexValue: {
       TRI_ASSERT(size >= (sizeof(char) * 3 + 2 * sizeof(uint64_t)));
       // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
       // + 8 byte revision ID + 1-byte 0xff
-      return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t) -
-                                  sizeof(char)));
+      return LocalDocumentId(
+          uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
     }
 
     default:
@@ -453,4 +454,3 @@ VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   TRI_ASSERT(size > sizeof(uint64_t));
   return VPackSlice(data + sizeof(uint64_t));
 }
-

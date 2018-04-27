@@ -79,6 +79,7 @@ class Index {
   enum IndexType {
     TRI_IDX_TYPE_UNKNOWN = 0,
     TRI_IDX_TYPE_PRIMARY_INDEX,
+    TRI_IDX_TYPE_GEO_INDEX,
     TRI_IDX_TYPE_GEO1_INDEX,
     TRI_IDX_TYPE_GEO2_INDEX,
     TRI_IDX_TYPE_HASH_INDEX,
@@ -86,7 +87,6 @@ class Index {
     TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
     TRI_IDX_TYPE_PERSISTENT_INDEX,
-    TRI_IDX_TYPE_S2_INDEX,
 #ifdef USE_IRESEARCH
     TRI_IDX_TYPE_IRESEARCH_LINK,
 #endif
@@ -190,11 +190,11 @@ class Index {
   static IndexType type(char const* type);
 
   static IndexType type(std::string const& type);
-  
+
   static bool isGeoIndex(IndexType type) {
     return type == TRI_IDX_TYPE_GEO1_INDEX ||
            type == TRI_IDX_TYPE_GEO2_INDEX ||
-           type == TRI_IDX_TYPE_S2_INDEX;
+           type == TRI_IDX_TYPE_GEO_INDEX;
   }
 
   virtual char const* typeName() const = 0;
@@ -283,7 +283,7 @@ class Index {
   virtual int drop();
 
   // called after the collection was truncated
-  virtual int afterTruncate(); 
+  virtual int afterTruncate();
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);

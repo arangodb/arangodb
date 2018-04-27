@@ -172,8 +172,8 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
-  if (::strcmp(type, "s2index") == 0) {
-    return TRI_IDX_TYPE_S2_INDEX;
+  if (::strcmp(type, "geo") == 0) {
+    return TRI_IDX_TYPE_GEO_INDEX;
   }
 #ifdef USE_IRESEARCH
   if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
@@ -210,8 +210,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
-    case TRI_IDX_TYPE_S2_INDEX:
-      return "s2index";
+    case TRI_IDX_TYPE_GEO_INDEX:
+      return "geo";
 #ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
@@ -321,7 +321,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
   }
 
   if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX ||
-      type == IndexType::TRI_IDX_TYPE_S2_INDEX) {
+      type == IndexType::TRI_IDX_TYPE_GEO_INDEX) {
     // geoJson must be identical if present
     value = lhs.get("geoJson");
     if (value.isBoolean()) {

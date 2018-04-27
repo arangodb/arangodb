@@ -74,7 +74,7 @@ Index::Index(VPackSlice const& info,
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "s2index can only be created with one or two fields.");
+        "geo index can only be created with one or two fields.");
   }
 }
 Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
@@ -224,7 +224,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
                  symbol->getMember(0)->getAttributeAccessForVariable(true) != nullptr &&
                  symbol->getMember(1)->getAttributeAccessForVariable(true) != nullptr));
       TRI_ASSERT(geoJson->type != aql::NODE_TYPE_REFERENCE);
-      
+
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
       geoJson->toVelocyPackValue(bb);

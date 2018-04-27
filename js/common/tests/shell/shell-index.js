@@ -828,7 +828,7 @@ function getIndexesEdgesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetGeoIndex1 : function () {
-      collection.ensureGeoIndex("lat", true, false);
+      collection.ensureGeoIndex("lat", true, true);
       var res = collection.getIndexes();
 
       assertEqual(3, res.length);
@@ -1084,7 +1084,7 @@ function multiIndexRollbackSuite() {
     testIndexRollback: function () {
       collection.ensureIndex({ type: "hash", fields: ["_from", "_to", "link"], unique: true });
       collection.ensureIndex({ type: "hash", fields: ["_to", "ext"], unique: true, sparse: true });
-      
+
       var res = collection.getIndexes();
 
       assertEqual(4, res.length);
@@ -1095,7 +1095,7 @@ function multiIndexRollbackSuite() {
 
       var docs = [
         {"_from": "fromC/a", "_to": "toC/1", "link": "one"},
-        {"_from": "fromC/b", "_to": "toC/1", "link": "two"}, 
+        {"_from": "fromC/b", "_to": "toC/1", "link": "two"},
         {"_from": "fromC/c", "_to": "toC/1", "link": "one"}
       ];
 
@@ -1126,4 +1126,3 @@ jsunity.run(getIndexesEdgesSuite);
 jsunity.run(multiIndexRollbackSuite);
 
 return jsunity.done();
-

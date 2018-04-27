@@ -4957,9 +4957,9 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
     std::size_t fieldNum = idx->fields().size();
     bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
     bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
-    bool isS2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
+    bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
 
-    if ((isGeo2 || isS2) && fieldNum == 2) { // individual fields
+    if ((isGeo2 || isGeo) && fieldNum == 2) { // individual fields
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess1.second &&
           idx->fields()[1] == attributeAccess2.second) {
@@ -4971,7 +4971,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
         info.longitudeVar = lngArg;
         return true;
       }
-    } else if ((isGeo1 || isS2) && fieldNum == 1) {
+    } else if ((isGeo1 || isGeo) && fieldNum == 1) {
       std::vector<basics::AttributeName> fields1 = idx->fields()[0];
       std::vector<basics::AttributeName> fields2 = idx->fields()[0];
 
@@ -5026,8 +5026,8 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   //check for suitable indexes
   for (std::shared_ptr<arangodb::Index> idx : coll->getIndexes()) {
     // check if current index is a geo-index
-    bool isS2 = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
-    if (isS2 && idx->fields().size() == 1) { // individual fields
+    bool isGeo = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+    if (isGeo && idx->fields().size() == 1) { // individual fields
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess.second) {
         if (info.index != nullptr && info.index != idx) {
@@ -5318,7 +5318,7 @@ static bool optimizeSortNode(ExecutionPlan* plan,
     return false; // the expression must exist and must have an astNode
   }
 
-  bool legacy = elements[0].ascending; // DESC is only supported on s2index
+  bool legacy = elements[0].ascending; // DESC is only supported on S2 index
   if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
     info.sorted = true;// do not parse another SORT
     info.ascending = elements[0].ascending;

@@ -61,8 +61,8 @@ struct NearIterator final : public IndexIterator {
   char const* typeName() const override { return "s2-index-iterator"; }
 
   /// internal retrieval loop
-  inline bool nextToken(std::function<bool(geo_index::Document const& gdoc)>&& cb,
-                        size_t limit) {
+  inline bool nextToken(
+      std::function<bool(geo_index::Document const& gdoc)>&& cb, size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_near.hasNearest());
@@ -180,7 +180,7 @@ struct NearIterator final : public IndexIterator {
       }
     }
 
-    _near.didScanIntervals(); // calculate next bounds
+    _near.didScanIntervals();  // calculate next bounds
   }
 
   /// find the first indexed entry to estimate the # of entries
@@ -207,9 +207,9 @@ struct NearIterator final : public IndexIterator {
 typedef NearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
 MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
-                                     LogicalCollection* collection,
-                                     VPackSlice const& info,
-                                     std::string const& typeName)
+                                 LogicalCollection* collection,
+                                 VPackSlice const& info,
+                                 std::string const& typeName)
     : MMFilesIndex(iid, collection, info),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
@@ -223,7 +223,7 @@ size_t MMFilesGeoIndex::memory() const { return _tree.bytes_used(); }
 
 /// @brief return a JSON representation of the index
 void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                     bool forPersistence) const {
+                                   bool forPersistence) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
@@ -232,6 +232,7 @@ void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
+  builder.add("pointsOnly", VPackValue(_typeName != "geo"));
   // geo indexes are always non-unique
   builder.add("unique", VPackValue(false));
   // geo indexes are always sparse.
@@ -313,8 +314,8 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 Result MMFilesGeoIndex::insert(transaction::Methods*,
-                                 LocalDocumentId const& documentId,
-                                 VPackSlice const& doc, OperationMode mode) {
+                               LocalDocumentId const& documentId,
+                               VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
@@ -340,8 +341,8 @@ Result MMFilesGeoIndex::insert(transaction::Methods*,
 }
 
 Result MMFilesGeoIndex::remove(transaction::Methods*,
-                                 LocalDocumentId const& documentId,
-                                 VPackSlice const& doc, OperationMode mode) {
+                               LocalDocumentId const& documentId,
+                               VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells(reserve);
@@ -405,8 +406,8 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
 
   // why does this have to be shit?
   if (params.ascending) {
-    return new NearIterator<geo_index::DocumentsAscending>(_collection, trx, mmdr,
-                                 this, std::move(params));
+    return new NearIterator<geo_index::DocumentsAscending>(
+        _collection, trx, mmdr, this, std::move(params));
   } else {
     return new NearIterator<geo_index::DocumentsDescending>(
         _collection, trx, mmdr, this, std::move(params));
@@ -468,15 +469,15 @@ void retrieveNear(MMFilesGeoIndex const& index, transaction::Methods* trx,
 
 /// @brief looks up all points within a given radius
 void MMFilesGeoIndex::withinQuery(transaction::Methods* trx, double lat,
-                                    double lon, double radius,
-                                    std::string const& attributeName,
-                                    VPackBuilder& builder) const {
+                                  double lon, double radius,
+                                  std::string const& attributeName,
+                                  VPackBuilder& builder) const {
   ::retrieveNear(*this, trx, lat, lon, radius, 0, attributeName, builder);
 }
 
 void MMFilesGeoIndex::nearQuery(transaction::Methods* trx, double lat,
-                                  double lon, size_t count,
-                                  std::string const& attributeName,
-                                  VPackBuilder& builder) const {
+                                double lon, size_t count,
+                                std::string const& attributeName,
+                                VPackBuilder& builder) const {
   ::retrieveNear(*this, trx, lat, lon, -1.0, count, attributeName, builder);
 }

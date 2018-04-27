@@ -262,14 +262,14 @@ TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
     rocksdb::Comparator const* cmp = rocksdb::BytewiseComparator();
 
     RocksDBKey key;
-    key.constructGeoIndexValue(256, 128, false);
-    RocksDBKeyBounds bb1 = RocksDBKeyBounds::GeoIndex(256, false);
+    key.constructLegacyGeoIndexValue(256, 128, false);
+    RocksDBKeyBounds bb1 = RocksDBKeyBounds::LegacyGeoIndex(256, false);
 
     CHECK(cmp->Compare(key.string(), bb1.start()) > 0);
     CHECK(cmp->Compare(key.string(), bb1.end()) < 0);
 
-    key.constructGeoIndexValue(256, 128, true);
-    RocksDBKeyBounds bb2 = RocksDBKeyBounds::GeoIndex(256, true);
+    key.constructLegacyGeoIndexValue(256, 128, true);
+    RocksDBKeyBounds bb2 = RocksDBKeyBounds::LegacyGeoIndex(256, true);
     CHECK(cmp->Compare(key.string(), bb2.start()) > 0);
     CHECK(cmp->Compare(key.string(), bb2.end()) < 0);
   }
@@ -371,7 +371,7 @@ TEST_CASE("RocksDBKeyBoundsTest", "[rocksdbkeybounds]") {
     key5.constructVPackIndexValue(1, b.slice(), LocalDocumentId(60));
     key6.constructVPackIndexValue(1, b.slice(), LocalDocumentId(90));
     key7.constructVPackIndexValue(1, c.slice(), LocalDocumentId(12));
-    
+
     bounds = RocksDBKeyBounds::VPackIndex(1, a.slice(), c.slice());
     CHECK(cmp->Compare(bounds.start(), key4.string()) < 0);
     CHECK(cmp->Compare(key4.string(), bounds.end()) < 0);

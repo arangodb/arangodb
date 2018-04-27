@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H
@@ -99,19 +99,19 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds FulltextIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries belonging to specified geo index
+  /// @brief Bounds for all entries belonging to specified legacy geo index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds LegacyGeoIndex(uint64_t indexId);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all slot entries in specified legacy geo index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds LegacyGeoIndex(uint64_t indexId, bool isSlot);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all entries in geo index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds GeoIndex(uint64_t indexId);
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all slot entries in specified geo index
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds GeoIndex(uint64_t indexId, bool isSlot);
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries in s2 index
-  //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds S2Index(uint64_t indexId);
-  static RocksDBKeyBounds S2Index(uint64_t indexId, uint64_t minCell,
+  static RocksDBKeyBounds GeoIndex(uint64_t indexId, uint64_t minCell,
                                   uint64_t maxCell);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -128,7 +128,7 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
                                            VPackSlice const& left,
                                            VPackSlice const& right);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index. this method is used for point lookups

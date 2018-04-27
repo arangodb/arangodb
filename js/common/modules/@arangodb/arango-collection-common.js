@@ -513,7 +513,7 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
   'use strict';
 
   if (typeof lat !== 'string') {
-    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])';
+    throw 'usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>[, <pointsOnly>]])';
   }
 
   if (typeof lon === 'boolean') {

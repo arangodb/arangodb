@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_VALUE_H
@@ -97,7 +97,7 @@ class RocksDBValue {
   static uint64_t keyValue(RocksDBValue const&);
   static uint64_t keyValue(rocksdb::Slice const&);
   static uint64_t keyValue(std::string const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
   //////////////////////////////////////////////////////////////////////////////
@@ -115,13 +115,13 @@ class RocksDBValue {
 
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
       : _type(type), _buffer(slice.data(), slice.size()) {}
-  
+
   RocksDBValue(RocksDBValue const&) = delete;
   RocksDBValue& operator=(RocksDBValue const&) = delete;
 
   RocksDBValue(RocksDBValue&& other) noexcept
       : _type(other._type), _buffer(std::move(other._buffer)) {}
-  
+
   RocksDBValue& operator=(RocksDBValue&& other) noexcept {
     TRI_ASSERT(_type == other._type);
     _buffer = std::move(other._buffer);
