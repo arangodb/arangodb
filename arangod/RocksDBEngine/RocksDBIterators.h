@@ -129,9 +129,7 @@ class RocksDBSortedAllIterator final : public IndexIterator {
 
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::TransactionDB* db
-                        ,rocksdb::ColumnFamilyHandle* columnFamily
-                        ,rocksdb::ReadOptions& options
+  RocksDBGenericIterator(rocksdb::ReadOptions& options
                         ,RocksDBKeyBounds const& bounds
                         ,bool reverse=false);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;

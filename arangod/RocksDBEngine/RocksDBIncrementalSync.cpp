@@ -42,41 +42,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Logger/Logger.h"
-#include "Logger/LogTopic.h"
-#include "Logger/LogMacros.h"
-#include <chrono>
-
-struct timer {
-  using ns = ::std::chrono::nanoseconds;
-  using clock = ::std::chrono::high_resolution_clock;
-  using point = ::std::chrono::time_point<clock,ns>;
-  std::string _name;
-  point _start;
-  bool _released;
-
-  timer(std::string const& name = "unnamed")
-    : _name(" - " + name)
-    , _start(clock::now())
-    , _released(false)
-    {}
-
-  ~timer(){
-    if(!_released){
-      release();
-    }
-  }
-
-  void release(){
-    LOG_DEVEL << "timer" << _name << ":" << std::fixed << diff(_start, clock::now()) / (double) std::giga::num << "s";
-    _released = true;
-  }
-
-  std::uint64_t diff(point const& start, point const& end){
-    return (end-start).count();
-  }
-
-};
+#include <Utilities/Timers.h>
 
 namespace arangodb {
 Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
@@ -407,7 +373,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   syncer.sendExtendBatch();
   syncer.sendExtendBarrier();
 
-  timer getRemoteTimer("getRemote");
+  Utilities::timer getRemoteTimer("getRemote");
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = syncer.ReplicationUrl + "/keys";
 
@@ -455,12 +421,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
 
-  //LOG_DEVEL << "numChunks" << numChunks;
-
   getRemoteTimer.release();
   // remove all keys that are below first remote key or beyond last remote key
   if (numChunks > 0) {
-    timer numChunksTimer("numChunks");
+    Utilities::timer numChunksTimer("numChunks");
     // first chunk
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
@@ -506,17 +470,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                        +  sizeof(TRI_voc_rid_t) /*revision id*/
                     );
 
-          // FIXME - REQUIRED? ///////////
-          // if there is something in the index it should be in the collection
-          // was there a reason for the check?
-          //auto documentID = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
-          //auto documentId = RocksDBKey::documentId(RocksDBEntryType::Document, rocksKey);
-          //if(col->readDocument(&trx, documentId, mmdr) == false) {
-          //  TRI_ASSERT(false);
-          //  return;
-          //}
-          //FIXME - REQUIRED? ///////////
-
           StringRef docKey(RocksDBKey::primaryKey(rocksKey));
           if (docKey.compare(lowRef) < 0) {
             builder.clear();
@@ -538,7 +491,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   {
-    timer fixMissingTimer("fixMissing");
+    Utilities::timer fixMissingTimer("fixMissing");
     if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
@@ -688,16 +641,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                        +  sizeof(TRI_voc_rid_t) /*revision id*/
                     );
 
-          // FIXME - REQUIRED? ///////////
-          // if there is something in the index it should be in the collection
-          // was there a reason for the check?
-          //auto documentID = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
-          //auto documentId = RocksDBKey::documentId(RocksDBEntryType::Document, rocksKey);
-          //if(col->readDocument(&trx, documentId, mmdr) == false) {
-          //  TRI_ASSERT(false);
-          //  return;
-          //}
-          // FIXME - REQUIRED? ///////////
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
           TRI_voc_rid_t docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
           compareChunk(docKey, docRev);

@@ -335,16 +335,14 @@ void RocksDBSortedAllIterator::reset() {
 }
 
 
-RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db
-                                              ,rocksdb::ColumnFamilyHandle* columnFamily
-                                              ,rocksdb::ReadOptions& options
+RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::ReadOptions& options
                                               ,RocksDBKeyBounds const& bounds
                                               ,bool reverse)
     : _reverse(reverse)
     , _bounds(bounds)
     , _options(options)
-    , _iterator(db->NewIterator(_options, columnFamily))
-    , _cmp(columnFamily->GetComparator())
+    , _iterator(arangodb::rocksutils::globalRocksDB()->NewIterator(_options, _bounds.columnFamily()))
+    , _cmp(_bounds.columnFamily()->GetComparator())
   {
     reset();
   };
@@ -353,7 +351,6 @@ bool RocksDBGenericIterator::hasMore() const {
   return _iterator->Valid() && !outOfRange();
 }
 
-  //return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts, cf));
 bool RocksDBGenericIterator::outOfRange() const {
   if (_reverse) {
     return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
@@ -421,7 +418,6 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
 RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods* trx
                                                           ,LogicalCollection* col
                                                           ){
-
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(trx != nullptr);
 
@@ -431,19 +427,16 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   TRI_ASSERT(options.snapshot != nullptr); // trx must contain a valid snapshot
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = false;
-  options.verify_checksums = false;  // TODO evaluate
+  options.verify_checksums = false;
 
   auto index = col->lookupIndex(0); //RocksDBCollection->primaryIndex() is private
   TRI_ASSERT( index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX );
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
   auto bounds(RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId()));
-  auto iterator =  RocksDBGenericIterator(arangodb::rocksutils::globalRocksDB(), primaryIndex->columnFamily(), options, bounds);
+  auto iterator =  RocksDBGenericIterator(options, bounds);
 
   TRI_ASSERT(iterator.bounds().objectId() == primaryIndex->objectId());
   TRI_ASSERT(iterator.bounds().columnFamily() == RocksDBColumnFamily::primary());
   return iterator;
-
 }
-
-
