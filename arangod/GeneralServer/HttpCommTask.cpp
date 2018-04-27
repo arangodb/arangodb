@@ -212,6 +212,11 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   returnStringBuffer(body.release()); // takes care of deleting
+  
+  // to support HTTP pipelining we need to read from the buffer again
+  if (_readBuffer.size() > 0) {
+    processAll();
+  }
 }
 
 // reads data from the socket

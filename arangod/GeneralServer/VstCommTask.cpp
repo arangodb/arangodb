@@ -175,6 +175,11 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
+  
+  // lets try to process some new data directly
+  if (_readBuffer.size() > 0) {
+    processAll();
+  }
 }
 
 static uint32_t readLittleEndian32bit(char const* p) {

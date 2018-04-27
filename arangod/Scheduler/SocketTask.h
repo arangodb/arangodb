@@ -155,6 +155,9 @@ class SocketTask : virtual public Task {
   /// lease a string buffer from pool
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
+  
+protected:
+  bool processAll();
 
  private:
   
@@ -162,7 +165,6 @@ class SocketTask : virtual public Task {
 
   bool reserveMemory();
   bool trySyncRead();
-  bool processAll();
   
   void asyncReadSome();
   void asyncWriteSome();

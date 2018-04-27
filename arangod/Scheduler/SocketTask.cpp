@@ -165,7 +165,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 
   asyncWriteSome();
   
-  { // if (_readBuffer.size() > 0)
+  /*{ // if (_readBuffer.size() > 0)
 #warning FIXME try to get rid of this call for VST
     // strand::post guarantees this is not called directly
     auto self = shared_from_this();
@@ -177,7 +177,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
       //MUTEX_LOCKER(locker, _lock);
       processAll();
     });
-  }
+  }*/
 }
 
 // caller must hold the _lock
