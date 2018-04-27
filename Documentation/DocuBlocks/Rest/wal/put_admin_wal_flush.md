@@ -4,7 +4,7 @@
 
 @RESTHEADER{PUT /_admin/wal/flush, Flushes the write-ahead log}
 
-@RESTURLPARAMETERS
+@RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Whether or not the operation should block until the not-yet synchronized
