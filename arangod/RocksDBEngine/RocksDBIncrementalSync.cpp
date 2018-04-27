@@ -395,7 +395,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* col,
                              std::string const& keysId) {
-  LOG_DEVEL << "enter handleSyncKeysRocksDB";
+  //LOG_DEVEL << "enter handleSyncKeysRocksDB";
   std::string progress =
       "collecting local keys for collection '" + col->name() + "'";
   syncer.setProgress(progress);
@@ -455,7 +455,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
 
-  LOG_DEVEL << "numChunks" << numChunks;
+  //LOG_DEVEL << "numChunks" << numChunks;
 
   getRemoteTimer.release();
   // remove all keys that are below first remote key or beyond last remote key
@@ -496,7 +496,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     LogicalCollection* coll = trx.documentCollection();
     auto iterator = createPrimaryIndexIterator(&trx, coll);
 
-    LOG_DEVEL << "fresh iterator (remove keys) hasMore: " << std::boolalpha << iterator.hasMore();
+    //LOG_DEVEL << "fresh iterator (remove keys) hasMore: " << std::boolalpha << iterator.hasMore();
 
     VPackBuilder builder;
     iterator.next(

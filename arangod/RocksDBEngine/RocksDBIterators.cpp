@@ -347,9 +347,6 @@ RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db
     , _cmp(columnFamily->GetComparator())
   {
     reset();
-    LOG_DEVEL << "valid after creation? - " << std::boolalpha << hasMore();
-    LOG_DEVEL << "valid: " << std::boolalpha << _iterator->Valid();
-    LOG_DEVEL_IF(_iterator->Valid()) << "outOfRange: " << std::boolalpha << outOfRange();
   };
 
 bool RocksDBGenericIterator::hasMore() const {
@@ -387,8 +384,7 @@ bool RocksDBGenericIterator::seek(rocksdb::Slice const& key) {
   } else {
     _iterator->Seek(key);
   }
-  //FIXME: Can we assert this? how will it behave on empty collections?
-  //TRI_ASSERT(_iterator->Valid());
+  //TRI_ASSERT(_iterator->Valid()); - can be empty
   return hasMore();
 }
 
@@ -441,7 +437,6 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
   TRI_ASSERT( index->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX );
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
-  //LOG_DEVEL << "primary objectId: " << primaryIndexObjectId;
   auto bounds(RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId()));
   auto iterator =  RocksDBGenericIterator(arangodb::rocksutils::globalRocksDB(), primaryIndex->columnFamily(), options, bounds);
 

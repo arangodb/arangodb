@@ -614,13 +614,11 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   size_t oldPos = from;
   size_t offset = 0;
 
-  LOG_DEVEL << ids.toJson();
-
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       return Result(TRI_ERROR_BAD_PARAMETER);
     }
-    LOG_DEVEL << it.toJson();
+
     if (!hasMore) {
       LOG_TOPIC(ERR, Logger::REPLICATION) << "Not enough data";
       b.close();
@@ -650,7 +648,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         full = true;
       }
     }
-    LOG_DEVEL << "has more (ids loop): " << std::boolalpha << hasMore;
+
     _lastIteratorOffset++;
     oldPos = newPos + 1;
     ++offset;
@@ -775,9 +773,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   trx.addCollectionAtRuntime(collection.name());
 
   auto iterator = createPrimaryIndexIterator(&trx, &logical);
-  LOG_DEVEL << "fresh iterator (replication context) hasMore: " << std::boolalpha << iterator.hasMore();
   iter = std::make_unique<RocksDBGenericIterator>(std::move(iterator)); //move to heap
-  LOG_DEVEL << "fresh iterator (replication context) hasMore: " << std::boolalpha << iter->hasMore();
 
   customTypeHandler = trx.transactionContextPtr()->orderCustomTypeHandler();
   vpackOptions.customTypeHandler = customTypeHandler.get();
