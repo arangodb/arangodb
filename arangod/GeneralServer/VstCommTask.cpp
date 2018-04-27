@@ -39,6 +39,7 @@
 #include "Meta/conversion.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/ServerFeature.h"
+#include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/Events.h"
@@ -124,7 +125,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
     slices.push_back(response_message._header);
 
     for (auto& payload : response_message._payloads) {
-      LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
+      LOG_TOPIC(TRACE, Logger::REQUESTS) << "\"vst-request-result\",\""
                                          << (void*)this << "/" << mid << "\","
                                          << payload.toJson() << "\"";
 
@@ -142,7 +143,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
 
   if (stat != nullptr && arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE,
                                                      Logger::REQUESTS)) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << VstRequest::translateVersion(_protocolVersion) << "\","
         << static_cast<int>(response.responseCode()) << ","
@@ -167,7 +168,8 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       ++c;
     }
   }
-
+  
+  didAddResponse();
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
@@ -175,11 +177,6 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
-  
-  // lets try to process some new data directly
-  if (_readBuffer.size() > 0) {
-    processAll();
-  }
 }
 
 static uint32_t readLittleEndian32bit(char const* p) {

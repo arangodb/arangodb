@@ -157,13 +157,15 @@ class SocketTask : virtual public Task {
   void returnStringBuffer(basics::StringBuffer*);
   
 protected:
-  bool processAll();
+  
+  void didAddResponse();
 
  private:
   
   bool completedWriteBuffer();
 
   bool reserveMemory();
+  bool processAll();
   bool trySyncRead();
   
   void asyncReadSome();

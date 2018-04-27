@@ -229,6 +229,7 @@ void SocketTask::closeStreamNoLock() {
   bool mustCloseReceive = !_closedReceive.load(std::memory_order_acquire);
 
   if (_peer != nullptr) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing stream";
     boost::system::error_code err; //an error we do not care about
     _peer->shutdown(err, mustCloseSend, mustCloseReceive);
   }
@@ -623,4 +624,18 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
   } catch (...) {
     delete buffer;
   }
+}
+
+void SocketTask::didAddResponse() {
+  // lets try to process some new data directly
+  //if (_readBuffer.size() > 0) {
+  _loop.scheduler->_nrQueued++;
+  auto self = shared_from_this();
+  this->strand().post([self, this] {
+    _loop.scheduler->_nrQueued--;
+    JobGuard guard(_loop);
+    guard.work();
+    processAll();
+  });
+  //}
 }

@@ -197,7 +197,6 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
         << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
         << "\"," << stat->timingsCsv();
   }
-  
   addWriteBuffer(std::move(buffer));
 
   // and give some request information
@@ -213,10 +212,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   returnStringBuffer(body.release()); // takes care of deleting
   
-  // to support HTTP pipelining we need to read from the buffer again
-  if (_readBuffer.size() > 0) {
-    processAll();
-  }
+  didAddResponse();
 }
 
 // reads data from the socket
