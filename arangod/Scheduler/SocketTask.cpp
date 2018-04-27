@@ -154,6 +154,20 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
     buffer.release();
     return;
   }
+  
+  /*{ // if (_readBuffer.size() > 0)
+   #warning FIXME try to get rid of this call for VST
+   // strand::post guarantees this is not called directly
+   auto self = shared_from_this();
+   _loop.scheduler->_nrQueued++;
+   _peer->strand().post([self, this]() {
+   _loop.scheduler->_nrQueued--;
+   JobGuard guard(_loop);
+   guard.work();
+   //MUTEX_LOCKER(locker, _lock);
+   processAll();
+   });
+   }*/
 
   if (!buffer.empty()) {
     if (!_writeBuffer.empty()) {
@@ -164,20 +178,6 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
   }
 
   asyncWriteSome();
-  
-  /*{ // if (_readBuffer.size() > 0)
-#warning FIXME try to get rid of this call for VST
-    // strand::post guarantees this is not called directly
-    auto self = shared_from_this();
-    _loop.scheduler->_nrQueued++;
-    _peer->strand().post([self, this]() {
-      _loop.scheduler->_nrQueued--;
-      JobGuard guard(_loop);
-      guard.work();
-      //MUTEX_LOCKER(locker, _lock);
-      processAll();
-    });
-  }*/
 }
 
 // caller must hold the _lock
@@ -363,9 +363,19 @@ bool SocketTask::processAll() {
   Result res;
   bool rv = true;
   while (rv) {
-    res = catchVoidToResult([&]() -> void {
+    
+    Result result{TRI_ERROR_NO_ERROR};
+    try {
       rv = processRead(startTime);
-    });
+    } catch (arangodb::basics::Exception const& e) {
+      res.reset(e.code(), e.message());
+    } catch (std::bad_alloc const&) {
+      res.reset(TRI_ERROR_OUT_OF_MEMORY);
+    } catch (std::exception const& e) {
+      res.reset(TRI_ERROR_INTERNAL, e.what());
+    } catch (...) {
+      res.reset(TRI_ERROR_INTERNAL);
+    }
 
     if (_abandoned.load(std::memory_order_acquire)) {
       return false;

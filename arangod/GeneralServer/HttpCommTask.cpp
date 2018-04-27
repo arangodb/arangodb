@@ -198,6 +198,8 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
         << "\"," << stat->timingsCsv();
   }
   addWriteBuffer(std::move(buffer));
+  // read pipelined requests
+  triggerProcessAll();
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
@@ -211,9 +213,6 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   returnStringBuffer(body.release()); // takes care of deleting
-
-  // read pipelined requests
-  triggerProcessAll();
 }
 
 // reads data from the socket
@@ -475,6 +474,7 @@ bool HttpCommTask::processRead(double startTime) {
               TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
           buffer._buffer->ensureNullTerminated();
           addWriteBuffer(std::move(buffer));
+          triggerProcessAll(); // read pipelined requests
         }
       }
     } else {
