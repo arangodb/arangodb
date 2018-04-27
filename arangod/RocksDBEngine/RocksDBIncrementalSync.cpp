@@ -395,6 +395,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* col,
                              std::string const& keysId) {
+  LOG_DEVEL << "enter handleSyncKeysRocksDB";
   std::string progress =
       "collecting local keys for collection '" + col->name() + "'";
   syncer.setProgress(progress);
@@ -454,6 +455,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
 
+  LOG_DEVEL << "numChunks" << numChunks;
+
   getRemoteTimer.release();
   // remove all keys that are below first remote key or beyond last remote key
   if (numChunks > 0) {
@@ -491,15 +494,28 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     StringRef highRef(highSlice);
 
     LogicalCollection* coll = trx.documentCollection();
-    auto iterator = createDocumentIterator(&trx, coll);
+    auto iterator = createPrimaryIndexIterator(&trx, coll);
+
+    LOG_DEVEL << "fresh iterator (remove keys) hasMore: " << std::boolalpha << iterator.hasMore();
 
     VPackBuilder builder;
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-          auto documentId = RocksDBKey::documentId(RocksDBEntryType::Document, rocksKey);
-          if(col->readDocument(&trx, documentId, mmdr) == false) {
-            return;
-          }
+          TRI_ASSERT(rocksValue.size()
+                      == sizeof(std::uint64_t) /*doc id*/
+                       +  sizeof(TRI_voc_rid_t) /*revision id*/
+                    );
+
+          // FIXME - REQUIRED? ///////////
+          // if there is something in the index it should be in the collection
+          // was there a reason for the check?
+          //auto documentID = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
+          //auto documentId = RocksDBKey::documentId(RocksDBEntryType::Document, rocksKey);
+          //if(col->readDocument(&trx, documentId, mmdr) == false) {
+          //  TRI_ASSERT(false);
+          //  return;
+          //}
+          //FIXME - REQUIRED? ///////////
 
           StringRef docKey(RocksDBKey::primaryKey(rocksKey));
           if (docKey.compare(lowRef) < 0) {
@@ -559,11 +575,14 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       syncer.sendExtendBatch();
       syncer.sendExtendBarrier();
 
+
       progress = "processing keys chunk " + std::to_string(currentChunkId) +
                  " for collection '" + col->name() + "'";
       syncer.setProgress(progress);
 
       // read remote chunk
+      TRI_ASSERT(chunkSlice.isArray());
+      TRI_ASSERT(chunkSlice.length() > 0); // chunkSlice.at will throw otherwise
       VPackSlice chunk = chunkSlice.at(currentChunkId);
       if (!chunk.isObject()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": chunk is no object");
@@ -661,13 +680,24 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     }; //comapre chunk - end
 
     LogicalCollection* coll = trx.documentCollection();
-    auto iterator = createDocumentIterator(&trx, coll);
+    auto iterator = createPrimaryIndexIterator(&trx, coll);
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-          auto documentId = RocksDBKey::documentId(RocksDBEntryType::Document, rocksKey);
-          if(col->readDocument(&trx, documentId, mmdr) == false) {
-            return;
-          }
+          TRI_ASSERT(rocksValue.size()
+                      >= sizeof(std::uint64_t) /*doc id*/
+                       +  sizeof(TRI_voc_rid_t) /*revision id*/
+                    );
+
+          // FIXME - REQUIRED? ///////////
+          // if there is something in the index it should be in the collection
+          // was there a reason for the check?
+          //auto documentID = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
+          //auto documentId = RocksDBKey::documentId(RocksDBEntryType::Document, rocksKey);
+          //if(col->readDocument(&trx, documentId, mmdr) == false) {
+          //  TRI_ASSERT(false);
+          //  return;
+          //}
+          // FIXME - REQUIRED? ///////////
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
           TRI_voc_rid_t docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
           compareChunk(docKey, docRev);

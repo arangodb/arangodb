@@ -138,10 +138,20 @@ class RocksDBGenericIterator {
 
   ~RocksDBGenericIterator() {}
 
-  bool next(GenericCallback const& cb, size_t limit);
-  void skip(uint64_t count, uint64_t& skipped);
-  void seek(rocksdb::Slice const& key);
-  void reset();
+  // the following functions return if the iterator
+  // is valid and in bounds on return.
+  bool next(GenericCallback const& cb // void(rocksdb::Slice const& key,rocksd:Slice const& value)
+           , size_t count //number of documents the callback should be applied to
+           );
+
+  bool skip(uint64_t count // documents to skip
+           ,uint64_t& skipped // skipped documents
+           );
+  bool seek(rocksdb::Slice const& key);
+  bool reset();
+  bool hasMore() const;
+
+  //return bounds
   RocksDBKeyBounds const& bounds() const { return _bounds; }
 
  private:
@@ -153,10 +163,9 @@ class RocksDBGenericIterator {
   rocksdb::Comparator const* _cmp;
 };
 
-RocksDBGenericIterator createDocumentIterator(transaction::Methods* trx
-                                            ,LogicalCollection* col
-                                            ,bool reverse = false
-                                            );
+RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx
+                                                 ,LogicalCollection* col
+                                                 );
 
 } //namespace arangodb
 #endif
