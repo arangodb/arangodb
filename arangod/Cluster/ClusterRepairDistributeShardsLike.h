@@ -30,6 +30,7 @@
 #include <boost/variant.hpp>
 
 #include "Agency/AgencyComm.h"
+#include "Basics/ResultT.h"
 #include "ClusterInfo.h"
 #include "ClusterRepairOperations.h"
 
@@ -62,92 +63,6 @@ inline std::ostream& operator<<(std::ostream& stream,
                 << velocypack::Slice(vpack->data()).toJson() << " "
                 << "}";
 }
-
-template <typename T>
-class ResultT : public arangodb::Result {
- public:
-  ResultT static success(T val) { return ResultT(val, TRI_ERROR_NO_ERROR); }
-
-  ResultT static error(int errorNumber) {
-    return ResultT(boost::none, errorNumber);
-  }
-
-  ResultT static error(int errorNumber, std::string const& errorMessage) {
-    return ResultT(boost::none, errorNumber, errorMessage);
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-  ResultT(Result const& other) : Result(other) {
-    // .ok() is not allowed here, as _val should be expected to be initialized
-    // iff .ok() is true.
-    TRI_ASSERT(other.fail());
-  }
-
-  // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-  ResultT(T&& val) : ResultT(std::forward<T>(val), TRI_ERROR_NO_ERROR) {}
-
-  ResultT() = delete;
-
-  ResultT& operator=(T const& val_) {
-    _val = val_;
-    return *this;
-  }
-
-  ResultT& operator=(T&& val_) {
-    _val = std::move(val_);
-    return *this;
-  }
-
-  // These are very convenient, but also make it very easy to accidentally use
-  // the value of an error-result...
-  //
-  //  operator T() const { return get(); }
-  //  operator T &() { return get(); }
-
-  T* operator->() { return &get(); }
-  T const* operator->() const { return &get(); }
-
-  T& operator*() & { return get(); }
-  T const& operator*() const& { return get(); }
-
-  T&& operator*() && { return get(); }
-  T const&& operator*() const&& { return get(); }
-
-  explicit operator bool() const { return ok(); }
-
-  T const& get() const { return _val.get(); }
-  T& get() { return _val.get(); }
-
-  ResultT map(ResultT<T> (*fun)(T const& val)) const {
-    if (ok()) {
-      return ResultT<T>::success(fun(get()));
-    }
-
-    return *this;
-  }
-
-  bool operator==(ResultT<T> const& other) const {
-    if (this->ok() && other.ok()) {
-      return this->get() == other.get();
-    }
-    if (this->fail() && other.fail()) {
-      return this->errorNumber() == other.errorNumber() &&
-             this->errorMessage() == other.errorMessage();
-    }
-
-    return false;
-  }
-
- protected:
-  boost::optional<T> _val;
-
-  ResultT(boost::optional<T>&& val_, int errorNumber)
-      : Result(errorNumber), _val(val_) {}
-
-  ResultT(boost::optional<T>&& val_, int errorNumber,
-          std::string const& errorMessage)
-      : Result(errorNumber, errorMessage), _val(val_) {}
-};
 
 struct Collection {
   DatabaseID database;

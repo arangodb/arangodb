@@ -24,6 +24,7 @@
 #define ARANGOD_REST_HANDLER_REST_REPAIR_HANDLER_H
 
 #include "Agency/AgencyComm.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ClusterRepairs.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
@@ -79,16 +80,16 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
       std::list<cluster_repairs::RepairOperation> const& list);
 
   template <std::size_t N>
-  cluster_repairs::ResultT<std::array<cluster_repairs::VPackBufferPtr, N>>
-  getFromAgency(std::array<std::string const, N> const& agencyKeyArray);
+  ResultT<std::array<cluster_repairs::VPackBufferPtr, N>> getFromAgency(
+      std::array<std::string const, N> const& agencyKeyArray);
 
-  cluster_repairs::ResultT<cluster_repairs::VPackBufferPtr> getFromAgency(
+  ResultT<cluster_repairs::VPackBufferPtr> getFromAgency(
       std::string const& agencyKey);
 
-  cluster_repairs::ResultT<rest_repair::JobStatus> getJobStatusFromAgency(
+  ResultT<rest_repair::JobStatus> getJobStatusFromAgency(
       std::string const& jobId);
 
-  cluster_repairs::ResultT<bool> jobFinished(std::string const& jobId);
+  ResultT<bool> jobFinished(std::string const& jobId);
 
   bool repairCollection(
       DatabaseID const& databaseId, CollectionID const& collectionId,
@@ -98,18 +99,18 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   bool repairAllCollections(
       VPackSlice const& planCollections,
-      std::map<CollectionID, cluster_repairs::ResultT<std::list<
-                                 cluster_repairs::RepairOperation>>> const&
+      std::map<CollectionID,
+               ResultT<std::list<cluster_repairs::RepairOperation>>> const&
           repairOperationsByCollection,
       VPackBuilder& response);
 
-  cluster_repairs::ResultT<std::string> static getDbAndCollectionName(
+  ResultT<std::string> static getDbAndCollectionName(
       VPackSlice planCollections, CollectionID const& collectionId);
 
   void addErrorDetails(VPackBuilder& builder, int errorNumber);
 
-  cluster_repairs::ResultT<bool> checkReplicationFactor(
-      DatabaseID const& databaseId, CollectionID const& collectionId);
+  ResultT<bool> checkReplicationFactor(DatabaseID const& databaseId,
+                                       CollectionID const& collectionId);
 
   void generateResult(rest::ResponseCode code,
                       const velocypack::Builder& payload, bool error);
