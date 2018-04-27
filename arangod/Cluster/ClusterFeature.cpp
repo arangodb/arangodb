@@ -227,24 +227,25 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
 }
 
 void ClusterFeature::prepare() {
+  if (_enableCluster &&
+      _requirePersistedId &&
+      !ServerState::instance()->hasPersistedId()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_enableCluster &&
+      _requirePersistedId &&
+      !ServerState::instance()->hasPersistedId()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
+    FATAL_ERROR_EXIT();
+  }
+
   auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  if (_enableCluster &&
-      _requirePersistedId &&
-      !ServerState::instance()->hasPersistedId()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
-    FATAL_ERROR_EXIT();
+  if (v8Dealer->isEnabled()) {
+    v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
+                           _systemReplicationFactor);
   }
-
-  if (_enableCluster &&
-      _requirePersistedId &&
-      !ServerState::instance()->hasPersistedId()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
-    FATAL_ERROR_EXIT();
-  }
-
-  v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
-                         _systemReplicationFactor);
 
   // create callback registery
   _agencyCallbackRegistry.reset(

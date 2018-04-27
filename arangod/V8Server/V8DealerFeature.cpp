@@ -102,11 +102,12 @@ V8DealerFeature::V8DealerFeature(
       _nrInflightContexts(0),
       _maxContextInvocations(0),
       _allowAdminExecute(false),
+      _disableJS(false),
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
-  setOptional(false);
+  setOptional(true);
   startsAfter("Action");
   startsAfter("Authentication");
   startsAfter("Database");
@@ -167,9 +168,23 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute));
+  
+  options->addHiddenOption(
+      "--javascript.disable",
+      "disable the V8 JS engine entirely",
+      new BooleanParameter(&_disableJS));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_disableJS) {
+    disable();
+    application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
+      "Script", "FoxxQueues", "Frontend"});
+    LOG_TOPIC(WARN, arangodb::Logger::V8) << "V8 JavaScript engine is disabled, this is an"
+      << " experimental option, some features may be missing or broken !";
+    return;
+  }
+  
   // check the startup path
   if (_startupDirectory.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::V8)

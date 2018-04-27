@@ -181,7 +181,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
   try {
     ExecContext const* exe = ExecContext::CURRENT;
-    AuthenticationFeature* af = AuthenticationFeature::instance();
     if (ServerState::instance()->isCoordinator()) {
       auto col = ClusterMethods::createCollectionOnCoordinator(
         collectionType,
@@ -392,6 +391,11 @@ Result Collections::updateProperties(LogicalCollection* coll,
 static int RenameGraphCollections(TRI_vocbase_t* vocbase,
                                   std::string const& oldName,
                                   std::string const& newName) {
+  V8DealerFeature* dealer = V8DealerFeature::DEALER;
+  if (dealer == nullptr || !dealer->isEnabled()) {
+    return TRI_ERROR_NO_ERROR; // V8 might is disabled
+  }
+  
   StringBuffer buffer(true);
   buffer.appendText("require('@arangodb/general-graph')._renameCollection(");
   buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
@@ -399,12 +403,12 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase,
   buffer.appendJsonEncoded(newName.c_str(), newName.size());
   buffer.appendText(");");
 
-  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, false);
+  V8Context* context = dealer->enterContext(vocbase, false);
   if (context == nullptr) {
     LOG_TOPIC(WARN, Logger::FIXME) << "RenameGraphCollections: no V8 context";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+  TRI_DEFER(dealer->exitContext(context));
 
   auto isolate = context->_isolate;
   v8::HandleScope scope(isolate);

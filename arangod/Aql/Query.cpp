@@ -1072,6 +1072,7 @@ void Query::prepareV8Context() {
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
+      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       _context = V8DealerFeature::DEALER->enterContext(&_vocbase, false);
 
       if (_context == nullptr) {
@@ -1110,6 +1111,7 @@ void Query::exitContext() {
         ctx->unregisterTransaction();
       }
 
+      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       V8DealerFeature::DEALER->exitContext(_context);
       _context = nullptr;
     }
