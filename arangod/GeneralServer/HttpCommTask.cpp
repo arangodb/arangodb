@@ -211,12 +211,9 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   returnStringBuffer(body.release()); // takes care of deleting
-  
-  // try to process remaining request data
-  auto self = shared_from_this();
-  this->strand().post([self, this] {
-    processAll();
-  });
+
+  // read pipelined requests
+  triggerProcessAll();
 }
 
 // reads data from the socket

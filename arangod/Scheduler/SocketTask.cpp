@@ -454,7 +454,6 @@ void SocketTask::asyncReadSome() {
         } else if (ec) {
           LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "read on stream failed with: " << ec.message();
-          //closeStreamNoLock();
           closeStream();
           return;
         }
@@ -467,7 +466,6 @@ void SocketTask::asyncReadSome() {
           
           _readBuffer.increaseLength(transferred);
           if (processAll()) {
-            //asyncReadSome();
             _loop.scheduler->_nrQueued++;
             _peer->strand().post([self, this]() {
               _loop.scheduler->_nrQueued--;
@@ -625,4 +623,16 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
   } catch (...) {
     delete buffer;
   }
+}
+
+void SocketTask::triggerProcessAll() {
+  // try to process remaining request data
+  auto self = shared_from_this();
+  _loop.scheduler->_nrQueued++;
+  this->strand().post([self, this] {
+    _loop.scheduler->_nrQueued--;
+    JobGuard guard(_loop);
+    guard.work();
+    processAll();
+  });
 }

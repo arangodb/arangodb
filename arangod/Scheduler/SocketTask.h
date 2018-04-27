@@ -159,6 +159,7 @@ class SocketTask : virtual public Task {
 protected:
   
   bool processAll();
+  void triggerProcessAll();
 
  private:
   
