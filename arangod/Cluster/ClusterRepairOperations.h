@@ -219,6 +219,10 @@ struct BeginRepairsOperation {
 //  * protoCollection.replicationFactor == `replicationFactor`
 //  * shards of both collection and protoCollection match `shards`
 //
+// `shards` should contain *all* shards or collection and protoCollection,
+// so if this transaction succeeds, the collection is guaranteed to be
+// completely fixed.
+//
 // See RepairOperationToTransactionVisitor for the implementation.
 struct FinishRepairsOperation {
   DatabaseID database;

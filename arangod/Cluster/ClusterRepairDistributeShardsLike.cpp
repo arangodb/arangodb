@@ -406,12 +406,9 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
     struct cluster_repairs::Collection& collection,
     struct cluster_repairs::Collection const& proto, ShardID const& shardId,
     ShardID const& protoShardId) {
-  LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+  LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::fixShard: "
-      << "Fixing DBServers"
-      << " on shard " << shardId << " of collection " << collection.fullName()
-      << " to match shard " << protoShardId << " of collection "
-      << proto.fullName();
+      << "Called for shard " << shardId << " with prototype " << protoShardId;
 
   if (collection.replicationFactor != proto.replicationFactor) {
     std::stringstream errorMessage;
@@ -825,9 +822,9 @@ DistributeShardsLikeRepairer::fixAllShardsOfCollection(
     if (dbServers != protoDbServers) {
       LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
           << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
-          << "fixing shard " << collection.fullName() << "/" << shardId
-          << " regarding its prototype shard " << proto.fullName() << "/"
-          << protoShardId;
+          << "Shard " << shardId << " of collection " << collection.fullName()
+          << " does not match shard " << protoShardId << " of collection "
+          << proto.fullName() << " as it should. Collecting repairs.";
 
       bool protoDbServersEmpty = protoDbServers.empty();
       TRI_IF_FAILURE(
