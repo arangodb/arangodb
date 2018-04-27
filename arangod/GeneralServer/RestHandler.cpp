@@ -129,7 +129,7 @@ int RestHandler::prepareEngine() {
   }
 
   _engine.setState(RestEngine::State::FAILED);
-  //_storeResult(this);
+  _storeResult(shared_from_this());
   return TRI_ERROR_INTERNAL;
 }
 

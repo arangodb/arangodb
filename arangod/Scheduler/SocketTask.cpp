@@ -356,6 +356,7 @@ bool SocketTask::trySyncRead() {
 // returns bool - true value signals that processRead should continue to run (new read)
 bool SocketTask::processAll() {
   //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand().running_in_this_thread());
 
   double startTime = StatisticsFeature::time();
@@ -483,6 +484,7 @@ void SocketTask::asyncReadSome() {
 
 void SocketTask::asyncWriteSome() {
   //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand().running_in_this_thread());
   
   if (_writeBuffer.empty()) {
@@ -567,8 +569,7 @@ void SocketTask::asyncWriteSome() {
                         
                         RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
                         
-                        if (!_abandoned.load(std::memory_order_acquire) &&
-                            completedWriteBuffer()) {
+                        if (completedWriteBuffer()) {
                           asyncWriteSome();
                         }
                       });
