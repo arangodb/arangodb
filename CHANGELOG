@@ -222,10 +222,6 @@ v3.3.4 (2018-03-01)
 * fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
          returned 200 before.
 
-
-v3.3.4 (XXXX-XX-XX)
--------------------
-
 * fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
          instead of replacing them.
 
