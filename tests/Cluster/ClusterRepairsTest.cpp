@@ -435,11 +435,31 @@ SCENARIO("Broken distributeShardsLike collections",
 
 SCENARIO("VersionSort", "[cluster][shards][repairs]") {
   GIVEN("Different version strings") {
-    REQUIRE(VersionSort()("s2", "s10"));
-    REQUIRE(!VersionSort()("s10", "s2"));
+    // General functionality check
+    CHECK(VersionSort()("s2", "s10"));
+    CHECK(!VersionSort()("s10", "s2"));
 
-    REQUIRE(VersionSort()("s5", "s7"));
-    REQUIRE(!VersionSort()("s7", "s5"));
+    CHECK(VersionSort()("s5", "s7"));
+    CHECK(!VersionSort()("s7", "s5"));
+
+    // Make sure sorting by the last char works
+    CHECK(VersionSort()("s100a", "s0100b"));
+    CHECK(!VersionSort()("s0100b", "s100a"));
+
+    // Make sure the ints aren't casted into signed chars and overflow
+    CHECK(VersionSort()("s126", "s129"));
+    CHECK(!VersionSort()("s129", "s126"));
+
+    // Make sure the ints aren't casted into unsigned chars and overflow
+    CHECK(VersionSort()("s254", "s257"));
+    CHECK(!VersionSort()("s257", "s254"));
+
+    // Regression test
+    CHECK(VersionSort()("s1000057", "s1000065"));
+    CHECK(!VersionSort()("s1000065", "s1000057"));
+
+    CHECK(VersionSort()("s1000050", "s1000064"));
+    CHECK(!VersionSort()("s1000064", "s1000050"));
   }
 }
 

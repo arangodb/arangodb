@@ -29,6 +29,57 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::cluster_repairs;
 
+bool VersionSort::operator()(std::string const& a, std::string const& b) const {
+  std::vector<CharOrInt> va = splitVersion(a);
+  std::vector<CharOrInt> vb = splitVersion(b);
+
+  auto compareResult = std::lexicographical_compare(
+      va.begin(), va.end(), vb.begin(), vb.end(),
+      [](CharOrInt const& a, CharOrInt const& b) -> bool {
+        if (a.which() != b.which()) {
+          return a.which() < b.which();
+        }
+        return a < b;
+      });
+
+  return compareResult;
+}
+
+std::vector<VersionSort::CharOrInt> VersionSort::splitVersion(
+    std::string const& str) {
+  size_t from = std::string::npos;
+  size_t to = std::string::npos;
+
+  std::vector<CharOrInt> result;
+
+  auto addChar = [&result](char c) { result.emplace_back(c); };
+  auto addUInt = [&result, &str](size_t from, size_t to) {
+    result.emplace_back(WrappedUInt64{std::stoul(str.substr(from, to))});
+  };
+
+  for (size_t pos = 0; pos < str.length(); pos++) {
+    if (isdigit(str[pos])) {
+      if (from == std::string::npos) {
+        from = pos;
+      }
+      to = pos;
+    } else {
+      if (to != std::string::npos) {
+        addUInt(from, to);
+        from = to = std::string::npos;
+      }
+
+      addChar(str[pos]);
+    }
+  }
+
+  if (to != std::string::npos) {
+    addUInt(from, to);
+  }
+
+  return result;
+}
+
 bool cluster_repairs::operator==(BeginRepairsOperation const& left,
                                  BeginRepairsOperation const& right) {
   return left.database == right.database &&

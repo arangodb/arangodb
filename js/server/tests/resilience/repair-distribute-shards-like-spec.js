@@ -449,6 +449,25 @@ describe('Collections with distributeShardsLike', function () {
     const { protoCollection, collection, expectedCollections }
       = createBrokenClusterState();
 
+    { // Before executing repairs, check via GET if the planned operations
+      // seem right.
+      const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
+
+      expect(d.status).to.equal(200);
+
+      let response = JSON.parse(d.body);
+
+      expect(response).to.have.property("error", false);
+      expect(response).to.have.property("code", 200);
+      expect(response).to.have.property("collections");
+
+      const fullColName = internal.db._name() + '/' + collection.name();
+      expect(response.collections).to.have.property(fullColName);
+      expect(response.collections).to.have.all.keys([fullColName]);
+      expect(response.collections[fullColName]).to.have.property('PlannedOperations');
+      const plannedOperations = response.collections[fullColName]['PlannedOperations'];
+      expect(plannedOperations).to.be.an('array').that.has.lengthOf(5);
+    }
 
     const postJobRes = request.post(
       coordinator.url + '/_admin/repair/distributeShardsLike',
@@ -491,6 +510,27 @@ describe('Collections with distributeShardsLike', function () {
       const {protoCollection, collection, expectedCollections}
         = createBrokenClusterState({failOnOperation: 2});
 
+
+      { // Before executing repairs, check via GET if the planned operations
+        // seem right.
+        const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
+
+        expect(d.status).to.equal(200);
+
+        let response = JSON.parse(d.body);
+
+        expect(response).to.have.property("error", false);
+        expect(response).to.have.property("code", 200);
+        expect(response).to.have.property("collections");
+
+        const fullColName = internal.db._name() + '/' + collection.name();
+        expect(response.collections).to.have.property(fullColName);
+        expect(response.collections).to.have.all.keys([fullColName]);
+        expect(response.collections[fullColName]).to.have.property('PlannedOperations');
+        const plannedOperations = response.collections[fullColName]['PlannedOperations'];
+        expect(plannedOperations).to.be.an('array').that.has.lengthOf(5);
+      }
+
       internal.debugSetFailAt("RestRepairHandler::executeRepairOperations");
 
       { // This request should fail
@@ -523,7 +563,27 @@ describe('Collections with distributeShardsLike', function () {
       expect(waitForReplicationFactor(collection)).to.be.true;
       expect(waitForPlanEqualCurrent(collection)).to.be.true;
 
-      { // This request should finish
+      { // Before executing repairs, check via GET if the planned operations
+        // seem right.
+        const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
+
+        expect(d.status).to.equal(200);
+
+        let response = JSON.parse(d.body);
+
+        expect(response).to.have.property("error", false);
+        expect(response).to.have.property("code", 200);
+        expect(response).to.have.property("collections");
+
+        const fullColName = internal.db._name() + '/' + collection.name();
+        expect(response.collections).to.have.property(fullColName);
+        expect(response.collections).to.have.all.keys([fullColName]);
+        expect(response.collections[fullColName]).to.have.property('PlannedOperations');
+        const plannedOperations = response.collections[fullColName]['PlannedOperations'];
+        expect(plannedOperations).to.be.an('array').that.has.lengthOf(4);
+      }
+
+      { // This request should finish the repairs
         const postJobRes = request.post(
           coordinator.url + '/_admin/repair/distributeShardsLike',
           {
