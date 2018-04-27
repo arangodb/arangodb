@@ -92,3 +92,7 @@ void LockfileFeature::start() {
 void LockfileFeature::unprepare() {
   TRI_DestroyLockFile(_lockFilename.c_str());
 }
+
+void LockfileFeature::beginShutdown() {
+  TRI_DestroyLockFile(_lockFilename.c_str());
+}
