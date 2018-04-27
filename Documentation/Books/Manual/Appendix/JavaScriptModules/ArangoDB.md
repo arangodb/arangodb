@@ -52,7 +52,6 @@ const result = db._query(aql`
   RETURN d
 `).toArray();
 
-// New in 3.4
 const filterGreen = aql.literal('FILTER d.color == "green"');
 const result2 = db._query(aql`
   FOR d IN ${mydata}
