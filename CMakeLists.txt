@@ -43,6 +43,12 @@ else ()
   project(arangodb3 CXX C ASM)
 endif ()
 
+include (TestBigEndian)
+TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
+if(IS_BIG_ENDIAN)
+  message(FATAL_ERROR "ArangoDB only supports little endianness.")
+endif()
+
 # required for clang completion in editors
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
