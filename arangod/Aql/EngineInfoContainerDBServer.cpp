@@ -99,11 +99,13 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   ExecutionPlan plan(query->ast());
   ExecutionNode* previous = nullptr;
 
-  // for (ExecutionNode const* current : _nodes) {
   for (auto enIt = _nodes.rbegin(); enIt != _nodes.rend(); ++enIt) {
     ExecutionNode const* current = *enIt;
     auto clone = current->clone(&plan, false, false);
-    // UNNECESSARY, because clone does it: plan.registerNode(clone);
+
+    // we need to count nodes by type ourselves, as we will set the "varUsageComputed"
+    // flag below (which will handle the counting)
+    plan.increaseCounter(clone->getType());
 
     if (current->getType() == ExecutionNode::REMOTE) {
       auto rem = static_cast<RemoteNode*>(clone);
