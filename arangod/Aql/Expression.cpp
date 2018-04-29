@@ -940,13 +940,10 @@ AqlValue Expression::invokeV8Function(arangodb::aql::Query* query,
     V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
   }
   catch (arangodb::basics::Exception const& ex) {
-    if (rethrowV8Exception) {
-      throw ex;
+    if (rethrowV8Exception || ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
+      throw;
     }
-    if (ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
-      throw ex;
-    }
-    std::string message("While invoking '");
+    std::string message("while invoking '");
     message +=  ucInvokeFN + "' via '" + AFN + "': " + ex.message();
     query->registerWarning(ex.code(), message.c_str());
     return AqlValue(AqlValueHintNull());

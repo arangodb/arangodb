@@ -544,7 +544,7 @@ class ExecutionNode {
 
     // Copy constructor used for a subquery:
     RegisterPlan(RegisterPlan const& v, unsigned int newdepth);
-    ~RegisterPlan(){};
+    ~RegisterPlan() {}
 
     virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
       return false;  // do not walk into subquery

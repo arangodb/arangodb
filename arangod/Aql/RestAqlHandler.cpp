@@ -228,9 +228,8 @@ void RestAqlHandler::setupClusterQuery() {
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
   bool needToLock = true;
-  bool res = false;
-  res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                         options, ttl, needToLock, answerBuilder);
+  bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
+                              options, ttl, needToLock, answerBuilder);
   if (!res) {
     // TODO we need to trigger cleanup here??
     // Registering the snippets failed.
