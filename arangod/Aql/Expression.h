@@ -169,9 +169,9 @@ class Expression {
                                    std::string const& ucInvokeFN,
                                    char const* AFN,
                                    bool rethrowV8Exception,
-                                   int callArgs,
+                                   size_t callArgs,
                                    v8::Handle<v8::Value>* args,
-                                   bool &mustDestroy);
+                                   bool& mustDestroy);
 
   /// @brief check whether this is an attribute access of any degree (e.g. a.b,
   /// a.b.c, ...)

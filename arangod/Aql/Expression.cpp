@@ -915,7 +915,7 @@ AqlValue Expression::invokeV8Function(arangodb::aql::Query* query,
                                       std::string const& ucInvokeFN,
                                       char const* AFN,
                                       bool rethrowV8Exception,
-                                      int callArgs,
+                                      size_t callArgs,
                                       v8::Handle<v8::Value>* args,
                                       bool &mustDestroy
                                       ){
@@ -934,7 +934,7 @@ AqlValue Expression::invokeV8Function(arangodb::aql::Query* query,
 
   // actually call the V8 function
   v8::TryCatch tryCatch;
-  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(function)->Call(current, callArgs, args); 
+  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(function)->Call(current, static_cast<int>(callArgs), args); 
 
   try {
     V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
@@ -988,8 +988,8 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
     TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
-    int const n = static_cast<int>(member->numMembers());
-    int callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
+    size_t const n = static_cast<int>(member->numMembers());
+    size_t callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
     auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs); 
 
     if (node->type == NODE_TYPE_FCALL_USER) {
