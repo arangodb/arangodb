@@ -98,16 +98,20 @@
       $(this.el).unbind('keydown');
       $(this.el).unbind('return');
 
-      $('.modal-body .collectionTh > input').unbind('keydown');
-      $('.modal-body .collectionTh > input').unbind('return');
-      $('.modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function (e) {
-        $('.createModalDialog .modal-footer .button-success').click();
+      $('#modal-dialog .modal-body .collectionTh > input').unbind('keydown');
+      $('#modal-dialog .modal-body .collectionTh > input').unbind('return');
+      $('#modal-dialog .modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function () {
+        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled')) {
+          $('#modal-dialog .modal-footer .button-success').click();
+        }
       });
 
-      $('.modal-body .collectionTh > select').unbind('keydown');
-      $('.modal-body .collectionTh > select').unbind('return');
-      $('.modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function (e) {
-        $('.createModalDialog .modal-footer .button-success').click();
+      $('#modal-dialog .modal-body .collectionTh > select').unbind('keydown');
+      $('#modal-dialog .modal-body .collectionTh > select').unbind('return');
+      $('#modal-dialog .modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function () {
+        if (!$('#modal-dialog .modal-footer .button-success').is(':disabled')) {
+          $('#modal-dialog .modal-footer .button-success').click();
+        }
       });
     },
 
@@ -503,9 +507,15 @@
               // error element not available
               $el.after('<p class="errorMessage">' + msg + '</p>');
             }
-            $('.createModalDialog .modal-footer .button-success')
-              .prop('disabled', true)
-              .addClass('disabled');
+            if ($('#modal-dialog').is(':visible')) {
+              $('#modal-dialog .modal-footer .button-success')
+                .prop('disabled', true)
+                .addClass('disabled');
+            } else {
+              $('.createModalDialog .modal-footer .button-success')
+                .prop('disabled', true)
+                .addClass('disabled');
+            }
           } else {
             $el.removeClass('invalid-input');
             if (errorElement) {
@@ -525,13 +535,25 @@
       });
       var invalid = _.any(tests);
       if (invalid) {
-        $('.createModalDialog .modal-footer .button-success')
-          .prop('disabled', true)
-          .addClass('disabled');
+        if ($('#modal-dialog').is(':visible')) {
+          $('#modal-dialog .modal-footer .button-success')
+            .prop('disabled', true)
+            .addClass('disabled');
+        } else {
+          $('.createModalDialog .modal-footer .button-success')
+            .prop('disabled', true)
+            .addClass('disabled');
+        }
       } else {
-        $('.createModalDialog .modal-footer .button-success')
-          .prop('disabled', false)
-          .removeClass('disabled');
+        if ($('#modal-dialog').is(':visible')) {
+          $('#modal-dialog .modal-footer .button-success')
+            .prop('disabled', false)
+            .removeClass('disabled');
+        } else {
+          $('.createModalDialog .modal-footer .button-success')
+            .prop('disabled', false)
+            .removeClass('disabled');
+        }
       }
       return !invalid;
     },
