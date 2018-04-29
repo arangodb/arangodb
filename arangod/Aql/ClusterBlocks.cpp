@@ -1083,26 +1083,23 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   }
 
   VPackSlice value = input;
-
-  VPackBuilder builder;
-  VPackBuilder builder2;
-
   bool hasCreatedKeyAttribute = false;
 
   if (input.isString() &&
       static_cast<DistributeNode const*>(_exeNode)
           ->_allowKeyConversionToObject) {
-    builder.openObject();
-    builder.add(StaticStrings::KeyString, input);
-    builder.close();
+    _keyBuilder.clear();
+    _keyBuilder.openObject(true);
+    _keyBuilder.add(StaticStrings::KeyString, input);
+    _keyBuilder.close();
 
     // clear the previous value
     cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
-    cur->emplaceValue(_pos, _regId, builder);
+    cur->emplaceValue(_pos, _regId, _keyBuilder.slice());
 
-    value = builder.slice();
+    value = _keyBuilder.slice();
     hasCreatedKeyAttribute = true;
   } else if (!input.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1110,58 +1107,47 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   TRI_ASSERT(value.isObject());
 
+  bool buildNewObject = false;
   if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
     // we are responsible for creating keys if none present
 
     if (_usesDefaultSharding) {
       // the collection is sharded by _key...
-
       if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
         // there is no _key attribute present, so we are responsible for
         // creating one
-        VPackBuilder temp;
-        temp.openObject();
-        temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
-        temp.close();
-
-        builder2 = VPackCollection::merge(input, temp.slice(), true);
-
-        // clear the previous value and overwrite with new value:
-        if (usedAlternativeRegId) {
-          cur->destroyValue(_pos, _alternativeRegId);
-          cur->emplaceValue(_pos, _alternativeRegId, builder2);
-        } else {
-          cur->destroyValue(_pos, _regId);
-          cur->emplaceValue(_pos, _regId, builder2);
-        }
-        value = builder2.slice();
+        buildNewObject = true;
       }
     } else {
       // the collection is not sharded by _key
-
       if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
         // a _key was given, but user is not allowed to specify _key
         if (usedAlternativeRegId || !_allowSpecifiedKeys) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
         }
       } else {
-        VPackBuilder temp;
-        temp.openObject();
-        temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
-        temp.close();
-
-        builder2 = VPackCollection::merge(input, temp.slice(), true);
-
-        // clear the previous value and overwrite with new value:
-        if (usedAlternativeRegId) {
-          cur->destroyValue(_pos, _alternativeRegId);
-          cur->emplaceValue(_pos, _alternativeRegId, builder2.slice());
-        } else {
-          cur->destroyValue(_pos, _regId);
-          cur->emplaceValue(_pos, _regId, builder2.slice());
-        }
-        value = builder2.slice();
+        buildNewObject = true;
       }
+    }
+
+    if (buildNewObject) {
+      _keyBuilder.clear();
+      _keyBuilder.openObject(true);
+      _keyBuilder.add(StaticStrings::KeyString, VPackValue(createKey(value)));
+      _keyBuilder.close();
+
+      _objectBuilder.clear();
+      VPackCollection::merge(_objectBuilder, input, _keyBuilder.slice(), true);
+
+      // clear the previous value and overwrite with new value:
+      if (usedAlternativeRegId) {
+        cur->destroyValue(_pos, _alternativeRegId);
+        cur->emplaceValue(_pos, _alternativeRegId, _objectBuilder.slice());
+      } else {
+        cur->destroyValue(_pos, _regId);
+        cur->emplaceValue(_pos, _regId, _objectBuilder.slice());
+      }
+      value = _objectBuilder.slice();
     }
   }
 
@@ -1172,8 +1158,6 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   int res = clusterInfo->getResponsibleShard(collInfo.get(), value, true,
       shardId, usesDefaultShardingAttributes);
-
-  // std::cout << "SHARDID: " << shardId << "\n";
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
