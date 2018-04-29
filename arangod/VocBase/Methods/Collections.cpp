@@ -158,18 +158,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
   TRI_ASSERT(vocbase && !vocbase->isDangling());
   TRI_ASSERT(properties.isObject());
 
-  /*VPackBuilder defaultProps;
-  defaultProps.openObject();
-  defaultProps.add("shardKeys", VPackSlice::emptyObjectSlice());
-  defaultProps.add("numberOfShards", VPackValue(0));
-  defaultProps.add("distributeShardsLike", VPackValue(""));
-  defaultProps.add("avoidServers", VPackSlice::emptyArraySlice());
-  defaultProps.add("shardKeysisSmart", VPackValue(""));
-  defaultProps.add("smartGraphAttribute", VPackValue(""));
-  defaultProps.add("replicationFactor", VPackValue(0));
-  defaultProps.add("servers", VPackValue(""));
-  defaultProps.close();*/
-
   VPackBuilder builder;
   builder.openObject();
   builder.add("type", VPackValue(static_cast<int>(collectionType)));
