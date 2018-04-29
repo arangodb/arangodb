@@ -316,6 +316,8 @@ struct Functions {
                         VPackFunctionParameters const&);
     static AqlValue Average(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
+    static AqlValue TestInternal(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const& parameters);
     static AqlValue Sleep(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
     static AqlValue Collections(arangodb::aql::Query*, transaction::Methods*,

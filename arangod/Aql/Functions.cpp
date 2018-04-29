@@ -3542,6 +3542,129 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintNull());
 }
 
+
+#define VPA(a, b) VPackArrayBuilder guard##a(b.get())
+#define VPO(a, b) VPackObjectBuilder guard##a(b.get())
+AqlValue Functions::TestInternal(arangodb::aql::Query* query,
+                                 transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
+  char const* AFN = "TEST_INTERNAL";
+  ValidateParameters(parameters, AFN, 2, 2);
+  
+  AqlValue atest = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue awhat = ExtractFunctionParameterValue(parameters, 1);
+
+  if (!atest.isString()) {
+    RegisterInvalidArgumentWarning(query, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  std::string testName = atest.slice().copyString();
+  if (testName == "MODIFY_ARRAY") {
+    if (!awhat.isArray()) {
+      RegisterInvalidArgumentWarning(query, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    AqlValueMaterializer materializer(trx);
+    VPackSlice what = materializer.slice(awhat, false);
+
+    transaction::BuilderLeaser smallArray(trx);  // just [1, 2]
+    { VPA(1, smallArray);
+      smallArray->add(VPackValue(1));
+      smallArray->add(VPackValue(2));
+    }
+
+    transaction::BuilderLeaser res(trx);
+    { VPA(2, res);
+      res->add(VPackValue(1));
+      res->add(VPackValue(42));
+      res->add(smallArray->slice());
+      VPackSlice ind3 = what[3];
+      { VPA(3, res);
+	if (ind3.isArray() ) {
+          for (auto const& i : VPackArrayIterator(ind3)) {
+            res->add(i);
+          }
+        }
+	res->add(smallArray->slice());
+      }
+      { VPO(4, res);
+        res->add("a", VPackValue(9));
+        res->add("b", VPackValue(2));
+      }
+      for (VPackValueLength i = 5; i < what.length(); ++i) {
+	res->add(what[i]);
+      }
+      res->add(VPackValue("foo"));
+    }
+    return AqlValue(res.get());
+  }
+  else if (testName == "MODIFY_OBJECT") {
+    if (!awhat.isObject()) {
+      RegisterInvalidArgumentWarning(query, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+    AqlValueMaterializer materializer(trx);
+    VPackSlice what = materializer.slice(awhat, false);
+
+    transaction::BuilderLeaser res(trx);
+    {VPO(5, res);
+      
+      res->add("a", VPackValue(1));
+      res->add("b", VPackValue(3));
+      
+      res->add(VPackValue("c")); { VPA(6, res);
+        res->add(VPackValue(1));
+        res->add(VPackValue(2));
+      }
+      res->add(VPackValue("d")); { VPA(7, res);
+        auto d = what.get("d");
+        if (d.isArray()) {
+          for (auto const& entry : VPackArrayIterator(d)) {
+            res->add(entry);
+          }
+        }
+        { VPA(8, res);
+          res->add(VPackValue(1));
+          res->add(VPackValue(2));
+        }
+      }
+      res->add(VPackValue("e")); { VPO(8,res);
+        res->add(VPackValue("f")); { VPO(9,res);
+          res->add("a", VPackValue(1));
+          res->add("b", VPackValue(2));
+        }
+        auto e = what.get("e");
+        if (e.isObject()) {
+          for (auto const& entry : VPackObjectIterator(e, true)) {
+            std::string key = entry.key.copyString();
+            if (key != "f") {
+              res->add(key, entry.value);
+            }
+          }
+        }
+      }
+      res->add("g", VPackValue("foo"));
+      // We want to filter out these keys:
+      std::set<std::string> have = {"a", "b", "c", "d", "e", "f", "g"};
+      for (auto const& entry : VPackObjectIterator(what, true)) {
+        std::string key = entry.key.copyString();
+        if (have.find(key) == have.end()) {
+          res->add(key, entry.value);
+        }
+      }
+    }
+    return AqlValue(res.get());
+  } else if (testName == "DEADLOCK") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEADLOCK);
+  }
+  else {
+    RegisterInvalidArgumentWarning(query, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+}
+
 /// @brief function SLEEP
 AqlValue Functions::Sleep(arangodb::aql::Query* query,
                           transaction::Methods* trx,
