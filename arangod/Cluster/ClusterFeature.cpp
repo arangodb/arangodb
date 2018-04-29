@@ -245,6 +245,11 @@ void ClusterFeature::prepare() {
   if (v8Dealer->isEnabled()) {
     v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
                            _systemReplicationFactor);
+  } else {
+    if (ServerState::isDBServer(_requestedRole)) {
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cannot run DBServer with `--javascript.enabled false`";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   // create callback registery
