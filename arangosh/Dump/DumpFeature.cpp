@@ -283,7 +283,6 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
       // first check the basic flag
       checkMore = boolean(header);
       if (checkMore) {
-        // TODO: fix hard-coded headers
         // now check if the actual tick has changed
         header = response->getHeaderField(
             arangodb::StaticStrings::ReplicationHeaderLastIncluded,
@@ -906,6 +905,8 @@ void DumpFeature::reportError(Result const& error) {
 void DumpFeature::start() {
   _exitCode = EXIT_SUCCESS;
 
+  double const start = TRI_microtime();
+
   // set up the output directory, not much else
   _directory =
       std::make_unique<ManagedDirectory>(_options.outputPath, true, true);
@@ -966,7 +967,7 @@ void DumpFeature::start() {
         << dbName << "', username: '" << client->username() << "'";
 
     LOG_TOPIC(INFO, Logger::DUMP)
-        << "Writing dump to output directory '" << _directory->path() << "'";
+        << "Writing dump to output directory '" << _directory->path() << "' with " << _options.threadCount << " thread(s)";
   }
 
   Result res;
@@ -990,15 +991,19 @@ void DumpFeature::start() {
   }
 
   if (_options.progress) {
+    double totalTime = TRI_microtime() - start;
+
     if (_options.dumpData) {
       LOG_TOPIC(INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
-          << " collection(s), wrote " << _stats.totalWritten.load()
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s," 
+          << " wrote " << _stats.totalWritten.load()
           << " byte(s) into datafiles, sent " << _stats.totalBatches.load()
           << " batch(es)";
     } else {
       LOG_TOPIC(INFO, Logger::DUMP)
-          << "Processed " << _stats.totalCollections << " collection(s)";
+          << "Processed " << _stats.totalCollections.load()
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s"; 
     }
   }
 }

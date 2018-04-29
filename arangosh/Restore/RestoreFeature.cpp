@@ -833,6 +833,8 @@ void RestoreFeature::prepare() {
 
 void RestoreFeature::start() {
   using arangodb::httpclient::SimpleHttpClient;
+  
+  double const start = TRI_microtime();
 
   // set up the output directory, not much else
   _directory =
@@ -947,16 +949,20 @@ void RestoreFeature::start() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << result.errorMessage();
     _exitCode = EXIT_FAILURE;
   }
-
+  
   if (_options.progress) {
+    double totalTime = TRI_microtime() - start;
+
     if (_options.importData) {
       LOG_TOPIC(INFO, Logger::RESTORE)
-          << "Processed " << _stats.totalCollections << " collection(s), "
+          << "Processed " << _stats.totalCollections
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s," 
           << "read " << _stats.totalRead << " byte(s) from datafiles, "
           << "sent " << _stats.totalBatches << " batch(es)";
     } else if (_options.importStructure) {
       LOG_TOPIC(INFO, Logger::RESTORE)
-          << "Processed " << _stats.totalCollections << " collection(s)";
+          << "Processed " << _stats.totalCollections
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s"; 
     }
   }
 }
