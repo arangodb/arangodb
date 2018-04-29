@@ -25,6 +25,7 @@ The syntax for an insert operation is:
 
 ```
 INSERT document IN collection options
+INSERT document INTO collection options
 ```
 
 **Note**: The *INTO* keyword is also allowed in the place of *IN*.
@@ -38,6 +39,13 @@ revision number for the document.
 ```js
 FOR i IN 1..100
   INSERT { value: i } IN numbers
+```
+
+An insert operation can also be performed without a *FOR* loop to insert a
+single document:
+
+```js
+INSERT { value: 1 } INTO numbers
 ```
 
 When inserting into an [edge collection](../../Manual/Appendix/Glossary.html#edge-collection),

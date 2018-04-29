@@ -50,6 +50,11 @@ When using the second syntax, *keyExpression* provides the document identificati
 This can either be a string (which must then contain the document key) or a
 document, which must contain a *_key* attribute.
 
+An object with `_id` attribute but without `_key` attribute as well as a
+document ID as string like `"users/john"` do not work. However, you can use
+`DOCUMENT(id)` to fetch the document via its ID and `PARSE_IDENTIFIER(id).key`
+to get the document key as string.
+
 The following queries are equivalent:
 
 ```js
@@ -95,7 +100,12 @@ might not be a variable like above (`doc`), which would let you refer to the
 document which is being updated:
 
 ```js
-UPDATE "users/john" WITH { ... } IN users
+UPDATE "john" WITH { ... } IN users
+```
+
+```js
+LET key = PARSE_IDENTIFIER("users/john").key
+UPDATE key WITH { ... } IN users
 ```
 
 To access the current value in this situation, the document has to be retrieved
