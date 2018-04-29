@@ -102,7 +102,7 @@ V8DealerFeature::V8DealerFeature(
       _nrInflightContexts(0),
       _maxContextInvocations(0),
       _allowAdminExecute(false),
-      _disableJS(false),
+      _enableJS(true),
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
@@ -170,13 +170,13 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_allowAdminExecute));
   
   options->addHiddenOption(
-      "--javascript.disable",
-      "disable the V8 JS engine entirely",
-      new BooleanParameter(&_disableJS));
+      "--javascript.enabled",
+      "enable or disable the V8 JS engine entirely",
+      new BooleanParameter(&_enableJS));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_disableJS) {
+  if (!_enableJS) {
     disable();
     application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
       "Script", "FoxxQueues", "Frontend"});

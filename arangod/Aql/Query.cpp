@@ -1072,6 +1072,9 @@ void Query::prepareV8Context() {
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
+      if (V8DealerFeature::DEALER == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "V8 engine is disabled");
+      }
       TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       _context = V8DealerFeature::DEALER->enterContext(&_vocbase, false);
 

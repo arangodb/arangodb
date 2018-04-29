@@ -123,8 +123,8 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       v8dealer->setMinimumContexts(1);
     }
   } else if (_operationMode != OperationMode::MODE_SERVER) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "'--console', '--javascript.unit-tests' or "
-       << "'--javascript.script' are not supported without V8";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Options '--console', '--javascript.unit-tests'"
+       << " or '--javascript.script' are not supported without V8";
     FATAL_ERROR_EXIT();
   }
 

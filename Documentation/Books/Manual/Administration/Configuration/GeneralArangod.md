@@ -602,10 +602,10 @@ of ArangoDB. Use the specific options only if you are sure that they are not
 harmful for the regular database operation.
 
 
-#### Disable V8 entirely (experimental)
+#### Enable or Disable V8 JavaScript Engine entirely
 
 ```
---javascript.disable bool
+--javascript.enabled bool
 ```
 
 In certain types of ArangoDB instances you can now completely disable the V8 JavaScript engine. Be aware that this is

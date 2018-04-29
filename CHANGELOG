@@ -1,7 +1,7 @@
 devel
 -----
 
-* added experimental arangodb startup option `--javascript.disable` to disable the initialization 
+* added experimental arangodb startup option `--javascript.enabled` to enable/disable the initialization 
   of the V8 JavaScript engine. Only expected to work on single-servers and agency deployments
 
 * pull request 5201: eliminate race scenario where handlePlanChange could run infinite times
