@@ -346,7 +346,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   Query* _query;
 
  public:
-  CoordinatorInstanciator(Query* query)
+
+  explicit CoordinatorInstanciator(Query* query)
       : _dbserverParts(query), _isCoordinator(true), _lastClosed(0), _query(query) {}
 
   ~CoordinatorInstanciator() {}
@@ -533,8 +534,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AQL)
             << "Coordinator query instantiation failed: " << e.what();
-        throw e;
-      } catch (...) {
         throw;
       }
     } else {
