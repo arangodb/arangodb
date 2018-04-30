@@ -41,5 +41,14 @@
         }
       }
     });
+
+    $('body').on('keyup', function (e) {
+      if (e.keyCode === 27) {
+        if (window.modalView) {
+          window.modalView.hide();
+        }
+      }
+    });
+
   }
 }());

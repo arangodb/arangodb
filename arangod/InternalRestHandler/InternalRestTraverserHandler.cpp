@@ -96,8 +96,9 @@ void InternalRestTraverserHandler::createEngine() {
         "Expected an object with traverser information as body parameter");
     return;
   }
-  TraverserEngineID id =
-    _registry->createNew(&_vocbase, body, true);
+
+  auto id = _registry->createNew(_vocbase, body, true);
+
   TRI_ASSERT(id != 0);
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(id));

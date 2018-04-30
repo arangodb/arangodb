@@ -181,7 +181,7 @@ class EngineInfoContainerDBServer {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   Result buildEngines(MapRemoteToSnippet& queryIds,
-                      std::unordered_set<ShardID>* lockedShards) const;
+                      std::unordered_set<ShardID>& lockedShards) const;
 
 /**
  * @brief Will send a shutdown to all engines registered in the list of
@@ -241,7 +241,7 @@ class EngineInfoContainerDBServer {
   // @brief Helper to create DBServerInfos and sort collections/shards into
   // them
   std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
-  createDBServerMapping(std::unordered_set<ShardID>* lockedShards) const;
+  createDBServerMapping(std::unordered_set<ShardID>& lockedShards) const;
 
   // @brief Helper to inject the TraverserEngines into the correct infos
   void injectGraphNodesToMapping(

@@ -1264,7 +1264,7 @@ OperationResult transaction::Methods::documentCoordinator(
   }
 
   int res = arangodb::getDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, headers, responseCode,
+      databaseName(), collectionName, value, options, std::move(headers), responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {

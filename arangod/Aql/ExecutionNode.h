@@ -257,29 +257,6 @@ class ExecutionNode {
     return result;
   }
 
-  /// @brief inspect one index; only skiplist indices which match attrs in
-  /// sequence.
-  /// returns a a qualification how good they match;
-  ///      match->index==nullptr means no match at all.
-  enum MatchType {
-    FORWARD_MATCH,
-    REVERSE_MATCH,
-    NOT_COVERED_IDX,
-    NOT_COVERED_ATTR,
-    NO_MATCH
-  };
-
-  struct IndexMatch {
-    IndexMatch() : index(nullptr), doesMatch(false), reverse(false) {}
-
-    Index const* index;  // The index concerned; if null, this is a nonmatch.
-    std::vector<MatchType> matches;  // qualification of the attrs match quality
-    bool doesMatch;                  // do all criteria match?
-    bool reverse;                    // reverse index scan required
-  };
-
-  typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
-
   /// @brief make a new node the (only) parent of the node
   void setParent(ExecutionNode* p) {
     _parents.clear();
@@ -417,7 +394,7 @@ class ExecutionNode {
   }
   
   /// @brief walk a complete execution plan recursively
-  bool walk(WalkerWorker<ExecutionNode>* worker);
+  bool walk(WalkerWorker<ExecutionNode>& worker);
 
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool, bool = false) const;

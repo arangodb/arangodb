@@ -220,7 +220,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
 
     arangodb::aql::Query query(
       false,
-      &_vocbase,
+      _vocbase,
       arangodb::aql::QueryString(aql),
       bindVars,
       nullptr,
@@ -245,18 +245,15 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     {
       size_t ignored = 0;
       size_t removed = 0;
-      if (queryResult.stats != nullptr) {
-        VPackSlice stats = queryResult.stats->slice();
-
+      if (queryResult.extra) {
+        VPackSlice stats = queryResult.extra->slice().get("stats");
         if (!stats.isNone()) {
           TRI_ASSERT(stats.isObject());
           VPackSlice found = stats.get("writesIgnored");
           if (found.isNumber()) {
             ignored = found.getNumericValue<size_t>();
           }
-
-          found = stats.get("writesExecuted");
-          if (found.isNumber()) {
+          if ((found = stats.get("writesExecuted")).isNumber()) {
             removed = found.getNumericValue<size_t>();
           }
         }
@@ -337,7 +334,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
 
     arangodb::aql::Query query(
       false,
-      &_vocbase,
+      _vocbase,
       aql::QueryString(aql),
       bindVars,
       nullptr,

@@ -122,7 +122,6 @@ V8PlatformFeature::V8PlatformFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "V8Platform") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 

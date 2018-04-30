@@ -827,7 +827,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
 
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),
-                                    direction, start, graph, options);
+                                    direction, start, graph, std::move(options));
 
   auto variable = node->getMember(4);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -904,7 +904,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
                                      direction, start, target,
-                                     graph, options);
+                                     graph, std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -1752,7 +1752,7 @@ void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
                                     ExecutionNode::NodeType type,
                                     bool enterSubqueries) {
   NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
-  root()->walk(&finder);
+  root()->walk(finder);
 }
 
 /// @brief find nodes of a certain types
@@ -1761,14 +1761,14 @@ void ExecutionPlan::findNodesOfType(
     std::vector<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
   NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result,
                                                           enterSubqueries);
-  root()->walk(&finder);
+  root()->walk(finder);
 }
 
 /// @brief find all end nodes in a plan
 void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
                                  bool enterSubqueries) const {
   EndNodeFinder finder(result, enterSubqueries);
-  root()->walk(&finder);
+  root()->walk(finder);
 }
 
 /// @brief helper struct for findVarUsage
@@ -1819,7 +1819,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
     VarUsageFinder subfinder(_varSetBy);
     subfinder._valid = _valid;  // need a copy for the subquery!
-    sub->walk(&subfinder);
+    sub->walk(subfinder);
 
     // we've fully processed the subquery
     return false;
@@ -1830,7 +1830,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
 void ExecutionPlan::findVarUsage() {
   _varSetBy.clear();
   ::VarUsageFinder finder(&_varSetBy);
-  root()->walk(&finder);
+  root()->walk(finder);
   // _varSetBy = *finder._varSetBy;
 
   _varUsageComputed = true;
@@ -2069,7 +2069,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 /// @brief show an overview over the plan
 void ExecutionPlan::show() {
   Shower shower;
-  _root->walk(&shower);
+  _root->walk(shower);
 }
 
 #endif

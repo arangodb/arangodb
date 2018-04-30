@@ -512,7 +512,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
 
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
 EngineInfoContainerDBServer::createDBServerMapping(
-    std::unordered_set<ShardID>* lockedShards) const {
+    std::unordered_set<ShardID>& lockedShards) const {
   auto ci = ClusterInfo::instance();
 
   std::map<ServerID, DBServerInfo> dbServerMapping;
@@ -524,7 +524,7 @@ EngineInfoContainerDBServer::createDBServerMapping(
     // it.second.usedShards => All shards of this collection releveant for this query
     std::vector<std::shared_ptr<EngineInfo>> const engines = it.second.engines;
     for (auto const& s : it.second.usedShards) {
-      lockedShards->emplace(s);
+      lockedShards.emplace(s);
       auto const servers = ci->getResponsibleServer(s);
       if (servers == nullptr || servers->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -708,7 +708,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
 
 Result EngineInfoContainerDBServer::buildEngines(
     MapRemoteToSnippet& queryIds,
-    std::unordered_set<ShardID>* lockedShards) const {
+    std::unordered_set<ShardID>& lockedShards) const {
   TRI_ASSERT(_engineStack.empty());
 
   // We create a map for DBServer => All Query snippets executed there

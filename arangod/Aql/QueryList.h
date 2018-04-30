@@ -70,37 +70,37 @@ class QueryList {
   /// @brief whether or not queries are tracked
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool enabled() const { return _enabled; }
+  inline bool enabled() const { return _enabled.load(std::memory_order_relaxed); }
 
   /// @brief toggle query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void enabled(bool value) { _enabled = value; }
+  inline void enabled(bool value) { _enabled.store(value, std::memory_order_relaxed); }
 
   /// @brief whether or not slow queries are tracked
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool trackSlowQueries() const { return _trackSlowQueries; }
+  inline bool trackSlowQueries() const { return _trackSlowQueries.load(std::memory_order_relaxed); }
   
   /// @brief toggle slow query tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackSlowQueries(bool value) { _trackSlowQueries = value; }
+  inline void trackSlowQueries(bool value) { _trackSlowQueries.store(value, std::memory_order_relaxed); }
   
   /// @brief whether or not bind vars are tracked with queries 
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline bool trackBindVars() const { return _trackBindVars; }
+  inline bool trackBindVars() const { return _trackBindVars.load(std::memory_order_relaxed); }
 
   /// @brief toggle query bind vars tracking
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline void trackBindVars(bool value) { _trackBindVars = value; }
+  inline void trackBindVars(bool value) { _trackBindVars.store(value, std::memory_order_relaxed); }
 
   /// @brief threshold for slow queries (in seconds)
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline double slowQueryThreshold() const { return _slowQueryThreshold; }
+  inline double slowQueryThreshold() const { return _slowQueryThreshold.load(std::memory_order_relaxed); }
 
   /// @brief set the slow query threshold
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -110,13 +110,13 @@ class QueryList {
       // sanity checks
       value = 0.0;
     }
-    _slowQueryThreshold = value;
+    _slowQueryThreshold.store(value, std::memory_order_relaxed);
   }
 
   /// @brief return the max number of slow queries to keep
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline size_t maxSlowQueries() const { return _maxSlowQueries; }
+  inline size_t maxSlowQueries() const { return _maxSlowQueries.load(std::memory_order_relaxed); }
 
   /// @brief set the max number of slow queries to keep
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -126,13 +126,13 @@ class QueryList {
       // sanity checks
       value = 16384;
     }
-    _maxSlowQueries = value;
+    _maxSlowQueries.store(value, std::memory_order_relaxed);
   }
 
   /// @brief return the max length of query strings that are stored / returned
   /// we're not using a lock here for performance reasons - thus concurrent
   /// modifications of this variable are possible but are considered unharmful
-  inline size_t maxQueryStringLength() const { return _maxQueryStringLength; }
+  inline size_t maxQueryStringLength() const { return _maxQueryStringLength.load(std::memory_order_relaxed); }
 
   /// @brief set the max length of query strings that are stored / returned
   /// we're not using a lock here for performance reasons - thus concurrent
@@ -145,7 +145,7 @@ class QueryList {
       value = 8 * 1024 * 1024;
     }
 
-    _maxQueryStringLength = value;
+    _maxQueryStringLength.store(value, std::memory_order_relaxed);
   }
 
   /// @brief enter a query
@@ -192,22 +192,22 @@ class QueryList {
   size_t _slowCount;
 
   /// @brief whether or not queries are tracked
-  bool _enabled;
+  std::atomic<bool> _enabled;
 
   /// @brief whether or not slow queries are tracked
-  bool _trackSlowQueries;
+  std::atomic<bool> _trackSlowQueries;
   
   /// @brief whether or not bind vars are also tracked with queries 
-  bool _trackBindVars;
+  std::atomic<bool> _trackBindVars;
 
   /// @brief threshold for slow queries (in seconds)
-  double _slowQueryThreshold;
+  std::atomic<double> _slowQueryThreshold;
 
   /// @brief maximum number of slow queries to keep
-  size_t _maxSlowQueries;
+  std::atomic<size_t> _maxSlowQueries;
 
   /// @brief max length of query strings to return
-  size_t _maxQueryStringLength;
+  std::atomic<size_t> _maxQueryStringLength;
 };
 }
 }
