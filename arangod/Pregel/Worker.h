@@ -44,7 +44,7 @@ namespace pregel {
 
 class IWorker {
  public:
-  virtual ~IWorker(){};
+  virtual ~IWorker() {}
   virtual void setupWorker() = 0;
   virtual void prepareGlobalStep(VPackSlice const& data,
                                  VPackBuilder& result) = 0;

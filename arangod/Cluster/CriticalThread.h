@@ -36,17 +36,16 @@ public:
   CriticalThread& operator=(CriticalThread const&) = delete;
 
   CriticalThread(std::string const& name, bool deleteOnExit = false)
-    : Thread(name, deleteOnExit) {
-  };
+    : Thread(name, deleteOnExit) {}
 
-  virtual ~CriticalThread() {};
+  virtual ~CriticalThread() {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Notification of when thread crashes via uncaught throw ... log it
   ///        for hourly repeat log
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void crashNotification(std::exception const & ex) override;
+  virtual void crashNotification(std::exception const& ex) override;
 
 };//class CriticalThread
 

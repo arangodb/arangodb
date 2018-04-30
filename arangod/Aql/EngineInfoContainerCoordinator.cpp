@@ -155,15 +155,15 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
   };
   TRI_DEFER(cleanup());
 
-  bool first = true;
   Query* localQuery = query;
   try {
+    bool first = true;
     for (auto const& info : _engines) {
       if (!first) {
         // need a new query instance on the coordinator
         localQuery = query->clone(PART_DEPENDENT, false);
         if (localQuery == nullptr) {
-          return {TRI_ERROR_INTERNAL, "cannot clone query"};
+          return ExecutionEngineResult(TRI_ERROR_INTERNAL, "cannot clone query");
         }
       }
       try {
@@ -176,7 +176,7 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
             // It is not in the registry.
             delete localQuery;
           }
-          return {res.errorNumber(), res.errorMessage()};
+          return ExecutionEngineResult(res.errorNumber(), res.errorMessage());
         }
       } catch (...) {
         // We do not catch any other error here.
@@ -187,20 +187,20 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
           // It is not in the registry.
           delete localQuery;
         }
-        return {TRI_ERROR_INTERNAL};
+        return ExecutionEngineResult(TRI_ERROR_INTERNAL);
       }
       first = false;
     }
   } catch (basics::Exception const& ex) {
-    return {ex.code(), ex.message()};
+    return ExecutionEngineResult(ex.code(), ex.message());
   } catch (std::exception const& ex) {
-    return {TRI_ERROR_INTERNAL, ex.what()};
+    return ExecutionEngineResult(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return ExecutionEngineResult(TRI_ERROR_INTERNAL);
   }
 
   // This deactivates the defered cleanup.
   // From here on we rely on the AQL shutdown mechanism.
   coordinatorQueryIds.clear();
-  return query->engine();
+  return ExecutionEngineResult(query->engine());
 }

@@ -36,10 +36,10 @@ class ExecutionEngine;
 class ExecutionEngineResult : public Result {
   public:
     ExecutionEngineResult();
-    ExecutionEngineResult(int errorNumber);
+    explicit ExecutionEngineResult(int errorNumber);
     ExecutionEngineResult(int errorNumber, std::string const& errorMessage);
     ExecutionEngineResult(int errorNumber, std::string&& errorMessage);
-    ExecutionEngineResult(ExecutionEngine*);
+    explicit ExecutionEngineResult(ExecutionEngine*);
 
     ~ExecutionEngineResult();
 
