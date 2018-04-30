@@ -357,6 +357,14 @@ void handleViewsRule(
 
     plan->registerNode(node);
     plan->replaceNode(plan->getNodeById(it.first), node);
+    // necessary here, because replaceNode will set "varUsageComputed" to false
+    // however, we want to keep the *original* variable definitions here (e.g.
+    // CalculationNodes create the sort and filter statements and not the
+    // EnumerateViewNode). If we recalculated the variable usage here, from now
+    // on the EnumerateViewNode would produce the sort and filter variables, and
+    // the below logic (that filters on the variable setters being CalculationNodes)
+    // would fail
+    plan->setVarUsageComputed();
 
     createdViewNodes.insert(node);
 

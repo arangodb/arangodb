@@ -29,7 +29,8 @@ namespace arangodb {
 class ConfigFeature final : public application_features::ApplicationFeature {
  public:
   ConfigFeature(application_features::ApplicationServer* server,
-                std::string const& progname);
+                std::string const& progname,
+                std::string const& configFilename = "");
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;

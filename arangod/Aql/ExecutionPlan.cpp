@@ -1914,7 +1914,7 @@ void ExecutionPlan::findVarUsage() {
   ::VarUsageFinder finder(&_varSetBy);
   root()->walk(finder);
 
-  _varUsageComputed = true;
+  setVarUsageComputed();
 }
 
 /// @brief determine if the above are already set
@@ -1967,7 +1967,7 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
     node->removeDependency(x);
   }
 
-  _varUsageComputed = false;
+  clearVarUsageComputed();
 }
 
 /// @brief replaceNode, note that <newNode> must be registered with the plan
@@ -1998,7 +1998,7 @@ void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
           TRI_ERROR_INTERNAL, "Could not replace dependencies of an old node");
     }
   }
-  _varUsageComputed = false;
+  clearVarUsageComputed();
 }
 
 /// @brief insert <newNode> as a new (the first!) dependency of
@@ -2024,7 +2024,7 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   newNode->removeDependencies();
   TRI_ASSERT(oldDeps[0] != nullptr);
   newNode->addDependency(oldDeps[0]);
-  _varUsageComputed = false;
+  clearVarUsageComputed();
 }
 
 /// @brief create a plan from VPack

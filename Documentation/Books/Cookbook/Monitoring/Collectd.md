@@ -64,7 +64,7 @@ For the RRD we will go pretty much with defaults:
 `Collectd` comes with a wide range of metric aggregation plug-ins.
 Many tools today use [JSON](http://json.org) as data formatting grammar; so does ArangoDB.
 
-Therefore a plug-in offering to fetch JSON documents via HTTP is the perfect match to query ArangoDBs [administrative Statistics interface](../../HTTP/AdministrationAndMonitoring/#read-the-statistics):
+Therefore a plug-in offering to fetch JSON documents via HTTP is the perfect match to query ArangoDBs administrative statistics interface:
 
     # Load the plug-in:
     LoadPlugin curl_json
