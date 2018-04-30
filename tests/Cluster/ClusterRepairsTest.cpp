@@ -116,14 +116,16 @@ std::ostream& operator<<(std::ostream& ostream, std::map<K, V> const& map) {
 
 template <typename T>
 std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
+  // clang-format off
   std::string const typeName =
-      typeid(T) == typeid(RepairOperation)
-          ? "RepairOperation"
-          : typeid(T) == typeid(std::list<RepairOperation>)
-                ? "std::list<RepairOperation>"
-                : typeid(T) == typeid(std::vector<RepairOperation>)
-                      ? "std::vector<RepairOperation>"
-                      : boost::core::demangle(typeid(T).name());
+      typeid(T) == typeid(RepairOperation)?
+        "RepairOperation" :
+      typeid(T) == typeid(std::list<RepairOperation>) ?
+        "std::list<RepairOperation>" :
+      typeid(T) == typeid(std::vector<RepairOperation>) ?
+        "std::vector<RepairOperation>" :
+      boost::core::demangle(typeid(T).name());
+  // clang-format on
 
   if (result.ok()) {
     return stream << "ResultT<" << typeName << "> {"
