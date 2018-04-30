@@ -7,10 +7,12 @@
   window.DatabaseView = Backbone.View.extend({
     users: null,
     el: '#content',
+    readOnly: false,
 
     template: templateEngine.createTemplate('databaseView.ejs'),
 
     dropdownVisible: false,
+    lastSearchInputValue: null,
 
     currentDB: '',
 
@@ -23,6 +25,7 @@
       'click #submitDeleteDatabase': 'submitDeleteDatabase',
       'click .contentRowInactive a': 'changeDatabase',
       'keyup #databaseSearchInput': 'search',
+      'keydown #databaseSearchInput': 'lastSearchInputValueFunc',
       'click #databaseSearchSubmit': 'search',
       'click #databaseToggle': 'toggleSettingsDropdown',
       'click .css-label': 'checkBoxes',
@@ -68,6 +71,9 @@
 
     continueRender: function (readOnly) {
       var self = this;
+      if (readOnly) {
+        this.readOnly = readOnly;
+      }
 
       var callback = function (error, db) {
         if (error) {
@@ -236,32 +242,40 @@
       this.createEditDatabaseModal(dbName, isDeletable);
     },
 
+    lastSearchInputValueFunc: function () {
+      this.lastSearchInputValue = $('#databaseSearchInput').val();
+    },
+
     search: function () {
-      var searchInput,
-        searchString,
-        strLength,
-        reducedCollection;
+      var currentSearchInputValue = $('#databaseSearchInput').val();
+      if ((this.lastSearchInputValue !== null && this.lastSearchInputValue !== currentSearchInputValue) || currentSearchInputValue === '') {
+        var searchInput,
+          searchString,
+          strLength,
+          reducedCollection;
 
-      searchInput = $('#databaseSearchInput');
-      searchString = $('#databaseSearchInput').val();
-      reducedCollection = this.collection.filter(
-        function (u) {
-          return u.get('name').indexOf(searchString) !== -1;
-        }
-      );
-      $(this.el).html(this.template.render({
-        collection: reducedCollection,
-        searchString: searchString,
-        currentDB: this.currentDB
-      }));
-      this.replaceSVGs();
+        searchInput = $('#databaseSearchInput');
+        searchString = $('#databaseSearchInput').val();
+        reducedCollection = this.collection.filter(
+          function (u) {
+            return u.get('name').indexOf(searchString) !== -1;
+          }
+        );
+        $(this.el).html(this.template.render({
+          collection: reducedCollection,
+          searchString: searchString,
+          currentDB: this.currentDB,
+          readOnly: this.readOnly
+        }));
+        this.replaceSVGs();
 
-      // after rendering, get the "new" element
-      searchInput = $('#databaseSearchInput');
-      // set focus on end of text in input field
-      strLength = searchInput.val().length;
-      searchInput.focus();
-      searchInput[0].setSelectionRange(strLength, strLength);
+        // after rendering, get the "new" element
+        searchInput = $('#databaseSearchInput');
+        // set focus on end of text in input field
+        strLength = searchInput.val().length;
+        searchInput.focus();
+        searchInput[0].setSelectionRange(strLength, strLength);
+      }
     },
 
     replaceSVGs: function () {

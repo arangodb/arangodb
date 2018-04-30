@@ -109,6 +109,7 @@ V8DealerFeature::V8DealerFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Action");
   startsAfter("Authentication");
+  startsAfter("CheckVersion");
   startsAfter("Database");
   startsAfter("Random");
   startsAfter("Scheduler");
