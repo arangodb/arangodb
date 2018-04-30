@@ -537,11 +537,6 @@ constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            
 /// needed.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 = 1239;
 
-/// 1240: ERROR_ARANGO_COLLECTION_NOT_FOUND
-/// "collection not found"
-/// Will be raised when a collection with a given identifier or handle is unknown.
-constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                               = 1240;
-
 /// 1300: ERROR_ARANGO_DATAFILE_FULL
 /// "datafile full"
 /// Will be raised when the datafile reaches its limit.
