@@ -578,7 +578,13 @@ void SocketTask::asyncWriteSome() {
                         RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
                         
                         if (completedWriteBuffer()) {
-                          asyncWriteSome();
+                          _loop.scheduler->_nrQueued++;
+                          _peer->strand().post([self, this] {
+                            _loop.scheduler->_nrQueued--;
+                            JobGuard guard(_loop);
+                            guard.work();
+                            asyncWriteSome();
+                          });
                         }
                       });
                     });
