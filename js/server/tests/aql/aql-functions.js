@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNull, assertTrue, assertFalse */
+/*global assertEqual, assertNull, assertTrue, assertFalse, fail */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, functions
 ///
@@ -35,7 +35,6 @@ var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
-var internal = require('internal');
 
 var sortObj = function (obj) {
   var result = { };
