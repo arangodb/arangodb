@@ -33,50 +33,53 @@ using namespace arangodb::rest;
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
-VocbaseContext* VocbaseContext::create(GeneralRequest* req,
-                                       TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(vocbase != nullptr);
+VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t* vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase->isDangling());
 
   AuthenticationFeature* auth = AuthenticationFeature::instance();
+  TRI_ASSERT(auth != nullptr);
   if (auth == nullptr) {
     return nullptr;
-  }
-
-  if (!auth->isActive()) {
+  } else if (!auth->isActive()) {
     return new VocbaseContext(req, vocbase, /*isInternal*/ false,
                               /*sysLevel*/ auth::Level::RW,
                               /*dbLevel*/ auth::Level::RW);
   }
 
-  if (req->authenticated()) {
-    // superusers will have an empty username. This MUST be invalid
-    // for users authenticating with name / password
-    if (req->user().empty()) {
-      if (req->authenticationMethod() != AuthenticationMethod::JWT) {
-        std::string msg = "only jwt can be used to authenticate as superuser";
-        LOG_TOPIC(WARN, Logger::AUTHENTICATION) << msg;
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
-      }
-      return new VocbaseContext(req, vocbase, /*isInternal*/ true,
-                                /*sysLevel*/ auth::Level::RW,
-                                /*dbLevel*/ auth::Level::RW);
-    }
-    auth::UserManager* um = auth->userManager();
-    TRI_ASSERT(um != nullptr);
-    auth::Level dbLvl = um->databaseAuthLevel(req->user(), req->databaseName());
-    auth::Level sysLvl = dbLvl;
-    if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
-      sysLvl = um->databaseAuthLevel(req->user(), TRI_VOC_SYSTEM_DATABASE);
-    }
+  if (!req->authenticated()) {
     return new VocbaseContext(req, vocbase, /*isInternal*/ false,
-                              /*sysLevel*/ sysLvl,
-                              /*dbLevel*/ dbLvl);
+                              /*sysLevel*/ auth::Level::NONE,
+                              /*dbLevel*/ auth::Level::NONE);
+  }
+  
+  // superusers will have an empty username. This MUST be invalid
+  // for users authenticating with name / password
+  if (req->user().empty()) {
+    if (req->authenticationMethod() != AuthenticationMethod::JWT) {
+      std::string msg = "only jwt can be used to authenticate as superuser";
+      LOG_TOPIC(WARN, Logger::AUTHENTICATION) << msg;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+    }
+    return new VocbaseContext(req, vocbase, /*isInternal*/ true,
+                              /*sysLevel*/ auth::Level::RW,
+                              /*dbLevel*/ auth::Level::RW);
+  }
+  
+  auth::UserManager* um = auth->userManager();
+  if (um == nullptr) {
+    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << "Server does not support users";
+    return nullptr;
+  }
+  
+  auth::Level dbLvl = um->databaseAuthLevel(req->user(), req->databaseName());
+  auth::Level sysLvl = dbLvl;
+  if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
+    sysLvl = um->databaseAuthLevel(req->user(), TRI_VOC_SYSTEM_DATABASE);
   }
   return new VocbaseContext(req, vocbase, /*isInternal*/ false,
-                            /*sysLevel*/ auth::Level::NONE,
-                            /*dbLevel*/ auth::Level::NONE);
+                            /*sysLevel*/ sysLvl,
+                            /*dbLevel*/ dbLvl);
 }
 
 VocbaseContext::VocbaseContext(GeneralRequest* req, TRI_vocbase_t* vocbase,

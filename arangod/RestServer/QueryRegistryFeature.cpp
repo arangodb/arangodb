@@ -43,7 +43,8 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
       _queryMemoryLimit(0),
       _slowQueryThreshold(10.0),
       _queryCacheMode("off"),
-      _queryCacheEntries(128) {
+      _queryCacheEntries(128),
+      _queryRegistryTTL(600.0) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
@@ -81,6 +82,9 @@ void QueryRegistryFeature::collectOptions(
   options->addOption("--query.cache-entries",
                      "maximum number of results in query result cache per database",
                      new UInt64Parameter(&_queryCacheEntries));
+  
+  options->addHiddenOption("--query.registry-ttl", "Default time-to-live of query snippets (in seconds)",
+                           new DoubleParameter(&_queryRegistryTTL));
 }
 
 void QueryRegistryFeature::prepare() {
@@ -90,7 +94,7 @@ void QueryRegistryFeature::prepare() {
   arangodb::aql::QueryCache::instance()->setProperties(cacheProperties);
   
   // create the query registery
-  _queryRegistry.reset(new aql::QueryRegistry());
+  _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
   QUERY_REGISTRY = _queryRegistry.get();
 }
 
