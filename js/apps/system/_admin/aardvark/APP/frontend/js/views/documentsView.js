@@ -67,7 +67,7 @@
 
     setCollectionId: function (colid, page) {
       var self = this;
-      this.collection.setCollection(colid);
+      this.collection.setCollection(colid, page);
       this.collection.setPage(page);
       this.page = page;
 
@@ -81,13 +81,16 @@
           } else {
             this.collectionName = colid;
           }
-          this.collection.getDocuments(this.getDocsCallback.bind(this));
-          this.collectionModel = this.collectionsStore.get(colid);
-
+          // check here if filters are active or not
+          // documents will be loaded differently if filter is active
+          if (self.restoredFilters.length === 0) {
+            this.collection.getDocuments(this.getDocsCallback.bind(this));
+            this.collectionModel = this.collectionsStore.get(colid);
+            // render pagination
+            this.renderPaginationElements();
+          }
           // fill navigation and breadcrumb
           this.breadcrumb();
-          // render pagination
-          this.renderPaginationElements();
         }
       }.bind(this);
 
@@ -396,11 +399,13 @@
           }
 
           if ($('#attribute_name' + i).val() !== '') {
-            filters.push({
-              attribute: $('#attribute_name' + i).val(),
-              operator: $('#operator' + i).val(),
-              value: value
-            });
+            if ($('#operator' + i).val() !== undefined) {
+              filters.push({
+                attribute: $('#attribute_name' + i).val(),
+                operator: $('#operator' + i).val(),
+                value: value
+              });
+            }
           }
         }
       }
@@ -419,8 +424,12 @@
       });
       this.collection.setToFirst();
 
-      this.collection.getDocuments(this.getDocsCallback.bind(this));
-      this.markFilterToggle();
+      if (this.getFilterContent().length === 0) {
+        this.resetView();
+      } else {
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
+        this.markFilterToggle();
+      }
     },
 
     restoreFilter: function () {
@@ -939,7 +948,6 @@
       } catch (ex) {
         url = 'collection/' + this.collection.collectionID + '/' + encodeURIComponent(doc);
       }
-
       window.location.hash = url;
     },
 

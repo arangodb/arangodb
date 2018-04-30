@@ -43,10 +43,11 @@ std::string const planColPrefix = "/Plan/Collections/";
 std::string const curColPrefix = "/Current/Collections/";
 std::string const blockedServersPrefix = "/Supervision/DBServers/";
 std::string const blockedShardsPrefix = "/Supervision/Shards/";
-std::string const serverStatePrefix = "/Sync/ServerStates/";
 std::string const planVersion = "/Plan/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
+std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
+std::string const asyncReplTransientPrefix = "/AsyncReplication/";
 
 }  // namespace arangodb::consensus
 }  // namespace arangodb
@@ -67,7 +68,7 @@ Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
 Job::~Job() {}
 
 // this will be initialized in the AgencyFeature
-std::string Job::agencyPrefix = "/arango";
+std::string Job::agencyPrefix = "arango";
 
 bool Job::finish(
   std::string const& server, std::string const& shard,
@@ -206,7 +207,7 @@ std::string Job::randomIdleGoodAvailableServer(Node const& snap,
 
 }
 
-
+/// @brief Get servers from plan, which are not failed or cleaned out
 std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
   std::vector<std::string> ret;
@@ -216,8 +217,8 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   for (auto const& srv : dbservers) {
     ret.push_back(srv.first);
   }
-  
-  // Remove cleaned servers from ist
+
+  // Remove cleaned servers from list
   try {
     for (auto const& srv :
            VPackArrayIterator(snapshot(cleanedPrefix).slice())) {
@@ -237,6 +238,20 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   
   return ret;
   
+}
+
+/// @brief Get servers from Supervision with health status GOOD
+std::vector<std::string> Job::healthyServers(arangodb::consensus::Node const& snapshot) {
+  std::vector<std::string> ret;
+  for (auto const& srv : snapshot(healthPrefix).children()) {
+    if (srv.second->has("Status")) {
+      VPackSlice hs = srv.second->get("Status").slice();
+      if (hs.isString() && hs.isEqualString(Supervision::HEALTH_STATUS_GOOD)) {
+        ret.emplace_back(srv.first);
+      }
+    }
+  }
+  return ret;
 }
 
 template<typename T> std::vector<size_t> idxsort (const std::vector<T> &v) {
@@ -404,9 +419,10 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   if (!job.has("type")) {
     return false;
   }
-  auto const& type = job("type").getString();
+  std::string type = job("type").getString();
 
-  if (type == "failedServer" || type == "failedLeader") {
+  if (type == "failedServer" || type == "failedLeader" ||
+      type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer") {
@@ -493,11 +509,12 @@ void Job::addPreconditionServerNotBlocked(Builder& pre, std::string const& serve
 	}
 }
 
-void Job::addPreconditionServerGood(Builder& pre, std::string const& server) {
-	pre.add(VPackValue(healthPrefix + server + "/Status"));
-	{ VPackObjectBuilder serverGood(&pre);
-		pre.add("old", VPackValue("GOOD"));
-	}
+void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
+                                      std::string const& health) {
+  pre.add(VPackValue(healthPrefix + server + "/Status"));
+  { VPackObjectBuilder serverGood(&pre);
+    pre.add("old", VPackValue(health));
+  }
 }
 
 void Job::addPreconditionShardNotBlocked(Builder& pre, std::string const& shard) {
@@ -537,14 +554,11 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   }
 }
 
-std::string Job::checkServerGood(Node const& snapshot,
-                                 std::string const& server) {
+std::string Job::checkServerHealth(Node const& snapshot,
+                                   std::string const& server) {
   if (!snapshot.has(healthPrefix + server + "/Status")) {
     return "UNCLEAR";
   }
-  if (snapshot(healthPrefix + server + "/Status").getString() != "GOOD") {
-    return "UNHEALTHY";
-  }
-  return "GOOD";
+  return snapshot(healthPrefix + server + "/Status").getString();
 }
 

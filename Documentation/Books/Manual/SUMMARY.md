@@ -1,11 +1,7 @@
 #
 # Summary
 #
-# * [First Steps](FirstSteps/README.md) #TODO
-#  * [Getting Familiar](FirstSteps/GettingFamiliar.md) #TODO
 * [Getting Started](GettingStarted/README.md)
-  # move to administration (command line options)?
-  # * [Install and run the server](FirstSteps/Arangod.md) #TODO
   * [Installing](GettingStarted/Installing/README.md)
     * [Linux](GettingStarted/Installing/Linux.md)
     * [Mac OS X](GettingStarted/Installing/MacOSX.md)
@@ -14,7 +10,6 @@
   * [Authentication](GettingStarted/Authentication.md)
   * [Accessing the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
-  # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
 * [Highlights](Highlights.md)
 #
@@ -24,7 +19,6 @@
   * [Limitations](Scalability/Limitations.md)
 #
 * [Data models & modeling](DataModeling/README.md)
-# * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
   * [Concepts](DataModeling/Concepts.md)
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)
@@ -42,7 +36,6 @@
     * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
-#  * [Modeling Relationships](DataModeling/ModelingRelationships.md)
 #
 * [Indexing](Indexing/README.md)
   * [Index Basics](Indexing/IndexBasics.md)
@@ -120,8 +113,6 @@
   * [Durability](Transactions/Durability.md)
   * [Limitations](Transactions/Limitations.md)
 #
-# Use cases / Advanced usage / Best practice (?)
-#
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/Single.md)
   * [Cluster](Deployment/Cluster.md)
@@ -148,7 +139,6 @@
   * [ArangoDB Shell](Administration/Arangosh/README.md)
     * [Shell Output](Administration/Arangosh/Output.md)
     * [Configuration](Administration/Arangosh/Configuration.md)
-    # relocate file?
     * [Details](GettingStarted/Arangosh.md)
   * [Arangoimp](Administration/Arangoimp.md)
   * [Arangodump](Administration/Arangodump.md)
@@ -186,8 +176,6 @@
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
     * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md)
   * [Sharding](Administration/Sharding/README.md)
-#    * [Authentication](Administration/Sharding/Authentication.md)
-#    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
   * [Upgrading](Administration/Upgrading/README.md)
     * [Upgrading to 3.3](Administration/Upgrading/Upgrading33.md)
     * [Upgrading to 3.2](Administration/Upgrading/Upgrading32.md)
@@ -209,7 +197,6 @@
 * [Architecture](Architecture/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
   * [Storage Engines](Architecture/StorageEngines.md)
-#  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
   * [Whats New in 3.3](ReleaseNotes/NewFeatures33.md)
@@ -261,6 +248,5 @@
         * [Delivering HTML Pages](Appendix/Deprecated/Actions/HtmlExample.md)
         * [Json Objects](Appendix/Deprecated/Actions/JsonExample.md)
         * [Modifying](Appendix/Deprecated/Actions/Modifying.md)
-  # Link to here from arangosh, actions, foxx, transactions
   * [Error codes and meanings](Appendix/ErrorCodes.md)
   * [Glossary](Appendix/Glossary.md)

@@ -52,7 +52,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 option(SKIP_PACKAGING "" OFF)
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "-static")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 endif()
 
 # be verbose about flags used
@@ -78,7 +78,7 @@ endif ()
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")
 if (NOT DEFINED ARANGODB_VERSION_REVISION)
-  set(ARANGODB_VERSION_REVISION   "5")
+  set(ARANGODB_VERSION_REVISION   "8")
 endif()
 
 set(ARANGODB_PACKAGE_REVISION   "1")

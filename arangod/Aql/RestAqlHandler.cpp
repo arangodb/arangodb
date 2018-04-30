@@ -111,14 +111,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   }
 
   // Now the query is ready to go, store it in the registry and return:
-  double ttl = 600.0;
-  bool found;
-  std::string const& ttlstring = _request->header("ttl", found);
-
-  if (found) {
-    ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
-  }
-
+ double ttl = _request->parsedValue("ttl", _queryRegistry->defaultTTL());
   _qId = TRI_NewTickServer();
   auto transactionContext = query->trx()->transactionContext().get();
 

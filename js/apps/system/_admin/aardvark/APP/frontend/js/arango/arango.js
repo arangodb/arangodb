@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, Joi, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage */
+/* global Blob, window, Joi, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -1029,26 +1029,60 @@
 
     download: function (url, callback) {
       $.ajax(url)
-        .success(function (result, dummy, request) {
-          if (callback) {
-            callback(result);
-            return;
-          }
+      .success(function (result, dummy, request) {
+        if (callback) {
+          callback(result);
+          return;
+        }
 
-          var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
-          var blobUrl = window.URL.createObjectURL(blob);
+        var blob = new Blob([JSON.stringify(result)], {type: request.getResponseHeader('Content-Type') || 'application/octet-stream'});
+        var blobUrl = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        document.body.appendChild(a);
+        a.style = 'display: none';
+        a.href = blobUrl;
+        a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
+        a.click();
+
+        window.setTimeout(function () {
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        }, 500);
+      });
+    },
+
+    downloadPost: function (url, body, callback, errorCB) {
+      var xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function () {
+        if (this.readyState === 4 && this.status === 200) {
+          if (callback) {
+            callback();
+          }
           var a = document.createElement('a');
+          a.download = this.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
           document.body.appendChild(a);
-          a.style = 'display: none';
+          var blobUrl = window.URL.createObjectURL(this.response);
           a.href = blobUrl;
-          a.download = request.getResponseHeader('Content-Disposition').replace(/.* filename="([^")]*)"/, '$1');
           a.click();
 
           window.setTimeout(function () {
             window.URL.revokeObjectURL(blobUrl);
             document.body.removeChild(a);
           }, 500);
-        });
+        } else {
+          if (this.readyState === 4) {
+            if (errorCB !== undefined) {
+              errorCB(this.status, this.statusText);
+            }
+          }
+        }
+      };
+      xhr.open('POST', url);
+      if (window.arangoHelper.getCurrentJwt()) {
+        xhr.setRequestHeader('Authorization', 'bearer ' + window.arangoHelper.getCurrentJwt());
+      }
+      xhr.responseType = 'blob';
+      xhr.send(body);
     },
 
     checkCollectionPermissions: function (collectionID, roCallback) {

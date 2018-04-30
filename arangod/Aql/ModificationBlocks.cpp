@@ -46,7 +46,8 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _outRegNew(ExecutionNode::MaxRegisterId),
       _collection(ep->_collection),
       _isDBServer(false),
-      _usesDefaultSharding(true) {
+      _usesDefaultSharding(true),
+      _countStats(ep->countStats()) {
 
   _trx->pinData(_collection->cid());
 
@@ -183,13 +184,17 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
                                      std::string const* errorMessage) {
   if (code == TRI_ERROR_NO_ERROR) {
     // update the success counter
-    ++_engine->_stats.writesExecuted;
+    if (_countStats) {
+      ++_engine->_stats.writesExecuted;
+    }
     return;
   }
 
   if (ignoreErrors) {
     // update the ignored counter
-    ++_engine->_stats.writesIgnored;
+    if (_countStats) {
+      ++_engine->_stats.writesIgnored;
+    }
     return;
   }
 
@@ -209,18 +214,24 @@ void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& 
   if (errorCounter.empty()) {
     // update the success counter
     // All successful.
-    _engine->_stats.writesExecuted += numBabies;
+    if (_countStats) {
+      _engine->_stats.writesExecuted += numBabies;
+    }
     return;
   }
   if (ignoreAllErrors) {
     for (auto const& pair : errorCounter) {
       // update the ignored counter
-      _engine->_stats.writesIgnored += pair.second;
+      if (_countStats) {
+        _engine->_stats.writesIgnored += pair.second;
+      }
       numBabies -= pair.second;
     }
 
     // update the success counter
-    _engine->_stats.writesExecuted += numBabies;
+    if (_countStats) {
+      _engine->_stats.writesExecuted += numBabies;
+    }
     return;
   }
   auto first = errorCounter.begin();
@@ -229,10 +240,14 @@ void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& 
     if (errorCounter.size() == 1) {
       // We only have Document not found. Fix statistics and ignore
       // update the ignored counter
-      _engine->_stats.writesIgnored += first->second;
+      if (_countStats) {
+        _engine->_stats.writesIgnored += first->second;
+      }
       numBabies -= first->second;
       // update the success counter
-      _engine->_stats.writesExecuted += numBabies;
+      if (_countStats) {
+        _engine->_stats.writesExecuted += numBabies;
+      }
       return;
     }
 

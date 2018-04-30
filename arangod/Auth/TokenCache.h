@@ -52,10 +52,10 @@ class TokenCache {
     friend class auth::TokenCache;
 
    public:
-    Entry() : _authenticated(false), _expiry(0) {}
+    explicit Entry() : _authenticated(false), _expiry(0) {}
 
     explicit Entry(std::string const& username, bool a, double t)
-        : _username(username), _authenticated(a), _expiry(t) {}
+        : _username(username), _authenticated(a), _expiry(t) {} 
 
     std::string const& username() const { return _username; }
     bool authenticated() const { return _authenticated; }
@@ -81,7 +81,7 @@ class TokenCache {
   /// set new jwt secret, regenerate _jetToken
   void setJwtSecret(std::string const&);
   std::string jwtSecret() const;
-  /// Get the jwt token, which should be used for communicatin
+  /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept {
     TRI_ASSERT(!_jwtToken.empty());
     return _jwtToken;
