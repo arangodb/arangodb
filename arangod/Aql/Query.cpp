@@ -1054,7 +1054,7 @@ void Query::prepareV8Context() {
   ISOLATE;
   TRI_ASSERT(isolate != nullptr);
 
-  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); _AQL.clearCaches(); }");
+  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); }");
   
   {
     v8::HandleScope scope(isolate); 

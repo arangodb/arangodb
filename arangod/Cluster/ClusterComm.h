@@ -371,9 +371,8 @@ struct ClusterCommRequest {
         requestType(type),
         path(path),
         body(body),
-        done(false) {
-    headerFields = std::move(headers);
-  }
+        headerFields(std::move(headers)),
+        done(false) {}
 
 
   void setHeaders(

@@ -30,7 +30,6 @@ using namespace arangodb::aql;
 Function::Function(std::string const& name,
                    char const* arguments, 
                    bool isDeterministic, bool canThrow, bool canRunOnDBServer,
-                   bool canPassArgumentsByReference,
                    FunctionImplementation implementation,
                    ExecutionCondition condition)
     : name(name),
@@ -39,7 +38,6 @@ Function::Function(std::string const& name,
       isDeterministic(isDeterministic),
       canThrow(canThrow),
       canRunOnDBServer(canRunOnDBServer),
-      canPassArgumentsByReference(canPassArgumentsByReference),
       implementation(implementation),
       condition(condition),
       conversions() {
@@ -50,7 +48,6 @@ Function::Function(std::string const& name,
                                      ", deterministic: " << isDeterministic << 
                                      ", canThrow: " << canThrow << 
                                      ", canRunOnDBServer: " << canRunOnDBServer << 
-                                     ", canPassArgumentsByReference: " << canPassArgumentsByReference << 
                                      ", hasCxxImplementation: " << (implementation != nullptr) << 
                                      ", hasConversions: " << !conversions.empty();
                                      
