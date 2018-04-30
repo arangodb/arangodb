@@ -325,7 +325,7 @@ void AqlFunctionFeature::addDateFunctions() {
 
 void AqlFunctionFeature::addMiscFunctions() {
   // misc functions
-  add({"FAIL", "|.", false, true, true });
+  add({"FAIL", "|.", false, true, true, &Functions::Fail});
   add({"PASSTHRU", ".", false, false, true, &Functions::Passthru});
   addAlias("NOOPT", "PASSTHRU");
   add({"V8", ".", true, false, true });
