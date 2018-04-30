@@ -42,8 +42,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <Utilities/Timers.h>
-
 namespace arangodb {
 Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     SingleCollectionTransaction* trx,
@@ -361,7 +359,6 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* col,
                              std::string const& keysId) {
-  //LOG_DEVEL << "enter handleSyncKeysRocksDB";
   std::string progress =
       "collecting local keys for collection '" + col->name() + "'";
   syncer.setProgress(progress);
@@ -373,7 +370,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   syncer.sendExtendBatch();
   syncer.sendExtendBarrier();
 
-  Utilities::timer getRemoteTimer("getRemote");
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const baseUrl = syncer.ReplicationUrl + "/keys";
 
@@ -421,10 +417,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
 
-  getRemoteTimer.release();
   // remove all keys that are below first remote key or beyond last remote key
   if (numChunks > 0) {
-    Utilities::timer numChunksTimer("numChunks");
     // first chunk
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
@@ -460,8 +454,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     LogicalCollection* coll = trx.documentCollection();
     auto iterator = createPrimaryIndexIterator(&trx, coll);
 
-    //LOG_DEVEL << "fresh iterator (remove keys) hasMore: " << std::boolalpha << iterator.hasMore();
-
     VPackBuilder builder;
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
@@ -486,7 +478,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   {
-    Utilities::timer fixMissingTimer("fixMissing");
     if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
@@ -646,8 +637,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             }
             VPackSlice doc(mmdr.vpack());
             VPackSlice revision = doc.get(StaticStrings::RevString);
-            TRI_ASSERT(revision.isUInt());
-            docRev = revision.getUInt();
+            TRI_ASSERT(revision.isString());
+            auto docRevRef = StringRef(revision);
+            docRev = TRI_StringToRid(docRevRef.data(),docRevRef.size(),false);
           }
           compareChunk(docKey, docRev);
         },

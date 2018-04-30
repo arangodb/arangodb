@@ -412,7 +412,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   uint64_t hash = 0x012345678;
 
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-    //read document - proably not neccessay failed check was not handled anyway
     highKey = RocksDBKey::primaryKey(rocksKey).toString();
 
     TRI_voc_rid_t docRev;
@@ -429,8 +428,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       }
       VPackSlice doc(_collection->mdr.vpack());
       VPackSlice revision = doc.get(StaticStrings::RevString);
-      TRI_ASSERT(revision.isUInt());
-      docRev = revision.getUInt();
+      TRI_ASSERT(revision.isString());
+      auto docRevRef = StringRef(revision);
+      docRev = TRI_StringToRid(docRevRef.data(),docRevRef.size(),false);
     }
 
     // set type
@@ -549,8 +549,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
       }
       VPackSlice doc(_collection->mdr.vpack());
       VPackSlice revision = doc.get(StaticStrings::RevString);
-      TRI_ASSERT(revision.isUInt());
-      docRev = revision.getUInt();
+      TRI_ASSERT(revision.isString());
+      auto keyRef = StringRef(revision);
+      docRev = TRI_StringToRid(keyRef.data(),keyRef.size(),false);
     }
 
     StringRef docKey(RocksDBKey::primaryKey(rocksKey));
