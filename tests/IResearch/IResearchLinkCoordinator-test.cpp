@@ -264,7 +264,7 @@ SECTION("test_create_drop") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\", \"replicationFactor\":0 }"
+      "{ \"name\": \"testCollection\", \"replicationFactor\":1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(

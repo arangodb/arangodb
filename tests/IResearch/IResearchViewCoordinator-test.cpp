@@ -744,7 +744,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -760,7 +760,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -776,7 +776,7 @@ SECTION("test_update_links_partial_remove") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1309,7 +1309,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1325,7 +1325,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1341,7 +1341,7 @@ SECTION("test_update_links_partial_add") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1880,7 +1880,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1896,7 +1896,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -1912,7 +1912,7 @@ SECTION("test_update_links_replace") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2447,7 +2447,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection1\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2463,7 +2463,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "2";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"2\", \"planId\": \"2\",  \"name\": \"testCollection2\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2479,7 +2479,7 @@ SECTION("test_update_links_clear") {
     auto const collectionId = "3";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"3\", \"planId\": \"3\",  \"name\": \"testCollection3\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
@@ -2880,7 +2880,7 @@ SECTION("test_drop_link") {
     auto const collectionId = "1";
 
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 0 }"
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", \"replicationFactor\": 1 }"
     );
 
     CHECK(TRI_ERROR_NO_ERROR == ci->createCollectionCoordinator(
