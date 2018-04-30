@@ -1,6 +1,9 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
 
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
+
 * fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
 
 * fixed internal issue #2150: UI - loading a saved query does not update the list of bind parameters
@@ -10,7 +13,6 @@ v3.3.9 (xxxx-xx-xx)
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 * added `query` and `aql.literal` helpers to `@arangodb` module.
-
 
 v3.3.8 (2018-04-24)
 -------------------
