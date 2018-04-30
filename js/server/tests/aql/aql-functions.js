@@ -35,6 +35,7 @@ var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
+var internal = require('internal');
 
 var sortObj = function (obj) {
   var result = { };
@@ -86,7 +87,70 @@ function ahuacatlFunctionsTestSuite () {
     tearDownAll : function () {
       db._drop(collectionName);
     },
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
 
+    testFail : function () {
+      try {
+        db._query("RETURN FAIL()");
+        fail();
+      }
+      catch(err) {
+        var expected = internal.errors.ERROR_QUERY_FAIL_CALLED.code;
+        assertEqual(expected, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFailInt : function () {
+      try {
+        db._query("RETURN FAIL(1234)");
+        fail();
+      }
+      catch(err) {
+        var expected = internal.errors.ERROR_QUERY_FAIL_CALLED.code;
+        assertEqual(expected, err.errorNum);
+        assertTrue(err.errorMessage.search("1234") === -1);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFailObj : function () {
+      try {
+        db._query("RETURN FAIL({})");
+        fail();
+      }
+      catch(err) {
+        var expected = internal.errors.ERROR_QUERY_FAIL_CALLED.code;
+        assertEqual(expected, err.errorNum);
+        assertTrue(err.errorMessage.search("{}") === -1);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFailMessage : function () {
+      try {
+        db._query("RETURN FAIL('bla')");
+        fail();
+      }
+      catch(err) {
+        var expected = internal.errors.ERROR_QUERY_FAIL_CALLED.code;
+        assertEqual(expected, err.errorNum);
+        assertTrue(err.errorMessage.search("bla") !== -1);
+      }
+    },
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test first function
 ////////////////////////////////////////////////////////////////////////////////
