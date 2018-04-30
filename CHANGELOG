@@ -1,6 +1,9 @@
 devel
 -----
 
+* added `--json` option to arangovpack, allowing to treat its input as plain JSON data
+  make arangovpack work without any configuration file
+
 * added experimental arangodb startup option `--javascript.enabled` to enable/disable the initialization 
   of the V8 JavaScript engine. Only expected to work on single-servers and agency deployments
 
