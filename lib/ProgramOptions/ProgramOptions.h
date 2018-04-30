@@ -184,9 +184,9 @@ class ProgramOptions {
   void printSectionsHelp() const;
   
   // returns a VPack representation of the option values
-  arangodb::velocypack::Builder toVPack(bool onlyTouched,
+  arangodb::velocypack::Builder toVPack(bool onlyTouched, bool detailed,
                        std::unordered_set<std::string> const& exclude) const;
-
+  
   // translate a shorthand option
   std::string translateShorthand(std::string const& name) const;
   

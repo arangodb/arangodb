@@ -25,9 +25,26 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+
+class StorageEngine;
+
 class CheckVersionFeature final
     : public application_features::ApplicationFeature {
+ private: 
+  enum CheckVersionResult : int {
+    NO_SERVER_VERSION = -5,
+    NO_VERSION_FILE = -4,
+    CANNOT_READ_VERSION_FILE = -3,
+    CANNOT_PARSE_VERSION_FILE = -2,
+    IS_CLUSTER = -1,
+    VERSION_MATCH = 1,
+    DOWNGRADE_NEEDED = 2,
+    UPGRADE_NEEDED = 3,
+  };
+
  public:
   explicit CheckVersionFeature(
       application_features::ApplicationServer* server, int* result,
@@ -43,6 +60,10 @@ class CheckVersionFeature final
 
  private:
   void checkVersion();
+
+  CheckVersionResult checkVersionFileForDB(TRI_vocbase_t* vocbase,
+                                           StorageEngine* engine,
+                                           uint32_t currentVersion) const;
 
  private:
   int* _result;

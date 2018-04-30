@@ -353,7 +353,23 @@
           // return false;
         }
 
-        const versionValues = JSON.parse(versionInfo);
+        let versionValues = '';
+        try {
+          versionValues = JSON.parse(versionInfo);
+        } catch (err) {
+          let opts = internal.options();
+          if (opts['database.ignore-datafile-errors']) {
+            // in case option --database.ignore-datafile-errors is set, we
+            // will automatically heal the version file
+            versionValues = { version: currentVersion, tasks: [] };
+            logger.warn('VERSION file "' + versionFile + '" contains invalid input. automatically restoring it');
+          } else {
+            // log an error and bail out
+            logger.error('VERSION file "' + versionFile + '" contains invalid input: ' + versionInfo);
+            logger.warn('please repair this file maually, or have it fixed automatically by starting the server with option `--database.ignore-datafile-errors true`');
+            return false;
+          }
+        }
 
         if (versionValues && versionValues.hasOwnProperty('version') && !isNaN(versionValues.version)) {
           lastVersion = parseFloat(versionValues.version);

@@ -18,9 +18,9 @@ x-content-type-options: nosniff
   <span class="hljs-string">"result"</span> : [ 
     { 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11779"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11779"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WjL9-xO--B"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11968"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11968"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WtcujnO--B"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.002</span>, 
         <span class="hljs-number">0</span> 
@@ -29,9 +29,9 @@ x-content-type-options: nosniff
     }, 
     { 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">222.38985328911744</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11785"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11785"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WjL9-xO--F"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11974"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11974"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WtcujnO--F"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">0.002</span>, 
         <span class="hljs-number">0</span> 
@@ -40,9 +40,9 @@ x-content-type-options: nosniff
     }, 
     { 
       <span class="hljs-string">"distance"</span> : <span class="hljs-number">444.779706578235</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11776"</span>, 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11776"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WjL9-xO--_"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11965"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11965"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WtcujnO--_"</span>, 
       <span class="hljs-string">"loc"</span> : [ 
         <span class="hljs-number">-0.004</span>, 
         <span class="hljs-number">0</span> 

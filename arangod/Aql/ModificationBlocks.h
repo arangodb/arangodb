@@ -73,6 +73,10 @@ class ModificationBlock : public ExecutionBlock {
 
   /// @brief whether or not the collection uses the default sharding attributes
   bool _usesDefaultSharding;
+
+  /// @brief whether this block contributes to statistics.
+  ///        Will only be disabled in SmartGraphCase.
+  bool _countStats;
 };
 
 class RemoveBlock : public ModificationBlock {

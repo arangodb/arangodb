@@ -9,26 +9,26 @@ Updates the data of the specific vertex in the collection.
 
 @RESTURLPARAMETERS
 
-@RESTPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
-@RESTPARAM{collection-name, string, required} 
+@RESTURLPARAM{collection-name,string,required}
 The name of the vertex collection the vertex belongs to.
 
-@RESTPARAM{vertex-key, string, required} 
+@RESTURLPARAM{vertex-key,string,required} 
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{waitForSync, boolean, optional}
+@RESTQUERYPARAM{waitForSync,boolean,optional}
 Define if the request should wait until synced to disk.
 
-@RESTPARAM{keepNull, boolean, optional}
+@RESTQUERYPARAM{keepNull,boolean,optional}
 Define if values set to null should be stored. By default the key is not removed from the document.
 
 @RESTHEADERPARAMETERS
 
-@RESTPARAM{if-match, string, optional}
+@RESTHEADERPARAM{if-match,string,optional}
 If the "If-Match" header is given, then it must contain exactly one Etag. The document is updated,
 if it has the same revision as the given Etag. Otherwise a HTTP 412 is returned. As an alternative
 you can supply the Etag in an attribute rev in the URL.

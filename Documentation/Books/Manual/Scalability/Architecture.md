@@ -118,7 +118,7 @@ which are suitable for different usage scenarios:
     latency. Essentially, this moves some of the database distribution
     logic to the machine where the client runs.
 
-These for shall suffice for now. The important piece of information here
+These shall suffice for now. The important piece of information here
 is that the coordinator layer can be scaled and deployed independently
 from the DBserver layer.
 
@@ -219,7 +219,7 @@ the full power of a multi-model database actually mixing the various
 data models. There are enormous efficiency benefits to be reaped by
 being able to use a single technology for various roles in a project.
 
-To simplify live of the devops in such a scenario we try as much as
+To simplify life of the devops in such a scenario we try as much as
 possible to use a zero administration approach for ArangoDB. A running
 ArangoDB cluster is resilient against failures and essentially repairs
 itself in case of temporary failures. See the next section for further
