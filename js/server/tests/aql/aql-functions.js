@@ -123,7 +123,7 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test first function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testFailOjb : function () {
+    testFailObj : function () {
       try {
         db._query("RETURN FAIL({})");
         fail();
