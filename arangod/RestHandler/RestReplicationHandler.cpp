@@ -45,6 +45,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -414,6 +415,11 @@ RestStatus RestReplicationHandler::execute() {
         }
         handleCommandApplierGetState();
       }
+    } else if (command == "applier-state-all") {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      handleCommandApplierGetStateAll();
     } else if (command == "clusterInventory") {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -1929,6 +1935,33 @@ void RestReplicationHandler::handleCommandApplierGetState() {
   builder.openObject();
   applier->toVelocyPack(builder);
   builder.close();
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JSF_get_api_replication_applier_state_all
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplierGetStateAll() {
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  VPackBuilder builder;
+  builder.openObject();
+  for (auto& name : databaseFeature->getDatabaseNames()) {
+    VPackBuilder tmpBuilder;
+    tmpBuilder.openObject();
+    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+    ReplicationApplier* applier = vocbase->replicationApplier();
+
+    if (applier == nullptr) {
+      return;
+    }
+    applier->toVelocyPack(tmpBuilder);
+    tmpBuilder.close();
+    builder.add(name, tmpBuilder.slice());
+  }
+  builder.close();
+
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
