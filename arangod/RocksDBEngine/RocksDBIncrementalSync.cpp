@@ -465,11 +465,6 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     VPackBuilder builder;
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-          TRI_ASSERT(rocksValue.size()
-                      == sizeof(std::uint64_t) /*doc id*/
-                       +  sizeof(TRI_voc_rid_t) /*revision id*/
-                    );
-
           StringRef docKey(RocksDBKey::primaryKey(rocksKey));
           if (docKey.compare(lowRef) < 0) {
             builder.clear();
@@ -636,13 +631,24 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     auto iterator = createPrimaryIndexIterator(&trx, coll);
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-          TRI_ASSERT(rocksValue.size()
-                      >= sizeof(std::uint64_t) /*doc id*/
-                       +  sizeof(TRI_voc_rid_t) /*revision id*/
-                    );
-
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
-          TRI_voc_rid_t docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+          TRI_voc_rid_t docRev;
+          if(rocksValue.size()
+             >= sizeof(std::uint64_t) /*doc id*/
+             +  sizeof(TRI_voc_rid_t) /*revision id*/
+          ) {
+            docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+          } else { // for collections that do not have the revisionId in the value
+            auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
+            if(col->readDocument(&trx, documentId, mmdr) == false) {
+              TRI_ASSERT(false);
+              return;
+            }
+            VPackSlice doc(mmdr.vpack());
+            VPackSlice revision = doc.get(StaticStrings::RevString);
+            TRI_ASSERT(revision.isUInt());
+            docRev = revision.getUInt();
+          }
           compareChunk(docKey, docRev);
         },
         std::numeric_limits<std::uint64_t>::max()); // no limit on documents

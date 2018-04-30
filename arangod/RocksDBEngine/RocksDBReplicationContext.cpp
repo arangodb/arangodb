@@ -414,7 +414,24 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     //read document - proably not neccessay failed check was not handled anyway
     highKey = RocksDBKey::primaryKey(rocksKey).toString();
-    TRI_voc_rid_t docRev = uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+
+    TRI_voc_rid_t docRev;
+    if(rocksValue.size()
+       >= sizeof(std::uint64_t) /*doc id*/
+       +  sizeof(TRI_voc_rid_t) /*revision id*/
+    ) {
+      docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+    } else { // for collections that do not have the revisionId in the value
+      auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
+      if(_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
+        TRI_ASSERT(false);
+        return;
+      }
+      VPackSlice doc(_collection->mdr.vpack());
+      VPackSlice revision = doc.get(StaticStrings::RevString);
+      TRI_ASSERT(revision.isUInt());
+      docRev = revision.getUInt();
+    }
 
     // set type
     if (lowKey.empty()) {
@@ -518,8 +535,24 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   }
 
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-    TRI_ASSERT(rocksValue.size() > sizeof(TRI_voc_rid_t));
-    TRI_voc_rid_t docRev = uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+    TRI_voc_rid_t docRev;
+    if(rocksValue.size()
+       >= sizeof(std::uint64_t) /*doc id*/
+       +  sizeof(TRI_voc_rid_t) /*revision id*/
+    ) {
+      docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
+    } else { // for collections that do not have the revisionId in the value
+      auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
+      if(_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
+        TRI_ASSERT(false);
+        return;
+      }
+      VPackSlice doc(_collection->mdr.vpack());
+      VPackSlice revision = doc.get(StaticStrings::RevString);
+      TRI_ASSERT(revision.isUInt());
+      docRev = revision.getUInt();
+    }
+
     StringRef docKey(RocksDBKey::primaryKey(rocksKey));
     b.openArray();
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
