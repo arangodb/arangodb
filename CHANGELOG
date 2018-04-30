@@ -1,6 +1,10 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
 
+* fixed internal issue #2147 - fixed database filter in UI
+
+* fixed issue #4934: Wrong used GeoIndex depending on FILTER order
+
 * added `query` and `aql.literal` helpers to `@arangodb` module.
 
 
