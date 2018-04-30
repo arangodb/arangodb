@@ -1,6 +1,8 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
 
+* fixed internal issue #2150: UI - loading a saved query does not update the list of bind parameters
+
 * fixed internal issue #2147 - fixed database filter in UI
 
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
