@@ -62,14 +62,14 @@ For the RRD we will go pretty much with defaults:
 ### cURL JSON
 
 `Collectd` comes with a wide range of metric aggregation plug-ins.
-Many tools today use [JSON](http://json.org) as data formating grammar; so does ArangoDB.
+Many tools today use [JSON](http://json.org) as data formatting grammar; so does ArangoDB.
 
 Therefore a plug-in offering to fetch JSON documents via HTTP is the perfect match to query ArangoDBs [administrative Statistics interface](../../HTTP/AdministrationAndMonitoring/#read-the-statistics):
 
     # Load the plug-in:
     LoadPlugin curl_json
     # we need to use our own types to generate individual names for our gauges:
-    # TypesDB "/etc/collectd/collectd.conf.d/arangodb_types.db"
+    # TypesDB "/etc/collectd/arangodb_types.db"
     <Plugin curl_json>
       # Adjust the URL so collectd can reach your arangod:
       <URL "http://localhost:8529/_db/_system/_admin/statistics">
@@ -244,7 +244,7 @@ Therefore a plug-in offering to fetch JSON documents via HTTP is the perfect mat
       </URL> 
     </Plugin> 
 
-To circumvent the shortcoming of the curl_JSON plug-in to only take the last path element as name for the metric, we need to give them a name using our own `types.db` file in `/etc/collectd/collectd.conf.d/arangodb_types.db`:
+To circumvent the shortcoming of the curl_JSON plug-in to only take the last path element as name for the metric, we need to give them a name using our own `types.db` file in `/etc/collectd/arangodb_types.db`:
 
     client_totalTime_count           value:GAUGE:0:9223372036854775807
     client_totalTime_sum             value:GAUGE:U:U
@@ -273,6 +273,12 @@ To circumvent the shortcoming of the curl_JSON plug-in to only take the last pat
     client_ioTime_count              value:GAUGE:0:9223372036854775807
     client_ioTime_sum                value:GAUGE:U:U
     client_ioTime_counts0            value:GAUGE:U:U
+
+Please note that you probably need to uncomment this line from the main collectd.conf: 
+
+    # TypesDB "/usr/share/collectd/types.db" "/etc/collectd/my_types.db"
+
+in order to make it still load its main types definition file.
 
 ### Rolling your own
 
