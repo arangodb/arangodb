@@ -333,6 +333,9 @@ static void JS_WriteAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   JS_APIAgency("transact", args);
 }
+static void JS_TransientAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  JS_APIAgency("transient", args);
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1616,8 +1619,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string destination;
   std::string path;
   auto body = std::make_shared<std::string>();
-  auto headerFields =
-      std::make_unique<std::unordered_map<std::string, std::string>>();
+  std::unordered_map<std::string, std::string> headerFields;
   ClientTransactionID clientTransactionID;
   CoordTransactionID coordTransactionID;
   double timeout;
@@ -1625,7 +1627,7 @@ static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool singleRequest = false;
 
   PrepareClusterCommRequest(args, reqType, destination, path, *body,
-                            *headerFields, clientTransactionID,
+                            headerFields, clientTransactionID,
                             coordTransactionID, timeout, singleRequest,
                             initTimeout);
 
@@ -1994,6 +1996,7 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "read"), JS_ReadAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"), JS_WriteAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "transact"), JS_TransactAgency);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "transient"), JS_TransientAgency);
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "cas"), JS_CasAgency);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "createDirectory"),

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
+/// disclaimer
 ///
 /// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
@@ -17,43 +17,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "QueryResult.h"
+#include "CriticalThread.h"
+#include "HeartbeatThread.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-using namespace arangodb::aql;
+using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief builds the "extra" attribute values from the result.
+/// @brief static object to record thread crashes.  it is static so that
+///        it can contain information about threads that crash before HeartbeatThread
+///        starts (i.e. HeartbeatThread starts late).  this list is intentionally
+///        NEVER PURGED so that it can be reposted to logs regularly
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> QueryResult::extra() const {
-  // build "extra" attribute
-  auto extra = std::make_shared<VPackBuilder>();
-  try {
-    VPackObjectBuilder b(extra.get());
-    if (stats != nullptr) {
-      VPackSlice const value = stats->slice();
-      if (!value.isNone()) {
-        extra->add("stats", value);
-      }
-    }
-    if (profile != nullptr) {
-      extra->add(VPackValue("profile"));
-      extra->add(profile->slice());
-    }
-    if (warnings == nullptr) {
-      extra->add("warnings", VPackSlice::emptyArraySlice());
-    } else {
-      extra->add(VPackValue("warnings"));
-      extra->add(warnings->slice());
-    }
-  } catch (...) {
-    return nullptr;
-  }
-  return extra;
+void CriticalThread::crashNotification(std::exception const& ex)
+{
+  HeartbeatThread::recordThreadDeath(name());
 }

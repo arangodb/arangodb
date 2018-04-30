@@ -1002,9 +1002,8 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = TRI_ERROR_INTERNAL;
 
-  uint64_t numBytesTransferred = 0;
-
   try {
+    uint64_t numBytesTransferred = 0;
     auto en = static_cast<MMFilesEngine*>(engine);
     res = en->transferMarkers(collection, cache.get(), operations, numBytesTransferred);
 

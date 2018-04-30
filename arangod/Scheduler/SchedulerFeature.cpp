@@ -55,7 +55,6 @@ SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("Random");
@@ -134,12 +133,13 @@ void SchedulerFeature::start() {
 
   V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  dealer->defineContextUpdate(
-      [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-        TRI_InitV8Dispatcher(isolate, context);
-      },
-      nullptr);
+  if (dealer->isEnabled()) {
+    dealer->defineContextUpdate(
+        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+          TRI_InitV8Dispatcher(isolate, context);
+        },
+        nullptr);
+  }
 }
 
 void SchedulerFeature::beginShutdown() {

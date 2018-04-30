@@ -1920,10 +1920,12 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       try {
         auto coll =
         ClusterInfo::instance()->getCollection(vocbase->name(), name);
-        if (coll->isSystem()) {
+
+        if (coll->system()) {
           TRI_V8_THROW_EXCEPTION_USAGE(
                                        "Cannot use pregel on system collection");
         }
+
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
         }
@@ -1943,16 +1945,19 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::vector<CollectionID> edgeColls;
+
   // load edge collection
   for (std::string const& name : paramEdges) {
     if (ss->isCoordinator()) {
       try {
         auto coll =
         ClusterInfo::instance()->getCollection(vocbase->name(), name);
-        if (coll->isSystem()) {
+
+        if (coll->system()) {
           TRI_V8_THROW_EXCEPTION_USAGE(
                                        "Cannot use pregel on system collection");
         }
+
         if (!coll->isSmart()) {
           std::vector<std::string> eKeys = coll->shardKeys();
           if ( eKeys.size() != 1 || eKeys[0] != "vertex") {
@@ -1961,11 +1966,14 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                          "smart graphs");
           }
         }
+
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
           TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
         }
+
         // smart edge collections contain multiple actual collections
         std::vector<std::string> actual = coll->realNamesForRead();
+
         edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
       } catch (...) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);

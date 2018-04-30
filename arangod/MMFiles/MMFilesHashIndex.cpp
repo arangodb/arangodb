@@ -259,14 +259,13 @@ void MMFilesHashIndexIterator::reset() {
 MMFilesHashIndexIteratorVPack::MMFilesHashIndexIteratorVPack(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesHashIndex const* index,
-    std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
+    std::unique_ptr<arangodb::velocypack::Builder> searchValues)
     : IndexIterator(collection, trx, index),
       _index(index),
-      _searchValues(searchValues.get()),
+      _searchValues(std::move(searchValues)),
       _iterator(_searchValues->slice()),
       _buffer(),
       _posInBuffer(0) {
-  searchValues.release();  // now we have ownership for searchValues
 }
 
 MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {

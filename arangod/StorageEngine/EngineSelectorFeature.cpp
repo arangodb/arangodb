@@ -42,7 +42,6 @@ EngineSelectorFeature::EngineSelectorFeature(
       _engine("auto"), 
       _hasStarted(false) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("DatabasePath");
   startsAfter("Greetings");
   startsAfter("Logger");

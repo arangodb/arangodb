@@ -221,7 +221,7 @@ class TransactionState {
 
   ServerState::RoleEnum const _serverRole;  // role of the server
 
-  CollectionNameResolver* _resolver;
+  CollectionNameResolver _resolver;
 
   transaction::Hints _hints;  // hints;
   int _nestingLevel;

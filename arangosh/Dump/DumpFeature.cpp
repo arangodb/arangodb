@@ -73,7 +73,7 @@ namespace {
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(
     arangodb::httpclient::SimpleHttpClient& client,
-    std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
+    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> const& response) {
   using arangodb::basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
@@ -612,8 +612,8 @@ void DumpFeature::validateOptions(
     _outputPath.pop_back();
   }
 
-  auto clamped =
-      boost::algorithm::clamp(_threadCount, 1, 4 * TRI_numberProcessors());
+  uint32_t clamped = boost::algorithm::clamp(
+      _threadCount, 1, 4 * static_cast<uint32_t>(TRI_numberProcessors()));
   if (_threadCount != clamped) {
     LOG_TOPIC(WARN, Logger::FIXME) << "capping --threads value to " << clamped;
     _threadCount = clamped;

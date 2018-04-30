@@ -314,7 +314,7 @@ bool RestQueryHandler::parseQuery() {
 
   Query query(
     false,
-    &_vocbase,
+    _vocbase,
     QueryString(queryString),
     nullptr,
     nullptr,
@@ -349,8 +349,8 @@ bool RestQueryHandler::parseQuery() {
 
     result.add("ast", parseResult.result->slice());
 
-    if (parseResult.warnings != nullptr) {
-      result.add("warnings", parseResult.warnings->slice());
+    if (parseResult.extra && parseResult.extra->slice().hasKey("warnings")) {
+      result.add("warnings", parseResult.extra->slice().get("warnings"));
     }
   }
 

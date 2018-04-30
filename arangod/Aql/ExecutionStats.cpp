@@ -23,8 +23,10 @@
 
 #include "ExecutionStats.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -39,13 +41,24 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("filtered", VPackValue(filtered));
   builder.add("httpRequests", VPackValue(httpRequests));
-
   if (reportFullCount) {
     // fullCount is exceptional, as it may be hidden
     builder.add("fullCount", VPackValue(fullCount));
   }
-      
   builder.add("executionTime", VPackValue(executionTime));
+  
+  if (!nodes.empty()) {
+    builder.add("nodes", VPackValue(VPackValueType::Array));
+    for (std::pair<size_t, ExecutionStats::Node> const& pair : nodes) {
+      builder.openObject();
+      builder.add("id", VPackValue(pair.first));
+      builder.add("calls", VPackValue(pair.second.calls));
+      builder.add("items", VPackValue(pair.second.items));
+      builder.add("runtime", VPackValue(pair.second.runtime));
+      builder.close();
+    }
+    builder.close();
+  }
   builder.close();
 }
 
@@ -60,6 +73,29 @@ void ExecutionStats::toVelocyPackStatic(VPackBuilder& builder) {
   builder.add("fullCount", VPackValue(0));
   builder.add("executionTime", VPackValue(0.0));
   builder.close();
+}
+
+/// @brief sumarize two sets of ExecutionStats
+void ExecutionStats::add(ExecutionStats const& summand) {
+  writesExecuted += summand.writesExecuted;
+  writesIgnored += summand.writesIgnored;
+  scannedFull += summand.scannedFull;
+  scannedIndex += summand.scannedIndex;
+  filtered += summand.filtered;
+  httpRequests += summand.httpRequests;
+  if (summand.fullCount > 0) {
+    fullCount += summand.fullCount;
+  }
+  // intentionally no modification of executionTime
+  
+  for(auto const& pair : summand.nodes) {
+    auto it = nodes.find(pair.first);
+    if (it != nodes.end()) {
+      it->second += pair.second;
+    } else {
+      nodes.emplace(pair);
+    }
+  }
 }
 
 ExecutionStats::ExecutionStats()
@@ -94,5 +130,17 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
     fullCount = slice.get("fullCount").getNumber<int64_t>();
   } else {
     fullCount = 0;
+  }
+      
+  // note: node stats are optional
+  if (slice.hasKey("nodes")) {
+    ExecutionStats::Node node;
+    for (VPackSlice val : VPackArrayIterator(slice.get("nodes"))) {
+      size_t nid = val.get("id").getNumber<size_t>();
+      node.calls = val.get("calls").getNumber<size_t>();
+      node.items = val.get("items").getNumber<size_t>();
+      node.runtime = val.get("runtime").getNumber<double>();
+      nodes.emplace(nid, node);
+    }
   }
 }

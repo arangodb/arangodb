@@ -601,7 +601,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   uint64_t lastWrittenTick = 0;         // lastTick at the end of a write batch
   uint64_t latestTick = db->GetLatestSequenceNumber();
 
-  auto handler = std::make_unique<MyWALParser>(filter, func);
+  MyWALParser handler(filter, func);
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
 
   rocksdb::Status s;
@@ -624,7 +624,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   // never read the full writebatch
   LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "WAL tailing call. tick start: " << tickStart << ", tick end: " << tickEnd << ", chunk size: " << chunkSize;
   while (iterator->Valid() && lastTick <= tickEnd &&
-         handler->responseSize() < chunkSize) {
+         handler.responseSize() < chunkSize) {
     s = iterator->status();
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ROCKSDB) << "error during WAL scan: "
@@ -650,15 +650,15 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
       break;  // cancel out
     }
 
-    handler->startNewBatch(batch.sequence);
-    s = batch.writeBatchPtr->Iterate(handler.get());
+    handler.startNewBatch(batch.sequence);
+    s = batch.writeBatchPtr->Iterate(&handler);
 
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ROCKSDB) << "error during WAL scan: "
                                       << s.ToString();
       break;  // s is considered in the end
     }
-    lastWrittenTick = handler->endBatch();  // end of the batch
+    lastWrittenTick = handler.endBatch();  // end of the batch
 
     TRI_ASSERT(lastWrittenTick >= lastTick);
     iterator->Next();

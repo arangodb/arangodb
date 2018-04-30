@@ -359,15 +359,16 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   
   V8DealerFeature* dealer =
   application_features::ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  
-  b.add("v8Context", VPackValue(VPackValueType::Object, true));
-  auto v8Counters = dealer->getCurrentContextNumbers();
-  b.add( "available", VPackValue(static_cast<int32_t>(v8Counters.available)));
-  b.add( "busy", VPackValue(static_cast<int32_t>(v8Counters.busy)));
-  b.add( "dirty", VPackValue(static_cast<int32_t>(v8Counters.dirty)));
-  b.add( "free", VPackValue(static_cast<int32_t>(v8Counters.free)));
-  b.add( "max", VPackValue(static_cast<int32_t>(v8Counters.max)));
-  b.close();
+  if (dealer->isEnabled()) {
+    b.add("v8Context", VPackValue(VPackValueType::Object, true));
+    auto v8Counters = dealer->getCurrentContextNumbers();
+    b.add( "available", VPackValue(static_cast<int32_t>(v8Counters.available)));
+    b.add( "busy", VPackValue(static_cast<int32_t>(v8Counters.busy)));
+    b.add( "dirty", VPackValue(static_cast<int32_t>(v8Counters.dirty)));
+    b.add( "free", VPackValue(static_cast<int32_t>(v8Counters.free)));
+    b.add( "max", VPackValue(static_cast<int32_t>(v8Counters.max)));
+    b.close();
+  }
   
   b.add("threads", VPackValue(VPackValueType::Object, true));
   

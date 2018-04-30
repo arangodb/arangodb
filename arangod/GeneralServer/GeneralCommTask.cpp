@@ -170,7 +170,7 @@ void GeneralCommTask::executeRequest(
         response->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
 
-      addResponse(response.get(), nullptr);
+      addResponse(*response, nullptr);
       return;
     } else {
       handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request,
@@ -304,7 +304,7 @@ void GeneralCommTask::handleRequestDirectly(
     CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
     _lock.assertLockedByCurrentThread();
 
-    addResponse(h->response(), stat);
+    addResponse(*h->response(), stat);
   });
 
   HandlerWorkStack monitor(handler);
@@ -358,7 +358,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
       !StringUtils::isPrefix(path, ApiUser)) {
     events::NotAuthorized(request);
     result = rest::ResponseCode::UNAUTHORIZED;
-    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Access forbidden to " << path;
+    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
   }
 
   // mop: inside the authenticateRequest() request->user will be populated
@@ -390,7 +390,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
           // simon: upgrade rights for Foxx apps. FIXME
           result = rest::ResponseCode::OK;
           vc->forceSuperuser();
-          LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Upgrading rights for " << path;
+          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
         }
       }
     }

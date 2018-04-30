@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,29 +42,41 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
 
 FailedLeader::FailedLeader(
   Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
-  std::string const& jobId) : Job(status, snapshot, agent, jobId) {
-  
+  std::string const& jobId)
+  : Job(status, snapshot, agent, jobId) {
+
   // Get job details from agency:
-  try {
-    std::string path = pos[status] + _jobId + "/";
-    _database = _snapshot(path + "database").getString();
-    _collection = _snapshot(path + "collection").getString();
-    _from = _snapshot(path + "fromServer").getString();
-    try {
-      // set only if already started
-      _to = _snapshot(path + "toServer").getString();
-    } catch (...) {}
-    _shard = _snapshot(path + "shard").getString();
-    _creator = _snapshot(path + "creator").getString();
-    _created = stringToTimepoint(_snapshot(path + "timeCreated").getString());
-  } catch (std::exception const& e) {
+  std::string path = pos[status] + _jobId + "/";
+  auto tmp_database = _snapshot.hasAsString(path + "database");
+  auto tmp_collection = _snapshot.hasAsString(path + "collection");
+  auto tmp_from = _snapshot.hasAsString(path + "fromServer");
+
+  // set only if already started (test to prevent warning)
+  if (_snapshot.has(path + "toServer")) {
+    auto tmp_to = _snapshot.hasAsString(path + "toServer");
+    _to = tmp_to.first;
+  }
+
+  auto tmp_shard = _snapshot.hasAsString(path + "shard");
+  auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_created = _snapshot.hasAsString(path + "timeCreated");
+
+  if (tmp_database.second && tmp_collection.second && tmp_from.second
+      && tmp_shard.second && tmp_creator.second && tmp_created.second) {
+    _database = tmp_database.first;
+    _collection = tmp_collection.first;
+    _from = tmp_from.first;
+    // _to conditionally set above
+    _shard = tmp_shard.first;
+    _creator = tmp_creator.first;
+    _created = stringToTimepoint(tmp_created.first);
+  } else {
     std::stringstream err;
-    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    err << "Failed to find job " << _jobId << " in agency";
     LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
     finish("", _shard, false, err.str());
     _status = FAILED;
   }
-  
 }
 
 FailedLeader::~FailedLeader() {}
@@ -78,7 +90,7 @@ void FailedLeader::rollback() {
   // Create new plan servers (exchange _to and _from)
   std::string planPath
     = planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto const& planned = _snapshot(planPath).slice();
+  auto const& planned = _snapshot.hasAsSlice(planPath).first;  // if missing, what?
   std::shared_ptr<Builder> payload = nullptr;
 
   if (_status == PENDING) { // Only payload if pending. Otherwise just fail.
@@ -100,9 +112,8 @@ void FailedLeader::rollback() {
     } else {
       rb.add(planned);
     }
-  
     auto cs = clones(_snapshot, _database, _collection, _shard);
-  
+
     // Transactions
     payload = std::make_shared<Builder>();
     { VPackObjectBuilder b(payload.get());
@@ -114,7 +125,7 @@ void FailedLeader::rollback() {
   }
 
   finish("", _shard, false, "Timed out.", payload);
-  
+
 }
 
 
@@ -123,7 +134,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   using namespace std::chrono;
   LOG_TOPIC(INFO, Logger::SUPERVISION)
     << "Create failedLeader for " + _shard + " from " + _from;
-  
+
   _jb = std::make_shared<Builder>();
   { VPackArrayBuilder transaction(_jb.get());
     { VPackObjectBuilder operations(_jb.get());
@@ -140,9 +151,9 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
         _jb->add(
           "timeCreated", VPackValue(timepointToString(system_clock::now())));
       }}}
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);  
+  write_ret_t res = singleWriteTransaction(_agent, *_jb);
   return (res.accepted && res.indices.size() == 1 && res.indices[0]);
-  
+
 }
 
 
@@ -151,14 +162,14 @@ bool FailedLeader::start() {
   std::vector<std::string> existing =
     _snapshot.exists(planColPrefix + _database + "/" + _collection + "/" +
                      "distributeShardsLike");
-  
+
   // Fail if got distributeShardsLike
   if (existing.size() == 5) {
     finish("", _shard, false, "Collection has distributeShardsLike");
     return false;
   }
   // Fail if collection gone
-  else if (existing.size() < 4) { 
+  else if (existing.size() < 4) {
     finish("", _shard, true, "Collection " + _collection + " gone");
     return false;
   }
@@ -172,29 +183,29 @@ bool FailedLeader::start() {
   } else {
     _to = commonHealthyInSync;
   }
-  
+
   LOG_TOPIC(INFO, Logger::SUPERVISION)
-    << "Start failedLeader for " + _shard + " from " + _from + " to " + _to;  
-  
+    << "Start failedLeader for " + _shard + " from " + _from + " to " + _to;
+
   using namespace std::chrono;
 
   // Current servers vector
   auto const& current =
-    _snapshot(
-      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers")
-    .slice();
+    _snapshot.hasAsSlice(
+      curColPrefix + _database + "/" + _collection + "/" + _shard + "/servers").first;
   // Planned servers vector
   std::string planPath
     = planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto const& planned = _snapshot(planPath).slice();
+  auto const& planned = _snapshot.hasAsSlice(planPath).first;
 
   // Get todo entry
   Builder todo;
   { VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      try {
-        _snapshot(toDoPrefix + _jobId).toBuilder(todo);
-      } catch (std::exception const&) {
+      auto jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      if (jobIdNode.second) {
+        jobIdNode.first.toBuilder(todo);
+      } else {
         LOG_TOPIC(INFO, Logger::SUPERVISION)
           << "Failed to get key " + toDoPrefix + _jobId
           + " from agency snapshot";
@@ -221,10 +232,10 @@ bool FailedLeader::start() {
 
   // Transactions
   Builder pending;
-  
+
   { VPackArrayBuilder transactions(&pending);
     { VPackArrayBuilder transaction(&pending);
-      
+
       // Operations ----------------------------------------------------------
       { VPackObjectBuilder operations(&pending);
         // Add pending entry
@@ -241,7 +252,7 @@ bool FailedLeader::start() {
         // DB server vector -------
         Builder ns;
         { VPackArrayBuilder servers(&ns);
-          ns.add(VPackValue(_to));  
+          ns.add(VPackValue(_to));
           for (auto const& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
             if (s != _from && s != _to) {
@@ -269,7 +280,7 @@ bool FailedLeader::start() {
         // Failed condition persists
         addPreconditionServerHealth(pending, _from, "FAILED");
         // Destination server still in good condition
-        addPreconditionServerHealth(pending, _to, "GOOD"); 
+        addPreconditionServerHealth(pending, _to, "GOOD");
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
         // Destination server should not be blocked by another job
@@ -281,20 +292,21 @@ bool FailedLeader::start() {
   }
 
   // Abort job blocking server if abortable
-  try {
-    std::string jobId = _snapshot(blockedShardsPrefix + _shard).getString();
-    if (!abortable(_snapshot, jobId)) {
+  //  (likely to not exist, avoid warning message by testing first)
+  if (_snapshot.has(blockedShardsPrefix + _shard)) {
+    auto jobId = _snapshot.hasAsString(blockedShardsPrefix + _shard);
+    if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
-    } else {
-      JobContext(PENDING, jobId, _snapshot, _agent).abort();
+    } else if (jobId.second) {
+      JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
     }
-  } catch (...) {}
-  
+  }
+
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
     << "FailedLeader transaction: " << pending.toJson();
-  
+
   trans_ret_t res = generalTransaction(_agent, pending);
-  
+
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
     << "FailedLeader result: " << res.result->toJson();
 
@@ -312,7 +324,7 @@ bool FailedLeader::start() {
     LOG_TOPIC(INFO, Logger::SUPERVISION)
       << "Leadership lost! Job " << _jobId << " handed off.";
   }
-  
+
   if (result.isObject()) {
 
     // Still failing _from?
@@ -364,9 +376,9 @@ bool FailedLeader::start() {
         slice.copyString();
     }
   }
-    
+
   return false;
-  
+
 }
 
 JOB_STATUS FailedLeader::status() {
@@ -385,22 +397,35 @@ JOB_STATUS FailedLeader::status() {
     return _status;
   }
 
-  Node const& job = _snapshot(pendingPrefix + _jobId);
-  std::string database = job("database").getString(),
-    shard = job("shard").getString();
-  
+  std::string database, shard;
+  auto job = _snapshot.hasAsNode(pendingPrefix + _jobId);
+  if (job.second) {
+    auto tmp_database = job.first.hasAsString("database");
+    auto tmp_shard = job.first.hasAsString("shard");
+    if (tmp_database.second && tmp_shard.second) {
+      database = tmp_database.first;
+      shard = tmp_shard.first;
+    } else {
+      return _status;
+    } // else
+  } else {
+    return _status;
+  } // else
+
   bool done = false;
   for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
     auto sub = database + "/" + clone.collection;
-    if(_snapshot(planColPrefix + sub + "/shards/" + clone.shard).slice()[0] !=
-       _snapshot(curColPrefix + sub + "/" + clone.shard + "/servers").slice()[0]) {
+    auto plan_slice = _snapshot.hasAsSlice(planColPrefix + sub + "/shards/" + clone.shard);
+    auto cur_slice = _snapshot.hasAsSlice(curColPrefix + sub + "/" + clone.shard + "/servers");
+    if(plan_slice.second && cur_slice.second
+       && plan_slice.first[0] != cur_slice.first[0]) {
       LOG_TOPIC(DEBUG, Logger::SUPERVISION)
         << "FailedLeader waiting for " << sub + "/" + shard;
       break;
     }
     done = true;
   }
-  
+
   if (done) {
     // Remove shard to /arango/Target/FailedServers/<server> array
     Builder del;
@@ -411,15 +436,15 @@ JOB_STATUS FailedLeader::status() {
           del.add("op", VPackValue("erase"));
           del.add("val", VPackValue(_shard));
         }}}
-    
+
     write_ret_t res = singleWriteTransaction(_agent, del);
     if (finish("", shard)) {
       LOG_TOPIC(INFO, Logger::SUPERVISION)
-        << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;  
+        << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;
         return FINISHED;
     }
   }
-  
+
   return _status;
 }
 
@@ -434,5 +459,3 @@ arangodb::Result FailedLeader::abort() {
     return Result();
   }
 }
-
-

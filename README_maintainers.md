@@ -5,6 +5,13 @@ ArangoDB Maintainers manual
 This file contains documentation about the build process and unittests - put short - if you want to hack parts of arangod this could be interesting for you.
 Documentation readme can be found in directory [Documentation](https://github.com/arangodb/arangodb/blob/devel/Documentation/README_maintainers.md).
 
+GIT
+===
+Setting up git for automatically merging certain automatically generated files in the arangodb source tree:
+
+    git config --global merge.ours.driver true
+
+    
 CMake
 =====
 

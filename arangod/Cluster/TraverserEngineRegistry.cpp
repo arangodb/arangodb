@@ -36,9 +36,11 @@
 
 using namespace arangodb::traverser;
 
-TraverserEngineRegistry::EngineInfo::EngineInfo(TRI_vocbase_t* vocbase,
-                                                VPackSlice info,
-                                                bool needToLock)
+TraverserEngineRegistry::EngineInfo::EngineInfo(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice info,
+    bool needToLock
+)
     : _isInUse(false),
       _toBeDeleted(false),
       _engine(BaseEngine::BuildEngine(vocbase, info, needToLock)),
@@ -55,10 +57,12 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 }
 
 /// @brief Create a new Engine and return it's id
-TraverserEngineID TraverserEngineRegistry::createNew(TRI_vocbase_t* vocbase,
-                                                     VPackSlice engineInfo,
-                                                     bool needToLock,
-                                                     double ttl) {
+TraverserEngineID TraverserEngineRegistry::createNew(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice engineInfo,
+    bool needToLock,
+    double ttl /*= 600.0*/
+) {
   TraverserEngineID id = TRI_NewTickServer();
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Register TraverserEngine with id " << id;
   TRI_ASSERT(id != 0);

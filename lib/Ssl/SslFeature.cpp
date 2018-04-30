@@ -47,7 +47,6 @@ const boost::asio::ssl::detail::openssl_init<true> SslFeature::sslBase{};
 SslFeature::SslFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Ssl") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("Greetings");
 }

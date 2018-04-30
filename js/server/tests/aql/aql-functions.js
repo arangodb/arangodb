@@ -2752,24 +2752,16 @@ function ahuacatlFunctionsTestSuite () {
         [ [ [ "a", "b", "c" ], [ "a", "b", "c" ], [ "a", "b", "c" ] ], [ ] ], 
         [ [ [ "a", "b", "c" ], [ "a", "b", "c", "d" ], [ "a", "b", "c", "d", "e" ] ], [ "e" ] ], 
         [ [ [ "a", "b", "c" ], [ "d", "e", "f" ], [ "g", "h", "i" ] ], [ "a", "b", "c", "d", "e", "f", "g", "h", "i" ] ], 
-        [ [ [ "a", "A" ], [ "b", "B" ] ], [ "A", "B", "a", "b" ] ], 
+        [ [ [ "a", "A" ], [ "b", "B" ] ], [ "A", "a", "B", "b" ] ], 
         [ [ [ [ 1 ], 1, 2, [ 2 ] ], [ 3, [ 3 ] ] ], [ 1, 2, 3, [ 1 ], [ 2 ], [ 3 ] ] ],
         [ [ [ [ 1 ], [ 1 ] ], [ [ 2 ], [ 2 ] ] ], [ ] ],
         [ [ [ [ 1 ], [ 2 ] ], [ [ 3 ], [ 4 ] ] ], [ [ 1 ], [ 2 ], [ 3 ], [ 4 ] ] ],
         [ [ [ [ 1 ], [ 2 ] ], [ [ 2 ], [ 4 ] ] ], [ [ 1 ], [ 4 ] ] ]
       ];
 
-      var sorter = require("@arangodb/aql").RELATIONAL_CMP;
-
       queries.forEach(function(query) {
-        var actual = getQueryResults("RETURN OUTERSECTION(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + ")");
-        assertEqual(query[1].sort(sorter), actual[0].sort(sorter));
-        
-        actual = getQueryResults("RETURN V8(OUTERSECTION(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + "))");
-        assertEqual(query[1].sort(sorter), actual[0].sort(sorter));
-        
-        actual = getQueryResults("RETURN NOOPT(OUTERSECTION(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + "))");
-        assertEqual(query[1].sort(sorter), actual[0].sort(sorter));
+        var actual = getQueryResults("RETURN SORTED(OUTERSECTION(" + JSON.stringify(query[0]).replace(/^\[(.*)\]$/, "$1") + "))");
+        assertEqual(query[1], actual[0]);
       });
     },
 

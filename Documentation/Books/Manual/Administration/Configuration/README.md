@@ -13,6 +13,9 @@ General Options
 Prints a list of the most common options available and then exits. In order to
 see all options use *--help-all*.
 
+To receive the startup options in JSON format, pass the `--dump-options` flag. This will
+print out all options and exit.
+
 ### Version
 
 `--version`
@@ -20,6 +23,7 @@ see all options use *--help-all*.
 `-v`
 
 Prints the version of the server and exits.
+
 
 ### Configuration Files
 
