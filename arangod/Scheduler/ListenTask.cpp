@@ -28,6 +28,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Acceptor.h"
+#include "Scheduler/JobGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -65,6 +66,8 @@ bool ListenTask::start() {
 
   _handler = [this](boost::system::error_code const& ec) {
     MUTEX_LOCKER(mutex, _shutdownMutex);
+    JobGuard guard(_loop);
+    guard.work();
 
     if (!_bound) {
       _handler = nullptr;

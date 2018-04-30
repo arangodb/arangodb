@@ -458,6 +458,8 @@ void SocketTask::asyncReadSome() {
       [self, this](const boost::system::error_code& ec,
                    std::size_t transferred) {
         //MUTEX_LOCKER(locker, _lock);
+        JobGuard guard(_loop);
+        guard.work();
 
         if (_abandoned.load(std::memory_order_acquire)) {
           return;
@@ -553,6 +555,8 @@ void SocketTask::asyncWriteSome() {
                     [self, this](const boost::system::error_code& ec,
                                  std::size_t transferred) {
                       //MUTEX_LOCKER(locker, _lock);
+                      JobGuard guard(_loop);
+                      guard.work();
                       
                       if (_abandoned.load(std::memory_order_acquire)) {
                         return;
