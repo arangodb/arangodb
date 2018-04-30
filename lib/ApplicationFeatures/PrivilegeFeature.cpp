@@ -44,7 +44,6 @@ PrivilegeFeature::PrivilegeFeature(
     : ApplicationFeature(server, "Privilege"),
       _numericUid(0), _numericGid(0) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
 }
 

@@ -76,7 +76,6 @@ class StorageEngine : public application_features::ApplicationFeature {
     // will make sure that exactly one engine is selected at startup
     setOptional(true);
     // storage engines must not use elevated privileges for files etc
-    requiresElevatedPrivileges(false);
 
     startsAfter("CacheManager");
     startsAfter("DatabasePath");

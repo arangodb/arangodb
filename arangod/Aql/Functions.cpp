@@ -5686,9 +5686,9 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
     TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
-    size_t const n = invokeParams.size();
+    int const n = static_cast<int>(invokeParams.size());
     int const callArgs = (func == nullptr ? 3 : n);
-    v8::Handle<v8::Value> args[callArgs]; 
+    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
     if (func == nullptr) {
       // a call to a user-defined function
@@ -5699,7 +5699,7 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
       // call parameters
       v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
       
-      for (size_t i = 0; i < n; ++i) {
+      for (int i = 0; i < n; ++i) {
         params->Set(static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx));
       }
       args[1] = params;
@@ -5707,13 +5707,13 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
     } else {
       // a call to a built-in V8 function
       jsName = "AQL_" + func->nonAliasedName;
-      for (size_t i = 0; i < n; ++i) {
+      for (int i = 0; i < n; ++i) {
         args[i] = invokeParams[i].toV8(isolate, trx);
       }
     }
 
     bool dummy;
-    return Expression::invokeV8Function(query, trx, jsName, ucInvokeFN, AFN, false, callArgs, args, dummy);
+    return Expression::invokeV8Function(query, trx, jsName, ucInvokeFN, AFN, false, callArgs, args.get(), dummy);
   }
 }
 

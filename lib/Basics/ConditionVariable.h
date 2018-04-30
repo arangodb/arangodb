@@ -25,6 +25,8 @@
 #ifndef ARANGODB_BASICS_CONDITION_VARIABLE_H
 #define ARANGODB_BASICS_CONDITION_VARIABLE_H 1
 
+#include <chrono>
+
 #include "Basics/Common.h"
 #include "Basics/locks.h"
 
@@ -99,10 +101,11 @@ class ConditionVariable {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief waits for an event with timeout in micro seconds
-  /// returns true when the condition was signaled, false on timeout 
+  /// returns true when the condition was signaled, false on timeout
   //////////////////////////////////////////////////////////////////////////////
 
   bool wait(uint64_t);
+  bool wait(std::chrono::microseconds);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief signals all waiting threads

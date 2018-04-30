@@ -160,7 +160,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
       TRI_ASSERT(replaceVar != nullptr);
 
       AttributeAccessReplacer finder(v, attributeNames);
-      plan->root()->walk(&finder);
+      plan->root()->walk(finder);
       
       std::reverse(attributeNames.begin(), attributeNames.end());
       e->setProjection(std::move(attributeNames));

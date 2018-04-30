@@ -4,8 +4,6 @@
 
 @RESTHEADER{GET /_api/view,reads all views}
 
-@RESTQUERYPARAMETERS
-
 @RESTDESCRIPTION
 Returns an object containing an array of all view descriptions.
 

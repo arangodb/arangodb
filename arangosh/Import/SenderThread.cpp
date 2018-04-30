@@ -39,11 +39,11 @@ using namespace arangodb;
 using namespace arangodb::import;
 
 SenderThread::SenderThread(
-    std::unique_ptr<httpclient::SimpleHttpClient>&& client,
+    std::unique_ptr<httpclient::SimpleHttpClient> client,
     ImportStatistics* stats,
     std::function<void()> const& wakeup)
     : Thread("Import Sender"),
-      _client(client.release()),
+      _client(std::move(client)),
       _wakeup(wakeup),
       _data(false),
       _hasError(false),
@@ -53,7 +53,6 @@ SenderThread::SenderThread(
 
 SenderThread::~SenderThread() {
   shutdown();
-  delete _client;
 }
 
 void SenderThread::beginShutdown() {

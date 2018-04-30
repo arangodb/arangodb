@@ -52,14 +52,12 @@ uint64_t PregelFeature::createExecutionNumber() {
 PregelFeature::PregelFeature(application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "Pregel") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
   startsAfter("Logger");
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("Cluster");
   startsAfter("Server");
-  startsAfter("V8Dealer");
 }
 
 PregelFeature::~PregelFeature() {

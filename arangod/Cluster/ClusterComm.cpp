@@ -390,10 +390,10 @@ OperationID ClusterComm::asyncRequest(
     CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::rest::RequestType reqtype, std::string const& path,
     std::shared_ptr<std::string const> body,
-    std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
+    std::unordered_map<std::string, std::string> const& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
     bool singleRequest, ClusterCommTimeout initTimeout) {
-  auto prepared = prepareRequest(destination, reqtype, body.get(), *headerFields.get());
+  auto prepared = prepareRequest(destination, reqtype, body.get(), headerFields);
   std::shared_ptr<ClusterCommResult> result(prepared.first);
   result->clientTransactionID = clientTransactionID;
   result->coordTransactionID = coordTransactionID;
@@ -942,7 +942,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             OperationID opId = asyncRequest(
                 "", coordinatorTransactionID, requests[i].destination,
                 requests[i].requestType, requests[i].path, requests[i].body,
-                requests[i].headerFields, nullptr, localTimeout, false,
+                *requests[i].headerFields, nullptr, localTimeout, false,
                 2.0);
 
             TRI_ASSERT(opId != 0);
@@ -1081,7 +1081,7 @@ void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest>& request
   double const shortTimeout = 10.0; // Picked arbitrarily
   for (auto& req : requests) {
     asyncRequest("", coordinatorTransactionID, req.destination, req.requestType,
-                 req.path, req.body, req.headerFields, nullptr, shortTimeout, false,
+                 req.path, req.body, *req.headerFields, nullptr, shortTimeout, false,
                  2.0);
   }
   // Forget about it

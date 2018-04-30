@@ -40,7 +40,6 @@ AqlFeature::AqlFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("CacheManager");
   startsAfter("Cluster");
   startsAfter("Database");

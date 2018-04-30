@@ -57,17 +57,16 @@ MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, arangodb::MMFilesEdgeIndex const* index,
     TRI_MMFilesEdgeIndexHash_t const* indexImpl,
-    std::unique_ptr<VPackBuilder>& keys)
+    std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx, index),
       _index(indexImpl),
       _mmdr(mmdr),
       _context(trx, collection, _mmdr, index->fields().size()),
-      _keys(keys.get()),
+      _keys(std::move(keys)),
       _iterator(_keys->slice()),
       _posInBuffer(0),
       _batchSize(1000),
       _lastElement() {
-  keys.release();  // now we have ownership for _keys
 }
 
 MMFilesEdgeIndexIterator::~MMFilesEdgeIndexIterator() {
@@ -461,7 +460,7 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(
   bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
   return new MMFilesEdgeIndexIterator(_collection, trx, mmdr, this,
-                                      isFrom ? _edgesFrom.get() : _edgesTo.get(), keys);
+                                      isFrom ? _edgesFrom.get() : _edgesTo.get(), std::move(keys));
 }
 
 /// @brief create the iterator
@@ -491,7 +490,7 @@ IndexIterator* MMFilesEdgeIndex::createInIterator(
   bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
   return new MMFilesEdgeIndexIterator(_collection, trx, mmdr, this,
-                                      isFrom ? _edgesFrom.get() : _edgesTo.get(), keys);
+                                      isFrom ? _edgesFrom.get() : _edgesTo.get(), std::move(keys));
 }
 
 /// @brief add a single value node to the iterator's keys

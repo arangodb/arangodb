@@ -140,10 +140,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --agency.supervision-grace-period 5.0 \
         --agency.wait-for-sync false \
         --database.directory cluster/data$port \
-        --javascript.app-path $SRC_DIR/js/apps \
-        --javascript.startup-directory $SRC_DIR/js \
-        --javascript.module-directory $SRC_DIR/enterprise/js \
-        --javascript.v8-contexts 1 \
+        --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$port \
         --server.statistics false \
         --server.threads 16 \
