@@ -31,9 +31,11 @@
 #include "Aql/types.h"
 #include "Basics/SmallVector.h"
 
+#include <array>
+
 namespace arangodb {
 namespace velocypack {
-  class Slice;
+class Slice;
 }
   
 namespace aql {
