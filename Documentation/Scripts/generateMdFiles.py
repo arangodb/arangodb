@@ -164,6 +164,53 @@ def getRestReplyBodyParam(param):
     return rc + "\n"
 
 
+def noValidation():
+    pass
+
+def validatePathParameters():
+    # print thisVerb
+    for nParam in range(0, len(thisVerb['parameters'])):
+        if thisVerb['parameters'][nParam]['in'] == 'path':
+            break
+    else:
+        raise Exception("@RESTPATHPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+
+def validateQueryParams():
+    # print thisVerb
+    for nParam in range(0, len(thisVerb['parameters'])):
+        if thisVerb['parameters'][nParam]['in'] == 'query':
+            break
+    else:
+        raise Exception("@RESTQUERYPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+
+def validateHeaderParams():
+    # print thisVerb
+    for nParam in range(0, len(thisVerb['parameters'])):
+        if thisVerb['parameters'][nParam]['in'] == 'header':
+            break
+    else:
+        raise Exception("@RESTHEADERPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+
+def validateReturnCodes():
+    # print thisVerb
+    for nParam in range(0, len(thisVerb['responses'])):
+        if len(thisVerb['responses'].keys()) != 0:
+            break
+    else:
+        raise Exception("@RESTRETURNCODES found without any documented returncodes %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+
+def validateExamples():
+    pass
+
+SIMPL_REPL_VALIDATE_DICT = {
+    "@RESTDESCRIPTION"      : noValidation,
+    "@RESTURLPARAMETERS"    : validatePathParameters,
+    "@RESTQUERYPARAMETERS"  : validateQueryParams,
+    "@RESTHEADERPARAMETERS" : validateHeaderParams,
+    "@RESTRETURNCODES"      : validateReturnCodes,
+    "@RESTURLPARAMS"        : validatePathParameters,
+    "@EXAMPLES"             : validateExamples
+}
 SIMPL_REPL_DICT = {
     "\\"                    : "\\\\",
     "@RESTDESCRIPTION"      : getRestDescription,
@@ -210,6 +257,13 @@ r'''
 def SimpleRepl(match):
     m = match.group(0)
     # print 'xxxxx [%s]' % m
+    n = None
+    try:
+        n = SIMPL_REPL_VALIDATE_DICT[m]
+    except:
+        True
+    if n != None:
+        n()
     try:
         n = SIMPL_REPL_DICT[m]
         if n == None:
@@ -377,7 +431,14 @@ def replaceCode(lines, blockName):
         lines = "\n".join(lineR)
     #print "x" * 70
     #print lines
-    lines = SIMPLE_RX.sub(SimpleRepl, lines)
+    try:
+        lines = SIMPLE_RX.sub(SimpleRepl, lines)
+    except Exception as x:
+        print >> sys.stderr, ERR_COLOR + "While working on: [" + verb + " " + route + "]" + " while analysing " + blockName + RESET
+        print >> sys.stderr, WRN_COLOR + x.message + RESET
+        print >> sys.stderr, "Did you forget to run utils/generateSwagger.sh?"
+        raise
+
 
     for (oneRX, repl) in RX2:
         lines = oneRX.sub(repl, lines)
