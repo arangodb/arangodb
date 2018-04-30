@@ -329,5 +329,8 @@
     "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
   };
+
+  // For compatibility with <= 3.3
+  internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
 }());
 
