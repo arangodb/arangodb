@@ -50,6 +50,7 @@ public:
     TRI_ASSERT(val == 0);
     val = _state.exchange(val, std::memory_order_relaxed);
     TRI_ASSERT(val == 0); 
+    return *this;
   }
 
   bool tryWriteLock() {
