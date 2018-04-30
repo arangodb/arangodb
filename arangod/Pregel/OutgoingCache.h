@@ -69,7 +69,7 @@ class OutCache {
 
  public:
   OutCache(WorkerConfig* state, MessageFormat<M> const* format);
-  virtual ~OutCache(){};
+  virtual ~OutCache() {}
 
   size_t sendCount() const { return _sendCount; }
   size_t sendCountNextGSS() const { return _sendCountNextGSS; }

@@ -19,7 +19,6 @@ class HttpCommTask final : public GeneralCommTask {
  public:
   HttpCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
                ConnectionInfo&&, double timeout);
-  //~HttpCommTask() {};
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;

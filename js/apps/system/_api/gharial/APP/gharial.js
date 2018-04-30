@@ -770,6 +770,9 @@ router.post('/:graph/edge/:collection', function (req, res) {
   const returnNew = Boolean(req.queryParams.returnNew);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
+  const g = loadGraph(name);
+  checkCollection(g, collection);
+
   if (!req.body._from || !req.body._to) {
     throw Object.assign(
       new httperr.Gone(errors.ERROR_GRAPH_INVALID_EDGE.message),
@@ -783,12 +786,12 @@ router.post('/:graph/edge/:collection', function (req, res) {
   } catch (e) {
     if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw Object.assign(
-        new httperr.Gone('_from: ' + e.errorMessage),
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
         {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, cause: e}
       );
     } else {
       throw Object.assign(
-        new httperr.Gone('_from: ' + e.errorMessage),
+        new httperr.NotFound(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message),
         {errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, cause: e}
       );
     }
@@ -800,19 +803,17 @@ router.post('/:graph/edge/:collection', function (req, res) {
   } catch (e) {
     if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw Object.assign(
-        new httperr.Gone('_to: ' + e.errorMessage),
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
         {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, cause: e}
       );
     } else {
       throw Object.assign(
-        new httperr.Gone('_to: ' + e.errorMessage),
+        new httperr.NotFound(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message),
         {errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, cause: e}
       );
     }
   }
 
-  const g = loadGraph(name);
-  checkCollection(g, collection);
   let meta;
   try {
     meta = g[collection].save(req.body, {waitForSync, returnNew});

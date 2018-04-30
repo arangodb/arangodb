@@ -415,10 +415,10 @@ void RocksDBAqlFunctions::registerResources() {
 
   // fulltext functions
   functions->add({"FULLTEXT", ".h,.,.|.", false, true,
-                  false, true, &RocksDBAqlFunctions::Fulltext,
+                  false, &RocksDBAqlFunctions::Fulltext,
                   NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
-                  true, &RocksDBAqlFunctions::Near, NotInCoordinator});
+                  &RocksDBAqlFunctions::Near, NotInCoordinator});
   functions->add({"WITHIN", ".h,.,.,.|.", false, true,
-                  false, true, &RocksDBAqlFunctions::Within, NotInCoordinator});
+                  false, &RocksDBAqlFunctions::Within, NotInCoordinator});
 }
