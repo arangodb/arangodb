@@ -107,6 +107,38 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief test first function
 ////////////////////////////////////////////////////////////////////////////////
 
+    testFailInt : function () {
+      try {
+        db._query("RETURN FAIL(1234)");
+        fail();
+      }
+      catch(err) {
+        var expected = internal.errors.ERROR_QUERY_FAIL_CALLED.code;
+        assertEqual(expected, err.errorNum);
+        assertTrue(err.errorMessage.search("1234") === -1);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
+    testFailOjb : function () {
+      try {
+        db._query("RETURN FAIL({})");
+        fail();
+      }
+      catch(err) {
+        var expected = internal.errors.ERROR_QUERY_FAIL_CALLED.code;
+        assertEqual(expected, err.errorNum);
+        assertTrue(err.errorMessage.search("{}") === -1);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test first function
+////////////////////////////////////////////////////////////////////////////////
+
     testFailMessage : function () {
       try {
         db._query("RETURN FAIL('bla')");
