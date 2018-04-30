@@ -526,7 +526,7 @@ void arangodb::aql::removeRedundantSortsRule(
       // we found a sort that we can understand
       std::vector<ExecutionNode*> stack;
 
-      sortNode->addDependencies(stack);
+      sortNode->dependencies(stack);
 
       int nodesRelyingOnSort = 0;
 
@@ -623,7 +623,7 @@ void arangodb::aql::removeRedundantSortsRule(
           break;
         }
 
-        current->addDependencies(stack);
+        current->dependencies(stack);
       }
 
       if (toUnlink.find(n) == toUnlink.end() &&
@@ -1111,7 +1111,7 @@ void arangodb::aql::moveCalculationsDownRule(
     auto variable = nn->outVariable();
 
     std::vector<ExecutionNode*> stack;
-    n->addParents(stack);
+    n->parents(stack);
 
     bool shouldMove = false;
     ExecutionNode* lastNode = nullptr;
@@ -1158,7 +1158,7 @@ void arangodb::aql::moveCalculationsDownRule(
         break;
       }
 
-      current->addParents(stack);
+      current->parents(stack);
     }
 
     if (shouldMove && lastNode != nullptr) {
@@ -1269,7 +1269,6 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         sortNode->addDependency(newCollectNode);
         parent->replaceDependency(newCollectNode, sortNode);
       }
-      newPlan->findVarUsage();
 
       if (nodes.size() > 1) {
         // this will tell the optimizer to optimize the cloned plan with this
@@ -1410,7 +1409,7 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
     TRI_ASSERT(neededVars.size() == 1);
 
     std::vector<ExecutionNode*> stack;
-    n->addDependencies(stack);
+    n->dependencies(stack);
 
     while (!stack.empty()) {
       auto current = stack.back();
@@ -1463,7 +1462,7 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
         break;
       }
 
-      current->addDependencies(stack);
+      current->dependencies(stack);
 
       // first, unlink the filter from the plan
       plan->unlinkNode(n);
@@ -1692,7 +1691,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     buffer.reset();
 
     std::vector<ExecutionNode*> stack;
-    n->addDependencies(stack);
+    n->dependencies(stack);
 
     while (!stack.empty()) {
       auto current = stack.back();
@@ -1769,7 +1768,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
         break;
       }
 
-      current->addDependencies(stack);
+      current->dependencies(stack);
     }
   }
 

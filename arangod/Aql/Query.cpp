@@ -398,6 +398,11 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
     }
 #endif
   }
+    
+  TRI_ASSERT(plan != nullptr);
+  if (!plan->varUsageComputed()) {
+    plan->findVarUsage();
+  }
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
   
@@ -514,12 +519,13 @@ ExecutionPlan* Query::preparePlan() {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
+
+    if (!plan->varUsageComputed()) {
+      plan->findVarUsage();
+    }
   }
 
   TRI_ASSERT(plan != nullptr);
-
-  // varsUsedLater and varsValid are unordered_sets and so their orders
-  // are not the same in the serialized and deserialized plans
 
   // return the V8 context if we are in one
   exitContext();

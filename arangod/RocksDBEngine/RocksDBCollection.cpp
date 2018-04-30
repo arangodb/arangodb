@@ -771,7 +771,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   rocksdb::ReadOptions ro = mthd->readOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
-  
+
   // avoid OOM error for truncate by committing earlier
   uint64_t const prvICC = state->options().intermediateCommitCount;
   state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
@@ -788,9 +788,10 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     TRI_ASSERT(doc.isObject());
 
     // To print the WAL we need key and RID
-    VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+    VPackSlice key;
+    TRI_voc_rid_t rid = 0;
+    transaction::helpers::extractKeyAndRevFromDocument(doc, key, rid);
     TRI_ASSERT(key.isString());
-    TRI_voc_rid_t rid = transaction::helpers::extractRevFromDocument(doc);
     TRI_ASSERT(rid != 0);
 
     state->prepareOperation(
@@ -815,7 +816,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     // transaction size limit reached
     if (res.fail()) {
       // This should never happen...
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     trackWaitForSync(trx, options);
