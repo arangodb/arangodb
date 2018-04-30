@@ -38,6 +38,8 @@ devel
   Additionally we removed the deprecated flags `constraint` and `ignoreNull` from geo index definitions, 
   these fields were initially deprecated in ArangoDB 2.5
 
+* Add revision id to RocksDB values in primary indexes to speed up replication (~10x).
+
 * PR #5238: Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
   on VMs with limited disk throughput
 
@@ -54,6 +56,8 @@ devel
   of the V8 JavaScript engine. Only expected to work on single-servers and agency deployments
 
 * pull request #5201: eliminate race scenario where handlePlanChange could run infinite times
+
+* pull request 5201: eliminate race scenario where handlePlanChange could run infinite times
   after an execution exceeded 7.4 second time span
 
 * UI: fixed an unreasonable event bug within the modal view engine
