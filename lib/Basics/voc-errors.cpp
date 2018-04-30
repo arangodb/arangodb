@@ -74,7 +74,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
   REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
@@ -109,6 +108,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_MISMATCH, "collection type mismatch");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_LOADED, "collection not loaded");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_REV_BAD, "illegal document revision");
+  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_ARANGO_EMPTY_DATADIR, "server database directory is empty");
   REG_ERROR(ERROR_ARANGO_TRY_AGAIN, "operation should be tried again");
