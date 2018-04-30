@@ -25,6 +25,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include <v8.h>
 #include "V8/v8-globals.h"
@@ -141,7 +142,9 @@ std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(
       
 std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired(
     TRI_vocbase_t* vocbase, bool embeddable) {
-  if (v8::Isolate::GetCurrent() != nullptr) {
+  // is V8 enabled and are currently in a V8 scope ?
+  if (V8DealerFeature::DEALER != nullptr &&
+      v8::Isolate::GetCurrent() != nullptr) {
     return Create(vocbase, embeddable);
   }
   return transaction::StandaloneContext::Create(vocbase);

@@ -294,6 +294,10 @@ void OptimizerRulesFeature::addRules() {
                  removeSatelliteJoinsRule,
                  OptimizerRule::removeSatelliteJoinsRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
+
+    registerRule("restrict-to-single-shard",
+                 restrictToSingleShardRule,
+                 OptimizerRule::restrictToSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
   }
 
   // finally add the storage-engine specific rules

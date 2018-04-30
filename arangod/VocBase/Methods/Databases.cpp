@@ -328,6 +328,45 @@ arangodb::Result Databases::create(std::string const& dbName,
   return Result();
 }
 
+namespace  {
+  int dropDBCoordinator(std::string const& dbName) {
+    // Arguments are already checked, there is exactly one argument
+    DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
+    TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(dbName);
+    if (vocbase == nullptr) {
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    }
+    
+    TRI_voc_tick_t const id = vocbase->id();
+    vocbase->release();
+    
+    ClusterInfo* ci = ClusterInfo::instance();
+    std::string errorMsg;
+    
+    int res = ci->dropDatabaseCoordinator(dbName, errorMsg, 120.0);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    
+    // now wait for heartbeat thread to drop the database object
+    int tries = 0;
+    while (++tries <= 6000) {
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(id);
+      
+      if (vocbase == nullptr) {
+        // object has vanished
+        break;
+      }
+      
+      vocbase->release();
+      // sleep
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+}
+
 arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
                                  std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
@@ -340,81 +379,55 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
     }
   }
 
-  auto ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
-  if (ctx == nullptr) {
-    return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
-  }
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-  v8::Isolate* isolate = ctx->_isolate;
-  v8::HandleScope scope(isolate);
-
-  // clear collections in cache object
-  TRI_ClearObjectCacheV8(isolate);
-
-  // If we are a coordinator in a cluster, we have to behave differently:
-  if (ServerState::instance()->isCoordinator()) {
-    // Arguments are already checked, there is exactly one argument
-    DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(dbName);
-
-    if (vocbase == nullptr) {
-      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  int res;
+  V8DealerFeature* dealer = V8DealerFeature::DEALER;
+  if (dealer != nullptr && dealer->isEnabled()) {
+    V8Context* v8ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
+    if (v8ctx == nullptr) {
+      return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
     }
-
-    TRI_voc_tick_t const id = vocbase->id();
-    vocbase->release();
-
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::string errorMsg;
-
-    int res = ci->dropDatabaseCoordinator(dbName, errorMsg, 120.0);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
-    }
-
-    // now wait for heartbeat thread to drop the database object
-    int tries = 0;
-    while (++tries <= 6000) {
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(id);
-
-      if (vocbase == nullptr) {
-        // object has vanished
-        break;
+    TRI_DEFER(V8DealerFeature::DEALER->exitContext(v8ctx));
+    v8::Isolate* isolate = v8ctx->_isolate;
+    v8::HandleScope scope(isolate);
+    
+    // clear collections in cache object
+    TRI_ClearObjectCacheV8(isolate);
+    
+    if (ServerState::instance()->isCoordinator()) {
+      // If we are a coordinator in a cluster, we have to behave differently:
+      res = ::dropDBCoordinator(dbName);
+    } else {
+      res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
+      
+      if (res != TRI_ERROR_NO_ERROR) {
+        return Result(res);
       }
-
-      vocbase->release();
-      // sleep
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      
+      TRI_RemoveDatabaseTasksV8Dispatcher(dbName);
+      // run the garbage collection in case the database held some objects which
+      // can now be freed
+      TRI_RunGarbageCollectionV8(isolate, 0.25);
+      TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
+                                  TRI_V8_ASCII_STRING(isolate,
+                                                      "require('internal').executeGlobalContextFunction('"
+                                                      "reloadRouting')"),
+                                  TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
     }
-
   } else {
-    int res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
+    if (ServerState::instance()->isCoordinator()) {
+      // If we are a coordinator in a cluster, we have to behave differently:
+      res = ::dropDBCoordinator(dbName);
+    } else {
+      res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);;
     }
-
-    TRI_RemoveDatabaseTasksV8Dispatcher(dbName);
-
-    // run the garbage collection in case the database held some objects which
-    // can now be freed
-    TRI_RunGarbageCollectionV8(isolate, 0.25);
-
-    TRI_ExecuteJavaScriptString(
-        isolate, isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING(isolate,
-                            "require('internal').executeGlobalContextFunction('"
-                            "reloadRouting')"),
-        TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
   }
-
-  Result res;
+  
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (um != nullptr) {
-    res = um->enumerateUsers([&](auth::User& entry) -> bool {
+  if (res == TRI_ERROR_NO_ERROR && um != nullptr) {
+    return um->enumerateUsers([&](auth::User& entry) -> bool {
       return entry.removeDatabase(dbName);
     });
   }
+
   return res;
 }

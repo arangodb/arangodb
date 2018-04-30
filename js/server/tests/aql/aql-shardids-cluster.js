@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, limit optimizations
@@ -100,11 +100,193 @@ function ahuacatlShardIdsTestSuite () {
   };
 }
 
+function ahuacatlShardIdsOptimizationTestSuite() {
+  let collection = null;
+  let collectionByKey = null;
+  const cn = "UnitTestsShardIds";
+  const cnKey = "UnitTestsShardIdsShardKey";
+  const shardKey = "value";
+  const numberOfShards = 9;
+
+  const tearDown = () => {
+    db._drop(cn);
+    db._drop(cnKey);
+  };
+  
+  const allNodesOfTypeAreRestrictedToShard = (nodes, typeName, col) => {
+    let relevantNodes = nodes.filter(node => node.type === typeName);
+    assertTrue(relevantNodes.length !== 0);
+    return relevantNodes.every(node => col.shards().indexOf(node.restrictedTo) !== -1);
+  };
+
+  const hasDistributeNode = nodes => {
+    return (nodes.filter(node => node.type === 'DistributeNode')).length > 0;
+  };
+
+  const validatePlan = (query, nodeType, c) => {
+    const plan = AQL_EXPLAIN(query).plan;
+    assertFalse(hasDistributeNode(plan.nodes));
+    assertTrue(allNodesOfTypeAreRestrictedToShard(plan.nodes, nodeType, c));
+  };
+
+  const dropIndexes = (col) => {
+    let indexes = col.getIndexes();
+    for (const idx of indexes) {
+      if (idx.type !== "primary" && idx.type !== "edge") {
+        col.dropIndex(idx.id);
+      }
+    }
+  };
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      tearDown();
+      collection = internal.db._create(cn, { numberOfShards });
+      collectionByKey = internal.db._create(cnKey, { numberOfShards, shardKeys: [shardKey] });
+      let docs = [];
+
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ "value" : i % 25, "joinValue" : i % 5 });
+      }
+
+      collection.save(docs);
+      collectionByKey.save(docs);
+      let fullCounts = collection.count(true);
+
+      let shardsToCount = new Map();
+      for (const [shard, count] of Object.entries(fullCounts)) {
+        shardsToCount.set(shard, count); 
+      }
+      assertEqual(numberOfShards, shardsToCount.size);
+      let sum = 0;
+      for (let c of shardsToCount.values()) {
+        sum += c;
+      }
+      assertEqual(100, sum);
+
+      let shardsByKeyToCount = new Map();
+      fullCounts = collectionByKey.count(true);
+      for (const [shard, count] of Object.entries(fullCounts)) {
+        shardsByKeyToCount.set(shard, count); 
+      }
+      assertEqual(numberOfShards, shardsByKeyToCount.size);
+      sum = 0;
+      for (let c of shardsByKeyToCount.values()) {
+        sum += c;
+      }
+      assertEqual(100, sum);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown,
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief no restriction to a shard
+////////////////////////////////////////////////////////////////////////////////
+
+    testRestrictOnPrimaryKey : function () {
+      let sample = [];
+      for (let i = 0; i < 10; ++i) {
+        sample.push(collection.any());
+      }
+
+      for (const doc of sample) {
+        const queryKey = `FOR doc IN ${cn} FILTER doc._key == "${doc._key}" RETURN doc`;
+        validatePlan(queryKey, "IndexNode", collection);
+        let res = db._query(queryKey).toArray();
+        assertEqual(1, res.length);
+        assertEqual(doc._key, res[0]._key);
+        assertEqual(doc._rev, res[0]._rev);
+      }
+    },
+
+    testRestrictOnShardKeyHashIndex : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `FOR doc IN ${cnKey} FILTER doc.${shardKey} == ${i} RETURN doc`;
+        validatePlan(query, "IndexNode", collectionByKey);
+        let res = db._query(query).toArray();
+        assertEqual(4, res.length);
+        for (let doc of res) {
+          assertEqual(i, doc.value);
+        }
+      }
+    },
+
+    testRestrictOnShardKeySkiplist : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureSkiplist(shardKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `FOR doc IN ${cnKey} FILTER doc.${shardKey} == ${i} RETURN doc`;
+        validatePlan(query, "IndexNode", collectionByKey);
+        let res = db._query(query).toArray();
+        assertEqual(4, res.length);
+        for (let doc of res) {
+          assertEqual(i, doc.value);
+        }
+      }
+    },
+
+    testRestrictMultipleShards : function () {
+      dropIndexes(collectionByKey);
+      collectionByKey.ensureHashIndex(shardKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `
+          FOR doc IN ${cnKey}
+            FILTER doc.${shardKey} == ${i}
+            FOR joined IN ${cnKey}
+              FILTER joined.${shardKey} == ${i % 5}
+              FILTER joined.joinValue == doc.joinValue
+            RETURN [doc, joined]
+        `;
+        validatePlan(query, "IndexNode", collectionByKey);
+        let res = db._query(query).toArray();
+        // we find 4 in first Loop, and 4 joins each
+        assertEqual(16, res.length);
+        for (let [doc, joined] of res) {
+          assertEqual(i, doc.value);
+          assertEqual(i % 5, joined.value);
+          assertEqual(doc.joinValue, joined.joinValue);
+        }
+      }
+    },
+
+    /* Not supported yet
+    testRestrictOnShardKeyNoIndex : function () {
+      dropIndexes(collectionByKey);
+
+      for (let i = 0; i < 25; ++i) {
+        const query = `FOR doc IN ${cnKey} FILTER doc.${shardKey} == ${i} RETURN doc`;
+        validatePlan(query, "EnumerateCollectionNode", collectionByKey);
+        let res = db._query(query).toArray();
+        assertEqual(4, res.length);
+        for (let doc of res) {
+          assertEqual(i, doc.value);
+        }
+      }
+    }
+    */
+  };
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlShardIdsTestSuite);
+jsunity.run(ahuacatlShardIdsOptimizationTestSuite);
 
 return jsunity.done();
-

@@ -968,9 +968,6 @@ void HeartbeatThread::runAgentServer() {
       }
     }
   } // while
-
-  return;
-
 } // HeartbeatThread::runAgentServer
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1282,9 +1279,6 @@ void HeartbeatThread::recordThreadDeath(const std::string & threadName) {
 
   deadThreads.insert(std::pair<std::chrono::system_clock::time_point, const std::string>
                      (std::chrono::system_clock::now(), threadName));
-
-  return;
-
 } // HeartbeatThread::recordThreadDeath
 
   //////////////////////////////////////////////////////////////////////////////
