@@ -434,21 +434,21 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
           return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("timed out waiting for response from master at ") + _masterInfo._endpoint);
         }
 
-        double sleepTime;
+        std::chrono::milliseconds sleepTime;
         if (waitTime < 5.0) {
-          sleepTime = 0.25;
+          sleepTime = std::chrono::milliseconds(250);
         } else if (waitTime < 20.0) {
-          sleepTime = 0.5;
+          sleepTime = std::chrono::milliseconds(500);
         } else if (waitTime < 60.0) {
-          sleepTime = 1.0;
+          sleepTime = std::chrono::seconds(1);
         } else {
-          sleepTime = 2.0;
+          sleepTime = std::chrono::seconds(2);
         }
 
         if (isAborted()) {
           return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
         }
-        this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+        std::this_thread::sleep_for(sleepTime);
       }
       // fallthrough here in case everything went well
     }
@@ -613,21 +613,21 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
       return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("timed out waiting for response from master at ") + _masterInfo._endpoint);
     }
 
-    double sleepTime;
+    std::chrono::milliseconds sleepTime;
     if (waitTime < 5.0) {
-      sleepTime = 0.25;
+      sleepTime = std::chrono::milliseconds(250);
     } else if (waitTime < 20.0) {
-      sleepTime = 0.5;
+      sleepTime = std::chrono::milliseconds(500);
     } else if (waitTime < 60.0) {
-      sleepTime = 1.0;
+      sleepTime = std::chrono::seconds(1);
     } else {
-      sleepTime = 2.0;
+      sleepTime = std::chrono::seconds(2);
     }
 
     if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
-    this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+    std::this_thread::sleep_for(sleepTime);
   }
   
   if (hasFailed(response.get())) {

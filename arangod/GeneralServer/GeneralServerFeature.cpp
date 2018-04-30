@@ -439,9 +439,11 @@ void GeneralServerFeature::defineHandlers() {
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/aqlfunction",
-      RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addPrefixHandler(
+        "/_api/aqlfunction",
+        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(
       "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
@@ -501,8 +503,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
   
-  _handlerFactory->addHandler(
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addHandler(
       "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _handlerFactory->addHandler(
@@ -529,9 +533,11 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_admin/routing",
-      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addPrefixHandler(
+        "/_admin/routing",
+        RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
@@ -568,9 +574,9 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // actions defined in v8
   // ...........................................................................
-
+  
   _handlerFactory->addPrefixHandler(
-      "/", RestHandlerCreator<RestActionHandler>::createNoData);
+     "/", RestHandlerCreator<RestActionHandler>::createNoData);
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

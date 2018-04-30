@@ -398,6 +398,11 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
     }
 #endif
   }
+    
+  TRI_ASSERT(plan != nullptr);
+  if (!plan->varUsageComputed()) {
+    plan->findVarUsage();
+  }
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
   
@@ -514,12 +519,13 @@ ExecutionPlan* Query::preparePlan() {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
+
+    if (!plan->varUsageComputed()) {
+      plan->findVarUsage();
+    }
   }
 
   TRI_ASSERT(plan != nullptr);
-
-  // varsUsedLater and varsValid are unordered_sets and so their orders
-  // are not the same in the serialized and deserialized plans
 
   // return the V8 context if we are in one
   exitContext();
@@ -1054,7 +1060,7 @@ void Query::prepareV8Context() {
   ISOLATE;
   TRI_ASSERT(isolate != nullptr);
 
-  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); _AQL.clearCaches(); }");
+  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); }");
   
   {
     v8::HandleScope scope(isolate); 
@@ -1072,6 +1078,10 @@ void Query::prepareV8Context() {
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
+      if (V8DealerFeature::DEALER == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "V8 engine is disabled");
+      }
+      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       _context = V8DealerFeature::DEALER->enterContext(&_vocbase, false);
 
       if (_context == nullptr) {
@@ -1110,6 +1120,7 @@ void Query::exitContext() {
         ctx->unregisterTransaction();
       }
 
+      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       V8DealerFeature::DEALER->exitContext(_context);
       _context = nullptr;
     }

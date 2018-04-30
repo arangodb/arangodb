@@ -310,6 +310,10 @@ void OptimizerRulesFeature::addRules() {
     CanNotBeDisabled
   );
 #endif
+
+    registerRule("restrict-to-single-shard",
+                 restrictToSingleShardRule,
+                 OptimizerRule::restrictToSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
   }
 
   // finally add the storage-engine specific rules
