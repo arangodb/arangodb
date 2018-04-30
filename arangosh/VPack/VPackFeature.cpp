@@ -239,10 +239,10 @@ void VPackFeature::start() {
 
   // cppcheck-suppress *
   if (!toStdOut) {
-    std::cout << "Successfully converted JSON infile '" << _inputFile << "'"
+    std::cout << "Successfully processed infile '" << _inputFile << "'"
               << std::endl;
-    std::cout << "VPack Infile size: " << s.size() << std::endl;
-    std::cout << "JSON Outfile size: " << buffer.size() << std::endl;
+    std::cout << "Infile size: " << s.size() << std::endl;
+    std::cout << "Outfile size: " << buffer.size() << std::endl;
   }
 
   *_result = TRI_ERROR_NO_ERROR;
