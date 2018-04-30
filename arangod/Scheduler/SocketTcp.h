@@ -32,9 +32,10 @@
 namespace arangodb {
 
 class SocketTcp final : public Socket {
+  friend class AcceptorTcp;
  public:
   SocketTcp(boost::asio::io_service& ioService)
-      : Socket(ioService, /*encrypted*/false),  _socket(ioService),
+      : Socket(ioService, /*encrypted*/false), _socket(ioService),
         _peerEndpoint() {}
 
   SocketTcp(SocketTcp const& that) = delete;
@@ -81,13 +82,15 @@ class SocketTcp final : public Socket {
   void shutdownReceive(boost::system::error_code& ec) override;
   void shutdownSend(boost::system::error_code& ec) override;
 
- public:
+ private:
+  /// socket of the connection
   boost::asio::ip::tcp::socket _socket;
+  /// socket endpoint
   boost::asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
   
 class SocketSslTcp final : public Socket {
-  
+  friend class AcceptorTcp;
 public:
   SocketSslTcp(boost::asio::io_service& ioService,
                boost::asio::ssl::context&& context)
@@ -149,15 +152,12 @@ protected:
   void shutdownReceive(boost::system::error_code& ec) override;
   void shutdownSend(boost::system::error_code& ec) override;
   
-public:
-  
+private:
   boost::asio::ssl::context _sslContext;
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> _sslSocket;
-  
   boost::asio::ip::tcp::socket& _socket;
   boost::asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
-  
 }
 
 #endif

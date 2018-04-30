@@ -28,11 +28,13 @@
 #include <boost/asio/local/stream_protocol.hpp>
 
 namespace arangodb {
+class AcceptorUnixDomain;
 namespace basics {
 class StringBuffer;
 }
 
 class SocketUnixDomain final : public Socket {
+  friend class AcceptorUnixDomain;
   public:
     SocketUnixDomain(boost::asio::io_service& ioService)
         : Socket(ioService, false), _socket(ioService) {}
@@ -60,7 +62,7 @@ class SocketUnixDomain final : public Socket {
     void shutdownSend(boost::system::error_code& ec) override;
     void close(boost::system::error_code& ec) override;
 
-  public:
+private:
     boost::asio::local::stream_protocol::socket _socket;
     boost::asio::local::stream_protocol::acceptor::endpoint_type _peerEndpoint;
 };

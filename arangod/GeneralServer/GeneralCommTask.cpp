@@ -252,8 +252,6 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     isDirect = false;
     isPrio = true;
   }
-#warning TODO remove later
-  isDirect = false;
 
   if (isDirect) {
     handleRequestDirectly(basics::ConditionalLocking::DoNotLock,

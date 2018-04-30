@@ -45,13 +45,23 @@ typedef std::function<void(const boost::system::error_code& ec,
 class Socket {
  public:
   Socket(boost::asio::io_service& ioService, bool encrypted)
-      : _strand(ioService), _encrypted(encrypted) {}
+      : _encrypted(encrypted), _strand(ioService) {}
   Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
   virtual ~Socket() {}
   
   bool isEncrypted() const { return _encrypted; }
-  bool handshake();
+  bool handshake()  {
+    if (!_encrypted || _handshakeDone) {
+      return true;
+    } else if (sslHandshake()) {
+      _handshakeDone = true;
+      return true;
+    }
+    return false;
+  }
+  
+  /// return the socket to use for this socket
   boost::asio::io_service::strand& strand() { return _strand; }
   
   virtual std::string peerAddress() const = 0;
@@ -96,12 +106,10 @@ class Socket {
   virtual void shutdownSend(boost::system::error_code& ec) = 0;
 
  private:
-   /// The io_context used to perform socket operations.
-  //boost::asio::io_service& _ioService;
-  /// Strand to ensure the connection's handlers are not called concurrently.
-  boost::asio::io_service::strand _strand;
   bool const _encrypted;
   bool _handshakeDone = false;
+  /// Strand to ensure the connection's handlers are not called concurrently.
+  boost::asio::io_service::strand _strand;
 };
 }
 
