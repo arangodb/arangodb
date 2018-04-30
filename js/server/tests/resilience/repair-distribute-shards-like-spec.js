@@ -171,7 +171,9 @@ const waitForAllAgencyJobs = function () {
   }
 
   if (timeout) {
-    console.error(`Timeout after waiting for ${duration}s on job "${jobId}"`);
+    const duration = (Date.now() - start) / 1000;
+    console.error(`Timeout after waiting for ${duration}s on all agency jobs. `
+      + `${unfinishedJobs} jobs aren't finished.`);
   }
 
   return unfinishedJobs === 0;
@@ -324,7 +326,7 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
       toServer: to,
       jobId: id,
       timeCreated: (new Date()).toISOString(),
-      creator: ArangoServerState.id(),
+      creator: global.ArangoServerState.id(),
       isLeader: isLeader
     };
     global.ArangoAgency.set('Target/ToDo/' + id, moveShardTodo);
