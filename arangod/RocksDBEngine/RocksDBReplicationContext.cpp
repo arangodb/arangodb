@@ -427,10 +427,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
         return;
       }
       VPackSlice doc(_collection->mdr.vpack());
-      VPackSlice revision = doc.get(StaticStrings::RevString);
-      TRI_ASSERT(revision.isString());
-      auto docRevRef = StringRef(revision);
-      docRev = TRI_StringToRid(docRevRef.data(),docRevRef.size(),false);
+      docRev = TRI_ExtractRevisionId(doc);
     }
 
     // set type
@@ -548,10 +545,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
         return;
       }
       VPackSlice doc(_collection->mdr.vpack());
-      VPackSlice revision = doc.get(StaticStrings::RevString);
-      TRI_ASSERT(revision.isString());
-      auto keyRef = StringRef(revision);
-      docRev = TRI_StringToRid(keyRef.data(),keyRef.size(),false);
+      docRev = TRI_ExtractRevisionId(doc);
     }
 
     StringRef docKey(RocksDBKey::primaryKey(rocksKey));

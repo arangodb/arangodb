@@ -636,10 +636,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
               return;
             }
             VPackSlice doc(mmdr.vpack());
-            VPackSlice revision = doc.get(StaticStrings::RevString);
-            TRI_ASSERT(revision.isString());
-            auto docRevRef = StringRef(revision);
-            docRev = TRI_StringToRid(docRevRef.data(),docRevRef.size(),false);
+            docRev = TRI_ExtractRevisionId(doc);
           }
           compareChunk(docKey, docRev);
         },
