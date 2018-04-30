@@ -44,7 +44,7 @@ class ClientManager {
    * @brief Initialize a client manager using a specific log topic for output
    * @param topic Topic to log output to
    */
-  ClientManager(LogTopic& topic);
+  explicit ClientManager(LogTopic& topic);
   virtual ~ClientManager();
 
  public:

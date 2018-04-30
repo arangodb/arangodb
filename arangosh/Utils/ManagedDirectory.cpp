@@ -477,10 +477,9 @@ std::string ManagedDirectory::File::slurp() {
     return content;
   }
 
-  ssize_t bytesRead = 0;
   char buffer[::DefaultIOChunkSize];
   while (true) {
-    bytesRead = read(buffer, ::DefaultIOChunkSize);
+    ssize_t bytesRead = read(buffer, ::DefaultIOChunkSize);
     if (_status.ok()) {
       content.append(buffer, bytesRead);
     }

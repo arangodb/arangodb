@@ -58,7 +58,6 @@ PregelFeature::PregelFeature(application_features::ApplicationServer* server)
   startsAfter("Endpoint");
   startsAfter("Cluster");
   startsAfter("Server");
-  startsAfter("V8Dealer");
 }
 
 PregelFeature::~PregelFeature() {
