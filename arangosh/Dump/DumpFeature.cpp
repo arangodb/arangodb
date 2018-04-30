@@ -52,6 +52,7 @@
 #endif
 
 namespace {
+
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Dump";
 
@@ -61,15 +62,11 @@ constexpr uint64_t MinChunkSize = 1024 * 128;
 /// @brief maximum amount of data to fetch from server in a single batch
 constexpr uint64_t MaxChunkSize = 1024 * 1024 * 96;
 // NB: larger value may cause tcp issues (check exact limits)
-}  // namespace
 
-namespace {
 /// @brief generic error for if server returns bad/unexpected json
 const arangodb::Result ErrorMalformedJsonResponse = {
     TRI_ERROR_INTERNAL, "got malformed JSON response from server"};
-}  // namespace
 
-namespace {
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(
     arangodb::httpclient::SimpleHttpClient& client,
@@ -86,16 +83,12 @@ arangodb::Result checkHttpResponse(
   }
   return {TRI_ERROR_NO_ERROR};
 }
-}  // namespace
 
-namespace {
 /// @brief checks that a file pointer is valid and file status is ok
 bool fileOk(arangodb::ManagedDirectory::File* file) {
   return (file && file->status().ok());
 }
-}  // namespace
 
-namespace {
 /// @brief assuming file pointer is not ok, generate/extract proper error
 arangodb::Result fileError(arangodb::ManagedDirectory::File* file,
                            bool isWritable) {
@@ -108,9 +101,7 @@ arangodb::Result fileError(arangodb::ManagedDirectory::File* file,
   }
   return file->status();
 }
-}  // namespace
 
-namespace {
 /// @brief start a batch via the replication API
 std::pair<arangodb::Result, uint64_t> startBatch(
     arangodb::httpclient::SimpleHttpClient& client, std::string DBserver) {
@@ -146,9 +137,7 @@ std::pair<arangodb::Result, uint64_t> startBatch(
 
   return {{TRI_ERROR_NO_ERROR}, uint64(id)};
 }
-}  // namespace
 
-namespace {
 /// @brief prolongs a batch to ensure we can complete our dump
 void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
                  std::string DBserver, uint64_t batchId) {
@@ -167,9 +156,7 @@ void extendBatch(arangodb::httpclient::SimpleHttpClient& client,
                      body.c_str(), body.size()));
   // ignore any return value
 }
-}  // namespace
 
-namespace {
 /// @brief mark our batch finished so resources can be freed on server
 void endBatch(arangodb::httpclient::SimpleHttpClient& client,
               std::string DBserver, uint64_t& batchId) {
@@ -190,9 +177,7 @@ void endBatch(arangodb::httpclient::SimpleHttpClient& client,
   // overwrite the input id
   batchId = 0;
 }
-}  // namespace
 
-namespace {
 /// @brief execute a WAL flush request
 void flushWal(arangodb::httpclient::SimpleHttpClient& client) {
   static std::string const url =
@@ -207,9 +192,7 @@ void flushWal(arangodb::httpclient::SimpleHttpClient& client) {
         << "got invalid response from server: " + check.errorMessage();
   }
 }
-}  // namespace
 
-namespace {
 bool isIgnoredHiddenEnterpriseCollection(
     arangodb::DumpFeature::Options const& options, std::string const& name) {
 #ifdef USE_ENTERPRISE
@@ -229,9 +212,7 @@ bool isIgnoredHiddenEnterpriseCollection(
 #endif
   return false;
 }
-}  // namespace
 
-namespace {
 /// @brief dump the actual data from an individual collection
 arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
                                 arangodb::DumpFeature::JobData& jobData,
@@ -330,9 +311,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(false);
   return {TRI_ERROR_INTERNAL};
 }
-}  // namespace
 
-namespace {
 /// @brief processes a single collection dumping job in single-server mode
 arangodb::Result handleCollection(
     arangodb::httpclient::SimpleHttpClient& client,
@@ -346,9 +325,7 @@ arangodb::Result handleCollection(
                           jobData.batchId, jobData.options.tickStart,
                           jobData.options.tickEnd);
 }
-}  // namespace
 
-namespace {
 /// @brief handle a single collection dumping job in cluster mode
 arangodb::Result handleCollectionCluster(
     arangodb::httpclient::SimpleHttpClient& client,
@@ -398,9 +375,7 @@ arangodb::Result handleCollectionCluster(
 
   return result;
 }
-}  // namespace
 
-namespace {
 /// @brief process a single job from the queue
 arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
                             arangodb::DumpFeature::JobData& jobData) {
@@ -469,9 +444,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 
   return result;
 }
-}  // namespace
 
-namespace {
 /// @brief handle the result of a single job
 void handleJobResult(std::unique_ptr<arangodb::DumpFeature::JobData>&& jobData,
                      arangodb::Result const& result) {
@@ -479,6 +452,7 @@ void handleJobResult(std::unique_ptr<arangodb::DumpFeature::JobData>&& jobData,
     jobData->feature.reportError(result);
   }
 }
+
 }  // namespace
 
 namespace arangodb {
@@ -996,14 +970,14 @@ void DumpFeature::start() {
     if (_options.dumpData) {
       LOG_TOPIC(INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s," 
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s,"
           << " wrote " << _stats.totalWritten.load()
           << " byte(s) into datafiles, sent " << _stats.totalBatches.load()
           << " batch(es)";
     } else {
       LOG_TOPIC(INFO, Logger::DUMP)
           << "Processed " << _stats.totalCollections.load()
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s"; 
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s";
     }
   }
 }

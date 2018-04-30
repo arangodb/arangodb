@@ -45,11 +45,10 @@
 #endif
 
 namespace {
+
 /// @brief name of the feature to report to application server
 constexpr auto FeatureName = "Restore";
-}  // namespace
 
-namespace {
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(
     arangodb::httpclient::SimpleHttpClient& client,
@@ -66,9 +65,7 @@ arangodb::Result checkHttpResponse(
   }
   return {TRI_ERROR_NO_ERROR};
 }
-}  // namespace
 
-namespace {
 /// @brief Sort collections for proper recreation order
 bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   VPackSlice const left = l.slice().get("parameters");
@@ -104,9 +101,7 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
 
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
-}  // namespace
 
-namespace {
 /// @brief Create the database to restore to, connecting manually
 arangodb::Result tryCreateDatabase(std::string const& name) {
   using arangodb::httpclient::SimpleHttpClient;
@@ -174,9 +169,7 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
   auto res = ::checkHttpResponse(*httpClient, response);
   return {TRI_ERROR_INTERNAL, res.errorMessage()};
 }
-}  // namespace
 
-namespace {
 /// @check If directory is encrypted, check that key option is specified
 void checkEncryption(arangodb::ManagedDirectory& directory) {
   using arangodb::Logger;
@@ -199,9 +192,7 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
 #endif
   }
 }
-}  // namespace
 
-namespace {
 /// @brief Check the database name specified by the dump file
 arangodb::Result checkDumpDatabase(arangodb::ManagedDirectory& directory,
                                    bool forceSameDatabase) {
@@ -234,9 +225,7 @@ arangodb::Result checkDumpDatabase(arangodb::ManagedDirectory& directory,
 
   return {};
 }
-}  // namespace
 
-namespace {
 /// @brief Send the command to recreate a collection
 arangodb::Result sendRestoreCollection(
     arangodb::httpclient::SimpleHttpClient& httpClient,
@@ -292,9 +281,7 @@ arangodb::Result sendRestoreCollection(
 
   return {TRI_ERROR_NO_ERROR};
 }
-}  // namespace
 
-namespace {
 /// @brief Send command to restore a collection's indexes
 arangodb::Result sendRestoreIndexes(
     arangodb::httpclient::SimpleHttpClient& httpClient,
@@ -317,9 +304,7 @@ arangodb::Result sendRestoreIndexes(
 
   return {TRI_ERROR_NO_ERROR};
 }
-}  // namespace
 
-namespace {
 /// @brief Send a command to restore actual data
 arangodb::Result sendRestoreData(
     arangodb::httpclient::SimpleHttpClient& httpClient,
@@ -344,9 +329,7 @@ arangodb::Result sendRestoreData(
 
   return {TRI_ERROR_NO_ERROR};
 }
-}  // namespace
 
-namespace {
 /// @brief Recreate a collection given its description
 arangodb::Result recreateCollection(
     arangodb::httpclient::SimpleHttpClient& httpClient,
@@ -381,9 +364,7 @@ arangodb::Result recreateCollection(
   }
   return result;
 }
-}  // namespace
 
-namespace {
 /// @brief Restore a collection's indexes given its description
 arangodb::Result restoreIndexes(
     arangodb::httpclient::SimpleHttpClient& httpClient,
@@ -414,9 +395,7 @@ arangodb::Result restoreIndexes(
   }
   return result;
 }
-}  // namespace
 
-namespace {
 /// @brief Restore the data for a given collection
 arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
                              arangodb::RestoreFeature::JobData& jobData) {
@@ -510,9 +489,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
   return result;
 }
-}  // namespace
 
-namespace {
 arangodb::Result processInputDirectory(
     arangodb::httpclient::SimpleHttpClient& httpClient,
     arangodb::ClientTaskQueue<arangodb::RestoreFeature::JobData>& jobQueue,
@@ -648,9 +625,7 @@ arangodb::Result processInputDirectory(
   }
   return {TRI_ERROR_NO_ERROR};
 }
-}  // namespace
 
-namespace {
 /// @brief process a single job from the queue
 arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
                             arangodb::RestoreFeature::JobData& jobData) {
@@ -677,9 +652,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
   }
   return result;
 }
-}  // namespace
 
-namespace {
 /// @brief handle the result of a single job
 void handleJobResult(
     std::unique_ptr<arangodb::RestoreFeature::JobData>&& jobData,
@@ -688,6 +661,7 @@ void handleJobResult(
     jobData->feature.reportError(result);
   }
 }
+
 }  // namespace
 
 namespace arangodb {
@@ -833,7 +807,7 @@ void RestoreFeature::prepare() {
 
 void RestoreFeature::start() {
   using arangodb::httpclient::SimpleHttpClient;
-  
+
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
@@ -949,20 +923,20 @@ void RestoreFeature::start() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << result.errorMessage();
     _exitCode = EXIT_FAILURE;
   }
-  
+
   if (_options.progress) {
     double totalTime = TRI_microtime() - start;
 
     if (_options.importData) {
       LOG_TOPIC(INFO, Logger::RESTORE)
           << "Processed " << _stats.totalCollections
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s," 
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s,"
           << "read " << _stats.totalRead << " byte(s) from datafiles, "
           << "sent " << _stats.totalBatches << " batch(es)";
     } else if (_options.importStructure) {
       LOG_TOPIC(INFO, Logger::RESTORE)
           << "Processed " << _stats.totalCollections
-          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s"; 
+          << " collection(s) in " << Logger::FIXED(totalTime, 6) << " s";
     }
   }
 }

@@ -32,6 +32,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 namespace {
+
 arangodb::Result getHttpErrorMessage(
     arangodb::httpclient::SimpleHttpResult* result) {
   using arangodb::basics::VelocyPackHelper;
@@ -68,6 +69,7 @@ arangodb::Result getHttpErrorMessage(
   }
   return {code, std::move(message)};
 }
+
 }  // namespace
 
 namespace arangodb {
