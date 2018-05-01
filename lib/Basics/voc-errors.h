@@ -168,6 +168,11 @@ constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        
 /// Will be raised when a file cannot be read.
 constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 34;
 
+/// 35: ERROR_INCOMPATIBLE_VERSION
+/// "incompatible server version"
+/// Will be raised when a server is running an incompatible version of ArangoDB.
+constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    = 35;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
