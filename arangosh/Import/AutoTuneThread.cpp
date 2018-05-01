@@ -102,7 +102,7 @@ void AutoTuneThread::run() {
         new_max = 768 * 1024 * 1024;
       }
 
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "Current: " << current_max
         << ", ten_sec: " << ten_second_actual
         << ", new_max: " << new_max;
