@@ -58,8 +58,11 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasV8Expression(false),
       _indexesExhausted(false),
       _isLastIndex(false),
+      _hasMultipleExpansions(false),
       _returned(0) {
   _mmdr.reset(new ManagedDocumentResult);
+    
+  TRI_ASSERT(!_indexes.empty());
 
   if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
@@ -87,6 +90,28 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
+  
+  // count how many attributes in the index are expanded (array index)
+  // if more than a single attribute, we always need to deduplicate the
+  // result later on
+  for (auto const& it : _indexes) {
+    size_t expansions = 0;
+    auto idx = it.getIndex();
+    auto const& fields = idx->fields();
+    for (size_t i = 0; i < fields.size(); ++i) {
+      if (idx->isAttributeExpanded(i)) {
+        ++expansions;
+        if (expansions > 1) {
+          _hasMultipleExpansions = true;
+          break;
+        }
+      }
+    }
+  }
+ 
+  // build the _documentProducer callback for extracting
+  // documents from the index 
+  buildCallback();
 }
 
 IndexBlock::~IndexBlock() { cleanupNonConstExpressions(); }
@@ -207,7 +232,7 @@ int IndexBlock::initialize() {
 
   if (_condition == nullptr) {
     // This Node has no condition. Iterate over the complete index.
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   auto outVariable = en->outVariable();
@@ -460,14 +485,26 @@ bool IndexBlock::readIndex(
     TRI_ASSERT(atMost >= _returned);
  
     bool res;
-    if (produceResult()) {
-      // fetch entire documents
-      res = _cursor->nextDocument(callback, atMost - _returned);
-    } else {
-      // optimization: iterate over index, but do not fetch documents
+    if (!produceResult()) {
+      // optimization: iterate over index (e.g. for filtering), but do not fetch the
+      // actual documents
       res = _cursor->next([&callback](LocalDocumentId const& id) {
         callback(id, VPackSlice::nullSlice());
       }, atMost - _returned);
+    } else {
+      // check if the *current* cursor supports covering index queries or not 
+      // if we can optimize or not must be stored in our instance, so the
+      // DocumentProducingBlock can access the flag
+      _allowCoveringIndexOptimization = _cursor->hasCovering();
+      
+      if (_allowCoveringIndexOptimization && 
+          !static_cast<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
+        // index covers all projections
+        res = _cursor->nextCovering(callback, atMost - _returned);
+      } else {
+        // we need the documents later on. fetch entire documents
+       res = _cursor->nextDocument(callback, atMost - _returned);
+      }
     }
 
     if (res) {
@@ -527,21 +564,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atMost) {
 
   IndexIterator::DocumentCallback callback;
 
-  size_t expansions = 0;
-  {
-    // count how many attributes in the index are expanded (array index)
-    // if more than a single attribute, we always need to deduplicate the
-    // result later on
-    auto mainIndex = _indexes[0].getIndex();
-    auto const& fields = mainIndex->fields();
-    for (size_t i = 0; i < fields.size(); ++i) {
-      if (mainIndex->isAttributeExpanded(i)) {
-        ++expansions;
-      }
-    }
-  }
-
-  if (_indexes.size() > 1 || expansions > 1) {
+  if (_indexes.size() > 1 || _hasMultipleExpansions) {
     // Activate uniqueness checks
     callback = [&](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(res != nullptr);

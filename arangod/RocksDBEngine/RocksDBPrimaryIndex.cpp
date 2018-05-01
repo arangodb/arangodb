@@ -80,11 +80,13 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     RocksDBPrimaryIndex* index,
-    std::unique_ptr<VPackBuilder> keys)
+    std::unique_ptr<VPackBuilder> keys,
+    bool allowCoveringIndexOptimization)
     : IndexIterator(collection, trx, index),
       _index(index),
       _keys(std::move(keys)),
-      _iterator(_keys->slice()) {
+      _iterator(_keys->slice()),
+      _allowCoveringIndexOptimization(allowCoveringIndexOptimization) {
   TRI_ASSERT(_keys->slice().isArray());
 }
 
@@ -102,12 +104,36 @@ bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-
+  
   while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
     LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
+      --limit;
+    }
+
+    _iterator.next();
+    if (!_iterator.valid()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool RocksDBPrimaryIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  if (limit == 0 || !_iterator.valid()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  while (limit > 0) {
+    // TODO: prevent copying of the value into result, as we don't need it here!
+    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    if (documentId.isSet()) {
+      cb(documentId, *_iterator);
       --limit;
     }
 
@@ -163,7 +189,7 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 }
 
 LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                            arangodb::StringRef keyRef) const {
+                                               arangodb::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
@@ -370,7 +396,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys));
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys), !isId);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -393,7 +419,7 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys));
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys), !isId);
 }
 
 /// @brief add a single value node to the iterator's keys

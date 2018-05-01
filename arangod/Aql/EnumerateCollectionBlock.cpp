@@ -49,6 +49,8 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
                                        : transaction::Methods::CursorType::ALL),
                           false)) {
   TRI_ASSERT(_cursor->ok());
+
+  buildCallback();
 }
 
 int EnumerateCollectionBlock::initialize() {
