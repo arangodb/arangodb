@@ -31,11 +31,10 @@ using namespace arangodb;
 using namespace arangodb::import;
 
 ////////////////////////////////////////////////////////////////////////////////
-//
-// This auto tuning of output rate is based upon determining the actual rate
-//  arangodb is absorbing bytes per second, then dividing that total amount
-//  across the desired thread count.  The delivery is of bytes from each thread
-//  is also paced across a second.
+// Goals:
+//  1. compute current one second throughput of import
+//  2. spread byte count of one second throughput across sender threads
+//  3. create "space" between sender execution to give server time for other activities
 //
 // The code collects the total count of bytes absorbed for ten seconds, then averages
 //  that amount with the total from the previous 10 seconds.  The per second per thread pace
