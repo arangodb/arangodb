@@ -2227,15 +2227,15 @@ bool Ast::getReferencedAttributes(AstNode const* node,
   size_t nameLength = 0;
   bool isSafeForOptimization = true;
 
-  auto visitor = [&](AstNode const* node) -> void {
+  auto visitor = [&](AstNode const* node) -> bool {
     if (node == nullptr || !isSafeForOptimization) {
-      return;
+      return false;
     }
-
+    
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       attributeName = node->getStringValue();
       nameLength = node->getStringLength();
-      return;
+      return true;
     }
 
     if (node->type == NODE_TYPE_REFERENCE) {
@@ -2248,7 +2248,7 @@ bool Ast::getReferencedAttributes(AstNode const* node,
           // a reference to the complete value, e.g. FUNC(value)
           // note that this is unsafe to optimize this away
           isSafeForOptimization = false;
-          return;
+          return false;
         }
         // insert attributeName only
         vars.emplace(std::string(attributeName, nameLength));
@@ -2259,9 +2259,11 @@ bool Ast::getReferencedAttributes(AstNode const* node,
 
     attributeName = nullptr;
     nameLength = 0;
+
+    return true;
   };
 
-  traverseReadOnly(node, visitor); 
+  traverseReadOnly(node, visitor, doNothingVisitor); 
   return isSafeForOptimization;
 }
 
