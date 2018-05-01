@@ -134,22 +134,32 @@ static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
   // converts the absolute value of `a into little-endian form and
   // stores it at `to`. `tolen` indicates the length of the output buffer `to`
   int size = BN_num_bytes(bn);
-  char bin[size];
+  unsigned char bin[size];
   size = BN_bn2lebinpad(bn, bin, size);
   
   int count = 0;
+  // x86 is LE and allows unaligned memory access
+/*#if (defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__))
+  if (size > sizeof(unsigned int)) {
+    unsigned int* tmp = reinterpret_cast<unsigned int>(bin);
+    for (; (i + 1) * sizeof(unsigned int) <= size; i += sizeof(unsigned int)) {
+      if (*tmp == 0) {
+        count += 8 * sizeof(unsigned int);
+      } else {
+        count += __builtin_clz(*tmp);
+        break;
+      }
+    }
+  }
+#endif*/
   for (int i = 0; i < size; ++i) {
     if (bin[i] == 0) {
-      count += 8 * sizeof(BN_ULONG);
+      count += 8;
     } else {
-#if defined(__GNUC__) || defined(__clang__)
-      count += __builtin_clz(reinterpret_cast<unsigned char>(bin[i]));
-#else
       char w = bin[i];
       for (; (w & 1) == 0; w >>= 1) {
         ++count;
       }
-#endif
       break;
     }
   }
