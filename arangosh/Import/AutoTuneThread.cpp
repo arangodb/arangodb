@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
+#include <thread>
 
 #include "AutoTuneThread.h"
 #include "Basics/ConditionLocker.h"
@@ -29,9 +30,31 @@
 using namespace arangodb;
 using namespace arangodb::import;
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// This auto tuning of output rate is based upon determining the actual rate
+//  arangodb is absorbing bytes per second, then dividing that total amount
+//  across the desired thread count.  The delivery is of bytes from each thread
+//  is also paced across a second.
+//
+// The code collects the total count of bytes absorbed for ten seconds, then averages
+//  that amount with the total from the previous 10 seconds.  The per second per thread pace
+//  is therefore average divided by the thread count divided by 10.
+//
+// The pace starts "slow", 1 megabyte per second.  Each recalculation of pace adds
+//  a 20% growth factor above the actual calculation from average bytes consumed.
+//
+// The pacing code also notices when threads are completing quickly.  It will release
+//  a new thread early in such cases to again encourage rate growth.
+//
+////////////////////////////////////////////////////////////////////////////////
+
 AutoTuneThread::AutoTuneThread(ImportHelper & importHelper)
     : Thread("AutoTuneThread"),
-      _importHelper(importHelper) {}
+      _importHelper(importHelper),
+      _nextSend(std::chrono::steady_clock::now()),
+      _pace(std::chrono::microseconds(1000000 / importHelper.getThreadCount()))
+{}
 
 AutoTuneThread::~AutoTuneThread() {
   shutdown();
@@ -47,15 +70,12 @@ void AutoTuneThread::beginShutdown() {
 
 
 void AutoTuneThread::run() {
-//  uint64_t total_time(0), total_bytes(0);
-
   while (!isStopping()) {
     {
       CONDITION_LOCKER(guard, _condition);
       guard.wait(std::chrono::seconds(10));
     }
     if (!isStopping()) {
-#if 1
       // getMaxUploadSize() is per thread
       uint64_t current_max = _importHelper.getMaxUploadSize();
       current_max *= _importHelper.getThreadCount();
@@ -83,24 +103,37 @@ void AutoTuneThread::run() {
         new_max = 768 * 1024 * 1024;
       }
 
-      std::cout << "Current: " << current_max
-                << ", ten_sec: " << ten_second_actual
-                << ", new_max: " << new_max
-                << std::endl;
-#else
-      total_time +=10;
-      total_bytes += _importHelper.rotatePeriodByteCount();
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+        << "Current: " << current_max
+        << ", ten_sec: " << ten_second_actual
+        << ", new_max: " << new_max;
 
-      uint64_t new_max = total_bytes / total_time / _importHelper.getThreadCount();
-
-      new_max += new_max/10;
-
-      std::cout << "Total sec: " << total_time
-                << ", total byte: " << total_bytes
-                << ", new_max: " << new_max
-                << std::endl;
-#endif
       _importHelper.setMaxUploadSize(new_max);
     }
   }
 }
+
+
+
+void AutoTuneThread::paceSends() {
+  auto now = std::chrono::steady_clock::now();
+  bool next_reset(false);
+
+  // has _nextSend time_point already passed?
+  //  if so, move to next increment of _pace to force wait
+  while(_nextSend <= now) {
+    _nextSend += _pace;
+    next_reset = true;
+  }
+
+  std::this_thread::sleep_until(_nextSend);
+
+  // if the previous send thread thread was found really quickly,
+  //  assume arangodb is absorbing data faster than current rate.
+  //  try doubling rate by halfing pace time for subsequent send.
+  if (!next_reset && _pace/2 < _nextSend - now )
+    _nextSend = _nextSend + _pace/2;
+  else
+    _nextSend = _nextSend + _pace;
+
+} // AutoTuneThread::paceSends

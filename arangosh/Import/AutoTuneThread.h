@@ -45,12 +45,16 @@ class AutoTuneThread : public arangodb::Thread {
 
   void beginShutdown() override;
 
- protected:
+  void paceSends();
+
+protected:
   void run() override;
+
 
   ImportHelper & _importHelper;
   basics::ConditionVariable _condition;
-
+  std::chrono::steady_clock::time_point _nextSend;
+  std::chrono::microseconds _pace;
 };
 }
 }
