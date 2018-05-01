@@ -379,17 +379,21 @@ function optimizerCollectMethodsTestSuite () {
 
         var aggregateNodes = 0;
         var sortNodes = 0;
+        let hasInto = false;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual(query[1], node.collectOptions.method, query);
+            if (node.outVariable && !node.count) {
+              hasInto = true;
+            }
           }
           if (node.type === "SortNode") {
             ++sortNodes;
           }
         });
-        
-        assertEqual(1, aggregateNodes);
+       
+        assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
         assertEqual(query[1] === 'hash' ? 1 : 0, sortNodes);
       });
     },
@@ -460,7 +464,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test many collects
 ////////////////////////////////////////////////////////////////////////////////
-    
+   
     testManyCollects : function () {
       c.truncate();
       c.insert({ value: 3 });
