@@ -69,9 +69,10 @@ static void JS_StateLoggerReplication(
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  auto res = engine->createLoggerState(nullptr,builder);
+  auto res = engine->createLoggerState(vocbase,builder);
   if(res.fail()){
     TRI_V8_THROW_EXCEPTION(res);
   }
