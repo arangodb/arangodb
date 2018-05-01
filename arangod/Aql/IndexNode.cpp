@@ -86,9 +86,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     _options.sorted = true;
     _options.ascending = !(base.get("reverse").getBool());
   }
-  _options.needsGatherNodeSort =
-      basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort",
-                                                 false);
 
   if (_collection == nullptr) {
     std::string msg("collection '");
@@ -130,6 +127,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
+  nodes.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
   if (!_restrictedTo.empty()) {
     nodes.add("restrictedTo", VPackValue(_restrictedTo));
   }
@@ -146,13 +144,13 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   }
   nodes.add(VPackValue("condition"));
   _condition->toVelocyPack(nodes, verbose);
+  // IndexIteratorOptions
   nodes.add("sorted", VPackValue(_options.sorted));
   nodes.add("ascending", VPackValue(_options.ascending));
   nodes.add("reverse", VPackValue(!_options.ascending)); // legacy
   nodes.add("evalFCalls", VPackValue(_options.evaluateFCalls));
   nodes.add("fullRange", VPackValue(_options.fullRange));
   nodes.add("limit", VPackValue(_options.limit));
-  nodes.add("needsGatherNodeSort", VPackValue(_options.needsGatherNodeSort));
 
   // And close it:
   nodes.close();
@@ -178,7 +176,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
                          _indexes, _condition->clone(), _options);
 
-  c->needsGatherNodeSort(_options.needsGatherNodeSort);
+  c->needsGatherNodeSort(_needsGatherNodeSort);
 
   cloneHelper(c, withDependencies, withProperties);
 

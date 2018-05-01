@@ -81,8 +81,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief whether or not the index node needs a post sort of the results
   /// of multiple shards in the cluster
-  bool needsGatherNodeSort() const { return _options.needsGatherNodeSort; }
-  void needsGatherNodeSort(bool value) { _options.needsGatherNodeSort = value; }
+  bool needsGatherNodeSort() const { return _needsGatherNodeSort; }
+  void needsGatherNodeSort(bool value) { _needsGatherNodeSort = value; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
