@@ -190,27 +190,6 @@ function optimizerIndexesTestSuite () {
       assertEqual(4, results.stats.scannedIndex);
     },
     
-    testUsePrimaryIdNoDocuments : function () {
-      var values = [ "UnitTestsCollection/test1", "UnitTestsCollection/test2", "UnitTestsCollection/test21", "UnitTestsCollection/test30" ];
-      var query = "FOR i IN " + c.name() + " FILTER i._id IN " + JSON.stringify(values) + " RETURN 1";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === 'IndexNode') {
-          assertFalse(node.producesResult);
-        }
-        return node.type;
-      });
-
-      assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1, 1, 1, 1 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(4, results.stats.scannedIndex);
-    },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test _id
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,26 +235,6 @@ function optimizerIndexesTestSuite () {
       
       var results = AQL_EXECUTE(query);
       assertEqual([ 6 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(1, results.stats.scannedIndex);
-    },
-
-    testUsePrimaryKeyEqNoDocuments : function () {
-      var query = "FOR i IN " + c.name() + " FILTER i._key == 'test6' RETURN 1";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === 'IndexNode') {
-          assertFalse(node.producesResult);
-        }
-        return node.type;
-      });
-
-      assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertEqual(1, results.stats.scannedIndex);
     },
@@ -902,28 +861,6 @@ function optimizerIndexesTestSuite () {
       assertTrue(results.stats.scannedIndex > 0);
     },
     
-    testUseIndexSimpleNoDocuments : function () {
-      var query = "FOR i IN " + c.name() + " FILTER i.value >= 10 SORT i.value LIMIT 10 RETURN 1";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === 'IndexNode') {
-          assertFalse(node.producesResult);
-        }
-        return node.type;
-      });
-
-      assertEqual("SingletonNode", nodeTypes[0], query);
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-      assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertTrue(results.stats.scannedIndex > 0);
-    },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
@@ -1518,32 +1455,6 @@ function optimizerIndexesTestSuite () {
       assertEqual(0, results.stats.scannedFull);
     },
     
-    testIndexOrHashNoDocuments : function () {
-      c.ensureHashIndex("value");
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN 1";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexNode") {
-          assertFalse(node.producesResult);
-          if (db._engine().name === "rocksdb") {
-            assertNotEqual(["hash", "skiplist", "persistent"].indexOf(node.indexes[0].type), -1);
-          } else {
-            assertEqual("hash", node.indexes[0].type);
-          }
-          assertFalse(node.indexes[0].unique);
-        }
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1, 1 ], results.json, query);
-      assertEqual(2, results.stats.scannedIndex);
-      assertEqual(0, results.stats.scannedFull);
-    },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
@@ -1701,27 +1612,6 @@ function optimizerIndexesTestSuite () {
       assertEqual(0, results.stats.scannedFull);
     },
     
-    testIndexOrSkiplistNoDocuments : function () {
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN 1";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        if (node.type === "IndexNode") {
-          assertFalse(node.producesResult);
-          assertEqual("skiplist", node.indexes[0].type);
-          assertFalse(node.indexes[0].unique);
-        }
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1, 1 ], results.json.sort(), query);
-      assertEqual(2, results.stats.scannedIndex);
-      assertEqual(0, results.stats.scannedFull);
-    },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
