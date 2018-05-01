@@ -6499,13 +6499,11 @@ AqlValue Functions::Fail(arangodb::aql::Query* query, transaction::Methods* trx,
 
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
-  if (! value.isString()) {
+  if (!value.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FAIL_CALLED, "");
   }
 
   AqlValueMaterializer materializer(trx);
-  VPackValueLength l;
-  char const* msg = materializer.slice(value, false).getString(l);
-      
-  THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FAIL_CALLED, msg);
+  VPackSlice str = materializer.slice(value, false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FAIL_CALLED, str.copyString());
 }
