@@ -48,6 +48,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         _collection(collection),
         _indexes(indexes),
         _condition(condition),
+        _needsGatherNodeSort(false),
+        _restrictedTo(""),
         _options(opts) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
@@ -63,9 +65,16 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
           base.get("collection").copyString())),
       _indexes(),
       _condition(nullptr),
+      _needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)),
+      _restrictedTo(""),
       _options() {
+
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
+  VPackSlice restrictedTo = base.get("restrictedTo");
+  if (restrictedTo.isString()) {
+    _restrictedTo = restrictedTo.copyString();
+  }
 
   _options.sorted = basics::VelocyPackHelper::readBooleanValue(base, "sorted", true);
   _options.ascending = basics::VelocyPackHelper::readBooleanValue(base, "ascending", false);
@@ -121,6 +130,9 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
+  if (!_restrictedTo.empty()) {
+    nodes.add("restrictedTo", VPackValue(_restrictedTo));
+  }
 
   // add outvariable and projection
   DocumentProducingNode::toVelocyPack(nodes);

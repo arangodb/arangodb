@@ -107,7 +107,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 
@@ -117,7 +116,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 
@@ -127,7 +125,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 }
@@ -199,7 +196,6 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       true,   // deterministic
       false,  // can't throw
       true,   // can be run on server
-      true,   // can pass arguments by reference
       &noop   // function implementation (use function name as placeholder)
     });
 

@@ -346,11 +346,11 @@ void RocksDBAqlFunctions::registerResources() {
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
   TRI_ASSERT(functions != nullptr);
 
-  // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", false, true, false, true,
-                  &RocksDBAqlFunctions::Fulltext, NotInCoordinator});
-  functions->add({"NEAR", ".h,.,.|.,.", false, true, false, true,
+  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
+                  false, &RocksDBAqlFunctions::Fulltext,
+                  NotInCoordinator});
+  functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
                   &RocksDBAqlFunctions::Near, NotInCoordinator});
-  functions->add({"WITHIN", ".h,.,.,.|.", false, true, false, true,
-                  &RocksDBAqlFunctions::Within, NotInCoordinator});
+  functions->add({"WITHIN", ".h,.,.,.|.", false, true,
+                  false, &RocksDBAqlFunctions::Within, NotInCoordinator});
 }

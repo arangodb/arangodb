@@ -74,7 +74,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
   REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");

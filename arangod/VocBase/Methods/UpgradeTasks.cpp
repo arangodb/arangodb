@@ -97,10 +97,8 @@ bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
                         bool sparse) {
   VPackBuilder output;
   Result res1, res2;
-  res1 =
-      methods::Collections::lookup(vocbase, name, [&](LogicalCollection* coll) {
-        res2 =
-            methods::Indexes::createIndex(coll, type, fields, unique, sparse);
+  res1 = methods::Collections::lookup(vocbase, name, [&](LogicalCollection* coll) {
+        res2 = methods::Indexes::createIndex(coll, type, fields, unique, sparse);
       });
   if (res1.fail() || res2.fail()) {
     THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);

@@ -47,10 +47,6 @@
 //
 // If you wish to unlink (remove) or replace a node you should do it by using
 // one of the plans operations.
-//
-// addDependency(Parent) has a totally different functionality as addDependencies(Parents)
-// the latter is not adding a list of Dependencies to a node!!!
-//
 
 #ifndef ARANGOD_AQL_EXECUTION_NODE_H
 #define ARANGOD_AQL_EXECUTION_NODE_H 1
@@ -137,7 +133,14 @@ class ExecutionNode {
 #ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW = 25
 #endif
+    // adjust MaxNodeTypeValue below when new ExecutionNode types are added!
   };
+
+#ifdef USE_IRESEARCH
+  static constexpr size_t MaxNodeTypeValue = ENUMERATE_IRESEARCH_VIEW;
+#else 
+  static constexpr size_t MaxNodeTypeValue = SHORTEST_PATH;
+#endif
 
   ExecutionNode() = delete;
   ExecutionNode(ExecutionNode const&) = delete;
@@ -178,18 +181,10 @@ class ExecutionNode {
   static void validateType(int type);
 
   /// @brief add a dependency
-  void addDependency(ExecutionNode* ep) {
-    TRI_ASSERT(ep != nullptr);
-    _dependencies.emplace_back(ep);
-    ep->_parents.emplace_back(this);
-  }
+  void addDependency(ExecutionNode*);
 
   /// @brief add a parent
-  void addParent(ExecutionNode* ep) {
-    TRI_ASSERT(ep != nullptr);
-    ep->_dependencies.emplace_back(this);
-    _parents.emplace_back(ep);
-  }
+  void addParent(ExecutionNode*);
 
   /// @brief get all dependencies
   TEST_VIRTUAL std::vector<ExecutionNode*> getDependencies() const { return _dependencies; }
@@ -207,9 +202,7 @@ class ExecutionNode {
   bool hasDependency() const { return (_dependencies.size() == 1); }
 
   /// @brief add the node dependencies to a vector
-  /// ATTENTION - this function has nothing to do with the addDependency function
-  //              maybe another name should be used.
-  void addDependencies(std::vector<ExecutionNode*>& result) const {
+  void dependencies(std::vector<ExecutionNode*>& result) const {
     for (auto const& it : _dependencies) {
       TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
@@ -232,7 +225,7 @@ class ExecutionNode {
   }
 
   /// @brief add the node parents to a vector
-  void addParents(std::vector<ExecutionNode*>& result) const {
+  void parents(std::vector<ExecutionNode*>& result) const {
     for (auto const& it : _parents) {
       TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
@@ -277,92 +270,14 @@ class ExecutionNode {
 
   /// @brief replace a dependency, returns true if the pointer was found and
   /// replaced, please note that this does not delete oldNode!
-  bool replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
-    TRI_ASSERT(oldNode != nullptr);
-    TRI_ASSERT(newNode != nullptr);
-
-    auto it = _dependencies.begin();
-
-    while (it != _dependencies.end()) {
-      if (*it == oldNode) {
-        *it = newNode;
-        try {
-          newNode->_parents.emplace_back(this);
-        } catch (...) {
-          *it = oldNode;  // roll back
-          return false;
-        }
-        try {
-          for (auto it2 = oldNode->_parents.begin();
-               it2 != oldNode->_parents.end(); ++it2) {
-            if (*it2 == this) {
-              oldNode->_parents.erase(it2);
-              break;
-            }
-          }
-        } catch (...) {
-          // If this happens, we ignore that the _parents of oldNode
-          // are not set correctly
-        }
-        return true;
-      }
-
-      ++it;
-    }
-    return false;
-  }
+  bool replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode);
 
   /// @brief remove a dependency, returns true if the pointer was found and
   /// removed, please note that this does not delete ep!
-  bool removeDependency(ExecutionNode* ep) {
-    bool ok = false;
-    for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-      if (*it == ep) {
-        try {
-          it = _dependencies.erase(it);
-        } catch (...) {
-          return false;
-        }
-        ok = true;
-        break;
-      }
-    }
-
-    if (!ok) {
-      return false;
-    }
-
-    // Now remove us as a parent of the old dependency as well:
-    for (auto it = ep->_parents.begin(); it != ep->_parents.end(); ++it) {
-      if (*it == this) {
-        try {
-          ep->_parents.erase(it);
-        } catch (...) {
-        }
-        return true;
-      }
-    }
-
-    return false;
-  }
+  bool removeDependency(ExecutionNode*);
 
   /// @brief remove all dependencies for the given node
-  void removeDependencies() {
-    for (auto& x : _dependencies) {
-      for (auto it = x->_parents.begin(); it != x->_parents.end(); /* no hoisting */) {
-        if (*it == this) {
-          try {
-            it = x->_parents.erase(it);
-          } catch (...) {
-          }
-          break;
-        } else {
-          ++it;
-        }
-      }
-    }
-    _dependencies.clear();
-  }
+  void removeDependencies();
 
   /// @brief creates corresponding ExecutionBlock
   virtual std::unique_ptr<ExecutionBlock> createBlock(
@@ -548,7 +463,7 @@ class ExecutionNode {
     RegisterPlan() : depth(0), totalNrRegs(0), me(nullptr) {
       nrRegsHere.emplace_back(0);
       nrRegs.emplace_back(0);
-    };
+    }
 
     void clear();
 
@@ -556,7 +471,7 @@ class ExecutionNode {
 
     // Copy constructor used for a subquery:
     RegisterPlan(RegisterPlan const& v, unsigned int newdepth);
-    ~RegisterPlan(){};
+    ~RegisterPlan() {}
 
     virtual bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
       return false;  // do not walk into subquery
@@ -724,7 +639,8 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
         DocumentProducingNode(outVariable),
         _vocbase(vocbase),
         _collection(collection),
-        _random(random) {
+        _random(random),
+        _restrictedTo("") {
     TRI_ASSERT(_vocbase != nullptr);
     TRI_ASSERT(_collection != nullptr);
   }
@@ -772,6 +688,27 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
 
+  /**
+   * @brief Restrict this Node to a single Shard (cluster only)
+   *
+   * @param shardId The shard restricted to
+   */
+  void restrictToShard(std::string const& shardId) { _restrictedTo = shardId; }
+
+  /**
+   * @brief Check if this Node is restricted to a single Shard (cluster only)
+   *
+   * @return True if we are restricted, false otherwise
+   */
+  bool isRestricted() const { return !_restrictedTo.empty(); }
+
+  /**
+   * @brief Get the Restricted shard for this Node
+   *
+   * @return The Shard this node is restricted to
+   */
+  std::string const& restrictedShard() const { return _restrictedTo; }
+
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
@@ -781,6 +718,9 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
 
   /// @brief whether or not we want random iteration
   bool _random;
+
+  /// @brief A shard this node is restricted to, may be empty
+  std::string _restrictedTo;
 };
 
 /// @brief class EnumerateListNode

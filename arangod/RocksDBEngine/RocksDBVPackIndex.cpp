@@ -215,7 +215,7 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
                                      arangodb::LogicalCollection* collection,
                                      arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(), false),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(), false), 
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),
       _useExpansion(false),
@@ -1120,11 +1120,11 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       estimatedCost = 0.0;
     } else {
       if (useCache()) {
-        estimatedCost = static_cast<double>(estimatedItems * values);
+        estimatedCost = static_cast<double>(estimatedItems * values) - (_fields.size() - 1) * 0.01;
       } else {
         estimatedCost =
             (std::max)(static_cast<double>(1),
-                       std::log2(static_cast<double>(itemsInIndex)) * values);
+                       std::log2(static_cast<double>(itemsInIndex)) * values) - (_fields.size() - 1) * 0.01;
       }
     }
     return true;

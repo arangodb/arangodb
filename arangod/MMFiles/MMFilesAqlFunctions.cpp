@@ -339,11 +339,11 @@ void MMFilesAqlFunctions::registerResources() {
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
   TRI_ASSERT(functions != nullptr);
 
-  // fulltext functions
-  functions->add({"FULLTEXT", ".h,.,.|.", false, true, false, true,
-                  &MMFilesAqlFunctions::Fulltext, NotInCoordinator});
-  functions->add({"NEAR", ".h,.,.|.,.", false, true, false, true,
+  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
+                 false, &MMFilesAqlFunctions::Fulltext,
+                 NotInCoordinator});
+  functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
                   &MMFilesAqlFunctions::Near, NotInCoordinator});
-  functions->add({"WITHIN", ".h,.,.,.|.", false, true, false, true,
-                  &MMFilesAqlFunctions::Within, NotInCoordinator});
+  functions->add({"WITHIN", ".h,.,.,.|.", false, true,
+                  false, &MMFilesAqlFunctions::Within, NotInCoordinator});
 }

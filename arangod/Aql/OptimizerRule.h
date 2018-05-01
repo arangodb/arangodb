@@ -224,6 +224,9 @@ struct OptimizerRule {
     // push collect operations to the db servers
     collectInClusterRule_pass10,
 
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule_pass10,
+
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule_pass6

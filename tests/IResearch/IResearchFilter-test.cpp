@@ -190,7 +190,6 @@ struct IResearchFilterSetup {
       false, // fake non-deterministic
       false, // fake can throw
       true,
-      false,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -203,7 +202,6 @@ struct IResearchFilterSetup {
       true, // fake deterministic
       false, // fake can throw
       true,
-      false,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
