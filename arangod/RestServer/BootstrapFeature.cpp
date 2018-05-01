@@ -44,15 +44,16 @@ static std::string const boostrapKey = "Bootstrap";
 BootstrapFeature::BootstrapFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
-  startsAfter("Endpoint");
-  startsAfter("Scheduler");
-  startsAfter("Server");
-  startsAfter("Database");
-  startsAfter("Upgrade");
+  startsAfter("Authentication");
   startsAfter("CheckVersion");
+  startsAfter("Cluster");
+  startsAfter("Database");
+  startsAfter("Endpoint");
   startsAfter("FoxxQueues");
   startsAfter("GeneralServer");
-  startsAfter("Cluster");
+  startsAfter("Scheduler");
+  startsAfter("Server");
+  startsAfter("Upgrade");
   startsAfter("V8Dealer");
 }
 
@@ -141,7 +142,10 @@ static void raceForClusterBootstrap() {
     }
     
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
-    AuthenticationFeature::instance()->userManager()->createRootUser();
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    if (um != nullptr) {
+      um->createRootUser();
+    }
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -256,10 +260,10 @@ void BootstrapFeature::start() {
     // will run foxx/manager.js::_startup() and more (start queues, load routes, etc)
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
-    // Agency is not allowed to call this
-    if (ServerState::isSingleServer(role)) {
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    if (um != nullptr) {
       // only creates root user if it does not exist, will be overwritten on slaves
-      AuthenticationFeature::instance()->userManager()->createRootUser();
+      um->createRootUser();
     }
   }
   

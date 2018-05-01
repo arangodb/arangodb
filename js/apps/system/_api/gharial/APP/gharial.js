@@ -26,6 +26,7 @@
 
 const _ = require('lodash');
 const joi = require('joi');
+const db = require('@arangodb').db;
 const dd = require('dedent');
 const statuses = require('statuses');
 const httperr = require('http-errors');
@@ -732,14 +733,49 @@ router.delete('/:graph/vertex/:collection/:key', function (req, res) {
 router.post('/:graph/edge/:collection', function (req, res) {
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
+  const g = loadGraph(name);
+  checkCollection(g, collection);
+
   if (!req.body._from || !req.body._to) {
     throw Object.assign(
       new httperr.Gone(errors.ERROR_GRAPH_INVALID_EDGE.message),
       {errorNum: errors.ERROR_GRAPH_INVALID_EDGE.code}
     );
   }
-  const g = loadGraph(name);
-  checkCollection(g, collection);
+  // check existence of _from and _to vertices
+  // _from vertex
+  try {
+    db._document(req.body._from);
+  } catch (e) {
+    if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, cause: e}
+      );
+    } else {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, cause: e}
+      );
+    }
+  }
+
+  // _to vertex
+  try {
+    db._document(req.body._to);
+  } catch (e) {
+    if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, cause: e}
+      );
+    } else {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, cause: e}
+      );
+    }
+  }
   let meta;
   try {
     meta = g[collection].save(req.body);

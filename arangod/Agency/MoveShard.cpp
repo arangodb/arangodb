@@ -87,7 +87,8 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   std::string now(timepointToString(std::chrono::system_clock::now()));
-  
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // DBservers
   std::string planPath =
     planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
@@ -95,6 +96,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   Slice plan = _snapshot.get(planPath).slice();
   TRI_ASSERT(plan.isArray());
   TRI_ASSERT(plan[0].isString());
+#endif
 
   if (selfCreate) {
     _jb->openArray();

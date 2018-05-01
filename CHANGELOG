@@ -1,31 +1,20 @@
-v3.3.8 (XXXX-XX-XX)
+v3.3.9 (xxxx-xx-xx)
 -------------------
 
-* fixed: (Enterprise only) If you restore a SmartGraph where the collections
-  are still existing and are supposed to be dropped on restore we ended up in
-  duplicate name error. This is now gone and the SmartGraph is correctly restored.
+* UI: fixed an unreasonable event bug within the modal view engine
 
-* fix lookups by `_id` in smart graph edge collections
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
 
-* improve startup resilience in case there are datafile errors (MMFiles)
-  
-  also allow repairing broken VERSION files automatically on startup by
-  specifying the option `--database.ignore-datafile-errors true`
+* fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
 
-* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+* fixed internal issue #2150: UI - loading a saved query does not update the list of bind parameters
 
-* fixed internal issue #2148: Number of documents found by filter is misleading in web UI
+* fixed internal issue #2147 - fixed database filter in UI
 
-* added startup option `--database.required-directory-state`
-  
-  using this option it is possible to require the database directory to be
-  in a specific state on startup. the options for this value are:
- 
-  - non-existing: database directory must not exist
-  - existing: database directory must exist
-  - empty: database directory must exist but be empty
-  - populated: database directory must exist and contain specific files already
-  - any: any state allowed
+* fixed issue #4934: Wrong used GeoIndex depending on FILTER order
+
+* added `query` and `aql.literal` helpers to `@arangodb` module.
 
 * remove post-sort from GatherNode in cluster AQL queries that do use indexes
   for filtering but that do not require a sorted result
@@ -105,6 +94,46 @@ v3.3.8 (XXXX-XX-XX)
   `COLLECT ...` (no options)                 => create a plan using sorted, and another plan using hash method
 
 
+v3.3.8 (2018-04-24)
+-------------------
+
+* added arangod startup option `--dump-options` to print all configuration parameters
+  as a JSON object
+
+* fixed: (Enterprise only) If you restore a SmartGraph where the collections
+  are still existing and are supposed to be dropped on restore we ended up in
+  duplicate name error. This is now gone and the SmartGraph is correctly restored.
+
+* fix lookups by `_id` in smart graph edge collections
+
+* improve startup resilience in case there are datafile errors (MMFiles)
+
+  also allow repairing broken VERSION files automatically on startup by
+  specifying the option `--database.ignore-datafile-errors true`
+
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+
+* fixed internal issue #2148: Number of documents found by filter is misleading in web UI
+
+* added startup option `--database.required-directory-state`
+
+  using this option it is possible to require the database directory to be
+  in a specific state on startup. the options for this value are:
+
+  - non-existing: database directory must not exist
+  - existing: database directory must exist
+  - empty: database directory must exist but be empty
+  - populated: database directory must exist and contain specific files already
+  - any: any state allowed
+
+* field "$schema" in Foxx manifest.json files no longer produce warnings
+
+* added `@arangodb/locals` module to expose the Foxx service context as an
+  alternative to using `module.context` directly.
+
+* supervision can be put into maintenance mode
+
+
 v3.3.7 (2018-04-11)
 -------------------
 
@@ -141,7 +170,7 @@ v3.3.7 (2018-04-11)
   query = "FOR doc IN mycollection FILTER doc.value > 42 RETURN doc";
   require("@arangodb/aql/explainer").debugDump("/tmp/query-debug-info", query);
 
-  Entitled users can send the generated file to the ArangoDB support to facilitate 
+  Entitled users can send the generated file to the ArangoDB support to facilitate
   reproduction and debugging.
 
 * added hidden option `--server.ask-jwt-secret`. This is an internal option
@@ -173,7 +202,7 @@ v3.3.5 (2018-03-28)
   can be applied for queries that access a collection only once in the query, and that
   do not use traversals, shortest path queries and that do not access collection data
   dynamically using the `DOCUMENT`, `FULLTEXT`, `NEAR` or `WITHIN` AQL functions.
-  Additionally, the optimizer will only pull off this optimization if can safely 
+  Additionally, the optimizer will only pull off this optimization if can safely
   determine the values of all the collection's shard keys from the query, and when the
   shard keys are covered by a single index (this is always true if the shard key is
   the default `_key`)
@@ -194,8 +223,8 @@ v3.3.5 (2018-03-28)
   without grouping being executed on the DB servers and the coordinator only summing
   up the counts from the individual shards
 
-* fixed issue #4900: Nested FOR query uses index but ignores other filters 
- 
+* fixed issue #4900: Nested FOR query uses index but ignores other filters
+
 * properly exit v8::Context in one place where it was missing before
 
 * added hidden option `--cluster.index-create-timeout` for controlling the
@@ -204,7 +233,7 @@ v3.3.5 (2018-03-28)
 
 * increase default timeout for index creation in cluster to 3600s
 
-* fixed issue #4843: Query-Result has more Docs than the Collection itself  
+* fixed issue #4843: Query-Result has more Docs than the Collection itself
 
 * fixed the behavior of ClusterInfo when waiting for current to catch
   up with plan in create collection.

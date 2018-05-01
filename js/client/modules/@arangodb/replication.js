@@ -27,8 +27,9 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangosh = require('@arangodb/arangosh');
+const internal = require('internal');
+const arangosh = require('@arangodb/arangosh');
+const rpc = require('@arangodb/replication-common');
 
 let logger = {};
 let applier = {};
@@ -354,3 +355,4 @@ exports.setupReplication = setupReplication;
 exports.setupReplicationGlobal = setupReplicationGlobal;
 exports.getSyncResult = getSyncResult;
 exports.serverId = serverId;
+exports.compareTicks = rpc.compareTicks;

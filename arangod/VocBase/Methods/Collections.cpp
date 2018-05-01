@@ -174,7 +174,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
   try {
     ExecContext const* exe = ExecContext::CURRENT;
-    AuthenticationFeature* af = AuthenticationFeature::instance();
     if (ServerState::instance()->isCoordinator()) {
       std::unique_ptr<LogicalCollection> col =
           ClusterMethods::createCollectionOnCoordinator(
@@ -186,13 +185,14 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access
-      if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        af->userManager()->updateUser(
-            ExecContext::CURRENT->user(), [&](auth::User& entry) {
-              entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-              return TRI_ERROR_NO_ERROR;
-            });
+        um->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+        });
       }
       
       // reload otherwise collection might not be in yet
@@ -203,10 +203,10 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
       // do not grant rights on system collections
       // in case of success we grant the creating user RW access
-      if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
-          ServerState::instance()->isSingleServerOrCoordinator()) {
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        af->userManager()->updateUser(
+        um->updateUser(
           ExecContext::CURRENT->user(), [&](auth::User& u) {
             u.grantCollection(vocbase->name(), name, auth::Level::RW);
             return TRI_ERROR_NO_ERROR;
@@ -450,8 +450,7 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     if  (!exec->canUseDatabase(vocbase->name(), auth::Level::RW) ||
          !exec->canUseCollection(coll->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
-                    "Insufficient rights to drop "
-                    "collection " +
+                    "Insufficient rights to drop collection " +
                     coll->name());
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
@@ -477,9 +476,9 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     }
   }
 
-  if (updateUsers && res.ok() && ServerState::instance()->isSingleServerOrCoordinator()) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (updateUsers && res.ok() && um != nullptr) {
+    um->enumerateUsers([&](auth::User& entry) -> bool {
       return entry.removeCollection(dbname, collName);
     });
   }
