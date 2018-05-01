@@ -109,9 +109,9 @@ function legacyOptimizerRuleTestSuite() {
 
         internal.db._drop(colName);
         geocol = internal.db._create(colName);
-        geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
-        geocol.ensureIndex({type:"geo", fields:["geo"]});
-        geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});
+        geocol.ensureIndex({type:"geo2", fields:["lat","lon"]});
+        geocol.ensureIndex({type:"geo1", fields:["geo"]});
+        geocol.ensureIndex({type:"geo2", fields:["loca.tion.lat","loca.tion.lon"]});
         var lat, lon;
         for (lat=-40; lat <=40 ; ++lat) {
             for (lon=-40; lon <= 40; ++lon) {
@@ -281,7 +281,7 @@ function legacyGeoVariationsTestSuite() {
     setUp : function () {
       internal.db._drop(colName);
       geocol = internal.db._create(colName);
-      geocol.ensureIndex({ type:"geo", fields: ["location"] });
+      geocol.ensureIndex({ type:"geo1", fields: ["location"] });
       let documents = [
         {"_key":"1138","_id":"test/1138","_rev":"_WjFfhsm---","location":[11,0]},
         {"_key":"1232","_id":"test/1232","_rev":"_WjFgKfC---","location":[0,0]},
@@ -418,9 +418,6 @@ function optimizerRuleTestSuite() {
 
       internal.db._drop(colName);
       geocol = internal.db._create(colName);
-      /*geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
-      geocol.ensureIndex({type:"geo", fields:["geo"]});
-      geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});*/
       geocol.ensureIndex({ type: "geo", fields: ["lat", "lon"], geoJson: false, legacy: false });
       geocol.ensureIndex({ type: "geo", fields: ["geo"], geoJson: false, legacy: false });
       geocol.ensureIndex({ type: "geo", fields: ["loca.tion.lat", "loca.tion.lon"], geoJson: false, legacy: false });

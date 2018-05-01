@@ -303,7 +303,7 @@ function legacyGeoTestSuite() {
         }
       }
 
-      locations.ensureIndex({ type: "geo", fields: ["latitude", "longitude"], legacy: false });
+      locations.ensureIndex({ type: "geo", fields: ["latitude", "longitude"] });
 
       locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
 
@@ -526,7 +526,7 @@ function pointsTestSuite() {
         }
       }
 
-      locations.ensureIndex({ type: "geo", fields: ["lat", "lng"], legacy: false });
+      locations.ensureIndex({ type: "geo", fields: ["lat", "lng"]});
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -959,7 +959,7 @@ function geoJsonTestSuite() {
       db._drop("UnitTestsGeoJsonTestSuite");
 
       locations = db._create("UnitTestsGeoJsonTestSuite");
-      locations.ensureIndex({ type: "geo", fields: ["geometry"], geoJson: true, legacy: false });
+      locations.ensureIndex({ type: "geo", fields: ["geometry"], geoJson: true});
 
       indonesiaKeys = indonesia.map(doc => locations.save({ geometry: doc })._key);
       emeaKeys = emea.map(doc => locations.save({ geometry: doc })._key);

@@ -66,7 +66,7 @@ class RDBNearIterator final : public IndexIterator {
   }
 
   char const* typeName() const override {
-    return "s2-index-iterator";
+    return "geo-index-iterator";
   }
 
   /// internal retrieval loop
@@ -255,7 +255,6 @@ void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
-  builder.add("pointsOnly", VPackValue(_typeName != "geo"));
   // geo indexes are always non-unique
   builder.add("unique", VPackValue(false));
   // geo indexes are always sparse.

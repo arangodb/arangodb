@@ -303,24 +303,24 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
   for (Task const& t : _tasks) {
     // check for system database
     if (t.systemFlag == DATABASE_SYSTEM && !vocbase->isSystem()) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: DB not system, skipping " << t.name;
       continue;
     }
     if (t.systemFlag == DATABASE_EXCEPT_SYSTEM && vocbase->isSystem()) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: DB system, Skipping " << t.name;
       continue;
     }
 
     // check that the cluster occurs in the cluster list
     if (!(t.clusterFlags & clusterFlag)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: cluster mismatch, skipping " << t.name;
       continue;
     }
 
     auto const& it = vinfo.tasks.find(t.name);
     if (it != vinfo.tasks.end()) {
       if (it->second) {
-        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Already executed, skipping " << t.name;
         continue;
       }
       vinfo.tasks.erase(it);  // in case we encounter false
@@ -334,7 +334,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
           t.databaseFlags == DATABASE_UPGRADE) {
         vinfo.tasks.emplace(t.name, true);
       }
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: db flag mismatch, skipping " << t.name;
       continue;
     }
 

@@ -16,16 +16,17 @@ Constructors](../../AQL/Functions/GeoConstructors.html).
 
 ### Using a Geo-Spatial Index
 
-The s2index is a geo-spatial index which supports containment and intersection
+The geo-spatial index supports containment and intersection
 queries on a various geometric 2D shapes. You should be mainly using AQL queries
 to perform these types of operations. The index can operate in **two different
-modi**, depending on if you want to use the GeoJSON  data-format or not.
+modi**, depending on if you want to use the GeoJSON  data-format or not. The modi
+are mainly toggled by using the `geoJson` field when creating the index.
 
 #### GeoJSON Mode
 
 To create an index in GeoJSON mode execute:
 
-```collection.ensureIndex({ type: "s2index", fields: [ "geometry" ], geoJson:true })```
+```collection.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true })```
 
 This creates the index on all documents and uses _geometry_ as the attributed
 field where the value is either a [Geometry

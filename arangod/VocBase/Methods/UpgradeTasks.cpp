@@ -43,54 +43,9 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-
-namespace {
-bool hasLegacyEntries(arangodb::RocksDBIndex& index) {
-  auto db = arangodb::rocksutils::globalRocksDB();
-  auto bounds = arangodb::RocksDBKeyBounds::LegacyGeoIndex(index.objectId());
-  return 0 != arangodb::rocksutils::countKeyRange(db, bounds, false);
-}
-}  // namespace
-
-namespace {
-arangodb::Result dropLegacyEntries(arangodb::RocksDBIndex& index) {
-  auto db = arangodb::rocksutils::globalRocksDB();
-  auto bounds = arangodb::RocksDBKeyBounds::LegacyGeoIndex(index.objectId());
-  return arangodb::rocksutils::removeLargeRange(db, bounds, false);
-}
-}  // namespace
-
-namespace {
-arangodb::Result recreateIndex(TRI_vocbase_t& vocbase,
-                               arangodb::LogicalCollection& collection,
-                               arangodb::RocksDBIndex& oldIndex) {
-  arangodb::Result result;
-
-  VPackBuilder builder;
-  oldIndex.toVelocyPack(builder, false, false);
-  auto desc = builder.slice();
-
-  bool dropped = collection.dropIndex(oldIndex.id());
-  if (!dropped) {
-    result.reset(TRI_ERROR_INTERNAL);
-    return result;
-  }
-
-  bool created = false;
-  auto ctx = arangodb::transaction::StandaloneContext::Create(&vocbase);
-  arangodb::SingleCollectionTransaction trx(ctx, collection.name(),
-                                            arangodb::AccessMode::Type::WRITE);
-  auto newIndex = collection.createIndex(&trx, desc, created);
-  if (!created) {
-    result.reset(TRI_ERROR_INTERNAL);
-  }
-  result = trx.finish(result);
-
-  return result;
-}
-}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -99,9 +54,11 @@ using basics::VelocyPackHelper;
 
 // Note: this entire file should run with superuser rights
 
+namespace {
+  
 /// create a collection if it does not exists.
-static bool createSystemCollection(TRI_vocbase_t* vocbase,
-                                   std::string const& name) {
+bool createSystemCollection(TRI_vocbase_t* vocbase,
+                            std::string const& name) {
   Result res = methods::Collections::lookup(vocbase, name,
                                             [](LogicalCollection* coll) {});
   if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
@@ -134,7 +91,7 @@ static bool createSystemCollection(TRI_vocbase_t* vocbase,
 }
 
 /// create an index if it does not exist
-static bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
+bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
                         Index::IndexType type,
                         std::vector<std::string> const& fields, bool unique,
                         bool sparse) {
@@ -151,47 +108,84 @@ static bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
   return true;
 }
 
+arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
+                                  arangodb::LogicalCollection& collection,
+                                  arangodb::RocksDBIndex* oldIndex) {
+  arangodb::Result res;
+  TRI_idx_iid_t iid = oldIndex->id();
+  
+  VPackBuilder oldDesc;
+  oldIndex->toVelocyPack(oldDesc, false, false);
+  VPackBuilder overw;
+  overw.openObject();
+  overw.add("type", VPackValue(arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+  overw.close();
+  VPackBuilder newDesc = VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
+  
+  bool dropped = collection.dropIndex(iid);
+  if (!dropped) {
+    res.reset(TRI_ERROR_INTERNAL);
+    return res;
+  }
+  
+  bool created = false;
+  auto ctx = arangodb::transaction::StandaloneContext::Create(&vocbase);
+  arangodb::SingleCollectionTransaction trx(ctx, collection.name(),
+                                            arangodb::AccessMode::Type::EXCLUSIVE);
+  res = trx.begin();
+  if (res.fail()) {
+    return res;
+  }
+  
+  auto newIndex = collection.createIndex(&trx, newDesc.slice(), created);
+  if (!created) {
+    res.reset(TRI_ERROR_INTERNAL);
+  }
+  TRI_ASSERT(newIndex->id() == iid); // will break cluster otherwise
+  TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
+  res = trx.finish(res);
+  
+  return res;
+}
+}  // namespace
+
 bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t* vocbase,
                                      VPackSlice const&) {
-  if (strcmp(EngineSelectorFeature::engineName(), "rocksdb") == 0) {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "Upgrading legacy geo indexes...";
+  if (strcmp(EngineSelectorFeature::engineName(), "rocksdb") != 0) {
+    LOG_TOPIC(INFO, Logger::STARTUP) << "No need to upgrade geo indexes!";
+    return true;
+  }
 
-    auto collections = vocbase->collections(false);
-    for (auto collection : collections) {
-      auto indexes = collection->getIndexes();
-      for (auto index : indexes) {
-        RocksDBIndex& rIndex = *static_cast<RocksDBIndex*>(index.get());
-        if (Index::isGeoIndex(index->type()) && ::hasLegacyEntries(rIndex)) {
-          LOG_TOPIC(INFO, Logger::STARTUP)
-              << "Upgrading legacy geo index '" << rIndex.id() << "'";
-          Result res = ::dropLegacyEntries(rIndex);
-          if (res.fail()) {
-            return false;
-          }
-          res = ::recreateIndex(*vocbase, *collection, rIndex);
-          if (res.fail()) {
-            return false;
-          }
+  auto collections = vocbase->collections(false);
+  for (auto collection : collections) {
+    auto indexes = collection->getIndexes();
+    for (auto index : indexes) {
+      RocksDBIndex* rIndex = static_cast<RocksDBIndex*>(index.get());
+      if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+          index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
+        LOG_TOPIC(INFO, Logger::STARTUP)
+            << "Upgrading legacy geo index '" << rIndex->id() << "'";
+        Result res = ::recreateGeoIndex(*vocbase, *collection, rIndex);
+        if (res.fail()) {
+          LOG_TOPIC(ERR, Logger::STARTUP) << "Error upgrading geo indexes " << res.errorMessage();
+          return false;
         }
       }
     }
-  } else {
-    LOG_TOPIC(INFO, Logger::STARTUP) << "No need to upgrade geo indexes!";
   }
   return true;
 }
 
 bool UpgradeTasks::setupGraphs(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createSystemCollection(vocbase, "_graphs");
+  return::createSystemCollection(vocbase, "_graphs");
 }
 bool UpgradeTasks::setupUsers(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createSystemCollection(vocbase, "_users");
+  return::createSystemCollection(vocbase, "_users");
 }
 bool UpgradeTasks::createUsersIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
   TRI_ASSERT(vocbase->isSystem());
-  return createIndex(vocbase, "_users", Index::TRI_IDX_TYPE_HASH_INDEX,
-                     {"user"},
-                     /*unique*/ true, /*sparse*/ true);
+  return ::createIndex(vocbase, "_users", Index::TRI_IDX_TYPE_HASH_INDEX,
+                     {"user"}, /*unique*/ true, /*sparse*/ true);
 }
 bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t* vocbase,
                                        VPackSlice const& params) {
@@ -238,13 +232,13 @@ bool UpgradeTasks::updateUserModels(TRI_vocbase_t* vocbase, VPackSlice const&) {
   return true;
 }
 bool UpgradeTasks::createModules(TRI_vocbase_t* vocbase, VPackSlice const& s) {
-  return createSystemCollection(vocbase, "_modules");
+  return::createSystemCollection(vocbase, "_modules");
 }
 bool UpgradeTasks::setupAnalyzers(TRI_vocbase_t* vocbase, VPackSlice const& s) {
-  return createSystemCollection(vocbase, "_iresearch_analyzers");
+  return::createSystemCollection(vocbase, "_iresearch_analyzers");
 }
 bool UpgradeTasks::createRouting(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createSystemCollection(vocbase, "_routing");
+  return::createSystemCollection(vocbase, "_routing");
 }
 bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
                                       VPackSlice const&) {
@@ -324,41 +318,41 @@ bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
 
 bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t* vocbase,
                                      VPackSlice const&) {
-  return createSystemCollection(vocbase, "_aqlfunctions");
+  return ::createSystemCollection(vocbase, "_aqlfunctions");
 }
 
 bool UpgradeTasks::createFrontend(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createSystemCollection(vocbase, "_frontend");
+  return ::createSystemCollection(vocbase, "_frontend");
 }
 
 bool UpgradeTasks::setupQueues(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createSystemCollection(vocbase, "_queues");
+  return ::createSystemCollection(vocbase, "_queues");
 }
 
 bool UpgradeTasks::setupJobs(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createSystemCollection(vocbase, "_jobs");
+  return ::createSystemCollection(vocbase, "_jobs");
 }
 
 bool UpgradeTasks::createJobsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_jobs");
-  createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-              {"queue", "status", "delayUntil"},
-              /*unique*/ true, /*sparse*/ true);
-  createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-              {"status", "queue", "delayUntil"},
-              /*unique*/ true, /*sparse*/ true);
+  ::createSystemCollection(vocbase, "_jobs");
+  ::createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                {"queue", "status", "delayUntil"},
+                /*unique*/ true, /*sparse*/ true);
+  ::createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                {"status", "queue", "delayUntil"},
+                /*unique*/ true, /*sparse*/ true);
   return true;
 }
 
 bool UpgradeTasks::setupApps(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createSystemCollection(vocbase, "_apps");
+  return ::createSystemCollection(vocbase, "_apps");
 }
 
 bool UpgradeTasks::createAppsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createIndex(vocbase, "_apps", Index::TRI_IDX_TYPE_HASH_INDEX,
-                     {"mount"}, /*unique*/ true, /*sparse*/ true);
+  return ::createIndex(vocbase, "_apps", Index::TRI_IDX_TYPE_HASH_INDEX,
+                       {"mount"}, /*unique*/ true, /*sparse*/ true);
 }
 
 bool UpgradeTasks::setupAppBundles(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  return createSystemCollection(vocbase, "_appbundles");
+  return ::createSystemCollection(vocbase, "_appbundles");
 }
