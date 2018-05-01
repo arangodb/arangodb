@@ -863,27 +863,14 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   }
 }
 
-static auto next_send(std::chrono::steady_clock::now());
 
 /// Should return an idle sender, collect all errors
 /// and return nullptr, if there was an error
 SenderThread* ImportHelper::findIdleSender() {
-  static std::chrono::microseconds pace=std::chrono::microseconds(1000000/_threadCount);
 
-  auto now = std::chrono::steady_clock::now();
-  bool next_reset(false);
-
-  while(next_send <= now) {
-    next_send += pace;
-    next_reset = true;
-  }
-
-  std::this_thread::sleep_until(next_send);
-
-  if (!next_reset && pace/2 < next_send - now )
-    next_send = next_send + pace/2;
-  else
-    next_send = next_send + pace;
+  if (_autoUploadSize) {
+    _autoTuneThread->paceSends();
+  } // if
 
   while (!_senderThreads.empty()) {
     for (auto const& t : _senderThreads) {
