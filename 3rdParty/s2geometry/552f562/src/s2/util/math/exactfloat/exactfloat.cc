@@ -112,19 +112,17 @@ inline static uint64 BN_ext_get_uint64(const BIGNUM* bn) {
 // Count the number of low-order zero bits in the given BIGNUM (ignoring its
 // sign).  Returns 0 if the argument is zero.
 static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
-  int count = 0;
   for (int i = 0; i < bn->top; ++i) {
-    BN_ULONG w = bn->d[i];
-    if (w == 0) {
-      count += 8 * sizeof(BN_ULONG);
-    } else {
-      for (; (w & 1) == 0; w >>= 1) {
-        ++count;
+    if (bn->d[i] != 0) {
+      int bits = 0;
+      for (char w = bn->d[i]; (w & 1) == 0; w >>= 1) {
+        ++bits;
       }
-      break;
+      return i * BN_BITS2 + bits;
     }
   }
-  return count;
+  // There are no non-zero words in |bn|
+  return 0;
 }
 
 #else
@@ -138,32 +136,16 @@ static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
   size = BN_bn2lebinpad(bn, bin, size);
   
   int count = 0;
-  // x86 is LE and allows unaligned memory access
-/*#if (defined(__GNUC__) || defined(__clang__)) && (defined(__i386__) || defined(__x86_64__))
-  if (size > sizeof(unsigned int)) {
-    unsigned int* tmp = reinterpret_cast<unsigned int>(bin);
-    for (; (i + 1) * sizeof(unsigned int) <= size; i += sizeof(unsigned int)) {
-      if (*tmp == 0) {
-        count += 8 * sizeof(unsigned int);
-      } else {
-        count += __builtin_clz(*tmp);
-        break;
-      }
-    }
-  }
-#endif*/
   for (int i = 0; i < size; ++i) {
-    if (bin[i] == 0) {
-      count += 8;
-    } else {
-      char w = bin[i];
-      for (; (w & 1) == 0; w >>= 1) {
-        ++count;
+    if (bin[i] != 0) {
+      int bits = 0;
+      for (char w = bin[i]; (w & 1) == 0; w >>= 1) {
+        ++bits;
       }
-      break;
+      return i * 8 + bits;
     }
   }
-  return count;
+  return 0;
 }
 
 #endif // !(OPENSSL_VERSION_NUMBER < 0x10100000L)
