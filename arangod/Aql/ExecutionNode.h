@@ -131,7 +131,8 @@ class ExecutionNode {
     INDEX = 23,
     SHORTEST_PATH = 24,
 #ifdef USE_IRESEARCH
-    ENUMERATE_IRESEARCH_VIEW = 25
+    ENUMERATE_IRESEARCH_VIEW = 25,
+    SCATTER_IRESEARCH_VIEW = 26
 #endif
     // adjust MaxNodeTypeValue below when new ExecutionNode types are added!
   };

@@ -55,6 +55,8 @@ if (USE_IRESEARCH)
     IResearch/IResearchViewDBServer.cpp IResearch/IResearchViewDBServer.h
     IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
     IResearch/IResearchLink.cpp IResearch/IResearchLink.h
+    IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
+    IResearch/IResearchLinkHelper.cpp IResearch/IResearchLinkHelper.h
     IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
     IResearch/IResearchMMFilesLink.cpp IResearch/IResearchMMFilesLink.h
     IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h

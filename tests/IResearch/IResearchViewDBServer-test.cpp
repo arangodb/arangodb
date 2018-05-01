@@ -167,12 +167,13 @@ SECTION("test_drop") {
     CHECK((nullptr != impl));
 
     auto view = impl->ensure(123);
+    auto const viewId = view->id();
     CHECK((false == !view));
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((false == impl->visitCollections(visitor)));
     CHECK((false == !vocbase.lookupView(view->id())));
     CHECK((true == impl->drop().ok()));
-    CHECK((true == !vocbase.lookupView(view->id())));
+    CHECK((true == !vocbase.lookupView(viewId)));
     CHECK((true == impl->visitCollections(visitor)));
   }
 
@@ -216,12 +217,13 @@ SECTION("test_drop_cid") {
   CHECK((nullptr != impl));
 
   auto view = impl->ensure(123);
+  auto const viewId = view->id();
   CHECK((false == !view));
   static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
   CHECK((false == impl->visitCollections(visitor)));
   CHECK((false == !vocbase.lookupView(view->id())));
   CHECK((TRI_ERROR_NO_ERROR == impl->drop(123).errorNumber()));
-  CHECK((true == !vocbase.lookupView(view->id())));
+  CHECK((true == !vocbase.lookupView(viewId)));
   CHECK((true == impl->visitCollections(visitor)));
   CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == impl->drop(123).errorNumber())); // no longer present
 }

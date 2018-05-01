@@ -36,6 +36,8 @@
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
 #include "IResearchRocksDBLink.h"
+#include "IResearchLinkCoordinator.h"
+#include "IResearchLinkHelper.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
@@ -51,6 +53,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "MMFiles/MMFilesEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
 
@@ -129,16 +133,28 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   });
 }
 
-void registerIndexFactory() {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    return; // no registration required on coordinator (collections not instantiated)
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Single-server or DB server index factories
+////////////////////////////////////////////////////////////////////////////////
+const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> dbServerIndexFactories = {
+  { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
+  { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
+};
 
-  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
-    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
-    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
-  };
-  static const auto& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Coordinator index factories
+////////////////////////////////////////////////////////////////////////////////
+const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> coordinatorIndexFactories = {
+  { "MMFilesEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles },
+  { "RocksDBEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkRocksDB }
+};
+
+void registerIndexFactory() {
+  auto& factories = arangodb::ServerState::instance()->isCoordinator()
+    ? coordinatorIndexFactories
+    : dbServerIndexFactories;
+
+  auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
   // register 'arangosearch' link
   for (auto& entry: factories) {
@@ -164,7 +180,7 @@ void registerIndexFactory() {
     }
 
     res = indexFactory.emplaceNormalizer(
-      indexType, arangodb::iresearch::IResearchLink::normalize
+      indexType, arangodb::iresearch::IResearchLinkHelper::normalize
     );
 
     if (!res.ok()) {

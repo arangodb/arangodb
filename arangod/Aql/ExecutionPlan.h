@@ -194,6 +194,7 @@ class ExecutionPlan {
   /// @brief add a node to the plan, will delete node if addition fails and
   /// throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
+  ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>&&);
 
   /// @brief replaceNode, note that <newNode> must be registered with the plan
   /// before this method is called, also this does not delete the old
