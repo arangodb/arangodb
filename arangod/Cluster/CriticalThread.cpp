@@ -32,8 +32,7 @@ using namespace arangodb;
 ///        NEVER PURGED so that it can be reposted to logs regularly
 ////////////////////////////////////////////////////////////////////////////////
 
-void CriticalThread::crashNotification(std::exception const & ex)
+void CriticalThread::crashNotification(std::exception const& ex)
 {
   HeartbeatThread::recordThreadDeath(name());
-  return;
-};
+}

@@ -3188,12 +3188,12 @@ ArangoDB 3.0 as it is redundant when specifying the _rev_ option.
 
   * **returnOld**: `boolean` (Default: `false`)
 
-    If set to `false`, return additionally the complete previous revision of the
+    If set to `true`, return additionally the complete previous revision of the
     changed documents under the attribute `old` in the result.
 
   * **returnNew**: `boolean` (Default: `false`)
 
-    If set to `false`, return additionally the complete new documents under the
+    If set to `true`, return additionally the complete new documents under the
     attribute `new` in the result.
 
   * **ignoreRevs**: `boolean` (Default: `true`)
@@ -3276,12 +3276,12 @@ ArangoDB 3.0 and higher.
 
   * **returnOld**: `boolean` (Default: `false`)
 
-    If set to `false`, return additionally the complete previous revision of the
+    If set to `true`, return additionally the complete previous revision of the
     changed documents under the attribute `old` in the result.
 
   * **returnNew**: `boolean` (Default: `false`)
 
-    If set to `false`, return additionally the complete new documents under the
+    If set to `true`, return additionally the complete new documents under the
     attribute `new` in the result.
 
   * **ignoreRevs**: `boolean` (Default: `true`)

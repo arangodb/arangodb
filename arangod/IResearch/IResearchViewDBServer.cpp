@@ -62,12 +62,6 @@ const std::string ID_FIELD("id");
 const std::string IS_SYSTEM_FIELD("isSystem");
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the iResearch View definition denoting the
-///        corresponding link definitions
-////////////////////////////////////////////////////////////////////////////////
-const std::string LINKS_FIELD("links");
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the IResearch View definition denoting the
 ///        view name (from LogicalView.cpp)
 ////////////////////////////////////////////////////////////////////////////////
@@ -81,12 +75,6 @@ const std::string PLAN_ID_FIELD("planId");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the IResearch View definition denoting the
-///        view properties (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string PROPERTIES_FIELD("properties");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
 ///        view type (from LogicalView.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 const std::string TYPE_FIELD("type");
@@ -94,14 +82,14 @@ const std::string TYPE_FIELD("type");
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the view name prefix of per-cid view instances
 ////////////////////////////////////////////////////////////////////////////////
-static std::string const VIEW_NAME_PREFIX("_iresearch_");
+std::string const VIEW_NAME_PREFIX("_iresearch_");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a key in the jSON definition that differentiates a view-cid container
 ///        from individual per-cid view implementation
 ///        (view types are identical)
 ////////////////////////////////////////////////////////////////////////////////
-static std::string const VIEW_CONTAINER_MARKER("master");
+std::string const VIEW_CONTAINER_MARKER("master");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate the name used for the per-cid views
@@ -152,8 +140,8 @@ IResearchViewDBServer::IResearchViewDBServer(
     uint64_t planVersion
 ): LogicalView(vocbase, info, planVersion),
    _meta(
-     info.isObject() && info.get(PROPERTIES_FIELD).isObject()
-     ? info.get(PROPERTIES_FIELD) : emptyObjectSlice()
+     info.isObject() && info.get(StaticStrings::PropertiesField).isObject()
+     ? info.get(StaticStrings::PropertiesField) : emptyObjectSlice()
    ),
    _persistedPath(getPersistedPath(dbPathFeature, id())) {
 }
@@ -211,7 +199,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != COLLECTIONS_FIELD && key != LINKS_FIELD; // ignored fields
+    return key != COLLECTIONS_FIELD && key != StaticStrings::LinksField; // ignored fields
   };
   arangodb::velocypack::Builder builder;
 
@@ -222,7 +210,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
   {
     builder.add(
-      PROPERTIES_FIELD,
+      StaticStrings::PropertiesField,
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
     );
 
@@ -233,7 +221,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
         return nullptr;
     }
 
-    builder.close(); // close PROPERTIES_FIELD
+    builder.close(); // close StaticStrings::PropertiesField
   }
 
   builder.close();
@@ -294,7 +282,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 
     // DBServer view already exists, treat as an update
     if (wiew) {
-      return wiew->updateProperties(info.get(PROPERTIES_FIELD), false, true).ok() // 'false' because full view definition
+      return wiew->updateProperties(info.get(StaticStrings::PropertiesField), false, true).ok() // 'false' because full view definition
         ? wiew : nullptr;
     }
 
@@ -516,13 +504,13 @@ void IResearchViewDBServer::toVelocyPack(
     static const std::function<bool(irs::string_ref const& key)> acceptor = [](
         irs::string_ref const& key
     )->bool {
-      return key != COLLECTIONS_FIELD && key != LINKS_FIELD; // ignored fields
+      return key != COLLECTIONS_FIELD && key != StaticStrings::LinksField; // ignored fields
     };
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_collections'/'_meta' can be asynchronously modified
 
     result.add(
-      PROPERTIES_FIELD,
+      StaticStrings::PropertiesField,
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
     );
 
@@ -544,7 +532,7 @@ void IResearchViewDBServer::toVelocyPack(
         << "failure to generate definition while properties generating jSON IResearch View in database '" << vocbase().name() << "'";
     }
 
-    result.close(); // close PROPERTIES_FIELD
+    result.close(); // close StaticStrings::PropertiesField
   }
 }
 
@@ -567,7 +555,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   static const std::function<bool(irs::string_ref const& key)> propsAcceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != COLLECTIONS_FIELD && key != LINKS_FIELD; // ignored fields
+    return key != COLLECTIONS_FIELD && key != StaticStrings::LinksField; // ignored fields
   };
   arangodb::velocypack::Builder props;
 

@@ -164,8 +164,10 @@ struct OptimizerRule {
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule_pass6,
 
+#ifdef USE_IRESEARCH
     // move filters and sort conditions into views and remove them
     handleViewsRule_pass6,
+#endif
 
     // remove now obsolete path variables
     removeTraversalPathVariable_pass6,
@@ -201,6 +203,12 @@ struct OptimizerRule {
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule_pass10,
 
+#ifdef USE_IRESEARCH
+    // FIXME order-???
+    // make operations on sharded IResearch views use scatter / gather / remote
+    scatterIResearchViewInClusterRule_pass10,
+#endif
+
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule_pass10,
@@ -214,9 +222,12 @@ struct OptimizerRule {
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule_pass10,
-    
+
     // push collect operations to the db servers
     collectInClusterRule_pass10,
+
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule_pass10,
 
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document

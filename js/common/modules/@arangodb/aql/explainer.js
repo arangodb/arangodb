@@ -949,6 +949,13 @@ function processQuery (query, explain) {
     return '';
   };
 
+  const restriction = function (node) {
+    if (node.restrictedTo) {
+      return `, shard: ${node.restrictedTo}`;
+    }
+    return '';
+  };
+
   var label = function (node) {
     var rc, v, e, edgeCols;
     var parts = [];
@@ -959,7 +966,7 @@ function processQuery (query, explain) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + (node.producesResult ? '' : ', index only') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + (node.producesResult ? '' : ', index only') + restriction(node) + ' */');
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -981,7 +988,7 @@ function processQuery (query, explain) {
           }
           indexes.push(idx);
         });
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + types.join(', ') + projection(node) + (node.satellite ? ', satellite' : '') + ' */');
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
       case 'IndexRangeNode':
         collectionVariables[node.outVariable.id] = node.collection;
         var index = node.index;
@@ -1221,38 +1228,66 @@ function processQuery (query, explain) {
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }).join(', ');
       case 'LimitNode':
-        return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit));
+        return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
-      case 'InsertNode':
+      case 'InsertNode': {
         modificationFlags = node.modificationFlags;
-        return keyword('INSERT') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'UpdateNode':
-        modificationFlags = node.modificationFlags;
-        if (node.hasOwnProperty('inKeyVariable')) {
-          return keyword('UPDATE') + ' ' + variableName(node.inKeyVariable) + ' ' + keyword('WITH') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
         }
-        return keyword('UPDATE') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'ReplaceNode':
+        return keyword('INSERT') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + ' ' + restrictString;
+      }
+      case 'UpdateNode': {
         modificationFlags = node.modificationFlags;
+        let inputExplain = '';
         if (node.hasOwnProperty('inKeyVariable')) {
-          return keyword('REPLACE') + ' ' + variableName(node.inKeyVariable) + ' ' + keyword('WITH') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+          inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
+        } else {
+          inputExplain = `variableName(node.inDocVariable)`;
         }
-        return keyword('REPLACE') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+        }
+        return `${keyword('UPDATE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
+      case 'ReplaceNode': {
+        modificationFlags = node.modificationFlags;
+        let inputExplain = '';
+        if (node.hasOwnProperty('inKeyVariable')) {
+          inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
+          } else {
+          inputExplain = `variableName(node.inDocVariable)`;
+          }
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+          }
+        return `${keyword('REPLACE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
       case 'UpsertNode':
         modificationFlags = node.modificationFlags;
         return keyword('UPSERT') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('INSERT') + ' ' + variableName(node.insertVariable) + ' ' + keyword(node.isReplace ? 'REPLACE' : 'UPDATE') + ' ' + variableName(node.updateVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'RemoveNode':
+      case 'RemoveNode': {
         modificationFlags = node.modificationFlags;
-        return keyword('REMOVE') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+          }
+        return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
         return keyword('DISTRIBUTE');
       case 'ScatterNode':
         return keyword('SCATTER');
+      case 'ScatterViewNode':
+        return keyword('SCATTER VIEW');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
             if (node.path && node.path.length) {

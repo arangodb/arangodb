@@ -235,8 +235,8 @@ add_executable(${BIN_ARANGORESTORE}
   Restore/arangorestore.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
+  Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
 

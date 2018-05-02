@@ -5887,3 +5887,24 @@ AqlValue Functions::Warn(arangodb::aql::Query* query, transaction::Methods* trx,
   }
   return AqlValue(AqlValueHintBool(true));
 }
+
+AqlValue Functions::Fail(arangodb::aql::Query* query, transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  static char const* AFN = "FAIL";
+  ValidateParameters(parameters, AFN, 0, 1);
+  if (parameters.size() == 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FAIL_CALLED, "");
+  }
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (! value.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FAIL_CALLED, "");
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackValueLength l;
+  char const* msg = materializer.slice(value, false).getString(l);
+      
+  THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FAIL_CALLED, msg);
+}

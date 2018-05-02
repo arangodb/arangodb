@@ -31,9 +31,11 @@
 #include "Aql/types.h"
 #include "Basics/SmallVector.h"
 
+#include <array>
+
 namespace arangodb {
 namespace velocypack {
-  class Slice;
+class Slice;
 }
   
 namespace aql {
@@ -190,9 +192,9 @@ class ExecutionPlan {
   void unlinkNode(ExecutionNode*, bool = false);
 
   /// @brief add a node to the plan, will delete node if addition fails and
-  /// throw an exception, in addition, the pointer is set to nullptr such
-  /// that another delete does not hurt
+  /// throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
+  ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>&&);
 
   /// @brief replaceNode, note that <newNode> must be registered with the plan
   /// before this method is called, also this does not delete the old
@@ -212,6 +214,12 @@ class ExecutionPlan {
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
 
+  /// @brief whether or not the plan contains at least one node of this type
+  bool contains(ExecutionNode::NodeType type) const;
+
+  /// @brief increase the node counter for the type
+  void increaseCounter(ExecutionNode::NodeType type) noexcept;
+  
  private:
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*,
@@ -327,6 +335,9 @@ class ExecutionPlan {
     
   /// @brief these nodes will be excluded from building scatter/gather "diamonds" later
   std::unordered_set<ExecutionNode const*> _excludeFromScatterGather;
+
+  /// @brief number of nodes used in the plan, by type
+  std::array<uint32_t, ExecutionNode::MaxNodeTypeValue + 1> _typeCounts;
 };
 }
 }

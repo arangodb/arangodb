@@ -476,6 +476,8 @@ struct Functions {
                            VPackFunctionParameters const&);
     static AqlValue Warn(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
+    static AqlValue Fail(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
 };
   
 }

@@ -109,7 +109,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade, bool igno
       // try to install a fresh new, empty VERSION file instead
       if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
         // give it another try
-        LOG_TOPIC(WARN, Logger::STARTUP) << "overwriting unparsable VERSION file with default value because option `--database.ignore-logfile-errors` is set";
+        LOG_TOPIC(WARN, Logger::STARTUP) << "overwriting unparsable VERSION file with default value "
+                                         << "because option `--database.ignore-logfile-errors` is set";
         vinfo = methods::Version::check(vocbase);
       }
     } else {

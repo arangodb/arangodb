@@ -169,7 +169,7 @@ class HeartbeatThread : public CriticalThread,
   /// @brief bring the db server in sync with the desired state
   //////////////////////////////////////////////////////////////////////////////
 
-  void syncDBServerStatusQuo();
+  void syncDBServerStatusQuo(bool asyncPush = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice

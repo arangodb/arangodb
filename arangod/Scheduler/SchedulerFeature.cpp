@@ -133,12 +133,13 @@ void SchedulerFeature::start() {
 
   V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  dealer->defineContextUpdate(
-      [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-        TRI_InitV8Dispatcher(isolate, context);
-      },
-      nullptr);
+  if (dealer->isEnabled()) {
+    dealer->defineContextUpdate(
+        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+          TRI_InitV8Dispatcher(isolate, context);
+        },
+        nullptr);
+  }
 }
 
 void SchedulerFeature::beginShutdown() {

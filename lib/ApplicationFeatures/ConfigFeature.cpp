@@ -41,9 +41,10 @@ using namespace arangodb::rest;
 using namespace arangodb::options;
 
 ConfigFeature::ConfigFeature(application_features::ApplicationServer* server,
-                             std::string const& progname)
+                             std::string const& progname,
+                             std::string const& configFilename)
     : ApplicationFeature(server, "Config"),
-      _file(""),
+      _file(configFilename),
       _checkConfiguration(false),
       _progname(progname) {
   setOptional(false);

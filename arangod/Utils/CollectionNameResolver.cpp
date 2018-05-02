@@ -116,14 +116,23 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
 
   try {
     // We have to look up the collection info:
-    ClusterInfo* ci = ClusterInfo::instance();
-    auto cinfo = ci->getCollection(_vocbase->name(), name);
+    auto* ci = ClusterInfo::instance();
 
-    if (cinfo) {
-      return cinfo->id();
+    try {
+      auto const cinfo = ci->getCollection(_vocbase->name(), name);
+
+      if (cinfo) {
+        return cinfo->id();
+      }
+    } catch (basics::Exception const& ex) {
+      // FIXME by some reason 'ClusterInfo::getCollection' throws exception
+      // in case if collection is not found, ignore error
+      if (ex.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+        throw;
+      }
     }
 
-    auto vinfo = ci->getView(_vocbase->name(), name);
+    auto const vinfo = ci->getView(_vocbase->name(), name);
 
     if (vinfo) {
       return vinfo->id();
@@ -379,14 +388,18 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
     }
 
     try {
-      ptr = std::static_pointer_cast<LogicalDataSource>(
-        ci->getCollection(_vocbase->name(), nameOrId)
-      );
+      try {
+        ptr = ci->getCollection(_vocbase->name(), nameOrId);
+      } catch (basics::Exception const& ex) {
+        // FIXME by some reason 'ClusterInfo::getCollection' throws exception
+        // in case if collection is not found, ignore error
+        if (ex.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+          throw;
+        }
+      }
 
       if (!ptr) {
-        ptr = std::static_pointer_cast<LogicalDataSource>(
-          ci->getView(_vocbase->name(), nameOrId)
-        );
+        ptr = ci->getView(_vocbase->name(), nameOrId);
       }
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
