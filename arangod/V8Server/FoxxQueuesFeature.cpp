@@ -34,7 +34,7 @@ FoxxQueuesFeature::FoxxQueuesFeature(
       _pollInterval(1.0),
       _enabled(true) {
   setOptional(true);
-  startsAfter("V8Platform");
+  startsAfter("ServerPhase");
 }
 
 void FoxxQueuesFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
