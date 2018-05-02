@@ -77,7 +77,7 @@ function legacyOptimizerRuleTestSuite() {
     assertEqual(rn.length, 1, query.string + " Has IndexNode");
     assertEqual(rn[0].indexes.length, 1);
     var indexType = rn[0].indexes[0].type;
-    assertTrue(indexType === "geo1" || indexType === "geo2");
+    assertTrue(indexType === "geo1" || indexType === "geo2" || indexType === "geo");
   };
   var isNodeType = function(node, type, query) {
     assertEqual(node.type, type, query.string + " check whether this node is of type " + type);
@@ -273,7 +273,7 @@ function legacyGeoVariationsTestSuite() {
     assertEqual(rn.length, 1);
     assertEqual(rn[0].indexes.length, 1);
     var indexType = rn[0].indexes[0].type;
-    assertTrue(indexType === "geo1" || indexType === "geo2");
+    assertTrue(indexType === "geo1" || indexType === "geo2" || indexType === "geo");
   };
 
   return {
