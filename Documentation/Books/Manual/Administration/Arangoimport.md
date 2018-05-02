@@ -471,9 +471,9 @@ windows of non-import activity to allow the server extra time for meta
 operations.
 
 The pacing algorithm works successfully with mmfiles with disks
-limited to read and write throughput of 1 Mbyte per second. The
-algorithm works successfully with rocksdb with disks limited to read
-and write throughput of 3 Mbyte per second.
+limited to read and write throughput as small as 1 Mbyte per
+second. The algorithm works successfully with rocksdb with disks
+limited to read and write throughput as small as 3 Mbyte per second.
 
 This algorithm will slow import of an unlimited (really fast) disk
 array by almost 25%. Raising the number of threads via the "--threads
