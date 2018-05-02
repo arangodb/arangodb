@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.12)
-project(s2-geometry)
+project(s2-geometry C CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(CMakeDependentOption)
 include(CheckCXXCompilerFlag)
