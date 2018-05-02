@@ -45,8 +45,9 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
       _enableActiveFailover(false) {
 
   setOptional(false);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
-  startsAfter("ServerId");
   startsAfter("StorageEngine");
 }
 

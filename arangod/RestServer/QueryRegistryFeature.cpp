@@ -45,7 +45,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
       _queryCacheMode("off"),
       _queryCacheEntries(128) {
   setOptional(false);
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
   startsAfter("Database");
   startsAfter("Cluster");
 }

@@ -45,8 +45,7 @@ InitDatabaseFeature::InitDatabaseFeature(ApplicationServer* server,
   : ApplicationFeature(server, "InitDatabase"),
     _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  startsAfter("Logger");
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
 }
 
 void InitDatabaseFeature::collectOptions(

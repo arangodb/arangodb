@@ -46,14 +46,14 @@ static std::string const boostrapKey = "Bootstrap";
 BootstrapFeature::BootstrapFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
-  startsAfter("Authentication");
-  startsAfter("CheckVersion");
+  startsAfter("DatabasePhase");
+
   startsAfter("Cluster");
-  startsAfter("Database");
+
+  // TODO: Phases of these are too high
   startsAfter("Endpoint");
   startsAfter("FoxxQueues");
   startsAfter("GeneralServer");
-  startsAfter("Scheduler");
   startsAfter("Server");
   startsAfter("Upgrade");
   startsAfter("V8Dealer");

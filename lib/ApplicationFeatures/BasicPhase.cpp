@@ -45,7 +45,6 @@ BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server)
   startsAfter("Privilege");
   startsAfter("Random");
   startsAfter("Scheduler");
-  startsAfter("ServerId");
   startsAfter("ShellColors");
   startsAfter("Ssl");
   startsAfter("Supervisor");

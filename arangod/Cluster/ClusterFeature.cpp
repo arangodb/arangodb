@@ -56,12 +56,9 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
-  startsAfter("Authentication");
-  startsAfter("CacheManager");
-  startsAfter("Logger");
-  startsAfter("WorkMonitor");
-  startsAfter("Database");
-  startsAfter("Scheduler");
+  startsAfter("DatabasePhase");
+
+  // TODO The phase of this feature is too high
   startsAfter("V8Dealer");
 }
 

@@ -39,11 +39,11 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
 
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database"); 
   startsAfter("MMFilesLogfileManager");
   startsAfter("MMFilesPersistentIndex");
-  startsAfter("Scheduler");
-  startsAfter("ServerId");
   
   startsBefore("Agency");
   startsBefore("Server");

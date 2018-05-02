@@ -121,6 +121,8 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
+  startsAfter("BasicsPhase");
+
   startsAfter("Database");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");

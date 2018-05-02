@@ -49,7 +49,7 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer* server)
   startsAfter("RocksDBEngine");
   startsAfter("RocksDBOption");
   startsAfter("RocksDBRecoveryManager");
-  startsAfter("RocksDBRecoveryFinalizer");
+  startsAfter("ServerId");
   startsAfter("StorageEngine");
   startsAfter("TransactionManager");
 }

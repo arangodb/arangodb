@@ -33,7 +33,7 @@ TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
     ApplicationServer* server)
     : ApplicationFeature(server, "TraverserEngineRegistry") {
   setOptional(false);
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
   startsAfter("Database");
 }
 

@@ -50,6 +50,9 @@ MMFilesCompactionFeature::MMFilesCompactionFeature(ApplicationServer* server)
     _deadShare(0.1) { 
   setOptional(true);
   onlyEnabledWith("MMFilesEngine");
+
+  startsAfter("BasicsPhase");
+
   MMFilesCompactionFeature::COMPACTOR = this;
 }
 

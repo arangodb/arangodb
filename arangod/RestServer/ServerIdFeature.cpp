@@ -40,7 +40,7 @@ ServerIdFeature::ServerIdFeature(
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
   startsAfter("Database");
-  startsAfter("DatabasePath");
+  startsAfter("BasicsPhase");
 }
 
 void ServerIdFeature::start() {
