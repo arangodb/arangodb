@@ -369,6 +369,11 @@ authRouter.get('/job', function (req, res) {
 //    2: Replication per Server found.
 //    3: Active-Failover replication found.
 authRouter.get('/replication/mode', function (req, res) {
+  // this method is only allowed from within the _system database
+  if (req.database !== '_system') {
+    res.throw('not allowed');
+  }
+
   let endpoints = request.get('/_api/cluster/endpoints');
   let mode = 0;
   let role = null;
@@ -385,7 +390,7 @@ authRouter.get('/replication/mode', function (req, res) {
 
     if (globalApplierRunning) {
       mode = 2;
-      mode = 'follower';
+      role = 'follower';
     } else {
       // if ga is not running, check if a single applier is running (per each db)
       // if that is true,
@@ -403,14 +408,12 @@ authRouter.get('/replication/mode', function (req, res) {
       } else {
         // at this point, no active pulling replication settings were found at all
         // now checking logger state of this node
-        // ?? ? ?  Important: We need to check all logger states of every db
         if (replication.logger.state().clients.length > 0) {
-          console.error('Not a single or global replier is running');
-          console.error('But there are some clients fetching changes');
-          // currently one logger instance containing all dbs
-          mode = 1 || 2; // TODO - how to find exactly out?
-          role = 'leader';
           // found clients
+          // currently one logger instance contains all dbs
+          // there is currently no global logger state defined
+          mode = 1; // TODO - how to find exactly out?
+          role = 'leader';
         } else {
           // no clients found
           // no replication detected

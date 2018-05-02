@@ -53,13 +53,13 @@
           if (this.info.role === 'leader') {
             this.getLoggerState();
           } else {
-            this.getApplierState();
+            this.getApplierStates(true);
           }
         } else if (this.mode === 1) {
           if (this.info.role === 'leader') {
             this.getLoggerState();
           } else {
-            this.getApplierState();
+            this.getApplierStates();
           }
         }
       } else {
@@ -160,25 +160,45 @@
       });
     },
 
-    getApplierState: function () {
+    getApplierStates: function (global) {
       var self = this;
+
+      var url;
+      if (global) {
+        url = arangoHelper.databaseUrl('/_api/replication/applier-state?global=true');
+      } else {
+        url = arangoHelper.databaseUrl('/_api/replication/applier-state-all');
+      }
+
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/replication/applier-state-all'),
+        url: url,
         contentType: 'application/json',
         success: function (data) {
-          self.renderApplierState(data);
+          if (global) {
+            self.renderApplierState(data, true);
+          } else {
+            self.renderApplierState(data);
+          }
         },
         error: function () {
-          arangoHelper.arangoError('Replication', 'Could not fetch the followers applier state.');
+          if (global) {
+            arangoHelper.arangoError('Replication', 'Could not fetch the followers global applier state.');
+          } else {
+            arangoHelper.arangoError('Replication', 'Could not fetch the followers applier state.');
+          }
         }
       });
     },
 
-    renderApplierState: function (data) {
+    renderApplierState: function (data, global) {
       var self = this;
       var endpoint;
+
+      if (global) {
+        data = {'All databases': data};
+      }
 
       _.each(data, function (applier, db) {
         if (applier.endpoint !== 'undefined' && applier.endpoint) {
@@ -238,7 +258,11 @@
           if (data.mode || data.mode === 0) {
             if (Number.isInteger(data.mode)) {
               self.mode = data.mode;
-              self.info.state = 'Replication is enabled';
+              if (data.mode !== 0) {
+                self.info.state = 'Replication is enabled';
+              } else {
+                self.info.state = 'Replication is disabled';
+              }
             } else {
               self.mode = 'undefined';
             }
@@ -249,11 +273,15 @@
               self.info.mode = 'Active-Failover';
               self.info.level = 'Server-wide replication';
             } else if (self.mode === 2) {
-              self.info.mode = 'Default';
+              self.info.mode = 'Asynchronous replication';
               self.info.level = 'Server-wide replication';
             } else if (self.mode === 1) {
-              self.info.mode = 'Default';
-              self.info.level = 'Database-level replication';
+              self.info.mode = 'Asynchronous replication';
+              if (self.info.role === 'follower') {
+                self.info.level = 'Database-level replication';
+              } else {
+                self.info.level = 'Database-level or Server-level replication';
+              }
             }
           }
           if (callback) {

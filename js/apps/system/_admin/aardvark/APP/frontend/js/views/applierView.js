@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, templateEngine, $, window, arangoHelper */
+/* global Backbone, templateEngine, $, window, arangoHelper */
 (function () {
   'use strict';
 
@@ -44,7 +44,7 @@
       var self = this;
       var url;
 
-      if (this.database === '_system') {
+      if (this.database === '_system' || global) {
         url = this.endpoint + '/_api/replication/applier-state';
       } else {
         url = this.endpoint + '/_db/' + this.database + '/_api/replication/applier-state';
