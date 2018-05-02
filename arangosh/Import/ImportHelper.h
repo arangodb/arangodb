@@ -249,13 +249,15 @@ class ImportHelper {
 
   std::vector<std::string> getErrorMessages() { return _errorMessages; }
 
-  uint64_t getMaxUploadSize() {return(_maxUploadSize.load());};
-  void setMaxUploadSize(uint64_t newSize) {_maxUploadSize.store(newSize);};
+  uint64_t getMaxUploadSize() {return(_maxUploadSize.load());}
+  void setMaxUploadSize(uint64_t newSize) {_maxUploadSize.store(newSize);}
 
-  uint64_t rotatePeriodByteCount() {return(_periodByteCount.exchange(0));};
-  void addPeriodByteCount(uint64_t add) {_periodByteCount.fetch_add(add);};
+  uint64_t rotatePeriodByteCount() {return(_periodByteCount.exchange(0));}
+  void addPeriodByteCount(uint64_t add) {_periodByteCount.fetch_add(add);}
 
-  uint32_t getThreadCount() const {return _threadCount;};
+  uint32_t getThreadCount() const {return _threadCount;}
+
+  static unsigned const MaxBatchSize;
 
  private:
   static void ProcessCsvBegin(TRI_csv_parser_t*, size_t);
