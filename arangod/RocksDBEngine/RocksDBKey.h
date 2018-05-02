@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_KEY_H
@@ -126,8 +126,13 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a geoIndexValue
   //////////////////////////////////////////////////////////////////////////////
-  void constructGeoIndexValue(uint64_t indexId, int32_t offset,
+  void constructLegacyGeoIndexValue(uint64_t indexId, int32_t offset,
                               bool isSlot);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for an S2CellId
+  //////////////////////////////////////////////////////////////////////////////
+  void constructGeoIndexValue(uint64_t indexId, uint64_t value, LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a view
@@ -251,10 +256,18 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the geo pot offset
   ///
+  /// May be called only on LegacyGeoIndexValues
+  //////////////////////////////////////////////////////////////////////////////
+  static std::pair<bool, int32_t> legacyGeoValues(rocksdb::Slice const& slice);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the geospatial cell id
+  ///
   /// May be called only on GeoIndexValues
   //////////////////////////////////////////////////////////////////////////////
-  static std::pair<bool, int32_t> geoValues(rocksdb::Slice const& slice);
+  static uint64_t geoValue(rocksdb::Slice const& slice);
 
+  /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
 
  public:

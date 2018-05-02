@@ -52,53 +52,47 @@
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process the fields list and add them to the json
+/// @brief process the fields list deduplicate and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexFields(VPackSlice const definition,
-                              VPackBuilder& builder, int numFields,
-                              bool create) {
+static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder,
+                              size_t minFields, size_t maxField, bool create) {
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
 
-  try {
-    VPackSlice fieldsSlice = definition.get("fields");
-    builder.add(VPackValue("fields"));
-    builder.openArray();
-    if (fieldsSlice.isArray()) {
-      // "fields" is a list of fields
-      for (auto const& it : VPackArrayIterator(fieldsSlice)) {
-        if (!it.isString()) {
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        StringRef f(it);
-
-        if (f.empty() || (create && f == StaticStrings::IdString)) {
-          // accessing internal attributes is disallowed
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        if (fields.find(f) != fields.end()) {
-          // duplicate attribute name
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        fields.insert(f);
-        builder.add(it);
+  VPackSlice fieldsSlice = definition.get("fields");
+  builder.add(VPackValue("fields"));
+  builder.openArray();
+  if (fieldsSlice.isArray()) {
+    // "fields" is a list of fields
+    for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+      if (!it.isString()) {
+        return TRI_ERROR_BAD_PARAMETER;
       }
-    }
 
-    if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
+      StringRef f(it);
 
-    builder.close();
-  } catch (std::bad_alloc const&) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  } catch (...) {
-    return TRI_ERROR_INTERNAL;
+      if (f.empty() || (create && f == StaticStrings::IdString)) {
+        // accessing internal attributes is disallowed
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      if (fields.find(f) != fields.end()) {
+        // duplicate attribute name
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      fields.insert(f);
+      builder.add(it);
+    }
   }
+
+  size_t cc = fields.size();
+  if (cc == 0 || cc < minFields || cc > maxField) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  builder.close();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -148,7 +142,7 @@ static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
 
 static int EnhanceJsonIndexHash(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
+  int res = ProcessIndexFields(definition, builder, 1, INT_MAX, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
@@ -163,7 +157,7 @@ static int EnhanceJsonIndexHash(VPackSlice const definition,
 
 static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
+  int res = ProcessIndexFields(definition, builder, 1, INT_MAX, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
@@ -178,7 +172,7 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
 
 static int EnhanceJsonIndexPersistent(VPackSlice const definition,
                                    VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
+  int res = ProcessIndexFields(definition, builder, 1, INT_MAX, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
@@ -196,8 +190,7 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
   VPackSlice fieldsSlice = definition.get("fields");
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
     // only add geoJson for indexes with a single field (with needs to be an array)
-    bool geoJson =
-        basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
+    bool geoJson = basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
     builder.add("geoJson", VPackValue(geoJson));
   }
 }
@@ -208,12 +201,8 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
 
 static int EnhanceJsonIndexGeo1(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 1, create);
+  int res = ProcessIndexFields(definition, builder, 1, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder);
@@ -227,12 +216,23 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
 
 static int EnhanceJsonIndexGeo2(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 2, create);
+  int res = ProcessIndexFields(definition, builder, 2, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+    ProcessIndexGeoJsonFlag(definition, builder);
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a s2 index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexGeo(VPackSlice const definition,
+                                 VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(definition, builder, 1, 2, create);
+  if (res == TRI_ERROR_NO_ERROR) {
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder);
@@ -246,7 +246,7 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 
 static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 1, create);
+  int res = ProcessIndexFields(definition, builder, 1, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
     // hard-coded defaults
     builder.add("sparse", VPackValue(true));
@@ -297,7 +297,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<MMFilesGeoIndex>(id, collection, definition);
+    return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "geo1");
   });
 
   emplaceFactory("geo2", [](
@@ -306,7 +306,16 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<MMFilesGeoIndex>(id, collection, definition);
+    return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "geo2");
+  });
+
+  emplaceFactory("geo", [](
+    LogicalCollection* collection,
+    velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
+    )->std::shared_ptr<Index> {
+    return std::make_shared<MMFilesGeoIndex>(id, collection, definition, "geo");
   });
 
   emplaceFactory("hash", [](
@@ -379,23 +388,16 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     return EnhanceJsonIndexFulltext(definition, normalized, isCreation);
   });
 
+ 
   emplaceNormalizer("geo", [](
     velocypack::Builder& normalized,
     velocypack::Slice definition,
     bool isCreation
   )->arangodb::Result {
-    auto current = definition.get("fields");
     TRI_ASSERT(normalized.isOpenObject());
-
-    if (current.isArray() && current.length() == 2) {
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
-
-      return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
-    }
-
-    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
-
-    return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+    
+    return EnhanceJsonIndexGeo(definition, normalized, isCreation);
   });
 
   emplaceNormalizer("geo1", [](
@@ -404,8 +406,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     bool isCreation
   )->arangodb::Result {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
-
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
     return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
   });
 
@@ -415,8 +416,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     bool isCreation
   )->arangodb::Result {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
-
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
     return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
   });
 
@@ -496,7 +496,8 @@ void MMFilesIndexFactory::fillSystemIndexes(
 }
 
 std::vector<std::string> MMFilesIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{ "primary", "edge", "hash", "skiplist", "persistent", "geo", "fulltext" };
+  return std::vector<std::string>{ "primary",    "edge", "hash", "skiplist",
+                                   "persistent", "geo",  "fulltext" };
 }
 
 // -----------------------------------------------------------------------------

@@ -82,7 +82,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override final;
+                                      IndexIteratorOptions const&) override final;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;

@@ -307,6 +307,8 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VstCommTask.cpp
+  GeoIndex/Index.cpp
+  GeoIndex/Near.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
@@ -522,6 +524,7 @@ add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
+  ${LIB_ARANGO_GEO}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
@@ -529,6 +532,7 @@ target_link_libraries(arangoserver
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
+  s2
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}

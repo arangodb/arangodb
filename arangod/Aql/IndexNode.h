@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
 #include "Aql/Variable.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Transaction/Methods.h"
@@ -54,7 +55,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, bool reverse);
+            Condition* condition, IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -73,10 +74,10 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   Condition* condition() const { return _condition; }
 
   /// @brief whether or not all indexes are accessed in reverse order
-  bool reverse() const { return _reverse; }
- 
-  /// @brief set reverse mode  
-  void reverse(bool value) { _reverse = value; }
+  IndexIteratorOptions options() const { return _options; }
+
+  /// @brief set reverse mode
+  void setAscending(bool value) { _options.ascending = value; }
 
   /// @brief whether or not the index node needs a post sort of the results
   /// of multiple shards in the cluster
@@ -152,13 +153,13 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   Condition* _condition;
 
   /// @brief the index sort order - this is the same order for all indexes
-  bool _reverse;
-
-  /// @brief the index sort order - this is the same order for all indexes
   bool _needsGatherNodeSort;
 
   /// @brief A shard this node is restricted to, may be empty
   std::string _restrictedTo;
+  
+  /// @brief the index iterator options - same for all indexes
+  IndexIteratorOptions _options;
 };
 
 }  // namespace arangodb::aql

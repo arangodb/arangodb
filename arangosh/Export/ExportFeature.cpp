@@ -826,7 +826,7 @@ void ExportFeature::xgmmlWriteOneAtt(int fd, std::string const& fileName,
         "  <att name=\"" + encode_char_entities(name) + "\" type=\"list\">\n";
     writeToFile(fd, xmlTag, fileName);
 
-    for (auto const& val : VPackArrayIterator(slice)) {
+    for (VPackSlice val : VPackArrayIterator(slice)) {
       xgmmlWriteOneAtt(fd, fileName, val, name, deep + 1);
     }
 
