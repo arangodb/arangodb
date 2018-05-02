@@ -45,9 +45,7 @@ QueryRegistryFeature::QueryRegistryFeature(ApplicationServer* server)
       _queryCacheMode("off"),
       _queryCacheEntries(128) {
   setOptional(false);
-  startsAfter("BasicsPhase");
-  startsAfter("Database");
-  startsAfter("Cluster");
+  startsAfter("V8Phase");
 }
 
 void QueryRegistryFeature::collectOptions(

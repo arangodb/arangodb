@@ -33,8 +33,7 @@ TraverserEngineRegistryFeature::TraverserEngineRegistryFeature(
     ApplicationServer* server)
     : ApplicationFeature(server, "TraverserEngineRegistry") {
   setOptional(false);
-  startsAfter("BasicsPhase");
-  startsAfter("Database");
+  startsAfter("V8Phase");
 }
 
 void TraverserEngineRegistryFeature::collectOptions(

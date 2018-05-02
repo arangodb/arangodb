@@ -51,9 +51,9 @@ OptimizerRulesFeature::OptimizerRulesFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
-  startsAfter("EngineSelector");
+  startsAfter("V8Phase");
+
   startsAfter("Aql");
-  startsAfter("Cluster");
 }
 
 void OptimizerRulesFeature::prepare() {

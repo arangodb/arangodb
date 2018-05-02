@@ -40,13 +40,9 @@ AqlFeature::AqlFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Aql"), _numberLeases(0), _isStopped(false) {
   setOptional(false);
-  startsAfter("CacheManager");
-  startsAfter("Cluster");
-  startsAfter("Database");
+  startsAfter("V8Phase");
+
   startsAfter("QueryRegistry");
-  startsAfter("Scheduler");
-  startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
 }
 
 AqlFeature* AqlFeature::lease() {
