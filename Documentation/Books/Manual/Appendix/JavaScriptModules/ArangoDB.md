@@ -32,6 +32,11 @@ To use it just prefix a JavaScript template string (the ones with backticks inst
 You can also use the `aql.literal` helper to mark strings containing AQL snippets
 that should be inlined directly into the query rather than be treated as as bind variables.
 
+{% hint 'warning' %}
+`aql.literal` allows you to pass a arbitrary strings into your AQL and thus will open
+you to AQL injection attacks if you are passing in untrusted user input unsanitized.
+{% endhint %}
+
 To find out more about AQL see the [AQL documentation](../../../AQL/index.html).
 
 **Examples**
@@ -47,7 +52,6 @@ const result = db._query(aql`
   RETURN d
 `).toArray();
 
-// New in 3.4
 const filterGreen = aql.literal('FILTER d.color == "green"');
 const result2 = db._query(aql`
   FOR d IN ${mydata}
