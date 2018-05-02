@@ -258,9 +258,11 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         updateCollection(col);
         break;
       }
+#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
       addIResearchViewNode(*node);
       break;
+#endif
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
