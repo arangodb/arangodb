@@ -30,6 +30,5 @@ ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer* server)
   setOptional(false);
   startsAfter("DatabasePhase");
 
-  startsAfter("Bootstrap");
   startsAfter("Cluster");
 }

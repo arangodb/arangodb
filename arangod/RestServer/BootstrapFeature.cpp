@@ -46,17 +46,19 @@ static std::string const boostrapKey = "Bootstrap";
 BootstrapFeature::BootstrapFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Bootstrap"), _isReady(false), _bark(false) {
-  startsAfter("DatabasePhase");
+  startsAfter("ServerPhase");
 
-  startsAfter("Cluster");
-
-  // TODO: Phases of these are too high
-  startsAfter("Endpoint");
+  // TODO: It is only in FoxxPhase because of:
   startsAfter("FoxxQueues");
+
+  // If this is Sorted out we can go down to ServerPhase
+  // And activate the following dependencies:
+  /*
+  startsAfter("Endpoint");
   startsAfter("GeneralServer");
   startsAfter("Server");
   startsAfter("Upgrade");
-  startsAfter("V8Dealer");
+  */
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -30,6 +30,7 @@ FoxxFeaturePhase::FoxxFeaturePhase(ApplicationServer* server)
   setOptional(false);
   startsAfter("ServerPhase");
 
+  startsAfter("Bootstrap");
   startsAfter("FoxxQueues");
   startsAfter("Frontend");
 }
