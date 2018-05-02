@@ -152,12 +152,17 @@
             data: JSON.stringify(queryObj2),
             contentType: 'application/json',
             success: function () {
+              var error = false;
               if (callback) {
-                callback();
+                callback(error);
               }
               window.progressView.hide();
             },
             error: function () {
+              var error = true;
+              if (callback) {
+                callback(error);
+              }
               window.progressView.hide();
               arangoHelper.arangoError(
                 'Document error', 'Documents inserted, but could not be removed.'
