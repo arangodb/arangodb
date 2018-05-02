@@ -121,10 +121,11 @@ void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   TRI_ASSERT(
     node->getType() != ExecutionNode::INDEX
       && node->getType() != ExecutionNode::ENUMERATE_COLLECTION
-#ifdef USE_IRESEARCH
-      && node->getType() != ExecutionNode::ENUMERATE_IRESEARCH_VIEW
-#endif
   );
+
+#ifdef USE_IRESEARCH
+  TRI_ASSERT(node->getType() != ExecutionNode::ENUMERATE_IRESEARCH_VIEW);
+#endif
 
   TRI_ASSERT(!_engines.empty());
   TRI_ASSERT(!_engineStack.empty());

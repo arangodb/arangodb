@@ -245,7 +245,7 @@ namespace iresearch {
     uint64_t planVersion,
     LogicalView::PreCommitCallback const& /*preCommit*/
 ) {
-  auto view = std::unique_ptr<IResearchViewCoordinator>(
+  auto view = std::shared_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
   );
 
