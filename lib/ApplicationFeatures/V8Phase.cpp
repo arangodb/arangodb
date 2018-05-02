@@ -32,5 +32,4 @@ V8FeaturePhase::V8FeaturePhase(ApplicationServer* server)
 
   startsAfter("V8Dealer");
   startsAfter("V8Platform");
-  startsAfter("V8Shell");
 }

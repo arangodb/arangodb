@@ -108,14 +108,12 @@ V8DealerFeature::V8DealerFeature(
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
   setOptional(true);
-  startsAfter("Action");
-  startsAfter("Authentication");
-  startsAfter("Database");
-  startsAfter("Random");
-  startsAfter("Scheduler");
+  startsAfter("ClusterPhase");
+
   startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
-  startsAfter("Temp");
+
+  // TODO this feature is too high
+  startsAfter("Action");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
