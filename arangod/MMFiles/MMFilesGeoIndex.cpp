@@ -236,11 +236,6 @@ void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.add("unique", VPackValue(false));
   // geo indexes are always sparse.
   builder.add("sparse", VPackValue(true));
-  if (_typeName == "geo1" || _typeName == "geo2") {
-    // flags for backwards compatibility
-    builder.add("ignoreNull", VPackValue(true));
-    builder.add("constraint", VPackValue(false));
-  }
   builder.close();
 }
 

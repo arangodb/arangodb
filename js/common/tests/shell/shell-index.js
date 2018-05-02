@@ -770,9 +770,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -791,9 +790,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -812,10 +810,9 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo1", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
       assertTrue(idx.geoJson);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -834,10 +831,9 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo1", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
       assertTrue(idx.geoJson);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
@@ -856,9 +852,8 @@ function getIndexesEdgesSuite() {
       assertEqual(3, res.length);
       var idx = res[2];
 
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));

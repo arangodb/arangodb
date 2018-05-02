@@ -173,10 +173,6 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, false);
@@ -192,10 +188,6 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 2, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, false);
@@ -211,10 +203,6 @@ static int EnhanceJsonIndexGeo(VPackSlice const definition,
                                VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, true);
@@ -382,12 +370,12 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
   emplaceNormalizer("geo", [](velocypack::Builder& normalized, velocypack::Slice definition,
          bool isCreation) -> arangodb::Result {
         TRI_ASSERT(normalized.isOpenObject());
+        normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
         if (isCreation && !ServerState::instance()->isCoordinator() &&
             !definition.hasKey("objectId")) {
           normalized.add("objectId", velocypack::Value(
                                          std::to_string(TRI_NewTickServer())));
         }
-        normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
         return EnhanceJsonIndexGeo(definition, normalized, isCreation);
       });
 
@@ -396,7 +384,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
       [](velocypack::Builder& normalized, velocypack::Slice definition,
          bool isCreation) -> arangodb::Result {
         TRI_ASSERT(normalized.isOpenObject());
-        normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
+        normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
         if (isCreation && !ServerState::instance()->isCoordinator() &&
             !definition.hasKey("objectId")) {
           normalized.add("objectId", velocypack::Value(
@@ -410,7 +398,12 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
       [](velocypack::Builder& normalized, velocypack::Slice definition,
          bool isCreation) -> arangodb::Result {
         TRI_ASSERT(normalized.isOpenObject());
-        normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
+        normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+        if (isCreation && !ServerState::instance()->isCoordinator() &&
+            !definition.hasKey("objectId")) {
+          normalized.add("objectId", velocypack::Value(
+                                                       std::to_string(TRI_NewTickServer())));
+        }
         return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
       });
 
@@ -419,8 +412,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
       [](velocypack::Builder& normalized, velocypack::Slice definition,
          bool isCreation) -> arangodb::Result {
         TRI_ASSERT(normalized.isOpenObject());
-        normalized.add(
-            "type",
+        normalized.add("type",
             VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_HASH_INDEX)));
 
         if (isCreation && !ServerState::instance()->isCoordinator() &&
@@ -428,7 +420,6 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
           normalized.add("objectId", velocypack::Value(
                                          std::to_string(TRI_NewTickServer())));
         }
-
         return EnhanceJsonIndexVPack(definition, normalized, isCreation);
       });
 

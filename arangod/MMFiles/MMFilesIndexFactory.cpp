@@ -204,10 +204,6 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, false);
@@ -223,10 +219,6 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 2, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, false);
@@ -242,10 +234,6 @@ static int EnhanceJsonIndexGeo(VPackSlice const definition,
                                  VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
-    if (ServerState::instance()->isCoordinator()) {
-      builder.add("ignoreNull", VPackValue(true));
-      builder.add("constraint", VPackValue(false));
-    }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
     ProcessIndexGeoJsonFlag(definition, builder, true);
@@ -419,8 +407,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     bool isCreation
   )->arangodb::Result {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
-
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
     return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
   });
 
@@ -430,8 +417,7 @@ MMFilesIndexFactory::MMFilesIndexFactory() {
     bool isCreation
   )->arangodb::Result {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
-
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
     return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
   });
 
