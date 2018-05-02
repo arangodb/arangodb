@@ -198,18 +198,16 @@ void ImportFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  static unsigned const MaxBatchSize = 768 * 1024 * 1024;
-
   // _chunkSize is dynamic ... unless user explicitly sets it
   _autoChunkSize = !options->processingResult().touched("--batch-size");
 
-  if (_chunkSize > MaxBatchSize) {
+  if (_chunkSize > arangodb::import::ImportHelper::MaxBatchSize) {
     // it's not sensible to raise the batch size beyond this value
     // because the server has a built-in limit for the batch size too
     // and will reject bigger HTTP request bodies
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --batch-size value to "
-                                             << MaxBatchSize;
-    _chunkSize = MaxBatchSize;
+                                             << arangodb::import::ImportHelper::MaxBatchSize;
+    _chunkSize = arangodb::import::ImportHelper::MaxBatchSize;
   }
 
   if (_threadCount < 1) {
