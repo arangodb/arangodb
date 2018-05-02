@@ -6069,6 +6069,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 }
 
 /// @brief replace WITHIN_RECTANGLE, NEAR, WITHIN (under certain conditions)
+/// deactivated right now, doesn't work in all cases
 void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
                                                   std::unique_ptr<ExecutionPlan> plan,
                                                   OptimizerRule const* rule) {

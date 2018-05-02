@@ -80,7 +80,7 @@ include_directories(
     ${PYTHON_INCLUDE_DIRS})
 include_directories(src)
 
-add_library(s2 STATIC
+add_library(s2
             src/s2/base/stringprintf.cc
             src/s2/base/strtoint.cc
             src/s2/base/sysinfo.cc
