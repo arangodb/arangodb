@@ -57,13 +57,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false) {
   setOptional(true);
-  startsAfter("Cluster");
-  startsAfter("Database");
-  startsAfter("Endpoint");
-  startsAfter("QueryRegistry");
-  startsAfter("Random");
-  startsAfter("Scheduler");
-  startsAfter("Server");
+  startsAfter("FoxxPhase");
 }
 
 AgencyFeature::~AgencyFeature() {}
