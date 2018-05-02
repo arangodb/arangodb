@@ -191,10 +191,13 @@ class ExecutionPlan {
   /// node and that one cannot remove the root node of the plan.
   void unlinkNode(ExecutionNode*, bool = false);
 
-  /// @brief add a node to the plan, will delete node if addition fails and
-  /// throw an exception
-  ExecutionNode* registerNode(ExecutionNode*);
+  /// @brief register a node with the plan
+  ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>);
   
+  /// @brief add a node to the plan, will delete node if addition
+  /// fails and throw an exception
+  ExecutionNode* registerNode(ExecutionNode*);
+
   /// @brief add a subquery to the plan, will call registerNode internally
   SubqueryNode* registerSubquery(SubqueryNode*);
 

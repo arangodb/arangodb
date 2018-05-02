@@ -98,6 +98,9 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual void load() override {}
   virtual void unload() override {}
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) override;
+
+ private:
+  bool addIndex(std::shared_ptr<arangodb::Index> idx);
 };
 
 class TransactionCollectionMock: public arangodb::TransactionCollection {

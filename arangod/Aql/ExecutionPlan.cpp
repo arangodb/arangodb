@@ -726,6 +726,16 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
   return options;
 }
 
+/// @brief register a node with the plan
+ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
+
+  _ids.emplace(node->id(), node.get()); // take ownership
+  return node.release();
+}
+
 /// @brief register a node with the plan, will delete node if addition fails
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
@@ -817,7 +827,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 
     en = registerNode(
       new iresearch::IResearchViewNode(
-        this, nextId(), vocbase, view, v, nullptr, {}
+        *this, nextId(), *vocbase, *view, *v, nullptr, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {

@@ -168,12 +168,6 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js"
-  NEWLINE_STYLE UNIX
-)
-
 ################################################################################
 ## Find the git revision
 ################################################################################

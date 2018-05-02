@@ -33,7 +33,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 class AgencyCommManagerMock: public arangodb::AgencyCommManager {
 public:
- AgencyCommManagerMock();
+ explicit AgencyCommManagerMock(std::string const& prefix = "");
 
  void addConnection(
    std::unique_ptr<arangodb::httpclient::GeneralClientConnection>&& connection
