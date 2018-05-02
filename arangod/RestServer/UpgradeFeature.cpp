@@ -47,10 +47,7 @@ UpgradeFeature::UpgradeFeature(
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  startsAfter("CheckVersion");
-  startsAfter("Database");
-  startsAfter("Cluster");
-  startsAfter("Aql");
+  startsAfter("AQLPhase");
 }
 
 void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

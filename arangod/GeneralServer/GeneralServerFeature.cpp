@@ -104,16 +104,14 @@ GeneralServerFeature::GeneralServerFeature(
       _allowMethodOverride(false),
       _proxyCheck(true) {
   setOptional(true);
-  startsAfter("Agency");
-  startsAfter("Authentication");
-  startsAfter("CheckVersion");
-  startsAfter("Database");
+  startsAfter("AQLPhase");
+
   startsAfter("Endpoint");
-  startsAfter("FoxxQueues");
-  startsAfter("Random");
-  startsAfter("Scheduler");
-  startsAfter("Server");
   startsAfter("Upgrade");
+
+  // TODO The following features are too high
+  startsAfter("Agency");
+  startsAfter("FoxxQueues");
 }
 
 void GeneralServerFeature::collectOptions(
