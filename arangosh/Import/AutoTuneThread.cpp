@@ -25,6 +25,7 @@
 
 #include "AutoTuneThread.h"
 #include "Basics/ConditionLocker.h"
+#include "ImportFeature.h"
 #include "ImportHelper.h"
 
 using namespace arangodb;
@@ -90,16 +91,15 @@ void AutoTuneThread::run() {
         new_max = (current_max + ten_second_actual / 10) / 2;
       }
 
-      // grow number slowly if possible (10%)
-//      new_max += new_max/10;
-      new_max += new_max/5;  //(20% growth)
+      // grow number slowly if possible (20%)
+      new_max += new_max/5;
 
       // make "per thread"
       new_max /= _importHelper.getThreadCount();
 
       // notes in Import mention an internal limit of 768MBytes
-      if ((768 * 1024 * 1024) < new_max) {
-        new_max = 768 * 1024 * 1024;
+      if ((arangodb::import::ImportHelper::MaxBatchSize) < new_max) {
+        new_max = arangodb::import::ImportHelper::MaxBatchSize;
       }
 
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)

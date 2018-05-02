@@ -25,7 +25,7 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 
