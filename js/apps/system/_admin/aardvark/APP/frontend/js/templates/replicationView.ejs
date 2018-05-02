@@ -60,67 +60,86 @@
       </table>
     <% } %>
 
-    <div class="repl-logger">
-      <div class="categoryBar">
-        <h4>Leader State</h4>
+    <% if (info.role === 'leader') { %>
+      <div class="repl-logger">
+        <div class="categoryBar">
+          <h4>Leader State</h4>
+        </div>
+        <table class="pure-table">
+            <tbody>
+              <tr>
+                <td>Running:</td>
+                <td id="logger-running-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Version:</td>
+                <td id="logger-version-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Server ID:</td>
+                <td id="logger-serverid-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Time:</td>
+                <td id="logger-time-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Last tick:</td>
+                <td id="logger-lastLogTick-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Last uncommited tick:</td>
+                <td id="logger-lastUncommitedLogTick-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+              <tr>
+                <td>Total events:</td>
+                <td id="logger-totalEvents-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
+              </tr>
+            </tbody>
+        </table>
       </div>
-      <table class="pure-table">
+
+      <div class="repl-logger-clients">
+        <div class="categoryBar">
+          <h4>Clients</h4>
+        </div>
+        <table class="pure-table" id="repl-logger-clients">
+            <thead>
+              <tr>
+                <th>Server ID</th>
+                <th>Time</th>
+                <th>Last served tick</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+      </div>
+    <% } %>
+
+    <% if (info.role === 'follower') { %>
+      <div class="repl-applier">
+        <div class="categoryBar">
+          <h4>Follower States</h4>
+        </div>
+
+        <table id="repl-follower-table" class="pure-table" style="width: 100%">
+          <thead>
+            <tr>
+              <th>Database</th>
+              <th>Running</th>
+              <th>Phase</th>
+              <th>Replicating from</th>
+              <th>Version</th>
+            </tr>
+          </thead>
+
           <tbody>
-            <tr>
-              <td>Running:</td>
-              <td id="logger-running-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-            </tr>
-            <tr>
-              <td>Version:</td>
-              <td id="logger-version-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-            </tr>
-            <tr>
-              <td>Server ID:</td>
-              <td id="logger-serverid-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-            </tr>
-            <tr>
-              <td>Time:</td>
-              <td id="logger-time-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-            </tr>
-            <tr>
-              <td>Last tick:</td>
-              <td id="logger-lastLogTick-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-            </tr>
-            <tr>
-              <td>Last uncommited tick:</td>
-              <td id="logger-lastUncommitedLogTick-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-            </tr>
-            <tr>
-              <td>Total events:</td>
-              <td id="logger-totalEvents-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-            </tr>
           </tbody>
-      </table>
-    </div>
 
-<!--
-    <div class="repl-applier">
-      <div class="categoryBar">
-        <h4>Follower States</h4>
+        </table>
       </div>
-
-      <table id="repl-follower-table" class="pure-table" style="width: 100%">
-        <thead>
-          <tr>
-            <th>Endpoint</th>
-            <th>Running</th>
-            <th>Version</th>
-            <th>Server ID</th>
-            <th>Time</th>
-          </tr>
-        </thead>
-
-        <tbody>
-        </tbody>
-
-      </table>
-    </div>
--->
+    <% } %>
 
   </div>
 </script>

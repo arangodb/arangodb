@@ -1682,7 +1682,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   }
 
   if (ignoreHiddenEnterpriseCollection(name, force)) {
-    return {TRI_ERROR_NO_ERROR};
+    return TRI_ERROR_NO_ERROR;
   }
 
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
@@ -1943,6 +1943,10 @@ void RestReplicationHandler::handleCommandApplierGetState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetStateAll() {
+  if (_request->databaseName() != StaticStrings::SystemDatabase) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "global inventory can only be fetched from within _system database");
+  }
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   VPackBuilder builder;

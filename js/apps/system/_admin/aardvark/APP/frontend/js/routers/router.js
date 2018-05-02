@@ -15,7 +15,7 @@
       '': 'cluster',
       'dashboard': 'dashboard',
       'replication': 'replication',
-      'replication/applier/:endpoint': 'applier',
+      'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
       'new': 'newCollection',
       'login': 'login',
@@ -947,10 +947,10 @@
       this.replicationView.render();
     },
 
-    applier: function (endpoint, initialized) {
+    applier: function (endpoint, database, initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.applier.bind(this), endpoint);
+        this.waitForInit(this.applier.bind(this), endpoint, database);
         return;
       }
 
@@ -959,6 +959,7 @@
         });
       }
       this.applierView.endpoint = atob(endpoint);
+      this.applierView.database = atob(database);
       this.applierView.render();
     },
 

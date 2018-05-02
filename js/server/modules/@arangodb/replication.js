@@ -74,6 +74,9 @@ applier.stop = function () { return REPLICATION_APPLIER_STOP(); };
 // / @brief return the replication applier state
 applier.state = function () { return REPLICATION_APPLIER_STATE(); };
 
+// / @brief return the replication applier state of all dbs
+applier.stateAll = function () { return REPLICATION_APPLIER_STATE_ALL(); };
+
 // / @brief stop the applier and "forget" all configuration
 applier.forget = function () { return REPLICATION_APPLIER_FORGET(); };
 

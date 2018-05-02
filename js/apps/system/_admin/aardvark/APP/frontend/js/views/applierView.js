@@ -22,7 +22,6 @@
     breadcrumb: function (name) {
       var self = this;
 
-      console.log(false);
       if (window.App.naviView) {
         var string = 'Follower State';
         if (name) {
@@ -43,7 +42,13 @@
 
     getApplierState: function (endpoint, global) {
       var self = this;
-      var url = this.endpoint + '/_api/replication/applier-state';
+      var url;
+
+      if (this.database === '_system') {
+        url = this.endpoint + '/_api/replication/applier-state';
+      } else {
+        url = this.endpoint + '/_db/' + this.database + '/_api/replication/applier-state';
+      }
       if (global) {
         url = url + '?global=true';
       }
@@ -54,7 +59,6 @@
         url: url,
         contentType: 'application/json',
         success: function (data) {
-          console.log(data);
           self.$el.html(self.template.render({
             data: data
           }));

@@ -389,41 +389,31 @@ authRouter.get('/replication/mode', function (req, res) {
     } else {
       // if ga is not running, check if a single applier is running (per each db)
       // if that is true,
-      let sAResponse;
-      sAResponse = request.get('/_api/replication/applier-state-all');
-      if (sAResponse.statusCode === 200) {
-        _.each(sAResponse.json, function (applier) {
-          if (applier.state.running) {
-            singleAppliers.push(db);
-          }
-        });
-      }
+      const allSingleAppliers = replication.applier.stateAll();
+      _.each(allSingleAppliers, function (applier) {
+        if (applier.state.running) {
+          singleAppliers.push(db);
+        }
+      });
 
       if (singleAppliers.length > 0) {
         // some per db-level pulling replication was found
         mode = 1;
-        mode = 'follower';
+        role = 'follower';
       } else {
         // at this point, no active pulling replication settings were found at all
         // now checking logger state of this node
         // ?? ? ?  Important: We need to check all logger states of every db
-        console.error('Not a single or global replier is running');
-        console.error('TEST');
-        console.log(replication.logger.state());
-        console.error('TEST');
-        let test;
-        test = request.get('/_api/replication/logger-state');
-        console.log(test);
-        console.log(test.json);
-        console.error('TEST');
         if (replication.logger.state().clients.length > 0) {
           console.error('Not a single or global replier is running');
           console.error('But there are some clients fetching changes');
+          // currently one logger instance containing all dbs
           mode = 1 || 2; // TODO - how to find exactly out?
-          role = 'master';
+          role = 'leader';
           // found clients
         } else {
           // no clients found
+          // no replication detected
           mode = 0;
           role = null;
         }
