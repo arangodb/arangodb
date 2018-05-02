@@ -217,22 +217,23 @@ void HeartbeatThread::run() {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
-  logThreadDeaths();
-
   if (ServerState::instance()->isCoordinator(role)) {
     runCoordinator();
   } else if (ServerState::instance()->isDBServer(role)) {
     runDBServer();
   } else if (ServerState::instance()->isSingleServer(role)) {
-    runSingleServer();
+    if (ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
+      runSingleServer();
+    } else {
+      // runSimpleServer();  // for later when CriticalThreads identified
+    } // else
   } else if (ServerState::instance()->isAgent(role)) {
-    runAgentServer();
+    runSimpleServer();
   } else {
     LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
   }
 
-  logThreadDeaths(true);  // force log
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (" << role << ")";
 }
@@ -952,10 +953,10 @@ void HeartbeatThread::runCoordinator() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop, agent version
+/// @brief heartbeat main loop, agent and sole db version
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::runAgentServer() {
+void HeartbeatThread::runSimpleServer() {
 
   // simple loop to post dead threads every hour, no other tasks today
   while (!isStopping()) {
@@ -968,7 +969,10 @@ void HeartbeatThread::runAgentServer() {
       }
     }
   } // while
-} // HeartbeatThread::runAgentServer
+
+  logThreadDeaths(true);
+
+} // HeartbeatThread::runSimpleServer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the heartbeat
