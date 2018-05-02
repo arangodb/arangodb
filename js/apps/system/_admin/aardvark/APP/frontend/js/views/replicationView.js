@@ -49,16 +49,19 @@
         if (this.mode === 3) {
           this.getActiveFailoverEndpoints();
           this.getLoggerState();
+          this.getActiveFailoverHealth();
         } else if (this.mode === 2) {
           if (this.info.role === 'leader') {
             this.getLoggerState();
           } else {
+            // global follower
             this.getApplierStates(true);
           }
         } else if (this.mode === 1) {
           if (this.info.role === 'leader') {
             this.getLoggerState();
           } else {
+            // single follower
             this.getApplierStates();
           }
         }
@@ -70,7 +73,7 @@
     goToApplier: function (e) {
       // always system (global applier)
       var endpoint = btoa($(e.currentTarget).attr('data'));
-      window.App.navigate('#replication/applier/' + endpoint + btoa('/_system'), {trigger: true});
+      window.App.navigate('#replication/applier/' + endpoint + '/' + btoa('_system'), {trigger: true});
     },
 
     goToApplierFromTable: function (e) {
@@ -103,6 +106,23 @@
           self.renderEndpoints();
         }
       });
+    },
+
+    getActiveFailoverHealth: function () {
+      /* TODO - currently not working - investigate!
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
+        contentType: 'application/json',
+        success: function (data) {
+          console.log(data);
+        },
+        error: function (data) {
+          console.log(data);
+        }
+      });
+      */
     },
 
     renderEndpoints: function (endpoints) {
@@ -199,12 +219,30 @@
       if (global) {
         data = {'All databases': data};
       }
+      var errors = 0;
 
       _.each(data, function (applier, db) {
         if (applier.endpoint !== 'undefined' && applier.endpoint) {
           endpoint = self.parseEndpoint(applier.endpoint);
         } else {
           endpoint = 'not available';
+        }
+
+        if (applier.state.phase !== 'inactive') {
+          if (applier.state.running !== true) {
+            errors++;
+          }
+        }
+        var health;
+        if (applier.state.lastError.errorNum === 0) {
+          if (applier.state.phase === 'inactive' && !applier.state.running) {
+            health = 'n/a';
+          } else {
+            health = '<i class="fa fa-check-circle positive"></i>';
+          }
+        } else {
+          health = '<i class="fa fa-times-circle negative"></i>';
+          errors++;
         }
 
         $('#repl-follower-table tbody').append(
@@ -214,9 +252,34 @@
           '<td>' + applier.state.phase + '</td>' +
           '<td id="applier-endpoint-id">' + endpoint + '</td>' +
           '<td>' + applier.server.version + '</td>' +
+          '<td>' + health + '</td>' +
         '</tr>'
         );
       });
+
+      // health part
+      if (errors === 0) {
+        // all is fine
+        this.renderHealth(false);
+      } else {
+        // some appliers are not running
+        this.renderHealth(true, 'Some appliers are not running or do have errors.');
+      }
+    },
+
+    renderHealth: function (errors, message) {
+      if (errors) {
+        $('#state-status-id').addClass('negative');
+        $('#state-status-id').html('<i class="fa fa-times-circle"></i>');
+
+        if (message) {
+          $('#info-health-id').html(message);
+        }
+      } else {
+        $('#state-status-id').addClass('positive');
+        $('#state-status-id').html('<i class="fa fa-check-circle"></i>');
+        $('#info-health-id').html('There are no known issues');
+      }
     },
 
     renderLoggerState: function (server, clients, state) {
@@ -238,12 +301,19 @@
             '<td>' + client.lastServedTick + '</td></tr>'
           );
         });
+
+        if (state.running) {
+          this.renderHealth(false);
+        } else {
+          this.renderHealth(true, 'The logger thread is not running');
+        }
       } else {
         $('#logger-running-id').html('Error');
         $('#logger-endpoint-id').html('Error');
         $('#logger-version-id').html('Error');
         $('#logger-serverid-id').html('Error');
         $('#logger-time-id').html('Error');
+        this.renderHealth(true, 'Unexpected data from the logger thread.');
       }
     },
 

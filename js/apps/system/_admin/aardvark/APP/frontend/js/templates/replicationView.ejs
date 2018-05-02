@@ -12,8 +12,8 @@
              
               <% if (mode !== 0) { %>
               <td>
-                <div state-status-id><i class="fa fa-check-circle"></i></div>
-                <div id="info-state-id"><%=info.msg%></div>
+                <div id="state-status-id"><i class="fa fa-check-circle"></i></div>
+                <div id="info-health-id"><%=info.msg%></div>
               </td>
               <% } %>
             </tr>
@@ -44,7 +44,15 @@
               </tr>
               <tr>
                 <td>Role:</td>
-                <td id="info-role-id"><%=info.role%></td>
+                <% if (mode === 3) { %>
+                  <td id="info-role-id"><%=info.role%></td>
+                <% } else { %>
+                  <% if (info.role === 'follower') { %>
+                    <td id="info-role-id">Slave</td>
+                  <% } else { %>
+                    <td id="info-role-id">Master</td>
+                  <% } %>
+                <% } %>
               </tr>
             </tbody>
         </table>
@@ -74,7 +82,11 @@
     <% if (info.role === 'leader') { %>
       <div class="repl-logger">
         <div class="categoryBar">
-          <h4>Leader State</h4>
+          <% if (mode === 3) { %>
+            <h4>Leader State</h4>
+          <% } else { %>
+            <h4>Master State</h4>
+          <% } %>
         </div>
         <table class="pure-table">
             <tbody>
@@ -112,7 +124,11 @@
 
       <div class="repl-logger-clients">
         <div class="categoryBar">
-          <h4>Clients</h4>
+          <% if (mode === 3) { %>
+            <h4>Follower States</h4>
+          <% } else { %>
+            <h4>Slave States</h4>
+          <% } %>
         </div>
         <table class="pure-table" id="repl-logger-clients">
             <thead>
@@ -131,7 +147,11 @@
     <% if (info.role === 'follower') { %>
       <div class="repl-applier">
         <div class="categoryBar">
-          <h4>Follower States</h4>
+          <% if (mode === 3) { %>
+            <h4>Follower States</h4>
+          <% } else { %>
+            <h4>Slave States</h4>
+          <% } %>
         </div>
 
         <table id="repl-follower-table" class="pure-table" style="width: 100%">
@@ -142,6 +162,7 @@
               <th>Phase</th>
               <th>Replicating from</th>
               <th>Version</th>
+              <th>State</th>
             </tr>
           </thead>
 

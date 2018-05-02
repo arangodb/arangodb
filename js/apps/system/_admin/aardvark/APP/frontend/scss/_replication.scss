@@ -60,6 +60,13 @@
     }
   }
 
+  .positive {
+    color: $c-positive;
+  }
+
+  .negative {
+    color: $c-negative;
+  }
 }
 
 #replicationContent,
