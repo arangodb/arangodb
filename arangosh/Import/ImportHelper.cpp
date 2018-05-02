@@ -46,6 +46,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper function to determine if a field value is an integer
 /// this function is here to avoid usage of regexes, which are too slow
@@ -134,6 +135,13 @@ namespace import {
 ////////////////////////////////////////////////////////////////////////////////
 
 double const ImportHelper::ProgressStep = 3.0;
+
+////////////////////////////////////////////////////////////////////////////////
+/// the server has a built-in limit for the batch size
+///  and will reject bigger HTTP request bodies
+////////////////////////////////////////////////////////////////////////////////
+
+unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// constructor and destructor
@@ -814,8 +822,9 @@ void ImportHelper::sendCsvBuffer() {
 
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
+    uint64_t tmp_length = _outputBuffer.length();
     t->sendData(url, &_outputBuffer);
-    addPeriodByteCount(_outputBuffer.length() + url.length());
+    addPeriodByteCount(tmp_length + url.length());
   }
 
   _outputBuffer.reset();
