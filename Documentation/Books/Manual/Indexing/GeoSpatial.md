@@ -26,7 +26,9 @@ are mainly toggled by using the `geoJson` field when creating the index.
 
 To create an index in GeoJSON mode execute:
 
-```collection.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true })```
+```
+collection.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true })
+```
 
 This creates the index on all documents and uses _geometry_ as the attributed
 field where the value is either a [Geometry

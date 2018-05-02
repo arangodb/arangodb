@@ -211,7 +211,7 @@ documents will contain the distance value in an attribute of that name.
 
 **Note:** `NEAR` is a *deprecated* AQL function, instead use a query like this:
 
-```js  
+```js
 FOR doc IN doc
   SORT DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude) ASC
   RETURN doc
@@ -243,7 +243,7 @@ value in an attribute of that name.
   (shortest distance first)
 
 **Note:** `WITHIN` is a *deprecated* AQL function, instead use a query like this:
-```js  
+```js
 FOR doc IN doc
   LET d = DISTANCE(doc.latitude, doc.longitude, paramLatitude, paramLongitude)
 	FILTER d <= radius
