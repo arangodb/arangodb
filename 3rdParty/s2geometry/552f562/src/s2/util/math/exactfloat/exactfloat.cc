@@ -115,7 +115,7 @@ static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
   for (int i = 0; i < bn->top; ++i) {
     if (bn->d[i] != 0) {
       int bits = 0;
-      for (char w = bn->d[i]; (w & 1) == 0; w >>= 1) {
+      for (BN_ULONG w = bn->d[i]; (w & 1) == 0; w >>= 1) {
         ++bits;
       }
       return i * BN_BITS2 + bits;
@@ -135,7 +135,6 @@ static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
   unsigned char bin[size];
   size = BN_bn2lebinpad(bn, bin, size);
   
-  int count = 0;
   for (int i = 0; i < size; ++i) {
     if (bin[i] != 0) {
       int bits = 0;
