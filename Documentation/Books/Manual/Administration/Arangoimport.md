@@ -90,7 +90,7 @@ be inhomogeneous.
 
 Please note that by default, _arangoimport_ will import data into the specified
 collection in the default database (*_system*). To specify a different database,
-use the *--server.database* option when invoking _arangoimport_. If you want to 
+use the *--server.database* option when invoking _arangoimport_. If you want to
 import into a nonexistent database you need to pass *--create-database true*.
 Note *--create-database* defaults to *false*
 
@@ -165,7 +165,7 @@ data records and will be imported.
 
 The CSV import requires the data to have a homogeneous structure. All records
 must have exactly the same amount of columns as there are headers. By default,
-lines with a different number of values will not be imported and there will be 
+lines with a different number of values will not be imported and there will be
 warnings for them. To still import lines with less values than in the header,
 there is the *--ignore-missing* option. If set to true, lines that have a
 different amount of fields will be imported. In this case only those attributes
@@ -450,3 +450,43 @@ Importing the following document will then create an edge between *users/1234* a
 ```js
 { "_from" : "1234", "_to" : "4321", "desc" : "users/1234 is connected to products/4321" }
 ```
+
+
+### Arangoimport with busy or low throughput disk subsystems
+
+Arangoimport has an automatic pacing algorithm that limits how fast
+data is sent to the ArangoDB servers.  This pacing algorithm exists to
+prevent the import operation from failing due to slow responses.
+
+Google Compute and other VM providers limit the throughput of disk
+devices. Google's limit is more strict for smaller disk rentals, than
+for larger. Specifically, a user could choose the smallest disk space
+and be limited to 3 Mbytes per second.
+
+The pacing algorithm adjusts the transmit block size dynamically based
+upon the actual throughput of the server over the last 20
+seconds. Further, each thread delivers its portion of the data in
+mostly non-overlapping chunks. The thread timing creates intentional
+windows of non-import activity to allow the server extra time for meta
+operations.
+
+The pacing algorithm works successfully with mmfiles with disks
+limited to read and write throughput of 1 Mbyte per second. The
+algorithm works successfully with rocksdb with disks limited to read
+and write throughput of 3 Mbyte per second.
+
+This algorithm will slow import of an unlimited (really fast) disk
+array by almost 25%. Raising the number of threads via the "--threads
+X" command line to any value of X greater than 2 resolves the
+performance loss.
+
+The algorithm is disabled by manually specifying any
+"--batch-size". 16777216 is the previous default for --batch-size.
+
+Arangoimport previously defaulted to a transmit block size of 16
+Mbytes per thread, as often as possible (default of 2 threads). The
+transmitted data would back-up on the server and result in a
+TimeoutError. The TimeoutError is very frustrating to new users. The
+users were required to learn how to lower the default block size and
+default thread count ... and the new parameters would still not be
+guaranteed to work.
