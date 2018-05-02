@@ -41,10 +41,7 @@ ScriptFeature::ScriptFeature(application_features::ApplicationServer* server, in
     : ApplicationFeature(server, "Script"),
       _result(result) {
   setOptional(true);
-  startsAfter("Database");
-  startsAfter("Nonce");
-  startsAfter("Server");
-  startsAfter("GeneralServer");
+  startsAfter("AgencyPhase");
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

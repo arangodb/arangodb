@@ -32,5 +32,4 @@ FinalFeaturePhase::FinalFeaturePhase(ApplicationServer* server)
 
   startsAfter("Console");
   startsAfter("Script");
-  startsAfter("UnitTests");
 }

@@ -40,9 +40,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Console"),
       _operationMode(OperationMode::MODE_SERVER),
       _consoleThread(nullptr) {
-  startsAfter("Server");
-  startsAfter("GeneralServer");
-  startsAfter("Bootstrap");
+  startsAfter("AgencyPhase");
 }
 
 void ConsoleFeature::start() {
