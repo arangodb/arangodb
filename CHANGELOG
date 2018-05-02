@@ -1,6 +1,12 @@
 devel
 -----
 
+* added `--json` option to arangovpack, allowing to treat its input as plain JSON data
+  make arangovpack work without any configuration file
+
+* added experimental arangodb startup option `--javascript.enabled` to enable/disable the initialization 
+  of the V8 JavaScript engine. Only expected to work on single-servers and agency deployments
+
 * pull request 5201: eliminate race scenario where handlePlanChange could run infinite times
   after an execution exceeded 7.4 second time span
 

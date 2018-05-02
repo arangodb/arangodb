@@ -526,7 +526,7 @@ void arangodb::aql::removeRedundantSortsRule(
       // we found a sort that we can understand
       std::vector<ExecutionNode*> stack;
 
-      sortNode->addDependencies(stack);
+      sortNode->dependencies(stack);
 
       int nodesRelyingOnSort = 0;
 
@@ -623,7 +623,7 @@ void arangodb::aql::removeRedundantSortsRule(
           break;
         }
 
-        current->addDependencies(stack);
+        current->dependencies(stack);
       }
 
       if (toUnlink.find(n) == toUnlink.end() &&
@@ -1111,7 +1111,7 @@ void arangodb::aql::moveCalculationsDownRule(
     auto variable = nn->outVariable();
 
     std::vector<ExecutionNode*> stack;
-    n->addParents(stack);
+    n->parents(stack);
 
     bool shouldMove = false;
     ExecutionNode* lastNode = nullptr;
@@ -1158,7 +1158,7 @@ void arangodb::aql::moveCalculationsDownRule(
         break;
       }
 
-      current->addParents(stack);
+      current->parents(stack);
     }
 
     if (shouldMove && lastNode != nullptr) {
@@ -1269,7 +1269,6 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         sortNode->addDependency(newCollectNode);
         parent->replaceDependency(newCollectNode, sortNode);
       }
-      newPlan->findVarUsage();
 
       if (nodes.size() > 1) {
         // this will tell the optimizer to optimize the cloned plan with this
@@ -1410,7 +1409,7 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
     TRI_ASSERT(neededVars.size() == 1);
 
     std::vector<ExecutionNode*> stack;
-    n->addDependencies(stack);
+    n->dependencies(stack);
 
     while (!stack.empty()) {
       auto current = stack.back();
@@ -1463,7 +1462,7 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
         break;
       }
 
-      current->addDependencies(stack);
+      current->dependencies(stack);
 
       // first, unlink the filter from the plan
       plan->unlinkNode(n);
@@ -1692,7 +1691,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     buffer.reset();
 
     std::vector<ExecutionNode*> stack;
-    n->addDependencies(stack);
+    n->dependencies(stack);
 
     while (!stack.empty()) {
       auto current = stack.back();
@@ -1769,7 +1768,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
         break;
       }
 
-      current->addDependencies(stack);
+      current->dependencies(stack);
     }
   }
 
@@ -2251,6 +2250,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::ENUMERATE_LIST:
 #ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
+      case EN::SCATTER_IRESEARCH_VIEW:
 #endif
       case EN::SUBQUERY:
       case EN::FILTER:
@@ -2661,8 +2661,9 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     ExecutionNode* rootNode = plan->root();
 
     // insert a remote node
-    ExecutionNode* remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, c,
-                                  "", "", "");
+    ExecutionNode* remoteNode = new RemoteNode(
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     remoteNode->addDependency(rootNode);
 
@@ -2994,7 +2995,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
     // insert a remote node
     ExecutionNode* remoteNode = new RemoteNode(
-        plan.get(), plan->nextId(), vocbase, collection, "", "", "");
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     TRI_ASSERT(scatterNode);
     remoteNode->addDependency(scatterNode);
@@ -3003,8 +3005,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     node->addDependency(remoteNode);
 
     // insert another remote node
-    remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase,
-                                collection, "", "", "");
+    remoteNode = new RemoteNode(
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
@@ -3252,8 +3255,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     distNode->addDependency(deps[0]);
 
     // insert a remote node
-    ExecutionNode* remoteNode = new RemoteNode(plan.get(), plan->nextId(),
-                                               vocbase, collection, "", "", "");
+    ExecutionNode* remoteNode = new RemoteNode(
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     remoteNode->addDependency(distNode);
 
@@ -3261,8 +3265,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     node->addDependency(remoteNode);
 
     // insert another remote node
-    remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, collection,
-                                "", "", "");
+    remoteNode = new RemoteNode(
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     remoteNode->addDependency(node);
 
@@ -3422,11 +3427,12 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SORT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
-#ifdef USE_IRESEARCH
-        case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
+#ifdef USE_IRESEARCH
+        case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::SCATTER_IRESEARCH_VIEW:
+#endif
           // do break
           stopSearching = true;
           break;
@@ -3505,8 +3511,9 @@ void arangodb::aql::distributeSortToClusterRule(
       TRI_ASSERT(inspectNode != nullptr);
 
       switch (inspectNode->getType()) {
-        case EN::ENUMERATE_LIST:
         case EN::SINGLETON:
+        case EN::ENUMERATE_COLLECTION:
+        case EN::ENUMERATE_LIST:
         case EN::COLLECT:
         case EN::INSERT:
         case EN::REMOVE:
@@ -3526,9 +3533,9 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::INDEX:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
-        case EN::ENUMERATE_COLLECTION:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
+        case EN::SCATTER_IRESEARCH_VIEW:
 #endif
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -3585,7 +3592,11 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     }
 
     auto const dep = n->getFirstDependency();
-    if (dep->getType() != EN::SCATTER) {
+    if (dep->getType() != EN::SCATTER
+#ifdef USE_IRESEARCH
+        && dep->getType() != EN::SCATTER_IRESEARCH_VIEW
+#endif
+        ) {
       continue;
     }
 
@@ -3949,7 +3960,11 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         return false;  // continue . . .
       }
       case EN::DISTRIBUTE:
-      case EN::SCATTER: {
+      case EN::SCATTER:
+#ifdef USE_IRESEARCH
+      case EN::SCATTER_IRESEARCH_VIEW: // FIXME check
+#endif
+      {
         if (_scatter) {  // met more than one scatter node
           break;         // abort . . .
         }

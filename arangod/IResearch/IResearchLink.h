@@ -38,19 +38,31 @@ NS_BEGIN(iresearch)
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLink {
  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief finds first link between specified collection and view
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<IResearchLink> find(
+    LogicalCollection const& collection,
+    LogicalView const& view
+  );
+
   virtual ~IResearchLink();
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this iResearch Link reference the supplied view
+  /// @brief does this IResearch Link reference the supplied view
   ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(IResearchView const& view) const noexcept;
-  bool operator!=(IResearchView const& view) const noexcept;
+  bool operator==(LogicalView const& view) const noexcept;
+  bool operator!=(LogicalView const& view) const noexcept {
+    return !(*this == view);
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this iResearch Link match the meta definition
   ////////////////////////////////////////////////////////////////////////////////
   bool operator==(IResearchLinkMeta const& meta) const noexcept;
-  bool operator!=(IResearchLinkMeta const& meta) const noexcept;
+  bool operator!=(IResearchLinkMeta const& meta) const noexcept {
+    return !(*this == meta);
+  }
 
   bool allowExpansion() const; // arangodb::Index override
 
@@ -122,16 +134,6 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const; // arangodb::Index override
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief validate and copy required fields from the 'definition' into
-  ///        'normalized'
-  //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result normalize(
-    arangodb::velocypack::Builder& normalized,
-    velocypack::Slice definition,
-    bool isCreation
-  );
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   ////////////////////////////////////////////////////////////////////////////////
@@ -150,23 +152,6 @@ class IResearchLink {
     transaction::Methods* trx,
     arangodb::LocalDocumentId const& documentId,
     Index::OperationMode mode
-  );
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set the iResearch link 'type' field in the builder to the proper
-  ///        value
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setType(arangodb::velocypack::Builder& builder);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set the iResearch view identifier field in the builder to the
-  ///        specified value
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setView(
-    arangodb::velocypack::Builder& builder,
-    TRI_voc_cid_t value
   );
 
   ////////////////////////////////////////////////////////////////////////////////

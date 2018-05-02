@@ -39,6 +39,9 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -163,11 +166,13 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   ExecutionPlan plan(query->ast());
   ExecutionNode* previous = nullptr;
 
-  // for (ExecutionNode const* current : _nodes) {
   for (auto enIt = _nodes.rbegin(); enIt != _nodes.rend(); ++enIt) {
     ExecutionNode const* current = *enIt;
     auto clone = current->clone(&plan, false, false);
-    // UNNECESSARY, because clone does it: plan.registerNode(clone);
+
+    // we need to count nodes by type ourselves, as we will set the "varUsageComputed"
+    // flag below (which will handle the counting)
+    plan.increaseCounter(clone->getType());
 
     if (current->getType() == ExecutionNode::REMOTE) {
       auto rem = static_cast<RemoteNode*>(clone);
@@ -253,6 +258,9 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         updateCollection(col);
         break;
       }
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+      addIResearchViewNode(*node);
+      break;
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -849,6 +857,24 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
 
   _graphNodes.emplace_back(node);
 }
+
+#ifdef USE_IRESEARCH
+void EngineInfoContainerDBServer::addIResearchViewNode(
+    ExecutionNode const& node
+) {
+  TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto& viewNode = dynamic_cast<iresearch::IResearchViewNode const&>(node);
+#else
+  auto& viewNode = static_cast<iresearch::IResearchViewNode const&>(node);
+#endif
+
+  for (auto const& col : viewNode.collections()) {
+    handleCollection(&col, AccessMode::Type::READ);
+  }
+}
+#endif
 
 /**
  * @brief Will send a shutdown to all engines registered in the list of

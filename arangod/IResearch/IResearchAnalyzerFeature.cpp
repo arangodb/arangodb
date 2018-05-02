@@ -821,7 +821,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
       return true; // not a valid configuration, skip
     }
 
-    auto key = getStringRef(slice.get(StaticStrings::KeyString));
+    auto key = getStringRef(slice.get(arangodb::StaticStrings::KeyString));
     auto name = getStringRef(slice.get("name"));
     auto type = getStringRef(slice.get("type"));
     irs::string_ref properties;
