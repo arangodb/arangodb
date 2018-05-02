@@ -39,7 +39,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
-#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -57,9 +56,6 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
   startsAfter("DatabasePhase");
-
-  // TODO The phase of this feature is too high
-  startsAfter("V8Dealer");
 }
 
 ClusterFeature::~ClusterFeature() {
@@ -236,17 +232,6 @@ void ClusterFeature::prepare() {
       !ServerState::instance()->hasPersistedId()) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
     FATAL_ERROR_EXIT();
-  }
-
-  auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  if (v8Dealer->isEnabled()) {
-    v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
-                           _systemReplicationFactor);
-  } else {
-    if (ServerState::isDBServer(_requestedRole)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cannot run DBServer with `--javascript.enabled false`";
-      FATAL_ERROR_EXIT();
-    }
   }
 
   // create callback registery
