@@ -158,6 +158,21 @@ constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         
 /// configured maximum value.
 constexpr int TRI_ERROR_RESOURCE_LIMIT                                          = 32;
 
+/// 33: ERROR_ARANGO_ICU_ERROR
+/// "icu error: %s"
+/// will be raised if icu operations failed
+constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        = 33;
+
+/// 34: ERROR_CANNOT_READ_FILE
+/// "cannot read file"
+/// Will be raised when a file cannot be read.
+constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 34;
+
+/// 35: ERROR_INCOMPATIBLE_VERSION
+/// "incompatible server version"
+/// Will be raised when a server is running an incompatible version of ArangoDB.
+constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    = 35;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -344,11 +359,11 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 /// Will be raised when a document with a given identifier or handle is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
-/// 1203: ERROR_ARANGO_COLLECTION_NOT_FOUND
-/// "collection not found"
+/// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+/// "collection or view not found"
 /// Will be raised when a collection with the given identifier or name is
 /// unknown.
-constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             = 1203;
+constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1203;
 
 /// 1204: ERROR_ARANGO_COLLECTION_PARAMETER_MISSING
 /// "parameter 'collection' not found"
@@ -384,11 +399,6 @@ constexpr int TRI_ERROR_ARANGO_NO_INDEX                                         
 /// "unique constraint violated"
 /// Will be raised when there is a unique constraint violation.
 constexpr int TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       = 1210;
-
-/// 1211: ERROR_ARANGO_VIEW_NOT_FOUND
-/// "view not found"
-/// Will be raised when a view with the given identifier or name is unknown.
-constexpr int TRI_ERROR_ARANGO_VIEW_NOT_FOUND                                   = 1211;
 
 /// 1212: ERROR_ARANGO_INDEX_NOT_FOUND
 /// "index not found"
@@ -945,6 +955,18 @@ constexpr int TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    
 /// Will be raised when an operation is sent to a non-leading server.
 constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      = 1496;
 
+/// 1497: ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN
+/// "could not create view in plan"
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new view in the Plan hierarchy in the agency.
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   = 1497;
+
+/// 1498: ERROR_CLUSTER_VIEW_ID_EXISTS
+/// "view ID already exists"
+/// Will be raised when a coordinator in a cluster tries to create a view
+/// and the view ID already exists.
+constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
+
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.
@@ -1439,11 +1461,6 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF                       
 /// "edge collection not used in graph"
 /// The edge collection is not used in any edge definition of the graph.
 constexpr int TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          = 1930;
-
-/// 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
-/// " is not an ArangoCollection"
-/// The collection is not an ArangoCollection.
-constexpr int TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          = 1931;
 
 /// 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
 /// "collection _graphs does not exist"

@@ -48,18 +48,22 @@ if (USE_IRESEARCH)
   add_library(${LIB_ARANGO_IRESEARCH}
     STATIC
     IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
-    IResearch/AttributeScorer.cpp IResearch/AttributeScorer.h
     IResearch/Containers.cpp IResearch/Containers.h
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
     IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
+    IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
+    IResearch/IResearchViewDBServer.cpp IResearch/IResearchViewDBServer.h
     IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
     IResearch/IResearchLink.cpp IResearch/IResearchLink.h
+    IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
+    IResearch/IResearchLinkHelper.cpp IResearch/IResearchLinkHelper.h
     IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
     IResearch/IResearchMMFilesLink.cpp IResearch/IResearchMMFilesLink.h
     IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
     IResearch/IResearchRocksDBRecoveryHelper.cpp
     IResearch/IResearchRocksDBRecoveryHelper.h
     IResearch/IResearchView.cpp IResearch/IResearchView.h
+    IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
     IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
     IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
     IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
@@ -97,7 +101,6 @@ if (USE_IRESEARCH)
 
   target_link_libraries(${LIB_ARANGO_IRESEARCH}
     ${IRESEARCH_TARGET_DEPENDENCY}
-    boost_filesystem # required by iResearch
     boost_locale # required by iResearch
   )
 
@@ -139,6 +142,7 @@ SET(ARANGOD_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
@@ -170,6 +174,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
+  Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/Ast.cpp
@@ -191,6 +196,8 @@ SET(ARANGOD_SOURCES
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/EngineInfoContainerCoordinator.cpp
+  Aql/EngineInfoContainerDBServer.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
   Aql/ExecutionBlock.cpp
@@ -225,7 +232,6 @@ SET(ARANGOD_SOURCES
   Aql/QueryOptions.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
-  Aql/QueryResult.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RegexCache.cpp
@@ -242,7 +248,6 @@ SET(ARANGOD_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
   Aql/V8Executor.cpp
-  Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
@@ -268,8 +273,8 @@ SET(ARANGOD_SOURCES
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
   Cache/TransactionManager.cpp
-  Cluster/Action.cpp
   Cluster/ActionBase.cpp
+  Cluster/Action.cpp
   Cluster/ActionDescription.cpp
   Cluster/ActionRegistry.cpp
   Cluster/AgencyCallback.cpp
@@ -284,22 +289,25 @@ SET(ARANGOD_SOURCES
   Cluster/CollectionLockState.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
+  Cluster/CriticalThread.cpp
+  Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp
   Cluster/EnsureIndex.cpp
   Cluster/FollowerInfo.cpp
-  Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
-  Cluster/Maintenance.cpp
   Cluster/MaintenanceAction.cpp
+  Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
+  Cluster/SelectivityEstimates.cpp
   Cluster/ServerState.cpp
   Cluster/ShardDistributionReporter.cpp
+  Cluster/SynchronizeShard.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/UpdateCollection.cpp
@@ -411,6 +419,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
+  RestHandler/RestStatusHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp

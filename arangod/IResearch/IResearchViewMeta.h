@@ -107,7 +107,7 @@ struct IResearchViewMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via view property modification (may contain no-longer valid cids)
+  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via IResearchLink creation (may contain no-longer valid cids)
   CommitMeta _commit;
   std::locale _locale; // locale used for ordering processed attribute names
   size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks

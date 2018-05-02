@@ -62,7 +62,7 @@ arangodb::Result EnsureIndex::run(
     return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
 
-  auto* col = vocbase->lookupCollection(collection);
+  auto col = vocbase->lookupCollection(collection);
   if (col == nullptr) {
     std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
     errorMsg += collection + " in database " + database;
@@ -78,7 +78,7 @@ arangodb::Result EnsureIndex::run(
     }}
 
   VPackBuilder result;
-  res = methods::Indexes::ensureIndex(col, body.slice(), true, result);
+  res = methods::Indexes::ensureIndex(col.get(), body.slice(), true, result);
   
   if (res.ok()) {
     VPackSlice created = result.slice().get("isNewlyCreated");

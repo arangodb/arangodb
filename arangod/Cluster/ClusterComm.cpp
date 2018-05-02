@@ -390,10 +390,10 @@ OperationID ClusterComm::asyncRequest(
     CoordTransactionID const coordTransactionID, std::string const& destination,
     arangodb::rest::RequestType reqtype, std::string const& path,
     std::shared_ptr<std::string const> body,
-    std::unique_ptr<std::unordered_map<std::string, std::string>>& headerFields,
+    std::unordered_map<std::string, std::string> const& headerFields,
     std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
     bool singleRequest, ClusterCommTimeout initTimeout) {
-  auto prepared = prepareRequest(destination, reqtype, body.get(), *headerFields.get());
+  auto prepared = prepareRequest(destination, reqtype, body.get(), headerFields);
   std::shared_ptr<ClusterCommResult> result(prepared.first);
   result->clientTransactionID = clientTransactionID;
   result->coordTransactionID = coordTransactionID;
@@ -942,7 +942,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
             OperationID opId = asyncRequest(
                 "", coordinatorTransactionID, requests[i].destination,
                 requests[i].requestType, requests[i].path, requests[i].body,
-                requests[i].headerFields, nullptr, localTimeout, false,
+                *requests[i].headerFields, nullptr, localTimeout, false,
                 2.0);
 
             TRI_ASSERT(opId != 0);
@@ -988,7 +988,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           VPackSlice payload = res.answer->payload();
           VPackSlice errorNum = payload.get(StaticStrings::ErrorNum);
           if (errorNum.isInteger() &&
-              errorNum.getInt() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+              errorNum.getInt() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
             res.status = CL_COMM_BACKEND_UNAVAILABLE;
             // This is a fake, but it will lead to a retry. If we timeout
             // here and now, then the customer will get this result.
@@ -1057,6 +1057,37 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   drop("", coordinatorTransactionID, 0, "");
   return nrGood;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this method performs the given requests described by the vector
+/// of ClusterCommRequest structs in the following way: 
+/// Each request is done with asyncRequest.
+/// After each request is successfully send out we drop all requests.
+/// Hence it is guaranteed that all requests are send, but
+/// we will not wait for answers of those requests.
+/// Also all reporting for the responses is lost, because we do not care.
+/// NOTE: The requests can be in any communication state after this function
+/// and you should not read them. If you care for response use performRequests
+/// instead.
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest>& requests) {
+  if (requests.size() == 0) {
+    return;
+  }
+
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+
+  double const shortTimeout = 10.0; // Picked arbitrarily
+  for (auto& req : requests) {
+    asyncRequest("", coordinatorTransactionID, req.destination, req.requestType,
+                 req.path, req.body, *req.headerFields, nullptr, shortTimeout, false,
+                 2.0);
+  }
+  // Forget about it
+  drop("", coordinatorTransactionID, 0, "");
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief this is the fast path method for performRequests for the case

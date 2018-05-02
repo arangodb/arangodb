@@ -38,7 +38,8 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _exeNode(ep),
       _pos(0),
       _done(false),
-      _tracing(engine->getQuery()->queryOptions().tracing) {
+      _profile(engine->getQuery()->queryOptions().profile),
+      _getSomeBegin(0) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -154,37 +155,54 @@ int ExecutionBlock::shutdown(int errorCode) {
 }
 
 // Trace the start of a getSome call
-void ExecutionBlock::traceGetSomeBegin(size_t atLeast, size_t atMost) const {
-  if (_tracing > 0) {
-    auto node = getPlanNode();
-    LOG_TOPIC(INFO, Logger::QUERIES)
+void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    _getSomeBegin = TRI_microtime();
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      auto node = getPlanNode();
+      LOG_TOPIC(INFO, Logger::QUERIES)
       << "getSome type=" << node->getTypeString()
-      << " atLeast = " << atLeast
       << " atMost = " << atMost
       << " this=" << (uintptr_t) this << " id=" << node->id();
+    }
   }
 }
 
 // Trace the end of a getSome call, potentially with result
 void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
-  if (_tracing > 0) {
-    auto node = getPlanNode();
-    LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionNode const* en = getPlanNode();
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = result != nullptr ? result->size() : 0;
+    stats.runtime = TRI_microtime() - _getSomeBegin;
+    auto it = _engine->_stats.nodes.find(en->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(en->id(), std::move(stats));
+    }
+    
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      ExecutionNode const* node = getPlanNode();
+      LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
       << node->getTypeString() << " this=" << (uintptr_t) this
       << " id=" << node->id();
-    if (_tracing > 1) {
-      if (result == nullptr) {
-        LOG_TOPIC(INFO, Logger::QUERIES)
-            << "getSome type=" << node->getTypeString() << " result: nullptr";
-      } else {
-        VPackBuilder builder;
-        { 
-          VPackObjectBuilder guard(&builder);
-          result->toVelocyPack(_trx, builder);
+      
+      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+        if (result == nullptr) {
+          LOG_TOPIC(INFO, Logger::QUERIES)
+          << "getSome type=" << node->getTypeString() << " result: nullptr";
+        } else {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder guard(&builder);
+            result->toVelocyPack(_trx, builder);
+          }
+          LOG_TOPIC(INFO, Logger::QUERIES)
+          << "getSome type=" << node->getTypeString()
+          << " result: " << builder.toJson();
         }
-        LOG_TOPIC(INFO, Logger::QUERIES)
-            << "getSome type=" << node->getTypeString()
-            << " result: " << builder.toJson();
       }
     }
   }
@@ -192,14 +210,14 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
 
 /// @brief getSome, gets some more items, semantic is as follows: not
 /// more than atMost items may be delivered. The method tries to
-/// return a block of at least atLeast items, however, it may return
+/// return a block of at most atMost items, however, it may return
 /// less (for example if there are not enough items to come). However,
 /// if it returns an actual block, it must contain at least one item.
-AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* ExecutionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   std::unique_ptr<AqlItemBlock> result(
-      getSomeWithoutRegisterClearout(atLeast, atMost));
+      getSomeWithoutRegisterClearout(atMost));
   clearRegisters(result.get());
   traceGetSomeEnd(result.get());
   return result.release();
@@ -273,12 +291,12 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
 /// the dependent node is exhausted.
-bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
+bool ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   throwIfKilled();  // check if we were aborted
 
   std::unique_ptr<AqlItemBlock> docs(
-      _dependencies[0]->getSome(atLeast, atMost));
+      _dependencies[0]->getSome(atMost));
 
   if (docs == nullptr) {
     return false;
@@ -300,14 +318,13 @@ bool ExecutionBlock::getBlock(size_t atLeast, size_t atMost) {
 /// the idea is that somebody who wants to call the generic functionality
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
-AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atLeast,
-                                                             size_t atMost) {
+AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  TRI_ASSERT(0 < atLeast && atLeast <= atMost);
+  TRI_ASSERT(atMost > 0);
   size_t skipped = 0;
 
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
+  int out = getOrSkipSome(atMost, false, result, skipped);
 
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
@@ -326,13 +343,12 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
   DEBUG_END_BLOCK();
 }
 
-size_t ExecutionBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t ExecutionBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
 
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSome(atLeast, atMost, true, result, skipped);
+  int out = getOrSkipSome(atMost, true, result, skipped);
 
   TRI_ASSERT(result == nullptr);
 
@@ -348,10 +364,10 @@ size_t ExecutionBlock::skipSome(size_t atLeast, size_t atMost) {
 // skipping, and <false> otherwise . . .
 bool ExecutionBlock::skip(size_t number, size_t& numActuallySkipped) {
   DEBUG_BEGIN_BLOCK();
-  size_t skipped = skipSome(number, number);
+  size_t skipped = skipSome(number);
   size_t nr = skipped;
   while (nr != 0 && skipped < number) {
-    nr = skipSome(number - skipped, number - skipped);
+    nr = skipSome(number - skipped);
     skipped += nr;
   }
   numActuallySkipped = skipped;
@@ -369,7 +385,7 @@ bool ExecutionBlock::hasMore() {
   if (!_buffer.empty()) {
     return true;
   }
-  if (getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+  if (getBlock(DefaultBatchSize())) {
     _pos = 0;
     return true;
   }
@@ -385,7 +401,7 @@ int64_t ExecutionBlock::remaining() {
   return sum + _dependencies[0]->remaining();
 }
 
-int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+int ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
                                   AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -397,15 +413,15 @@ int ExecutionBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
   BlockCollector collector(&_engine->_itemBlockManager);
 
-  while (skipped < atLeast) {
+  while (skipped < atMost) {
     if (_buffer.empty()) {
       if (skipping) {
         size_t numActuallySkipped = 0;
-        _dependencies[0]->skip(atLeast - skipped, numActuallySkipped);
-        skipped = atLeast;
+        _dependencies[0]->skip(atMost - skipped, numActuallySkipped);
+        skipped += numActuallySkipped;
         return TRI_ERROR_NO_ERROR;
       } else {
-        if (!getBlock(atLeast - skipped, atMost - skipped)) {
+        if (!getBlock(atMost - skipped)) {
           _done = true;
           break;  // must still put things in the result from the collector .
                   // . .

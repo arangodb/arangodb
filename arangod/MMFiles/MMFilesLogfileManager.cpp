@@ -121,7 +121,6 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   TRI_ASSERT(!_allowWrites);
 
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
@@ -182,7 +181,7 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
       "ignore logfile errors. this will read recoverable data from corrupted "
       "logfiles but ignore any unrecoverable data",
       new BooleanParameter(&_ignoreLogfileErrors));
-
+  
   options->addOption(
       "--wal.ignore-recovery-errors",
       "continue recovery even if re-applying operations fails",
@@ -395,8 +394,7 @@ bool MMFilesLogfileManager::open() {
   res = startMMFilesSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start WAL synchronizer thread: "
-               << TRI_errno_string(res);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start WAL synchronizer thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -1397,6 +1395,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
   MMFilesWalLogfile::IdType minId = UINT64_MAX;
 
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: called";
+
   auto cb = [&minId](TRI_voc_tid_t, TransactionData const* data) {
     MMFilesWalLogfile::IdType lastWrittenId = static_cast<MMFilesTransactionData const*>(data)->lastSealedId;
 
@@ -1422,15 +1422,25 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
       }
 
       if (logfile->id() <= minId && logfile->canBeCollected(released)) {
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: found logfile id: " << logfile->id();
         return logfile;
       }
 
-      if (logfile->id() > minId || !logfile->hasBeenReleased(released)) {
+      if (logfile->id() > minId) {
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: abort early1 "
+          << logfile->id() << " minId: " << minId;
+        break;
+      }
+      if (!logfile->hasBeenReleased(released)) {
         // abort early
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: abort early2 released: " << released;
         break;
       }
     }
   }
+
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: "
+    << "found no logfile to collect, minId:" << minId;
 
   return nullptr;
 }
@@ -1741,8 +1751,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
     locker.unlock();
 
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "still waiting for collector. logfileId: " << logfileId <<
-    // " lastCollected: " << _lastCollectedId << ", result: " << res;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "still waiting for collector. logfileId: " << logfileId << " lastCollected: " << _lastCollectedId << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       // some error occurred
@@ -2164,11 +2173,10 @@ int MMFilesLogfileManager::inspectLogfiles() {
         }
         return res;
       }
-
       _logfiles.erase(it++);
       continue;
     }
-
+     
     if (logfile->status() == MMFilesWalLogfile::StatusType::OPEN ||
         logfile->status() == MMFilesWalLogfile::StatusType::SEALED) {
       _recoverState->logfilesToProcess.push_back(logfile.get());

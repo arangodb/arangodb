@@ -252,10 +252,11 @@ var helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help')
   '  _createStatement(<data>)              create and return AQL query       ' + '\n' +
   '                                                                          ' + '\n' +
   'View Functions:                                                           ' + '\n' +
-  '  _views()                                  list all views                ' + '\n' +
-  '  _view(<name>)                             get view by name              ' + '\n' +
-  '  _createView(<name>, <type>, <properties>) creates a new view            ' + '\n' +
-  '  _dropView(<name>)                         delete a view                 ';
+  '  _views()                              list all views                    ' + '\n' +
+  '  _view(<name>)                         get view by name                  ' + '\n' +
+  '  _createView(<name>, <type>,           creates a new view                ' + '\n' +
+  '              <properties>)                                               ' + '\n' +
+  '  _dropView(<name>)                     delete a view                     ';
 
 ArangoDatabase.prototype._help = function () {
   internal.print(helpArangoDatabase);
@@ -283,7 +284,7 @@ ArangoDatabase.prototype._collections = function () {
     var result = [];
     var i;
 
-    // add all collentions to object
+    // add all collections to object
     for (i = 0;  i < collections.length;  ++i) {
       var collection = new this._collectionConstructor(this, collections[i]);
       this._registerCollection(collection._name, collection);
@@ -324,7 +325,7 @@ ArangoDatabase.prototype._collection = function (id) {
   // return null in case of not found
   if (requestResult !== null
     && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+    && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 
@@ -957,6 +958,17 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief queryProfile execute a query with profiling information
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._profileQuery = function (query, bindVars, options) {
+  options = options || {};
+  options.profile = 2;
+  query = { query: query, bindVars: bindVars, options: options };
+  require('@arangodb/aql/explainer').profileQuery(query);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief explains a query
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1262,7 +1274,7 @@ ArangoDatabase.prototype._view = function (id) {
   // return null in case of not found
   if (requestResult !== null
     && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_VIEW_NOT_FOUND.code) {
+    && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 

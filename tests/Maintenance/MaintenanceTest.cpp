@@ -118,7 +118,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
         node.first, actions);
 
       if (actions.size() != 0) {
-        std::cout << actions << std::endl;
+        //std::cout << actions << std::endl;
       }
       REQUIRE(actions.size() == 0);
     }

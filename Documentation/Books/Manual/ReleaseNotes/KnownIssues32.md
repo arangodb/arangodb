@@ -81,7 +81,7 @@ Installer
 
 * Upgrading from 3.1 to 3.2 on Windows requires the user to manually copy the database directory
   to the new location and run an upgrade on the database. Please consult the
-  [Documentation](../GettingStarted/Installing/Windows.md)
+  [Documentation](../Installation/Windows.md)
   for detailed instructions.
 
 System Integration
@@ -102,5 +102,5 @@ Mac OS X
 OpenSSL 1.1
 -----------
 
- * ArangoDB has been tested with OpenSSL 1.0 only and won't build against 1.1 when compiling on your own. See [here](../../cookbook/Compiling/OpenSSL.html)
+ * ArangoDB has been tested with OpenSSL 1.0 only and won't build against 1.1 when compiling on your own. See [here](../../Cookbook/Compiling/OpenSSL.html)
    for how to compile on systems that ship OpenSSL 1.1 by default.

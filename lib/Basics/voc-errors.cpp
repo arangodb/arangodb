@@ -37,6 +37,9 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SHUTTING_DOWN, "shutdown in progress");
   REG_ERROR(ERROR_ONLY_ENTERPRISE, "only enterprise version");
   REG_ERROR(ERROR_RESOURCE_LIMIT, "resource limit exceeded");
+  REG_ERROR(ERROR_ARANGO_ICU_ERROR, "icu error: %s");
+  REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
+  REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -72,7 +75,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
+  REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
   REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
@@ -80,7 +83,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
-  REG_ERROR(ERROR_ARANGO_VIEW_NOT_FOUND, "view not found");
   REG_ERROR(ERROR_ARANGO_INDEX_NOT_FOUND, "index not found");
   REG_ERROR(ERROR_ARANGO_CROSS_COLLECTION_REQUEST, "cross collection request not allowed");
   REG_ERROR(ERROR_ARANGO_INDEX_HANDLE_BAD, "illegal index handle");
@@ -177,6 +179,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS, "conflicting shard number with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
+  REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
+  REG_ERROR(ERROR_CLUSTER_VIEW_ID_EXISTS, "view ID already exists");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -271,7 +275,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
-  REG_ERROR(ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION, " is not an ArangoCollection");
   REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING, "Invalid example type. Has to be String, Array or Object");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT, "Invalid example type. Has to be Array or Object");

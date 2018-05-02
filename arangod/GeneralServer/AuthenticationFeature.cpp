@@ -23,13 +23,13 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/Common.h"
 #include "Auth/Handler.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Auth/Common.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapAuthenticationHandler.h"
@@ -53,7 +53,6 @@ AuthenticationFeature::AuthenticationFeature(
       _jwtSecretProgramOption(""),
       _active(true) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Random");
 #ifdef USE_ENTERPRISE
   startsAfter("Ldap");
@@ -87,13 +86,15 @@ void AuthenticationFeature::collectOptions(
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_active));
 
-  options->addOption("--server.authentication-timeout",
-                     "timeout for the authentication cache in seconds (0 = indefinitely)",
-                     new DoubleParameter(&_authenticationTimeout));
+  options->addOption(
+      "--server.authentication-timeout",
+      "timeout for the authentication cache in seconds (0 = indefinitely)",
+      new DoubleParameter(&_authenticationTimeout));
 
-  options->addOption("--server.local-authentication",
-                     "enable or disable authentication using the local user database",
-                     new BooleanParameter(&_localAuthentication));
+  options->addOption(
+      "--server.local-authentication",
+      "enable or disable authentication using the local user database",
+      new BooleanParameter(&_localAuthentication));
 
   options->addOption(
       "--server.authentication-system-only",
@@ -123,10 +124,14 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void AuthenticationFeature::prepare() {
   TRI_ASSERT(isEnabled());
-  TRI_ASSERT(_userManager == nullptr); 
+  TRI_ASSERT(_userManager == nullptr);
+  
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
+  if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
     if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
-        ->isEnabled()) {
+            ->isEnabled()) {
       _userManager = new auth::UserManager(std::make_unique<LdapAuthenticationHandler>());
     } else {
       _userManager = new auth::UserManager();
@@ -134,19 +139,25 @@ void AuthenticationFeature::prepare() {
 #else
     _userManager = new auth::UserManager();
 #endif
-  TRI_ASSERT(_authCache == nullptr); 
-  _authCache = new auth::TokenCache(_userManager, _authenticationTimeout);
+  } else {
+    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
+  }
   
+  TRI_ASSERT(_authCache == nullptr);
+  _authCache = new auth::TokenCache(_userManager, _authenticationTimeout);
+
   std::string jwtSecret = _jwtSecretProgramOption;
+
   if (jwtSecret.empty()) {
-    LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Jwt secret not specified, generating...";
+    LOG_TOPIC(INFO, Logger::AUTHENTICATION)
+        << "Jwt secret not specified, generating...";
     uint16_t m = 254;
     for (size_t i = 0; i < _maxSecretLength; i++) {
       jwtSecret += (1 + RandomGenerator::interval(m));
     }
   }
   _authCache->setJwtSecret(jwtSecret);
-  
+
   INSTANCE = this;
 }
 
@@ -157,22 +168,22 @@ void AuthenticationFeature::start() {
 
   out << "Authentication is turned " << (_active ? "on" : "off");
 
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<
-          QueryRegistryFeature>("QueryRegistry");
-  _userManager->setQueryRegistry(queryRegistryFeature->queryRegistry());
+  if (_userManager != nullptr) {
+    auto queryRegistryFeature =
+    application_features::ApplicationServer::getFeature<QueryRegistryFeature>("QueryRegistry");
+    _userManager->setQueryRegistry(queryRegistryFeature->queryRegistry());
+  }
 
   if (_active && _authenticationSystemOnly) {
     out << " (system only)";
   }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-    out << ", authentication for unix sockets is turned "
-        << (_authenticationUnixSockets ? "on" : "off");
+  out << ", authentication for unix sockets is turned "
+      << (_authenticationUnixSockets ? "on" : "off");
 #endif
 
   LOG_TOPIC(INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
-

@@ -42,7 +42,7 @@ class ModificationBlock : public ExecutionBlock {
   virtual ~ModificationBlock();
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  AqlItemBlock* getSome(size_t atMost) override final;
 
  protected:
   /// @brief the actual work horse
@@ -73,6 +73,10 @@ class ModificationBlock : public ExecutionBlock {
 
   /// @brief whether or not the collection uses the default sharding attributes
   bool _usesDefaultSharding;
+
+  /// @brief whether this block contributes to statistics.
+  ///        Will only be disabled in SmartGraphCase.
+  bool _countStats;
  
  protected:
   /// @brief a Builder object, reused for various tasks to save a few memory allocations

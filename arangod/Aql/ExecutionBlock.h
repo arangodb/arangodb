@@ -63,21 +63,8 @@ class Methods;
 
 namespace aql {
 class AqlItemBlock;
-
-/// @brief sort element for block, consisting of register, sort direction, 
-/// and a possible attribute path to dig into the document
-
-struct SortElementBlock {
-  RegisterId reg;
-  bool ascending;
-  std::vector<std::string> attributePath;
-
-  SortElementBlock(RegisterId r, bool asc)
-    : reg(r), ascending(asc) {
-  }
-};
-
 class ExecutionEngine;
+struct QueryProfile;
 
 class ExecutionBlock {
  public:
@@ -104,7 +91,7 @@ class ExecutionBlock {
   void throwIfKilled();
 
   /// @brief add a dependency
-  void addDependency(ExecutionBlock* ep) { 
+  TEST_VIRTUAL void addDependency(ExecutionBlock* ep) { 
     TRI_ASSERT(ep != nullptr);
     _dependencies.emplace_back(ep); 
   }
@@ -146,16 +133,16 @@ class ExecutionBlock {
   virtual int shutdown(int);
 
   /// @brief getOne, gets one more item
-  virtual AqlItemBlock* getOne() { return getSome(1, 1); }
+  virtual AqlItemBlock* getOne() { return getSome(1); }
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to
-  /// return a block of at least atLeast items, however, it may return
+  /// return a block of at most atMost items, however, it may return
   /// less (for example if there are not enough items to come). However,
   /// if it returns an actual block, it must contain at least one item.
-  virtual AqlItemBlock* getSome(size_t atLeast, size_t atMost);
+  virtual AqlItemBlock* getSome(size_t atMost);
 
-  void traceGetSomeBegin(size_t atLeast, size_t atMost) const;
+  void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*) const;
 
  protected:
@@ -175,14 +162,14 @@ class ExecutionBlock {
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if
   /// the dependent node is exhausted.
-  bool getBlock(size_t atLeast, size_t atMost);
+  bool getBlock(size_t atMost);
 
   /// @brief getSomeWithoutRegisterClearout, same as above, however, this
   /// is the actual worker which does not clear out registers at the end
   /// the idea is that somebody who wants to call the generic functionality
   /// in a derived class but wants to modify the results before the register
   /// cleanup can use this method, internal use only
-  AqlItemBlock* getSomeWithoutRegisterClearout(size_t atLeast, size_t atMost);
+  AqlItemBlock* getSomeWithoutRegisterClearout(size_t atMost);
 
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
@@ -191,10 +178,10 @@ class ExecutionBlock {
  public:
   /// @brief getSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
-  /// skip a block of at least atLeast items, however, it may skip
+  /// skip a block of at most atMost items, however, it may skip
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
-  virtual size_t skipSome(size_t atLeast, size_t atMost);
+  virtual size_t skipSome(size_t atMost);
 
   // skip exactly <number> outputs, returns <true> if _done after
   // skipping, and <false> otherwise . . .
@@ -212,7 +199,7 @@ class ExecutionBlock {
 
  protected:
   /// @brief generic method to get or skip some
-  virtual int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+  virtual int getOrSkipSome(size_t atMost, bool skipping,
                             AqlItemBlock*& result, size_t& skipped);
 
   /// @brief the execution engine
@@ -244,8 +231,11 @@ class ExecutionBlock {
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 
-  /// A copy of the tracing value in the options:
-  int64_t _tracing;
+  /// @brief profiling level
+  uint32_t _profile;
+  
+  /// @brief getSome begin point in time
+  double _getSomeBegin;
 };
 
 }  // namespace arangodb::aql

@@ -1184,7 +1184,7 @@ describe ArangoDB do
             def check404CRUD (doc)
               check404(doc)
               doc.parsed_response['errorNum'].should eq(1203)
-              doc.parsed_response['errorMessage'].should eq("collection not found")
+              doc.parsed_response['errorMessage'].should eq("collection or view not found")
             end
 
             it "change edge definition" do

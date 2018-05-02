@@ -4,4 +4,4 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 x-content-type-options: nosniff
 
-"{\"firstTick\":\"5\"}"
+"{\"firstTick\":\"7\"}"

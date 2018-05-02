@@ -45,8 +45,8 @@ with basically the same startup parameters (except for their address and databas
     arangod \
       --database.directory dbdir/data8531 \
       --cluster.agency-endpoint tcp://agency.domain.org:4001 \
-      --cluster.my-address tcp://leader.domain.org:4001 \
-      --server.endpoint tcp://leader.domain.org:4001 \
+      --cluster.my-address tcp://follower.domain.org:4001 \
+      --server.endpoint tcp://follower.domain.org:4001 \
       --cluster.my-role SINGLE \
       --replication.active-failover true \
       --log.file dbdir/8531.log \

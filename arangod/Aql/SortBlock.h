@@ -64,7 +64,7 @@ class SortBlock final : public ExecutionBlock {
 
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping, AqlItemBlock*&, size_t& skipped) override final;
+  int getOrSkipSome(size_t atMost, bool skipping, AqlItemBlock*&, size_t& skipped) override final;
 
   /// @brief dosorting
  private:

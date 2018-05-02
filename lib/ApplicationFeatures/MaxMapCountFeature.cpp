@@ -63,7 +63,6 @@ MaxMapCountFeature::MaxMapCountFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "MaxMapCount") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
 
   maxMappings = UINT64_MAX;
   mapsFilename.clear();

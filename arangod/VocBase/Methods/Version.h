@@ -20,13 +20,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_API_VERSION_H
-#define ARANGOD_VOC_BASE_API_VERSION_H 1
+#ifndef ARANGOD_VOC_BASE_METHODS_VERSION_H
+#define ARANGOD_VOC_BASE_METHODS_VERSION_H 1
+
+#include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <cstdint>
-#include "Basics/Result.h"
 
 struct TRI_vocbase_t;
 
@@ -66,7 +67,7 @@ struct Version {
   /// @brief read the VERSION file for a database
   static VersionResult check(TRI_vocbase_t*);
   /// @brief write a VERSION file including all tasks
-  static void write(TRI_vocbase_t*, std::map<std::string, bool> tasks);
+  static Result write(TRI_vocbase_t*, std::map<std::string, bool> tasks, bool sync);
 };
 }
 }

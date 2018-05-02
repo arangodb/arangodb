@@ -42,8 +42,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
-#include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
@@ -226,13 +227,13 @@ DEFINE_FACTORY_DEFAULT(custom_sort);
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct TestSetup {
+struct IResearchExpressionFilterSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  TestSetup(): server(nullptr, nullptr) {
+  IResearchExpressionFilterSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
@@ -240,6 +241,10 @@ struct TestSetup {
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
@@ -283,7 +288,6 @@ struct TestSetup {
       false, // fake non-deterministic
       false, // fake can throw
       true,
-      false,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -293,16 +297,12 @@ struct TestSetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
-  ~TestSetup() {
+  ~IResearchExpressionFilterSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -328,7 +328,7 @@ NS_END
 // -----------------------------------------------------------------------------
 
 TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-filter]") {
-  TestSetup setup;
+  IResearchExpressionFilterSetup setup;
   UNUSED(setup);
 
   arangodb::velocypack::Builder testData;
@@ -387,9 +387,9 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }");
 
     // add view
-    auto logicalView = vocbase.createView(createJson->slice(), 0);
-    REQUIRE((false == !logicalView));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+      vocbase.createView(createJson->slice())
+    );
     REQUIRE((false == !view));
   }
 
@@ -431,8 +431,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -507,8 +510,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -583,8 +589,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -675,8 +684,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -767,8 +779,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -859,8 +874,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -935,8 +953,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1006,8 +1027,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1134,8 +1158,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();
@@ -1257,8 +1284,11 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      bindVars, options,
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      bindVars,
+      options,
       arangodb::aql::PART_MAIN
     );
     auto const parseResult = query.parse();

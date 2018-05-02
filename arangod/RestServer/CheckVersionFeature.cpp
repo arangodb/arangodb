@@ -45,9 +45,9 @@ CheckVersionFeature::CheckVersionFeature(
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("EngineSelector");
+  startsAfter("ServerId");
 }
 
 void CheckVersionFeature::collectOptions(
@@ -111,11 +111,34 @@ void CheckVersionFeature::checkVersion() {
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
 
+  bool ignoreDatafileErrors = false;
+  {
+    VPackBuilder options = server()->options(std::unordered_set<std::string>());
+    VPackSlice s = options.slice();
+    if (s.get("database.ignore-datafile-errors").isBoolean()) {
+      ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
+    }
+  }
+
   // iterate over all databases
   for (auto& name : databaseFeature->getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     methods::VersionResult res = methods::Version::check(vocbase);
     TRI_ASSERT(vocbase != nullptr);
+    
+    if (res.status == methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
+        res.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
+      if (ignoreDatafileErrors) {
+        // try to install a fresh new, empty VERSION file instead
+        if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
+          // give it another try
+          res = methods::Version::check(vocbase);
+        }
+      } else { 
+        LOG_TOPIC(WARN, Logger::STARTUP) << "in order to automatically fix the VERSION file on startup, "
+                                         << "please start the server with option `--database.ignore-logfile-errors true`";
+      }
+    }
 
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "version check return status "
                                       << res.status;

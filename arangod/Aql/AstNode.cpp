@@ -47,13 +47,6 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 
-namespace {
-
-arangodb::StringRef const VIEW_NODE_SUFFIX("\0v", 2);
-arangodb::StringRef const COLLECTION_NODE_SUFFIX("\0c", 2);
-
-}
-
 using namespace arangodb::aql;
 
 std::unordered_map<int, std::string const> const AstNode::Operators{
@@ -1116,11 +1109,11 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
 
     TRI_ASSERT(variable != nullptr);
     builder.add("name", VPackValue(variable->name));
-    builder.add("id", VPackValue(static_cast<double>(variable->id)));
+    builder.add("id", VPackValue(variable->id));
   }
 
   if (type == NODE_TYPE_EXPANSION) {
-    builder.add("levels", VPackValue(static_cast<double>(getIntValue(true))));
+    builder.add("levels", VPackValue(getIntValue(true)));
   }
 
   // dump sub-nodes
@@ -1542,14 +1535,6 @@ bool AstNode::isSimple() const {
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
 
-    if (func->implementation == nullptr) {
-      // no C++ handler available for function
-      setFlag(DETERMINED_SIMPLE);
-      return false;
-    }
-
-    TRI_ASSERT(func->implementation != nullptr);
-
     TRI_ASSERT(numMembers() == 1);
 
     // check if there is a C++ function handler condition
@@ -1584,8 +1569,60 @@ bool AstNode::isSimple() const {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
+  
+  if (type == NODE_TYPE_FCALL_USER) {
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    return true;
+  }
 
   setFlag(DETERMINED_SIMPLE);
+  return false;
+}
+
+/// @brief whether or not a node will use V8 internally
+bool AstNode::willUseV8() const {
+  if (hasFlag(DETERMINED_V8)) {
+    // fast track exit
+    return hasFlag(VALUE_V8);
+  }
+
+  if (type == NODE_TYPE_FCALL_USER) {
+    // user-defined function will always use v8
+    setFlag(DETERMINED_V8, VALUE_V8);
+    return true;
+  }
+
+  if (type == NODE_TYPE_FCALL) {
+    // some functions have C++ handlers
+    // check if the called function is one of them
+    auto func = static_cast<Function*>(getData());
+    TRI_ASSERT(func != nullptr);
+
+    if (func->implementation == nullptr) {
+      // a function without a V8 implementation
+      setFlag(DETERMINED_V8, VALUE_V8);
+      return true;
+    }
+    
+    if (func->condition && !func->condition()) {
+      // a function with an execution condition
+      setFlag(DETERMINED_V8, VALUE_V8);
+      return true;
+    }
+  }
+    
+  size_t const n = numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMemberUnchecked(i);
+
+    if (member->willUseV8()) {
+      setFlag(DETERMINED_V8, VALUE_V8);
+      return true;
+    }
+  }
+
+  setFlag(DETERMINED_V8);
   return false;
 }
 

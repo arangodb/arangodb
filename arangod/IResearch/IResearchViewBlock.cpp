@@ -23,13 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlHelper.h"
-#include "IResearchViewBlock.h"
-#include "IResearchViewNode.h"
-#include "IResearchView.h"
+#include "IResearchCommon.h"
 #include "IResearchDocument.h"
-#include "IResearchFeature.h"
 #include "IResearchFilterFactory.h"
 #include "IResearchOrderFactory.h"
+#include "IResearchView.h"
+#include "IResearchViewBlock.h"
+#include "IResearchViewNode.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
@@ -38,7 +38,6 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/TransactionState.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -97,7 +96,7 @@ AqlValue ViewExpressionContext::getVariableValue(
 ) const {
   TRI_ASSERT(var);
 
-  if (var == _node->outVariable()) {
+  if (var == &_node->outVariable()) {
     // self-reference
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -169,14 +168,14 @@ void IResearchViewBlockBase::reset() {
   auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());
 
   arangodb::iresearch::QueryContext const queryCtx = {
-    _trx, plan, plan->getAst(), &_ctx, viewNode.outVariable()
+    _trx, plan, plan->getAst(), &_ctx, &viewNode.outVariable()
   };
 
   if (_volatileFilter) { // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
 
     if (!arangodb::iresearch::FilterFactory::filter(&root, queryCtx, viewNode.filterCondition())) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failed to build filter while querying iResearch view , query '"
           << viewNode.filterCondition().toVelocyPack(true)->toJson() << "'";
 
@@ -218,7 +217,7 @@ bool IResearchViewBlockBase::readDocument(
   irs::bytes_ref tmpRef;
 
   if (!pkValues(docId, tmpRef) || !docPk.read(tmpRef)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to read document primary key while reading document from iResearch view, doc_id '" << docId << "'";
 
     return false; // not a valid document reference
@@ -230,7 +229,7 @@ bool IResearchViewBlockBase::readDocument(
   auto* collection = _trx->state()->collection(docPk.cid(), arangodb::AccessMode::Type::READ);
 
   if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to find collection while reading document from iResearch view, cid '" << docPk.cid()
       << "', rid '" << docPk.rid() << "'";
 
@@ -244,9 +243,9 @@ bool IResearchViewBlockBase::readDocument(
   );
 }
 
-AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* IResearchViewBlockBase::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
 
   if (_done) {
     traceGetSomeEnd(nullptr);
@@ -266,7 +265,7 @@ AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
 
       if (_buffer.empty()) {
         size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+        if (!ExecutionBlock::getBlock(toFetch)) {
           _done = true;
           return nullptr;
         }
@@ -336,7 +335,7 @@ AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
+size_t IResearchViewBlockBase::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
 
@@ -344,10 +343,10 @@ size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
     return skipped;
   }
 
-  while (skipped < atLeast) {
+  while (skipped < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch, toFetch)) {
+      if (!getBlock(toFetch)) {
         _done = true;
         return skipped;
       }
@@ -360,7 +359,7 @@ size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
 
     skipped += skip(atMost - skipped);
 
-    if (skipped < atLeast) {
+    if (skipped < atMost) {
       // not skipped enough re-initialize fetching of documents
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
@@ -641,7 +640,7 @@ bool IResearchViewOrderedBlock::next(
     irs::score const* score = itr->attributes().get<irs::score>().get();
 
     if (!score) {
-      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to retrieve document score attribute while iterating iResearch view, ignoring: reader_id '" << i << "'";
       IR_LOG_STACK_TRACE();
 
@@ -676,7 +675,7 @@ bool IResearchViewOrderedBlock::next(
   // skip documents previously returned
   for (size_t i = _skip; i; --i, ++tokenItr) {
     if (tokenItr == tokenEnd) {
-      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "document count less than the document count during the previous iteration on the same query while iterating iResearch view'";
 
       break; // if here then there is probably a bug in the iResearch library

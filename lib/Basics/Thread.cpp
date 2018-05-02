@@ -82,7 +82,7 @@ void Thread::startThread(void* arg) {
   TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
-  
+
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   if (0 <= ptr->_affinity) {
@@ -96,6 +96,7 @@ void Thread::startThread(void* arg) {
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
+    ptr->crashNotification(ex);
     if (pushed) {
       WorkMonitor::popThread(ptr);
     }
@@ -135,7 +136,7 @@ TRI_pid_t Thread::currentProcessId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name of the current thread, if set
 /// note that this function may return a nullptr
@@ -222,7 +223,7 @@ Thread::~Thread() {
         << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
-  
+
   LOCAL_THREAD_NAME = nullptr;
 }
 

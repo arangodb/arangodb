@@ -34,7 +34,7 @@
 #include "Cluster/ServerState.h"
 
 #ifdef USE_IRESEARCH
-  #include "IResearch/IResearchFeature.h"
+  #include "IResearch/IResearchCommon.h"
 #endif
 
 #include "VocBase/LogicalCollection.h"
@@ -130,8 +130,10 @@ void Index::validateFields(VPackSlice const& slice) {
   VPackSlice fields = slice.get("fields");
 
   if (!fields.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                   "invalid index description");
+// FIXME
+    return;
+//    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+//                                   "invalid index description");
   }
 
   for (auto const& name : VPackArrayIterator(fields)) {
@@ -173,7 +175,7 @@ Index::IndexType Index::type(char const* type) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
 #ifdef USE_IRESEARCH
-  if (arangodb::iresearch::IResearchFeature::type() == type) {
+  if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
   }
 #endif
@@ -209,7 +211,7 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo2";
 #ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
-      return arangodb::iresearch::IResearchFeature::type().c_str();
+      return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
 #endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
@@ -378,19 +380,23 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 
 /// @brief return a contextual string for logging
 std::string Index::context() const {
+  TRI_ASSERT(_collection);
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << oldtypeName()
-         << ", collection: " << _collection->dbName() << "/"
+         << ", collection: " << _collection->vocbase().name() << "/"
          << _collection->name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
+
   for (size_t i = 0; i < _fields.size(); ++i) {
     if (i > 0) {
       result << ", ";
     }
+
     result << _fields[i];
   }
+
   result << "] }";
 
   return result.str();

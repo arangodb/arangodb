@@ -104,11 +104,11 @@ arangodb::Result applyStateRegistrationCallbacks(
 
 static void throwCollectionNotFound(char const* name) {
   if (name == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-      std::string(TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)) +
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
           ": " + name);
 }
 
@@ -509,15 +509,18 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       }
     }
 
-    // enable the following line to see index candidates considered with their
-    // abilities and scores
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
-
     if (!supportsFilter && !supportsSort) {
       continue;
     }
+    
+    double totalCost = filterCost;
+    if (!sortCondition->isEmpty()) {
+      // only take into account the costs for sorting if there is actually something to sort
+      totalCost += sortCost;
+    }
 
-    double const totalCost = filterCost + sortCost;
+    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << totalCost << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
+
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;
@@ -556,7 +559,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
 
     // enable the following line to see index candidates considered with their
     // abilities and scores
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
+    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
 
     if (!supportsFilter) {
       continue;
@@ -829,10 +832,16 @@ Result transaction::Methods::finish(Result const& res) {
   return res;
 }
 
+/// @brief return the transaction id
+TRI_voc_tid_t transaction::Methods::tid() const {
+  TRI_ASSERT(_state != nullptr);
+  return _state->id();
+}
+
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   if (c == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   return c->collectionName();
 }
@@ -860,7 +869,7 @@ OperationResult transaction::Methods::anyLocal(
   if (cid == 0) {
     throwCollectionNotFound(collectionName.c_str());
   }
-
+  
   pinData(cid);  // will throw when it fails
 
   VPackBuilder resultBuilder;
@@ -886,7 +895,7 @@ OperationResult transaction::Methods::anyLocal(
       return OperationResult(res);
     }
   }
-
+  
   resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
@@ -913,7 +922,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
     auto dataSource = resolver()->getDataSource(cid);
 
     if (!dataSource) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     auto result = applyStateRegistrationCallbacks(*dataSource, *_state);
@@ -966,10 +975,9 @@ bool transaction::Methods::isDocumentCollection(
 /// @brief return the type of a collection
 TRI_col_type_e transaction::Methods::getCollectionType(
     std::string const& collectionName) const {
-  if (_state->isCoordinator()) {
-    return resolver()->getCollectionTypeCluster(collectionName);
-  }
-  return resolver()->getCollectionType(collectionName);
+  auto collection = resolver()->getCollection(collectionName);
+
+  return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 }
 
 /// @brief return the name of a collection
@@ -998,7 +1006,7 @@ void transaction::Methods::invokeOnAllElements(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     THROW_ARANGO_EXCEPTION(lockResult);
   }
-
+  
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   collection->invokeOnAllElements(this, callback);
@@ -1158,7 +1166,7 @@ OperationResult transaction::Methods::clusterResultInsert(
     case rest::ResponseCode::BAD:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     case rest::ResponseCode::CONFLICT:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
@@ -1256,7 +1264,7 @@ OperationResult transaction::Methods::documentCoordinator(
   }
 
   int res = arangodb::getDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, headers, responseCode,
+      databaseName(), collectionName, value, options, std::move(headers), responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1773,7 +1781,7 @@ OperationResult transaction::Methods::modifyLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-
+  
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
 
@@ -1968,9 +1976,6 @@ OperationResult transaction::Methods::modifyLocal(
                     << (*followers)[i] << " for shard " << collectionName;
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
                 }
-                LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "modifyLocal: dropping follower " << (*followers)[i]
-                  << " for shard " << collectionName;
               }
             }
           }
@@ -2294,7 +2299,7 @@ OperationResult transaction::Methods::allLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
   pinData(cid);  // will throw when it fails
-
+  
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
@@ -2323,7 +2328,7 @@ OperationResult transaction::Methods::allLocal(
       return OperationResult(res);
     }
   }
-
+  
   resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
@@ -2389,7 +2394,7 @@ OperationResult transaction::Methods::truncateLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-
+  
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   try {
@@ -2529,7 +2534,7 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, aggregate);
+    return countCoordinator(collectionName, aggregate, true);
   }
 
   return countLocal(collectionName);
@@ -2538,9 +2543,10 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::countCoordinator(
-    std::string const& collectionName, bool aggregate) {
+    std::string const& collectionName, bool aggregate, bool sendNoLockHeader) {
   std::vector<std::pair<std::string, uint64_t>> count;
-  int res = arangodb::countOnCoordinator(databaseName(), collectionName, count);
+  int res = arangodb::countOnCoordinator(databaseName(), collectionName, count,
+                                         sendNoLockHeader);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -2561,7 +2567,7 @@ OperationResult transaction::Methods::countLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-
+  
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this);
@@ -2878,46 +2884,30 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
   Result res;
   bool visited = false;
   auto visitor = _state->isEmbeddedTransaction()
-    ? std::function<bool(TRI_voc_cid_t)>(
-        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
-          res = addCollectionEmbedded(ccid, name, type);
+    ? std::function<bool(LogicalCollection&)>(
+        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
+          res = addCollectionEmbedded(col.id(), name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          auto dataSource = resolver()->getDataSource(ccid);
-
-          if (!dataSource) {
-            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(*dataSource, *_state);
-          visited |= cid == ccid;
+          res = applyStateRegistrationCallbacks(col, *_state);
+          visited |= cid == col.id();
 
           return res.ok(); // add the remaining collections (or break on error)
         }
       )
-    : std::function<bool(TRI_voc_cid_t)>(
-        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
-          res = addCollectionToplevel(ccid, name, type);
+    : std::function<bool(LogicalCollection&)>(
+        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
+          res = addCollectionToplevel(col.id(), name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          auto dataSource = resolver()->getDataSource(ccid);
-
-          if (!dataSource) {
-            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(*dataSource, *_state);
-          visited |= cid == ccid;
+          res = applyStateRegistrationCallbacks(col, *_state);
+          visited |= cid == col.id();
 
           return res.ok(); // add the remaining collections (or break on error)
         }
@@ -2925,6 +2915,14 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     ;
 
   if (!resolver()->visitCollections(visitor, cid) || !res.ok()) {
+    // trigger exception as per the original behaviour (tests depend on this)
+    if (res.ok() && !visited) {
+      res = _state->isEmbeddedTransaction()
+          ? addCollectionEmbedded(cid, name, type)
+          : addCollectionToplevel(cid, name, type)
+          ;
+    }
+
     return res.ok() ? Result(TRI_ERROR_INTERNAL) : res; // return first error
   }
 
@@ -2935,11 +2933,10 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
 
   auto dataSource = resolver()->getDataSource(cid);
 
-  if (!dataSource) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  return applyStateRegistrationCallbacks(*dataSource, *_state);
+  return dataSource
+    ? applyStateRegistrationCallbacks(*dataSource, *_state)
+    : Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
+    ;
 }
 
 /// @brief add a collection by id, with the name supplied
@@ -2967,8 +2964,15 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return false;
   }
+  if (_state->hasHint(Hints::Hint::LOCK_NEVER)) {
+    // In the lock never case we have made sure that
+    // some other process holds this lock.
+    // So we can lie here and report that it actually
+    // is locked!
+    return true;
+  }
 
-  TransactionCollection* trxColl = trxCollection(document->cid(), type);
+  TransactionCollection* trxColl = trxCollection(document->id(), type);
   TRI_ASSERT(trxColl != nullptr);
   return trxColl->isLocked(type, _state->nestingLevel());
 }
@@ -3121,7 +3125,7 @@ Result transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid,
           res, std::string(TRI_errno_string(res)) + ": " +
                    resolver()->getCollectionNameCluster(cid) + " [" +
                    AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       throwCollectionNotFound(name);
     }
     THROW_ARANGO_EXCEPTION(res);
@@ -3152,7 +3156,7 @@ Result transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid,
           res, std::string(TRI_errno_string(res)) + ": " +
                    resolver()->getCollectionNameCluster(cid) + " [" +
                    AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       throwCollectionNotFound(name);
     }
     THROW_ARANGO_EXCEPTION(res);
@@ -3204,7 +3208,7 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   }
 
   if (cid == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   key = p + 1;
@@ -3213,6 +3217,25 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+Result transaction::Methods::resolveId(char const* handle, size_t length,
+                                       std::shared_ptr<LogicalCollection>& collection, char const*& key,
+                                       size_t& outLength) {
+  char const* p = static_cast<char const*>(
+      memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
+
+  if (p == nullptr || *p == '\0') {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  std::string const name(handle, p - handle);
+  collection = resolver()->getCollectionStructCluster(name);
+
+  if (collection == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  key = p + 1;
+  outLength = length - (key - handle);
+
+  return TRI_ERROR_NO_ERROR;
+}

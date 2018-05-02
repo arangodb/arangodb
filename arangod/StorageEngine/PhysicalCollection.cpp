@@ -277,8 +277,10 @@ int PhysicalCollection::newObjectForInsert(
   // _id
   uint8_t* p = builder.add(StaticStrings::IdString,
                            VPackValuePair(9ULL, VPackValueType::Custom));
+
   *p++ = 0xf3;  // custom type for _id
-  if (_isDBServer && !_logicalCollection->isSystem()) {
+
+  if (_isDBServer && !_logicalCollection->system()) {
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)
@@ -287,8 +289,9 @@ int PhysicalCollection::newObjectForInsert(
                                     sizeof(uint64_t));
   } else {
     // local server
-    encoding::storeNumber<uint64_t>(p, _logicalCollection->cid(),
-                                    sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(
+      p, _logicalCollection->id(), sizeof(uint64_t)
+    );
   }
 
   // _from and _to

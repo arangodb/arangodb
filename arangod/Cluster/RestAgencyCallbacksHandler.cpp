@@ -57,9 +57,8 @@ RestStatus RestAgencyCallbacksHandler::execute() {
   }
   
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess) {
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess || body.isNone()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid JSON");
     return RestStatus::DONE;
@@ -73,7 +72,7 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     auto callback = _agencyCallbackRegistry->getCallback(index);
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
       << "Agency callback has been triggered. refetching!";
-    callback->refetchAndUpdate(true);
+    callback->refetchAndUpdate(true, false);
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   } catch (arangodb::basics::Exception const&) {
     // mop: not found...expected

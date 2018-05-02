@@ -45,10 +45,11 @@ class RedundantCalculationsReplacer;
 class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class HashedCollectBlock;
   friend class RedundantCalculationsReplacer;
   friend class SortedCollectBlock;
+  friend class HashedCollectBlock;
   friend class DistinctCollectBlock;
+  friend class CountCollectBlock;
 
  public:
   CollectNode(
@@ -139,6 +140,8 @@ class CollectNode : public ExecutionNode {
 
   /// @brief whether or not the count flag is set
   inline bool count() const { return _count; }
+  /// @brief set the count option
+  void count(bool value) { _count = value; }
   
   inline bool hasOutVariableButNoCount() const { return (_outVariable != nullptr && !_count); }
 
@@ -154,6 +157,8 @@ class CollectNode : public ExecutionNode {
     _outVariable = nullptr;
     _count = false;
   }
+
+  void setAggregateVariables(std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables);
 
   /// @brief clear one of the aggregates
   void clearAggregates(std::function<bool(std::pair<
@@ -178,6 +183,21 @@ class CollectNode : public ExecutionNode {
   void setExpressionVariable(Variable const* variable) {
     TRI_ASSERT(!hasExpressionVariable());
     _expressionVariable = variable;
+  }
+  
+  /// @brief return whether or not the collect has keep variables
+  bool hasKeepVariables() const {
+    return !_keepVariables.empty();
+  }
+  
+  /// @brief return the keep variables
+  std::vector<Variable const*> const& keepVariables() const {
+    return _keepVariables;
+  }
+  
+  /// @brief set list of variables to keep if INTO is used
+  void setKeepVariables(std::vector<Variable const*>&& variables) {
+    _keepVariables = std::move(variables);
   }
 
   /// @brief return the variable map

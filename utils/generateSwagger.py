@@ -391,6 +391,9 @@ class Regexen:
         self.RESTRETURNCODES = re.compile('.*@RESTRETURNCODES')
         self.RESTURLPARAM = re.compile('.*@RESTURLPARAM{')
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
+        self.RESTPARAM = re.compile('.*@RESTPARAM')
+        self.RESTQUERYPARAMS = re.compile('.*@RESTQUERYPARAMS')
+        self.TRIPLENEWLINEATSTART = re.compile('^\n\n\n')
 
 ################################################################################
 ### @brief checks for end of comment
@@ -424,6 +427,8 @@ def next_step(fp, line, r):
     elif r.RESTRETURNCODES.match(line):       return restreturncodes, (fp, line)
     elif r.RESTURLPARAM.match(line):          return resturlparam, (fp, line)
     elif r.RESTURLPARAMETERS.match(line):     return resturlparameters, (fp, line)
+    elif r.RESTPARAM.match(line):             return restparam, (fp, line)
+    elif r.RESTQUERYPARAMS.match(line):       return restqueryparams, (fp, line)
     elif r.EXAMPLES.match(line):              return examples, (fp, line)
 
     return None, None
@@ -481,8 +486,6 @@ def generic_handler_desc(cargo, r, message, op, para, name):
         line = Typography(line)
         para[name] += line + '\n'
 
-    para[name] = removeTrailingBR.sub("", para[name])
-
 def start_docublock(cargo, r=Regexen()):
     global currentDocuBlock
     (fp, last) = cargo
@@ -505,6 +508,24 @@ def setRequired(where, which):
     where['required'].append(which)
 
 ################################################################################
+### @brief restparam - deprecated - abort.
+################################################################################
+def restparam(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
+    print >> sys.stderr, "deprecated RESTPARAM declaration detected:"
+    print >> sys.stderr, json.dumps(swagger['paths'][httpPath], indent=4, separators=(', ',': '), sort_keys=True)
+    raise Exception("RESTPARAM not supported anymore.")
+
+################################################################################
+### @brief restparam - deprecated - abort.
+################################################################################
+def restqueryparams(cargo, r=Regexen()):
+    global swagger, operation, httpPath, method, restBodyParam, fn, currentExample, currentReturnCode, currentDocuBlock, lastDocuBlock, restReplyBodyParam
+    print >> sys.stderr, "deprecated RESTQUERYPARAMS declaration detected:"
+    print >> sys.stderr, json.dumps(swagger['paths'][httpPath], indent=4, separators=(', ',': '), sort_keys=True)
+    raise Exception("RESTQUERYPARAMS not supported anymore. Use RESTQUERYPARAMETERS instead.")
+
+################################################################################
 ### @brief restheader
 ################################################################################
 
@@ -520,7 +541,7 @@ def restheader(cargo, r=Regexen()):
 
     temp = parameters(last).split(',')
     if temp == "":
-        raise Exception("Invalid restheader value. got empty string. Maybe missing closing bracket? " + path)
+        raise Exception("Invalid restheader value. got empty string. Maybe missing closing bracket? " + last)
 
     (ucmethod, path) = temp[0].split()
 
@@ -864,9 +885,17 @@ def restqueryparam(cargo, r=Regexen()):
 def restdescription(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
     swagger['paths'][httpPath][method]['description'] += '\n\n'
-    return generic_handler_desc(cargo, r, "restdescription", None,
+
+    ret = generic_handler_desc(cargo, r, "restdescription", None,
                                 swagger['paths'][httpPath][method],
                                 'description')
+
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
+        (fp, last) = cargo
+        print >> sys.stderr, 'remove newline after @RESTDESCRIPTION in file %s' % (fp.name)
+        exit(1)
+
+    return ret
 
 ################################################################################
 ### @brief restreplybody
@@ -1149,13 +1178,18 @@ automat.add_state(restreturncodes)
 automat.add_state(restreplybody)
 automat.add_state(resturlparam)
 automat.add_state(resturlparameters)
+automat.add_state(restparam)
+automat.add_state(restqueryparam)
 
 
-
-def getOneApi(infile, filename):
+def getOneApi(infile, filename, thisFn):
     automat.set_start(skip_code)
-    automat.set_fn(filename)
+    automat.set_fn(thisFn)
     automat.run((infile, ''))
+
+################################################################################
+### Swagger Markdown rendering
+################################################################################
 
 def getReference(name, source, verb):
     try:
@@ -1304,7 +1338,7 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
         thisfn = fn
         infile = open(fn)
         try:
-            getOneApi(infile, name + " - " + ', '.join(filenames))
+            getOneApi(infile, name + " - " + ', '.join(filenames), fn)
         except Exception as x:
             print >> sys.stderr, "\nwhile parsing file: '%s' error: %s" % (thisfn, x)
             raise

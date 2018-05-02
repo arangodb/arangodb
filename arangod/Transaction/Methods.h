@@ -41,8 +41,9 @@
 #ifdef USE_ENTERPRISE
   #define ENTERPRISE_VIRT virtual
 #else
-  #define ENTERPRISE_VIRT
+  #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
+
 
 namespace arangodb {
 
@@ -159,6 +160,7 @@ class Methods {
   inline TransactionState* state() const { return _state; }
 
   Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength);
+  Result resolveId(char const* handle, size_t length, std::shared_ptr<LogicalCollection>& collection, char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
   std::shared_ptr<transaction::Context> transactionContext() const {
@@ -194,6 +196,9 @@ class Methods {
   /// @brief finish a transaction (commit or abort), based on the previous state
   Result finish(int errorNum);
   Result finish(Result const& res);
+  
+  /// @brief return the transaction id
+  TRI_voc_tid_t tid() const;
 
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;
@@ -305,7 +310,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  ENTERPRISE_VIRT OperationResult count(std::string const& collectionName, bool aggregate);
+  virtual OperationResult count(std::string const& collectionName, bool aggregate);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -468,11 +473,13 @@ class Methods {
                                            OperationOptions const& options);
 
 
+ protected:
 
-  OperationResult countCoordinator(std::string const& collectionName, bool aggregate);
+  OperationResult countCoordinator(std::string const& collectionName,
+                                   bool aggregate, bool sendNoLockHeader);
+
   OperationResult countLocal(std::string const& collectionName);
 
- protected:
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
                                AccessMode::Type type = AccessMode::Type::READ) const;

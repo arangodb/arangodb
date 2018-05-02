@@ -46,7 +46,8 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _outRegNew(ExecutionNode::MaxRegisterId),
       _collection(ep->_collection),
       _isDBServer(false),
-      _usesDefaultSharding(true) {
+      _usesDefaultSharding(true),
+      _countStats(ep->countStats()) {
 
   _trx->pinData(_collection->cid());
 
@@ -74,15 +75,14 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
 ModificationBlock::~ModificationBlock() {}
 
 /// @brief get some - this accumulates all input and calls the work() method
-AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* ModificationBlock::getSome(size_t atMost) {
   // for UPSERT operations, we read and write data in the same collection
   // we cannot use any batching here because if the search document is not
   // found, the UPSERTs INSERT operation may create it. after that, the
   // search document is present and we cannot use an already queried result
   // from the initial search batch
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   if (getPlanNode()->getType() == ExecutionNode::NodeType::UPSERT) {
-    atLeast = 1;
     atMost = 1;
   }
   
@@ -105,7 +105,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
       // read all input into a buffer first
       while (true) {
         std::unique_ptr<AqlItemBlock> res(
-            ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
+            ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
         if (res.get() == nullptr) {
           break;
@@ -127,7 +127,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
       while (true) {
         freeBlocks(blocks);
         std::unique_ptr<AqlItemBlock> res(
-            ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
+            ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
         if (res == nullptr) {
           break;
@@ -183,13 +183,17 @@ void ModificationBlock::handleResult(int code, bool ignoreErrors,
                                      std::string const* errorMessage) {
   if (code == TRI_ERROR_NO_ERROR) {
     // update the success counter
-    ++_engine->_stats.writesExecuted;
+    if (_countStats) {
+      ++_engine->_stats.writesExecuted;
+    }
     return;
   }
 
   if (ignoreErrors) {
     // update the ignored counter
-    ++_engine->_stats.writesIgnored;
+    if (_countStats) {
+      ++_engine->_stats.writesIgnored;
+    }
     return;
   }
 
@@ -209,18 +213,24 @@ void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& 
   if (errorCounter.empty()) {
     // update the success counter
     // All successful.
-    _engine->_stats.writesExecuted += numBabies;
+    if (_countStats) {
+      _engine->_stats.writesExecuted += numBabies;
+    }
     return;
   }
   if (ignoreAllErrors) {
     for (auto const& pair : errorCounter) {
       // update the ignored counter
-      _engine->_stats.writesIgnored += pair.second;
+      if (_countStats) {
+        _engine->_stats.writesIgnored += pair.second;
+      }
       numBabies -= pair.second;
     }
 
     // update the success counter
-    _engine->_stats.writesExecuted += numBabies;
+    if (_countStats) {
+      _engine->_stats.writesExecuted += numBabies;
+    }
     return;
   }
   auto first = errorCounter.begin();
@@ -229,10 +239,14 @@ void ModificationBlock::handleBabyResult(std::unordered_map<int, size_t> const& 
     if (errorCounter.size() == 1) {
       // We only have Document not found. Fix statistics and ignore
       // update the ignored counter
-      _engine->_stats.writesIgnored += first->second;
+      if (_countStats) {
+        _engine->_stats.writesIgnored += first->second;
+      }
       numBabies -= first->second;
       // update the success counter
-      _engine->_stats.writesExecuted += numBabies;
+      if (_countStats) {
+        _engine->_stats.writesExecuted += numBabies;
+      }
       return;
     }
 
@@ -340,11 +354,13 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         !(toRemove.isArray() && toRemove.length() == 0)) {
       // all exceptions are caught in _trx->remove()
       OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
+
       if (isMultiple) {
         TRI_ASSERT(opRes.ok());
-        VPackSlice removedList = opRes.slice();
-        TRI_ASSERT(removedList.isArray());
         if (producesOutput) {
+          TRI_ASSERT(options.returnOld);
+          VPackSlice removedList = opRes.slice();
+          TRI_ASSERT(removedList.isArray());
           auto iter = VPackArrayIterator(removedList);
           for (size_t i = 0; i < n; ++i) {
             AqlValue const& a = res->getValueReference(i, registerId);
@@ -354,22 +370,21 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
               auto it = iter.value();
               bool wasError = arangodb::basics::VelocyPackHelper::getBooleanValue(
                   it, "error", false);
-              errorCode = TRI_ERROR_NO_ERROR;
-              if (wasError) {
-                errorCode =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                        it, "errorNum", TRI_ERROR_NO_ERROR);
+              errorCode =
+                  arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+                      it, "errorNum", TRI_ERROR_NO_ERROR);
+              if (!wasError) {
+                if (errorCode == TRI_ERROR_NO_ERROR) {
+                  result->emplaceValue(dstRow, _outRegOld, it.get("old"));
+                }
               }
+              ++iter;
               if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
                   ignoreDocumentNotFound) {
                 // Ignore document not found on the DBserver:
-                errorCode = TRI_ERROR_NO_ERROR;
-              }
-              if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-                result->emplaceValue(dstRow, _outRegOld, it.get("old"));
+                continue;
               }
               handleResult(errorCode, ep->_options.ignoreErrors, nullptr);
-              ++iter;
             }
             ++dstRow;
           }
@@ -382,12 +397,14 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
       } else {
         errorCode = opRes.errorNumber();
+
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
             ignoreDocumentNotFound) {
           // Ignore document not found on the DBserver:
-          errorCode = TRI_ERROR_NO_ERROR;
+          // do not emit a new row
+          continue;
         }
-        if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+        if (options.returnOld && errorCode == TRI_ERROR_NO_ERROR) {
           result->emplaceValue(dstRow, _outRegOld, opRes.slice().get("old"));
         }
         handleResult(errorCode, ep->_options.ignoreErrors, nullptr);
@@ -465,7 +482,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
             OperationResult opRes = _trx->insert(_collection->name, a.slice(), options); 
             errorCode = opRes.errorNumber();
 
-            if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+            if (options.returnNew && errorCode == TRI_ERROR_NO_ERROR) {
               // return $NEW
               result->emplaceValue(dstRow, _outRegNew, opRes.slice().get("new"));
             } 
@@ -551,7 +568,6 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     return nullptr;
   }
 
-  std::unique_ptr<AqlItemBlock> result;
   auto ep = static_cast<UpdateNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -559,8 +575,13 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
   RegisterId keyRegisterId = 0;  // default initialization
 
   bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
-  bool const producesOutput =
-      (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
+  bool producesOutput = (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
+      
+  if (!producesOutput && _isDBServer && ignoreDocumentNotFound) {
+    // on a DB server, when we are told to ignore missing documents, we must
+    // set this flag in order to not assert later on
+    producesOutput = true;
+  }
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   std::string errorMessage;
@@ -572,7 +593,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
 
-  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  std::unique_ptr<AqlItemBlock> result(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -638,13 +659,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
             _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
             _tempBuilder.close();
 
-            VPackBuilder tmp = VPackCollection::merge(
-                a.slice(), _tempBuilder.slice(), false, false);
-            if (isMultiple) {
-              object.add(tmp.slice());
-            } else {
-              object = std::move(tmp);
-            }
+            VPackCollection::merge(object, a.slice(), _tempBuilder.slice(), false, false);
           }
           else {
             // use original slice for updating
@@ -675,6 +690,13 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     OperationResult opRes = _trx->update(_collection->name, toUpdate, options); 
     if (!isMultiple) {
       int errorCode = opRes.errorNumber();
+      
+      if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
+          ignoreDocumentNotFound) {
+        // Ignore document not found on the DBserver:
+        // do not emit a new row
+        continue;
+      }
 
       if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
         if (ep->_outVariableOld != nullptr) {
@@ -687,12 +709,6 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
       }
 
-      if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
-          ignoreDocumentNotFound) {
-        // Ignore document not found on the DBserver:
-        errorCode = TRI_ERROR_NO_ERROR;
-      }
-            
       if (errorCode != TRI_ERROR_NO_ERROR) {
         errorMessage.assign(opRes.errorMessage());
       } else {
@@ -723,8 +739,13 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
                 // store $NEW
                 result->emplaceValue(dstRow, _outRegNew, elm.get("new"));
               }
-            }
+            } 
             ++iter;
+
+            if (wasError) {
+              // do not increase dstRow here
+              continue;
+            }
           }
           dstRow++;
         }
@@ -736,6 +757,14 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
     returnBlock(res);
+  }
+
+  if (dstRow < result->size()) {
+    if (dstRow == 0) {
+      result.reset();
+    } else {
+      result->shrink(dstRow);
+    }
   }
 
   return result.release();
@@ -918,7 +947,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         OperationResult opRes = _trx->insert(_collection->name, toInsert, options);
         errorCode = opRes.errorNumber(); 
 
-        if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+        if (options.returnNew && errorCode == TRI_ERROR_NO_ERROR) {
           result->emplaceValue(dstRow - 1, _outRegNew, opRes.slice().get("new"));
         }
         if (errorCode != TRI_ERROR_NO_ERROR) {
@@ -972,7 +1001,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
         errorCode = opRes.errorNumber();
 
-        if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+        if (options.returnNew && errorCode == TRI_ERROR_NO_ERROR) {
           // store $NEW
           result->emplaceValue(dstRow - 1, _outRegNew, opRes.slice().get("new"));
         }
@@ -1004,7 +1033,6 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     return nullptr;
   }
 
-  std::unique_ptr<AqlItemBlock> result;
   auto ep = static_cast<ReplaceNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -1012,8 +1040,13 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
   RegisterId keyRegisterId = 0;  // default initialization
 
   bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
-  bool const producesOutput =
-      (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
+  bool producesOutput = (ep->_outVariableOld != nullptr || ep->_outVariableNew != nullptr);
+  
+  if (!producesOutput && _isDBServer && ignoreDocumentNotFound) {
+    // on a DB server, when we are told to ignore missing documents, we must
+    // set this flag in order to not assert later on
+    producesOutput = true;
+  }
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   std::string errorMessage;
@@ -1025,7 +1058,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
 
-  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  std::unique_ptr<AqlItemBlock> result(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -1090,13 +1123,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
             _tempBuilder.openObject();
             _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
             _tempBuilder.close();
-            VPackBuilder tmp = VPackCollection::merge(
-                a.slice(), _tempBuilder.slice(), false, false);
-            if (isMultiple) {
-              object.add(tmp.slice());
-            } else {
-              object = std::move(tmp);
-            }
+            VPackCollection::merge(object, a.slice(), _tempBuilder.slice(), false, false);
           } else {
             // Use the original slice for updating
             object.add(a.slice());
@@ -1125,6 +1152,13 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     OperationResult opRes = _trx->replace(_collection->name, toUpdate, options); 
     if (!isMultiple) {
       int errorCode = opRes.errorNumber();
+      
+      if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
+          ignoreDocumentNotFound) {
+        // Ignore document not found on the DBserver:
+        // do not emit a new row
+        continue;
+      }
 
       if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
         if (ep->_outVariableOld != nullptr) {
@@ -1137,17 +1171,12 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
         }
       }
 
-      if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer &&
-          ignoreDocumentNotFound) {
-        // Ignore document not found on the DBserver:
-        errorCode = TRI_ERROR_NO_ERROR;
-      }
-            
       if (errorCode != TRI_ERROR_NO_ERROR) {
         errorMessage.assign(opRes.errorMessage());
       } else {
         errorMessage.clear();
       }
+
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       ++dstRow;
     } else {
@@ -1174,6 +1203,11 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
               }
             }
             ++iter;
+            
+            if (wasError) {
+              // do not increase dstRow here
+              continue;
+            }
           }
           dstRow++;
         }
@@ -1185,6 +1219,14 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
     returnBlock(res);
+  }
+  
+  if (dstRow < result->size()) {
+    if (dstRow == 0) {
+      result.reset();
+    } else {
+      result->shrink(dstRow);
+    }
   }
 
   return result.release();

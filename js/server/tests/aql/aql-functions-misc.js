@@ -624,10 +624,12 @@ function ahuacatlCollectionCountTestSuite () {
     setUp : function () {
       db._drop(cn);
       c = db._create(cn, { numberOfShards: 4 });
+      let docs = [];
 
       for (var i = 1; i <= 1000; ++i) {
-        c.insert({ _key: "test" + i });
+        docs.push({ _key: "test" + i });
       }
+      c.insert(docs);
     },
 
     tearDown : function () {
@@ -652,7 +654,7 @@ function ahuacatlCollectionCountTestSuite () {
           fail();
         }
         catch (err) {
-          assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+          assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
         }
       });
     },

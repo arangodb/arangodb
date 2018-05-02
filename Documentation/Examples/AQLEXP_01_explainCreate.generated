@@ -26,9 +26,10 @@ arangosh&gt; stmt.explain();
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span> 
         }, 
+        <span class="hljs-string">"producesResult"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"7318"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"7301"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"value"</span> 

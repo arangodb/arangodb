@@ -61,9 +61,14 @@ aql::QueryResultV8 AqlQuery(
   TRI_ASSERT(col != nullptr);
 
   TRI_GET_GLOBALS();
-  arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
-                             bindVars, nullptr, arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    true,
+    col->vocbase(),
+    arangodb::aql::QueryString(aql),
+    bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.executeV8(
       isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
 
@@ -201,10 +206,10 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const collectionName(collection->name());
 
   std::shared_ptr<transaction::V8Context> transactionContext =
-      transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, collection->cid(),
-                                  AccessMode::Type::READ);
-
+      transaction::V8Context::Create(&(collection->vocbase()), true);
+  SingleCollectionTransaction trx(
+    transactionContext, collection->id(), AccessMode::Type::READ
+  );
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -292,10 +297,10 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const collectionName(col->name());
 
   std::shared_ptr<transaction::V8Context> transactionContext =
-      transaction::V8Context::Create(col->vocbase(), true);
-  SingleCollectionTransaction trx(transactionContext, col->cid(),
-                                  AccessMode::Type::READ);
-
+      transaction::V8Context::Create(&(col->vocbase()), true);
+  SingleCollectionTransaction trx(
+    transactionContext, col->id(), AccessMode::Type::READ
+  );
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -487,9 +492,8 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   size_t ignored = 0;
   size_t removed = 0;
 
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
-
+  if (queryResult.extra) {
+    VPackSlice stats = queryResult.extra->slice().get("stats");
     if (!stats.isNone()) {
       TRI_ASSERT(stats.isObject());
       VPackSlice found = stats.get("writesIgnored");

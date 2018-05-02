@@ -242,8 +242,13 @@ void OptimizerRulesFeature::addRules() {
 
 #ifdef USE_IRESEARCH
   // move filters and sort conditions into views
-  registerRule("handle-views", arangodb::iresearch::handleViewsRule,
-               OptimizerRule::handleViewsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+  registerRule(
+    "handle-views",
+    arangodb::iresearch::handleViewsRule,
+    OptimizerRule::handleViewsRule_pass6,
+    DoesNotCreateAdditionalPlans,
+    CanNotBeDisabled
+  );
 #endif
 
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
@@ -269,6 +274,9 @@ void OptimizerRulesFeature::addRules() {
 
     registerRule("distribute-in-cluster", distributeInClusterRule,
                  OptimizerRule::distributeInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+    
+    registerRule("collect-in-cluster", collectInClusterRule,
+                 OptimizerRule::collectInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
     // distribute operations in cluster
     registerRule("distribute-filtercalc-to-cluster",
@@ -291,6 +299,21 @@ void OptimizerRulesFeature::addRules() {
                  removeSatelliteJoinsRule,
                  OptimizerRule::removeSatelliteJoinsRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
+
+#ifdef USE_IRESEARCH
+  // distribute view queries in cluster
+  registerRule(
+    "scatter-arangosearch-view-in-cluster",
+    arangodb::iresearch::scatterViewInClusterRule,
+    OptimizerRule::scatterIResearchViewInClusterRule_pass10,
+    DoesNotCreateAdditionalPlans,
+    CanNotBeDisabled
+  );
+#endif
+
+    registerRule("restrict-to-single-shard",
+                 restrictToSingleShardRule,
+                 OptimizerRule::restrictToSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
   }
 
   // finally add the storage-engine specific rules

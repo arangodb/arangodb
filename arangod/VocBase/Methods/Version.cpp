@@ -23,6 +23,7 @@
 #include "Version.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
@@ -38,6 +39,8 @@
 
 using namespace arangodb;
 using namespace arangodb::methods;
+
+namespace {
 
 static uint64_t parseVersion(char const* str, size_t len) {
   uint64_t result = 0;
@@ -64,6 +67,8 @@ static uint64_t parseVersion(char const* str, size_t len) {
   return result + tmp;
 }
 
+}
+
 /// @brief "(((major * 100) + minor) * 100) + patch"
 uint64_t Version::current() {
   return parseVersion(ARANGODB_VERSION, strlen(ARANGODB_VERSION));
@@ -75,18 +80,18 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
 
   std::string versionFile = engine->versionFilename(vocbase->id());
   if (!basics::FileUtils::exists(versionFile)) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "VERSION file not found: "
-                                     << versionFile;
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "VERSION file '" << versionFile << "' not found";
     return VersionResult{VersionResult::NO_VERSION_FILE, 0, 0, {}};
   }
   std::string versionInfo = basics::FileUtils::slurp(versionFile);
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "Found VERSION file: " << versionInfo;
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "found VERSION file '" << versionFile << "', content: " << versionInfo;
   if (versionInfo.empty()) {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "Empty VERSION file";
+    LOG_TOPIC(ERR, Logger::STARTUP) << "VERSION file '" << versionFile << "' is empty";
     return VersionResult{VersionResult::CANNOT_READ_VERSION_FILE, 0, 0, {}};
   }
 
   uint64_t lastVersion = UINT64_MAX;
+  uint64_t serverVersion = Version::current();
   std::map<std::string, bool> tasks;
 
   try {
@@ -94,14 +99,14 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
         velocypack::Parser::fromJson(versionInfo);
     VPackSlice versionVals = parsed->slice();
     if (!versionVals.isObject() || !versionVals.get("version").isNumber()) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "Cannot parse VERSION file " << versionInfo;
+      LOG_TOPIC(ERR, Logger::STARTUP) << "cannot parse VERSION file '" << versionFile << "' content: " << versionInfo;
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0,
                            tasks};
     }
     lastVersion = versionVals.get("version").getUInt();
     VPackSlice run = versionVals.get("tasks");
     if (run.isNone() || !run.isObject()) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "Invalid VERSION file " << versionInfo;
+      LOG_TOPIC(ERR, Logger::STARTUP) << "invalid VERSION file '" << versionFile << "' content: " << versionInfo;
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0,
                            tasks};
     }
@@ -109,12 +114,14 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
       tasks.emplace(pair.key.copyString(), pair.value.getBool());
     }
   } catch (velocypack::Exception const& e) {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "Cannot parse VERSION file "
+    LOG_TOPIC(ERR, Logger::STARTUP) << "cannot parse VERSION file '" << versionFile << "': " 
+                                    << e.what()
+                                    << ". file content: "
                                     << versionInfo;
+
     return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0, tasks};
   }
   TRI_ASSERT(lastVersion != UINT32_MAX);
-  uint32_t serverVersion = Version::current();
 
   VersionResult res = {VersionResult::NO_VERSION_FILE, serverVersion,
                        lastVersion, tasks};
@@ -141,14 +148,15 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   return res;
 }
 
-void Version::write(TRI_vocbase_t* vocbase,
-                    std::map<std::string, bool> tasks) {
+Result Version::write(TRI_vocbase_t* vocbase,
+                      std::map<std::string, bool> tasks,
+                      bool sync) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   
   std::string versionFile = engine->versionFilename(vocbase->id());
   TRI_ASSERT(!versionFile.empty());
-  
+    
   VPackOptions opts;
   opts.buildUnindexedObjects = true;
   VPackBuilder builder(&opts);
@@ -160,7 +168,10 @@ void Version::write(TRI_vocbase_t* vocbase,
   }
   builder.close();
   builder.close();
-  
-  std::string json = builder.slice().toJson();
-  basics::FileUtils::spit(versionFile, json.c_str(), json.length());
+    
+  if (!basics::VelocyPackHelper::velocyPackToFile(versionFile, builder.slice(), sync)) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "writing VERSION file '" << versionFile << "' failed: " << TRI_last_error();
+    return Result(TRI_errno(), TRI_last_error());
+  }
+  return Result();
 }

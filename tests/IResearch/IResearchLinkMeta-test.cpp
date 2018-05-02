@@ -38,6 +38,7 @@
 
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
@@ -128,13 +129,13 @@ struct IResearchLinkMetaSetup {
     analyzers->emplace("empty", "empty", "en"); // cache the 'empty' analyzer
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchLinkMetaSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -188,12 +189,12 @@ SECTION("test_inheritDefaults") {
 
   analyzers.start();
 
-  defaults._fields["abc"] = std::move(arangodb::iresearch::IResearchLinkMeta());
+  defaults._fields["abc"] = arangodb::iresearch::IResearchLinkMeta();
   defaults._includeAllFields = true;
   defaults._trackListPositions = true;
   defaults._analyzers.clear();
   defaults._analyzers.emplace_back(analyzers.ensure("empty"));
-  defaults._fields["abc"]->_fields["xyz"] = std::move(arangodb::iresearch::IResearchLinkMeta());
+  defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
   CHECK(true == meta.init(json->slice(), tmpString, defaults));
@@ -410,8 +411,8 @@ SECTION("test_writeCustomizedValues") {
   auto& overrideNone = *(meta._fields["c"]->_fields["none"]);
 
   overrideAll._fields.clear(); // do not inherit fields to match jSon inheritance
-  overrideAll._fields["x"] = std::move(arangodb::iresearch::IResearchLinkMeta());
-  overrideAll._fields["y"] = std::move(arangodb::iresearch::IResearchLinkMeta());
+  overrideAll._fields["x"] = arangodb::iresearch::IResearchLinkMeta();
+  overrideAll._fields["y"] = arangodb::iresearch::IResearchLinkMeta();
   overrideAll._includeAllFields = false;
   overrideAll._trackListPositions = false;
   overrideAll._analyzers.clear();

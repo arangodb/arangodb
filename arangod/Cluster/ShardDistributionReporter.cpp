@@ -290,10 +290,11 @@ void ShardDistributionReporter::helperDistributionForDatabase(
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
       counters.clear();
-      auto const col = todoSyncStateCheck.front();
 
+      auto const col = todoSyncStateCheck.front();
       auto allShards = col->shardIds();
-      auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+      auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
@@ -312,8 +313,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
             {
               // First Ask the leader
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
+              std::unordered_map<std::string, std::string> headers;
               leaderOpId = _cc->asyncRequest(
                   "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
                   path, body, headers, nullptr, timeleft);
@@ -334,9 +334,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             }
 
             // Ask them
+            std::unordered_map<std::string, std::string> headers;
             for (auto const& server : serversToAsk) {
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
               _cc->asyncRequest("", coordId, "server:" + server,
                                 rest::RequestType::GET, path, body, headers,
                                 nullptr, timeleft);
@@ -480,12 +479,15 @@ bool ShardDistributionReporter::testAllShardsInSync(
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(shardIds != nullptr);
 
-  auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+  auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+
   for (auto const& s : *shardIds) {
     auto curServers = cic->servers(s.first);
+
     if (!TestIsShardInSync(s.second, curServers)) {
       return false;
     }
   }
+
   return true;
 }

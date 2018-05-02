@@ -76,13 +76,14 @@ There is also a server configuration option `--query.fail-on-warning` for settin
 default value for *failOnWarning* so it does not need to be set on a per-query level.
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
+Specify *true* and the query will be executed in a **streaming** fashion. The query result is
+not stored on the server, but calculated on the fly. *Beware*: long-running queries will
+need to hold the collection locks for as long as the query cursor exists. 
 When set to *false* a query will be executed right away in its entirety. 
 In that case query results are either returned right away (if the resultset is small enough),
 or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`). 
-Specify *true* and the query will be executed in a **streaming** fashion. The query result is
-not stored on the server, but calculated on the fly. *Beware*: long-running queries will
-need to hold the collection locks for as long as the query cursor exists. It is advisable
-to *only* use this option on short-running queries or without exclusive locks (write-locks on MMFiles).
+It is advisable to *only* use this option on short-running queries or without exclusive locks 
+(write-locks on MMFiles).
 Please note that the query options `cache`, `count` and `fullCount` will not work on streaming queries.
 Additionally query statistics, warnings and profiling data will only be available after the query is finished.
 The default value is *false*
@@ -93,10 +94,12 @@ can be put into this attribute, telling the optimizer to include or exclude
 specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
 with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
 
-@RESTSTRUCT{profile,post_api_cursor_opts,boolean,optional,}
-If set to *true*, then the additional query profiling information will be returned
-in the sub-attribute *profile* of the *extra* return attribute if the query result
-is not served from the query cache.
+@RESTSTRUCT{profile,post_api_cursor_opts,integer,optional,}
+If set to *true* or *1*, then the additional query profiling information will be returned
+in the sub-attribute *profile* of the *extra* return attribute, if the query result
+is not served from the query cache. Set to *2* the query will include execution stats
+per query plan node in sub-attribute *stats.nodes* of the *extra* return attribute.
+Additionally the query plan is returned in the sub-attribute *extra.plan*.
 
 @RESTSTRUCT{satelliteSyncWait,post_api_cursor_opts,boolean,optional,}
 This *enterprise* parameter allows to configure how long a DBServer will have time
@@ -283,6 +286,26 @@ Enabling and disabling optimizer rules
         optimizer: {
           rules: [ "-all", "+remove-unnecessary-filters" ]
         }
+      }
+    };
+
+    var response = logCurlRequest('POST', url, body);
+
+    assert(response.code === 201);
+
+    logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
+
+Execute instrumented query and return result together with
+execution plan and profiling information
+
+@EXAMPLE_ARANGOSH_RUN{RestCursorProfileQuery}
+    var url = "/_api/cursor";
+    var body = {
+      query: "LET s = SLEEP(0.25) LET t = SLEEP(0.5) RETURN 1",
+      count: true,
+      options: {
+        profile: 2
       }
     };
 

@@ -88,8 +88,8 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
                              AstNode const* start, AstNode const* graph,
-                             std::unique_ptr<BaseOptions>& options)
-    : GraphNode(plan, id, vocbase, direction, graph, options),
+                             std::unique_ptr<BaseOptions> options)
+    : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _condition(nullptr),
@@ -152,8 +152,8 @@ TraversalNode::TraversalNode(
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
     Variable const* inVariable, std::string const& vertexId,
     std::vector<TRI_edge_direction_e> const& directions,
-    std::unique_ptr<BaseOptions>& options)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, options),
+    std::unique_ptr<BaseOptions> options)
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
@@ -401,7 +401,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<TraverserOptions>(*oldOpts);
   auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
-                             _inVariable, _vertexId, _directions, tmp);
+                             _inVariable, _vertexId, _directions, std::move(tmp));
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -560,7 +560,6 @@ void TraversalNode::prepareOptions() {
       it.second->addMember(jt);
     }
     opts->_vertexExpressions.emplace(it.first, new Expression(_plan, ast, it.second));
-    TRI_ASSERT(!opts->_vertexExpressions[it.first]->isV8());
   }
   if (!_globalVertexConditions.empty()) {
     auto cond =
@@ -569,7 +568,6 @@ void TraversalNode::prepareOptions() {
       cond->addMember(it);
     }
     opts->_baseVertexExpression = new Expression(_plan, ast, cond);
-    TRI_ASSERT(!opts->_baseVertexExpression->isV8());
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.

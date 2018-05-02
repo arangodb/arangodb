@@ -76,23 +76,23 @@ class DatabaseInitialSyncer : public InitialSyncer {
     PHASE_DROP_CREATE,
     PHASE_DUMP
   } sync_phase_e;
-  
- public:
-  DatabaseInitialSyncer(TRI_vocbase_t*,
-                        ReplicationApplierConfiguration const&);
 
  public:
-  
+  DatabaseInitialSyncer(
+    TRI_vocbase_t& vocbase,
+    ReplicationApplierConfiguration const& configuration
+  );
+
   /// @brief run method, performs a full synchronization
   Result run(bool incremental) override {
     return runWithInventory(incremental, velocypack::Slice::noneSlice());
   }
-  
+
   /// @brief run method, performs a full synchronization with the
   ///        given list of collections.
   Result runWithInventory(bool incremental,
                           velocypack::Slice collections);
-  
+
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override { return _vocbase; }
 
   /// @brief translate a phase to a phase name
@@ -114,12 +114,12 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);
-    return vocbases().begin()->second.database();
+    return &(vocbases().begin()->second.database());
   }
-  
+
   /// @brief check whether the initial synchronization should be aborted
   bool isAborted() const override;
-  
+
   /// @brief insert the batch id and barrier ID.
   ///        For use in globalinitalsyncer
   void useAsChildSyncer(Syncer::MasterInfo const& info,
@@ -132,7 +132,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
     _batchId = batchId;
     _batchUpdateTime = batchUpdateTime;
   }
-  
+
   /// @brief last time the barrier was extended or created
   /// The barrier prevents the deletion of WAL files for mmfiles
   double barrierUpdateTime() const { return _barrierUpdateTime; }

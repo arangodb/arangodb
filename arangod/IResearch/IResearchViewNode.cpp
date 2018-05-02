@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchFeature.h"
+#include "IResearchCommon.h"
 #include "IResearchViewNode.h"
 #include "IResearchViewBlock.h"
 #include "IResearchOrderFactory.h"
@@ -34,8 +34,9 @@
 #include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Basics/StringUtils.h"
 
-NS_LOCAL
+namespace {
 
 using namespace arangodb;
 
@@ -113,28 +114,66 @@ std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
   return {};
 }
 
-NS_END // NS_LOCAL
-
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
-
-IResearchViewNode::IResearchViewNode(
-    arangodb::aql::ExecutionPlan* plan,
-    arangodb::velocypack::Slice const& base)
-  : aql::ExecutionNode(plan, base),
-    _vocbase(plan->getAst()->query()->vocbase()),
-    _view(_vocbase->lookupView(base.get("view").copyString())),
-    _outVariable(aql::Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-    _filterCondition(new aql::AstNode(plan->getAst(), base.get("condition"))), // AST will own the node
-    _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
-  init();
 }
 
-void IResearchViewNode::init() {
-  if (!_filterCondition) {
+namespace arangodb {
+namespace iresearch {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                  IResearchViewNode implementation
+// -----------------------------------------------------------------------------
+
+IResearchViewNode::IResearchViewNode(
+    aql::ExecutionPlan& plan,
+    size_t id,
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView const& view,
+    arangodb::aql::Variable const& outVariable,
+    arangodb::aql::AstNode* filterCondition,
+    std::vector<IResearchSort>&& sortCondition)
+  : arangodb::aql::ExecutionNode(&plan, id),
+    _vocbase(&vocbase),
+    _view(&view),
+    _outVariable(&outVariable),
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
-    _filterCondition = &ALL;
+    _filterCondition(filterCondition ? filterCondition : &ALL),
+    _sortCondition(std::move(sortCondition)) {
+  TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
+
+  view.visitCollections([this](TRI_voc_cid_t cid)->bool{
+    _collections.emplace_back(
+      basics::StringUtils::itoa(cid), _vocbase, AccessMode::Type::READ
+    );
+    return true;
+  });
+}
+
+IResearchViewNode::IResearchViewNode(
+    aql::ExecutionPlan& plan,
+    velocypack::Slice const& base)
+  : aql::ExecutionNode(&plan, base),
+    _vocbase(plan.getAst()->query()->vocbase()),
+    _view(nullptr),
+    _outVariable(aql::Variable::varFromVPack(plan.getAst(), base, "outVariable")),
+    // in case if filter is not specified
+    // set it to surrogate 'RETURN ALL' node
+    _filterCondition(&ALL),
+    _sortCondition(fromVelocyPack(&plan, base.get("sortCondition"))) {
+  // FIXME how to check properly
+  auto view = _vocbase->lookupView(
+    basics::StringUtils::uint64(base.get("viewId").copyString())
+  );
+  TRI_ASSERT(view && iresearch::DATA_SOURCE_TYPE == view->type());
+  _view = view.get();
+
+  auto const filterSlice = base.get("condition");
+
+  if (!filterSlice.isEmptyObject()) {
+    // AST will own the node
+    _filterCondition = new aql::AstNode(
+      plan.getAst(), filterSlice
+    );
   }
 }
 
@@ -169,7 +208,7 @@ void IResearchViewNode::planNodeRegisters(
 bool IResearchViewNode::volatile_filter() const {
   if (!filterConditionIsEmpty(_filterCondition) && isInInnerLoop()) {
     std::unordered_set<arangodb::aql::Variable const*> vars;
-    return ::hasDependecies(*plan(), *_filterCondition, *outVariable(), vars);
+    return ::hasDependecies(*plan(), *_filterCondition, outVariable(), vars);
   }
 
   return false;
@@ -180,7 +219,7 @@ bool IResearchViewNode::volatile_sort() const {
     std::unordered_set<aql::Variable const*> vars;
 
     for (auto const& sort : _sortCondition) {
-      if (::hasDependecies(*plan(), *sort.node, *outVariable(), vars)) {
+      if (::hasDependecies(*plan(), *sort.node, outVariable(), vars)) {
         return true;
       }
     }
@@ -200,6 +239,7 @@ void IResearchViewNode::toVelocyPackHelper(
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("view", VPackValue(_view->name()));
+  nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
@@ -225,37 +265,33 @@ aql::ExecutionNode* IResearchViewNode::clone(
     bool withDependencies,
     bool withProperties
 ) const {
-  auto outVariable = _outVariable;
+  TRI_ASSERT(plan);
+
+  auto* outVariable = _outVariable;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new IResearchViewNode(
-    plan,
+  auto node = std::make_unique<IResearchViewNode>(
+    *plan,
     _id,
-    _vocbase,
-    _view,
-    outVariable,
+    *_vocbase,
+    *_view,
+    *outVariable,
     const_cast<aql::AstNode*>(_filterCondition),
     decltype(_sortCondition)(_sortCondition)
   );
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(node.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return node.release();
 }
 
 /// @brief the cost of an enumerate view node
 double IResearchViewNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-
-  // For the time being, we assume 100
-  size_t length = 100; // TODO: get a better guess from view
-
-  nrItems = length * incoming;
-  return depCost + static_cast<double>(length) * incoming;
+  // TODO: get a better guess from view
+  return _dependencies.empty() ? 0. : _dependencies[0]->getCost(nrItems);
 }
 
 std::vector<aql::Variable const*> IResearchViewNode::getVariablesUsedHere() const {
@@ -278,26 +314,34 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
     std::unordered_set<std::string> const&
 ) const {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<IResearchView*>(view()->getImplementation());
-#else
-  auto* impl = static_cast<IResearchView*>(view()->getImplementation());
-#endif
-
-  if (!impl) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
-      << "failed to get view implementation while creating IResearchView ExecutionBlock";
-
+  if (ServerState::instance()->isCoordinator()) {
+    // coordinator in a cluster
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
-      "failed to get view implementation while creating IResearchView ExecutionBlock"
+      "IResearchView node is not intended to use on a coordinator"
     );
   }
+
+  if (ServerState::instance()->isDBServer()) {
+    // db server in a cluster
+
+    // FIXME
+    // retrieve master shards from all collections involved
+    // and build up corresponding index reader
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  // single server
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto& view = dynamic_cast<IResearchView const&>(this->view());
+#else
+  auto& view = static_cast<IResearchView const&>(this->view());
+#endif
 
   auto* trx = engine.getQuery()->trx();
 
   if (!trx || !(trx->state())) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to get transaction state while creating IResearchView ExecutionBlock";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -307,11 +351,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto& state = *(trx->state());
-  auto* reader = impl->snapshot(state);
+  auto* reader = view.snapshot(state);
 
   if (!reader) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << impl->name() << "' tid '" << state.id() << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '" << state.id() << "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
@@ -336,9 +380,75 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   return std::make_unique<IResearchViewBlock>(*reader, engine, *this);
 }
 
-NS_END // iresearch
-NS_END // arangodb
+// -----------------------------------------------------------------------------
+// --SECTION--                           ScatterIResearchViewNode implementation
+// -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+IResearchViewScatterNode::IResearchViewScatterNode(
+    aql::ExecutionPlan& plan,
+    size_t id,
+    TRI_vocbase_t& vocbase,
+    LogicalView const& view
+) : ExecutionNode(&plan, id),
+    _vocbase(&vocbase),
+    _view(&view) {
+  TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
+}
+
+IResearchViewScatterNode::IResearchViewScatterNode(
+    aql::ExecutionPlan& plan,
+    arangodb::velocypack::Slice const& base
+) : ExecutionNode(&plan, base),
+    _vocbase(plan.getAst()->query()->vocbase()),
+    //_view(plan.getAst()->query()->collections()->get(base.get("view").copyString())) { // FIXME: where to find a view
+    _view(nullptr) {
+  auto view = _vocbase->lookupView(
+    basics::StringUtils::uint64(base.get("viewId").copyString())
+  );
+
+  // FIXME how to check properly
+  TRI_ASSERT(view && iresearch::DATA_SOURCE_TYPE == view->type());
+  _view = view.get();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<aql::ExecutionBlock> IResearchViewScatterNode::createBlock(
+    aql::ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, aql::ExecutionBlock*> const&,
+    std::unordered_set<std::string> const& includedShards
+) const {
+  if (!ServerState::instance()->isCoordinator()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "IResearchScatterView node is intended to use on a coordinator only"
+    );
+  }
+
+  // FIXME
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+/// @brief toVelocyPack, for ScatterNode
+void IResearchViewScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
+
+  nodes.add("database", VPackValue(_vocbase->name()));
+  nodes.add("view", VPackValue(_view->name()));
+  nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
+
+  // And close it
+  nodes.close();
+}
+
+/// @brief estimateCost
+double IResearchViewScatterNode::estimateCost(size_t& nrItems) const {
+  double const depCost = _dependencies.empty()
+    ? 0. 
+    : _dependencies[0]->getCost(nrItems);
+//  auto shardIds = _collection->shardIds();
+//  size_t nrShards = shardIds->size();
+  return depCost; //+ nrIterms * nrShards;
+}
+
+} // iresearch
+} // arangodb

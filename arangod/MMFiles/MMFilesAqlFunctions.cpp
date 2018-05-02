@@ -146,7 +146,7 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
   auto document = trx->documentCollection(cid);
 
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                   "'%s'", collectionName.c_str());
   }
 
@@ -210,7 +210,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(cname);
   if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "%s",
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "%s",
                                   cname.c_str());
   }
   // add the collection to the query for proper cache handling
@@ -408,10 +408,10 @@ void MMFilesAqlFunctions::registerResources() {
 
   // fulltext functions
   functions->add({"FULLTEXT", ".h,.,.|.", false, true,
-                 false, true, &MMFilesAqlFunctions::Fulltext,
+                 false, &MMFilesAqlFunctions::Fulltext,
                  NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
-                  true, &MMFilesAqlFunctions::Near, NotInCoordinator});
+                  &MMFilesAqlFunctions::Near, NotInCoordinator});
   functions->add({"WITHIN", ".h,.,.,.|.", false, true,
-                  false, true, &MMFilesAqlFunctions::Within, NotInCoordinator});
+                  false, &MMFilesAqlFunctions::Within, NotInCoordinator});
 }

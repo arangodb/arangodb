@@ -175,7 +175,7 @@ public:
 
     do {
       again = false;
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       VPackArrayIterator registry(toVelocityPack().slice());
       for (auto action : registry )
       {

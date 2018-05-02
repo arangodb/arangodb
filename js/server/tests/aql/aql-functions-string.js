@@ -978,7 +978,12 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'the quick brown foxx jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', 'the', 'a', 0 ],
         [ 'a quick brown foxx jumped over a lazy dog', 'the quick brown foxx jumped over the lazy dog', [ 'the' ], [ 'a' ] ],
         [ 'a quick brown foxx jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', [ 'the' ], [ 'a' ], 1 ],
+        [ 'the quick brown foxx jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', 'thisIsNotThere', 'a'],
+        [ 'the quick brown foxx jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', {'thisIsNotThere': 'a'}],
+        [ 'the quick brown foxx jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', ['thisIsNotThere', 'thisIsAlsoNotThere'], ['a', 'b'], 0 ],
         [ 'mötör quick brown mötör jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', [ 'over', 'the', 'foxx' ], 'mötör', 2 ],
+        [ 'apfela', 'rabarbara', ['barbara', 'rabarbar'], ['petra', 'apfel']],
+        [ 'rapetra', 'rabarbara', ['barbara', 'bar'], ['petra', 'foo']],
         [ 'AbCdEF', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' } ],
         [ 'AbcDef', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' }, 2 ],
         [ 'aBcDef', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' }, 0 ],
@@ -999,7 +1004,10 @@ function ahuacatlStringFunctionsTestSuite () {
         for (i = 1; i < n; ++i) {
           args.push(JSON.stringify(value[i]));
         }
-        assertEqual([ expected ], getQueryResults('RETURN SUBSTITUTE(' + args.join(', ') + ')'), value);
+        var nuResults = getQueryResults('RETURN SUBSTITUTE(' + args.join(', ') + ')');
+        var jsResults = getQueryResults('RETURN NOOPT(V8(SUBSTITUTE(' + args.join(', ') + ')))');
+        assertEqual([ expected ], nuResults, value);
+        assertEqual(jsResults, nuResults, value);
       });
     },
 
@@ -1010,6 +1018,8 @@ function ahuacatlStringFunctionsTestSuite () {
     testSubstituteInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SUBSTITUTE()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTITUTE('foo', 'bar', 'baz', 2, 2)`);
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(V8(SUBSTITUTE()))');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN NOOPT(V8(SUBSTITUTE('foo', 'bar', 'baz', 2, 2)))`);
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1040,12 +1050,27 @@ function ahuacatlStringFunctionsTestSuite () {
         [ [ 'this', 'is', 'a', 'test' ], 'this/SEP1/is/SEP2/a/SEP3/test', [ '/SEP1/', '/SEP2/', '/SEP3/' ] ],
         [ [ 'the', 'quick', 'brown', 'foxx' ], 'the quick brown foxx', ' ' ],
         [ [ 'the quick ', ' foxx' ], 'the quick brown foxx', 'brown' ],
-        [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', '' ]
+        [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', '' ],
+        [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', ['', 'ab'] ],
+        [ [ 'the quick', 'brown foxx' ], 'the quick()brown foxx', '()' ],
+        [ [ 'the quick  brown foxx' ], 'the quick  brown foxx', ' {2}' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '?' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '+' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '*' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '^' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '$' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '.' ],
+        [ [ 'the quick7brown foxx' ], 'the quick7brown foxx', '\\d' ],
+        [ [ 'the quick brown foxx' ], "the quick brown foxx", ["[a-f]"] ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', 'u|f' ]
       ];
 
       values.forEach(function (value) {
         var expected = value[0], text = value[1], separator = value[2];
-        assertEqual([ expected ], getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ')'), value);
+        var res = getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ')');
+        var res2 = getQueryResults('RETURN NOOPT(V8(SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ')))');
+        assertEqual([ expected ], res, JSON.stringify(value));
+        assertEqual(res2, res, JSON.stringify(value));
       });
     },
 
@@ -1069,7 +1094,10 @@ function ahuacatlStringFunctionsTestSuite () {
 
       values.forEach(function (value) {
         var expected = value[0], text = value[1], separator = value[2], limit = value[3];
-        assertEqual([ expected ], getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ', ' + JSON.stringify(limit) + ')'));
+        var res = getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ', ' + JSON.stringify(limit) + ')');
+        var res2 = getQueryResults('RETURN NOOPT(V8(SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ', ' + JSON.stringify(limit) + ')))');
+        assertEqual(res2, res, JSON.stringify(value));
+        assertEqual([ expected ], res, JSON.stringify(value));
       });
     },
 

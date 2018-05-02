@@ -8,12 +8,12 @@ Removes a graph from the collection *_graphs*.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
 @RESTQUERYPARAMETERS
 
-@RESTPARAM{dropCollections, boolean, optional}
+@RESTQUERYPARAM{dropCollections,boolean,optional}
 Drop collections of this graph as well.  Collections will only be
 dropped if they are not used in other graphs.
 

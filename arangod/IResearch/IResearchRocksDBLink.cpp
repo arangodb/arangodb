@@ -31,43 +31,14 @@
 #include "VocBase/LogicalView.h"
 
 #include "IResearchRocksDBLink.h"
-
-NS_LOCAL
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a reference to a static VPackSlice of an empty RocksDB index
-///        definition
-////////////////////////////////////////////////////////////////////////////////
-VPackSlice const& emptyParentSlice() {
-  static const struct EmptySlice {
-    VPackBuilder _builder;
-    VPackSlice _slice;
-    EmptySlice() {
-      VPackBuilder fieldsBuilder;
-
-      fieldsBuilder.openArray();
-      fieldsBuilder.close();  // empty array
-      _builder.openObject();
-      _builder.add("fields", fieldsBuilder.slice());  // empty array
-      arangodb::iresearch::IResearchLink::setType(
-          _builder);     // the index type required by Index
-      _builder.close();  // object with just one field required by the Index
-                         // constructor
-      _slice = _builder.slice();
-    }
-  } emptySlice;
-
-  return emptySlice._slice;
-}
-
-NS_END
+#include "IResearchLinkHelper.h"
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
 IResearchRocksDBLink::IResearchRocksDBLink(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection)
-    : RocksDBIndex(iid, collection, emptyParentSlice(),
+    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
                    RocksDBColumnFamily::invalid(), false),
       IResearchLink(iid, collection) {
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -79,12 +50,13 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
 }
 
 /*static*/ IResearchRocksDBLink::ptr IResearchRocksDBLink::make(
-    TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& definition
+    arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
 ) noexcept {
   try {
-    PTR_NAMED(IResearchRocksDBLink, ptr, iid, collection);
+    PTR_NAMED(IResearchRocksDBLink, ptr, id, collection);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto* link =
@@ -97,12 +69,10 @@ IResearchRocksDBLink::~IResearchRocksDBLink() {
     return link && link->init(definition) ? ptr : nullptr;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-        << "caught exception while creating IResearch view RocksDB link '"
-        << iid << "'" << e.what();
+      << "caught exception while creating IResearch view RocksDB link '" << id << "'" << e.what();
   } catch (...) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-        << "caught exception while creating IResearch view RocksDB link '"
-        << iid << "'";
+      << "caught exception while creating IResearch view RocksDB link '" << id << "'";
   }
 
   return nullptr;
@@ -130,8 +100,8 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
 
 void IResearchRocksDBLink::writeRocksWalMarker() {
   RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
-      Index::_collection->vocbase()->id(),
-      Index::_collection->cid(),
+      Index::_collection->vocbase().id(),
+      Index::_collection->id(),
       view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
       Index::_iid);
 

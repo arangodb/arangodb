@@ -237,7 +237,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _checkVersion(false),
       _upgrade(false) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Authentication");
   startsAfter("CacheManager");
   startsAfter("DatabasePath");
@@ -502,7 +501,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
                                                TRI_vocbase_t*& result) {
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(true, name)) {
+  if (!TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(name))) {
     events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
@@ -560,7 +559,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
                                     TRI_vocbase_t*& result) {
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, name)) {
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
@@ -940,7 +939,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (af->isActive()) {
+      if (af->isActive() && af->userManager() != nullptr) {
         auto level = af->userManager()->databaseAuthLevel(username, vocbase->name());
         if (level == auth::Level::NONE) { // hide dbs without access
           continue;
@@ -1107,35 +1106,31 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   return nullptr;
 }
 
-std::string DatabaseFeature::translateCollectionName(std::string const& dbName, std::string const& collectionName) {
-  if (ServerState::instance()->isCoordinator()) {
-    auto unuser(_databasesProtector.use());
-    auto theLists = _databasesLists.load();
-    
-    auto it = theLists->_coordinatorDatabases.find(dbName);
-    if (it == theLists->_coordinatorDatabases.end()) {
-      return std::string();
-    }
-      
-    TRI_vocbase_t* vocbase = (*it).second;
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
+std::string DatabaseFeature::translateCollectionName(
+    std::string const& dbName,
+    std::string const& collectionName
+) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+  auto itr = theLists->_databases.find(dbName);
 
+  if (itr == theLists->_coordinatorDatabases.end()) {
+    return std::string();
+  }
+
+  auto* vocbase = itr->second;
+  TRI_ASSERT(vocbase != nullptr);
+
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
     CollectionNameResolver resolver(vocbase);
+
     return resolver.getCollectionNameCluster(NumberUtils::atoi_zero<TRI_voc_cid_t>(collectionName.data(), collectionName.data() + collectionName.size()));
   } else {
-    auto unuser(_databasesProtector.use());
-    auto theLists = _databasesLists.load();
-    
-    auto it = theLists->_databases.find(dbName);
-    if (it == theLists->_databases.end()) {
-      return std::string();
-    }
-    
-    TRI_vocbase_t* vocbase = (*it).second;
-    TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    return vocbase->collectionName(NumberUtils::atoi_zero<uint64_t>(collectionName.data(), collectionName.data() + collectionName.size()));
+    auto collection = vocbase->lookupCollection(collectionName);
+
+    return collection ? collection->name() : std::string();
   }
 }
 
@@ -1167,6 +1162,12 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
 
 void DatabaseFeature::updateContexts() {
   TRI_ASSERT(_vocbase != nullptr);
+  
+  V8DealerFeature* dealer =
+  ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  if (!dealer->isEnabled()) {
+    return;
+  }
 
   useSystemDatabase();
 
@@ -1174,9 +1175,6 @@ void DatabaseFeature::updateContexts() {
   TRI_ASSERT(queryRegistry != nullptr);
 
   auto vocbase = _vocbase;
-
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   dealer->defineContextUpdate(
       [queryRegistry, vocbase](v8::Isolate* isolate,

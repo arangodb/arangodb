@@ -32,7 +32,6 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -72,6 +71,7 @@
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -104,7 +104,6 @@ GeneralServerFeature::GeneralServerFeature(
       _allowMethodOverride(false),
       _proxyCheck(true) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Agency");
   startsAfter("Authentication");
   startsAfter("CheckVersion");
@@ -232,7 +231,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   }
 
   // the vocbase context is now responsible for releasing the vocbase
-  request->setRequestContext(VocbaseContext::create(request, vocbase), true);
+  request->setRequestContext(VocbaseContext::create(request, *vocbase), true);
 
   // the "true" means the request is the owner of the context
   return true;
@@ -259,12 +258,11 @@ void GeneralServerFeature::start() {
     server->startListening();
   }
 
-  // populate the authentication cache. otherwise no one can access the new
-  // database
-  auto authentication = AuthenticationFeature::instance();
-  TRI_ASSERT(authentication != nullptr);
-  if (authentication->isActive()) {
-    authentication->userManager()->outdate();
+  // initially populate the authentication cache. otherwise no one
+  // can access the new database
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->outdate();
   }
 }
 
@@ -335,6 +333,11 @@ void GeneralServerFeature::defineHandlers() {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto traverserEngineRegistry =
       TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+  if (_combinedRegistries == nullptr) {
+    _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   // ...........................................................................
   // /_msg
@@ -351,8 +354,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
-
-
+  
+  
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
       RestHandlerCreator<RestCollectionHandler>::createNoData);
@@ -389,14 +392,17 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
-          aql::QueryRegistry*>,
-      queryRegistry);
+          aql::QueryRegistry*>, queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH,
       RestHandlerCreator<RestSimpleQueryHandler>::createData<
-          aql::QueryRegistry*>,
-      queryRegistry);
+          aql::QueryRegistry*>, queryRegistry);
+  
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE,
+      RestHandlerCreator<RestSimpleQueryHandler>::createData<
+      aql::QueryRegistry*>, queryRegistry);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH,
@@ -420,18 +426,24 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
 
+  // This is the only handler were we need to inject
+  // more than one data object. So we created the combinedRegistries
+  // for it.
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+      RestHandlerCreator<aql::RestAqlHandler>::createData<
+          std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>*>,
+          _combinedRegistries.get());
 
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/aqlfunction",
-      RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addPrefixHandler(
+        "/_api/aqlfunction",
+        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(
       "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
@@ -445,7 +457,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
-
+  
   _handlerFactory->addPrefixHandler(
       "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
@@ -490,9 +502,11 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
-
-  _handlerFactory->addHandler(
+  
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addHandler(
       "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _handlerFactory->addHandler(
@@ -504,8 +518,8 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
 
   _handlerFactory->addHandler(
-      "/_admin/actions", RestHandlerCreator<MaintenanceRestHandler>::createNoData);
-
+      "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
+  
   _handlerFactory->addPrefixHandler(
       "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,
@@ -519,9 +533,11 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_admin/routing",
-      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addPrefixHandler(
+        "/_admin/routing",
+        RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
@@ -546,11 +562,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
     "/_admin/server",
     RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
-
+  
   _handlerFactory->addHandler(
     "/_admin/statistics",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
-
+  
   _handlerFactory->addHandler(
     "/_admin/statistics-description",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
@@ -558,9 +574,9 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // actions defined in v8
   // ...........................................................................
-
+  
   _handlerFactory->addPrefixHandler(
-      "/", RestHandlerCreator<RestActionHandler>::createNoData);
+     "/", RestHandlerCreator<RestActionHandler>::createNoData);
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

@@ -39,7 +39,6 @@ struct Function {
   Function(std::string const& name, 
            char const* arguments, bool isDeterministic,
            bool canThrow, bool canRunOnDBServer,
-           bool canPassArgumentsByReference,
            FunctionImplementation implementation = nullptr,
            ExecutionCondition = nullptr);
 
@@ -97,10 +96,6 @@ struct Function {
   /// @brief whether or not the function may be executed on DB servers
   bool const canRunOnDBServer;
 
-  /// @brief whether or not the function can get its arguments passed by
-  /// reference
-  bool const canPassArgumentsByReference;
-
   /// @brief minimum number of required arguments
   size_t minRequiredArguments;
 
@@ -112,8 +107,7 @@ struct Function {
 
   /// @brief condition under which the C++ implementation of the function is
   /// executed (if returns false, the function will be executed as its
-  /// JavaScript
-  /// variant)
+  /// JavaScript variant)
   ExecutionCondition condition;
 
   /// @brief function argument conversion information

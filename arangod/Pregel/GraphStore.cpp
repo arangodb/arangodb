@@ -69,7 +69,7 @@ static uint64_t TRI_totalSystemMemory() {
 }
 
 template <typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
+GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb),
       _graphFormat(graphFormat),
       _localVerticeCount(0),
@@ -336,13 +336,16 @@ std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
   transaction::Options transactionOptions;
   transactionOptions.waitForSync = false;
   transactionOptions.allowImplicitCollections = true;
-  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
+  auto ctx =
+    transaction::StandaloneContext::Create(&(_vocbaseGuard.database()));
   std::unique_ptr<transaction::Methods> trx(
       new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
   Result res = trx->begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   return trx;
 }
 
@@ -504,27 +507,39 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     if (it->shard() != currentShard) {
       if (trx) {
         res = trx->finish(res);
+
         if (!res.ok()) {
           THROW_ARANGO_EXCEPTION(res);
         }
       }
+
       currentShard = it->shard();
+
       ShardID const& shard = globalShards[currentShard];
       transaction::Options transactionOptions;
+
       transactionOptions.waitForSync = false;
       transactionOptions.allowImplicitCollections = false;
       trx.reset(new transaction::UserTransaction(
-          transaction::StandaloneContext::Create(_vocbaseGuard.database()), {},
-          {shard}, {}, transactionOptions));
+        transaction::StandaloneContext::Create(&(_vocbaseGuard.database())),
+        {},
+        {shard},
+        {},
+        transactionOptions
+      ));
       res = trx->begin();
+
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
     }
 
     transaction::BuilderLeaser b(trx.get());
+
     b->openArray();
+
     size_t buffer = 0;
+
     while (it != it.end() && it->shard() == currentShard && buffer < 1000) {
       // This loop will fill a buffer of vertices until we run into a new
       // collection

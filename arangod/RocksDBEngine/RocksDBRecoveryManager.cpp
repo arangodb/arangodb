@@ -72,7 +72,6 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
       _db(nullptr),
       _inRecovery(true) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("RocksDBEngine");
   startsAfter("StorageEngine");
@@ -218,19 +217,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
       return nullptr;
     }
-    
+
     DatabaseFeature* df = DatabaseFeature::DATABASE;
     TRI_vocbase_t* vb = df->useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
     TRI_DEFER(vb->release());
-    
-    LogicalCollection* coll = vb->lookupCollection(std::get<1>(triple));
+
+    auto coll = vb->lookupCollection(std::get<1>(triple));
+
     if (coll == nullptr) {
       return nullptr;
     }
-    
+
     std::shared_ptr<Index> index = coll->lookupIndex(std::get<2>(triple));
     if (index == nullptr) {
       return nullptr;

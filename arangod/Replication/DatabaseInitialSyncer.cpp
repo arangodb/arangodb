@@ -62,14 +62,20 @@ using namespace arangodb::rest;
 
 size_t const DatabaseInitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 
-DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
-                                             ReplicationApplierConfiguration const& configuration)
-    : InitialSyncer(configuration),
-      _vocbase(vocbase),
-      _hasFlushed(false) {
-  _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
+DatabaseInitialSyncer::DatabaseInitialSyncer(
+    TRI_vocbase_t& vocbase,
+    ReplicationApplierConfiguration const& configuration
+): InitialSyncer(configuration),
+   _vocbase(&vocbase),
+   _hasFlushed(false) {
+  _vocbases.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(vocbase.name()),
+    std::forward_as_tuple(vocbase)
+  );
+
   if (configuration._database.empty()) {
-    _databaseName = vocbase->name();
+    _databaseName = vocbase.name();
   }
 }
 
@@ -428,21 +434,21 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
           return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("timed out waiting for response from master at ") + _masterInfo._endpoint);
         }
 
-        double sleepTime;
+        std::chrono::milliseconds sleepTime;
         if (waitTime < 5.0) {
-          sleepTime = 0.25;
+          sleepTime = std::chrono::milliseconds(250);
         } else if (waitTime < 20.0) {
-          sleepTime = 0.5;
+          sleepTime = std::chrono::milliseconds(500);
         } else if (waitTime < 60.0) {
-          sleepTime = 1.0;
+          sleepTime = std::chrono::seconds(1);
         } else {
-          sleepTime = 2.0;
+          sleepTime = std::chrono::seconds(2);
         }
 
         if (isAborted()) {
           return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
         }
-        this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+        std::this_thread::sleep_for(sleepTime);
       }
       // fallthrough here in case everything went well
     }
@@ -485,7 +491,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     }
     
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(vocbase()), coll->cid(),
+        transaction::StandaloneContext::Create(vocbase()), coll->id(),
         AccessMode::Type::EXCLUSIVE);
 
     trx.addHint(
@@ -497,7 +503,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
       return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
 
-    trx.pinData(coll->cid());  // will throw when it fails
+    trx.pinData(coll->id()); // will throw when it fails
 
     res = applyCollectionDump(trx, coll, response.get(), markersProcessed);
     if (res.fail()) {
@@ -607,21 +613,21 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
       return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("timed out waiting for response from master at ") + _masterInfo._endpoint);
     }
 
-    double sleepTime;
+    std::chrono::milliseconds sleepTime;
     if (waitTime < 5.0) {
-      sleepTime = 0.25;
+      sleepTime = std::chrono::milliseconds(250);
     } else if (waitTime < 20.0) {
-      sleepTime = 0.5;
+      sleepTime = std::chrono::milliseconds(500);
     } else if (waitTime < 60.0) {
-      sleepTime = 1.0;
+      sleepTime = std::chrono::seconds(1);
     } else {
-      sleepTime = 2.0;
+      sleepTime = std::chrono::seconds(2);
     }
 
     if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
-    this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+    std::this_thread::sleep_for(sleepTime);
   }
   
   if (hasFailed(response.get())) {
@@ -673,7 +679,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(vocbase()), coll->cid(),
+        transaction::StandaloneContext::Create(vocbase()), coll->id(),
         AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
@@ -713,7 +719,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
 /// provided
 Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                                VPackSlice const& slice) {
-  arangodb::CollectionGuard guard(vocbase(), col->cid());
+  arangodb::CollectionGuard guard(vocbase(), col->id());
   bool doSync =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database")
@@ -725,7 +731,7 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 /// @brief determine the number of documents in a collection
 int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase()), col->cid(),
+      transaction::StandaloneContext::Create(vocbase()), col->id(),
       AccessMode::Type::READ);
 
   Result res = trx.begin();
@@ -798,11 +804,11 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   // -------------------------------------------------------------------------------------
 
   if (phase == PHASE_DROP_CREATE) {
-    arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
+    auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
       // not found...
-      col = vocbase()->lookupCollection(masterName);
+      col = vocbase()->lookupCollection(masterName).get();
 
       if (col != nullptr && (col->name() != masterName ||
                              
@@ -811,7 +817,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         // in this case we must drop it because we will run into duplicate
         // name conflicts otherwise
         try {
-          int res = vocbase()->dropCollection(col, true, -1.0);
+          auto res =
+            vocbase()->dropCollection(col->id(), true, -1.0).errorNumber();
+
           if (res == TRI_ERROR_NO_ERROR) {
             col = nullptr;
           }
@@ -838,7 +846,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             setProgress("truncating " + collectionMsg);
 
             SingleCollectionTransaction trx(
-                transaction::StandaloneContext::Create(vocbase()), col->cid(),
+                transaction::StandaloneContext::Create(vocbase()), col->id(),
                 AccessMode::Type::EXCLUSIVE);
 
             Result res = trx.begin();
@@ -870,7 +878,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
             setProgress("dropping " + collectionMsg);
 
-            int res = vocbase()->dropCollection(col, true, -1.0);
+            auto res =
+              vocbase()->dropCollection(col->id(), true, -1.0).errorNumber();
 
             if (res != TRI_ERROR_NO_ERROR) {
               return Result(res, std::string("unable to drop ") + collectionMsg + ": " + TRI_errno_string(res));
@@ -918,16 +927,16 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const progress = "dumping data for " + collectionMsg;
     setProgress(progress);
 
-    arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
+    auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") +
+      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::string("cannot dump: ") +
                     collectionMsg + " not found on slave. Collection info " + parameters.toJson());
     }
 
     Result res;
-    
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : StringUtils::itoa(masterCid);
+
     if (incremental && getSize(col) > 0) {
       res = handleCollectionSync(col, masterColl, _masterInfo._lastLogTick);
     } else {
@@ -956,7 +965,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
       try {
         SingleCollectionTransaction trx(
-            transaction::StandaloneContext::Create(vocbase()), col->cid(),
+            transaction::StandaloneContext::Create(vocbase()), col->id(),
             AccessMode::Type::EXCLUSIVE);
 
         res = trx.begin();
@@ -965,7 +974,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
           return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
         }
 
-        trx.pinData(col->cid());  // will throw when it fails
+        trx.pinData(col->id()); // will throw when it fails
 
         LogicalCollection* document = trx.documentCollection();
         TRI_ASSERT(document != nullptr);

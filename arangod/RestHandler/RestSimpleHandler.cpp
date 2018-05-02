@@ -59,15 +59,12 @@ RestStatus RestSimpleHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::PUT) {
-    bool parsingSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parsingSuccess);
-
+    
+    bool parsingSuccess = false;
+    VPackSlice const body = this->parseVPackBody(parsingSuccess);
     if (!parsingSuccess) {
       return RestStatus::DONE;
     }
-
-    VPackSlice body = parsedBody.get()->slice();
 
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
@@ -167,7 +164,8 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       if (!collectionName.empty() && collectionName[0] >= '0' &&
           collectionName[0] <= '9') {
         // If we have a numeric name we probably have to translate it.
-        CollectionNameResolver resolver(_vocbase);
+        CollectionNameResolver resolver(&_vocbase);
+
         collectionName = resolver.getCollectionName(collectionName);
       }
     }
@@ -220,8 +218,14 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       }
     }
 
-    arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(
+      false,
+      _vocbase,
+      arangodb::aql::QueryString(aql),
+      bindVars,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
@@ -241,18 +245,15 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     {
       size_t ignored = 0;
       size_t removed = 0;
-      if (queryResult.stats != nullptr) {
-        VPackSlice stats = queryResult.stats->slice();
-
+      if (queryResult.extra) {
+        VPackSlice stats = queryResult.extra->slice().get("stats");
         if (!stats.isNone()) {
           TRI_ASSERT(stats.isObject());
           VPackSlice found = stats.get("writesIgnored");
           if (found.isNumber()) {
             ignored = found.getNumericValue<size_t>();
           }
-
-          found = stats.get("writesExecuted");
-          if (found.isNumber()) {
+          if ((found = stats.get("writesExecuted")).isNumber()) {
             removed = found.getNumericValue<size_t>();
           }
         }
@@ -293,15 +294,17 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     std::string collectionName;
     {
       VPackSlice const value = slice.get("collection");
+
       if (!value.isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                       "expecting string for <collection>");
         return;
       }
+
       collectionName = value.copyString();
 
       if (!collectionName.empty()) {
-        auto const* col = _vocbase->lookupCollection(collectionName);
+        auto col = _vocbase.lookupCollection(collectionName);
 
         if (col != nullptr && collectionName != col->name()) {
           // user has probably passed in a numeric collection id.
@@ -329,8 +332,14 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     std::string const aql(
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-    arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(
+      false,
+      _vocbase,
+      aql::QueryString(aql),
+      bindVars,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);

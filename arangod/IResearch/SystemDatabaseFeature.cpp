@@ -22,14 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationServerHelper.h"
-
-#include "Logger/Logger.h"
+#include "IResearchCommon.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"
 
 #include "SystemDatabaseFeature.h"
-#include "IResearchFeature.h"
 
 namespace {
   static std::string const FEATURE_NAME("SystemDatabase");
@@ -65,7 +63,8 @@ void SystemDatabaseFeature::start() {
     return;
   }
 
-  LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure to find feature 'Database' while starting SystemDatabaseFeature";
+  LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    << "failure to find feature 'Database' while starting SystemDatabaseFeature";
   FATAL_ERROR_EXIT();
 }
 

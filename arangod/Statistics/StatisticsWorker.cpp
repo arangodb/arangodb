@@ -126,10 +126,18 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(garbageCollectionQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(garbageCollectionQuery),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
   auto queryResult = query.execute(_queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
@@ -244,13 +252,23 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
   if (!_clusterId.empty()) {
     bindVars->add("clusterId", VPackValue(_clusterId));
   }
+
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, 
-                             arangodb::aql::QueryString(_clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(
+      _clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery
+    ),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
   auto queryResult = query.execute(_queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
@@ -277,9 +295,17 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
-  arangodb::aql::Query query(false, vocbase, 
-                             arangodb::aql::QueryString(_clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(
+      _clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery
+    ),
+    _bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
+  );
 
   auto queryResult = query.execute(_queryRegistry);
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -552,13 +578,15 @@ void StatisticsWorker::computePerSeconds(VPackBuilder& result,
   result.add("physicalMemory", currentServer.get("physicalMemory"));
   result.add("uptime", currentServer.get("uptime"));
   VPackSlice currentV8Context = currentServer.get("v8Context");
-  result.add("v8Context", VPackValue(VPackValueType::Object));
-  result.add("availablePerSecond", currentV8Context.get("available"));
-  result.add("busyPerSecond", currentV8Context.get("busy"));
-  result.add("dirtyPerSecond", currentV8Context.get("dirty"));
-  result.add("freePerSecond", currentV8Context.get("free"));
-  result.add("maxPerSecond", currentV8Context.get("max"));
-  result.close();
+  if (currentV8Context.isObject()) {
+    result.add("v8Context", VPackValue(VPackValueType::Object));
+    result.add("availablePerSecond", currentV8Context.get("available"));
+    result.add("busyPerSecond", currentV8Context.get("busy"));
+    result.add("dirtyPerSecond", currentV8Context.get("dirty"));
+    result.add("freePerSecond", currentV8Context.get("free"));
+    result.add("maxPerSecond", currentV8Context.get("max"));
+    result.close();
+  }
 
   VPackSlice currentThreads = currentServer.get("threads");
   result.add("threads", VPackValue(VPackValueType::Object));
@@ -787,12 +815,10 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   V8DealerFeature* dealer =
       application_features::ApplicationServer::getFeature<V8DealerFeature>(
           "V8Dealer");
-  auto v8Counters = dealer->getCurrentContextNumbers();
 
   auto threadCounters = SchedulerFeature::SCHEDULER->getCounters();
 
   builder.openObject();
-
   if (!_clusterId.empty()) {
     builder.add("clusterId", VPackValue(_clusterId));
   }
@@ -872,13 +898,16 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
-  builder.add("v8Context", VPackValue(VPackValueType::Object));
-  builder.add("available", VPackValue(v8Counters.available));
-  builder.add("busy", VPackValue(v8Counters.busy));
-  builder.add("dirty", VPackValue(v8Counters.dirty));
-  builder.add("free", VPackValue(v8Counters.free));
-  builder.add("max", VPackValue(v8Counters.max));
-  builder.close();
+  if (dealer->isEnabled()) {
+    auto v8Counters = dealer->getCurrentContextNumbers();
+    builder.add("v8Context", VPackValue(VPackValueType::Object));
+    builder.add("available", VPackValue(v8Counters.available));
+    builder.add("busy", VPackValue(v8Counters.busy));
+    builder.add("dirty", VPackValue(v8Counters.dirty));
+    builder.add("free", VPackValue(v8Counters.free));
+    builder.add("max", VPackValue(v8Counters.max));
+    builder.close();
+  }
 
   builder.add("threads", VPackValue(VPackValueType::Object));
   builder.add("running",

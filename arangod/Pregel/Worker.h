@@ -35,13 +35,16 @@
 #include "Pregel/WorkerContext.h"
 
 struct TRI_vocbase_t;
+
 namespace arangodb {
+
 class RestPregelHandler;
+
 namespace pregel {
 
 class IWorker {
  public:
-  virtual ~IWorker(){};
+  virtual ~IWorker() {}
   virtual void setupWorker() = 0;
   virtual void prepareGlobalStep(VPackSlice const& data,
                                  VPackBuilder& result) = 0;
@@ -146,8 +149,11 @@ class Worker : public IWorker {
                                   std::function<void(VPackSlice slice)> handle);
 
  public:
-  Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
-         VPackSlice params);
+  Worker(
+    TRI_vocbase_t& vocbase,
+    Algorithm<V, E, M>* algorithm,
+    VPackSlice params
+  );
   ~Worker();
 
   // ====== called by rest handler =====
@@ -165,6 +171,8 @@ class Worker : public IWorker {
 
   void aqlResult(VPackBuilder*) const override;
 };
+
 }
 }
+
 #endif

@@ -357,6 +357,19 @@ directory as argument.
 /tmp/vocbase
 ```
 
+### Database directory state precondition
+
+`--database.require-directory-state state`
+  
+Using this option it is possible to require the database directory to be
+in a specific state on startup. the options for this value are:
+ 
+- non-existing: database directory must not exist
+- existing: database directory must exist
+- empty: database directory must exist but be empty
+- populated: database directory must exist and contain specific files already
+- any: any directory state allowed
+
 
 ### Journal size
 @startDocuBlock databaseMaximalJournalSize
@@ -587,3 +600,17 @@ might change in the future if a different version of V8 is being used in
 ArangoDB. Not all options offered by V8 might be sensible to use in the context
 of ArangoDB. Use the specific options only if you are sure that they are not
 harmful for the regular database operation.
+
+
+#### Enable or Disable V8 JavaScript Engine entirely
+
+```
+--javascript.enabled bool
+```
+
+In certain types of ArangoDB instances you can now completely disable the V8 JavaScript engine. Be aware that this is
+an **highly experimental** feature and it is to be expected that certain functionality (e.g. some API endpoints, the WebUI, 
+some AQL functions etc) will be missing or severly broken. Nevertheless you may whish to reduce the footprint of ArangoDB by disabling V8.
+
+This option is expected to **only** work reliably on a _Single-Server_, _Agency_ or _Active-Failover_ setup. Do not try to use
+this feature on a _Coordinator_, or _DBServer_

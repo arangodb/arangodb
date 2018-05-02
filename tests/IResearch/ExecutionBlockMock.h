@@ -57,7 +57,7 @@ class ExecutionNodeMock final : public arangodb::aql::ExecutionNode {
     arangodb::aql::ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, arangodb::aql::ExecutionBlock*> const& cache,
     std::unordered_set<std::string> const& includedShards
-  ) const;
+  ) const override;
 
   /// @brief clone execution Node recursively, this makes the class abstract
   virtual ExecutionNode* clone(
@@ -94,7 +94,6 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   ) override;
 
   arangodb::aql::AqlItemBlock* getSome(
-    size_t atLeast,
     size_t atMost
   ) override;
 
@@ -102,7 +101,6 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   // will only return less than atLeast if there aren't atLeast many
   // things to skip overall.
   size_t skipSome(
-    size_t atLeast,
     size_t atMost
   ) override;
 

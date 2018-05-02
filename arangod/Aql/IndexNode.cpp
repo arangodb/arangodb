@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/Query.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
@@ -47,7 +48,9 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         _collection(collection),
         _indexes(indexes),
         _condition(condition),
-        _reverse(reverse) {
+        _reverse(reverse),
+        _needsGatherNodeSort(false),
+        _restrictedTo("") {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_condition != nullptr);
@@ -62,16 +65,22 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
           base.get("collection").copyString())),
       _indexes(),
       _condition(nullptr),
-      _reverse(base.get("reverse").getBoolean()) {
+      _reverse(base.get("reverse").getBoolean()),
+      _needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)),
+      _restrictedTo("") {
 
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
+  VPackSlice restrictedTo = base.get("restrictedTo");
+  if (restrictedTo.isString()) {
+    _restrictedTo = restrictedTo.copyString();
+  }
 
   if (_collection == nullptr) {
     std::string msg("collection '");
     msg.append(base.get("collection").copyString());
     msg.append("' not found");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
   }
 
   VPackSlice indexes = base.get("indexes");
@@ -107,7 +116,10 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
-  
+  if (!_restrictedTo.empty()) {
+    nodes.add("restrictedTo", VPackValue(_restrictedTo));
+  }
+
   // add outvariable and projection
   DocumentProducingNode::toVelocyPack(nodes);
   
@@ -121,6 +133,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add(VPackValue("condition"));
   _condition->toVelocyPack(nodes, verbose);
   nodes.add("reverse", VPackValue(_reverse));
+  nodes.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
 
   // And close it:
   nodes.close();
@@ -145,6 +158,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
                          _indexes, _condition->clone(), _reverse);
+
+  c->needsGatherNodeSort(_needsGatherNodeSort);
 
   cloneHelper(c, withDependencies, withProperties);
 

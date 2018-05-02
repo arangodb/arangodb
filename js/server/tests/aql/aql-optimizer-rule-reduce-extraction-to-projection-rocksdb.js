@@ -50,7 +50,7 @@ function optimizerRuleTestSuite () {
 
     setUp : function () {
       db._drop(cn);
-      c = db._create(cn);
+      c = db._create(cn, { numberOfShards: 4 });
 
       for (var i = 0; i < 1000; ++i) {
         c.insert({ value1: i, value2: "test" + i });

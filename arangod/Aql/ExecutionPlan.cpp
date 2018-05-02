@@ -59,7 +59,26 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-static uint64_t checkTraversalDepthValue(AstNode const* node) {
+namespace {
+   
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+/// @brief validate the counters of the plan
+struct NodeCounter final : public WalkerWorker<ExecutionNode> {
+  std::array<uint32_t, ExecutionNode::MaxNodeTypeValue + 1> counts;
+
+  NodeCounter() : counts{} {}
+
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+    return true;
+  }
+
+  void after(ExecutionNode* en) override final {
+    counts[en->getType()]++;
+  }
+};
+#endif
+
+uint64_t checkTraversalDepthValue(AstNode const* node) {
   if (!node->isNumericValue()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
                                    "invalid traversal depth");
@@ -81,7 +100,7 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
   return static_cast<uint64_t>(v);
 }
 
-static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
+std::unique_ptr<graph::BaseOptions> createTraversalOptions(
     aql::Query* query, AstNode const* direction,
     AstNode const* optionsNode) {
   auto options = std::make_unique<traverser::TraverserOptions>(query);
@@ -161,7 +180,7 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
   return ret;
 }
 
-static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
+std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
     arangodb::aql::Query* query, AstNode const* node) {
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
 
@@ -191,6 +210,8 @@ static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
   return ret;
 }
 
+} // namespace
+
 /// @brief create the plan
 ExecutionPlan::ExecutionPlan(Ast* ast)
     : _ids(),
@@ -200,10 +221,30 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries() {}
+      _subqueries(),
+      _typeCounts{} {}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_root != nullptr) {
+    try {
+      // count the actual number of nodes in the plan
+      ::NodeCounter counter;
+      _root->walk(counter);
+
+        
+      // and compare it to the number of nodes we have in our counters array
+      size_t j = 0;
+      for (auto const& it : _typeCounts) {
+        TRI_ASSERT(counter.counts[j++] == it);
+      }
+    } catch (...) {
+      // should not happen...
+    }
+  }
+#endif
+
   for (auto& x : _ids) {
     delete x.second;
   }
@@ -231,10 +272,20 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   return plan.release();
 }
+  
+/// @brief whether or not the plan contains at least one node of this type
+bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
+  TRI_ASSERT(_varUsageComputed);
+  return _typeCounts[type] > 0;
+}
+
+/// @brief increase the node counter for the type
+void ExecutionPlan::increaseCounter(ExecutionNode::NodeType type) noexcept {
+  ++_typeCounts[type];
+}
 
 /// @brief process the list of collections in a VelocyPack
-void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast,
-                                                 VPackSlice const slice) {
+void ExecutionPlan::getCollectionsFromVelocyPack(Ast* ast, VPackSlice const slice) {
   TRI_ASSERT(ast != nullptr);
 
   VPackSlice collectionsSlice = slice.get("collections");
@@ -263,7 +314,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromVelocyPack(
 
   auto plan = std::make_unique<ExecutionPlan>(ast);
   plan->_root = plan->fromSlice(slice);
-  plan->_varUsageComputed = true;
+  plan->setVarUsageComputed();
 
   return plan.release();
 }
@@ -276,10 +327,6 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   plan->_nextId = _nextId;
   plan->_appliedRules = _appliedRules;
   plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
-
-  // plan->findVarUsage();
-  // Let's not do it here, because supposedly the plan is modified as
-  // the very next thing anyway!
 
   return plan.release();
 }
@@ -387,7 +434,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
   // (that are of type NODE_TYPE_COLLECTION) with their string equivalents
   // for example, this will turn `WITHIN(collection, ...)` into
   // `WITHIN("collection", ...)`
-  auto visitor = [this, &containsCollection](AstNode* node, void*) {
+  auto visitor = [this, &containsCollection](AstNode* node) {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
@@ -414,13 +461,13 @@ ExecutionNode* ExecutionPlan::createCalculation(
   };
 
   // replace NODE_TYPE_COLLECTION function call arguments in the expression
-  auto node = Ast::traverseAndModify(const_cast<AstNode*>(expression), visitor, nullptr);
+  auto node = Ast::traverseAndModify(const_cast<AstNode*>(expression), visitor);
 
   if (containsCollection) {
     // we found at least one occurence of NODE_TYPE_COLLECTION
     // now replace them with proper (FOR doc IN collection RETURN doc) 
     // subqueries
-    auto visitor = [this, &previous](AstNode* node, void*) {
+    auto visitor = [this, &previous](AstNode* node) {
       if (node->type == NODE_TYPE_COLLECTION) {
         // create an on-the-fly subquery for a full collection access
         AstNode* rootNode = _ast->createNodeSubquery();
@@ -454,7 +501,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
     };
 
     // replace remaining NODE_TYPE_COLLECTION occurrences in the expression 
-    node = Ast::traverseAndModify(node, visitor, nullptr);
+    node = Ast::traverseAndModify(node, visitor);
   }
 
   if (!isDistinct && node->type == NODE_TYPE_REFERENCE) {
@@ -679,6 +726,16 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
   return options;
 }
 
+/// @brief register a node with the plan
+ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode>&& node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
+
+  _ids.emplace(node->id(), node.get()); // take ownership
+  return node.release();
+}
+
 /// @brief register a node with the plan, will delete node if addition fails
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
@@ -691,6 +748,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
     delete node;
     throw;
   }
+
   return node;
 }
 
@@ -763,7 +821,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 
     en = registerNode(
       new iresearch::IResearchViewNode(
-        this, nextId(), vocbase, view, v, nullptr, {}
+        *this, nextId(), *vocbase, *view, *v, nullptr, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
@@ -817,7 +875,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  auto options = CreateTraversalOptions(getAst()->query(), direction,
+  auto options = createTraversalOptions(getAst()->query(), direction,
                                         node->getMember(3));
 
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
@@ -827,7 +885,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
 
   // First create the node
   auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),
-                                    direction, start, graph, options);
+                                    direction, start, graph, std::move(options));
 
   auto variable = node->getMember(4);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -899,12 +957,12 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
       parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  auto options = CreateShortestPathOptions(getAst()->query(), node->getMember(4));
+  auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
                                      direction, start, target,
-                                     graph, options);
+                                     graph, std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -1751,78 +1809,40 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
                                     ExecutionNode::NodeType type,
                                     bool enterSubqueries) {
+  // consult our nodes-of-type counters array
+  if (!contains(type)) {
+    // node type not present in plan, do nothing
+    return;
+  }
+
   NodeFinder<ExecutionNode::NodeType> finder(type, result, enterSubqueries);
-  root()->walk(&finder);
+  root()->walk(finder);
 }
 
 /// @brief find nodes of a certain types
 void ExecutionPlan::findNodesOfType(
     SmallVector<ExecutionNode*>& result,
     std::vector<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
-  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result,
-                                                          enterSubqueries);
-  root()->walk(&finder);
+ 
+  // check if any of the node types is actually present in the plan 
+  for (auto const& type : types) {
+    if (contains(type)) {
+      // found a node type that is in the plan
+      NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result,
+                                                              enterSubqueries);
+      root()->walk(finder);
+      // abort, because we were lookig for all nodes at the same type
+      return;
+    }
+  }
 }
 
 /// @brief find all end nodes in a plan
 void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
                                  bool enterSubqueries) const {
   EndNodeFinder finder(result, enterSubqueries);
-  root()->walk(&finder);
+  root()->walk(finder);
 }
-
-/// @brief check linkage of execution plan
-#if 0
-class LinkChecker : public WalkerWorker<ExecutionNode> {
-
-  public:
-    LinkChecker () {
-    }
-
-    bool before (ExecutionNode* en) {
-      auto deps = en->getDependencies();
-      for (auto x : deps) {
-        auto parents = x->getParents();
-        bool ok = false;
-        for (auto it = parents.begin(); it != parents.end(); ++it) {
-          if (*it == en) {
-            ok = true;
-            break;
-          }
-        }
-        if (! ok) {
-          std::cout << "Found dependency which does not have us as a parent!"
-                    << std::endl;
-        }
-      }
-      auto parents = en->getParents();
-      if (parents.size() > 1) {
-        std::cout << "Found a node with more than one parent!" << std::endl;
-      }
-      for (auto x : parents) {
-        auto deps = x->getDependencies();
-        bool ok = false;
-        for (auto it = deps.begin(); it != deps.end(); ++it) {
-          if (*it == en) {
-            ok = true;
-            break;
-          }
-        }
-        if (! ok) {
-          std::cout << "Found parent which does not have us as a dependency!"
-                    << std::endl;
-        }
-      }
-      return false;
-    }
-};
-
-void ExecutionPlan::checkLinkage () {
-  LinkChecker checker;
-  root()->walk(&checker);
-}
-
-#endif
 
 /// @brief helper struct for findVarUsage
 struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
@@ -1849,6 +1869,9 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* en) override final {
+    // count the type of node found
+    en->plan()->increaseCounter(en->getType());
+     
     en->invalidateVarUsage();
     en->setVarsUsedLater(_usedLater);
     // Add variables used here to _usedLater:
@@ -1872,7 +1895,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
     VarUsageFinder subfinder(_varSetBy);
     subfinder._valid = _valid;  // need a copy for the subquery!
-    sub->walk(&subfinder);
+    sub->walk(subfinder);
 
     // we've fully processed the subquery
     return false;
@@ -1880,13 +1903,18 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// @brief determine and set _varsUsedLater in all nodes
+/// as a side effect, count the different types of nodes in the plan
 void ExecutionPlan::findVarUsage() {
+  // reset all counters
+  for (auto& counter : _typeCounts) {
+    counter = 0;
+  }
+
   _varSetBy.clear();
   ::VarUsageFinder finder(&_varSetBy);
-  root()->walk(&finder);
-  // _varSetBy = *finder._varSetBy;
+  root()->walk(finder);
 
-  _varUsageComputed = true;
+  setVarUsageComputed();
 }
 
 /// @brief determine if the above are already set
@@ -1939,7 +1967,7 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
     node->removeDependency(x);
   }
 
-  _varUsageComputed = false;
+  clearVarUsageComputed();
 }
 
 /// @brief replaceNode, note that <newNode> must be registered with the plan
@@ -1970,7 +1998,7 @@ void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
           TRI_ERROR_INTERNAL, "Could not replace dependencies of an old node");
     }
   }
-  _varUsageComputed = false;
+  clearVarUsageComputed();
 }
 
 /// @brief insert <newNode> as a new (the first!) dependency of
@@ -1984,7 +2012,7 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode->getDependencies().size() == 1);
   TRI_ASSERT(newNode != nullptr);
-
+  
   auto oldDeps = oldNode->getDependencies();  // Intentional copy
   TRI_ASSERT(!oldDeps.empty());
 
@@ -1996,7 +2024,7 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   newNode->removeDependencies();
   TRI_ASSERT(oldDeps[0] != nullptr);
   newNode->addDependency(oldDeps[0]);
-  _varUsageComputed = false;
+  clearVarUsageComputed();
 }
 
 /// @brief create a plan from VPack
@@ -2018,7 +2046,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");
   }
-
+    
   ExecutionNode* ret = nullptr;
 
   // first, re-create all nodes from the Slice, using the node ids
@@ -2031,6 +2059,11 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
 
     ret = ExecutionNode::fromVPackFactory(this, it);
     registerNode(ret);
+
+    // we have to count all nodes by their type here, because our caller
+    // will set the _varUsageComputed flag to true manually, bypassing the
+    // regular counting!
+    increaseCounter(ret->getType());
 
     TRI_ASSERT(ret != nullptr);
 
@@ -2122,7 +2155,7 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 /// @brief show an overview over the plan
 void ExecutionPlan::show() {
   Shower shower;
-  _root->walk(&shower);
+  _root->walk(shower);
 }
 
 #endif

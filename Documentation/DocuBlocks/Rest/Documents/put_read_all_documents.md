@@ -2,15 +2,10 @@
 @startDocuBlock put_read_all_documents
 @brief reads all documents from collection
 
-@RESTHEADER{PUT /_api/simple/all-keys, Read all documents}
+@RESTHEADER{PUT /_api/simple/all-keys,Read all documents}
 
-@RESTQUERYPARAMETERS
-
-@RESTBODYPARAM{collection,string,optional,}
-The name of the collection. This is only for backward compatibility.
-In ArangoDB versions < 3.0, the URL path was */_api/document* and
-this was passed in via the query parameter "collection".
-This combination was removed.
+@RESTBODYPARAM{collection,string,required,}
+The collection that should be queried
 
 @RESTBODYPARAM{type,string,optional,}
 The type of the result. The following values are allowed:

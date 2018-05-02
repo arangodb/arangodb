@@ -47,11 +47,9 @@ UpgradeFeature::UpgradeFeature(
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("CheckVersion");
-  startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("V8Dealer");
+  startsAfter("Cluster");
   startsAfter("Aql");
 }
 
@@ -81,7 +79,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
   std::vector<std::string> otherFeaturesToDisable = {
@@ -117,7 +115,7 @@ void UpgradeFeature::start() {
     upgradeDatabase();
 
     if (!init->restoreAdmin() && !init->defaultPassword().empty() &&
-        ServerState::instance()->isSingleServerOrCoordinator()) {
+        um != nullptr) {
       um->updateUser("root", [&](auth::User& user) {
         user.updatePassword(init->defaultPassword());
         return TRI_ERROR_NO_ERROR;
@@ -174,34 +172,36 @@ void UpgradeFeature::upgradeDatabase() {
 
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   
+  bool ignoreDatafileErrors = false;
+  {
+    VPackBuilder options = server()->options(std::unordered_set<std::string>());
+    VPackSlice s = options.slice();
+    if (s.get("database.ignore-datafile-errors").isBoolean()) {
+      ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
+    }
+  }
+
   for (auto& name : databaseFeature->getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
     
-    methods::UpgradeResult res = methods::Upgrade::startup(vocbase, _upgrade);
+    methods::UpgradeResult res = methods::Upgrade::startup(vocbase, _upgrade, ignoreDatafileErrors);
+    
     if (res.fail()) {
       char const* typeName = "initialization";
-      switch (res.type) {
-        case methods::VersionResult::VERSION_MATCH:
-        case methods::VersionResult::DOWNGRADE_NEEDED:
-        case methods::VersionResult::NO_VERSION_FILE:
-          // initialization
-          break;
-        case methods::VersionResult::UPGRADE_NEEDED:
-          typeName = "upgrade";
-          if (!_upgrade) {
-            LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-            << "Database '" << vocbase->name()
-            << "' needs upgrade. Please start the server with the "
-            "--database.auto-upgrade option";
-          }
-          break;
-        default:
-          break;
+      if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
+        typeName = "upgrade"; // an upgrade failed or is required
+        if (!_upgrade) {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Database '" << vocbase->name() << "' needs upgrade. "
+          << "Please start the server with --database.auto-upgrade";
+        }
       }
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
       << "' " << typeName << " failed (" << res.errorMessage() << "). "
-      "Please inspect the logs from the " << typeName << " procedure";
+      << "Please inspect the logs from the " << typeName << " procedure"
+      << " and try starting the server again.";
+      
       FATAL_ERROR_EXIT();
     }
   }

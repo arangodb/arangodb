@@ -21,15 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlHelper.h"
-
+#include "IResearchCommon.h"
+#include "IResearchDocument.h"
+#include "Misc.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Variable.h"
-#include "IResearchDocument.h"
-#include "IResearchFeature.h"
-#include "Misc.h"
-#include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
 #define __STDC_FORMAT_MACROS
@@ -94,7 +92,7 @@ bool ScopedAqlValue::execute(
     _value = expr.execute(ctx.trx, ctx.ctx, _destroy);
   } catch (arangodb::basics::Exception const& e) {
     // can't execute expression
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << e.message();
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << e.message();
     return false;
   } catch (...) {
     // can't execute expression
@@ -296,7 +294,7 @@ bool attributeAccessEqual(
   }
 
   return lhsValue.type != NodeValue::Type::INVALID
-   && lhsValue.type != NodeValue::Type::INVALID
+   && rhsValue.type != NodeValue::Type::INVALID
    && rhsValue == lhsValue;
 }
 
@@ -410,3 +408,7 @@ arangodb::aql::AstNode const* checkAttributeAccess(
 
 } // iresearch
 } // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

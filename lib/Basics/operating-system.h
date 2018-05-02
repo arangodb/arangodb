@@ -28,6 +28,7 @@
 #error use <Basics/Common.h>
 #endif
 
+
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -533,11 +534,6 @@
 #define __STDC_LIMIT_MACROS 1
 #endif
 
-// for usleep
-#ifndef __USE_BSD
-#define __USE_BSD
-#endif
-
 #define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
 
 // enabled features
@@ -746,7 +742,6 @@
 #define fsync _commit
 #define isatty _cyg_isatty
 #define putenv _putenv
-#define sleep TRI_sleep
 #define tzset _tzset
 
 // available features
@@ -769,9 +764,6 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 #define TRI_MISSING_MEMRCHR 1
-
-// usleep in POSIX is for microseconds - not milliseconds
-// has been redefined in win-utils.h
 
 typedef int ssize_t;
 

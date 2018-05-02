@@ -136,6 +136,41 @@ std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH =
 std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH =
     "/_api/simple/all-keys";
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE =
+    "/_api/simple/by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query first example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_FIRST_EXAMPLE =
+    "/_api/simple/first-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query remove by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_BY_EXAMPLE =
+    "/_api/simple/remove-by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query replace by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_REPLACE_BY_EXAMPLE =
+    "/_api/simple/replace-by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query replace by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_UPDATE_BY_EXAMPLE =
+    "/_api/simple/update-by-example";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch lookup path
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,12 +208,15 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
-                                               GeneralResponse* response)
-    : RestBaseHandler(request, response),
-      _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->vocbase()),
-      _nolockHeaderSet(nullptr) {}
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(
+    GeneralRequest* request,
+    GeneralResponse* response
+): RestBaseHandler(request, response),
+   _context(*static_cast<VocbaseContext*>(request->requestContext())),
+   _vocbase(_context.vocbase()),
+   _nolockHeaderSet(nullptr) {
+  TRI_ASSERT(request->requestContext());
+}
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
@@ -318,7 +356,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+
   writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
 }
 
@@ -393,7 +432,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
   int code = result.errorNumber();
   switch (code) {
-    case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
+    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
       if (collectionName.empty()) {
         // no collection name specified
         generateError(rest::ResponseCode::BAD, code,

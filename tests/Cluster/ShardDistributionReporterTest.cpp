@@ -111,6 +111,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
   std::string dbname = "UnitTestDB";
   std::string colName = "UnitTestCollection";
+  TRI_voc_cid_t cid = 1337;
   std::string cidString = "1337";
 
   std::string s1 = "s1234";
@@ -170,7 +171,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   fakeit::When(
       ConstOverloadedMethod(colMock, shardIds, std::shared_ptr<ShardMap>()))
       .AlwaysReturn(shards);
-  fakeit::When(Method(colMock, cid_as_string)).AlwaysReturn(cidString);
+  const_cast<TRI_voc_cid_t&>(col.id()) = cid;
 
   ShardDistributionReporter testee(
       std::shared_ptr<ClusterComm>(&cc, [](ClusterComm*) {}), &ci);
@@ -270,8 +271,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                   std::string const& destination, rest::RequestType reqtype,
                   std::string const& path,
                   std::shared_ptr<std::string const> body,
-                  std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                      headerFields,
+                  std::unordered_map<std::string, std::string> const& headerFields,
                   std::shared_ptr<ClusterCommCallback> callback,
                   ClusterCommTimeout timeout, bool singleRequest,
                   ClusterCommTimeout initTimeout) -> OperationID {
@@ -280,7 +280,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 REQUIRE(callback == nullptr);  // We actively wait
                 REQUIRE(reqtype ==
                         rest::RequestType::GET);  // count is only get!
-                REQUIRE(headerFields->empty());   // Nono headers
+                REQUIRE(headerFields.empty());   // Nono headers
 
                 // This feature has at most 2s to do its job
                 // otherwise default values will be returned
@@ -898,8 +898,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               std::string const& destination, rest::RequestType reqtype,
               std::string const& path,
               std::shared_ptr<std::string const> body,
-              std::unique_ptr<std::unordered_map<std::string, std::string>>&
-              headerFields,
+              std::unordered_map<std::string, std::string> const& headerFields,
               std::shared_ptr<ClusterCommCallback> callback,
               ClusterCommTimeout timeout, bool singleRequest,
               ClusterCommTimeout initTimeout) -> OperationID {
@@ -1004,8 +1003,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               std::string const& destination, rest::RequestType reqtype,
               std::string const& path,
               std::shared_ptr<std::string const> body,
-              std::unique_ptr<std::unordered_map<std::string, std::string>>&
-              headerFields,
+              std::unordered_map<std::string, std::string> const& headerFields,
               std::shared_ptr<ClusterCommCallback> callback,
               ClusterCommTimeout timeout, bool singleRequest,
               ClusterCommTimeout initTimeout) -> OperationID {
@@ -1121,8 +1119,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
-                std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                headerFields,
+                std::unordered_map<std::string, std::string> const& headerFields,
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
@@ -1230,8 +1227,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
-                std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                headerFields,
+                std::unordered_map<std::string, std::string> const& headerFields,
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
@@ -1349,8 +1345,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
-                std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                headerFields,
+                std::unordered_map<std::string, std::string> const& headerFields,
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
@@ -1456,8 +1451,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
-                std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                headerFields,
+                std::unordered_map<std::string, std::string> const& headerFields,
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
@@ -1565,8 +1559,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
-                std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                headerFields,
+                std::unordered_map<std::string, std::string> const& headerFields,
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
@@ -1684,8 +1677,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 std::string const& destination, rest::RequestType reqtype,
                 std::string const& path,
                 std::shared_ptr<std::string const> body,
-                std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                headerFields,
+                std::unordered_map<std::string, std::string> const& headerFields,
                 std::shared_ptr<ClusterCommCallback> callback,
                 ClusterCommTimeout timeout, bool singleRequest,
                 ClusterCommTimeout initTimeout) -> OperationID {
@@ -1850,8 +1842,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                   std::string const& destination, rest::RequestType reqtype,
                   std::string const& path,
                   std::shared_ptr<std::string const> body,
-                  std::unique_ptr<std::unordered_map<std::string, std::string>>&
-                  headerFields,
+                  std::unordered_map<std::string, std::string> const& headerFields,
                   std::shared_ptr<ClusterCommCallback> callback,
                   ClusterCommTimeout timeout, bool singleRequest,
                   ClusterCommTimeout initTimeout) -> OperationID {

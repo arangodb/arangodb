@@ -35,7 +35,6 @@ double ReplicationTimeoutFeature::lowerLimit = 0.5;
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "ReplicationTimeout") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("EngineSelector");
   startsBefore("StorageEngine");
 }
@@ -54,5 +53,6 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
 
 void ReplicationTimeoutFeature::prepare() {
   // set minimum timeout. this depends on the selected storage engine 
+  TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   lowerLimit = EngineSelectorFeature::ENGINE->minimumSyncReplicationTimeout();
 }
