@@ -88,10 +88,8 @@ static bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
                         bool sparse) {
   VPackBuilder output;
   Result res1, res2;
-  res1 =
-      methods::Collections::lookup(vocbase, name, [&](LogicalCollection* coll) {
-        res2 =
-            methods::Indexes::createIndex(coll, type, fields, unique, sparse);
+  res1 = methods::Collections::lookup(vocbase, name, [&](LogicalCollection* coll) {
+        res2 = methods::Indexes::createIndex(coll, type, fields, unique, sparse);
       });
   if (res1.fail() || res2.fail()) {
     THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
@@ -122,7 +120,10 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t* vocbase,
     return false;
   }
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  TRI_ASSERT(um != nullptr);
+  if (um == nullptr) {
+    return true; // server does not support users
+  }
+  
   for (VPackSlice slice : VPackArrayIterator(users)) {
     std::string user = VelocyPackHelper::getStringValue(slice, "username",
                                                         StaticStrings::Empty);
@@ -178,19 +179,27 @@ bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
       }
     }
   };
-  Result res = methods::Collections::all(vocbase, "_routing", cb);
+
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the Query constructor
+  auto res = methods::Collections::all(*vocbase, "_routing", cb);
+
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, "_routing", AccessMode::Type::WRITE);
+
   res = trx.begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   OperationOptions opts;
+
   opts.waitForSync = true;
+
   for (std::string const& key : toRemove) {
     VPackBuilder b;
     b(VPackValue(VPackValueType::Object))(StaticStrings::KeyString,

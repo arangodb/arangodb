@@ -141,7 +141,6 @@ function gatherBlocksTestSuite() {
 
             if(debug) {
               print(t);
-              db._explain(t.query , bindvars);
             }
 
             let plan = AQL_EXPLAIN(t.query , bindvars);

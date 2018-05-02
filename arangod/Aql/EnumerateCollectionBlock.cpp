@@ -54,7 +54,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
 int EnumerateCollectionBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
 
-  if (_collection->isSatellite()) {
+  if (ServerState::instance()->isRunningInCluster() && _collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
     auto& dbName = logicalCollection->vocbase().name();
@@ -143,6 +143,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atMost) {
         size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
         if (!ExecutionBlock::getBlock(toFetch)) {
           _done = true;
+          traceGetSomeEnd(nullptr);
           return nullptr;
         }
         _pos = 0;  // this is in the first block

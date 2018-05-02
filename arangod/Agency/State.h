@@ -172,9 +172,11 @@ class State {
   /// at the persisted data structure and tries to recover the latest state.
   /// The returned builder has the complete state of the agency and index
   /// is set to the index of the last log entry.
-  static std::shared_ptr<VPackBuilder> latestAgencyState(TRI_vocbase_t* vocbase,
-                                                         index_t& index,
-                                                         term_t& term);
+  static std::shared_ptr<VPackBuilder> latestAgencyState(
+    TRI_vocbase_t& vocbase,
+    index_t& index,
+    term_t& term
+  );
 
  private:
 

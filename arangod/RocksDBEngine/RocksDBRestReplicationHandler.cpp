@@ -86,7 +86,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // create transaction+snapshot, ttl will be 300 if `ttl == 0``
     auto* ctx = _manager->createContext(&_vocbase, ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
-    ctx->bind(&_vocbase);
+    ctx->bind(_vocbase);
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
@@ -473,7 +473,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   //}
 
   // bind collection to context - will initialize iterator
-  int res = ctx->bindCollection(&_vocbase, collection);
+  int res = ctx->bindCollection(_vocbase, collection);
 
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -632,15 +632,16 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateError(rv);
       return;
     }
-  } else {
-    bool success;
-    std::shared_ptr<VPackBuilder> parsedIds = parseVelocyPackBody(success);
+  } else {    
+    bool success = false;
+    VPackSlice const parsedIds = this->parseVPackBody(success);
     if (!success) {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
 
-    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, maxChunkSize, lowKey, parsedIds->slice());
+    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk,
+                                   maxChunkSize, lowKey, parsedIds);
     if (rv.fail()) {
       generateError(rv);
       return;
@@ -711,7 +712,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
 
   if (!isBusy) {
-    int res = context->chooseDatabase(&_vocbase);
+    int res = context->chooseDatabase(_vocbase);
 
     isBusy = (TRI_ERROR_CURSOR_BUSY == res);
   }

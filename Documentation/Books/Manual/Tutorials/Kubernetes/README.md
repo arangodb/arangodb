@@ -108,44 +108,26 @@ your database s available.
 ## Connecting to your database
 
 The single server database you deployed in the previous chapter is now
-available, but only from within the Kubernetes cluster.
+available from within the Kubernetes cluster as well as outside it.
 
-To make the database available outside your Kubernetes cluster (e.g. for browser access)
-you must deploy an additional `Service`.
+Access to the database from outside the Kubernetes cluster is provided
+using an external-access service.
+By default this service is of type `LoadBalancer`. If this type of service
+is not supported by your Kubernetes cluster, it will be replaced by
+a service of type `NodePort` after a minute.
 
-There are several possible types of `Service` to choose from.
-We are going to use the `NodePort` type to expose the database on port 30529 of
-every node of your Kubernetes cluster.
-
-Create a file called `single-server-service.yaml` with the following content.
-
-```yaml
-kind: Service
-apiVersion: v1
-metadata:
-  name: single-server-service
-spec:
-  selector:
-    app: arangodb
-    arango_deployment: single-server
-    role: single
-  type: NodePort
-  ports:
-  - protocol: TCP
-    port: 8529
-    targetPort: 8529
-    nodePort: 30529
-```
-
-Deploy the `Service` into your Kubernetes cluster using:
+To see the type of service that has been created, run:
 
 ```bash
-kubectl apply -f single-server-service.yaml
+kubectl get service single-server-ea
 ```
 
-Now you can connect your browser to `https://<node name>:30529/`,
-where `<node name>` is the name or IP address of any of the nodes
-of your Kubernetes cluster.
+When the service is of the `LoadBalancer` type, use the IP address
+listed in the `EXTERNAL-IP` column with port 8529.
+When the service is of the `NodePort` type, use the IP address
+of any of the nodes of the cluster, combine with the high (>30000) port listed in the `PORT(S)` column.
+
+Now you can connect your browser to `https://<ip>:<port>/`.
 
 Your browser will show a warning about an unknown certificate.
 Accept the certificate for now.
@@ -183,34 +165,6 @@ kubectl apply -f cluster.yaml
 
 The same commands used in the single server deployment can be used
 to inspect your cluster. Just use the correct deployment name (`cluster` instead of `single-server`).
-
-Connecting to your cluster requires a different `Service` since the
-selector now has to select your `cluster` deployment and instead
-of selecting all `Pods` with role `single` it will have to select
-all coordinator pods.
-
-The service looks like this:
-
-```yaml
-kind: Service
-apiVersion: v1
-metadata:
-  name: cluster-service
-spec:
-  selector:
-    app: arangodb
-    arango_deployment: cluster
-    role: coordinator
-  type: NodePort
-  ports:
-  - protocol: TCP
-    port: 8529
-    targetPort: 8529
-    nodePort: 31529
-```
-
-Note that we have chosen a different node port (31529) for this `Service`
-to avoid conflicts with the port used in `single-server-service`.
 
 ## Where to go from here
 

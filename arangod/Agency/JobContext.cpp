@@ -23,6 +23,7 @@
 
 #include "JobContext.h"
 
+#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedFollower.h"
@@ -37,9 +38,14 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
                         AgentInterface* agent) : _job(nullptr) {
 
   std::string path = pos[status] + id;
-  auto const& job  = snapshot(path);
-  auto const& type = job("type").getString();
-  
+  auto typePair = snapshot.hasAsString(path + "/type");
+  std::string type;
+
+  if (typePair.second) {
+    type = typePair.first;
+  } // if
+
+
   if        (type == "failedLeader") {
     _job = std::make_unique<FailedLeader>(snapshot, agent, status, id);
   } else if (type == "failedFollower") {
@@ -54,6 +60,8 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
     _job = std::make_unique<AddFollower>(snapshot, agent, status, id);
   } else if (type == "removeFollower") {
     _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
+  } else if (type == "activeFailover") {
+    _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) <<
     "Failed to run supervision job " << type << " with id " << id;
@@ -64,7 +72,7 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
 void JobContext::create(std::shared_ptr<VPackBuilder> b) {
   if (_job != nullptr) {
     _job->create(b);
-  } 
+  }
 }
 
 void JobContext::start() {
@@ -84,4 +92,3 @@ void JobContext::abort() {
     _job->abort();
   }
 }
-

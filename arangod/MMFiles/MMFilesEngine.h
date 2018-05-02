@@ -134,21 +134,30 @@ class MMFilesEngine final : public StorageEngine {
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
   // fills the provided builder with information about the collection
-  void getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
-                         arangodb::velocypack::Builder& result,
-                         bool includeIndexes, TRI_voc_tick_t maxTick) override;
+  void getCollectionInfo(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t cid,
+    arangodb::velocypack::Builder& result,
+    bool includeIndexes,
+    TRI_voc_tick_t maxTick
+  ) override;
 
   // fill the Builder object with an array of collections (and their
   // corresponding
   // indexes) that were detected by the storage engine. called at server start
   // separately
   // for each database
-  int getCollectionsAndIndexes(TRI_vocbase_t* vocbase,
-                               arangodb::velocypack::Builder& result,
-                               bool wasCleanShutdown, bool isUpgrade) override;
+  int getCollectionsAndIndexes(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Builder& result,
+    bool wasCleanShutdown,
+    bool isUpgrade
+  ) override;
 
-  int getViews(TRI_vocbase_t* vocbase,
-               arangodb::velocypack::Builder& result) override;
+  int getViews(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Builder& result
+  ) override;
 
   // return the path for a collection
   std::string collectionPath(TRI_vocbase_t const* vocbase,
@@ -214,28 +223,37 @@ class MMFilesEngine final : public StorageEngine {
   // not fail.
   // the WAL entry for the collection creation will be written *after* the call
   // to "createCollection" returns
-  std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalCollection const*) override;
+  std::string createCollection(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalCollection const* collection
+  ) override;
 
   // asks the storage engine to persist the collection.
   // After this call the collection is persisted over recovery.
   // This call will write wal markers.
   arangodb::Result persistCollection(
-      TRI_vocbase_t* vocbase, arangodb::LogicalCollection const*) override;
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection const* collection
+  ) override;
 
   // asks the storage engine to drop the specified collection and persist the
   // deletion info. Note that physical deletion of the collection data must not
   // be carried out by this call, as there may
   // still be readers of the collection's data.
   // This call will write the WAL entry for collection deletion
-  arangodb::Result dropCollection(TRI_vocbase_t* vocbase,
-                                  arangodb::LogicalCollection*) override;
+  arangodb::Result dropCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+  ) override;
 
   // perform a physical deletion of the collection
   // After this call data of this collection is corrupted, only perform if
   // assured that no one is using the collection anymore
-  void destroyCollection(TRI_vocbase_t* vocbase,
-                         arangodb::LogicalCollection*) override;
+  void destroyCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+  ) override;
 
   // asks the storage engine to change properties of the collection as specified
   // in
@@ -245,15 +263,20 @@ class MMFilesEngine final : public StorageEngine {
   // not fail.
   // the WAL entry for the propery change will be written *after* the call
   // to "changeCollection" returns
-  void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                        arangodb::LogicalCollection const*,
-                        bool doSync) override;
+  void changeCollection(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalCollection const* collection,
+    bool doSync
+  ) override;
 
   // asks the storage engine to persist renaming of a collection
   // This will write a renameMarker if not in recovery
-  arangodb::Result renameCollection(TRI_vocbase_t* vocbase,
-                                    arangodb::LogicalCollection const*,
-                                    std::string const& oldName) override;
+  arangodb::Result renameCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection const* collection,
+    std::string const& oldName
+  ) override;
 
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id
@@ -266,9 +289,12 @@ class MMFilesEngine final : public StorageEngine {
   // creation requests will not fail.
   // the WAL entry for the index creation will be written *after* the call
   // to "createIndex" returns
-  void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId,
-                   TRI_idx_iid_t id,
-                   arangodb::velocypack::Slice const& data) override;
+  void createIndex(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t collectionId,
+    TRI_idx_iid_t id,
+    arangodb::velocypack::Slice const& data
+  ) override;
 
   // asks the storage engine to drop the specified index and persist the
   // deletion
@@ -287,44 +313,52 @@ class MMFilesEngine final : public StorageEngine {
                           arangodb::velocypack::Slice const& data,
                           bool writeMarker, int&);
 
-  void unloadCollection(TRI_vocbase_t* vocbase,
-                        arangodb::LogicalCollection* collection) override;
+  void unloadCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+  ) override;
 
   void changeView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const&,
     bool doSync
   ) override;
 
   void createView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
   ) override;
 
   void getViewProperties(
-     TRI_vocbase_t* vocbase,
+     TRI_vocbase_t& vocbase,
      arangodb::LogicalView const* view,
      VPackBuilder& builder
   ) override;
 
   arangodb::Result persistView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view
   ) override;
 
   // asks the storage engine to persist renaming of a view
   // This will write a renameMarker if not in recovery
   arangodb::Result renameView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view,
     std::string const& oldName
   ) override;
 
-  arangodb::Result dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
+  arangodb::Result dropView(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView* view
+  ) override;
 
-  void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) noexcept override;
+  void destroyView(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView* view
+  ) noexcept override;
 
   std::string createViewDirectoryName(std::string const& basePath,
                                       TRI_voc_cid_t id);

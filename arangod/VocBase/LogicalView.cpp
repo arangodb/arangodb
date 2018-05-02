@@ -38,6 +38,24 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
+bool ReadIsSystem(arangodb::velocypack::Slice info) {
+  if (!info.isObject()) {
+    return false;
+  }
+
+  auto name =
+    arangodb::basics::VelocyPackHelper::getStringValue(info, "name", "");
+
+  if (!TRI_vocbase_t::IsSystemName(name)) {
+    return false;
+  }
+
+  // same condition as in LogicalCollection
+  return arangodb::basics::VelocyPackHelper::readBooleanValue(
+    info, "isSystem", false
+  );
+}
+
 TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   if (!info.isObject()) {
     // ERROR CASE
@@ -73,11 +91,15 @@ TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   }
 
   if (arangodb::ServerState::instance()->isDBServer()) {
-    return arangodb::ClusterInfo::instance()->uniqid(1);
+    auto* ci = arangodb::ClusterInfo::instance();
+
+    return ci ? ci->uniqid(1) : 0;
   }
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    return arangodb::ClusterInfo::instance()->uniqid(1);
+    auto* ci = arangodb::ClusterInfo::instance();
+
+    return ci ? ci->uniqid(1) : 0;
   }
 
   return TRI_NewTickServer();
@@ -108,6 +130,7 @@ LogicalView::LogicalView(
      ReadPlanId(definition, 0),
      arangodb::basics::VelocyPackHelper::getStringValue(definition, "name", ""),
      planVersion,
+     ReadIsSystem(definition),
      Helper::readBooleanValue(definition, "deleted", false)
    ) {
   if (!TRI_vocbase_t::IsAllowedName(definition)) {
@@ -182,6 +205,7 @@ DBServerLogicalView::DBServerLogicalView(
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalView(vocbase, definition, planVersion) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
 DBServerLogicalView::~DBServerLogicalView() {
@@ -189,7 +213,7 @@ DBServerLogicalView::~DBServerLogicalView() {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
 
-    engine->destroyView(&vocbase(), this);
+    engine->destroyView(vocbase(), this);
   }
 }
 
@@ -205,7 +229,7 @@ DBServerLogicalView::~DBServerLogicalView() {
       // during recovery entry is being played back from the engine
       if (!engine->inRecovery()) {
         arangodb::velocypack::Builder builder;
-        auto res = engine->getViews(&(view.vocbase()), builder);
+        auto res = engine->getViews(view.vocbase(), builder);
         TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
         auto slice  = builder.slice();
         TRI_ASSERT(slice.isArray());
@@ -227,9 +251,9 @@ DBServerLogicalView::~DBServerLogicalView() {
       }
     #endif
 
-    engine->createView(&(view.vocbase()), view.id(), view);
+    engine->createView(view.vocbase(), view.id(), view);
 
-    return engine->persistView(&(view.vocbase()), view);
+    return engine->persistView(view.vocbase(), view);
   } catch (std::exception const& e) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
@@ -251,7 +275,7 @@ arangodb::Result DBServerLogicalView::drop() {
 
   if (res.ok()) {
     deleted(true);
-    engine->dropView(&vocbase(), this);
+    engine->dropView(vocbase(), this);
   }
 
   return res;
@@ -269,7 +293,7 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
 
     // store new view definition to disk
     if (!engine->inRecovery()) {
-      engine->changeView(&vocbase(), id(), *this, doSync);
+      engine->changeView(vocbase(), id(), *this, doSync);
     }
   } catch (basics::Exception const& ex) {
     name(std::move(oldName));
@@ -282,7 +306,7 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
   }
 
   // write WAL 'rename' marker
-  return engine->renameView(&vocbase(), *this, oldName);
+  return engine->renameView(vocbase(), *this, oldName);
 }
 
 void DBServerLogicalView::toVelocyPack(
@@ -302,6 +326,7 @@ void DBServerLogicalView::toVelocyPack(
 
   if (includeSystem) {
     result.add("deleted", VPackValue(deleted()));
+    result.add("isSystem", VPackValue(system()));
 
     // FIXME not sure if the following is relevant
     // Cluster Specific
@@ -310,7 +335,7 @@ void DBServerLogicalView::toVelocyPack(
     // storage engine related properties
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
-    engine->getViewProperties(&vocbase(), this, result);
+    engine->getViewProperties(vocbase(), this, result);
   }
 
   if (includeProperties) {
@@ -348,7 +373,7 @@ arangodb::Result DBServerLogicalView::updateProperties(
   }
 
   try {
-    engine->changeView(&vocbase(), id(), *this, doSync);
+    engine->changeView(vocbase(), id(), *this, doSync);
   } catch (arangodb::basics::Exception const& e) {
     return { e.code() };
   } catch (...) {

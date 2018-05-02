@@ -40,6 +40,7 @@
     "ERROR_RESOURCE_LIMIT"         : { "code" : 32, "message" : "resource limit exceeded" },
     "ERROR_ARANGO_ICU_ERROR"       : { "code" : 33, "message" : "icu error: %s" },
     "ERROR_CANNOT_READ_FILE"       : { "code" : 34, "message" : "cannot read file" },
+    "ERROR_INCOMPATIBLE_VERSION"   : { "code" : 35, "message" : "incompatible server version" },
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
@@ -180,6 +181,7 @@
     "ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING" : { "code" : 1495, "message" : "leadership challenge is ongoing" },
     "ERROR_CLUSTER_NOT_LEADER"     : { "code" : 1496, "message" : "not a leader" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN" : { "code" : 1497, "message" : "could not create view in plan" },
+    "ERROR_CLUSTER_VIEW_ID_EXISTS" : { "code" : 1498, "message" : "view ID already exists" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
@@ -274,7 +276,6 @@
     "ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION" : { "code" : 1928, "message" : "not in orphan collection" },
     "ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF" : { "code" : 1929, "message" : "collection already used in edge def" },
     "ERROR_GRAPH_EDGE_COLLECTION_NOT_USED" : { "code" : 1930, "message" : "edge collection not used in graph" },
-    "ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION" : { "code" : 1931, "message" : " is not an ArangoCollection" },
     "ERROR_GRAPH_NO_GRAPH_COLLECTION" : { "code" : 1932, "message" : "collection _graphs does not exist" },
     "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING" : { "code" : 1933, "message" : "Invalid example type. Has to be String, Array or Object" },
     "ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT" : { "code" : 1934, "message" : "Invalid example type. Has to be Array or Object" },
@@ -330,4 +331,8 @@
     "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
   };
+
+  // For compatibility with <= 3.3
+  internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
 }());
+

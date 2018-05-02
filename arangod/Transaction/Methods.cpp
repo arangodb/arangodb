@@ -509,15 +509,18 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       }
     }
 
-    // enable the following line to see index candidates considered with their
-    // abilities and scores
-    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
-
     if (!supportsFilter && !supportsSort) {
       continue;
     }
+    
+    double totalCost = filterCost;
+    if (!sortCondition->isEmpty()) {
+      // only take into account the costs for sorting if there is actually something to sort
+      totalCost += sortCost;
+    }
 
-    double const totalCost = filterCost + sortCost;
+    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << totalCost << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
+
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;
@@ -556,7 +559,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
 
     // enable the following line to see index candidates considered with their
     // abilities and scores
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
+    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
 
     if (!supportsFilter) {
       continue;
@@ -1261,7 +1264,7 @@ OperationResult transaction::Methods::documentCoordinator(
   }
 
   int res = arangodb::getDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, headers, responseCode,
+      databaseName(), collectionName, value, options, std::move(headers), responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1973,9 +1976,6 @@ OperationResult transaction::Methods::modifyLocal(
                     << (*followers)[i] << " for shard " << collectionName;
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
                 }
-                LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "modifyLocal: dropping follower " << (*followers)[i]
-                  << " for shard " << collectionName;
               }
             }
           }
@@ -3217,6 +3217,25 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   return TRI_ERROR_NO_ERROR;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+Result transaction::Methods::resolveId(char const* handle, size_t length,
+                                       std::shared_ptr<LogicalCollection>& collection, char const*& key,
+                                       size_t& outLength) {
+  char const* p = static_cast<char const*>(
+      memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
+
+  if (p == nullptr || *p == '\0') {
+    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  }
+
+  std::string const name(handle, p - handle);
+  collection = resolver()->getCollectionStructCluster(name);
+
+  if (collection == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  key = p + 1;
+  outLength = length - (key - handle);
+
+  return TRI_ERROR_NO_ERROR;
+}

@@ -43,9 +43,15 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
       _outVariableOld(
           Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
-          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)) {
+          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)), 
+      _countStats(base.get("countStats").getBool()),
+      _restrictedTo("") {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
+  VPackSlice restrictedTo = base.get("restrictedTo");
+  if (restrictedTo.isString()) {
+    _restrictedTo = restrictedTo.copyString();
+  }
 }
 
 /// @brief toVelocyPack
@@ -56,6 +62,10 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
   // Now put info about vocbase and cid in there
   builder.add("database", VPackValue(_vocbase->name()));
   builder.add("collection", VPackValue(_collection->getName()));
+  builder.add("countStats", VPackValue(_countStats));
+  if (!_restrictedTo.empty()) {
+    builder.add("restrictedTo", VPackValue(_restrictedTo));
+  }
 
   // add out variables
   if (_outVariableOld != nullptr) {
@@ -67,6 +77,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
     _outVariableNew->toVelocyPack(builder);
   }
   builder.add(VPackValue("modificationFlags"));
+
   _options.toVelocyPack(builder);
 }
 
@@ -124,6 +135,9 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options,
                           inVariable, outVariableOld);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -172,6 +186,9 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new InsertNode(plan, _id, _vocbase, _collection, _options,
                           inVariable, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -237,6 +254,9 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c =
       new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
                      inKeyVariable, outVariableOld, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -303,6 +323,9 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c =
       new ReplaceNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
                       inKeyVariable, outVariableOld, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -365,6 +388,9 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = new UpsertNode(plan, _id, _vocbase, _collection, _options,
                           inDocVariable, insertVariable, updateVariable,
                           outVariableNew, _isReplace);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 

@@ -91,13 +91,12 @@ void RestViewHandler::createView() {
     return;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   auto badParamError = [&]() -> void {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
@@ -167,14 +166,11 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-        parseVelocyPackBody(parseSuccess);
-
+    bool parseSuccess = false;
+    VPackSlice const body = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
       return;
     }
-    VPackSlice body = parsedBody.get()->slice();
 
     // handle rename functionality
     if (suffixes[1] == "rename") {
@@ -231,6 +227,7 @@ void RestViewHandler::deleteView() {
   }
 
   std::string const& name = suffixes[0];
+  auto allowDropSystem = _request->parsedValue("isSystem", false);
   auto view = _vocbase.lookupView(name);
 
   if (!view) {
@@ -242,7 +239,7 @@ void RestViewHandler::deleteView() {
     return;
   }
 
-  auto res = _vocbase.dropView(*view).errorNumber();
+  auto res = _vocbase.dropView(view->id(), allowDropSystem).errorNumber();
 
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());

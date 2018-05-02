@@ -20,10 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -339,8 +337,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
   VPackBuilder defBuilder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  int res = idxFactory->enhanceIndexDefinition(
+  int res = engine->indexFactory().enhanceIndexDefinition(
     definition, defBuilder, create, ServerState::instance()->isCoordinator()
   ).errorNumber();
 

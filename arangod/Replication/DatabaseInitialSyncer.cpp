@@ -62,14 +62,20 @@ using namespace arangodb::rest;
 
 size_t const DatabaseInitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 
-DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
-                                             ReplicationApplierConfiguration const& configuration)
-    : InitialSyncer(configuration),
-      _vocbase(vocbase),
-      _hasFlushed(false) {
-  _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
+DatabaseInitialSyncer::DatabaseInitialSyncer(
+    TRI_vocbase_t& vocbase,
+    ReplicationApplierConfiguration const& configuration
+): InitialSyncer(configuration),
+   _vocbase(&vocbase),
+   _hasFlushed(false) {
+  _vocbases.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(vocbase.name()),
+    std::forward_as_tuple(vocbase)
+  );
+
   if (configuration._database.empty()) {
-    _databaseName = vocbase->name();
+    _databaseName = vocbase.name();
   }
 }
 
@@ -428,21 +434,21 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
           return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("timed out waiting for response from master at ") + _masterInfo._endpoint);
         }
 
-        double sleepTime;
+        std::chrono::milliseconds sleepTime;
         if (waitTime < 5.0) {
-          sleepTime = 0.25;
+          sleepTime = std::chrono::milliseconds(250);
         } else if (waitTime < 20.0) {
-          sleepTime = 0.5;
+          sleepTime = std::chrono::milliseconds(500);
         } else if (waitTime < 60.0) {
-          sleepTime = 1.0;
+          sleepTime = std::chrono::seconds(1);
         } else {
-          sleepTime = 2.0;
+          sleepTime = std::chrono::seconds(2);
         }
 
         if (isAborted()) {
           return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
         }
-        this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+        std::this_thread::sleep_for(sleepTime);
       }
       // fallthrough here in case everything went well
     }
@@ -607,21 +613,21 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
       return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("timed out waiting for response from master at ") + _masterInfo._endpoint);
     }
 
-    double sleepTime;
+    std::chrono::milliseconds sleepTime;
     if (waitTime < 5.0) {
-      sleepTime = 0.25;
+      sleepTime = std::chrono::milliseconds(250);
     } else if (waitTime < 20.0) {
-      sleepTime = 0.5;
+      sleepTime = std::chrono::milliseconds(500);
     } else if (waitTime < 60.0) {
-      sleepTime = 1.0;
+      sleepTime = std::chrono::seconds(1);
     } else {
-      sleepTime = 2.0;
+      sleepTime = std::chrono::seconds(2);
     }
 
     if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
-    this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
+    std::this_thread::sleep_for(sleepTime);
   }
   
   if (hasFailed(response.get())) {
@@ -811,7 +817,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
         // in this case we must drop it because we will run into duplicate
         // name conflicts otherwise
         try {
-          int res = vocbase()->dropCollection(col, true, -1.0);
+          auto res =
+            vocbase()->dropCollection(col->id(), true, -1.0).errorNumber();
+
           if (res == TRI_ERROR_NO_ERROR) {
             col = nullptr;
           }
@@ -870,7 +878,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
             setProgress("dropping " + collectionMsg);
 
-            int res = vocbase()->dropCollection(col, true, -1.0);
+            auto res =
+              vocbase()->dropCollection(col->id(), true, -1.0).errorNumber();
 
             if (res != TRI_ERROR_NO_ERROR) {
               return Result(res, std::string("unable to drop ") + collectionMsg + ": " + TRI_errno_string(res));

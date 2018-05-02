@@ -57,27 +57,33 @@ using namespace arangodb::pregel;
       &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
 template <typename V, typename E, typename M>
-Worker<V, E, M>::Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algo,
-                        VPackSlice initConfig)
+Worker<V, E, M>::Worker(
+    TRI_vocbase_t& vocbase,
+    Algorithm<V, E, M>* algo,
+    VPackSlice initConfig
+)
     : _state(WorkerState::IDLE),
-      _config(vocbase, initConfig),
+      _config(&vocbase, initConfig),
       _algorithm(algo),
       _nextGSSSendMessageCount(0),
       _requestedNextGSS(false) {
   MUTEX_LOCKER(guard, _commandMutex);
 
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
+
   _workerContext.reset(algo->workerContext(userParams));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
   _conductorAggregators.reset(new AggregatorHandler(algo));
   _workerAggregators.reset(new AggregatorHandler(algo));
   _graphStore.reset(new GraphStore<V, E>(vocbase, _algorithm->inputFormat()));
+
   if (_config.asynchronousMode()) {
     _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
   } else {
     _messageBatchSize = 5000;
   }
+
   _initializeMessageCaches();
 }
 
@@ -743,8 +749,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
     std::string baseUrl =
         Utils::baseUrl(_config.database(), Utils::conductorPrefix);
     CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
+    std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(
         "", coordinatorTransactionID, "server:" + _config.coordinatorId(),

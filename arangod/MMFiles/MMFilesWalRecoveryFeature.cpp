@@ -39,7 +39,6 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
     : ApplicationFeature(server, "MMFilesWalRecovery") {
 
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Database"); 
   startsAfter("MMFilesLogfileManager");
   startsAfter("MMFilesPersistentIndex");

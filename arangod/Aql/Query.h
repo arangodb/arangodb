@@ -77,14 +77,23 @@ class Query {
 
  public:
   /// Used to construct a full query
-  Query(bool contextOwnedByExterior, TRI_vocbase_t*, QueryString const& queryString,
-        std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
+  Query(
+    bool contextOwnedByExterior,
+    TRI_vocbase_t& vocbase,
+    QueryString const& queryString,
+    std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+    std::shared_ptr<arangodb::velocypack::Builder> const& options,
+    QueryPart part
+  );
 
   /// Used to put together query snippets in RestAqlHandler
-  Query(bool contextOwnedByExterior, TRI_vocbase_t*,
-        std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
-        std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
+  Query(
+    bool contextOwnedByExterior,
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
+    std::shared_ptr<arangodb::velocypack::Builder> const& options,
+    QueryPart
+  );
 
   TEST_VIRTUAL ~Query();
 
@@ -102,7 +111,7 @@ class Query {
     _trx = trx;
     init();
   }
-  
+
   QueryProfile* profile() const {
     return _profile.get();
   }
@@ -111,15 +120,15 @@ class Query {
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
-  
+
   ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
 
   /// @brief return the start timestamp of the query
   double startTime() const { return _startTime; }
-  
+
   /// @brief return the current runtime of the query
   double runTime(double now) const { return now - _startTime; }
-  
+
   /// @brief return the current runtime of the query
   double runTime() const { return runTime(TRI_microtime()); }
 
@@ -133,7 +142,7 @@ class Query {
   inline QueryPart part() const { return _part; }
 
   /// @brief get the vocbase
-  inline TRI_vocbase_t* vocbase() const { return _vocbase; }
+  inline TRI_vocbase_t* vocbase() const { return &_vocbase; }
 
   /// @brief collections
   inline Collections* collections() { return &_collections; }
@@ -167,7 +176,7 @@ class Query {
   char* registerEscapedString(char const* p, size_t length, size_t& outLength) { 
     return _resources.registerEscapedString(p, length, outLength); 
   }
-  
+
   /// @brief register an error, with an optional parameter inserted into printf
   /// this also makes the query abort
   void registerError(int, char const* = nullptr);
@@ -178,7 +187,7 @@ class Query {
 
   /// @brief register a warning
   virtual void registerWarning(int, char const* = nullptr);
-  
+
   void prepare(QueryRegistry*, uint64_t queryHash);
 
   /// @brief execute an AQL query
@@ -187,7 +196,7 @@ class Query {
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
   QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
-  
+
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
@@ -207,7 +216,7 @@ class Query {
 
   /// @brief inject the engine
   TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
-  
+
   void releaseEngine();
 
   /// @brief return the transaction, if prepared
@@ -218,6 +227,11 @@ class Query {
 
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
+
+  /// @brief prepare a V8 context for execution for this expression
+  /// this needs to be called once before executing any V8 function in this
+  /// expression
+  void prepareV8Context();
 
   /// @brief enter a V8 context
   void enterContext();
@@ -230,18 +244,19 @@ class Query {
     return (_contextOwnedByExterior || _context != nullptr);
   }
 
+  // @brief resets the contexts load-state of the AQL functions.
+  void unPrepareV8Context() {
+    _preparedV8Context = false;
+  }
+
   /// @brief returns statistics for current query.
   void getStats(arangodb::velocypack::Builder&);
 
   /// @brief add the list of warnings to VelocyPack.
   ///        Will add a new entry { ..., warnings: <warnings>, } if there are
   ///        warnings. If there are none it will not modify the builder
-  void addWarningsToVelocyPackObject(arangodb::velocypack::Builder&) const;
+  void addWarningsToVelocyPack(arangodb::velocypack::Builder&) const;
 
-  /// @brief transform the list of warnings to VelocyPack.
-  ///        NOTE: returns nullptr if there are no warnings.
-  std::shared_ptr<arangodb::velocypack::Builder> warningsToVelocyPack() const;
-  
   /// @brief get a description of the query's current state
   std::string getStateString() const;
 
@@ -252,13 +267,13 @@ class Query {
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const { 
     return _bindParameters.builder(); 
   }
- 
+
   QueryExecutionState::ValueType state() const { return _state; }
 
  private:
   /// @brief initializes the query
   void init();
-  
+
   /// @brief prepare an AQL query, this is a preparation for execute, but
   /// execute calls it internally. The purpose of this separate method is
   /// to be able to only prepare a query from VelocyPack and then store it in the
@@ -276,7 +291,6 @@ class Query {
   /// @brief whether or not the query cache can be used for the query
   bool canUseQueryCache() const;
 
- private:
   /// @brief neatly format exception messages for the users
   std::string buildErrorMessage(int errorCode) const;
 
@@ -291,30 +305,29 @@ class Query {
 
   /// @brief returns the next query id
   static TRI_voc_tick_t NextId();
-  
+
  public:
-  
   constexpr static uint64_t DontCache = 0;
 
  private:
   /// @brief query id
   TRI_voc_tick_t _id;
-  
+
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;
-  
+
   /// @brief resources used by query
   QueryResources _resources;
 
   /// @brief pointer to vocbase the query runs in
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 
   /// @brief the currently used V8 context
   V8Context* _context;
 
   /// @brief graphs used in query, identified by name
   std::unordered_map<std::string, Graph*> _graphs;
-  
+
   /// @brief the actual query string
   QueryString _queryString;
 
@@ -332,7 +345,7 @@ class Query {
 
   /// @brief collections used in the query
   Collections _collections;
-  
+
   /// @brief _ast, we need an ast to manage the memory for AstNodes, even
   /// if we do not have a parser, because AstNodes occur in plans and engines
   std::unique_ptr<Ast> _ast;
@@ -360,7 +373,7 @@ class Query {
 
   /// @brief cache for regular expressions constructed by the query
   RegexCache _regexCache;
- 
+
   /// @brief query start time
   double _startTime;
 
@@ -375,7 +388,13 @@ class Query {
 
   /// @brief whether or not the query is a data modification query
   bool _isModificationQuery;
+
+  /// @brief whether or not the preparation routine for V8 contexts was run
+  /// once for this expression
+  /// it needs to be run once before any V8-based function is called
+  bool _preparedV8Context;
 };
+
 }
 }
 

@@ -35,11 +35,11 @@ E.g. these are valid arguments.
 Start a local (test) cluster. Since all servers are running on a single machine
 this is really not intended for production setups.
 
-- `--starter.mode=cluster|single|resilientsingle`
+- `--starter.mode=cluster|single|activefailover`
 
 Select what kind of database configuration you want.
 This can be a `cluster` configuration (which is the default),
-a `single` server configuration or a `resilientsingle` configuration with
+a `single` server configuration or a `activefailover` configuration with
 2 single services configured to take over when needed.
 
 Note that when running a `single` server configuration you will lose all
@@ -61,6 +61,17 @@ Usually, this option does not have to be specified. Only in the case
 that `--cluster.agency-size` is set to 1 (see below), the master has to know
 under which address it can be reached from the outside. If you specify
 `localhost` here, then all instances must run on the local machine.
+
+- `--starter.host=addr`
+
+`addr` is the address to which this server binds. (default "0.0.0.0")
+
+Usually there is no need to specify this option.
+Only when you want to bind the starter to specific network device,
+would you set this.
+Note that setting this option to `127.0.0.1` will make this starter
+unreachable for other starters, which is only allowed for
+`single` server deployments or when using `--starter.local`.
 
 - `--docker.image=image`
 
@@ -266,6 +277,14 @@ debugging only.
 - `--log.verbose=bool`
 
 show more information (default false).
+
+- `--log.dir=path`
+
+set a custom directory to which all log files will be written to.
+When using the Starter in docker, make sure that this directory is
+mounted as a volume for the Starter.
+
+Note: When using a custom log directory, all files will be named as `arangod-<role>-<port>.log`.
 
 - `--log.rotate-files-to-keep=int`
 

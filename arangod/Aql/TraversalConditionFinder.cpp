@@ -512,11 +512,12 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
-#ifdef USE_IRESEARCH
-    case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
+#ifdef USE_IRESEARCH
+    case EN::ENUMERATE_IRESEARCH_VIEW:
+    case EN::SCATTER_IRESEARCH_VIEW:
+#endif
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
@@ -742,9 +743,9 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   auto trx = _plan->getAst()->query()->trx();
   TRI_ASSERT(trx != nullptr);
 
-  auto ctxt = std::make_unique<FixedVarExpressionContext>();
-  ctxt->setVariableValue(pathVar, {});
-  AqlValue res = tmpExp.execute(trx, ctxt.get(), mustDestroy);
+  FixedVarExpressionContext ctxt;
+  ctxt.setVariableValue(pathVar, {});
+  AqlValue res = tmpExp.execute(trx, &ctxt, mustDestroy);
   TRI_ASSERT(res.isBoolean());
 
   if (mustDestroy) {

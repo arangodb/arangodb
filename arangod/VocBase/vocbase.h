@@ -135,6 +135,12 @@ struct TRI_vocbase_t {
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
+  // explicitly document implicit behaviour (due to presence of locks)
+  TRI_vocbase_t(TRI_vocbase_t&&) = delete;
+  TRI_vocbase_t(TRI_vocbase_t const&) = delete;
+  TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;
+  TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
+
   /// @brief sleep interval used when polling for a loading collection's status
   static constexpr unsigned collectionStatusPollInterval() { return 10 * 1000; }
 
@@ -274,7 +280,7 @@ struct TRI_vocbase_t {
   );
 
   /// @brief drops a view
-  arangodb::Result dropView(arangodb::LogicalView& view);
+  arangodb::Result dropView(TRI_voc_cid_t cid, bool allowDropSystem);
 
   /// @brief returns all known collections with their parameters
   /// and optionally indexes
@@ -342,8 +348,11 @@ struct TRI_vocbase_t {
   /// @brief drops a collection, no timeout if timeout is < 0.0, otherwise
   /// timeout is in seconds. Essentially, the timeout counts to acquire the
   /// write lock for using the collection.
-  int dropCollection(arangodb::LogicalCollection* collection,
-                     bool allowDropSystem, double timeout);
+  arangodb::Result dropCollection(
+    TRI_voc_cid_t cid,
+    bool allowDropSystem,
+    double timeout
+  );
 
   /// @brief callback for collection dropping
   static bool DropCollectionCallback(arangodb::LogicalCollection* collection);

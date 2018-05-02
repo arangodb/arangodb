@@ -34,6 +34,7 @@ ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an enter
 ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resources used by an operation exceed the configured maximum value."
 ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if icu operations failed"
 ERROR_CANNOT_READ_FILE,34,"cannot read file","Will be raised when a file cannot be read."
+ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when a server is running an incompatible version of ArangoDB."
 
 ################################################################################
 ## HTTP error status codes
@@ -218,6 +219,7 @@ ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard nu
 ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING,1495,"leadership challenge is ongoing","Will be raised when servers are currently competing for leadership, and the result is still unknown."
 ERROR_CLUSTER_NOT_LEADER,1496,"not a leader","Will be raised when an operation is sent to a non-leading server."
 ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,1497,"could not create view in plan","Will be raised when a coordinator in a cluster cannot create an entry for a new view in the Plan hierarchy in the agency."
+ERROR_CLUSTER_VIEW_ID_EXISTS,1498,"view ID already exists","Will be raised when a coordinator in a cluster tries to create a view and the view ID already exists."
 
 ################################################################################
 ## ArangoDB query errors
@@ -364,7 +366,6 @@ ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX,1927,"not a vertex collection","the col
 ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION,1928,"not in orphan collection","Vertex collection not in orphan collection of the graph.",
 ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF,1929,"collection already used in edge def","The collection is already used in an edge definition of the graph.",
 ERROR_GRAPH_EDGE_COLLECTION_NOT_USED,1930,"edge collection not used in graph","The edge collection is not used in any edge definition of the graph.",
-ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION,1931," is not an ArangoCollection","The collection is not an ArangoCollection.",
 ERROR_GRAPH_NO_GRAPH_COLLECTION,1932,"collection _graphs does not exist","collection _graphs does not exist.",
 ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING,1933,"Invalid example type. Has to be String, Array or Object","Invalid example type. Has to be String, Array or Object.",
 ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT,1934,"Invalid example type. Has to be Array or Object","Invalid example type. Has to be Array or Object.",

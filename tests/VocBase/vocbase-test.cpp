@@ -338,8 +338,8 @@ SECTION("test_lookupDataSource") {
     CHECK((true == !vocbase.lookupView("testViewGUID")));
   }
 
-  CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(collection, true, 0)));
-  CHECK((true == vocbase.dropView(*view).ok()));
+  CHECK((true == vocbase.dropCollection(collection->id(), true, 0).ok()));
+  CHECK((true == vocbase.dropView(view->id(), true).ok()));
   CHECK((true == collection->deleted()));
   CHECK((true == view->deleted()));
 

@@ -73,7 +73,7 @@ class EdgeConditionBuilder {
   virtual void buildToCondition() = 0;
 
  public:
-  virtual ~EdgeConditionBuilder() {};
+  virtual ~EdgeConditionBuilder() {}
 
   EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
   EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;

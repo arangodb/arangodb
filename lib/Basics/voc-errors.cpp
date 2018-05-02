@@ -39,6 +39,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_RESOURCE_LIMIT, "resource limit exceeded");
   REG_ERROR(ERROR_ARANGO_ICU_ERROR, "icu error: %s");
   REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
+  REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -179,6 +180,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
+  REG_ERROR(ERROR_CLUSTER_VIEW_ID_EXISTS, "view ID already exists");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -273,7 +275,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
-  REG_ERROR(ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION, " is not an ArangoCollection");
   REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING, "Invalid example type. Has to be String, Array or Object");
   REG_ERROR(ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT, "Invalid example type. Has to be Array or Object");
