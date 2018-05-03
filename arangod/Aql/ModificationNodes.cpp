@@ -44,9 +44,14 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
           Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)), 
-      _countStats(base.get("countStats").getBool()) {
+      _countStats(base.get("countStats").getBool()),
+      _restrictedTo("") {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
+  VPackSlice restrictedTo = base.get("restrictedTo");
+  if (restrictedTo.isString()) {
+    _restrictedTo = restrictedTo.copyString();
+  }
 }
 
 /// @brief toVelocyPack
@@ -58,6 +63,9 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
   builder.add("database", VPackValue(_vocbase->name()));
   builder.add("collection", VPackValue(_collection->getName()));
   builder.add("countStats", VPackValue(_countStats));
+  if (!_restrictedTo.empty()) {
+    builder.add("restrictedTo", VPackValue(_restrictedTo));
+  }
 
   // add out variables
   if (_outVariableOld != nullptr) {

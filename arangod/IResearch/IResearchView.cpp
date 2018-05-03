@@ -39,6 +39,7 @@
 #include "IResearchOrderFactory.h"
 #include "IResearchFilterFactory.h"
 #include "IResearchLink.h"
+#include "IResearchLinkHelper.h"
 #include "ExpressionFilter.h"
 #include "AqlHelper.h"
 
@@ -76,12 +77,6 @@ arangodb::aql::AstNode ALL(true, arangodb::aql::VALUE_TYPE_BOOL);
 /// @brief the storage format used with iResearch writers
 ////////////////////////////////////////////////////////////////////////////////
 const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the iResearch View definition denoting the
-///        corresponding link definitions
-////////////////////////////////////////////////////////////////////////////////
-const std::string LINKS_FIELD("links");
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
@@ -280,28 +275,6 @@ size_t directoryMemory(irs::directory const& directory, TRI_voc_cid_t viewId) no
   }
 
   return size;
-}
-
-std::shared_ptr<arangodb::iresearch::IResearchLink> findFirstMatchingLink(
-    arangodb::LogicalCollection const& collection,
-    arangodb::iresearch::IResearchView const& view
-) {
-  for (auto& index: collection.getIndexes()) {
-    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
-      continue; // not an iresearch Link
-    }
-
-    // TODO FIXME find a better way to retrieve an iResearch Link
-    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
-    auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-
-    if (link && *link == view) {
-      return link; // found required link
-    }
-  }
-
-  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -618,8 +591,8 @@ arangodb::Result updateLinks(
       namedJson.openObject();
 
       if (!arangodb::iresearch::mergeSlice(namedJson, link)
-          || !arangodb::iresearch::IResearchLink::setType(namedJson)
-          || !arangodb::iresearch::IResearchLink::setView(namedJson, view.id())) {
+          || !arangodb::iresearch::IResearchLinkHelper::setType(namedJson)
+          || !arangodb::iresearch::IResearchLinkHelper::setView(namedJson, view.id())) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failed to update link definition with the view name while updating iResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"
@@ -698,7 +671,7 @@ arangodb::Result updateLinks(
           );
         }
 
-        state._link = findFirstMatchingLink(*(state._collection), view);
+        state._link = arangodb::iresearch::IResearchLink::find(*(state._collection), view);
 
         // remove modification state if removal of non-existant link
         if (!state._link // links currently does not exist
@@ -821,7 +794,7 @@ void validateLinks(
   for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
     auto collection = vocbase.lookupCollection(*itr);
 
-    if (!collection || !findFirstMatchingLink(*collection, view)) {
+    if (!collection || !arangodb::iresearch::IResearchLink::find(*collection, view)) {
       itr = collections.erase(itr);
     } else {
       ++itr;
@@ -1574,7 +1547,7 @@ void IResearchView::getPropertiesVPack(
     return; // do not add 'links' section
   }
 
-  builder.add(LINKS_FIELD, linksBuilder.slice());
+  builder.add(StaticStrings::LinksField, linksBuilder.slice());
 }
 
 int IResearchView::insert(
@@ -1948,7 +1921,7 @@ int IResearchView::remove(
 PrimaryKeyIndexReader* IResearchView::snapshot(
     TransactionState& state,
     bool force /*= false*/
-) {
+) const {
   // TODO FIXME find a better way to look up a ViewState
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto* cookie = dynamic_cast<ViewState*>(state.cookie(this));
@@ -1964,7 +1937,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     return nullptr;
   }
 
-  if (state.waitForSync() && !sync()) {
+  if (state.waitForSync() && !const_cast<IResearchView*>(this)->sync()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to sync while creating snapshot for IResearch view '" << name() << "', previous snapshot will be used instead";
   }
@@ -2124,7 +2097,7 @@ arangodb::Result IResearchView::updateProperties(
     _meta = std::move(meta);
   }
 
-  if (!slice.hasKey(LINKS_FIELD)) {
+  if (!slice.hasKey(StaticStrings::LinksField)) {
     return res;
   }
 
@@ -2137,15 +2110,17 @@ arangodb::Result IResearchView::updateProperties(
   std::unordered_set<TRI_voc_cid_t> collections;
 
   if (partialUpdate) {
-    return updateLinks(collections, vocbase(), *this, slice.get(LINKS_FIELD));
+    return updateLinks(collections, vocbase(), *this, slice.get(StaticStrings::LinksField));
   }
 
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
 
+  // FIXME do not blindly drop links in case if
+  // current and expected metas are same
   if (!appendLinkRemoval(builder, _meta)
-      || !mergeSlice(builder, slice.get(LINKS_FIELD))) {
+      || !mergeSlice(builder, slice.get(StaticStrings::LinksField))) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failed to construct link update directive while updating IResearch View '") + name() + "'"
@@ -2260,7 +2235,7 @@ void IResearchView::verifyKnownCollections() {
       drop(cid);
     } else {
       // see if the link still exists, otherwise drop and move on
-      auto link = findFirstMatchingLink(*collection, *this);
+      auto link = IResearchLink::find(*collection, *this);
       if (!link) {
         LOG_TOPIC(TRACE, arangodb::iresearch::TOPIC)
           << "collection '" << cid

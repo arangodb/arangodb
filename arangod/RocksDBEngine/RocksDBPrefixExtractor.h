@@ -36,6 +36,8 @@
 
 namespace arangodb {
 
+/// @brief effectively used for the rocksdb edge index, to allow a
+/// dynamically length prefix spanning the indexed _from / _to string
 class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
  public:
   RocksDBPrefixExtractor() {}
@@ -45,7 +47,7 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
 
   rocksdb::Slice Transform(rocksdb::Slice const& key) const {
     // 8-byte objectID + 0..n-byte string + 1-byte '\0'
-    // + 8 byte revisionID + 1-byte 0xFF (these are cut off)
+    // + 8 byte revisionID + 1-byte 0xFF (these are for cut off)
     TRI_ASSERT(key.size() >= sizeof(char) + sizeof(uint64_t));
     if (key.data()[key.size() - 1] != '\0') {
       // unfortunately rocksdb seems to call Tranform(Transform(k))

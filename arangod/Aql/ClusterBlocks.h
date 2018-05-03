@@ -30,6 +30,8 @@
 #include "Aql/ExecutionNode.h"
 #include "Rest/GeneralRequest.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -280,6 +282,12 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief create a new document key
   std::string createKey(arangodb::velocypack::Slice) const;
+
+  // a reusable Builder object for building _key values
+  arangodb::velocypack::Builder _keyBuilder;
+  
+  // a reusable Builder object for building document objects
+  arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
   //  _buffer.at(j) row k should be sent to the client with id = i.

@@ -51,8 +51,8 @@ typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
     FunctionImplementation;
 
 struct Functions {
-  protected:
 
+ public:
     static AqlValue AddOrSubtractUnitFromTimestamp(arangodb::aql::Query* query,
                                                    tp_sys_clock_ms const& tp,
                                                    arangodb::velocypack::Slice durationUnits,
@@ -71,16 +71,19 @@ struct Functions {
 
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams);
-  
+
    /// @brief register warning
    static void RegisterWarning(arangodb::aql::Query* query,
                        char const* functionName, int code);
+   static void RegisterWarning(arangodb::aql::Query* query,
+                       char const* functionName, Result res);
    /// @brief register error
    static void RegisterError(arangodb::aql::Query* query,
                              char const* functionName, int code);
    /// @brief register usage of an invalid function argument
    static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
                                               char const* functionName);
+
 
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
@@ -348,6 +351,26 @@ struct Functions {
                                  VPackFunctionParameters const&);
     static AqlValue Distance(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
+    static AqlValue GeoDistance(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+    static AqlValue GeoContains(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+    static AqlValue GeoIntersects(arangodb::aql::Query*, transaction::Methods*,
+                                  VPackFunctionParameters const&);
+    static AqlValue GeoEquals(arangodb::aql::Query*, transaction::Methods*,
+                              VPackFunctionParameters const&);
+    static AqlValue IsInPolygon(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+    static AqlValue GeoPoint(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
+    static AqlValue GeoMultiPoint(arangodb::aql::Query*, transaction::Methods*,
+                                  VPackFunctionParameters const&);
+    static AqlValue GeoPolygon(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+    static AqlValue GeoLinestring(arangodb::aql::Query*, transaction::Methods*,
+                                  VPackFunctionParameters const&);
+    static AqlValue GeoMultiLinestring(arangodb::aql::Query*, transaction::Methods*,
+                                       VPackFunctionParameters const&);
     static AqlValue Flatten(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
     static AqlValue Zip(arangodb::aql::Query*, transaction::Methods*,
@@ -468,7 +491,7 @@ struct Functions {
     static AqlValue Call(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
     static AqlValue Apply(arangodb::aql::Query*, transaction::Methods*,
-                          VPackFunctionParameters const&);  
+                          VPackFunctionParameters const&);
     static AqlValue IsSameCollection(arangodb::aql::Query*,
                                      transaction::Methods*,
                                      VPackFunctionParameters const&);
@@ -476,8 +499,10 @@ struct Functions {
                            VPackFunctionParameters const&);
     static AqlValue Warn(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
+    static AqlValue Fail(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
 };
-  
+
 }
 }
 

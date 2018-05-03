@@ -81,6 +81,7 @@ class CollectionNameResolver;
 class LocalDocumentId;
 class Index;
 class ManagedDocumentResult;
+struct IndexIteratorOptions;
 struct OperationCursor;
 struct OperationOptions;
 class TransactionState;
@@ -360,15 +361,15 @@ class Methods {
   OperationCursor* indexScanForCondition(IndexHandle const&,
                                          arangodb::aql::AstNode const*,
                                          arangodb::aql::Variable const*,
-                                         ManagedDocumentResult*, bool reverse);
+                                         ManagedDocumentResult*,
+                                         IndexIteratorOptions const&);
 
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   ENTERPRISE_VIRT
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
-                                             CursorType cursorType,
-                                             bool reverse);
+                                             CursorType cursorType);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,

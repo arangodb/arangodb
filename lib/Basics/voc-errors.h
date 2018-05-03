@@ -168,6 +168,11 @@ constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        
 /// Will be raised when a file cannot be read.
 constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 34;
 
+/// 35: ERROR_INCOMPATIBLE_VERSION
+/// "incompatible server version"
+/// Will be raised when a server is running an incompatible version of ArangoDB.
+constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    = 35;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -536,11 +541,6 @@ constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            
 /// Will be raised when a document revision is corrupt or is missing where
 /// needed.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 = 1239;
-
-/// 1240: ERROR_ARANGO_COLLECTION_NOT_FOUND
-/// "collection not found"
-/// Will be raised when a collection with a given identifier or handle is unknown.
-constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                               = 1240;
 
 /// 1300: ERROR_ARANGO_DATAFILE_FULL
 /// "datafile full"
@@ -960,6 +960,12 @@ constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      
 /// Will be raised when a coordinator in a cluster cannot create an entry for a
 /// new view in the Plan hierarchy in the agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   = 1497;
+
+/// 1498: ERROR_CLUSTER_VIEW_ID_EXISTS
+/// "view ID already exists"
+/// Will be raised when a coordinator in a cluster tries to create a view and
+/// the view ID already exists.
+constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
 
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"

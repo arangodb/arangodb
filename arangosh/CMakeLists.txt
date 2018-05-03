@@ -174,6 +174,7 @@ endif ()
 add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
@@ -235,8 +236,8 @@ add_executable(${BIN_ARANGORESTORE}
   Restore/arangorestore.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
+  Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
 
@@ -283,6 +284,7 @@ endif ()
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Import/AutoTuneThread.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Shell/ClientFeature.cpp

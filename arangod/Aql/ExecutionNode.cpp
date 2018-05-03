@@ -87,7 +87,8 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(TRAVERSAL), "TraversalNode"},
     {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"},
 #ifdef USE_IRESEARCH
-    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"}
+    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
+    {static_cast<int>(SCATTER_IRESEARCH_VIEW), "ScatterViewNode"}
 #endif
 };
 
@@ -109,6 +110,20 @@ void ExecutionNode::validateType(int type) {
   if (it == TypeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
+}
+  
+/// @brief add a dependency
+void ExecutionNode::addDependency(ExecutionNode* ep) {
+  TRI_ASSERT(ep != nullptr);
+  _dependencies.emplace_back(ep);
+  ep->_parents.emplace_back(this);
+}
+
+/// @brief add a parent
+void ExecutionNode::addParent(ExecutionNode* ep) {
+  TRI_ASSERT(ep != nullptr);
+  ep->_dependencies.emplace_back(this);
+  _parents.emplace_back(ep);
 }
 
 void ExecutionNode::getSortElements(SortElementVector& elements,
@@ -157,10 +172,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new EnumerateCollectionNode(plan, slice);
     case ENUMERATE_LIST:
       return new EnumerateListNode(plan, slice);
-#ifdef USE_IRESEARCH
-    case ENUMERATE_IRESEARCH_VIEW:
-      return new iresearch::IResearchViewNode(plan, slice);
-#endif
     case FILTER:
       return new FilterNode(plan, slice);
     case LIMIT:
@@ -278,6 +289,12 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+#ifdef USE_IRESEARCH
+    case ENUMERATE_IRESEARCH_VIEW:
+      return new iresearch::IResearchViewNode(*plan, slice);
+    case SCATTER_IRESEARCH_VIEW:
+      return new iresearch::IResearchViewScatterNode(*plan, slice);
+#endif
   }
   return nullptr;
 }
@@ -874,15 +891,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       totalNrRegs++;
       break;
     }
-#ifdef USE_IRESEARCH
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
-      TRI_ASSERT(ep);
-
-      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
-      break;
-    }
-#endif
 
     case ExecutionNode::CALCULATION: {
       nrRegsHere[depth]++;
@@ -1121,6 +1129,20 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       }
       break;
     }
+
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
+      TRI_ASSERT(ep);
+
+      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      break;
+    }
+
+    case ExecutionNode::SCATTER_IRESEARCH_VIEW:
+      // these node type does not produce any new registers
+      break;
+#endif
   }
 
   en->_depth = depth;
@@ -1158,6 +1180,95 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     en->setRegsToClear(std::move(regsToClear));
   }
 }
+  
+/// @brief replace a dependency, returns true if the pointer was found and
+/// replaced, please note that this does not delete oldNode!
+bool ExecutionNode::replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
+  TRI_ASSERT(oldNode != nullptr);
+  TRI_ASSERT(newNode != nullptr);
+
+  auto it = _dependencies.begin();
+
+  while (it != _dependencies.end()) {
+    if (*it == oldNode) {
+      *it = newNode;
+      try {
+        newNode->_parents.emplace_back(this);
+      } catch (...) {
+        *it = oldNode;  // roll back
+        return false;
+      }
+      try {
+        for (auto it2 = oldNode->_parents.begin();
+              it2 != oldNode->_parents.end(); ++it2) {
+          if (*it2 == this) {
+            oldNode->_parents.erase(it2);
+            break;
+          }
+        }
+      } catch (...) {
+        // If this happens, we ignore that the _parents of oldNode
+        // are not set correctly
+      }
+      return true;
+    }
+
+    ++it;
+  }
+  return false;
+}
+  
+/// @brief remove a dependency, returns true if the pointer was found and
+/// removed, please note that this does not delete ep!
+bool ExecutionNode::removeDependency(ExecutionNode* ep) {
+  bool ok = false;
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    if (*it == ep) {
+      try {
+        it = _dependencies.erase(it);
+      } catch (...) {
+        return false;
+      }
+      ok = true;
+      break;
+    }
+  }
+
+  if (!ok) {
+    return false;
+  }
+
+  // Now remove us as a parent of the old dependency as well:
+  for (auto it = ep->_parents.begin(); it != ep->_parents.end(); ++it) {
+    if (*it == this) {
+      try {
+        ep->_parents.erase(it);
+      } catch (...) {
+      }
+      return true;
+    }
+  }
+
+  return false;
+}
+  
+/// @brief remove all dependencies for the given node
+void ExecutionNode::removeDependencies() {
+  for (auto& x : _dependencies) {
+    for (auto it = x->_parents.begin(); it != x->_parents.end(); /* no hoisting */) {
+      if (*it == this) {
+        try {
+          it = x->_parents.erase(it);
+        } catch (...) {
+        }
+        break;
+      } else {
+        ++it;
+      }
+    }
+  }
+  _dependencies.clear();
+}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
@@ -1190,9 +1301,14 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
-      _random(base.get("random").getBoolean()) {
+      _random(base.get("random").getBoolean()),
+      _restrictedTo("") {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
+  VPackSlice restrictedTo = base.get("restrictedTo");
+  if (restrictedTo.isString()) {
+    _restrictedTo = restrictedTo.copyString();
+  }
 
   if (_collection == nullptr) {
     std::string msg("collection '");
@@ -1213,6 +1329,9 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("random", VPackValue(_random));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
+  if (!_restrictedTo.empty()) {
+    nodes.add("restrictedTo", VPackValue(_restrictedTo));
+  }
 
   // add outvariable and projection
   DocumentProducingNode::toVelocyPack(nodes);
@@ -1567,7 +1686,7 @@ bool SubqueryNode::isModificationQuery() const {
 
     stack.pop_back();
 
-    current->addDependencies(stack);
+    current->dependencies(stack);
   }
 
   return false;

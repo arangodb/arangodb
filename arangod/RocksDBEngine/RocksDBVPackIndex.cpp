@@ -215,7 +215,7 @@ uint64_t RocksDBVPackIndex::HashForKey(const rocksdb::Slice& key) {
 RocksDBVPackIndex::RocksDBVPackIndex(TRI_idx_iid_t iid,
                                      arangodb::LogicalCollection* collection,
                                      arangodb::velocypack::Slice const& info)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(), false),
+    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::vpack(), false), 
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),
       _useExpansion(false),
@@ -497,7 +497,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     }
   };
-  for (auto const& member : VPackArrayIterator(current)) {
+  for (VPackSlice member : VPackArrayIterator(current)) {
     VPackSlice current2(member);
     bool doneNull = false;
     for (size_t i = _expanding[level] + 1; i < n; i++) {
@@ -1120,11 +1120,11 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       estimatedCost = 0.0;
     } else {
       if (useCache()) {
-        estimatedCost = static_cast<double>(estimatedItems * values);
+        estimatedCost = static_cast<double>(estimatedItems * values) - (_fields.size() - 1) * 0.01;
       } else {
         estimatedCost =
             (std::max)(static_cast<double>(1),
-                       std::log2(static_cast<double>(itemsInIndex)) * values);
+                       std::log2(static_cast<double>(itemsInIndex)) * values) - (_fields.size() - 1) * 0.01;
       }
     }
     return true;
@@ -1185,7 +1185,10 @@ bool RocksDBVPackIndex::supportsSortCondition(
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
+  
   VPackBuilder searchValues;
   searchValues.openArray();
   bool needNormalize = false;
@@ -1371,8 +1374,8 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     VPackSlice expandedSlice = expandedSearchValues.slice();
     std::vector<IndexIterator*> iterators;
     try {
-      for (auto const& val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, val, reverse);
+      for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
+        auto iterator = lookup(trx, val, !opts.ascending);
         try {
           iterators.push_back(iterator);
         } catch (...) {
@@ -1381,7 +1384,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
           throw;
         }
       }
-      if (reverse) {
+      if (!opts.ascending) {
         std::reverse(iterators.begin(), iterators.end());
       }
     } catch (...) {
@@ -1396,7 +1399,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   VPackSlice searchSlice = searchValues.slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
-  return lookup(trx, searchSlice, reverse);
+  return lookup(trx, searchSlice, !opts.ascending);
 }
 
 /// @brief specializes the condition for use with the index

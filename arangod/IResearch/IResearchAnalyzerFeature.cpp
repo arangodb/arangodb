@@ -224,7 +224,6 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
     true, // can throw
     true, // can be run on server
-    true, // can pass arguments by reference
     aqlFnTokens // function implementation
   });
 }
@@ -822,7 +821,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
       return true; // not a valid configuration, skip
     }
 
-    auto key = getStringRef(slice.get(StaticStrings::KeyString));
+    auto key = getStringRef(slice.get(arangodb::StaticStrings::KeyString));
     auto name = getStringRef(slice.get("name"));
     auto type = getStringRef(slice.get("type"));
     irs::string_ref properties;

@@ -79,7 +79,7 @@ class WalAccess {
 
  protected:
   WalAccess() {}
-  virtual ~WalAccess(){};
+  virtual ~WalAccess() {}
 
  public:
   struct Filter {
