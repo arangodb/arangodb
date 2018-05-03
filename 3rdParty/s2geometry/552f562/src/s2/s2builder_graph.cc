@@ -118,7 +118,7 @@ Graph::VertexInMap::VertexInMap(const Graph& g)
   }
 }
 
-Graph::LabelFetcher::LabelFetcher(const Graph& g, EdgeType edge_type)
+Graph::LabelFetcher::LabelFetcher(const Graph& g, S2Builder::EdgeType edge_type)
     : g_(g), edge_type_(edge_type) {
   if (edge_type == EdgeType::UNDIRECTED) sibling_map_ = g.GetSiblingMap();
 }
