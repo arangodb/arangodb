@@ -83,7 +83,7 @@ This function can be **optimized** via a S2 based geospatial index, please look 
 `GEO_EQUALS(geoJSONA, geoJSONB) → bool`
 
 Checks whether two GeoJSON objects are equal or not. (For a list of supported
-Types see [geo index page](../../Manual/Indexing/GeoSpatial.html#geojson)).
+Types see [geo index page](../../Manual/Indexing/Geo.html#geojson)).
 
 - **geoJSONA** first GeoJSON object
 - **geoJSONB** second GeoJSON object.
