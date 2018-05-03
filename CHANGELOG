@@ -56,8 +56,6 @@ devel
   of the V8 JavaScript engine. Only expected to work on single-servers and agency deployments
 
 * pull request #5201: eliminate race scenario where handlePlanChange could run infinite times
-
-* pull request 5201: eliminate race scenario where handlePlanChange could run infinite times
   after an execution exceeded 7.4 second time span
 
 * UI: fixed an unreasonable event bug within the modal view engine
