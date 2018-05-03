@@ -107,6 +107,8 @@ inline static uint64 BN_ext_get_uint64(const BIGNUM* bn) {
 #endif
 }
 
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+
 // Count the number of low-order zero bits in the given BIGNUM (ignoring its
 // sign).  Returns 0 if the argument is zero.
 static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
@@ -125,6 +127,30 @@ static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
   return count;
 }
 
+#else
+
+static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
+  // BN_bn2lebinpad(const BIGNUM *a, unsigned char *to, int tolen)
+  // converts the absolute value of `a into little-endian form and
+  // stores it at `to`. `tolen` indicates the length of the output buffer `to`
+  int size = BN_num_bytes(bn);
+  unsigned char bin[size];
+  size = BN_bn2lebinpad(bn, bin, size);
+  
+  for (int i = 0; i < size; ++i) {
+    if (bin[i] != 0) {
+      int bits = 0;
+      for (unsigned char w = bin[i]; (w & 1) == 0; w >>= 1) {
+        ++bits;
+      }
+      return i * 8 + bits;
+    }
+  }
+  // There are no non-zero words in |bn|
+  return 0;
+}
+
+#endif // !(OPENSSL_VERSION_NUMBER < 0x10100000L)
 #endif  // !defined(OPENSSL_IS_BORINGSSL)
 
 ExactFloat::ExactFloat(double v) {
