@@ -415,12 +415,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
     highKey = RocksDBKey::primaryKey(rocksKey).toString();
 
     TRI_voc_rid_t docRev;
-    if(rocksValue.size()
-       >= sizeof(std::uint64_t) /*doc id*/
-       +  sizeof(TRI_voc_rid_t) /*revision id*/
-    ) {
-      docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
-    } else { // for collections that do not have the revisionId in the value
+    if(!RocksDBValue::revisionId(rocksValue, docRev)){
+      // for collections that do not have the revisionId in the value
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
       if(_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
         TRI_ASSERT(false);
@@ -533,12 +529,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 
   auto cb = [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     TRI_voc_rid_t docRev;
-    if(rocksValue.size()
-       >= sizeof(std::uint64_t) /*doc id*/
-       +  sizeof(TRI_voc_rid_t) /*revision id*/
-    ) {
-      docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
-    } else { // for collections that do not have the revisionId in the value
+    if(!RocksDBValue::revisionId(rocksValue, docRev)){
+      // for collections that do not have the revisionId in the value
       auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
       if(_collection->logical.readDocument(_trx.get(), documentId, _collection->mdr) == false) {
         TRI_ASSERT(false);

@@ -458,11 +458,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     iterator.next(
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           StringRef docKey(RocksDBKey::primaryKey(rocksKey));
-          if (docKey.compare(lowRef) < 0) {
-            builder.clear();
-            builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
-            trx.remove(col->name(), builder.slice(), options);
-          } else if (docKey.compare(highRef) > 0) {
+          if (docKey.compare(lowRef) < 0 || docKey.compare(highRef) > 0) {
             builder.clear();
             builder.add(velocypack::ValuePair(docKey.data(),docKey.size(), velocypack::ValueType::String));
             trx.remove(col->name(), builder.slice(), options);
@@ -488,7 +484,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       AccessMode::Type::EXCLUSIVE
     );
 
-    trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::RECOVERY); // to turn off waitForSync!
 
     Result res = trx.begin();
 
@@ -616,7 +612,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           }
         }
       }
-    }; //comapre chunk - end
+    }; //compare chunk - end
 
     LogicalCollection* coll = trx.documentCollection();
     auto iterator = createPrimaryIndexIterator(&trx, coll);
@@ -624,12 +620,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         [&](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
           std::string docKey = RocksDBKey::primaryKey(rocksKey).toString();
           TRI_voc_rid_t docRev;
-          if(rocksValue.size()
-             >= sizeof(std::uint64_t) /*doc id*/
-             +  sizeof(TRI_voc_rid_t) /*revision id*/
-          ) {
-            docRev = rocksutils::uint64FromPersistent(rocksValue.data() + sizeof(std::uint64_t));
-          } else { // for collections that do not have the revisionId in the value
+          if(!RocksDBValue::revisionId(rocksValue, docRev)){
+            // for collections that do not have the revisionId in the value
             auto documentId = RocksDBValue::documentId(rocksValue); // we want probably to do this instead
             if(col->readDocument(&trx, documentId, mmdr) == false) {
               TRI_ASSERT(false);

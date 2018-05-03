@@ -73,6 +73,15 @@ class RocksDBValue {
   static LocalDocumentId documentId(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the revisionId from a value
+  ///
+  /// May be called only on PrimaryIndexValue values. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
+  static TRI_voc_rid_t revisionId(rocksdb::Slice const&); // throwing
+  static bool revisionId(rocksdb::Slice const&, TRI_voc_rid_t& id);
+  // version using a Result is missing
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the vertex _to or _from ID (`_key`) from a value
   ///
   /// May be called only on EdgeIndexValue values. Other types will throw.

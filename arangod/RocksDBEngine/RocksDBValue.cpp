@@ -88,6 +88,22 @@ LocalDocumentId RocksDBValue::documentId(std::string const& s) {
   return documentId(s.data(), s.size());
 }
 
+bool RocksDBValue::revisionId(rocksdb::Slice const& slice, TRI_voc_rid_t& id){
+  if(slice.size() == sizeof(LocalDocumentId::BaseType) + sizeof(TRI_voc_rid_t)){
+    id = rocksutils::uint64FromPersistent(slice.data() + sizeof(LocalDocumentId::BaseType));
+    return true;
+  }
+  return false;
+}
+
+TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice){
+  TRI_voc_rid_t id;
+  if(revisionId(slice, id)){
+    return id;
+  }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
 StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
   return vertexId(s.data(), s.size());
 }
