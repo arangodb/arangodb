@@ -56,6 +56,7 @@ file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 list(APPEND V8_GYP_ARGS
   --generator-output=${V8_TARGET_DIR}
   #$ ${V8_REL_TARGET_PATH}
+  -DDebugInformationFormat=OldStyle
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dv8_host_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
@@ -290,15 +291,17 @@ elseif (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
   set(GYP_MAIN gypfiles/gyp_v8)
 
+  list(APPEND V8_GYP_ARGS "-Gmsvs_version=2017")
+
   # try to find 2013 in 'Visual Studio 12 2013 Win64'
-  if (${CMAKE_GENERATOR} MATCHES "2013") 
-    list(APPEND V8_GYP_ARGS "-Gmsvs_version=2013")
-  endif()
+  #if (${CMAKE_GENERATOR} MATCHES "2013") 
+  #  list(APPEND V8_GYP_ARGS "-Gmsvs_version=2013")
+  #endif()
 
   # try to find 2015 in 'Visual Studio 14 2015 Win64'
-  if (${CMAKE_GENERATOR} MATCHES "2015") 
-    list(APPEND V8_GYP_ARGS "-Gmsvs_version=2015")
-  endif()
+  #if (${CMAKE_GENERATOR} MATCHES "2015") 
+  #  list(APPEND V8_GYP_ARGS "-Gmsvs_version=2015")
+  #endif()
   
   list(APPEND V8_GYP_ARGS "-GGYP_GENERATORS=msvs")
   list(APPEND V8_GYP_ARGS "-Dmsvs_cygwin_shell=0")
@@ -317,7 +320,7 @@ elseif (WIN32)
     set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
   endif()
   set(ENV{GYP_GENERATORS} msvs)
-  set(ENV{GYP_MSVS_VERSION} 2015)
+  set(ENV{GYP_MSVS_VERSION} 2017)
   set(ENV{DEPOT_TOOLS_WIN_TOOLCHAIN} 0)
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
@@ -346,7 +349,7 @@ elseif (WIN32)
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
-        ${CMAKE_COMMAND} -E env GYP_GENERATORS=msvs GYP_MSVS_VERSION=2015 DEPOT_TOOLS_WIN_TOOLCHAIN=0 ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
+        ${CMAKE_COMMAND} -E env GYP_GENERATORS=msvs GYP_MSVS_VERSION=2017 DEPOT_TOOLS_WIN_TOOLCHAIN=0 ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
       BUILD_COMMAND
         ""
       INSTALL_COMMAND
