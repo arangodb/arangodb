@@ -854,39 +854,6 @@ function AQL_PASSTHRU (value) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test helper function
-// / this is no actual function the end user should call
-// //////////////////////////////////////////////////////////////////////////////
-
-function AQL_TEST_INTERNAL (test, what) {
-  'use strict';
-  if (test === 'MODIFY_ARRAY') {
-    what[0] = 1;
-    what[1] = 42;
-    what[2] = [ 1, 2 ];
-    what[3].push([ 1, 2 ]);
-    what[4] = { a: 9, b: 2 };
-    what.push('foo');
-    what.push('bar');
-    what.pop();
-  } else if (test === 'MODIFY_OBJECT') {
-    what.a = 1;
-    what.b = 3;
-    what.c = [ 1, 2 ];
-    what.d.push([ 1, 2 ]);
-    what.e.f = { a: 1, b: 2 };
-    delete what.f;
-    what.g = 'foo';
-  } else if (test === 'DEADLOCK') {
-    var err = new ArangoError();
-    err.errorNum = INTERNAL.errors.ERROR_DEADLOCK.code;
-    err.errorMessage = INTERNAL.errors.ERROR_DEADLOCK.message;
-    throw err;
-  }
-  return what;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the current user
 // / note: this might be null if the query is not executed in a context that
 // / has a user
@@ -1196,7 +1163,6 @@ exports.AQL_WITHIN_RECTANGLE = AQL_WITHIN_RECTANGLE;
 exports.AQL_IS_IN_POLYGON = AQL_IS_IN_POLYGON;
 exports.AQL_FULLTEXT = AQL_FULLTEXT;
 exports.AQL_V8 = AQL_PASSTHRU;
-exports.AQL_TEST_INTERNAL = AQL_TEST_INTERNAL;
 exports.AQL_CURRENT_USER = AQL_CURRENT_USER;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 exports.AQL_PREGEL_RESULT = AQL_PREGEL_RESULT;
