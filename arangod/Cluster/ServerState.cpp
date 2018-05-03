@@ -60,10 +60,9 @@ ServerState::ServerState()
       _role(RoleEnum::ROLE_UNDEFINED),
       _state(STATE_UNDEFINED),
       _initialized(false),
-      _clusterEnabled(false),
       _foxxmaster(),
       _foxxmasterQueueupdate(false) {
-  storeRole(ROLE_UNDEFINED);
+  setRole(ROLE_UNDEFINED);
 }
 
 void ServerState::findHost(std::string const& fallback) {
@@ -638,7 +637,10 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
 /// @brief set the server role
 ////////////////////////////////////////////////////////////////////////////////
 
-void ServerState::setRole(ServerState::RoleEnum role) { storeRole(role); }
+void ServerState::setRole(ServerState::RoleEnum role) {
+  Logger::setRole(roleToString(role)[0]);
+  _role.store(role, std::memory_order_release);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the server id
@@ -806,38 +808,6 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
 
   // anything else is invalid
   return false;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief store the server role
-//////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::storeRole(RoleEnum role) {
-  // this method will be called on a single server too
-  if (AgencyCommManager::isEnabled()) {// isClusterRole(role)
-    try {
-      VPackBuilder builder;
-      builder.add(VPackValue("none"));
-    
-      AgencyOperation op("Current/" + roleToAgencyListKey(role) + "/" + _id,
-                       AgencyValueOperationType::SET, builder.slice());
-      std::unique_ptr<AgencyTransaction> trx(new AgencyWriteTransaction(op));
-
-      AgencyComm comm; // should not throw anything
-      AgencyCommResult res = comm.sendTransactionWithFailover(*trx.get(), 1.0);
-      if (!res.successful()) {
-        return false;
-      }
-    } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << __FUNCTION__
-        << " out of memory storing server role";
-      FATAL_ERROR_EXIT();
-    }
-  }
-
-  Logger::setRole(roleToString(role)[0]);
-  _role.store(role, std::memory_order_release);
-  return true;
 }
 
 bool ServerState::isFoxxmaster() {

@@ -27,7 +27,6 @@
 #include "catch.hpp"
 #include "fakeit.hpp"
 
-#include "Agency/AddFollower.h"
 #include "Agency/FailedFollower.h"
 #include "Agency/MoveShard.h"
 #include "Agency/AgentInterface.h"

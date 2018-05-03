@@ -61,6 +61,7 @@
 
 #include "Basics/Common.h"
 
+#include "Basics/CleanupFunctions.h"
 #include "Basics/Mutex.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
