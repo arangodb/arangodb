@@ -13,6 +13,5 @@ There are special sections for
  - [Skiplists](Skiplist.md)
  - [Persistent Indexes](Persistent.md)
  - [Fulltext Indexes](Fulltext.md)
- - [Geo-spatial Indexes](GeoSpatial.md)
- - [Legacy Metric Geo Indexes](Geo.md)
+ - [Geo-spatial Indexes](Geo.md)
  - [Vertex-centric Indexes](VertexCentric.md)
