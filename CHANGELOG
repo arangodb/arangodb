@@ -187,8 +187,9 @@ v3.3.8 (XXXX-XX-XX)
 * added `@arangodb/locals` module to expose the Foxx service context as an
   alternative to using `module.context` directly.
 
-* supervision can be put into maintenance mode
+* `db._executeTransaction` now accepts collection objects as collections.
 
+* supervision can be put into maintenance mode
 
 v3.3.7 (2018-04-11)
 -------------------
