@@ -66,8 +66,6 @@ class SocketTask : virtual public Task {
   virtual bool processRead(double startTime) = 0;
   virtual void compactify() {}
   
-  boost::asio::io_service::strand& strand() { return _peer->strand(); }
-
   // This function is used during the protocol switch from http
   // to VelocyStream. This way we do not require additional
   // constructor arguments. It should not be used otherwise.
@@ -172,10 +170,11 @@ protected:
   void asyncWriteSome();
   
  protected:
-  //Mutex _lock;
+
   ConnectionStatistics* _connectionStatistics;
   ConnectionInfo _connectionInfo;
-  basics::StringBuffer _readBuffer; // needs _lock
+  basics::StringBuffer _readBuffer;
+  std::unique_ptr<Socket> _peer;
   
  private:
   Mutex _bufferLock;
@@ -185,7 +184,6 @@ protected:
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
 
-  std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
   boost::asio::deadline_timer _keepAliveTimer;
   bool const _useKeepAliveTimer;

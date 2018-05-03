@@ -293,22 +293,22 @@ void GeneralCommTask::handleRequestDirectly(
   /*if (!doLock) {
     _lock.assertLockedByCurrentThread();
   }*/
-  TRI_ASSERT(doLock || strand().running_in_this_thread());
+  TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
 
-  auto self = shared_from_this();
-  handler->initEngine(_loop, [self, this, doLock](std::shared_ptr<rest::RestHandler> h) {
+  handler->initEngine(_loop, [this, doLock](std::shared_ptr<rest::RestHandler> h) {
     RequestStatistics* stat = h->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
     if (doLock) {
+      auto self = shared_from_this();
       _loop.scheduler->_nrQueued++;
-      this->strand().post([self, this, stat, h]() {
+      _peer->strand.post([self, this, stat, h]() {
         _loop.scheduler->_nrQueued--;
         JobGuard guard(_loop);
         guard.work();
         addResponse(*(h->response()), stat);
       });
     } else {
-      TRI_ASSERT(strand().running_in_this_thread());
+      TRI_ASSERT(_peer->strand.running_in_this_thread());
       addResponse(*h->response(), stat);
     }
   });

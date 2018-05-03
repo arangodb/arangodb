@@ -132,7 +132,7 @@ void SocketTask::start() {
 
   auto self = shared_from_this();
   _loop.scheduler->_nrQueued++;
-  _peer->strand().post([self, this]() {
+  _peer->strand.post([self, this]() {
     _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
@@ -147,7 +147,7 @@ void SocketTask::start() {
 // caller must hold the _lock
 void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
   //_lock.assertLockedByCurrentThread();
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
 
   if (_closedSend.load(std::memory_order_acquire) ||
       _abandoned.load(std::memory_order_acquire)) {
@@ -160,7 +160,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
    // strand::post guarantees this is not called directly
    auto self = shared_from_this();
    _loop.scheduler->_nrQueued++;
-   _peer->strand().post([self, this]() {
+   _peer->strand.post([self, this]() {
    _loop.scheduler->_nrQueued--;
    JobGuard guard(_loop);
    guard.work();
@@ -184,7 +184,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 bool SocketTask::completedWriteBuffer() {
   //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
 
   RequestStatistics::SET_WRITE_END(_writeBuffer._statistics);
   _writeBuffer.release(this); // try to recycle the string buffer
@@ -211,7 +211,7 @@ void SocketTask::closeStream() {
   // is called on a thread inside the same strand
   auto self = shared_from_this();
   _loop.scheduler->_nrQueued++;
-  _peer->strand().post([self, this] {
+  _peer->strand.post([self, this] {
     _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
@@ -223,7 +223,7 @@ void SocketTask::closeStream() {
 void SocketTask::closeStreamNoLock() {
   //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
 
   bool mustCloseSend = !_closedSend.load(std::memory_order_acquire);
   bool mustCloseReceive = !_closedReceive.load(std::memory_order_acquire);
@@ -249,7 +249,7 @@ void SocketTask::closeStreamNoLock() {
 void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
   //MUTEX_LOCKER(locker, _lock);
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
   //LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << std::string(data, len);
   _readBuffer.appendText(data, len);
 }
@@ -259,7 +259,6 @@ void SocketTask::resetKeepAlive() {
   if (_useKeepAliveTimer) {
     boost::system::error_code err;
     _keepAliveTimer.expires_from_now(_keepAliveTimeout, err);
-
     if (err) {
       closeStream();
       return;
@@ -293,7 +292,7 @@ void SocketTask::cancelKeepAlive() {
 bool SocketTask::reserveMemory() {
   //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
   if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "out of memory while reading from client";
     closeStreamNoLock();
@@ -311,7 +310,7 @@ bool SocketTask::trySyncRead() {
   }
   
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
   
   boost::system::error_code err;
   TRI_ASSERT(_peer != nullptr);
@@ -357,7 +356,7 @@ bool SocketTask::trySyncRead() {
 bool SocketTask::processAll() {
   //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
 
   double startTime = StatisticsFeature::time();
   Result res;
@@ -401,7 +400,7 @@ bool SocketTask::processAll() {
 void SocketTask::asyncReadSome() {
   //MUTEX_LOCKER(locker, _lock);
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
   
   if (!_peer->isEncrypted()) {
     try {
@@ -471,7 +470,7 @@ void SocketTask::asyncReadSome() {
         }
         
         _loop.scheduler->_nrQueued++;
-        _peer->strand().post([self, this, transferred] {
+        _peer->strand.post([self, this, transferred] {
           _loop.scheduler->_nrQueued--;
           JobGuard guard(_loop);
           guard.work();
@@ -479,7 +478,7 @@ void SocketTask::asyncReadSome() {
           _readBuffer.increaseLength(transferred);
           if (processAll()) {
             _loop.scheduler->_nrQueued++;
-            _peer->strand().post([self, this]() {
+            _peer->strand.post([self, this]() {
               _loop.scheduler->_nrQueued--;
               JobGuard guard(_loop);
               guard.work();
@@ -495,9 +494,10 @@ void SocketTask::asyncReadSome() {
 void SocketTask::asyncWriteSome() {
   //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand().running_in_this_thread());
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
   
   if (_writeBuffer.empty()) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "WB empty";
     return;
   }
   size_t total = _writeBuffer._buffer->length();
@@ -570,24 +570,25 @@ void SocketTask::asyncWriteSome() {
                       // FIXME: this is a behaviour change, previously completedWriteBuffer
                       // would run immediately in the previous handler
                       _loop.scheduler->_nrQueued++;
-                      _peer->strand().post([self, this, transferred] {
+                      _peer->strand.post([self, this, transferred] {
                         _loop.scheduler->_nrQueued--;
                         JobGuard guard(_loop);
                         guard.work();
                         
                         if (_abandoned.load(std::memory_order_acquire)) {
+                          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Abandoned 5";
                           return;
                         }
                         
                         RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
                         
                         if (completedWriteBuffer()) {
+                          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Queueing asyncWriteSome()";
                           _loop.scheduler->_nrQueued++;
-                          _peer->strand().post([self, this] {
+                          _peer->strand.post([self, this] {
                             _loop.scheduler->_nrQueued--;
                             JobGuard guard(_loop);
                             guard.work();
-                            asyncWriteSome();
                             if (!_abandoned.load(std::memory_order_acquire)) {
                               asyncWriteSome();
                             }
@@ -652,7 +653,7 @@ void SocketTask::triggerProcessAll() {
   // try to process remaining request data
   auto self = shared_from_this();
   _loop.scheduler->_nrQueued++;
-  this->strand().post([self, this] {
+  _peer->strand.post([self, this] {
     _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
