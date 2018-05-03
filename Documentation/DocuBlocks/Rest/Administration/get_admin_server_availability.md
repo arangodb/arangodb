@@ -1,6 +1,6 @@
 
 @startDocuBlock get_admin_server_availability
-@brief Get to know whether this server is a Coordinator or DB-Server
+@brief Return whether or not a server is available
 
 @RESTHEADER{GET /_admin/server/availability, Return whether or not a server is available}
 
@@ -19,6 +19,6 @@ in case of an active failover setup.
 
 @RESTRETURNCODE{503}
 HTTP 503 will be returned in case the server is during startup or during shutdown,
-is set to read-only mode or is currently not a follower in an active failover setup.
+is set to read-only mode or is currently a follower in an active failover setup.
 @endDocuBlock
 
