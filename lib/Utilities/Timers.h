@@ -27,7 +27,7 @@ struct timer {
   }
 
   void release(){
-    LOG_DEVEL << "timer" << _name << ":" << std::fixed << diff(_start, clock::now()) / (double) std::giga::num << "s";
+    LOG_TOPIC(ERR, Logger::FIXME) << "## ## ## timer" << _name << ":" << std::fixed << diff(_start, clock::now()) / (double) std::giga::num << "s";
     _released = true;
   }
 
