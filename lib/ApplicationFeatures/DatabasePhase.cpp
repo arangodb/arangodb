@@ -34,7 +34,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer* server)
   startsAfter("CacheManager");
   startsAfter("CheckVersion");
   startsAfter("Database");
-  startsAfter("EngineEqualityCheck");
   startsAfter("EngineSelector");
   startsAfter("Flush");
   startsAfter("InitDatabase");
@@ -52,4 +51,5 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer* server)
   startsAfter("ServerId");
   startsAfter("StorageEngine");
   startsAfter("TransactionManager");
+  startsAfter("ViewTypes");
 }

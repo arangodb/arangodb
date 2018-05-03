@@ -111,10 +111,8 @@ V8DealerFeature::V8DealerFeature(
   setOptional(true);
   startsAfter("ClusterPhase");
 
-  startsAfter("V8Platform");
-
-  // TODO this feature is too high
   startsAfter("Action");
+  startsAfter("V8Platform");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

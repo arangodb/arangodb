@@ -38,7 +38,7 @@ ReplicationTimeoutFeature::ReplicationTimeoutFeature(application_features::Appli
   startsAfter("BasicsPhase");
 
   startsAfter("EngineSelector");
-  startsBefore("StorageEngine");
+  // startsBefore("StorageEngine");
 }
 
 void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

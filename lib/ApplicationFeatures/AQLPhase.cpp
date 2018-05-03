@@ -39,5 +39,4 @@ AQLFeaturePhase::AQLFeaturePhase(ApplicationServer* server)
   startsAfter("QueryRegistry");
   startsAfter("SystemDatabase");
   startsAfter("TraverserEngineRegistry");
-  startsAfter("ViewTypes");
 }

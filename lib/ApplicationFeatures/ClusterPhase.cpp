@@ -29,6 +29,7 @@ ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer* server)
     : ApplicationFeaturePhase(server, "ClusterPhase") {
   setOptional(false);
   startsAfter("DatabasePhase");
+  startsAfter("EngineEqualityCheck");
 
   startsAfter("Cluster");
 }

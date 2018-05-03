@@ -110,8 +110,8 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Upgrade");
 
   // TODO The following features are too high
-  startsAfter("Agency");
-  startsAfter("FoxxQueues");
+  // startsAfter("Agency"); Only need to know if it is enabled during start that is clear before
+  // startsAfter("FoxxQueues");
 }
 
 void GeneralServerFeature::collectOptions(

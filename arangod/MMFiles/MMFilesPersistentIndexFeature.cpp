@@ -59,11 +59,11 @@ MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
       _db(nullptr), _comparator(nullptr), _path()
 {
   setOptional(true);
+  onlyEnabledWith("MMFilesEngine");
+
   startsAfter("BasicsPhase");
 
   startsAfter("RocksDBOption");
-  startsBefore("Database");
-  onlyEnabledWith("MMFilesEngine");
 }
 
 MMFilesPersistentIndexFeature::~MMFilesPersistentIndexFeature() {

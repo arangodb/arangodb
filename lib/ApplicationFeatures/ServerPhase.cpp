@@ -30,7 +30,6 @@ ServerFeaturePhase::ServerFeaturePhase(ApplicationServer* server)
   setOptional(false);
   startsAfter("AQLPhase");
 
-  startsAfter("Action");
   startsAfter("Endpoint");
   startsAfter("GeneralServer");
   startsAfter("Ldap");

@@ -36,7 +36,7 @@ EngineEqualityCheckFeature::EngineEqualityCheckFeature(
   setOptional(false);
   startsAfter("DatabasePhase");
 
-  startsAfter("Bootstrap");
+//  startsAfter("Bootstrap");
 }
 
 bool equalStorageEngines(){

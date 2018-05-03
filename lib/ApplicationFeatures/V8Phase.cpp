@@ -30,6 +30,7 @@ V8FeaturePhase::V8FeaturePhase(ApplicationServer* server)
   setOptional(false);
   startsAfter("ClusterPhase");
 
+  startsAfter("Action");
   startsAfter("V8Dealer");
   startsAfter("V8Platform");
 }
