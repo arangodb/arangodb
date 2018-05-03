@@ -22,8 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyCommManagerMock.h"
+#include "lib/Rest/HttpResponse.h"
+#include "velocypack/velocypack-aliases.h"
 
-AgencyCommManagerMock::AgencyCommManagerMock(): AgencyCommManager("") {
+AgencyCommManagerMock::AgencyCommManagerMock(std::string const& prefix /*= ""*/)
+  : AgencyCommManager(prefix) {
 }
 
 void AgencyCommManagerMock::addConnection(

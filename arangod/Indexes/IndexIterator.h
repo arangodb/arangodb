@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -102,7 +102,7 @@ class IndexIterator {
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
  public:
-  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, arangodb::Index const* index) 
+  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, arangodb::Index const* index)
       : IndexIterator(collection, trx, index) {}
 
   ~EmptyIndexIterator() {}
@@ -143,7 +143,7 @@ class MultiIndexIterator final : public IndexIterator {
         delete it;
       }
     }
-    
+
     char const* typeName() const override { return "multi-index-iterator"; }
 
     /// @brief Get the next elements
@@ -160,6 +160,21 @@ class MultiIndexIterator final : public IndexIterator {
    std::vector<IndexIterator*> _iterators;
    size_t _currentIdx;
    IndexIterator* _current;
+};
+
+/// Options for creating an index iterator
+struct IndexIteratorOptions {
+  /// @brief whether the index must sort it's results
+  bool sorted = true;
+  /// @brief the index sort order - this is the same order for all indexes
+  bool ascending = true;
+  /// @brief Whether FCalls will be evaluated entirely or just it's arguments
+  /// Used when creating the condition required to build an iterator
+  bool evaluateFCalls = true;
+  /// @brief Whether to eagerly scan the full range of a condition
+  bool fullRange = false;
+  /// @brief Limit used in a parent LIMIT node (if non-zero)
+  size_t limit = 0;
 };
 }
 #endif

@@ -138,26 +138,19 @@ void RestExplainHandler::explainQuery() {
     result.add("plan", queryResult.result->slice());
     result.add("cacheable", VPackValue(queryResult.cached));
   }
-
-  if (queryResult.warnings == nullptr) {
+  
+  VPackSlice extras = queryResult.extra->slice();
+  if (extras.hasKey("warnings")) {
+    result.add("warnings", extras.get("warnings"));
+  } else {
     result.add("warnings", VPackSlice::emptyArraySlice());
-  } else {
-    result.add("warnings", queryResult.warnings->slice());
   }
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
-    if (stats.isNone()) {
-      result.add("stats", VPackSlice::noneSlice());
-    } else {
-      result.add("stats", stats);
-    }
-  } else {
-    result.add("stats", VPackSlice::noneSlice());
+  if (extras.hasKey("stats")) {
+    result.add("stats", extras.get("stats"));
   }
 
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
-
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());

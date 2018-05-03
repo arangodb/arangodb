@@ -158,18 +158,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
   TRI_ASSERT(vocbase && !vocbase->isDangling());
   TRI_ASSERT(properties.isObject());
 
-  /*VPackBuilder defaultProps;
-  defaultProps.openObject();
-  defaultProps.add("shardKeys", VPackSlice::emptyObjectSlice());
-  defaultProps.add("numberOfShards", VPackValue(0));
-  defaultProps.add("distributeShardsLike", VPackValue(""));
-  defaultProps.add("avoidServers", VPackSlice::emptyArraySlice());
-  defaultProps.add("shardKeysisSmart", VPackValue(""));
-  defaultProps.add("smartGraphAttribute", VPackValue(""));
-  defaultProps.add("replicationFactor", VPackValue(0));
-  defaultProps.add("servers", VPackValue(""));
-  defaultProps.close();*/
-
   VPackBuilder builder;
   builder.openObject();
   builder.add("type", VPackValue(static_cast<int>(collectionType)));
@@ -181,7 +169,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
   try {
     ExecContext const* exe = ExecContext::CURRENT;
-    AuthenticationFeature* af = AuthenticationFeature::instance();
     if (ServerState::instance()->isCoordinator()) {
       auto col = ClusterMethods::createCollectionOnCoordinator(
         collectionType,
@@ -316,7 +303,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
     trx.reset(new SingleCollectionTransaction(
       ctx, coll->id(), AccessMode::Type::READ
     ));
-  
+
     // we actually need this hint here, so that the collection is not
     // loaded if it has status unloaded.
     trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
@@ -392,6 +379,11 @@ Result Collections::updateProperties(LogicalCollection* coll,
 static int RenameGraphCollections(TRI_vocbase_t* vocbase,
                                   std::string const& oldName,
                                   std::string const& newName) {
+  V8DealerFeature* dealer = V8DealerFeature::DEALER;
+  if (dealer == nullptr || !dealer->isEnabled()) {
+    return TRI_ERROR_NO_ERROR; // V8 might is disabled
+  }
+  
   StringBuffer buffer(true);
   buffer.appendText("require('@arangodb/general-graph')._renameCollection(");
   buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
@@ -399,12 +391,12 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase,
   buffer.appendJsonEncoded(newName.c_str(), newName.size());
   buffer.appendText(");");
 
-  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, false);
+  V8Context* context = dealer->enterContext(vocbase, false);
   if (context == nullptr) {
     LOG_TOPIC(WARN, Logger::FIXME) << "RenameGraphCollections: no V8 context";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+  TRI_DEFER(dealer->exitContext(context));
 
   auto isolate = context->_isolate;
   v8::HandleScope scope(isolate);
@@ -566,7 +558,7 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     return revisionOnCoordinator(databaseName, cid, rid);
-  } 
+  }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
   SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
@@ -618,7 +610,7 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 
     // We directly read the entire cursor. so batchsize == limit
     std::unique_ptr<OperationCursor> opCursor =
-    trx.indexScan(cname, transaction::Methods::CursorType::ALL, false);
+    trx.indexScan(cname, transaction::Methods::CursorType::ALL);
 
     if (!opCursor->hasMore()) {
       return TRI_ERROR_OUT_OF_MEMORY;

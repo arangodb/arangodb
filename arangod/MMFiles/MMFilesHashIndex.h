@@ -233,7 +233,7 @@ class MMFilesHashIndexIteratorVPack final : public IndexIterator {
   MMFilesHashIndexIteratorVPack(
       LogicalCollection* collection, transaction::Methods* trx,
       MMFilesHashIndex const* index,
-      std::unique_ptr<arangodb::velocypack::Builder>& searchValues);
+      std::unique_ptr<arangodb::velocypack::Builder> searchValues);
 
   ~MMFilesHashIndexIteratorVPack();
 
@@ -312,7 +312,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

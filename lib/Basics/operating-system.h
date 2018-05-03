@@ -28,6 +28,7 @@
 #error use <Basics/Common.h>
 #endif
 
+
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -741,7 +742,6 @@
 #define fsync _commit
 #define isatty _cyg_isatty
 #define putenv _putenv
-#define sleep TRI_sleep
 #define tzset _tzset
 
 // available features

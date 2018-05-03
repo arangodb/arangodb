@@ -742,9 +742,8 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo2", entry.data.type);
+      assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
       assertEqual([ "a", "b" ], entry.data.fields);
     },
 
@@ -764,9 +763,8 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo1", entry.data.type);
+      assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
       assertEqual([ "a" ], entry.data.fields);
     },
 
@@ -786,10 +784,8 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo2", entry.data.type);
+      assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
-      assertEqual(true, entry.data.ignoreNull);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a", "b" ], entry.data.fields);
     },
@@ -810,10 +806,8 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo2", entry.data.type);
+      assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
-      assertEqual(true, entry.data.ignoreNull);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a", "b" ], entry.data.fields);
     },
@@ -834,10 +828,8 @@ function ReplicationLoggerSuite () {
       assertTrue(2100, entry.type);
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.data.id);
-      assertEqual("geo1", entry.data.type);
+      assertEqual("geo", entry.data.type);
       assertEqual(false, entry.data.unique);
-      assertEqual(false, entry.data.constraint);
-      assertEqual(true, entry.data.ignoreNull);
       assertEqual(true, entry.data.sparse);
       assertEqual([ "a" ], entry.data.fields);
     },

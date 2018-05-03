@@ -228,9 +228,8 @@ void RestAqlHandler::setupClusterQuery() {
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
   bool needToLock = true;
-  bool res = false;
-  res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                         options, ttl, needToLock, answerBuilder);
+  bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
+                              options, ttl, needToLock, answerBuilder);
   if (!res) {
     // TODO we need to trigger cleanup here??
     // Registering the snippets failed.
@@ -979,7 +978,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           query->getStats(answerBuilder);
 
           // return warnings if present
-          query->addWarningsToVelocyPackObject(answerBuilder);
+          query->addWarningsToVelocyPack(answerBuilder);
 
           // return the query to the registry
           _queryRegistry->close(&_vocbase, _qId);

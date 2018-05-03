@@ -218,7 +218,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, false);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   if (opCursor->fail()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
@@ -492,9 +492,8 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   size_t ignored = 0;
   size_t removed = 0;
 
-  if (queryResult.stats != nullptr) {
-    VPackSlice stats = queryResult.stats->slice();
-
+  if (queryResult.extra) {
+    VPackSlice stats = queryResult.extra->slice().get("stats");
     if (!stats.isNone()) {
       TRI_ASSERT(stats.isObject());
       VPackSlice found = stats.get("writesIgnored");

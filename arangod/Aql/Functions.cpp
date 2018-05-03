@@ -42,6 +42,10 @@
 #include "Basics/tri-strings.h"
 #include "V8/v8-vpack.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Geo/GeoParams.h"
+#include "Geo/GeoUtils.h"
+#include "Geo/GeoJson.h"
+#include "Geo/ShapeContainer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
@@ -58,6 +62,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
+#include <s2/s2loop.h>
 #include <date/date.h>
 #include <date/iso_week.h>
 
@@ -115,7 +120,7 @@ static_assert(DateSelectionModifier::MONTH < DateSelectionModifier::YEAR,
     - Generic errors: RegisterWarning(query, "MYFUNC", TRI_ERROR_QUERY_INVALID_REGEX);
     - ICU related errors: if (U_FAILURE(status)) { RegisterICUWarning(query, "MYFUNC", status); }
     - close with: return AqlValue(AqlValueHintNull());
-- specify the number of parameters you expect at least and at max using: 
+- specify the number of parameters you expect at least and at max using:
   ValidateParameters(parameters, "MYFUNC", 1, 3); (min: 1, max: 3); Max is optional.
 - if you support optional parameters, first check whether the count is sufficient
   using parameters.size()
@@ -488,6 +493,15 @@ void Functions::RegisterWarning(arangodb::aql::Query* query, char const* fName,
 }
 
 /// @brief register warning
+void Functions::RegisterWarning(arangodb::aql::Query* query,
+                                char const* fName, Result rr) {
+  std::string msg = "in function '";
+  msg.append(fName);
+  msg.append("()': ");
+  msg.append(rr.errorMessage());
+  query->registerWarning(rr.errorNumber(), msg.c_str());
+}
+
 void Functions::RegisterError(arangodb::aql::Query* query,
                               char const* fName,
                               int code) {
@@ -1258,7 +1272,7 @@ AqlValue Functions::Reverse(arangodb::aql::Query* query,
       array.push_back(it);
     }
     std::reverse(std::begin(array), std::end(array));
-    
+
     builder->openArray();
     for (auto const &it : array) {
       builder->add(it);
@@ -1688,7 +1702,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
   std::vector<UnicodeString> matchPatterns;
   std::vector<UnicodeString> replacePatterns;
   bool replaceWasPlainString = false;
-  
+
   if (search.isObject()) {
     if (parameters.size() > 3) {
       RegisterWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
@@ -1720,7 +1734,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
     if (parameters.size() == 4) {
       limit = ExtractFunctionParameterValue(parameters, 3).toInt64(trx);
     }
-    
+
     VPackSlice slice = materializer.slice(search, false);
     if (search.isArray()) {
       for (auto const& it : VPackArrayIterator(slice)) {
@@ -1796,12 +1810,12 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
   }
-  
+
   std::vector<std::pair<int32_t, int32_t>> srchResultPtrs;
   std::string utf8;
   srchResultPtrs.reserve(matchPatterns.size());
   for (auto& search : searchVec) {
-    // We now find the first hit for each search string. 
+    // We now find the first hit for each search string.
     auto pos = search->first(status);
     if (U_FAILURE(status)) {
       RegisterICUWarning(query, AFN, status);
@@ -1815,7 +1829,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
     srchResultPtrs.push_back(std::make_pair(pos, len));
   }
 
-  UnicodeString result;  
+  UnicodeString result;
   int32_t lastStart = 0;
   int64_t count = 0;
   while (true) {
@@ -1849,8 +1863,8 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
         result.append(replacePatterns[0]);
       }
     }
-    
-    // lastStart is the place up to we searched the source string 
+
+    // lastStart is the place up to we searched the source string
     lastStart = pos + mLen;
 
     // we try to search the next occurance of this string
@@ -1894,7 +1908,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
       }
       which++;
     }
-    
+
     count ++;
     if ((limit != -1) && (count >= limit)) {
       // Do we have a limit count?
@@ -1914,7 +1928,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
   }
   // Append from the last found:
   result.append(unicodeStr, lastStart, unicodeStr.length() - lastStart);
-  
+
   result.toUTF8String(utf8);
   return AqlValue(utf8);
 }
@@ -2287,17 +2301,17 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
     UErrorCode errorCode = U_ZERO_ERROR;
     auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
     uint16_t copyThisTime = uCount;
-    
+
     if (U_FAILURE(errorCode)) {
       RegisterWarning(query, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
       return AqlValue(AqlValueHintNull());
     }
-    
+
     if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
       // last hit is the remaining string to be fed into split in a subsequent invocation
       copyThisTime --;
     }
-    
+
     if ((copyThisTime > 0) && ((copyThisTime == nrResults) || isEmptyExpression)) {
       // ICU will give us a traling empty string we don't care for if we split
       // with empty strings.
@@ -2319,7 +2333,7 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
       i++;
       totalCount++;
     }
-           
+
     if (((uCount != nrResults)) || // fetch any / found less then N
         ((limitNumber >= 0) && (totalCount >= limitNumber))) { // fetch N
       break;
@@ -2334,7 +2348,7 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
       break;
     }
   }
-  
+
   result.close();
   return AqlValue(result);
 }
@@ -4151,6 +4165,593 @@ AqlValue Functions::Distance(arangodb::aql::Query* query,
   return NumberValue(trx, EARTHRADIAN * c, true);
 }
 
+
+/// @brief function GEO_DISTANCE
+AqlValue Functions::GeoDistance(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_DISTANCE", 2, 2);
+
+  AqlValue loc1 = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue loc2 = ExtractFunctionParameterValue(parameters, 1);
+
+  Result res(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
+  AqlValueMaterializer mat1(trx);
+  geo::ShapeContainer shape1, shape2;
+  if (loc1.isArray() && loc1.length() >= 2) {
+    res = shape1.parseCoordinates(mat1.slice(loc1, true), /*geoJson*/true);
+  } else if (loc1.isObject()) {
+    res = geo::geojson::parseRegion(mat1.slice(loc1, true), shape1);
+  }
+  if (res.fail()) {
+    Functions::RegisterWarning(query, "GEO_DISTANCE", res);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer mat2(trx);
+  res.reset(TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON");
+  if (loc2.isArray() && loc2.length() >= 2) {
+    res = shape2.parseCoordinates(mat2.slice(loc2, true), /*geoJson*/true);
+  } else if (loc2.isObject()) {
+    res = geo::geojson::parseRegion(mat2.slice(loc2, true), shape2);
+  }
+  if (res.fail()) {
+    Functions::RegisterWarning(query, "GEO_DISTANCE", res);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  return NumberValue(trx, shape1.distanceFrom(shape2.centroid()), true);
+}
+
+static AqlValue GeoContainsIntersect(arangodb::aql::Query* query,
+                                     transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters,
+                                     char const* func, bool contains) {
+  Functions::ValidateParameters(parameters, func, 2, 2);
+  AqlValue p1 = Functions::ExtractFunctionParameterValue(parameters, 0);
+  AqlValue p2 = Functions::ExtractFunctionParameterValue(parameters, 1);
+
+  if (!p1.isObject()) {
+    Functions::RegisterWarning(query, func, Result(
+      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "Expecting GeoJSON object"));
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer mat1(trx);
+  geo::ShapeContainer outer, inner;
+  Result res = geo::geojson::parseRegion(mat1.slice(p1, true), outer);
+  if (res.fail()) {
+    Functions::RegisterWarning(query, func, res);
+    return AqlValue(AqlValueHintNull());
+  }
+  if (contains && !outer.isAreaType()) {
+    Functions::RegisterWarning(query, func, Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "Only Polygon and MultiPolygon types are valid as first argument"));
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer mat2(trx);
+  res.reset(TRI_ERROR_BAD_PARAMETER, "Second arg requires coordinate pair or GeoJSON");
+  if (p2.isArray() && p2.length() >= 2) {
+    res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/true);
+  } else if (p2.isObject()) {
+    res = geo::geojson::parseRegion(mat2.slice(p2, true), inner);
+  }
+  if (res.fail()) {
+    Functions::RegisterWarning(query, func, res);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  bool result = contains ? outer.contains(&inner) : outer.intersects(&inner);
+  return AqlValue(AqlValueHintBool(result));
+}
+
+/// @brief function GEO_CONTAINS
+AqlValue Functions::GeoContains(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+  return GeoContainsIntersect(query, trx, parameters, "GEO_CONTAINS", true);
+}
+
+/// @brief function GEO_INTERSECTS
+AqlValue Functions::GeoIntersects(arangodb::aql::Query* query,
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
+  return GeoContainsIntersect(query, trx, parameters, "GEO_INTERSECTS", false);
+}
+
+/// @brief function GEO_EQUALS
+AqlValue Functions::GeoEquals(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_EQUALS", 2, 2);
+
+  AqlValue p1 = Functions::ExtractFunctionParameterValue(parameters, 0);
+  AqlValue p2 = Functions::ExtractFunctionParameterValue(parameters, 1);
+
+  if (!p1.isObject() || !p2.isObject()) {
+    Functions::RegisterWarning(query, "GEO_EQUALS", Result(
+      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "Expecting GeoJSON object"));
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer mat1(trx);
+  AqlValueMaterializer mat2(trx);
+
+  geo::ShapeContainer first, second;
+  Result res1 = geo::geojson::parseRegion(mat1.slice(p1, true), first);
+  Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second);
+
+  if (res1.fail()) {
+    Functions::RegisterWarning(query, "GEO_EQUALS", res1);
+    return AqlValue(AqlValueHintNull());
+  }
+  if (res2.fail()) {
+    Functions::RegisterWarning(query, "GEO_EQUALS", res2);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  bool result = first.equals(&second);
+  return AqlValue(AqlValueHintBool(result));
+}
+
+
+/// @brief function IS_IN_POLYGON
+AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "IS_IN_POLYGON", 2, 3);
+
+  AqlValue coords = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue p2 = ExtractFunctionParameterValue(parameters, 1);
+  AqlValue p3 = ExtractFunctionParameterValue(parameters, 2);
+
+  LOG_TOPIC(WARN, Logger::QUERIES) << "IS_IN_POLYGON is deprecated use GEO_CONTAINS";
+  if (!coords.isArray()) {
+    RegisterWarning(query, "IS_IN_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  double latitude, longitude;
+  bool geoJson = false;
+  if (p2.isArray()) {
+    if (p2.length() < 2) {
+      RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
+      return AqlValue(AqlValueHintNull());
+    }
+    AqlValueMaterializer materializer(trx);
+    VPackSlice arr = materializer.slice(p2, false);
+    geoJson = p3.isBoolean() && p3.toBoolean();
+    // if geoJson, map [lon, lat] -> lat, lon
+    VPackSlice lat = geoJson ? arr[1] : arr[0];
+    VPackSlice lon = geoJson ? arr[0] : arr[1];
+    if (!lat.isNumber() || !lon.isNumber()) {
+      RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
+      return AqlValue(AqlValueHintNull());
+    }
+    latitude = lat.getNumber<double>();
+    longitude = lon.getNumber<double>();
+  } else if (p2.isNumber() && p3.isNumber()) {
+    bool failed1 = false, failed2 = false;
+    latitude = p2.toDouble(trx, failed1);
+    longitude = p3.toDouble(trx, failed2);
+    if (failed1 || failed2) {
+      RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
+      return AqlValue(AqlValueHintNull());
+    }
+  } else {
+    RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  S2Loop loop;
+  Result res = geo::geojson::parseLoop(coords.slice(), geoJson, loop);
+  if (res.fail() || !loop.IsValid()) {
+    RegisterWarning(query, "IS_IN_POLYGON", res);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude);
+  return AqlValue(AqlValueHintBool(loop.Contains(latLng.ToPoint())));
+}
+
+/// @brief geo constructors
+
+/// @brief function GEO_POINT
+AqlValue Functions::GeoPoint(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_POINT", 2, 2);
+
+  size_t const n = parameters.size();
+
+  if (n < 2) {
+    // no parameters
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue lon1 = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue lat1 = ExtractFunctionParameterValue(parameters, 1);
+
+  // non-numeric input
+  if (!lat1.isNumber() || !lon1.isNumber()) {
+    RegisterWarning(query, "GEO_POINT",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  bool failed;
+  bool error = false;
+  double lon1Value = lon1.toDouble(trx, failed);
+  error |= failed;
+  double lat1Value = lat1.toDouble(trx, failed);
+  error |= failed;
+
+  if (error) {
+    RegisterWarning(query, "GEO_POINT",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("Point"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+  b.add(VPackValue(lon1Value));
+  b.add(VPackValue(lat1Value));
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_MULTIPOINT
+AqlValue Functions::GeoMultiPoint(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "GEO_MULTIPOINT", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_MULTIPOINT",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  if (geoArray.length() < 2) {
+    RegisterWarning(query, "GEO_MULTIPOINT", Result(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "a MultiPoint needs at least two positions"));
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("MultiPoint"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray()) {
+      b.openArray();
+      for (auto const& coord : VPackArrayIterator(v)) {
+        if (coord.isNumber()) {
+          b.add(VPackValue(coord.getNumber<double>()));
+        } else {
+          RegisterWarning(query, "GEO_MULTIPOINT", Result(
+                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                "not a numeric value"));
+          return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+      }
+      b.close();
+    } else {
+      RegisterWarning(query, "GEO_MULTIPOINT", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "not an array containing positions"));
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_POLYGON
+AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_POLYGON", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_POLYGON",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+  b.openObject();
+  b.add("type", VPackValue("Polygon"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+
+  // check if nested or not
+  bool unnested = false;
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray() && v.length() == 2) {
+      unnested = true;
+    }
+  }
+  if (unnested) {
+    b.openArray();
+  }
+
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray() && v.length() > 2) {
+      b.openArray();
+      for (auto const& coord : VPackArrayIterator(v)) {
+        if (coord.isNumber()) {
+          b.add(VPackValue(coord.getNumber<double>()));
+        } else if (coord.isArray()) {
+          if (coord.length() < 2) {
+            RegisterWarning(query, "GEO_POLYGON", Result(
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                  "a Position needs at least two numeric values"));
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          } else {
+            b.openArray();
+            for (auto const& innercord : VPackArrayIterator(coord)) {
+              if (innercord.isNumber()) {
+                b.add(VPackValue(innercord.getNumber<double>()));
+              } else if (innercord.isArray()) {
+                if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
+                  b.openArray();
+                  b.add(VPackValue(innercord.at(0).getNumber<double>()));
+                  b.add(VPackValue(innercord.at(1).getNumber<double>()));
+                  b.close();
+                } else {
+                  RegisterWarning(query, "GEO_POLYGON", Result(
+                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                        "not a number"));
+                  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+                }
+              } else {
+                RegisterWarning(query, "GEO_POLYGON", Result(
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                      "not an array describing a position"));
+                return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+              }
+            }
+            b.close();
+          }
+        } else {
+          RegisterWarning(query, "GEO_POLYGON", Result(
+                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                "not an array containing positions"));
+          return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+      }
+      b.close();
+    } else if (v.isArray() && v.length() == 2) {
+        if (s.length() > 2) {
+        b.openArray();
+        for (auto const& innercord : VPackArrayIterator(v)) {
+          if (innercord.isNumber()) {
+            b.add(VPackValue(innercord.getNumber<double>()));
+          } else if (innercord.isArray()) {
+            if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
+              b.openArray();
+              b.add(VPackValue(innercord.at(0).getNumber<double>()));
+              b.add(VPackValue(innercord.at(1).getNumber<double>()));
+              b.close();
+            } else {
+              RegisterWarning(query, "GEO_POLYGON", Result(
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "not a number"));
+              return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+            }
+          } else {
+            RegisterWarning(query, "GEO_POLYGON", Result(
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                  "not a numeric value"));
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          }
+        }
+        b.close();
+      } else {
+        RegisterWarning(query, "GEO_POLYGON", Result(
+              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+              "a Polygon needs at least three positions"));
+        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      }
+    } else {
+      RegisterWarning(query, "GEO_POLYGON", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "not an array containing positions"));
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  if (unnested) {
+    b.close();
+  }
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_LINESTRING
+AqlValue Functions::GeoLinestring(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "GEO_LINESTRING", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_LINESTRING",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  if (geoArray.length() < 2) {
+    RegisterWarning(query, "GEO_LINESTRING", Result(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "a LineString needs at least two positions"));
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("LineString"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray()) {
+      b.openArray();
+      for (auto const& coord : VPackArrayIterator(v)) {
+        if (coord.isNumber()) {
+          b.add(VPackValue(coord.getNumber<double>()));
+        } else {
+          RegisterWarning(query, "GEO_LINESTRING", Result(
+                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                "not a numeric value"));
+          return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+      }
+      b.close();
+    } else {
+      RegisterWarning(query, "GEO_LINESTRING", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "not an array containing positions"));
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_MULTILINESTRING
+AqlValue Functions::GeoMultiLinestring(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "GEO_MULTILINESTRING", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_MULTILINESTRING",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  if (geoArray.length() < 1) {
+    RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "a MultiLineString needs at least one array of linestrings"));
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("MultiLineString"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray()) {
+      if (v.length() > 1) {
+        b.openArray();
+        for (auto const& inner : VPackArrayIterator(v)) {
+          if (inner.isArray()) {
+            b.openArray();
+            for (auto const& coord : VPackArrayIterator(inner)) {
+              if (coord.isNumber()) {
+                b.add(VPackValue(coord.getNumber<double>()));
+              } else {
+                RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                      "not a numeric value"));
+                return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+              }
+            }
+            b.close();
+          } else {
+            RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                  "not an array containing positions"));
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          }
+        }
+        b.close();
+      } else {
+        RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+              "not an array containing linestrings"));
+        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      }
+    } else {
+      RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "not an array containing positions"));
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
 /// @brief function FLATTEN
 AqlValue Functions::Flatten(arangodb::aql::Query* query,
                             transaction::Methods* trx,
@@ -4254,8 +4855,8 @@ AqlValue Functions::JsonParse(arangodb::aql::Query* query,
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
-   
-  if (!slice.isString()) { 
+
+  if (!slice.isString()) {
     RegisterWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
@@ -4891,7 +5492,7 @@ AqlValue Functions::Push(arangodb::aql::Query* query, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
   static char const* AFN = "PUSH";
   ValidateParameters(parameters, AFN, 2, 3);
-  
+
   AqlValue list = ExtractFunctionParameterValue(parameters, 0);
   AqlValue toPush = ExtractFunctionParameterValue(parameters, 1);
 
@@ -5680,7 +6281,7 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
     ISOLATE;
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     query->prepareV8Context();
-    
+
     auto old = v8g->_query;
     v8g->_query = query;
     TRI_DEFER(v8g->_query = old);
@@ -5698,7 +6299,7 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
       args[0] = TRI_V8_STD_STRING(isolate, ucInvokeFN);
       // call parameters
       v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
-      
+
       for (int i = 0; i < n; ++i) {
         params->Set(static_cast<uint32_t>(i), invokeParams[i].toV8(isolate, trx));
       }
@@ -5727,7 +6328,7 @@ AqlValue Functions::Call(arangodb::aql::Query* query,
   ValidateParameters(parameters, AFN, 1);
 
   AqlValue invokeFN = ExtractFunctionParameterValue(parameters, 0);
-  if (!invokeFN.isString()) { 
+  if (!invokeFN.isString()) {
     RegisterError(query, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
@@ -5754,7 +6355,7 @@ AqlValue Functions::Apply(
   ValidateParameters(parameters, AFN, 1, 2);
 
   AqlValue invokeFN = ExtractFunctionParameterValue(parameters, 0);
-  if (!invokeFN.isString()) { 
+  if (!invokeFN.isString()) {
     RegisterError(query, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
@@ -5826,7 +6427,7 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query,
                                  VPackFunctionParameters const& parameters) {
   static char const* AFN = "PREGEL_RESULT";
   ValidateParameters(parameters, AFN, 1, 1);
-  
+
   AqlValue arg1 = ExtractFunctionParameterValue(parameters, 0);
   if (!arg1.isNumber()) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
@@ -5886,4 +6487,23 @@ AqlValue Functions::Warn(arangodb::aql::Query* query, transaction::Methods* trx,
     return AqlValue(AqlValueHintBool(false));
   }
   return AqlValue(AqlValueHintBool(true));
+}
+
+AqlValue Functions::Fail(arangodb::aql::Query* query, transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  static char const* AFN = "FAIL";
+  ValidateParameters(parameters, AFN, 0, 1);
+  if (parameters.size() == 0) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FAIL_CALLED, "");
+  }
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString()) {
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FAIL_CALLED, "");
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice str = materializer.slice(value, false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FAIL_CALLED, str.copyString());
 }

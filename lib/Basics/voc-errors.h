@@ -168,6 +168,11 @@ constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        
 /// Will be raised when a file cannot be read.
 constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 34;
 
+/// 35: ERROR_INCOMPATIBLE_VERSION
+/// "incompatible server version"
+/// Will be raised when a server is running an incompatible version of ArangoDB.
+constexpr int TRI_ERROR_INCOMPATIBLE_VERSION                                    = 35;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -956,6 +961,12 @@ constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      
 /// new view in the Plan hierarchy in the agency.
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   = 1497;
 
+/// 1498: ERROR_CLUSTER_VIEW_ID_EXISTS
+/// "view ID already exists"
+/// Will be raised when a coordinator in a cluster tries to create a view and
+/// the view ID already exists.
+constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
+
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.
@@ -1450,11 +1461,6 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF                       
 /// "edge collection not used in graph"
 /// The edge collection is not used in any edge definition of the graph.
 constexpr int TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED                          = 1930;
-
-/// 1931: ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION
-/// " is not an ArangoCollection"
-/// The collection is not an ArangoCollection.
-constexpr int TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION                          = 1931;
 
 /// 1932: ERROR_GRAPH_NO_GRAPH_COLLECTION
 /// "collection _graphs does not exist"

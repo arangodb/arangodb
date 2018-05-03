@@ -56,18 +56,16 @@ QueryResultCursor::QueryResultCursor(
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
-      _extra(_result.extra()),
       _iterator(_result.result->slice()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());
-  result.profile = nullptr;
 }
 
 VPackSlice QueryResultCursor::extra() const {
-  if (_extra == nullptr) {
-    return VPackSlice();
+  if (_result.extra) {
+    _result.extra->slice();
   }
-  return _extra->slice();
+  return VPackSlice();
 }
 
 /// @brief check whether the cursor contains more data
@@ -122,8 +120,8 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    if (extra().isObject()) {
-      builder.add("extra", extra());
+    if (_result.extra.get() != nullptr) {
+      builder.add("extra", _result.extra->slice());
     }
 
     builder.add("cached", VPackValue(_cached));
@@ -258,9 +256,8 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
     if (!hasMore) {
       QueryResult result;
       _query->finalize(result);
-      auto extra = result.extra();
-      if (extra && extra->slice().isObject()) {
-        builder.add("extra", extra->slice());
+      if (result.extra && result.extra->slice().isObject()) {
+        builder.add("extra", result.extra->slice());
       }
       _query.reset();
       this->deleted();

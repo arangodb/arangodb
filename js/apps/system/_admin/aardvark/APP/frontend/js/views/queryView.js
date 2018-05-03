@@ -72,6 +72,7 @@
     events: {
       'click #executeQuery': 'executeQuery',
       'click #explainQuery': 'explainQuery',
+      'click #debugQuery': 'debugDownloadDialog',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
       'click .outputEditorWrapper #downloadCsvResult': 'downloadCsvResult',
@@ -523,6 +524,62 @@
 
       this.fillExplain(outputEditor, counter);
       this.outputCounter++;
+    },
+
+    debugDownloadDialog: function () {
+      var buttons = [];
+      var tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          'debug-download-package-disclaimer',
+          'Disclaimer',
+          'This will generate a package containing a lot of commonly required information about your query and environment that helps the ArangoDB Team to reproduce your issue. This debug package will include collection names and created indexes, including attribute names and bind parameters. All string values will be obfuscated in a not-reversable way. If the below check box is not checked this package will not include any data. If the below check box is checked it will include a sample data-set again obfuscating all string values, all number values are not obfuscated. In order to check if any sensitive data is shared open the package locally and check if it contains anything that you are not allowed/willing to share and obfuscate it before. Including this package in bug reports will lower the amout of questioning back and forth until the issue is reproduced.',
+          undefined,
+          false,
+          false
+        )
+      );
+      tableContent.push(
+        window.modalView.createCheckboxEntry(
+          'debug-download-package-examples',
+          'Include obfuscated examples',
+          'includeExamples',
+          'Includes an example set of documents, obfuscating all String values inside the data. This helps the Team in many ways as many issues are related to the document structure / format and the indexes defined on them.',
+          true
+        )
+      );
+      buttons.push(
+        window.modalView.createSuccessButton('Download Package', this.downloadDebugZip.bind(this))
+      );
+      window.modalView.show('modalTable.ejs', 'Download Query Debug Package', buttons, tableContent, undefined, undefined);
+    },
+
+    downloadDebugZip: function () {
+      if (this.verifyQueryAndParams()) {
+        return;
+      }
+
+      var cbFunction = function () {
+        window.modalView.hide();
+      };
+      var errorFunction = function (errorCode, response) {
+        window.arangoHelper.arangoError('Debug Dump', errorCode + ': ' + response);
+        window.modalView.hide();
+      };
+
+      var query = this.aqlEditor.getValue();
+      if (query !== '' && query !== undefined && query !== null) {
+        var url = 'query/debugDump';
+        var body = {
+          query: query,
+          bindVars: this.bindParamTableObj || {},
+          examples: $('#debug-download-package-examples').is(':checked')
+        };
+        arangoHelper.downloadPost(url, JSON.stringify(body), cbFunction, errorFunction);
+      } else {
+        arangoHelper.arangoError('Query error', 'Could not create a debug package.');
+      }
     },
 
     fillExplain: function (outputEditor, counter) {
@@ -1577,10 +1634,6 @@
           arangoHelper.arangoError('Bind Parameter', 'Could not parse bind parameter');
           quit = true;
         }
-      }
-
-      if (quit === true) {
-        return quit;
       }
 
       return quit;

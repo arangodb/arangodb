@@ -80,12 +80,11 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     RocksDBPrimaryIndex* index,
-    std::unique_ptr<VPackBuilder>& keys)
+    std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx, index),
       _index(index),
-      _keys(keys.get()),
+      _keys(std::move(keys)),
       _iterator(_keys->slice()) {
-  keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
 }
 
@@ -299,13 +298,13 @@ bool RocksDBPrimaryIndex::supportsFilterCondition(
 IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
   TRI_ASSERT(node->numMembers() == 1);
 
   auto comp = node->getMember(0);
-
   // assume a.b == value
   auto attrNode = comp->getMember(0);
   auto valNode = comp->getMember(1);
@@ -371,7 +370,7 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, keys);
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys));
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -394,7 +393,7 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, keys);
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys));
 }
 
 /// @brief add a single value node to the iterator's keys
