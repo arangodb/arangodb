@@ -5921,72 +5921,69 @@ AqlValue Functions::Fail(arangodb::aql::Query* query, transaction::Methods* trx,
 }
 
 
-typedef std::string(*format_func_t)(std::string &, tp_sys_clock_ms&);
-
+typedef std::function<std::string(std::string&, tp_sys_clock_ms const&)>  format_func_t;
+typedef std::unordered_map<std::string,format_func_t> dateMapType;
 std::unordered_map<std::string,format_func_t> dateMap;
 
 std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
-  {"%&", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string(""); }}, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+  {"%&", [](std::string& wrk, tp_sys_clock_ms const& tp) { return ""; }}, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
   // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
-  {"%yyyyyy", [](std::string &wrk, tp_sys_clock_ms& tp) {
+  {"%yyyyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       return std::string("blarg"); }}, // (yr >= 0 && yr <= 9999)
   //? "+" + zeropad(dateStr.slice(0, 4 + offset), 6)
   //, dateStr.slice(0, 7);
   //    }},
   // preserves full negative years (-000753 is not reduced to -753 or -0753)
-  {"%mmmm", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // monthNames[date.getUTCMonth()]; }},
-  {"%yyyy", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // dateStr.slice(0, 4 + offset); }},
-  {"%wwww", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
-  {"%mmm", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // monthNames[date.getUTCMonth()].substring(0, 3); }},
-  {"%www", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg[www]"); }}, // weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); }},
-  {"%fff", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // dateStr.slice(20 + offset, 23 + offset); }},
-  {"%xxx", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); }},
+  {"%mmmm", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // monthNames[date.getUTCMonth()]; }},
+  {"%yyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(0, 4 + offset); }},
+  {"%wwww", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
+  {"%mmm", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // monthNames[date.getUTCMonth()].substring(0, 3); }},
+  {"%www", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg[www]"); }}, // weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); }},
+  {"%fff", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(20 + offset, 23 + offset); }},
+  {"%xxx", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); }},
   
   // there"s no really sensible way to handle negative years, but better not drop the sign
-  {"%yy", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg[yy]"); }}, // (yr < 0 ? "-" , "") + dateStr.slice(2 + offset, 4 + offset); }},
-  {"%mm", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // dateStr.slice(5 + offset, 7 + offset); }},
-  {"%dd", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // dateStr.slice(8 + offset, 10 + offset); }},
-  {"%hh", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // dateStr.slice(11 + offset, 13 + offset); }},
-  {"%ii", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // dateStr.slice(14 + offset, 16 + offset); }},
-  {"%ss", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // dateStr.slice(17 + offset, 19 + offset); }},
-  {"%kk", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // zeropad(AQL_DATE_ISOWEEK(dateStr), 2); }},
+  {"%yy", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg[yy]"); }}, // (yr < 0 ? "-" , "") + dateStr.slice(2 + offset, 4 + offset); }},
+  {"%mm", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(5 + offset, 7 + offset); }},
+  {"%dd", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(8 + offset, 10 + offset); }},
+  {"%hh", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(11 + offset, 13 + offset); }},
+  {"%ii", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(14 + offset, 16 + offset); }},
+  {"%ss", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(17 + offset, 19 + offset); }},
+  {"%kk", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // zeropad(AQL_DATE_ISOWEEK(dateStr), 2); }},
   
-  {"%t", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // , // date.getTime(); },
-  {"%z", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // dateStr; }},
-  {"%w", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // AQL_DATE_DAYOFWEEK(dateStr); }},
-  {"%y", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // date.getUTCFullYear(); }},
-  {"%m", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // date.getUTCMonth() + 1; }},
-  {"%d", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // date.getUTCDate(); }},
-  {"%h", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // date.getUTCHours(); }},
-  {"%i", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg[i]"); }}, // date.getUTCMinutes(); }},
-  {"%s", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // date.getUTCSeconds(); }},
-  {"%f", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // date.getUTCMilliseconds(); }},
-  {"%x", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // AQL_DATE_DAYOFYEAR(dateStr); }},
-  {"%k", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // AQL_DATE_ISOWEEK(dateStr); }},
-  {"%l", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // +AQL_DATE_LEAPYEAR(dateStr); }},
-  {"%q", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg"); }}, // AQL_DATE_QUARTER(dateStr); }},
-  {"%a", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("blarg[a]"); }}, // AQL_DATE_DAYS_IN_MONTH(dateStr); }},
-  {"%%", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string("%"); }}, // Allow for literal "%y" using "%%y"
-  {"%", [](std::string &wrk, tp_sys_clock_ms& tp) { return std::string(""); }}
+  {"%t", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // , // date.getTime(); },
+  {"%z", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr; }},
+  {"%w", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // AQL_DATE_DAYOFWEEK(dateStr); }},
+  {"%y", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCFullYear(); }},
+  {"%m", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCMonth() + 1; }},
+  {"%d", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCDate(); }},
+  {"%h", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCHours(); }},
+  {"%i", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg[i]"); }}, // date.getUTCMinutes(); }},
+  {"%s", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCSeconds(); }},
+  {"%f", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCMilliseconds(); }},
+  {"%x", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // AQL_DATE_DAYOFYEAR(dateStr); }},
+  {"%k", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // AQL_DATE_ISOWEEK(dateStr); }},
+  {"%l", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // +AQL_DATE_LEAPYEAR(dateStr); }},
+  {"%q", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // AQL_DATE_QUARTER(dateStr); }},
+  {"%a", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg[a]"); }}, // AQL_DATE_DAYS_IN_MONTH(dateStr); }},
+  {"%%", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("%"); }}, // Allow for literal "%y" using "%%y"
+  {"%", [](std::string& wrk, tp_sys_clock_ms const& tp) { return ""; }}
 };
 
-template<class BidirIt,
-         class Traits,
-         class CharT,
-         class map>
-std::basic_string<CharT> regex_replace(BidirIt first,
-                                       BidirIt last,
-                                       const std::basic_regex<CharT,Traits>& re,
-                                       map dateMap,
-                                       tp_sys_clock_ms& tp)
+std::string regex_replace(std::string const& search,
+                          const std::regex& re,
+                          dateMapType const& dateMap,
+                          tp_sys_clock_ms const& tp)
 {
-  std::basic_string<CharT> s;
+  std::string s;
 
-  typename std::match_results<BidirIt>::difference_type
+  auto first = search.begin();
+  auto last = search.end();
+  typename std::smatch::difference_type
     positionOfLastMatch = 0;
   auto endOfLastMatch = first;
 
-  auto callback = [&tp, &endOfLastMatch, &positionOfLastMatch, &s, &dateMap](const std::match_results<BidirIt>& match)
+  auto callback = [&tp, &endOfLastMatch, &positionOfLastMatch, &s, &dateMap](const std::smatch& match)
     {
       auto positionOfThisMatch = match.position(0);
       auto diff = positionOfThisMatch - positionOfLastMatch;
@@ -5995,7 +5992,7 @@ std::basic_string<CharT> regex_replace(BidirIt first,
       std::advance(startOfThisMatch, diff);
 
       s.append(endOfLastMatch, startOfThisMatch);
-      std::unordered_map<std::string,format_func_t>::const_iterator got = dateMap.find(match.str(0));
+      auto got = dateMap.find(match.str(0));
       if (got != dateMap.end()) {
         std::string sanotehu;
         s.append(got->second(sanotehu, tp));
@@ -6008,7 +6005,8 @@ std::basic_string<CharT> regex_replace(BidirIt first,
       std::advance(endOfLastMatch, lengthOfMatch);
     };
 
-  std::regex_iterator<BidirIt> begin(first, last, re), end;
+  std::regex_iterator<std::string::const_iterator> end; /// TODO - howto initialize?
+  std::regex_iterator<std::string::const_iterator> begin(first, last, re);
   std::for_each(begin, end, callback);
 
   s.append(endOfLastMatch, last);
@@ -6017,16 +6015,16 @@ std::basic_string<CharT> regex_replace(BidirIt first,
 }
 std::regex theDateFormatRegex;
 
-inline static std::string dateFormatRegex(const std::string& format, tp_sys_clock_ms& tp)
+static std::string dateFormatRegex(const std::string& s, tp_sys_clock_ms& tp)
 {
-  return regex_replace(format.cbegin(), format.cend(), theDateFormatRegex, dateMap, tp);
+  return regex_replace(s, theDateFormatRegex, dateMap, tp);
 }
 
 void Functions::init() {
   std::string myregex;
 
   dateMap.reserve(sortedDateMap.size());
-  std::for_each(sortedDateMap.begin(), sortedDateMap.end(), [&myregex](std::pair<std::string,format_func_t> p) {
+  std::for_each(sortedDateMap.begin(), sortedDateMap.end(), [&myregex](std::pair<std::string, format_func_t> p) {
       (myregex.length() > 0) ? myregex += "|" + p.first : myregex = p.first;
       dateMap.insert(std::make_pair(p.first, p.second));
     });
@@ -6057,7 +6055,9 @@ AqlValue Functions::DateFormat(arangodb::aql::Query* query,
 
   std::string formatString = aqlFormatString.slice().copyString();
 
-  std::cout << dateFormatRegex(formatString, tp) << std::endl;
+  std::string value = dateFormatRegex(formatString, tp);
 
-  return AqlValue(AqlValueHintNull());
+  
+ 
+  return AqlValue(value);
 }
