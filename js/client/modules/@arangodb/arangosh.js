@@ -1,4 +1,5 @@
 /* jshint strict: false */
+global.console = global.console || require('console');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoShell client API

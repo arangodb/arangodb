@@ -31,8 +31,12 @@
 var request = require("@arangodb/request");
 const _ = require("lodash");
 
+const { exec } = require('child_process');
+
 const servers = {};
 let possibleAgent = null;
+
+var healthRecord = {};
 
 function INFO() {
   let args = Array.prototype.slice.call(arguments);
@@ -49,17 +53,275 @@ function loadAgencyConfig() {
   return configuration;
 }
 
-function loadAgency(conn, seen) {
+
+/**
+ * @brief Sort shard keys according to their numbers omitting startign 's' 
+ * 
+ * @param keys      Keys
+ */
+function sortShardKeys(keys) {
+  var ret = [];
+  // Get rid of 's' up front
+  keys.forEach(function(key, index, theArray) {
+    theArray[index] = key.substring(1);
+  });
+  // Sort keeping indices
+  var ind = range(0,keys.length-1);
+  ind.sort(function compare(i, j) {
+    return parseInt(keys[i]) > parseInt(keys[j]);
+  });
+  ind.forEach(function (i) {
+    ret.push('s'+keys[i]);
+  });
+  return ret;
+}
+
+
+function agencyDoctor(obj) {
+
+  var nerrors = 0;
+  var nwarnings = 0;
+  var ndatabases = 0;
+  var ncollections = 0;
+  var nshards = 0;
+  var ncolinplannotincurrent = 0;
+
+  INFO('Analysing agency dump ...');
   
-  var agency = conn.POST("/_api/agency/read", '[["/"]]');
+  // Must be array with length 1
+  if (obj.length != 1) {
+    ERROR('agency dump must be an array with a single object inside');
+    process.exit(1);
+  }
+
+  // Check for /arango and assign
+  if (!obj[0].hasOwnProperty('arango')) {
+    ERROR('agency must have attribute "arango" as root');
+    process.exit(1);
+  }
+  const agency = obj[0]['arango'];
+
+  // Must have Plan, Current, Supervision, Target, Sync
+  if (!agency.hasOwnProperty('Plan')) {
+    ERROR('agency must have attribute "arango/Plan" object');
+    process.exit(1);  
+  }
+  const plan = agency.Plan;
+  if (!plan.hasOwnProperty('Version')) {
+    ERROR('plan has no version');
+    process.exit(1);    
+  }
+  if (!agency.hasOwnProperty('Current')) {
+    ERROR('agency must have attribute "arango/Current" object');
+    process.exit(1);  
+  }
+  const current = agency.Current;
+
+  // Start sanity of plan
+  INFO('Plan (version ' + plan.Version+ ')');
+
+  // Planned databases check if also in collections and current
+  INFO("  Databases")
+  if (!plan.hasOwnProperty('Databases')) {
+    ERROR('no databases in plan');
+    process.exit(1);  
+  }
+  Object.keys(plan.Databases).forEach(function(database) {
+    INFO('    ' + database);
+    if (!plan.Collections.hasOwnProperty(database)) {
+      WARN('found planned database "' + database + '" without planned collectinos');
+    }
+    if (!current.Databases.hasOwnProperty(database)) {
+      WARN('found planned database "' + database + '" missing in "Current"');
+    }
+  });
+
+  INFO("  Collections")
+  // Planned collections
+  if (!plan.hasOwnProperty('Collections')) {
+    ERROR('no collections in plan');
+    process.exit(1);  
+  }
+
+  var warned = false;
+  Object.keys(plan.Collections).forEach(function(database) {
+    ++ndatabases;
+    INFO('    ' + database);
+    if (!plan.Databases.hasOwnProperty(database)) {
+      ERROR('found planned collections in unplanned database ' + database);
+    }
+
+    Object.keys(plan.Collections[database]).forEach(function(collection) {
+      ++ncollections;
+      const col = plan.Collections[database][collection];
+      INFO('      ' + col.name);
+      const distributeShardsLike = col.distributeShardsLike;
+      var myShardKeys = sortShardKeys(Object.keys(col.shards));
+
+      if (distributeShardsLike && distributeShardsLike != "") {      
+        const prototype = plan.Collections[database][distributeShardsLike];
+        if (prototype.replicationFactor != col.replicationFactor) {
+          ERROR('distributeShardsLike: replicationFactor mismatch');
+        }
+        if (prototype.numberOfShards != col.numberOfShards) {
+          ERROR('distributeShardsLike: numberOfShards mismatch');
+        }      
+        var prototypeShardKeys = sortShardKeys(Object.keys(prototype.shards));
+        var ncshards = myShardKeys.length;
+        if (prototypeShardKeys.length != ncshards) {
+          ERROR('distributeShardsLike: shard map mismatch');
+        }
+        for (var i = 0; i < ncshards; ++i) {
+          const shname = myShardKeys[i];
+          const ccul = current.Collections[database];     
+          if (JSON.stringify(col.shards[shname]) !=
+              JSON.stringify(prototype.shards[prototypeShardKeys[i]])) {
+            ERROR(
+              'distributeShardsLike: planned shard map mismatch between "/arango/Plan/Collections/' +
+                database + '/' + collection + '/shards/' + myShardKeys[i] +
+                '" and " /arango/Plan/Collections/'  + database + '/' + distributeShardsLike +
+                '/shards/' + prototypeShardKeys[i] + '"');
+            INFO('      ' + JSON.stringify(col.shards[shname]));
+            INFO('      ' + JSON.stringify(prototype.shards[prototypeShardKeys[i]]));
+          }
+        }
+      }
+
+      myShardKeys.forEach(function(shname) {
+        ++nshards;
+        if (current.Collections.hasOwnProperty(database)) {
+          if (!current.Collections[database].hasOwnProperty(collection)) {
+            WARN('missing collection "' + collection + '" in current');
+          } else {
+            if (!current.Collections[database][collection].hasOwnProperty(shname)) {
+              WARN('missing shard "' + shname + '" in current');           
+            }
+            const shard = current.Collections[database][collection][shname];
+            if (shard) {
+              if (JSON.stringify(shard.servers) != JSON.stringify(col.shards[shname])) {
+                if (shard.servers[0] != col.shards[shname][0]) {
+                  ERROR('/arango/Plan/Collections/' + database + '/' + collection + '/shards/'
+                        + shname + ' and /arango/Current/Collections/' + database + '/'
+                        + collection + '/' + shname + '/servers do not match');
+                } else {
+                  var sortedPlan = (shard.servers).sort();
+                  var sortedCurrent = (col.shards[shname]).sort();
+                  if (JSON.stringify(sortedPlan) == JSON.stringify(sortedCurrent)) {
+                    WARN('/arango/Plan/Collections/' + database + '/' + collection + '/shards/'
+                         + shname + ' and /arango/Current/Collections/' + database + '/'
+                         + collection + '/' + shname + '/servers follower do not match in order');
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          if (!warned) {
+            WARN('planned database "' + database + '" missing entirely in current');
+            warned = true;
+          }
+        }
+      });
+
+    });
+  });
+
+  INFO('Server health')
+  INFO('  DB Servers')
+  const supervision = agency.Supervision;
+  const target = agency.Target;
+  var servers = plan.DBServers;
+  Object.keys(servers).forEach(function(serverId) {
+    if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
+      WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
+    } else { 
+      INFO('    ' + serverId + '(' + target.MapUniqueToShortID[serverId].ShortName + ')');
+      if (!supervision.Health.hasOwnProperty(serverId)) {
+        ERROR('planned db server ' + serverId + ' missing in supervision\'s health records.');
+      }
+      servers[serverId] = supervision.Health[serverId];
+      if (servers[serverId].Status == "BAD") {
+        WARN('bad db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
+      } else if (servers[serverId].Status == "FAILED") {
+        ERROR('failed db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
+      }
+    }
+  });
+
+  INFO('  Coordinators')
+  var servers = plan.Coordinators;
+  Object.keys(servers).forEach(function(serverId) {
+    if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
+      WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
+    } else { 
+      INFO('    ' + serverId + '(' + target.MapUniqueToShortID[serverId].ShortName + ')');
+      if (!supervision.Health.hasOwnProperty(serverId)) {
+        ERROR('planned db server ' + serverId + ' missing in supervision\'s health records.');
+      }
+      servers[serverId] = supervision.Health[serverId];
+      if (servers[serverId].Status != "GOOD") {
+        WARN('unhealthy db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
+      }
+    }
+  });
+
+  const jobs = {
+    ToDo: target.ToDo,
+    Pending: target.Pending,
+    Finished: target.Finished,
+    Failed: target.Failed
+  }
+  var njobs = [];
+  var nall;
+  Object.keys(jobs).forEach(function (state) {
+    njobs.push(Object.keys(jobs[state]).length);
+  });
+
+  var i = 0;
+  INFO('Supervision activity');
+  INFO('  Jobs: ' + nall+ '(' +
+       'To do: ' + njobs[i++] + ', ' +
+       'Pending: ' + njobs[i++] + ', ' +
+       'Finished: ' + njobs[i++] + ', ' +
+       'Failed: ' + njobs[i] + ')'
+      );
+  
+  INFO('Summary');
+  if (nerrors > 0) {
+    ERROR('  ' + nerrors + ' errors');
+  }
+  if (nwarnings > 0) {
+    WARN('  ' + nwarnings + ' warnings');
+  }
+  INFO('  ' + ndatabases + ' databases');
+  INFO('  ' + ncollections + ' collections ');
+  INFO('  ' + nshards + ' shards ');
+  INFO('... agency analysis finished.')
+  
+}
+
+
+/**
+ * @brief Create an integer range as [start,end]
+ * 
+ * @param start     Start of range 
+ * @param end       End of range
+ */
+function range(start, end) {
+  return Array(end - start + 1).fill().map((_, idx) => start + idx);
+}
+
+function loadAgency(conn, seen) {
+
+  var agencyDump = conn.POST("/_api/agency/read", '[["/"]]');
   seen[conn.getEndpoint()] = true;
 
-  if (agency.code === 404) {
-    WARN("not talking to an agent, got: " + JSON.stringify(agency));
+  if (agencyDump.code === 404) {
+    WARN("not talking to an agent, got: " + JSON.stringify(agencyDump));
     return null;
   }
 
-  if (agency.code === 307) {
+  if (agencyDump.code === 307) {
     var red = conn.POST_RAW("/_api/agency/read", '[["/"]]');
 
     if (red.code === 307) {
@@ -88,21 +350,18 @@ function loadAgency(conn, seen) {
         INFO("switching to " + leader);
 
         conn.reconnect(leader, "_system");
-        return loadAgencyAgency(arango, seen);
+        return loadAgencyConfig(arango, seen);
       }
     }
   }
 
-  if (agency.code !== undefined) {
-    WARN("failed to load agency, got: " + JSON.stringify(agency));
+  if (agencyDump.code !== undefined) {
+    WARN("failed to load agency, got: " + JSON.stringify(agencyDump));
     return null;
   }
 
-  return agency;
-}
-
-function loadAgency() {
-  return loadAgency(arango, {});
+  return agencyDump;
+  
 }
 
 function defineServer(type, id, source) {
@@ -236,7 +495,6 @@ function serverBasics(conn) {
   } else if (role === 'COORDINATOR') {
     INFO("talking to a coordinator");
     defineCoordinatorFromStatus(status);
-    console.error(possibleAgent);
   } else if (role === 'SINGLE') {
     INFO("talking to a single server");
     defineSingleFromStatus(status);
@@ -271,6 +529,20 @@ function listServers() {
   return servers;
 }
 
+function getServerData(arango) {
+  var current = arango.getEndpoint();
+  var servers = listServers();
+  var report = {};
+  Object.keys(servers).forEach(
+    function (server) {
+      arango.reconnect(servers[server].endpoint, '_system');
+      report[server] = {
+        version: arango.GET('_api/version'), log: arango.GET('_admin/log').text};
+    });
+  arango.reconnect(current, '_system');
+  return report;
+}
+
 exports.loadAgencyConfig = loadAgencyConfig;
 exports.serverBasics = serverBasics;
 
@@ -288,27 +560,24 @@ exports.listServers = listServers;
         serverBasics();
       }
     }
-
-    var plan = loadAgency();
-
-    if (plan !== null) {
-      locateServers(plan);
+    
+    // Agency dump and analysis
+    var agencyConfig = loadAgencyConfig();
+    var agencyDump = loadAgency(arango, {});
+    if (agencyDump !== null) {
+      locateServers(agencyDump);
     }
+    agencyDoctor(agencyDump);
+    healthRecord['agency'] = agencyDump[0].arango;
+    
+    // Get logs from all servers
+    healthRecord['servers'] = getServerData(arango);
+
+    require('fs').writeFileSync('arango-doctor.json', JSON.stringify(healthRecord));
+    
   } catch (e) {
     print(e);
   }
 }());
 
 exports.show = require("@arangodb/doctor/show");
-
-
-
-
-
-
-
-
-
-
-
-
