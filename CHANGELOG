@@ -6,6 +6,9 @@ devel
 * Starting with coordinators and DB servers with different storage engines is unsupported.
   Doing it anyway will now produce a warning on startup
 
+* fixed issue #4919: c++ implementation of LIKE function now matches the old and correct
+  behaviour of the javascript implementation.
+
 * added `--json` option to arangovpack, allowing to treat its input as plain JSON data
   make arangovpack work without any configuration file
 
@@ -184,8 +187,9 @@ v3.3.8 (XXXX-XX-XX)
 * added `@arangodb/locals` module to expose the Foxx service context as an
   alternative to using `module.context` directly.
 
-* supervision can be put into maintenance mode
+* `db._executeTransaction` now accepts collection objects as collections.
 
+* supervision can be put into maintenance mode
 
 v3.3.7 (2018-04-11)
 -------------------
