@@ -281,7 +281,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::ManagedDocumentResult* mmdr,
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*,
-      bool
+      arangodb::IndexIteratorOptions const&
   ) override {
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -631,12 +631,8 @@ void PhysicalCollectionMock::figuresSpecific(std::shared_ptr<arangodb::velocypac
   TRI_ASSERT(false);
 }
 
-std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(arangodb::transaction::Methods* trx, bool reverse) const {
+std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(arangodb::transaction::Methods* trx) const {
   before();
-
-  if (reverse) {
-    return std::make_unique<ReverseAllIteratorMock>(documents.size(), this->_logicalCollection, trx);
-  }
 
   return std::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
 }
