@@ -66,6 +66,11 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   bool hasCovering() const override { return true; }
 
  private:
+  // returns true if we have one more key for the index lookup.
+  // if true, sets the `key` Slice to point to the new key's value
+  // note that the underlying data for the Slice must remain valid
+  // as long as the iterator is used and the key is not moved forward.
+  // returns false if there are no more keys to look for
   bool initKey(arangodb::velocypack::Slice& key);
   void resetInplaceMemory();
   arangodb::StringRef getFromToFromIterator(
@@ -153,7 +158,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

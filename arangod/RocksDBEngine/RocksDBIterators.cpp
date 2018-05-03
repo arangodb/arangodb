@@ -23,10 +23,10 @@
 #include "RocksDBIterators.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
 using namespace arangodb;
@@ -39,10 +39,8 @@ constexpr bool AnyIteratorFillBlockCache = false;
 // ================ All Iterator ==================
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(
-    LogicalCollection* col, transaction::Methods* trx,
-    RocksDBPrimaryIndex const* index, bool reverse)
+    LogicalCollection* col, transaction::Methods* trx, RocksDBPrimaryIndex const* index)
     : IndexIterator(col, trx, index),
-      _reverse(reverse),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
@@ -65,21 +63,12 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
   cf->GetDescriptor(&desc);
   TRI_ASSERT(desc.options.prefix_extractor);
 #endif
-
-  if (reverse) {
-    _iterator->SeekForPrev(_bounds.end());
-  } else {
-    _iterator->Seek(_bounds.start());
-  }
+  _iterator->Seek(_bounds.start());
 }
 
 bool RocksDBAllIndexIterator::outOfRange() const {
   TRI_ASSERT(_trx->state()->isRunning());
-  if (_reverse) {
-    return _cmp->Compare(_iterator->key(), _bounds.start()) < 0;
-  } else {
-    return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
-  }
+  return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
 bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
@@ -99,11 +88,7 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
 
     cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()));
     --limit;
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
+    _iterator->Next();
 
     if (!_iterator->Valid() || outOfRange()) {
       return false;
@@ -128,13 +113,8 @@ bool RocksDBAllIndexIterator::nextDocument(
     cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()),
        VPackSlice(_iterator->value().data()));
     --limit;
-
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
-
+    _iterator->Next();
+    
     if (!_iterator->Valid()) {
       return false;
     }
@@ -150,22 +130,13 @@ void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
     --count;
     ++skipped;
 
-    if (_reverse) {
-      _iterator->Prev();
-    } else {
-      _iterator->Next();
-    }
+    _iterator->Next();
   }
 }
 
 void RocksDBAllIndexIterator::reset() {
   TRI_ASSERT(_trx->state()->isRunning());
-
-  if (_reverse) {
-    _iterator->SeekForPrev(_bounds.end());
-  } else {
-    _iterator->Seek(_bounds.start());
-  }
+  _iterator->Seek(_bounds.start());
 }
 
 // ================ Any Iterator ================

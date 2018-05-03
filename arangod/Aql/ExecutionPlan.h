@@ -191,9 +191,15 @@ class ExecutionPlan {
   /// node and that one cannot remove the root node of the plan.
   void unlinkNode(ExecutionNode*, bool = false);
 
-  /// @brief add a node to the plan, will delete node if addition fails and
-  /// throw an exception
+  /// @brief register a node with the plan
+  ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>);
+  
+  /// @brief add a node to the plan, will delete node if addition
+  /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
+
+  /// @brief add a subquery to the plan, will call registerNode internally
+  SubqueryNode* registerSubquery(SubqueryNode*);
 
   /// @brief replaceNode, note that <newNode> must be registered with the plan
   /// before this method is called, also this does not delete the old
@@ -206,12 +212,23 @@ class ExecutionPlan {
   /// <oldNode>).
   /// <newNode> must be registered with the plan before this method is called.
   void insertDependency(ExecutionNode* oldNode, ExecutionNode* newNode);
+  
+  /// @brief insert note directly after previous
+  /// will remove previous as a dependency from its parents and
+  /// add newNode as a dependency. <newNode> must be registered with the plan
+  void insertAfter(ExecutionNode* previous, ExecutionNode* newNode);
 
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
 
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
+  
+  /// @brief create an execution plan from an abstract syntax tree node
+  ExecutionNode* fromNode(AstNode const*);
+  
+  /// @brief create an execution plan from VPack
+  ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief whether or not the plan contains at least one node of this type
   bool contains(ExecutionNode::NodeType type) const;
@@ -291,12 +308,6 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
-
-  /// @brief create an execution plan from an abstract syntax tree node
-  ExecutionNode* fromNode(AstNode const*);
-
-  /// @brief create an execution plan from VPack
-  ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);

@@ -35,8 +35,6 @@ using namespace arangodb::aql;
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
       _server(base.get("server").copyString()),
       _ownName(base.get("ownName").copyString()),
       _queryId(base.get("queryId").copyString()),
@@ -59,7 +57,6 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
                                            verbose);  // call base class method
 
   nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("server", VPackValue(_server));
   nodes.add("ownName", VPackValue(_ownName));
   nodes.add("queryId", VPackValue(_queryId));
@@ -137,7 +134,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
       _allowSpecifiedKeys(false) {
  
-  if (base.hasKey("variable")) {     
+  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {     
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
   } else {
@@ -230,7 +227,10 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
                                            verbose);  // call base class method
 
   nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
+  if (_collection) {
+    // FIXME why do we need collection
+    nodes.add("collection", VPackValue(_collection->getName()));
+  }
 
   if(_sortmode == 'h'){
     nodes.add("sortmode", VPackValue("heap"));

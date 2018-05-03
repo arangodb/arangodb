@@ -125,6 +125,11 @@ void RocksDBEdgeIndexIterator::reset() {
       VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
     
+// returns true if we have one more key for the index lookup.
+// if true, sets the `key` Slice to point to the new key's value
+// note that the underlying data for the Slice must remain valid
+// as long as the iterator is used and the key is not moved forward.
+// returns false if there are no more keys to look for
 bool RocksDBEdgeIndexIterator::initKey(VPackSlice& key) {
   if (!_keysIterator.valid()) {
     // no next key
@@ -669,8 +674,9 @@ bool RocksDBEdgeIndex::supportsFilterCondition(
 IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   // get computation node
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(node->numMembers() == 1);

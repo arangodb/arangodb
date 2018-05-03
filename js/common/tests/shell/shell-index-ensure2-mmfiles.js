@@ -795,20 +795,18 @@ function ensureIndexSuite() {
       assertEqual(1, res.length);
 
       var idx = collection.ensureIndex({ type: "geo1", fields: [ "a" ] });
-      assertEqual("geo1", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "a" ], idx.fields);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
 
       var indexes = collection.getIndexes();
       res = indexes[0].type === "primary" ? indexes[1] : indexes[0];
 
-      assertEqual("geo1", res.type);
+      assertEqual("geo", res.type);
       assertFalse(res.unique);
       assertEqual([ "a" ], res.fields);
-      assertTrue(res.ignoreNull);
       assertTrue(res.sparse);
       assertFalse(res.geoJson);
 
@@ -825,20 +823,17 @@ function ensureIndexSuite() {
       assertEqual(1, res.length);
 
       var idx = collection.ensureIndex({ type: "geo2", fields: [ "a", "b" ], unique: true });
-      assertEqual("geo2", idx.type);
+      assertEqual("geo", idx.type);
       assertFalse(idx.unique);
       assertEqual([ "a", "b" ], idx.fields);
-      assertTrue(idx.ignoreNull);
       assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
 
       res = collection.getIndexes()[collection.getIndexes().length - 1];
 
-      assertEqual("geo2", res.type);
+      assertEqual("geo", res.type);
       assertFalse(res.unique);
       assertEqual([ "a", "b" ], res.fields);
-      assertTrue(res.ignoreNull);
-      assertTrue(res.ignoreNull);
       assertFalse(res.geoJson);
 
       assertEqual(idx.id, res.id);

@@ -224,6 +224,9 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 
       if (nodeType == ExecutionNode::DISTRIBUTE ||
           nodeType == ExecutionNode::SCATTER ||
+#ifdef USE_IRESEARCH
+          nodeType == ExecutionNode::SCATTER_IRESEARCH_VIEW ||
+#endif
           nodeType == ExecutionNode::GATHER) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
@@ -348,7 +351,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
  public:
 
   explicit CoordinatorInstanciator(Query* query)
-      : _dbserverParts(query), _isCoordinator(true), _lastClosed(0), _query(query) {}
+      : _dbserverParts(query), 
+        _isCoordinator(true), 
+        _lastClosed(0), 
+        _query(query) {
+    TRI_ASSERT(_query);
+  }
 
   ~CoordinatorInstanciator() {}
 
@@ -375,6 +383,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
       }
     } else {
+#ifdef USE_IRESEARCH
+      if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
+        return false;
+      }
+#endif
+
       // on dbserver
       _dbserverParts.addNode(en);
       if (nodeType == ExecutionNode::REMOTE) {
@@ -539,9 +553,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     } else {
       // instantiate the engine on a local server
       engine = new ExecutionEngine(query); 
-      auto inst = std::make_unique<Instanciator>(engine); 
-      plan->root()->walk(*inst); 
-      root = inst.get()->root; 
+      Instanciator inst(engine);
+      plan->root()->walk(inst);
+      root = inst.root;
       TRI_ASSERT(root != nullptr);
     }
 

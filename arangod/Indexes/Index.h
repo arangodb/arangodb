@@ -43,6 +43,7 @@ class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 class StringRef;
+struct IndexIteratorOptions;
 
 namespace velocypack {
 class Builder;
@@ -78,6 +79,7 @@ class Index {
   enum IndexType {
     TRI_IDX_TYPE_UNKNOWN = 0,
     TRI_IDX_TYPE_PRIMARY_INDEX,
+    TRI_IDX_TYPE_GEO_INDEX,
     TRI_IDX_TYPE_GEO1_INDEX,
     TRI_IDX_TYPE_GEO2_INDEX,
     TRI_IDX_TYPE_HASH_INDEX,
@@ -189,6 +191,12 @@ class Index {
 
   static IndexType type(std::string const& type);
 
+  static bool isGeoIndex(IndexType type) {
+    return type == TRI_IDX_TYPE_GEO1_INDEX ||
+           type == TRI_IDX_TYPE_GEO2_INDEX ||
+           type == TRI_IDX_TYPE_GEO_INDEX;
+  }
+
   virtual char const* typeName() const = 0;
 
   virtual bool allowExpansion() const = 0;
@@ -282,7 +290,7 @@ class Index {
   virtual int drop();
 
   // called after the collection was truncated
-  virtual int afterTruncate(); 
+  virtual int afterTruncate();
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);
@@ -301,7 +309,9 @@ class Index {
                                               ManagedDocumentResult*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
-                                              bool);
+                                              IndexIteratorOptions const&) {
+    return nullptr; // IResearch will never use this
+  };
 
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;

@@ -174,6 +174,7 @@ endif ()
 add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
@@ -283,6 +284,7 @@ endif ()
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
   ${PROJECT_SOURCE_DIR}/lib/Basics/WorkMonitorDummy.cpp
+  Import/AutoTuneThread.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Shell/ClientFeature.cpp

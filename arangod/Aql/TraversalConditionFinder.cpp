@@ -512,11 +512,12 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:
-#ifdef USE_IRESEARCH
-    case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
     case EN::LIMIT:
     case EN::SHORTEST_PATH:
+#ifdef USE_IRESEARCH
+    case EN::ENUMERATE_IRESEARCH_VIEW:
+    case EN::SCATTER_IRESEARCH_VIEW:
+#endif
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.

@@ -39,6 +39,9 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -255,6 +258,11 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         updateCollection(col);
         break;
       }
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+      addIResearchViewNode(*node);
+      break;
+#endif
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -851,6 +859,24 @@ void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
 
   _graphNodes.emplace_back(node);
 }
+
+#ifdef USE_IRESEARCH
+void EngineInfoContainerDBServer::addIResearchViewNode(
+    ExecutionNode const& node
+) {
+  TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto& viewNode = dynamic_cast<iresearch::IResearchViewNode const&>(node);
+#else
+  auto& viewNode = static_cast<iresearch::IResearchViewNode const&>(node);
+#endif
+
+  for (auto const& col : viewNode.collections()) {
+    handleCollection(&col, AccessMode::Type::READ);
+  }
+}
+#endif
 
 /**
  * @brief Will send a shutdown to all engines registered in the list of

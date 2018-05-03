@@ -123,8 +123,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
   MMFilesAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
                           MMFilesPrimaryIndex const* index,
-                          MMFilesPrimaryIndexImpl const* indexImpl,
-                          bool reverse);
+                          MMFilesPrimaryIndexImpl const* indexImpl);
 
   ~MMFilesAllIndexIterator() {}
 
@@ -141,7 +140,6 @@ class MMFilesAllIndexIterator final : public IndexIterator {
   MMFilesPrimaryIndexImpl const* _index;
   arangodb::basics::BucketPosition _position;
   std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
-  bool const _reverse;
   uint64_t _total;
 };
 
@@ -233,7 +231,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   /// @brief request an iterator over all elements in the index in
   ///        a sequential order.
-  IndexIterator* allIterator(transaction::Methods*, bool reverse) const;
+  IndexIterator* allIterator(transaction::Methods*) const;
 
   /// @brief request an iterator over all elements in the index in
   ///        a random order. It is guaranteed that each element is found
@@ -274,7 +272,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

@@ -130,8 +130,10 @@ void Index::validateFields(VPackSlice const& slice) {
   VPackSlice fields = slice.get("fields");
 
   if (!fields.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                   "invalid index description");
+// FIXME
+    return;
+//    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+//                                   "invalid index description");
   }
 
   for (auto const& name : VPackArrayIterator(fields)) {
@@ -172,6 +174,9 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  if (::strcmp(type, "geo") == 0) {
+    return TRI_IDX_TYPE_GEO_INDEX;
+  }
 #ifdef USE_IRESEARCH
   if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -207,6 +212,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
+    case TRI_IDX_TYPE_GEO_INDEX:
+      return "geo";
 #ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
@@ -315,7 +322,8 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     }
   }
 
-  if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX) {
+  if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX ||
+      type == IndexType::TRI_IDX_TYPE_GEO_INDEX) {
     // geoJson must be identical if present
     value = lhs.get("geoJson");
     if (value.isBoolean()) {
@@ -414,7 +422,8 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures, bool forPers
 void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("id", VPackValue(std::to_string(_iid)));
-  builder.add("type", VPackValue(oldtypeName()));
+  //builder.add("type", VPackValue(oldtypeName()));
+  builder.add("type", VPackValue(oldtypeName(type())));
 
   builder.add(VPackValue("fields"));
   builder.openArray();
@@ -597,17 +606,6 @@ bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
     estimatedCost = 0.0;
   }
   return false;
-}
-
-/// @brief default iterator factory method. does not create an iterator
-IndexIterator* Index::iteratorForCondition(transaction::Methods*,
-                                           ManagedDocumentResult*,
-                                           arangodb::aql::AstNode const*,
-                                           arangodb::aql::Variable const*,
-                                           bool) {
-  // the super class index cannot create an iterator
-  // the derived index classes have to manage this.
-  return nullptr;
 }
 
 /// @brief specializes the condition for use with the index

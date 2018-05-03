@@ -112,6 +112,7 @@ set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 
 # libraries
 set(LIB_ARANGO        arango)
+set(LIB_ARANGO_GEO     arango_geo)
 set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
@@ -167,12 +168,6 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js"
-  NEWLINE_STYLE UNIX
-)
-
 ################################################################################
 ## Find the git revision
 ################################################################################
@@ -222,6 +217,7 @@ option(HOMEBREW
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
+  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX)
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -440,9 +436,9 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/552f562/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
-
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)

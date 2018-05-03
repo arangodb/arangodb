@@ -2065,6 +2065,13 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     auto idx =
         idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
 
+    if (!idx) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "error creating index from definition '"
+        << indexesSlice.toString() << "'";
+      continue;
+    }
+
     if (ServerState::instance()->isRunningInCluster()) {
       addIndexCoordinator(idx);
     } else {
@@ -2446,9 +2453,8 @@ bool MMFilesCollection::removeIndex(TRI_idx_iid_t iid) {
   return false;
 }
 
-std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(
-    transaction::Methods* trx, bool reverse) const {
-  return std::unique_ptr<IndexIterator>(primaryIndex()->allIterator(trx, reverse));
+std::unique_ptr<IndexIterator> MMFilesCollection::getAllIterator(transaction::Methods* trx) const {
+  return std::unique_ptr<IndexIterator>(primaryIndex()->allIterator(trx));
 }
 
 std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(

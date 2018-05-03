@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGO_ROCKSDB_ROCKSDB_VALUE_H
@@ -31,7 +31,7 @@
 #include "VocBase/LocalDocumentId.h"
 
 #include <rocksdb/slice.h>
-
+#include <s2/s2point.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -54,6 +54,7 @@ class RocksDBValue {
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
+  static RocksDBValue S2Value(S2Point const& c);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -97,6 +98,11 @@ class RocksDBValue {
   static uint64_t keyValue(rocksdb::Slice const&);
   static uint64_t keyValue(std::string const&);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Centroid of shape or point on the sphere surface in degrees
+  //////////////////////////////////////////////////////////////////////////////
+  static S2Point centroid(rocksdb::Slice const&);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
@@ -109,13 +115,13 @@ class RocksDBValue {
 
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
       : _type(type), _buffer(slice.data(), slice.size()) {}
-  
+
   RocksDBValue(RocksDBValue const&) = delete;
   RocksDBValue& operator=(RocksDBValue const&) = delete;
 
   RocksDBValue(RocksDBValue&& other) noexcept
       : _type(other._type), _buffer(std::move(other._buffer)) {}
-  
+
   RocksDBValue& operator=(RocksDBValue&& other) noexcept {
     TRI_ASSERT(_type == other._type);
     _buffer = std::move(other._buffer);
@@ -128,6 +134,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data);
+  RocksDBValue(S2Point const&);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);

@@ -43,16 +43,16 @@ using namespace arangodb::aql;
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, bool reverse)
+            Condition* condition, IndexIteratorOptions const& opts)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         _vocbase(vocbase),
         _collection(collection),
         _indexes(indexes),
         _condition(condition),
-        _reverse(reverse),
         _needsGatherNodeSort(false),
-        _restrictedTo("") {
+        _restrictedTo(""),
+        _options(opts) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_condition != nullptr);
@@ -60,8 +60,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
   initIndexCoversProjections();
 }
 
-/// @brief constructor for IndexNode 
-IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) 
+/// @brief constructor for IndexNode
+IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
@@ -69,15 +69,26 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
           base.get("collection").copyString())),
       _indexes(),
       _condition(nullptr),
-      _reverse(base.get("reverse").getBoolean()),
       _needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)),
-      _restrictedTo("") {
+      _restrictedTo(""),
+      _options() {
 
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
   VPackSlice restrictedTo = base.get("restrictedTo");
   if (restrictedTo.isString()) {
     _restrictedTo = restrictedTo.copyString();
+  }
+
+  _options.sorted = basics::VelocyPackHelper::readBooleanValue(base, "sorted", true);
+  _options.ascending = basics::VelocyPackHelper::readBooleanValue(base, "ascending", false);
+  _options.evaluateFCalls = basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
+  _options.fullRange = basics::VelocyPackHelper::readBooleanValue(base, "fullRange", false);
+  _options.limit = basics::VelocyPackHelper::readNumericValue(base, "limit", 0);
+  if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
+    // legacy
+    _options.sorted = true;
+    _options.ascending = !(base.get("reverse").getBool());
   }
 
   if (_collection == nullptr) {
@@ -96,7 +107,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   _indexes.reserve(indexes.length());
 
   auto trx = plan->getAst()->query()->trx();
-  for (auto const& it : VPackArrayIterator(indexes)) {
+  for (VPackSlice it : VPackArrayIterator(indexes)) {
     std::string iid  = it.get("id").copyString();
     _indexes.emplace_back(trx->getIndexByIdentifier(_collection->getName(), iid));
   }
@@ -181,13 +192,14 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
+  nodes.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
   if (!_restrictedTo.empty()) {
     nodes.add("restrictedTo", VPackValue(_restrictedTo));
   }
 
   // add outvariable and projections
   DocumentProducingNode::toVelocyPack(nodes);
-  
+
   nodes.add(VPackValue("indexes"));
   {
     VPackArrayBuilder guard(&nodes);
@@ -197,9 +209,15 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   }
   nodes.add(VPackValue("condition"));
   _condition->toVelocyPack(nodes, verbose);
-  nodes.add("reverse", VPackValue(_reverse));
+  // IndexIteratorOptions
+  nodes.add("sorted", VPackValue(_options.sorted));
+  nodes.add("ascending", VPackValue(_options.ascending));
+  nodes.add("reverse", VPackValue(!_options.ascending)); // legacy
   nodes.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
   nodes.add("indexCoversProjections", VPackValue(!_coveringIndexAttributePositions.empty()));
+  nodes.add("evalFCalls", VPackValue(_options.evaluateFCalls));
+  nodes.add("fullRange", VPackValue(_options.fullRange));
+  nodes.add("limit", VPackValue(_options.limit));
 
   // And close it:
   nodes.close();
@@ -223,13 +241,11 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
-                         _indexes, _condition->clone(), _reverse);
-  
+                         _indexes, _condition->clone(), _options);
+
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
-
-  c->needsGatherNodeSort(_needsGatherNodeSort);
 
   cloneHelper(c, withDependencies, withProperties);
 

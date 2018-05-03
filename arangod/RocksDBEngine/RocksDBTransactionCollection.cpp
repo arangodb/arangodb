@@ -184,13 +184,6 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       _collection = _transaction->vocbase()->useCollection(_cid, status);
       if (_collection != nullptr) {
         _usageLocked = true;
-
-        // geo index needs exclusive write access
-        RocksDBCollection* rc =
-            static_cast<RocksDBCollection*>(_collection->getPhysical());
-        if (AccessMode::isWrite(_accessType) && rc->hasGeoIndex()) {
-          _accessType = AccessMode::Type::EXCLUSIVE;
-        }
       }
     } else {
       // use without usage-lock (lock already set externally)

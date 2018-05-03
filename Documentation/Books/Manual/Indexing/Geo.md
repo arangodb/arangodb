@@ -4,17 +4,29 @@ Geo Indexes
 Introduction to Geo Indexes
 ---------------------------
 
-This is an introduction to ArangoDB's geo indexes.
-
-AQL's geographic features are described in [Geo functions](../../AQL/Functions/Geo.html).
-
-ArangoDB uses Hilbert curves to implement geo-spatial indexes.
-See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
-for details.
+This is an introduction to the legacy geo indexe in ArangoDB. This is a metric
+index which is optimized to index 2D coordinate points on a sphere.
 
 A geo-spatial index assumes that the latitude is between -90 and 90 degree and
 the longitude is between -180 and 180 degree. A geo index will ignore all
 documents which do not fulfill these requirements.
+
+AQL's geographic features are described in [Geo
+functions](../../AQL/Functions/Geo.html).
+
+{% hint 'info' %}
+Should you be requiring more advanced geospatial functionality like support for
+GeoJSON or if you are using the _RocksDB_ storage engine we suggest to use the
+new [Geo-Spatial index](GeoSpatial.md), which also supports more complex
+queries.
+{% endhint %}
+
+## Legacy Geo index
+
+The legacy geoindex only supports point based operations: This index assumes
+that the latitude is between -90 and 90 degree and the longitude is between -180
+and 180 degree. A geo index will ignore all documents which do not fulfill these
+requirements.
 
 Accessing Geo Indexes from the Shell
 ------------------------------------
@@ -25,8 +37,8 @@ Accessing Geo Indexes from the Shell
 ensures that a geo index exists
 `collection.ensureIndex({ type: "geo", fields: [ "location" ] })`
 
-Creates a geo-spatial index on all documents using *location* as path to
-the coordinates. The value of the attribute has to be an array with at least two
+Creates a geo-spatial index on all documents using *location* as path to the
+coordinates. The value of the attribute has to be an array with at least two
 numeric values. The array must contain the latitude (first value) and the
 longitude (second value).
 
@@ -38,24 +50,22 @@ A geo index is implicitly sparse, and there is no way to control its sparsity.
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-To create a geo index on an array attribute that contains longitude first, set the
-*geoJson* attribute to `true`. This corresponds to the format described in
+To create a geo index on an array attribute that contains longitude first, set
+the *geoJson* attribute to `true`. This corresponds to the format described in
 [RFC 7946 Position](https://tools.ietf.org/html/rfc7946#section-3.1.1)
 
 `collection.ensureIndex({ type: "geo", fields: [ "location" ], geoJson: true })`
 
-To create a geo-spatial index on all documents using *latitude* and
-*longitude* as separate attribute paths, two paths need to be specified
-in the *fields* array:
+To create a geo-spatial index on all documents using *latitude* and *longitude*
+as separate attribute paths, two paths need to be specified in the *fields*
+array:
 
 `collection.ensureIndex({ type: "geo", fields: [ "latitude", "longitude" ] })`
 
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-
 **Examples**
-
 
 Create a geo index for an array attribute:
 
@@ -138,9 +148,6 @@ Use GeoIndex with AQL FILTER statement:
 <!-- js/common/modules/@arangodb/arango-collection-common.js-->
 @startDocuBlock collectionWithin
 
-
-
-
 ensures that a geo index exists
 `collection.ensureIndex({ type: "geo", fields: [ "location" ] })`
 
@@ -155,7 +162,7 @@ It would prevent identical coordinates from being inserted only, but even a
 slightly different location (like 1 inch or 1 cm off) would be unique again and
 not considered a duplicate, although it probably should. The desired threshold
 for detecting duplicates may vary for every project (including how to calculate
-the distance even) and needs to be implemented on the application layer as needed.
-You can write a [Foxx service](../Foxx/index.html) for this purpose and make use
-of the AQL [geo functions](../../AQL/Functions/Geo.html) to find nearby
+the distance even) and needs to be implemented on the application layer as
+needed. You can write a [Foxx service](../Foxx/index.html) for this purpose and
+make use of the AQL [geo functions](../../AQL/Functions/Geo.html) to find nearby
 coordinates supported by a geo index.

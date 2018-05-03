@@ -205,6 +205,10 @@ class EngineInfoContainerDBServer {
   // the DBServers. The GraphNode itself will retain on the coordinator.
   void addGraphNode(GraphNode* node);
 
+#ifdef USE_IRESEARCH
+  void addIResearchViewNode(ExecutionNode const& node);
+#endif
+
  private:
 
  /**
