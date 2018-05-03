@@ -193,6 +193,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
   nodes.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
+  nodes.add("indexCoversProjections", VPackValue(!_coveringIndexAttributePositions.empty()));
   if (!_restrictedTo.empty()) {
     nodes.add("restrictedTo", VPackValue(_restrictedTo));
   }
@@ -213,8 +214,6 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("sorted", VPackValue(_options.sorted));
   nodes.add("ascending", VPackValue(_options.ascending));
   nodes.add("reverse", VPackValue(!_options.ascending)); // legacy
-  nodes.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
-  nodes.add("indexCoversProjections", VPackValue(!_coveringIndexAttributePositions.empty()));
   nodes.add("evalFCalls", VPackValue(_options.evaluateFCalls));
   nodes.add("fullRange", VPackValue(_options.fullRange));
   nodes.add("limit", VPackValue(_options.limit));
