@@ -7,10 +7,6 @@ var db = require('@arangodb').db,
   print = internal.print,
   colors = { };
 
-if (typeof internal.printBrowser === 'function') {
-  print = internal.printBrowser;
-}
-
 const anonymize = function(doc) {
   if (Array.isArray(doc)) {
     return doc.map(anonymize);
