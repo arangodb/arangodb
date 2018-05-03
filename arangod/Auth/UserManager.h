@@ -54,14 +54,14 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// stored in `_system/_users` as well as in external authentication
 /// systems like LDAP. The permissions are cached locally if possible,
 /// to avoid unnecessary disk access. An instance of this should only
-/// exist on Coordinators and single servers.
+/// exist on coordinators and single servers.
 class UserManager {
  public:
   explicit UserManager();
 #ifdef USE_ENTERPRISE
-  explicit UserManager(std::unique_ptr<arangodb::auth::Handler>&&);
+  explicit UserManager(std::unique_ptr<arangodb::auth::Handler>);
 #endif
-  ~UserManager();
+  ~UserManager() = default;
 
  public:
   typedef std::function<Result(auth::User&)> UserCallback;
@@ -163,7 +163,7 @@ class UserManager {
   aql::QueryRegistry* _queryRegistry;
 #ifdef USE_ENTERPRISE
   /// iterface to external authentication systems like LDAP
-  arangodb::auth::Handler* _authHandler;
+  std::unique_ptr<arangodb::auth::Handler> _authHandler;
 #endif
 };
 }  // auth

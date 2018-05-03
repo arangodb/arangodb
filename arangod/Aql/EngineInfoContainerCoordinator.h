@@ -41,8 +41,6 @@ class ExecutionNode;
 class Query;
 class QueryRegistry;
 
-
-
 class EngineInfoContainerCoordinator {
  private:
   struct EngineInfo {
@@ -61,9 +59,9 @@ class EngineInfoContainerCoordinator {
     Result buildEngine(Query* query, QueryRegistry* queryRegistry,
                        std::string const& dbname,
                        std::unordered_set<std::string> const& restrictToShards,
-                       std::unordered_map<std::string, std::string> const& dbServerQueryIds,
+                       MapRemoteToSnippet const& dbServerQueryIds,
                        std::vector<uint64_t>& coordinatorQueryIds,
-                       std::unordered_set<ShardID> const* lockedShards) const;
+                       std::unordered_set<ShardID> const& lockedShards) const;
 
     QueryId queryId() const {
       return _id;
@@ -108,8 +106,8 @@ class EngineInfoContainerCoordinator {
   ExecutionEngineResult buildEngines(
       Query* query, QueryRegistry* registry, std::string const& dbname,
       std::unordered_set<std::string> const& restrictToShards,
-      std::unordered_map<std::string, std::string>& queryIds,
-      std::unordered_set<ShardID> const* lockedShards) const;
+      MapRemoteToSnippet const& dbServerQueryIds,
+      std::unordered_set<ShardID> const& lockedShards) const;
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster

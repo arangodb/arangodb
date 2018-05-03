@@ -53,7 +53,6 @@ AuthenticationFeature::AuthenticationFeature(
       _jwtSecretProgramOption(""),
       _active(true) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Random");
 #ifdef USE_ENTERPRISE
   startsAfter("Ldap");

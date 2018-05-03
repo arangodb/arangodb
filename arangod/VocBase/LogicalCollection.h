@@ -161,7 +161,6 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
-  bool isSystem() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -172,7 +171,7 @@ class LogicalCollection: public LogicalDataSource {
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, bool reverse);
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
   void invokeOnAllElements(
@@ -390,8 +389,6 @@ class LogicalCollection: public LogicalDataSource {
 
   // SECTION: Properties
   bool _isLocal;
-
-  bool const _isSystem;
 
   bool _waitForSync;
 

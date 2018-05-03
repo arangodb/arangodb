@@ -991,6 +991,7 @@
         this.waitForInit(this.installService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceInstallView) {
         this.serviceInstallView.remove();
       }
@@ -1007,6 +1008,7 @@
         this.waitForInit(this.installNewService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceNewView) {
         this.serviceNewView.remove();
       }
@@ -1022,6 +1024,7 @@
         this.waitForInit(this.installGitHubService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceGitHubView) {
         this.serviceGitHubView.remove();
       }
@@ -1037,6 +1040,7 @@
         this.waitForInit(this.installUrlService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceUrlView) {
         this.serviceUrlView.remove();
       }
@@ -1052,6 +1056,7 @@
         this.waitForInit(this.installUploadService.bind(this));
         return;
       }
+      window.modalView.clearValidators();
       if (this.serviceUploadView) {
         this.serviceUploadView.remove();
       }

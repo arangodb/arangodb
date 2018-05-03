@@ -73,9 +73,8 @@ RocksDBExportCursor::RocksDBExportCursor(
   LogicalCollection* collection = _trx->documentCollection();
   TRI_ASSERT(collection != nullptr);
 
-  auto rocksCollection =
-      static_cast<RocksDBCollection*>(collection->getPhysical());
-  _iter = rocksCollection->getAllIterator(_trx.get(), false);
+  auto rocksColl = static_cast<RocksDBCollection*>(collection->getPhysical());
+  _iter = rocksColl->getAllIterator(_trx.get());
 
   _size = collection->numberDocuments(_trx.get());
   if (limit > 0 && limit < _size) {

@@ -237,7 +237,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _checkVersion(false),
       _upgrade(false) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Authentication");
   startsAfter("CacheManager");
   startsAfter("DatabasePath");
@@ -1163,6 +1162,12 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
 
 void DatabaseFeature::updateContexts() {
   TRI_ASSERT(_vocbase != nullptr);
+  
+  V8DealerFeature* dealer =
+  ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  if (!dealer->isEnabled()) {
+    return;
+  }
 
   useSystemDatabase();
 
@@ -1170,9 +1175,6 @@ void DatabaseFeature::updateContexts() {
   TRI_ASSERT(queryRegistry != nullptr);
 
   auto vocbase = _vocbase;
-
-  V8DealerFeature* dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   dealer->defineContextUpdate(
       [queryRegistry, vocbase](v8::Isolate* isolate,

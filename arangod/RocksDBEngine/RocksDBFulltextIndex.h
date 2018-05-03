@@ -23,7 +23,6 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -103,7 +102,8 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   IndexIterator* iteratorForCondition(transaction::Methods* trx,
                                       ManagedDocumentResult*,
                                       aql::AstNode const* condNode,
-                                      aql::Variable const* var, bool) override;
+                                      aql::Variable const* var,
+                                      IndexIteratorOptions const&) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,

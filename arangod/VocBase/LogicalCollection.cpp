@@ -183,7 +183,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _status(other.status()),
       _isSmart(other.isSmart()),
       _isLocal(false),
-      _isSystem(other.isSystem()),
       _waitForSync(other.waitForSync()),
       _version(other._version),
       _replicationFactor(other.replicationFactor()),
@@ -220,6 +219,8 @@ LogicalCollection::LogicalCollection(
      ReadPlanId(info, 0),
      ReadStringValue(info, "name", ""),
      planVersion,
+     TRI_vocbase_t::IsSystemName(ReadStringValue(info, "name", ""))
+       && Helper::readBooleanValue(info, "isSystem", false),
      Helper::readBooleanValue(info, "deleted", false)
    ),
       _internalVersion(0),
@@ -231,8 +232,6 @@ LogicalCollection::LogicalCollection(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
       _isLocal(!ServerState::instance()->isCoordinator()),
-      _isSystem(TRI_vocbase_t::IsSystemName(ReadStringValue(info, "name", "")) &&
-                Helper::readBooleanValue(info, "isSystem", false)),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _version(Helper::readNumericValue<uint32_t>(info, "version",
                                                   currentVersion())),
@@ -440,8 +439,8 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
-    transaction::Methods* trx, bool reverse) {
-  return _physical->getAllIterator(trx, reverse);
+    transaction::Methods* trx) {
+  return _physical->getAllIterator(trx);
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(transaction::Methods* trx) {
@@ -541,8 +540,6 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
 }
 
 bool LogicalCollection::isLocal() const { return _isLocal; }
-
-bool LogicalCollection::isSystem() const { return _isSystem; }
 
 bool LogicalCollection::waitForSync() const { return _waitForSync; }
 
@@ -765,9 +762,10 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
                                                         bool isReady,
                                                         bool allInSync) const {
-  if (_isSystem && !useSystem) {
+  if (system() && !useSystem) {
     return;
   }
+
   result.openObject();
   result.add(VPackValue("parameters"));
 
@@ -813,7 +811,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
 
   // Collection Flags
   result.add("deleted", VPackValue(deleted()));
-  result.add("isSystem", VPackValue(_isSystem));
+  result.add("isSystem", VPackValue(system()));
   result.add("waitForSync", VPackValue(_waitForSync));
   result.add("globallyUniqueId", VPackValue(_globallyUniqueId));
 
@@ -1362,7 +1360,7 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
     result.push_back('/');
     result.append(name());
   } else { // single server
-    if (isSystem()) { // system collection can't be renamed
+    if (system()) { // system collection can't be renamed
       result.append(name());
     } else {
       TRI_ASSERT(id());

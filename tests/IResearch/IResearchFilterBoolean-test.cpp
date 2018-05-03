@@ -101,8 +101,11 @@ void assertExpressionFilter(
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    std::make_shared<arangodb::velocypack::Builder>(),
     arangodb::aql::PART_MAIN
   );
 
@@ -181,9 +184,12 @@ void assertFilter(
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, options,
-     arangodb::aql::PART_MAIN
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
@@ -319,7 +325,6 @@ struct IResearchFilterSetup {
       false, // fake non-deterministic
       false, // fake can throw
       true,
-      false,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -332,7 +337,6 @@ struct IResearchFilterSetup {
       true, // fake deterministic
       false, // fake can throw
       true,
-      false,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -883,8 +887,11 @@ SECTION("UnaryNot") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -958,8 +965,11 @@ SECTION("UnaryNot") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -1033,8 +1043,11 @@ SECTION("UnaryNot") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -1108,8 +1121,11 @@ SECTION("UnaryNot") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -1183,8 +1199,11 @@ SECTION("UnaryNot") {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -1519,8 +1538,11 @@ SECTION("BinaryOr") {
     std::string const queryString = "FOR d IN collection FILTER d.a.b.c > _NONDETERM_('15') or d.a.b.c < '40' RETURN d";
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -1655,8 +1677,11 @@ SECTION("BinaryAnd") {
     std::string const queryString = "FOR d IN collection FILTER d.a.b.c < '1' and not d.c.b.a == '2' RETURN d";
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -1781,8 +1806,11 @@ SECTION("BinaryAnd") {
     std::string const queryString = "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d";
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -1941,8 +1969,11 @@ SECTION("BinaryAnd") {
     std::string const queryString = "FOR d IN collection FILTER d.a[*].b >= 15 and d.a[*].b <= 40 RETURN d";
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -2049,8 +2080,11 @@ SECTION("BinaryAnd") {
     std::string const queryString = "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b <= 40 RETURN d";
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 
@@ -2728,8 +2762,11 @@ SECTION("BinaryAnd") {
     std::string const queryString = "FOR d IN collection FILTER d.a.b.c > _NONDETERM_('15') and d.a.b.c < '40' RETURN d";
 
     arangodb::aql::Query query(
-      false, &vocbase, arangodb::aql::QueryString(queryString),
-      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      false,
+      vocbase,
+      arangodb::aql::QueryString(queryString),
+      nullptr,
+      std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
 

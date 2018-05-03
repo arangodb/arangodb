@@ -224,7 +224,6 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
     true, // can throw
     true, // can be run on server
-    true, // can pass arguments by reference
     aqlFnTokens // function implementation
   });
 }
@@ -398,7 +397,6 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(
   _analyzers(getStaticAnalyzers()), // load static analyzers
   _started(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
   startsAfter("SystemDatabase"); // used for getting the system database containing the persisted configuration
 }
@@ -823,7 +821,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
       return true; // not a valid configuration, skip
     }
 
-    auto key = getStringRef(slice.get(StaticStrings::KeyString));
+    auto key = getStringRef(slice.get(arangodb::StaticStrings::KeyString));
     auto name = getStringRef(slice.get("name"));
     auto type = getStringRef(slice.get("type"));
     irs::string_ref properties;

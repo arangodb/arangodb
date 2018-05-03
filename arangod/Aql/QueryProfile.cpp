@@ -36,15 +36,15 @@ using namespace arangodb::aql;
 
 /// @brief create a profile
 QueryProfile::QueryProfile(Query* query)
-    : query(query), stamp(query->startTime()), tracked(false) {
+    : _query(query), _lastStamp(query->startTime()), _tracked(false) {
 
-  for (auto& it : timers) {
+  for (auto& it : _timers) {
     it = 0.0; // reset timers
   }
   auto queryList = query->vocbase()->queryList();
 
   try {
-    tracked = queryList->insert(query);
+    _tracked = queryList->insert(query);
   } catch (...) {
   }
 }
@@ -52,48 +52,42 @@ QueryProfile::QueryProfile(Query* query)
 /// @brief destroy a profile
 QueryProfile::~QueryProfile() {
   // only remove from list when the query was inserted into it...
-  if (tracked) {
-    auto queryList = query->vocbase()->queryList();
-
+  if (_tracked) {
+    auto queryList = _query->vocbase()->queryList();
     try {
-      queryList->remove(query);
+      queryList->remove(_query);
      } catch (...) {
     }
   }
 }
 
 /// @brief sets a state to done
-double QueryProfile::setDone(QueryExecutionState::ValueType state) {
+double QueryProfile::setStateDone(QueryExecutionState::ValueType state) {
   double const now = TRI_microtime();
 
   if (state != QueryExecutionState::ValueType::INVALID_STATE) {
     // record duration of state
-    timers[static_cast<int>(state)] = now - stamp;
+    _timers[static_cast<int>(state)] = now - _lastStamp;
   }
 
   // set timestamp
-  stamp = now;
+  _lastStamp = now;
   return now;
 }
 
 /// @brief sets the absolute end time for an execution state
-void QueryProfile::setEnd(QueryExecutionState::ValueType state, double time) {
-  timers[static_cast<int>(state)] = time - stamp;
+void QueryProfile::setStateEnd(QueryExecutionState::ValueType state, double time) {
+  _timers[static_cast<int>(state)] = time - _lastStamp;
 }
 
 /// @brief convert the profile to VelocyPack
-std::shared_ptr<VPackBuilder> QueryProfile::toVelocyPack() {
-  auto result = std::make_shared<VPackBuilder>();
-  
-  result->openObject(true);
+void QueryProfile::toVelocyPack(VPackBuilder& builder) const {
+  VPackObjectBuilder guard(&builder, "profile", true);
   for (auto state : ENUM_ITERATOR(QueryExecutionState::ValueType, INITIALIZATION, FINALIZATION)) {
-    double const value = timers[static_cast<size_t>(state)];
+    double const value = _timers[static_cast<size_t>(state)];
 
     if (value >= 0.0) {
-      result->add(QueryExecutionState::toString(state), VPackValue(value));
+      builder.add(QueryExecutionState::toString(state), VPackValue(value));
     }
   }
-  result->close();
-  
-  return result;
 }

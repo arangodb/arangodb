@@ -28,19 +28,19 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arango = require("@arangodb").arango;
-var db = require("internal").db;
-var users = require("@arangodb/users");
-var request = require('@arangodb/request');
-var crypto = require('@arangodb/crypto');
+const jsunity = require("jsunity");
+const arango = require("@arangodb").arango;
+const db = require("internal").db;
+const users = require("@arangodb/users");
+const request = require('@arangodb/request');
+const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function AuthSuite () {
+function AuthSuite() {
   'use strict';
   var baseUrl = function () {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
@@ -50,11 +50,11 @@ function AuthSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
 
       try {
@@ -64,11 +64,11 @@ function AuthSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       try {
         users.remove("hackers@arangodb.com");
       }
@@ -76,11 +76,11 @@ function AuthSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test creating a new user
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test creating a new user
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testNewUser : function () {
+    testNewUser: function () {
       users.save("hackers@arangodb.com", "foobar");
       users.grantDatabase('hackers@arangodb.com', db._name());
       users.grantCollection('hackers@arangodb.com', db._name(), "*");
@@ -110,11 +110,11 @@ function AuthSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test creating a new user with empty password
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test creating a new user with empty password
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testEmptyPassword : function () {
+    testEmptyPassword: function () {
       users.save("hackers@arangodb.com", "");
       users.grantDatabase('hackers@arangodb.com', db._name());
       users.grantCollection('hackers@arangodb.com', db._name(), "*");
@@ -136,7 +136,7 @@ function AuthSuite () {
       }
     },
 
-    testPasswordChange : function () {
+    testPasswordChange: function () {
       users.save("hackers@arangodb.com", "");
       users.grantDatabase('hackers@arangodb.com', db._name());
       users.grantCollection('hackers@arangodb.com', db._name(), "*");
@@ -155,11 +155,11 @@ function AuthSuite () {
       assertTrue(db._collections().length > 0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test creating a new user with case sensitive password
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test creating a new user with case sensitive password
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testPasswordCase : function () {
+    testPasswordCase: function () {
       users.save("hackers@arangodb.com", "FooBar");
       users.grantDatabase('hackers@arangodb.com', db._name());
       users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
@@ -207,11 +207,11 @@ function AuthSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test creating a new user with colon in password
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test creating a new user with colon in password
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testColon : function () {
+    testColon: function () {
       users.save("hackers@arangodb.com", "fuxx::bar");
       users.grantDatabase('hackers@arangodb.com', db._name());
       users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
@@ -258,11 +258,11 @@ function AuthSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test creating a new user with special chars in password
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test creating a new user with special chars in password
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSpecialChars : function () {
+    testSpecialChars: function () {
       users.save("hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
       users.grantDatabase('hackers@arangodb.com', db._name());
       users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
@@ -308,18 +308,18 @@ function AuthSuite () {
         fail();
       }
     },
-    
-    testAuthOpen: function() {
+
+    testAuthOpen: function () {
       var res = request(baseUrl() + "/_open/auth");
       expect(res).to.be.an.instanceof(request.Response);
       // mop: GET is an unsupported method, but it is skipping auth
       expect(res).to.have.property('statusCode', 405);
     },
-    
-    testAuth: function() {
+
+    testAuth: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({"username": "root", "password": ""})
+        body: JSON.stringify({ "username": "root", "password": "" })
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
@@ -330,14 +330,14 @@ function AuthSuite () {
       expect(obj.jwt).to.be.a('string');
       expect(obj.jwt.split('.').length).to.be.equal(3);
     },
-    
-    testAuthNewUser: function() {
+
+    testAuthNewUser: function () {
       users.save("hackers@arangodb.com", "foobar");
       users.reload();
 
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({"username": "hackers@arangodb.com", "password": "foobar"})
+        body: JSON.stringify({ "username": "hackers@arangodb.com", "password": "foobar" })
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
@@ -347,47 +347,47 @@ function AuthSuite () {
       expect(obj.jwt).to.be.a('string');
       expect(obj.jwt.split('.').length).to.be.equal(3);
     },
-    
-    testAuthNewWrongPassword: function() {
+
+    testAuthNewWrongPassword: function () {
       users.save("hackers@arangodb.com", "foobarJAJA");
       users.reload();
 
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({"username": "hackers@arangodb.com", "password": "foobar"})
+        body: JSON.stringify({ "username": "hackers@arangodb.com", "password": "foobar" })
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
-    
-    testAuthNoPassword: function() {
+
+    testAuthNoPassword: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({"username": "hackers@arangodb.com", "passwordaa": "foobar"}),
-      });
-      expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 400);
-    },
-    
-    testAuthNoUsername: function() {
-      var res = request.post({
-        url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({"usern": "hackers@arangodb.com", "password": "foobar"}),
+        body: JSON.stringify({ "username": "hackers@arangodb.com", "passwordaa": "foobar" }),
       });
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 400);
     },
 
-    testAuthRequired: function() {
+    testAuthNoUsername: function () {
+      var res = request.post({
+        url: baseUrl() + "/_open/auth",
+        body: JSON.stringify({ "usern": "hackers@arangodb.com", "password": "foobar" }),
+      });
+      expect(res).to.be.an.instanceof(request.Response);
+      expect(res).to.have.property('statusCode', 400);
+    },
+
+    testAuthRequired: function () {
       var res = request.get(baseUrl() + "/_api/version");
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
-    
-    testFullAuthWorkflow: function() {
+
+    testFullAuthWorkflow: function () {
       var res = request.post({
         url: baseUrl() + "/_open/auth",
-        body: JSON.stringify({"username": "root", "password": ""}),
+        body: JSON.stringify({ "username": "root", "password": "" }),
       });
 
       var jwt = JSON.parse(res.body).jwt;
@@ -401,9 +401,12 @@ function AuthSuite () {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
     },
-    
-    testViaJS: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600}, 'HS256');
+
+    testViaJS: function () {
+      var jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+      }, 'HS256');
 
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -414,9 +417,9 @@ function AuthSuite () {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
     },
-    
-    testNoneAlgDisabled: function() {
-      var jwt = (new Buffer(JSON.stringify({"typ": "JWT","alg": "none"})).toString('base64')) + "." + (new Buffer(JSON.stringify({"preferred_username": "root", "iss": "arangodb"})).toString('base64'));
+
+    testNoneAlgDisabled: function () {
+      var jwt = (new Buffer(JSON.stringify({ "typ": "JWT", "alg": "none" })).toString('base64')) + "." + (new Buffer(JSON.stringify({ "preferred_username": "root", "iss": "arangodb" })).toString('base64'));
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -427,9 +430,9 @@ function AuthSuite () {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
-    
-    testIssRequired: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+
+    testIssRequired: function () {
+      var jwt = crypto.jwtEncode(jwtSecret, { "preferred_username": "root", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -440,9 +443,9 @@ function AuthSuite () {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
-    
-    testIssArangodb: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
+
+    testIssArangodb: function () {
+      var jwt = crypto.jwtEncode(jwtSecret, { "preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) + 3600 }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -453,10 +456,12 @@ function AuthSuite () {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 401);
     },
-    
-    testExpOptional: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", 
-                                             "iss": "arangodb" }, 'HS256');
+
+    testExpOptional: function () {
+      var jwt = crypto.jwtEncode(jwtSecret, {
+        "preferred_username": "root",
+        "iss": "arangodb"
+      }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
@@ -467,9 +472,9 @@ function AuthSuite () {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
     },
-    
-    testExp: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) - 1000 }, 'HS256');
+
+    testExp: function () {
+      var jwt = crypto.jwtEncode(jwtSecret, { "preferred_username": "root", "iss": "arangodbaaa", "exp": Math.floor(Date.now() / 1000) - 1000 }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",

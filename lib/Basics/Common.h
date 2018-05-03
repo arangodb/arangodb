@@ -285,4 +285,9 @@ struct TRI_AutoOutOfScope {
 #undef TRI_SHOW_LOCK_TIME
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199
 
+#ifdef sleep
+#undef sleep
+#endif
+#define sleep ERROR_USE_std_this_thread_sleep_for
+
 #endif

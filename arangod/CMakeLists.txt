@@ -52,8 +52,11 @@ if (USE_IRESEARCH)
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
     IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
     IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
+    IResearch/IResearchViewDBServer.cpp IResearch/IResearchViewDBServer.h
     IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
     IResearch/IResearchLink.cpp IResearch/IResearchLink.h
+    IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
+    IResearch/IResearchLinkHelper.cpp IResearch/IResearchLinkHelper.h
     IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
     IResearch/IResearchMMFilesLink.cpp IResearch/IResearchMMFilesLink.h
     IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
@@ -139,6 +142,7 @@ SET(ARANGOD_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
@@ -228,7 +232,6 @@ SET(ARANGOD_SOURCES
   Aql/QueryOptions.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
-  Aql/QueryResult.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RegexCache.cpp
@@ -280,6 +283,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterMethods.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
+  Cluster/CriticalThread.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
@@ -303,6 +307,8 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VstCommTask.cpp
+  GeoIndex/Index.cpp
+  GeoIndex/Near.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
@@ -518,6 +524,7 @@ add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
+  ${LIB_ARANGO_GEO}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
@@ -525,6 +532,7 @@ target_link_libraries(arangoserver
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
+  s2
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}

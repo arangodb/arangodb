@@ -36,9 +36,12 @@
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
 #include "IResearchRocksDBLink.h"
+#include "IResearchLinkCoordinator.h"
+#include "IResearchLinkHelper.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
+#include "IResearchViewDBServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
@@ -50,6 +53,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "MMFiles/MMFilesEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
 
@@ -106,7 +111,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 
@@ -116,7 +120,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 
@@ -126,21 +129,32 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 }
 
-void registerIndexFactory() {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    return; // no registration required on coordinator (collections not instantiated)
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Single-server or DB server index factories
+////////////////////////////////////////////////////////////////////////////////
+const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> dbServerIndexFactories = {
+  { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
+  { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
+};
 
-  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
-    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
-    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
-  };
-  static const auto& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Coordinator index factories
+////////////////////////////////////////////////////////////////////////////////
+const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> coordinatorIndexFactories = {
+  { "MMFilesEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles },
+  { "RocksDBEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkRocksDB }
+};
+
+void registerIndexFactory() {
+  auto& factories = arangodb::ServerState::instance()->isCoordinator()
+    ? coordinatorIndexFactories
+    : dbServerIndexFactories;
+
+  auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
   // register 'arangosearch' link
   for (auto& entry: factories) {
@@ -166,7 +180,7 @@ void registerIndexFactory() {
     }
 
     res = indexFactory.emplaceNormalizer(
-      indexType, arangodb::iresearch::IResearchLink::normalize
+      indexType, arangodb::iresearch::IResearchLinkHelper::normalize
     );
 
     if (!res.ok()) {
@@ -198,7 +212,6 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       true,   // deterministic
       false,  // can't throw
       true,   // can be run on server
-      true,   // can pass arguments by reference
       &noop   // function implementation (use function name as placeholder)
     });
 
@@ -225,11 +238,16 @@ void registerViewFactory() {
     );
   }
 
+  arangodb::Result res;
+
   // DB server in custer or single-server
-  auto res = arangodb::ServerState::instance()->isCoordinator()
-    ? viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make)
-    : viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make)
-    ;
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make);
+  } else if (arangodb::ServerState::instance()->isDBServer()) {
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewDBServer::make);
+  } else {
+    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make);
+  }
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -292,7 +310,6 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   : ApplicationFeature(server, IResearchFeature::name()),
     _running(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("ViewTypes");
   startsAfter("Logger");
   startsAfter("Database");

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,21 @@ struct ExecutionStats {
 
   /// @brief instantiate the statistics from VelocyPack
   explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
-
+  
+  /// @brief statistics per ExecutionNode
+  struct Node {
+    size_t calls = 0;
+    size_t items = 0;
+    double runtime = 0;
+    ExecutionStats::Node& operator+=(ExecutionStats::Node const& other) {
+      calls += other.calls;
+      items += other.items;
+      runtime += other.runtime;
+      return *this;
+    }
+  };
+  
+public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
@@ -51,18 +65,7 @@ struct ExecutionStats {
   void setExecutionTime(double value) { executionTime = value; }
 
   /// @brief sumarize two sets of ExecutionStats
-  void add(ExecutionStats const& summand) {
-    writesExecuted += summand.writesExecuted;
-    writesIgnored += summand.writesIgnored;
-    scannedFull += summand.scannedFull;
-    scannedIndex += summand.scannedIndex;
-    filtered += summand.filtered;
-    httpRequests += summand.httpRequests;
-    if (summand.fullCount > 0) {
-      fullCount += summand.fullCount;
-    }
-    // intentionally no modification of executionTime
-  }
+  void add(ExecutionStats const& summand);
 
   void clear() {
     writesExecuted = 0;
@@ -99,6 +102,9 @@ struct ExecutionStats {
   /// @brief query execution time (wall-clock time). value will be set from 
   /// the outside
   double executionTime;
+  
+  ///  @brief statistics per ExecutionNodes
+  std::map<size_t, ExecutionStats::Node> nodes;
 };
 }
 }

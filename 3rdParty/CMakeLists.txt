@@ -221,6 +221,12 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
+## Google S2
+################################################################################
+
+add_subdirectory(s2geometry)
+
+################################################################################
 ## SNAPPY
 ################################################################################
 
@@ -232,7 +238,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 
 if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories("${JEMALLOC_HOME}/include")
+  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
   set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
 endif ()
