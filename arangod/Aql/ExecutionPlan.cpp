@@ -726,6 +726,16 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
   return options;
 }
 
+/// @brief register a node with the plan
+ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
+
+  _ids.emplace(node->id(), node.get()); // take ownership
+  return node.release();
+}
+
 /// @brief register a node with the plan, will delete node if addition fails
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
@@ -739,6 +749,12 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
     throw;
   }
 
+  return node;
+}
+
+SubqueryNode* ExecutionPlan::registerSubquery(SubqueryNode* node) {
+  node = static_cast<SubqueryNode*>(registerNode(node));
+  _subqueries[node->outVariable()->id] = node;
   return node;
 }
 
@@ -811,7 +827,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 
     en = registerNode(
       new iresearch::IResearchViewNode(
-        this, nextId(), vocbase, view, v, nullptr, {}
+        *this, nextId(), *vocbase, *view, *v, nullptr, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
@@ -1998,11 +2014,11 @@ void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
 /// <newNode> must be registered with the plan before this method is called.
 void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
                                      ExecutionNode* newNode) {
+  TRI_ASSERT(newNode != nullptr);
   TRI_ASSERT(oldNode->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode->getDependencies().size() == 1);
-  TRI_ASSERT(newNode != nullptr);
-  
+
   auto oldDeps = oldNode->getDependencies();  // Intentional copy
   TRI_ASSERT(!oldDeps.empty());
 
@@ -2015,6 +2031,23 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   TRI_ASSERT(oldDeps[0] != nullptr);
   newNode->addDependency(oldDeps[0]);
   clearVarUsageComputed();
+}
+
+/// @brief insert note directly after previous
+/// will remove previous as a dependency from its parents and
+/// add newNode as a dependency. <newNode> must be registered with the plan
+void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode) {
+  TRI_ASSERT(newNode != nullptr);
+  TRI_ASSERT(previous->id() != newNode->id());
+  TRI_ASSERT(newNode->getDependencies().empty());
+  std::vector<ExecutionNode*> parents = previous->getParents(); // Intentional copy
+  for (ExecutionNode* parent : parents) {
+    if (!parent->replaceDependency(previous, newNode)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Could not replace dependencies of an old node");
+    }
+  }
+  newNode->addDependency(previous);
 }
 
 /// @brief create a plan from VPack

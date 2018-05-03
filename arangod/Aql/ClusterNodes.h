@@ -46,11 +46,10 @@ class RemoteNode : public ExecutionNode {
   /// @brief constructor with an id
  public:
   RemoteNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection const* collection, std::string const& server,
-             std::string const& ownName, std::string const& queryId)
+             std::string const& server, std::string const& ownName,
+             std::string const& queryId)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
-        _collection(collection),
         _server(server),
         _ownName(ownName),
         _queryId(queryId),
@@ -89,8 +88,7 @@ class RemoteNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName,
-                            _queryId);
+    auto c = new RemoteNode(plan, _id, _vocbase, _server, _ownName, _queryId);
 
     cloneHelper(c, withDependencies, withProperties);
 
@@ -102,9 +100,6 @@ class RemoteNode : public ExecutionNode {
 
   /// @brief return the database
   TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
 
   /// @brief return the server name
   std::string server() const { return _server; }
@@ -132,9 +127,6 @@ class RemoteNode : public ExecutionNode {
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
-
-  /// @brief the underlying collection
-  Collection const* _collection;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string _server;

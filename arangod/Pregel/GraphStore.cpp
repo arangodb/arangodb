@@ -362,7 +362,7 @@ void GraphStore<V, E>::_loadVertices(size_t i,
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
 
   std::unique_ptr<OperationCursor> cursor =
-      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, false);
+    trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL);
 
   if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",

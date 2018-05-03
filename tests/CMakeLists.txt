@@ -9,6 +9,7 @@ endforeach()
 if (USE_IRESEARCH)
   set(IRESEARCH_TESTS_SOURCES
     IResearch/common.cpp
+    IResearch/AgencyMock.cpp
     IResearch/AgencyCommManagerMock.cpp
 #    IResearch/AttributeScorer-test.cpp
     IResearch/Containers-test.cpp
@@ -20,6 +21,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchFeature-test.cpp
     IResearch/IResearchOrder-test.cpp
     IResearch/IResearchView-test.cpp
+    IResearch/IResearchViewCoordinator-test.cpp
     IResearch/IResearchViewDBServer-test.cpp
     IResearch/IResearchViewMeta-test.cpp
     IResearch/IResearchDocument-test.cpp
@@ -30,6 +32,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchFilterIn-test.cpp
     IResearch/IResearchIndex-test.cpp
     IResearch/IResearchLink-test.cpp
+    IResearch/IResearchLinkCoordinator-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
     IResearch/IResearchQuery-test.cpp
     IResearch/IResearchQueryAnd-test.cpp
@@ -50,6 +53,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
     IResearch/StorageEngineMock.cpp
+    IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
     Utils/CollectionNameResolver-test.cpp
     VocBase/LogicalDataSource-test.cpp
@@ -117,7 +121,11 @@ add_executable(
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ShardDistributionReporterTest.cpp
-  Geo/georeg.cpp
+  Geo/GeoConstructorTest.cpp
+  Geo/GeoJsonTest.cpp
+  Geo/GeoFunctionsTest.cpp
+  Geo/NearUtilsTest.cpp
+  Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp

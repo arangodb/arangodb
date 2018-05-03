@@ -46,8 +46,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
       _cursor(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
-                                       : transaction::Methods::CursorType::ALL),
-                          false)) {
+                                       : transaction::Methods::CursorType::ALL))) {
   TRI_ASSERT(_cursor->ok());
 }
 

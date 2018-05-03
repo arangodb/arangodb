@@ -173,7 +173,7 @@ def validatePathParameters():
         if thisVerb['parameters'][nParam]['in'] == 'path':
             break
     else:
-        raise Exception("@RESTPATHPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+        raise Exception("@RESTPATHPARAMETERS found in Swagger data without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
 
 def validateQueryParams():
     # print thisVerb
@@ -181,7 +181,7 @@ def validateQueryParams():
         if thisVerb['parameters'][nParam]['in'] == 'query':
             break
     else:
-        raise Exception("@RESTQUERYPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+        raise Exception("@RESTQUERYPARAMETERS found in Swagger data without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
 
 def validateHeaderParams():
     # print thisVerb
@@ -189,7 +189,7 @@ def validateHeaderParams():
         if thisVerb['parameters'][nParam]['in'] == 'header':
             break
     else:
-        raise Exception("@RESTHEADERPARAMETERS found without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+        raise Exception("@RESTHEADERPARAMETERS found in Swagger data without any parameter following in %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
 
 def validateReturnCodes():
     # print thisVerb
@@ -197,7 +197,7 @@ def validateReturnCodes():
         if len(thisVerb['responses'].keys()) != 0:
             break
     else:
-        raise Exception("@RESTRETURNCODES found without any documented returncodes %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
+        raise Exception("@RESTRETURNCODES found in Swagger data without any documented returncodes %s " % json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True))
 
 def validateExamples():
     pass

@@ -131,7 +131,8 @@ class ExecutionNode {
     INDEX = 23,
     SHORTEST_PATH = 24,
 #ifdef USE_IRESEARCH
-    ENUMERATE_IRESEARCH_VIEW = 25
+    ENUMERATE_IRESEARCH_VIEW = 25,
+    SCATTER_IRESEARCH_VIEW = 26
 #endif
     // adjust MaxNodeTypeValue below when new ExecutionNode types are added!
   };
@@ -250,6 +251,18 @@ class ExecutionNode {
     return result;
   }
 
+  /// @brief inspect one index; only skiplist indices which match attrs in
+  /// sequence.
+  /// returns a a qualification how good they match;
+  ///      match->index==nullptr means no match at all.
+  enum MatchType {
+    FORWARD_MATCH,
+    REVERSE_MATCH,
+    NOT_COVERED_IDX,
+    NOT_COVERED_ATTR,
+    NO_MATCH
+  };
+
   /// @brief make a new node the (only) parent of the node
   void setParent(ExecutionNode* p) {
     _parents.clear();
@@ -307,7 +320,7 @@ class ExecutionNode {
     }
     return _estimatedCost;
   }
-  
+
   /// @brief walk a complete execution plan recursively
   bool walk(WalkerWorker<ExecutionNode>& worker);
 
@@ -344,7 +357,7 @@ class ExecutionNode {
     }
     return ids;
   }
-  
+
   /// @brief tests whether the node sets one of the passed variables
   bool setsVariable(std::unordered_set<Variable const*> const& which) const {
     for (auto const& v : getVariablesSetHere()) {
@@ -403,7 +416,7 @@ class ExecutionNode {
   ExecutionPlan const* plan() const {
     return _plan;
   }
-  
+
   ExecutionPlan* plan() {
     return _plan;
   }
@@ -836,8 +849,14 @@ class LimitNode : public ExecutionNode {
   /// @brief return the offset value
   size_t offset() const { return _offset; }
 
+  /// @brief set the offset value
+  void setOffset(size_t offset) { _offset = offset; }
+
   /// @brief return the limit value
   size_t limit() const { return _limit; }
+
+  /// @brief set the limit value
+  void setLimit(size_t limit) { _limit = limit; }
 
  private:
   /// @brief the offset

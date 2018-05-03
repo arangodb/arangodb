@@ -310,7 +310,7 @@ describe('Index figures', function () {
       var indexes = col.getIndexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
-      expect(indexes[1].type).to.be.equal("geo1");
+      expect(indexes[1].type).to.be.equal("geo");
     });
     it('verify index - memory', function() {
       var indexes = col.getIndexes(true);

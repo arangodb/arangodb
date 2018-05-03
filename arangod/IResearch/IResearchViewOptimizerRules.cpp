@@ -26,12 +26,14 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchOrderFactory.h"
 #include "AqlHelper.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ClusterNodes.h"
+#include "Aql/Condition.h"
 #include "Aql/SortNode.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Condition.h"
 #include "Aql/WalkerWorker.h"
-#include "Aql/ExecutionNode.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
@@ -184,7 +186,7 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
 
       auto sortCondition = buildSort(
         *_plan,
-        *node->outVariable(),
+        node->outVariable(),
         _sorts,
         _variableDefinitions,
         true  // node->isInInnerLoop() // build scorers only in case if we're inside a loop
@@ -197,13 +199,13 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
 
       auto const canUseView = !filterCondition.root() || FilterFactory::filter(
         nullptr,
-        { nullptr, nullptr, nullptr, nullptr, node->outVariable() },
+        { nullptr, nullptr, nullptr, nullptr, &node->outVariable() },
         *filterCondition.root()
       );
 
       if (canUseView) {
         auto newNode = std::make_unique<arangodb::iresearch::IResearchViewNode>(
-          _plan,
+          *_plan,
           _plan->nextId(),
           node->vocbase(),
           node->view(),
@@ -461,6 +463,127 @@ void handleViewsRule(
   }
 
   opt->addPlan(std::move(plan), rule, !changes.empty());
+}
+
+void scatterViewInClusterRule(
+    arangodb::aql::Optimizer* opt,
+    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+    arangodb::aql::OptimizerRule const* rule
+) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  bool wasModified = false;
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+
+  // find subqueries
+  std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
+  plan->findNodesOfType(nodes, ExecutionNode::SUBQUERY, true);
+
+  for (auto& it : nodes) {
+    subqueries.emplace(
+      static_cast<SubqueryNode const*>(it)->getSubquery(), it
+    );
+  }
+
+  // we are a coordinator. now look in the plan for nodes of type
+  // EnumerateIResearchViewNode
+  nodes.clear();
+  plan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+
+  for (auto* node : nodes) {
+    TRI_ASSERT(node);
+    auto const& parents = node->getParents();
+    auto const& deps = node->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+
+    // don't do this if we are already distributing!
+    if (deps[0]->getType() == ExecutionNode::REMOTE) {
+      auto const* firstDep = deps[0]->getFirstDependency();
+      if (!firstDep || firstDep->getType() == ExecutionNode::DISTRIBUTE) {
+        continue;
+      }
+    }
+
+    if (plan->shouldExcludeFromScatterGather(node)) {
+      continue;
+    }
+
+    bool const isRootNode = plan->isRoot(node);
+    plan->unlinkNode(node, true);
+
+    auto& viewNode = static_cast<IResearchViewNode&>(*node);
+    auto& vocbase = viewNode.vocbase();
+    auto& view = viewNode.view();
+
+    // insert a scatter node
+    auto scatterNode = plan->registerNode(
+      std::make_unique<IResearchViewScatterNode>(
+        *plan, plan->nextId(), vocbase, view
+    ));
+    TRI_ASSERT(!deps.empty());
+    scatterNode->addDependency(deps[0]);
+
+    // insert a remote node
+    auto* remoteNode = plan->registerNode(
+      std::make_unique<RemoteNode>(
+        plan.get(),
+        plan->nextId(),
+        &vocbase,
+        "", "", ""
+    ));
+    TRI_ASSERT(scatterNode);
+    remoteNode->addDependency(scatterNode);
+    node->addDependency(remoteNode); // re-link with the remote node
+
+    // insert another remote node
+    remoteNode = plan->registerNode(
+      std::make_unique<RemoteNode>(
+        plan.get(),
+        plan->nextId(),
+        &vocbase,
+        "", "", ""
+    ));
+    TRI_ASSERT(node);
+    remoteNode->addDependency(node);
+
+    // insert a gather node
+    auto* gatherNode = plan->registerNode(
+      std::make_unique<GatherNode>(
+        plan.get(),
+        plan->nextId(),
+        &vocbase,
+        nullptr //FIXME collection
+    ));
+    TRI_ASSERT(remoteNode);
+    gatherNode->addDependency(remoteNode);
+
+   // FIXME
+   // if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
+   //   gatherNode->setElements(elements);
+   // }
+
+    // and now link the gather node with the rest of the plan
+    if (parents.size() == 1) {
+      parents[0]->replaceDependency(deps[0], gatherNode);
+    }
+
+    // check if the node that we modified was at the end of a subquery
+    auto it = subqueries.find(node);
+
+    if (it != subqueries.end()) {
+      auto* subQueryNode = static_cast<SubqueryNode*>((*it).second);
+      subQueryNode->setSubquery(gatherNode, true);
+    }
+
+    if (isRootNode) {
+      // if we replaced the root node, set a new root node
+      plan->root(gatherNode);
+    }
+
+    wasModified = true;
+  }
+
+  opt->addPlan(std::move(plan), rule, wasModified);
 }
 
 NS_END // iresearch

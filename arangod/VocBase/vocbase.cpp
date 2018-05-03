@@ -1107,9 +1107,8 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
 ) const noexcept {
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::string viewId = StringUtils::itoa(id);
-    return ci->getView(name(), viewId);
+    std::string const viewId = StringUtils::itoa(id);
+    return ClusterInfo::instance()->getView(name(), viewId);
   }
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1129,8 +1128,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
 ) const noexcept{
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->getView(name(), nameOrId);
+    return ClusterInfo::instance()->getView(name(), nameOrId);
   }
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1579,51 +1577,21 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     arangodb::velocypack::Slice parameters
 ) {
+  // check that the name does not contain any strange characters
+  if (!IsAllowedName(parameters)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    auto id = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
-
-    if (id == 0) {
-      id = ci->uniqid();
-    }
-
-    std::string viewId = StringUtils::itoa(id);
-
-    // Now put together the JSON we need for the agency:
-    VPackBuilder builder;
-    { VPackObjectBuilder guard(&builder);
-      builder.add("id", VPackValue(viewId));
-      builder.add(VPackValue("properties"));
-
-      std::string name;
-      { VPackObjectBuilder guard(&builder);
-        for (auto const& p : VPackObjectIterator(parameters)) {
-          if (p.key.copyString() == "name" && p.value.isString()) {
-            name = p.value.copyString();
-          } else {
-            builder.add(p.key);
-            builder.add(p.value);
-          }
-        }
-      }
-
-      if (name.empty()) {
-        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-          << "Could not create view in agency, error: no name given.";
-
-        return nullptr;
-      }
-
-      builder.add("name", VPackValue(name));
-      builder.add(VPackValue("collections"));
-      { VPackArrayBuilder guard2(&builder);
-      }
-    }
-
+    auto* ci = ClusterInfo::instance();
     std::string errorMsg;
-    int res = ci->createViewCoordinator(name(), viewId, builder.slice(),
-        errorMsg);
+    ViewID viewId;
 
+    int const res = ci->createViewCoordinator(
+      name(), parameters, viewId, errorMsg
+    );
+
+    // FIXME don't forget to open created view
     if (res == TRI_ERROR_NO_ERROR) {
       return ci->getView(name(), viewId);
     }
@@ -1633,11 +1601,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       << ", errorCode: " << res;
 
     return nullptr;
-  }
-
-  // check that the name does not contain any strange characters
-  if (!IsAllowedName(parameters)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
   std::shared_ptr<arangodb::LogicalView> registeredView;
@@ -1697,7 +1660,7 @@ arangodb::Result TRI_vocbase_t::dropView(
     TRI_voc_cid_t cid,
     bool allowDropSystem
 ) {
-  auto view = lookupView(cid);
+  auto const view = lookupView(cid);
 
   if (!view) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -1719,10 +1682,11 @@ arangodb::Result TRI_vocbase_t::dropView(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
     std::string errorMsg;
-    auto res =
-      ci->dropViewCoordinator(name(), std::to_string(view->id()), errorMsg);
+
+    auto const res = ClusterInfo::instance()->dropViewCoordinator(
+      name(), StringUtils::itoa(view->id()), errorMsg
+    );
 
     if (res == TRI_ERROR_NO_ERROR) {
       return res;
@@ -1994,6 +1958,10 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
+  if (ServerState::instance()->isCoordinator()) {
+    return ClusterInfo::instance()->getViews(name());
+  }
+
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
   {
