@@ -30,7 +30,7 @@
 #include <boost/variant.hpp>
 
 #include "Agency/AgencyComm.h"
-#include "Basics/ResultT.h"
+#include "ResultT.h"
 #include "ClusterInfo.h"
 #include "ClusterRepairOperations.h"
 

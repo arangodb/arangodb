@@ -28,7 +28,7 @@
 #include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/MoveShard.h"
-#include "Basics/ResultT.h"
+#include "arangod/Cluster/ResultT.h"
 #include "lib/Random/RandomGenerator.h"
 
 #include <boost/core/demangle.hpp>

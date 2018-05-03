@@ -24,7 +24,7 @@
 #define ARANGOD_REST_HANDLER_REST_REPAIR_HANDLER_H
 
 #include "Agency/AgencyComm.h"
-#include "Basics/ResultT.h"
+#include "arangod/Cluster/ResultT.h"
 #include "Cluster/ClusterRepairs.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
