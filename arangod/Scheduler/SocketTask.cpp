@@ -509,7 +509,7 @@ void SocketTask::asyncWriteSome() {
   if (!_peer->isEncrypted()) {
     boost::system::error_code err;
     err.clear();
-    while (!_abandoned.load(std::memory_order_acquire)) {
+    while (true) {
       RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
       written = _peer->writeSome(_writeBuffer._buffer, err);
       
@@ -588,6 +588,9 @@ void SocketTask::asyncWriteSome() {
                             JobGuard guard(_loop);
                             guard.work();
                             asyncWriteSome();
+                            if (!_abandoned.load(std::memory_order_acquire)) {
+                              asyncWriteSome();
+                            }
                           });
                         }
                       });
