@@ -160,6 +160,9 @@ devel
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
+* included version of ArangoDB Starter (`arangodb` binary) updated to v0.10.11,
+  see [Starter changelog](https://github.com/arangodb-helper/arangodb/blob/master/CHANGELOG.md)
+
 * added arangod startup option `--dump-options` to print all configuration parameters
   as a JSON object
 
