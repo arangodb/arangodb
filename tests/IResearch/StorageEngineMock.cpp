@@ -49,6 +49,8 @@
 #include "Transaction/Helpers.h"
 #include "Aql/AstNode.h"
 
+#include <asio/io_context.hpp>
+
 namespace {
 
 /// @brief hard-coded vector of the index attributes
