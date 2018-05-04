@@ -492,6 +492,7 @@ def gyp_main(args):
   generator_flags = NameValueListToDict(gen_flags)
   if DEBUG_GENERAL in gyp.debug.keys():
     DebugOutput(DEBUG_GENERAL, "generator_flags: %s", generator_flags)
+  print("Fuxx:", generator_flags)
 
   # Generate all requested formats (use a set in case we got one format request
   # twice)
