@@ -407,7 +407,7 @@ void Scheduler::rebalanceThreads() {
       uint64_t const nrWorking = numWorking(counters);
       uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + nrQueued + 2)) {
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + nrQueued + 1)) {
         // all threads are working, and none are blocked. so there is no
         // need to start a new thread now
         if (nrWorking == nrRunning) {
