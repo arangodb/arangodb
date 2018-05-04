@@ -112,16 +112,13 @@ bool RestDocumentHandler::createDocument() {
   }
 
   arangodb::OperationOptions opOptions;
-  opOptions.isRestore =
-      extractBooleanParameter(StaticStrings::IsRestoreString, false);
-  opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.returnNew =
-      extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
-  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
-                         opOptions.isSynchronousReplicationFrom);
+  opOptions.isRestore = extractBooleanParameter(StaticStrings::IsRestoreString, false);
+  opOptions.waitForSync = extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = extractBooleanParameter(StaticStrings::ReturnNewString, false);
+  opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
+  opOptions.overwrite = extractBooleanParameter(StaticStrings::OverWrite, false);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString
+                        ,opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(_vocbase);

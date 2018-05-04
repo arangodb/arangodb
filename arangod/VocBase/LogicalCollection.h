@@ -299,10 +299,12 @@ class LogicalCollection: public LogicalDataSource {
                 ManagedDocumentResult& result, OperationOptions&,
                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
                 ManagedDocumentResult& previous);
+
   Result replace(transaction::Methods*, velocypack::Slice const,
                  ManagedDocumentResult& result, OperationOptions&,
-                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
+                 TRI_voc_tick_t&, bool /*lock*/, TRI_voc_rid_t& prevRev,
                  ManagedDocumentResult& previous);
+
   Result remove(transaction::Methods*, velocypack::Slice const,
                 OperationOptions&, TRI_voc_tick_t&, bool,
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);

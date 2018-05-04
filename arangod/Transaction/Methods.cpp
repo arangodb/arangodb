@@ -512,7 +512,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     if (!supportsFilter && !supportsSort) {
       continue;
     }
-    
+
     double totalCost = filterCost;
     if (!sortCondition->isEmpty()) {
       // only take into account the costs for sorting if there is actually something to sort
@@ -869,7 +869,7 @@ OperationResult transaction::Methods::anyLocal(
   if (cid == 0) {
     throwCollectionNotFound(collectionName.c_str());
   }
-  
+
   pinData(cid);  // will throw when it fails
 
   VPackBuilder resultBuilder;
@@ -895,7 +895,7 @@ OperationResult transaction::Methods::anyLocal(
       return OperationResult(res);
     }
   }
-  
+
   resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
@@ -1006,7 +1006,7 @@ void transaction::Methods::invokeOnAllElements(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     THROW_ARANGO_EXCEPTION(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   collection->invokeOnAllElements(this, callback);
@@ -1390,6 +1390,13 @@ OperationResult transaction::Methods::insertCoordinator(
     OperationOptions& options) {
   rest::ResponseCode responseCode;
 
+  TRI_ASSERT(options.overwrite == false); // TODO implement
+  // has the document a key?
+  // what is createDocumentOnCoordinator doing (adding a key?)
+  // - create documents on shard
+  // - nedd to pass overwrite option to db servers
+  // what is cluster result insert? custercommrequest to dbservers?
+
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
@@ -1449,7 +1456,7 @@ OperationResult transaction::Methods::insertLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
-  }
+  } // isDBServer
 
   if (options.returnNew) {
     pinData(cid);  // will throw when it fails
@@ -1467,9 +1474,21 @@ OperationResult transaction::Methods::insertLocal(
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
 
-    Result res =
-        collection->insert(this, value, result, options, resultMarkerTick,
-                           !isLocked(collection, AccessMode::Type::WRITE), revisionId);
+    auto needsLock = [this,&collection]() -> bool {return !isLocked(collection, AccessMode::Type::WRITE);};
+    Result res = collection->insert( this, value, result, options
+                                   , resultMarkerTick, needsLock(), revisionId
+                                   );
+
+    if(options.overwrite && res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED){
+      // RepSert Case - unique_constraint violated -> maxTick has not changed -> try replace
+      resultMarkerTick = 0;
+      TRI_voc_rid_t revision;
+      ManagedDocumentResult previousDocumentResult; // return OLD/NEW?
+      res = collection->replace( this, value, result, options
+                               , resultMarkerTick, needsLock(), revision
+                               , previousDocumentResult);
+
+    }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -1781,7 +1800,7 @@ OperationResult transaction::Methods::modifyLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
 
@@ -2302,7 +2321,7 @@ OperationResult transaction::Methods::allLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
   pinData(cid);  // will throw when it fails
-  
+
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
@@ -2331,7 +2350,7 @@ OperationResult transaction::Methods::allLocal(
       return OperationResult(res);
     }
   }
-  
+
   resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
@@ -2397,7 +2416,7 @@ OperationResult transaction::Methods::truncateLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   try {
@@ -2570,7 +2589,7 @@ OperationResult transaction::Methods::countLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this);
