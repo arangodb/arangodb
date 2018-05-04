@@ -32,7 +32,6 @@ ServerFeaturePhase::ServerFeaturePhase(ApplicationServer* server)
 
   startsAfter("Endpoint");
   startsAfter("GeneralServer");
-  startsAfter("Ldap");
   startsAfter("Server");
   startsAfter("SslServer");
   startsAfter("Statistics");

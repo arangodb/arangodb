@@ -312,11 +312,8 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   setOptional(true);
   startsAfter("V8Phase");
 
-  startsAfter("ViewTypes");
   startsAfter("IResearchAnalyzer"); // used for retrieving IResearch analyzers for functions
   startsAfter("AQLFunctions");
-
-  startsBefore("GeneralServer");
 }
 
 void IResearchFeature::beginShutdown() {

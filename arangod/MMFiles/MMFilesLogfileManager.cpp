@@ -124,15 +124,8 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   startsAfter("BasicsPhase");
 
   startsAfter("Database");
-  startsAfter("DatabasePath");
   startsAfter("EngineSelector");
   startsAfter("MMFilesEngine");
-
-  startsBefore("Aql");
-  startsBefore("Bootstrap");
-  startsBefore("GeneralServer");
-  startsBefore("QueryRegistry");
-  startsBefore("TraverserEngineRegistry");
 
   onlyEnabledWith("MMFilesEngine");
 }

@@ -44,7 +44,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer* server)
   startsAfter("MMFilesPersistentIndex");
   startsAfter("MMFilesWalRecovery");
   startsAfter("Replication");
-  startsAfter("ReplicationTimeout");
   startsAfter("RocksDBEngine");
   startsAfter("RocksDBOption");
   startsAfter("RocksDBRecoveryManager");
