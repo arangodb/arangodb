@@ -101,6 +101,7 @@ if (USE_IRESEARCH)
 
   target_link_libraries(${LIB_ARANGO_IRESEARCH}
     ${IRESEARCH_TARGET_DEPENDENCY}
+    s2 # needed for some includes
     boost_locale # required by iResearch
   )
 

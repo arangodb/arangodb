@@ -76,7 +76,7 @@ void fillSortRegisters(
   TRI_ASSERT(en.plan());
   auto& execPlan = *en.plan();
 
-  auto const& elements = en.getElements();
+  auto const& elements = en.elements();
   sortRegisters.reserve(elements.size());
   std::unordered_map<ExecutionNode const*, size_t> offsets(sortRegisters.capacity());
 

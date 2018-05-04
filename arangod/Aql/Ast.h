@@ -409,13 +409,7 @@ class Ast {
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
   static std::unordered_set<std::string> getReferencedAttributesForKeep(AstNode const*, Variable const* searchVariable, bool&);
 
-  static bool populateSingleAttributeAccess(AstNode const* node,
-                                            Variable const* variable,
-                                            std::vector<std::string>& attributeName);
-
-  static bool variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
-                                                       Variable const* variable,
-                                                       std::vector<std::string> const& attributeName);
+  static bool getReferencedAttributes(AstNode const*, Variable const*, std::unordered_set<std::string>&);
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node,

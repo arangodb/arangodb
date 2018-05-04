@@ -48,6 +48,8 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL))) {
   TRI_ASSERT(_cursor->ok());
+
+  buildCallback();
 }
 
 int EnumerateCollectionBlock::initialize() {

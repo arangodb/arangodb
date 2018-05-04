@@ -483,7 +483,9 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults('RETURN "[ ] ( ) % * . + -" LIKE "%. +%"'));
       assertEqual([ true ], getQueryResults('RETURN "abc^def$g" LIKE "abc^def$g"'));
       assertEqual([ true ], getQueryResults('RETURN "abc^def$g" LIKE "%^%$g"'));
-
+      assertEqual([ true ],  getQueryResults('RETURN "der\*hund"  LIKE "%*%"'));
+      assertEqual([ true ],  getQueryResults('RETURN "der*hund"  LIKE "%*%"'));
+      assertEqual([ false ], getQueryResults('RETURN "der*hund"  LIKE "*"'));
       assertEqual([ true ], getQueryResults('RETURN LIKE("%", "\\%")'));
       assertEqual([ true ], getQueryResults('RETURN LIKE("a%c", "a%c")'));
       assertEqual([ false ], getQueryResults('RETURN LIKE("a%c", "ac")'));
