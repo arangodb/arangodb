@@ -36,6 +36,8 @@ monitoring of the server.
 
 @startDocuBlock JSF_get_admin_server_id
 
+@startDocuBlock get_admin_server_availability
+
 ## Cluster
 
 <!-- js/actions/api-cluster.js -->
