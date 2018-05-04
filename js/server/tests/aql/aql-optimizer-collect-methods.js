@@ -31,6 +31,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var internal = require("internal");
+const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -42,7 +43,7 @@ function optimizerCollectMethodsTestSuite () {
   return {
     setUp : function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", { numberOfShards: 3 });
 
       for (var i = 0; i < 1500; ++i) {
         c.save({ group: "test" + (i % 10), value: i });
@@ -136,7 +137,7 @@ function optimizerCollectMethodsTestSuite () {
           }
         });
         
-        assertEqual(1, aggregateNodes);
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(1, sortNodes);
 
         var results = AQL_EXECUTE(query[0]);
@@ -180,7 +181,7 @@ function optimizerCollectMethodsTestSuite () {
           }
         });
         
-        assertEqual(1, aggregateNodes);
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(1, sortNodes);
 
         var results = AQL_EXECUTE(query[0]);
@@ -226,8 +227,8 @@ function optimizerCollectMethodsTestSuite () {
               ++sortNodes;
             }
           });
-          
-          assertEqual(1, aggregateNodes);
+
+          assertEqual(isCluster ? 2 : 1, aggregateNodes);
           assertEqual(query[2] ? 0 : 1, sortNodes);
           
           var results = AQL_EXECUTE(query[0]);
@@ -264,8 +265,8 @@ function optimizerCollectMethodsTestSuite () {
             ++sortNodes;
           }
         });
-        
-        assertEqual(1, aggregateNodes);
+       
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(0, sortNodes);
 
         var results = AQL_EXECUTE(query[0]);
@@ -302,7 +303,7 @@ function optimizerCollectMethodsTestSuite () {
           }
         });
         
-        assertEqual(1, aggregateNodes);
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(0, sortNodes);
 
         var results = AQL_EXECUTE(query[0]);
@@ -378,17 +379,21 @@ function optimizerCollectMethodsTestSuite () {
 
         var aggregateNodes = 0;
         var sortNodes = 0;
+        let hasInto = false;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual(query[1], node.collectOptions.method, query);
+            if (node.outVariable && !node.count) {
+              hasInto = true;
+            }
           }
           if (node.type === "SortNode") {
             ++sortNodes;
           }
         });
-        
-        assertEqual(1, aggregateNodes);
+       
+        assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
         assertEqual(query[1] === 'hash' ? 1 : 0, sortNodes);
       });
     },
@@ -413,17 +418,21 @@ function optimizerCollectMethodsTestSuite () {
 
         var aggregateNodes = 0;
         var sortNodes = 0;
+        let hasInto = false;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("sorted", node.collectOptions.method);
+            if (node.outVariable && !node.count) {
+              hasInto = true;
+            }
           }
           if (node.type === "SortNode") {
             ++sortNodes;
           }
         });
         
-        assertEqual(1, aggregateNodes);
+        assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
         assertEqual(1, sortNodes);
       });
     },
@@ -455,7 +464,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test many collects
 ////////////////////////////////////////////////////////////////////////////////
-    
+   
     testManyCollects : function () {
       c.truncate();
       c.insert({ value: 3 });
@@ -483,15 +492,19 @@ function optimizerCollectMethodsTestSuite () {
 
       // we want a sorted collect!
       var aggregateNodes = 0;
+      let hasInto = false;
       plan.nodes.map(function(node) {
         assertNotEqual("SortNode", node.type);
         if (node.type === "CollectNode") {
           ++aggregateNodes;
           assertEqual("sorted", node.collectOptions.method);
+          if (node.outVariable && !node.count) {
+            hasInto = true;
+          }
         }
       });
-        
-      assertEqual(1, aggregateNodes);
+    
+      assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
       
       var result = AQL_EXECUTE(query).json;
       assertEqual([ 1001, 1002 ], result);

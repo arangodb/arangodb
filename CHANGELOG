@@ -1,5 +1,12 @@
 devel
 -----
+
+* We added a new geo-spatial index implementation. On the rocksdb storage-engine all old installations
+  will need to be upgraded with `--database.auto-upgrade true`. New geo indexes will now only report with
+  the type `geo` instead of `geo1` or `geo2`. The index types `geo1` and `geo2` are now deprecated.
+  Additionally we removed the deprecated flags `constraint` and `ignoreNull` from geo index definitions, 
+  these fields were initially deprecated in ArangoDB 2.5
+
 * PR #5238: Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
   on VMs with limited disk throughput
 
@@ -152,6 +159,9 @@ devel
 
 v3.3.8 (XXXX-XX-XX)
 -------------------
+
+* included version of ArangoDB Starter (`arangodb` binary) updated to v0.10.11,
+  see [Starter changelog](https://github.com/arangodb-helper/arangodb/blob/master/CHANGELOG.md)
 
 * added arangod startup option `--dump-options` to print all configuration parameters
   as a JSON object

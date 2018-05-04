@@ -63,5 +63,4 @@ Related topics
 
 Other ArangoDB geographic features are described in: 
 - [AQL Geo functions](../../../AQL/Functions/Geo.html)
-- [Geo indexes](../../../Indexing/Geo.md)
-- [Geo-Spatial indexes](../../../Indexing/GeoSpatial.md)
+- [Geo-Spatial indexes](../../../Indexing/Geo.md)
