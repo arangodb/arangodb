@@ -108,20 +108,23 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   auto err = pthread_attr_init (&stackSizeAttribute);
   if (err) {
-    // We should never be here
-    TRI_ASSERT(false);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "could not initialise stack size attribute.";
+    return false;
   }
   err = pthread_attr_getstacksize(&stackSizeAttribute, &stackSize); 
   if (err) {
-    // We should never be here
-    TRI_ASSERT(false);
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "could not acquire stack size from pthread.";
+    return false;
   }
 
   if (stackSize < 8388608) { // 8MB
     err = pthread_attr_setstacksize (&stackSizeAttribute, 8388608);
     if (err) {
-      // We should never be here
-      TRI_ASSERT(false);
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not assign new stack size in pthread.";
+      return false;
     }
   }
 

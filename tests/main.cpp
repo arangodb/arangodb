@@ -11,23 +11,23 @@
 
 #include <thread>
 
-template<class Function>
-class TestThread : public arangodb::Thread {
+template<class Function> class TestThread : public arangodb::Thread {
 public:
 
-  TestThread(Function&& f, int i, char** c) :
-    arangodb::Thread("catch"), f_(f), i_(i), c_(c) {
+  TestThread(Function&& f, int i, char* c[]) :
+    arangodb::Thread("catch"), _f(f), _i(i), _c(c) {
     run();
   }
   void run() {
-    result_ = f_(i_,c_);
+    _result = _f(_i,_c);
   }
-  int result() {return result_;}
+  int result() {return _result;}
+
 private:
-  Function f_;
-  int result_;
-  int i_;
-  char** c_;
+  Function _f;
+  int _result;
+  int _i;
+  char** _c;
 };
 
 char const* ARGV0 = "";
