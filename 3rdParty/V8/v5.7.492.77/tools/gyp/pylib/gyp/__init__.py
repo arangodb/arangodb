@@ -508,6 +508,7 @@ def gyp_main(args):
               'root_targets': options.root_targets,
               'target_arch': cmdline_default_variables.get('target_arch', '')}
 
+    print("Fuxxx:", params)
     # Start with the default variables from the command line.
     [generator, flat_list, targets, data] = Load(
         build_files, format, cmdline_default_variables, includes, options.depth,
