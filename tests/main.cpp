@@ -54,13 +54,10 @@ int main(int argc, char* argv[]) {
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
-  auto runTests =
-    [] (int argc, char* argv[]) -> int {
+  auto tests = [] (int argc, char* argv[]) -> int {
     return Catch::Session().run( argc, argv );
   };
-
-  TestThread<std::function<int(int, char**)>> t(
-    std::move(runTests), argc, argv);
+  TestThread<decltype(tests)> t(std::move(tests), argc, argv);
   result = t.result();
 
   arangodb::Logger::shutdown();
