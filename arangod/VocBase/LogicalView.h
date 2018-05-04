@@ -68,6 +68,7 @@ class LogicalView : public LogicalDataSource {
   static std::shared_ptr<LogicalView> create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
+    bool isNew,
     uint64_t planVersion = 0,
     PreCommitCallback const& preCommit = PreCommitCallback() // called before
   );

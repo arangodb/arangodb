@@ -675,7 +675,7 @@ void ClusterInfo::loadPlan() {
 
             try {
               const auto newView = LogicalView::create(
-                *vocbase, viewPairSlice.value, newPlanVersion
+                *vocbase, viewPairSlice.value, true, newPlanVersion
               );
 
               if (!newView) {

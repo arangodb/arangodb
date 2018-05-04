@@ -1626,7 +1626,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   READ_LOCKER(readLocker, _inventoryLock);
 
   // Try to create a new view. This is not registered yet
-  auto const view = LogicalView::create(*this, parameters, 0, callback);
+  auto const view = LogicalView::create(*this, parameters, true, 0, callback);
 
   if (!view) {
     if (registeredView) {

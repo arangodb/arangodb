@@ -254,10 +254,11 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 }
 
 /*static*/ std::shared_ptr<LogicalView> IResearchViewDBServer::make(
-  TRI_vocbase_t& vocbase,
-  arangodb::velocypack::Slice const& info,
-  uint64_t planVersion,
-  LogicalView::PreCommitCallback const& preCommit /*= LogicalView::PreCommitCallback()*/
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& info,
+    bool isNew,
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit /*= {}*/
 ) {
   if (!info.isObject()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -437,7 +438,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return nullptr;
   }
 
-  auto impl = IResearchView::make(vocbase, info, planVersion, preCommit);
+  auto impl = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
 
   if (!impl) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
