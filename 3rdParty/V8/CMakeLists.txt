@@ -358,6 +358,7 @@ elseif (WIN32)
     -Dcomponent=static_library
     -Dlibrary=static_library
     -DDebugInformationFormat=OldStyle
+    -GDebugInformationFormat=OldStyle
     -Dgenerator_output=${V8_TARGET_DIR}
     -Ggenerator_output=${V8_TARGET_DIR}
     #--depth=2
