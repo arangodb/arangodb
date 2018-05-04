@@ -71,7 +71,7 @@ T addFigures(VPackSlice const& v1, VPackSlice const& v2, std::vector<std::string
   if (found.isNumber()) {
     value += found.getNumericValue<T>();
   }
-  
+
   return value;
 }
 
@@ -88,23 +88,23 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
   updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "alive", "count" })));
   updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(), { "alive", "size" })));
   updated.close();
-  
+
   updated.add("dead", VPackValue(VPackValueType::Object));
   updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "dead", "count" })));
   updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(), { "dead", "size" })));
   updated.add("deletion", VPackValue(addFigures<size_t>(value, builder->slice(), { "dead", "deletion" })));
   updated.close();
-  
+
   updated.add("indexes", VPackValue(VPackValueType::Object));
   updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "indexes", "count" })));
   updated.add("size", VPackValue(addFigures<size_t>(value, builder->slice(), { "indexes", "size" })));
   updated.close();
-  
+
   updated.add("datafiles", VPackValue(VPackValueType::Object));
   updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "datafiles", "count" })));
   updated.add("fileSize", VPackValue(addFigures<size_t>(value, builder->slice(), { "datafiles", "fileSize" })));
   updated.close();
-  
+
   updated.add("journals", VPackValue(VPackValueType::Object));
   updated.add("count", VPackValue(addFigures<size_t>(value, builder->slice(), { "journals", "count" })));
   updated.add("fileSize", VPackValue(addFigures<size_t>(value, builder->slice(), { "journals", "fileSize" })));
@@ -116,13 +116,13 @@ void recursiveAdd(VPackSlice const& value, std::shared_ptr<VPackBuilder>& builde
   updated.close();
 
   updated.add("documentReferences", VPackValue(addFigures<size_t>(value, builder->slice(), { "documentReferences" })));
-  
+
   updated.close();
 
   TRI_ASSERT(updated.slice().isObject());
   TRI_ASSERT(updated.isClosed());
 
-  builder.reset(new VPackBuilder(VPackCollection::merge(builder->slice(), updated.slice(), true, false))); 
+  builder.reset(new VPackBuilder(VPackCollection::merge(builder->slice(), updated.slice(), true, false)));
   TRI_ASSERT(builder->slice().isObject());
   TRI_ASSERT(builder->isClosed());
 }
@@ -498,7 +498,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 
   // fetch a unique id for each shard to create
   uint64_t const id = ci->uniqid(numberOfShards);
-  
+
   size_t leaderIndex = 0;
   size_t followerIndex = 0;
   for (uint64_t i = 0; i < numberOfShards; ++i) {
@@ -956,7 +956,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 
+/// @brief
 ////////////////////////////////////////////////////////////////////////////////
 
 
@@ -1083,19 +1083,21 @@ int selectivityEstimatesOnCoordinator(
 /// for their documents.
 ////////////////////////////////////////////////////////////////////////////////
 
-int createDocumentOnCoordinator(
+Result createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     arangodb::OperationOptions const& options, VPackSlice const& slice,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
-  // Set a few variables needed for our work:
-  ClusterInfo* ci = ClusterInfo::instance();
+
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
-    // nullptr happens only during controlled shutdown
+    // nullptr should only happen during controlled shutdown
     return TRI_ERROR_SHUTTING_DOWN;
   }
+
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_ASSERT(ci != nullptr);
 
   // First determine the collection ID from the name:
   std::shared_ptr<LogicalCollection> collinfo;
@@ -1105,30 +1107,35 @@ int createDocumentOnCoordinator(
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
-
   auto collid = std::to_string(collinfo->id());
-  std::unordered_map<
-      ShardID, std::vector<std::pair<VPackValueLength, std::string>>> shardMap;
+
+
+  // create vars used in this function
+  bool const useMultiple = slice.isArray(); // insert more than one document
+  std::unordered_map< ShardID
+                    , std::vector<std::pair<VPackValueLength, std::string>>
+                    > shardMap;
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
-  bool useMultiple = slice.isArray();
 
-  int res = TRI_ERROR_NO_ERROR;
-
-  if (useMultiple) {
-    VPackValueLength length = slice.length();
-    for (VPackValueLength idx = 0; idx < length; ++idx) {
-      res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
-                                   reverseMapping, slice.at(idx), idx,
-                                   options.isRestore);
+  {
+    // create shard map
+    int res = TRI_ERROR_NO_ERROR;
+    if (useMultiple) {
+      VPackValueLength length = slice.length();
+      for (VPackValueLength idx = 0; idx < length; ++idx) {
+        res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
+                                     reverseMapping, slice.at(idx), idx,
+                                     options.isRestore);
+        if (res != TRI_ERROR_NO_ERROR) {
+          return res;
+        }
+      }
+    } else {
+      res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
+                                   slice, 0, options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
-    }
-  } else {
-    res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
-                                 slice, 0, options.isRestore);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
     }
   }
 
@@ -1137,9 +1144,10 @@ int createDocumentOnCoordinator(
 
   std::string const optsUrlPart =
       std::string("&waitForSync=") + (options.waitForSync ? "true" : "false") +
-      "&returnNew=" + (options.returnNew ? "true" : "false") + "&returnOld=" +
-      (options.returnOld ? "true" : "false") + "&isRestore=" +
-      (options.isRestore ? "true" : "false");
+                  "&returnNew=" + (options.returnNew ? "true" : "false") +
+                  "&returnOld=" + (options.returnOld ? "true" : "false") +
+                  "&isRestore=" + (options.isRestore ? "true" : "false") +
+                  "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
 
   VPackBuilder reqBuilder;
 
@@ -1182,7 +1190,7 @@ int createDocumentOnCoordinator(
         "shard:" + it.first, arangodb::rest::RequestType::POST,
         baseUrl + StringUtils::urlEncode(it.first) + optsUrlPart, body);
   }
-  
+
   // Perform the requests
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::COMMUNICATION, true);
@@ -1923,7 +1931,7 @@ int fetchEdgesFromEngines(
       StringRef idRef(id);
       auto resE = cache.find(idRef);
       if (resE == cache.end()) {
-        // This edge is not yet cached. 
+        // This edge is not yet cached.
         allCached = false;
         cache.emplace(idRef, e);
         result.emplace_back(e);
@@ -2618,7 +2626,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
   bool waitForSyncReplication, bool enforceReplicationFactor,
   VPackSlice) {
-  
+
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> avoid = col->avoidServers();
 
@@ -2804,7 +2812,7 @@ int fetchEdgesFromEngines(
       StringRef idRef(id);
       auto resE = cache.find(idRef);
       if (resE == cache.end()) {
-        // This edge is not yet cached. 
+        // This edge is not yet cached.
         allCached = false;
         cache.emplace(idRef, e);
         result.emplace_back(e);

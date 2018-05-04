@@ -97,7 +97,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int createDocumentOnCoordinator(
+Result createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     OperationOptions const& options, arangodb::velocypack::Slice const& slice,
     arangodb::rest::ResponseCode& responseCode,

@@ -1400,11 +1400,11 @@ OperationResult transaction::Methods::insertCoordinator(
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
-  int res = arangodb::createDocumentOnCoordinator(
+  Result res = arangodb::createDocumentOnCoordinator(
       databaseName(), collectionName, options, value, responseCode,
       errorCounter, resultBody);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     return clusterResultInsert(responseCode, resultBody, errorCounter);
   }
   return OperationResult(res);
@@ -1473,8 +1473,8 @@ OperationResult transaction::Methods::insertLocal(
     ManagedDocumentResult result;
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
-
     auto needsLock = [this,&collection]() -> bool {return !isLocked(collection, AccessMode::Type::WRITE);};
+
     Result res = collection->insert( this, value, result, options
                                    , resultMarkerTick, needsLock(), revisionId
                                    );
@@ -1551,10 +1551,9 @@ OperationResult transaction::Methods::insertLocal(
       // Now replicate the good operations on all followers:
       std::string path =
         "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
-        "/_api/document/" +
-        arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true&isSynchronousReplication=" +
-        ServerState::instance()->getId();
+        "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
+        "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId() +
+        "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false"); //CHEKME
 
       VPackBuilder payload;
 
