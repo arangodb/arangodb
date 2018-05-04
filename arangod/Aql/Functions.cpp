@@ -5925,48 +5925,285 @@ typedef std::function<std::string(std::string&, tp_sys_clock_ms const&)>  format
 typedef std::unordered_map<std::string,format_func_t> dateMapType;
 std::unordered_map<std::string,format_func_t> dateMap;
 
+auto unix_epoch = date::sys_seconds{seconds{0}};
+
+std::string tail(std::string const& source, size_t const length) {
+  if (length >= source.size()) { return source; }
+  return source.substr(source.size() - length);
+} // tail
+
+std::vector<std::string> monthNames = {
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+};
+
+std::vector<std::string> monthNamesShort = {
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec"
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief English weekday names
+// //////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> weekDayNames = {
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
+};
+
+std::vector<std::string> weekDayNamesShort = {
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat"
+};
+
 std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
   {"%&", [](std::string& wrk, tp_sys_clock_ms const& tp) { return ""; }}, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
   // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
   {"%yyyyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      return std::string("blarg"); }}, // (yr >= 0 && yr <= 9999)
-  //? "+" + zeropad(dateStr.slice(0, 4 + offset), 6)
-  //, dateStr.slice(0, 7);
-  //    }},
-  // preserves full negative years (-000753 is not reduced to -753 or -0753)
-  {"%mmmm", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // monthNames[date.getUTCMonth()]; }},
-  {"%yyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(0, 4 + offset); }},
-  {"%wwww", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)]; },
-  {"%mmm", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // monthNames[date.getUTCMonth()].substring(0, 3); }},
-  {"%www", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg[www]"); }}, // weekdayNames[AQL_DATE_DAYOFWEEK(dateStr)].substring(0, 3); }},
-  {"%fff", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(20 + offset, 23 + offset); }},
-  {"%xxx", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // zeropad(AQL_DATE_DAYOFYEAR(dateStr), 3); }},
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
+      if (yearnum > 99999) {
+        return std::to_string(yearnum);
+      }
+      if (yearnum > 9999) {
+        return std::string("0") + std::to_string(yearnum);
+      }
+      if (yearnum > 999) {
+        return std::string("00") + std::to_string(yearnum);
+      }
+      if (yearnum > 99) {
+        return std::string("000") + std::to_string(yearnum);
+      }
+      if (yearnum > 9) {
+        return std::string("0000") + std::to_string(yearnum);
+      }
+      if (yearnum >= 0) {
+        return std::string("00000") + std::to_string(yearnum);
+      }
+      return std::to_string(yearnum);
+    }},
+  {"%mmmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      return monthNames[static_cast<uint64_t>((unsigned)ymd.month())];
+    }},
+  {"%yyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
+      if (yearnum < 0) {
+        return std::string("0000") + std::to_string(yearnum);
+      }
+
+      if (yearnum < 9) {
+        return std::string("000") + std::to_string(yearnum);
+      }
+      if (yearnum < 99) {
+        return std::string("00") + std::to_string(yearnum);
+      }
+      if (yearnum < 999) {
+        return std::string("0") + std::to_string(yearnum);
+      }
+
+      std::string yearstr(std::to_string(yearnum));
+      return tail(yearstr, 4);
+    }},
+
+  {"%wwww", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      weekday wd{floor<days>(tp)};
+      return weekDayNames[static_cast<uint64_t>(unsigned(wd))];
+    }},
+
+  {"%mmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      return monthNamesShort[static_cast<uint64_t>((unsigned)ymd.month())];
+    }},
+  {"%www", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      weekday wd{floor<days>(tp)};
+      return weekDayNamesShort[static_cast<uint64_t>(unsigned(wd))];
+    }},
+  {"%fff", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t millis = day_time.subseconds().count();
+      if (millis < 10) {
+        return std::string("00") + std::to_string(millis);
+      }
+      if (millis < 100) {
+        return std::string("0") + std::to_string(millis);
+      }
+      return std::to_string(millis);
+    }},
+  {"%xxx", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yyyy = year{ymd.year()};
+      auto firstDayInYear = yyyy / 1 / 0;
+      uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
+      if (daysSinceFirst < 10) {
+        return std::string("00") + std::to_string(daysSinceFirst);
+      }
+      if (daysSinceFirst < 100) {
+        return std::string("0") + std::to_string(daysSinceFirst);
+      }
+      return std::to_string(daysSinceFirst);
+    }},
   
   // there"s no really sensible way to handle negative years, but better not drop the sign
-  {"%yy", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg[yy]"); }}, // (yr < 0 ? "-" , "") + dateStr.slice(2 + offset, 4 + offset); }},
-  {"%mm", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(5 + offset, 7 + offset); }},
-  {"%dd", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(8 + offset, 10 + offset); }},
-  {"%hh", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(11 + offset, 13 + offset); }},
-  {"%ii", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(14 + offset, 16 + offset); }},
-  {"%ss", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr.slice(17 + offset, 19 + offset); }},
-  {"%kk", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // zeropad(AQL_DATE_ISOWEEK(dateStr), 2); }},
+  {"%yy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      std::string yearstr(std::to_string(static_cast<int64_t>((int)year{ymd.year()})));
+      return tail(yearstr, 2);
+    }},
+  {"%mm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto month = (unsigned)ymd.month();
+      if (month < 10) {
+        return std::string("0") + std::to_string(month);
+      }
+      return std::to_string(static_cast<uint64_t>(month));
+    }},
+  {"%dd", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto day = (unsigned)ymd.day();
+      if (day < 10) {
+        return std::string("0") + std::to_string(day);
+      }
+      return std::to_string(static_cast<uint64_t>(day));
+    }},
+  {"%hh", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t hours = day_time.hours().count();
+      if (hours < 10) {
+        return std::string("0") + std::to_string(hours);
+      }
+      return std::to_string(hours);
+    }},
+  {"%ii", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t minutes = day_time.minutes().count();
+      if (minutes < 10) {
+        return std::string("0") + std::to_string(minutes);
+      }
+      return std::to_string(minutes);
+    }},
+  {"%ss", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t seconds = day_time.seconds().count();
+      if (seconds < 10) {
+        return std::string("0") + std::to_string(seconds);
+      }
+      return std::to_string(seconds);
+    }},
+  {"%kk", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      iso_week::year_weeknum_weekday yww{floor<days>(tp)};
+      uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
+      if (isoWeek < 10) {
+        return std::string("0") + std::to_string(isoWeek);
+      }
+      return std::to_string(isoWeek);
+    }},
   
-  {"%t", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // , // date.getTime(); },
-  {"%z", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // dateStr; }},
-  {"%w", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // AQL_DATE_DAYOFWEEK(dateStr); }},
-  {"%y", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCFullYear(); }},
-  {"%m", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCMonth() + 1; }},
-  {"%d", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCDate(); }},
-  {"%h", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCHours(); }},
-  {"%i", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg[i]"); }}, // date.getUTCMinutes(); }},
-  {"%s", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCSeconds(); }},
-  {"%f", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // date.getUTCMilliseconds(); }},
-  {"%x", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // AQL_DATE_DAYOFYEAR(dateStr); }},
-  {"%k", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // AQL_DATE_ISOWEEK(dateStr); }},
-  {"%l", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // +AQL_DATE_LEAPYEAR(dateStr); }},
-  {"%q", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg"); }}, // AQL_DATE_QUARTER(dateStr); }},
-  {"%a", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("blarg[a]"); }}, // AQL_DATE_DAYS_IN_MONTH(dateStr); }},
-  {"%%", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("%"); }}, // Allow for literal "%y" using "%%y"
+  {"%t", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto diffDuration = tp - unix_epoch;
+      auto diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
+      return std::to_string(static_cast<int64_t>(std::round(diff)));
+    }},
+  {"%z", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      std::string formatted = format("%FT%TZ", floor<milliseconds>(tp));
+      return formatted;
+    }},
+  {"%w", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      weekday wd{floor<days>(tp)};
+      return std::to_string(static_cast<uint64_t>(unsigned(wd)));
+    }},
+  {"%y", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      return std::to_string(static_cast<int64_t>((int)year{ymd.year()}));
+    }},
+  {"%m", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      return std::to_string(static_cast<uint64_t>((unsigned)ymd.month()));
+    }},
+  {"%d", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      return std::to_string(static_cast<uint64_t>((unsigned)ymd.day()));
+    }},
+  {"%h", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t hours = day_time.hours().count();
+      return std::to_string(hours);
+    }},
+  {"%i", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t minutes = day_time.minutes().count();
+      return std::to_string(minutes);
+    }},
+  {"%s", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t seconds = day_time.seconds().count();
+      return std::to_string(seconds);
+    }},
+  {"%f", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t millis = day_time.subseconds().count();
+      return std::to_string(millis);
+    }},
+  {"%x", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yyyy = year{ymd.year()};
+      auto firstDayInYear = yyyy / 1 / 0;
+      uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
+      return std::to_string(daysSinceFirst);
+    }},
+  {"%k", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      iso_week::year_weeknum_weekday yww{floor<days>(tp)};
+      uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
+      return std::to_string(isoWeek);
+    }},
+  {"%l", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      year_month_day ymd{floor<days>(tp)};
+      return (ymd.year().is_leap())? std::string("true"): std::string("false");
+  }},
+  {"%q", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      year_month_day ymd{floor<days>(tp)};
+      month m = ymd.month();
+      uint64_t part = static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
+      TRI_ASSERT(part <= 4);
+      return std::to_string(part);
+    }},
+  {"%a", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day{floor<days>(tp)};
+      auto lastMonthDay = ymd.year() / ymd.month() / last;
+      return std::to_string(static_cast<uint64_t>(unsigned(lastMonthDay.day())));
+    }},
+  {"%%", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("%"); }},
   {"%", [](std::string& wrk, tp_sys_clock_ms const& tp) { return ""; }}
 };
 
@@ -6028,7 +6265,6 @@ void Functions::init() {
       (myregex.length() > 0) ? myregex += "|" + p.first : myregex = p.first;
       dateMap.insert(std::make_pair(p.first, p.second));
     });
-  std::cout << myregex << std::endl;
   theDateFormatRegex = std::regex(myregex);
 }
   
@@ -6047,7 +6283,6 @@ AqlValue Functions::DateFormat(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-
   AqlValue aqlFormatString = ExtractFunctionParameterValue(params, 1);
   if (!aqlFormatString.isString()) {
     return AqlValue(AqlValueHintNull());
@@ -6057,7 +6292,5 @@ AqlValue Functions::DateFormat(arangodb::aql::Query* query,
 
   std::string value = dateFormatRegex(formatString, tp);
 
-  
- 
   return AqlValue(value);
 }
