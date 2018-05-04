@@ -57,6 +57,9 @@ struct OptimizerRule {
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1,
+    
+    // remove legacy geo functions
+    removeLegacyGeoFunctions_pass1,
 
     inlineSubqueriesRule_pass1,
 
@@ -76,7 +79,7 @@ struct OptimizerRule {
 
     // "Pass 2": try to remove redundant or unnecessary nodes
     // ======================================================
-
+    
     // remove filters from the query that are not necessary at all
     // filters that are always true will be removed entirely
     // filters that are always false will be replaced with a NoResults node
@@ -87,6 +90,9 @@ struct OptimizerRule {
 
     // remove redundant sort blocks
     removeRedundantSortsRule_pass2,
+    
+    // try to inline subqueries after removing unecessary calculations
+    //inlineSubqueriesRule_pass2,
 
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher
@@ -231,7 +237,7 @@ struct OptimizerRule {
 
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
-    reduceExtractionToProjectionRule_pass6
+    reduceExtractionToProjectionRule_pass10,
   };
 
   std::string name;

@@ -1096,9 +1096,9 @@ class pos_doc_iterator : public doc_iterator {
     const irs::attribute_view& attrs,
     const index_input* pos_in,
     const index_input* pay_in
-  ) final;
+  ) override final;
 
-  virtual void seek_notify(const skip_context &ctx) final {
+  virtual void seek_notify(const skip_context &ctx) override final {
     assert(pos_);
     // notify positions
     pos_->prepare(ctx);
@@ -3077,8 +3077,8 @@ class column_iterator final: public irs::doc_iterator {
 
   struct payload_iterator: public irs::payload_iterator {
     const irs::bytes_ref* value_{ nullptr };
-    virtual bool next() { return nullptr != value_; }
-    virtual const irs::bytes_ref& value() const {
+    virtual bool next() override { return nullptr != value_; }
+    virtual const irs::bytes_ref& value() const override {
       return value_ ? *value_ : irs::bytes_ref::NIL;
     }
   };

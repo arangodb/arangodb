@@ -193,6 +193,11 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade, bool igno
 void methods::Upgrade::registerTasks() {
   TRI_ASSERT(_tasks.empty());
 
+  addTask("upgradeGeoIndexes", "upgrade legacy geo indexes",
+          /*system*/ Flags::DATABASE_ALL,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+          /*database*/ DATABASE_UPGRADE,
+          &UpgradeTasks::upgradeGeoIndexes);
   addTask("setupGraphs", "setup _graphs collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
@@ -293,30 +298,30 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
   ExecContextScope scope(ExecContext::superuser());
   // only local should actually write a VERSION file
   bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL;
-  
+
   bool ranOnce = false;
   // execute all tasks
   for (Task const& t : _tasks) {
     // check for system database
     if (t.systemFlag == DATABASE_SYSTEM && !vocbase->isSystem()) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: DB not system, skipping " << t.name;
       continue;
     }
     if (t.systemFlag == DATABASE_EXCEPT_SYSTEM && vocbase->isSystem()) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: DB system, Skipping " << t.name;
       continue;
     }
 
     // check that the cluster occurs in the cluster list
     if (!(t.clusterFlags & clusterFlag)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: cluster mismatch, skipping " << t.name;
       continue;
     }
 
     auto const& it = vinfo.tasks.find(t.name);
     if (it != vinfo.tasks.end()) {
       if (it->second) {
-        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Already executed, skipping " << t.name;
         continue;
       }
       vinfo.tasks.erase(it);  // in case we encounter false
@@ -330,7 +335,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t* vocbase,
           t.databaseFlags == DATABASE_UPGRADE) {
         vinfo.tasks.emplace(t.name, true);
       }
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: Skipping " << t.name;
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Upgrade: db flag mismatch, skipping " << t.name;
       continue;
     }
 

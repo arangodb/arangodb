@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexNode.h"
 #include "Aql/Query.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
@@ -85,7 +86,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
   std::string idxId = read.copyString();
   auto trx = query->trx();
 
-  for (auto const& it : VPackArrayIterator(shards)) {
+  for (VPackSlice it : VPackArrayIterator(shards)) {
     if (!it.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "Shards have to be a list of strings");
@@ -420,8 +421,9 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
     }
     std::vector<OperationCursor*> csrs;
     csrs.reserve(info.idxHandles.size());
+    IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
-      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, false));
+      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, opts));
     }
     opCursors.emplace_back(std::move(csrs));
   }
