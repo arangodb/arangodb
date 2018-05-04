@@ -164,7 +164,7 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
     set(MS_TARGET_PLATFORM Win32)
   endif ()
 
-  list(APPEND V8_GYP_ARGS -DDebugInformationFormat=OldStyle)
+  list(APPEND V8_GYP_ARGS -DDebugInformationFormat=OldStyle -GDebugInformationFormat=OldStyle)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ${V8_DIR}/gypfiles/all.gyp)
 
