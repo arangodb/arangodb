@@ -29,9 +29,11 @@
 // /////////////////////////////////////////////////////////////////////////////
 
 var request = require("@arangodb/request");
-const _ = require("lodash");
+var internal = require('internal');
+var fs = require('fs');
 
-const { exec } = require('child_process');
+const executeExternalAndWait = internal.executeExternalAndWait;
+const _ = require("lodash");
 
 const servers = {};
 let possibleAgent = null;
@@ -533,13 +535,36 @@ function getServerData(arango) {
   var current = arango.getEndpoint();
   var servers = listServers();
   var report = {};
+  INFO('Collecting diagnostics from all servers ... ');
   Object.keys(servers).forEach(
     function (server) {
-      arango.reconnect(servers[server].endpoint, '_system');
-      report[server] = {
-        version: arango.GET('_api/version'), log: arango.GET('_admin/log').text};
+      try {
+        arango.reconnect(servers[server].endpoint, '_system');
+        const version = arango.GET('_api/version'); // version api
+        const log = arango.GET('_admin/log').text;  // log api
+        const statistics = arango.GET('_admin/statistics').text;  // log api
+        var tmp = executeExternalAndWait(
+          '/bin/bash', ['-c', 'dmesg | tee /tmp/dmesg.out > /dev/null']);
+        const dmesg = fs.readFileSync('/tmp/dmesg.out', 'utf8');
+        tmp = executeExternalAndWait(
+          '/bin/bash', ['-c', 'df -h | tee /tmp/df.out > /dev/null']);
+        const df = fs.readFileSync('/tmp/df.out', 'utf8');
+        tmp = executeExternalAndWait(
+          '/bin/bash', ['-c', 'uptime | tee /tmp/uptime.out > /dev/null']);
+        const uptime = fs.readFileSync('/tmp/uptime.out', 'utf8');
+        tmp = executeExternalAndWait(
+          '/bin/bash', ['-c', 'uname -a | tee /tmp/uname.out > /dev/null']);
+        const uname = fs.readFileSync('/tmp/uname.out', 'utf8');
+        // Version, logs, dmesg, df, uptime, uname 
+        report[server] = { version: version, log: log, dmesg: dmesg,
+                           statistics: statistics, df: df, uptime: uptime,
+                           uname: uname};
+      } catch (e) {
+        print(e);
+      }
     });
   arango.reconnect(current, '_system');
+  INFO('... dignostics collected.');
   return report;
 }
 
@@ -570,10 +595,12 @@ exports.listServers = listServers;
     agencyDoctor(agencyDump);
     healthRecord['agency'] = agencyDump[0].arango;
     
-    // Get logs from all servers
+    // Get all sorts of meta data from all servers
     healthRecord['servers'] = getServerData(arango);
 
     require('fs').writeFileSync('arango-doctor.json', JSON.stringify(healthRecord));
+
+    INFO("Report written to arango-doctor.js.");
     
   } catch (e) {
     print(e);
