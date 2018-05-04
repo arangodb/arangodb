@@ -186,7 +186,7 @@ start() {
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
         --log.force-direct true \
-        --log.level threads=debug \
+        --log.level $LOG_LEVEL_CLUSTER \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

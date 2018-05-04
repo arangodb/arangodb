@@ -36,7 +36,6 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-//#include "Basics/asio-helper.h"
 #include "Basics/build-date.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"

@@ -48,7 +48,7 @@ class S2Error;
 class S2Loop;
 class S2PolygonBuilder;
 class S2Polyline;
-class S2XYZFaceSiTi;
+struct S2XYZFaceSiTi;
 
 // An S2Polygon is an S2Region object that represents a polygon.  A polygon is
 // defined by zero or more loops; recall that the interior of a loop is
