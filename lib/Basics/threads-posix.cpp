@@ -103,6 +103,28 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   TRI_ASSERT(d != nullptr);
 
+  pthread_attr_t 	stackSizeAttribute;
+  size_t			stackSize = 0;
+
+  auto err = pthread_attr_init (&stackSizeAttribute);
+  if (err) {
+    // We should never be here
+    TRI_ASSERT(false);
+  }
+  err = pthread_attr_getstacksize(&stackSizeAttribute, &stackSize); 
+  if (err) {
+    // We should never be here
+    TRI_ASSERT(false);
+  }
+
+  if (stackSize < 8388608) { // 8MB
+    err = pthread_attr_setstacksize (&stackSizeAttribute, 8388608);
+    if (err) {
+      // We should never be here
+      TRI_ASSERT(false);
+    }
+  }
+
   int rc = pthread_create(thread, nullptr, &ThreadStarter, d.get());
 
   if (rc != 0) {
