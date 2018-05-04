@@ -167,7 +167,7 @@ class DBServerLogicalView : public LogicalView {
   /// @brief called by view factories during view creation to persist the view
   ///        to the storage engine
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result create(DBServerLogicalView const& view) noexcept;
+  static arangodb::Result create(DBServerLogicalView const& view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view

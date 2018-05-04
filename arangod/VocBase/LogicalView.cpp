@@ -220,7 +220,7 @@ DBServerLogicalView::~DBServerLogicalView() {
 
 /*static*/ arangodb::Result DBServerLogicalView::create(
     DBServerLogicalView const& view
-) noexcept {
+) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
