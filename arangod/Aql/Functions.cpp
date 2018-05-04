@@ -6014,7 +6014,7 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
     }},
   {"%mmmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
-      return monthNames[static_cast<uint64_t>((unsigned)ymd.month())];
+      return monthNames[static_cast<uint64_t>((unsigned)ymd.month()) - 1];
     }},
   {"%yyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
@@ -6044,7 +6044,7 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
 
   {"%mmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
-      return monthNamesShort[static_cast<uint64_t>((unsigned)ymd.month())];
+      return monthNamesShort[static_cast<uint64_t>((unsigned)ymd.month()) - 1];
     }},
   {"%www", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       weekday wd{floor<days>(tp)};
@@ -6078,7 +6078,15 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
   // there"s no really sensible way to handle negative years, but better not drop the sign
   {"%yy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
-      std::string yearstr(std::to_string(static_cast<int64_t>((int)year{ymd.year()})));
+      auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
+      if (yearnum < 0) {
+        return std::string("0000") + std::to_string(yearnum);
+      }
+
+      if (yearnum < 10 && yearnum >= 0) {
+        return std::string("0") + std::to_string(yearnum);
+      }
+      std::string yearstr(std::to_string(yearnum));
       return tail(yearstr, 2);
     }},
   {"%mm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
