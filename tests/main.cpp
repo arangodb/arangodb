@@ -11,6 +11,25 @@
 
 #include <thread>
 
+template<class Function>
+class TestThread : public arangodb::Thread {
+public:
+
+  TestThread(Function&& f, int i, char** c) :
+    arangodb::Thread("catch"), f_(f), i_(i), c_(c) {
+    run();
+  }
+  void run() {
+    result_ = f_(i_,c_);
+  }
+  int result() {return result_;}
+private:
+  Function f_;
+  int result_;
+  int i_;
+  char** c_;
+};
+
 char const* ARGV0 = "";
 
 int main(int argc, char* argv[]) {
@@ -35,11 +54,14 @@ int main(int argc, char* argv[]) {
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
-  auto runTests = [&result] (int argc, char* argv[]) {
-      result = Catch::Session().run( argc, argv );
+  auto runTests =
+    [] (int argc, char* argv[]) -> int {
+    return Catch::Session().run( argc, argv );
   };
-  std::thread subthread(runTests, argc, argv);
-  subthread.join();
+
+  TestThread<std::function<int(int, char**)>> t(
+    std::move(runTests), argc, argv);
+  result = t.result();
 
   arangodb::Logger::shutdown();
   // global clean-up...
