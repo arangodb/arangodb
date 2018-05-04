@@ -764,13 +764,13 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     
     // note: we need the CustomTypeHandler here
     arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-    VPackDumper dumper(&adapter, context->getVPackOptions());
     
     VPackBuilder vpb;
-    auto cb = [&buffer, &dumper, &vpb, chunkSize]() -> bool { // called after each document
+    auto cb = [&]() -> bool { // called after each document
+      VPackDumper dumper(&adapter, context->getVPackOptions());
       dumper.dump(vpb.slice());
-      vpb.clear();
       buffer.appendChar('\n');
+      vpb.clear();
       return buffer.length() < chunkSize;
     };
     // do the work!

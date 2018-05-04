@@ -108,6 +108,7 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
     _vpackOptions.customTypeHandler = _customTypeHandler.get();
     _vpackOptions.buildUnindexedObjects = true;
     _vpackOptions.buildUnindexedArrays = true;
+    _vpackOptions.prettyPrint = false;
     
     auto state = RocksDBTransactionState::toState(_trx.get());
     if (snap != nullptr) {

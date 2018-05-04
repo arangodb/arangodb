@@ -415,7 +415,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     }
     int vv = _masterInfo._majorVersion * 1000000 + _masterInfo._minorVersion * 1000 +
             _masterInfo._patchVersion;
-    if (vv >= 3003004) {
+    if (vv >= 3003009) {
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
     }
     
