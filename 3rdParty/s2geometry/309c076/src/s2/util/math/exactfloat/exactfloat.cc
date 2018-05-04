@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
 
 #include <openssl/bn.h>
 #include <openssl/crypto.h>  // for OPENSSL_free
