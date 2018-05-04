@@ -44,7 +44,7 @@ namespace velocypack {
 class Builder;
 }
 
-  class ListenTask;
+class ListenTask;
 
 namespace rest {
 

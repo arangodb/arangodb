@@ -225,7 +225,6 @@ bool HttpCommTask::processRead(double startTime) {
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "Request pending, skipping " << _peer->peerPort();
     return false;
   }
 
@@ -261,7 +260,6 @@ bool HttpCommTask::processRead(double startTime) {
 
     // read buffer contents are way too small. we can exit here directly
     if (ptr >= end) {
-      LOG_TOPIC(WARN, Logger::FIXME) << "Not enough data in buffer " << _peer->peerPort();
       return false;
     }
 
@@ -354,8 +352,7 @@ bool HttpCommTask::processRead(double startTime) {
 
       if (_fullUrl.size() > 16384) {
         handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, *_incompleteRequest, 1);
-        LOG_TOPIC(WARN, Logger::FIXME) << "requst uri too long";
-
+        LOG_TOPIC(WARN, Logger::REQUESTS) << "requst uri too long";
         _closeRequested = true;
         return false;
       }
@@ -363,9 +360,6 @@ bool HttpCommTask::processRead(double startTime) {
       // update the connection information, i. e. client and server addresses
       // and ports
       _incompleteRequest->setProtocol(_protocol);
-
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "server port " << _connectionInfo.serverPort
-                 << ", client port " << _connectionInfo.clientPort;
 
       // set body start to current position
       _bodyPosition = _readPosition;
@@ -493,8 +487,6 @@ bool HttpCommTask::processRead(double startTime) {
   if (_readRequestBody) {
     if (_readBuffer.length() - _bodyPosition < _bodyLength) {
       // let client send more
-      LOG_TOPIC(WARN, Logger::FIXME) << "waiting for more data from client " << _peer->peerPort();
-      
       return false;
     }
 

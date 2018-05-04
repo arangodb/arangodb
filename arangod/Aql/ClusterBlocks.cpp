@@ -1281,7 +1281,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     // nullptr only happens on controlled shutdown
 
     // Later, we probably want to set these sensibly:
-    ClientTransactionID const clientTransactionId = std::string("AQL ") + std::to_string(_engine->getQuery()->_snippetId);
+    ClientTransactionID const clientTransactionId = std::string("AQL");
     CoordTransactionID const coordTransactionId = TRI_NewTickServer();
     std::unordered_map<std::string, std::string> headers;
     if (!_ownName.empty()) {
@@ -1293,14 +1293,12 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
       JobGuard guard(SchedulerFeature::SCHEDULER);
       guard.block();
 
-      std::string const qq = std::string("/_db/") +
+      std::string const url = std::string("/_db/") +
       arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->name()) +
       urlPart + _queryId;
-      LOG_TOPIC(WARN, Logger::FIXME) << "(" << coordTransactionId << ") From " << ServerState::instance()->getId() << " client: " << clientTransactionId << " To: " << _server << qq;
       auto result =
           cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                          qq, body, headers, defaultTimeOut);
-      LOG_TOPIC(WARN, Logger::FIXME) << "(" << coordTransactionId << ") done";
+                          std::move(url), body, headers, defaultTimeOut);
       
       return result;
     }

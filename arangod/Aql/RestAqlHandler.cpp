@@ -309,7 +309,6 @@ bool RestAqlHandler::registerSnippets(
 
     try {
       QueryId qId = TRI_NewTickServer();
-      query->_snippetId = qId;
 
       if (needToLock) {
         // Directly try to lock only the first snippet is required to be locked.
@@ -459,7 +458,6 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   auto transactionContext = query->trx()->transactionContext().get();
 
   try {
-    query->_snippetId = _qId;
     _queryRegistry->insert(_qId, query.get(), ttl);
     query.release();
   } catch (...) {
@@ -781,14 +779,13 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   }
 
   if (query == nullptr) {
-    LOG_TOPIC_IF(ERR, Logger::FIXME, iterations == MaxIterations) << "Timeout waiting for query " << _qId;
+    LOG_TOPIC_IF(ERR, Logger::AQL, iterations == MaxIterations) << "Timeout waiting for query " << _qId;
     _qId = 0;
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;
   }
 
   TRI_ASSERT(_qId > 0);
-  query->_snippetId = _qId;
 
   return false;
 }

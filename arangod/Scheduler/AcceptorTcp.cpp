@@ -103,7 +103,6 @@ void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
   } else {
     _peer.reset(new SocketTcp(_ioContext));
     SocketTcp* peer = static_cast<SocketTcp*>(_peer.get());
-    LOG_TOPIC(ERR, Logger::FIXME) << "Accepting shit" ;
     _acceptor.async_accept(peer->_socket, peer->_peerEndpoint, handler);
   }
 }

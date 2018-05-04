@@ -64,12 +64,9 @@ bool ListenTask::start() {
               << "' with error: " << err.what();
     return false;
   }
-
-  LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "Setting up acceptor!!!";
   
   _handler = [this](asio::error_code const& ec) {
     MUTEX_LOCKER(mutex, _shutdownMutex);
-    _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
     
@@ -101,8 +98,7 @@ bool ListenTask::start() {
     ConnectionInfo info;
 
     std::unique_ptr<Socket> peer = _acceptor->movePeer();
-    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "Accepting connection from " << peer->peerAddress() << ":" << peer->peerPort();
-
+    
     // set the endpoint
     info.endpoint = _endpoint->specification();
     info.endpointType = _endpoint->domainType();
@@ -114,12 +110,10 @@ bool ListenTask::start() {
 
     handleConnected(std::move(peer), std::move(info));
 
-    _loop.scheduler->_nrQueued++;
     _acceptor->asyncAccept(_handler);
   };
   
   
-  _loop.scheduler->_nrQueued++;
   _bound = true;
   _acceptor->asyncAccept(_handler);
   return true;

@@ -111,7 +111,7 @@ class SchedulerThread : public Thread {
 
     while (!_scheduler->isStopping()) {
       try {
-        _service->run();
+        _service->run_one();
       } catch (std::exception const& ex) {
         LOG_TOPIC(ERR, Logger::THREADS)
             << "scheduler loop caught exception: " << ex.what();
@@ -352,7 +352,7 @@ bool Scheduler::shouldExecuteDirect() const {
   uint64_t const nrWorking = numWorking(counters);
   uint64_t const nrBlocked = numBlocked(counters);
   
-  if (nrWorking + nrBlocked + _nrQueued < numRunning(counters) / 2) {
+  if (nrWorking + nrBlocked + _nrQueued < numRunning(counters) / 2 + 1) {
     auto jobQueue = _jobQueue.get();
     auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
     return queueSize == 0;

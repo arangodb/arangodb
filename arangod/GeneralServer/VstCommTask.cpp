@@ -110,9 +110,6 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
 #else
     VstResponse& response = static_cast<VstResponse&>(baseResponse);
 #endif
-  
-#warning TODO Discuss resetKeepAlive
-  //resetKeepAlive();
 
   VPackMessageNoOwnBuffer response_message = response.prepareForNetwork();
   uint64_t const mid = response_message._id;
@@ -395,9 +392,6 @@ bool VstCommTask::processRead(double startTime) {
     if (type == 1000) {
       handleAuthHeader(header, chunkHeader._messageID);
     } else {
-      
-#warning Discuss placement of keep-alive handler
-      //cancelKeepAlive();
       
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(

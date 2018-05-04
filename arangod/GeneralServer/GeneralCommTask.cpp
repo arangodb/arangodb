@@ -236,15 +236,17 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   bool isDirect = false;
   bool isPrio = false;
 
-  if (handler->isDirect()) {
+  // Strand implementations may cause everything to halt
+  // if we handle AQL snippets directly on the network thread
+  if (handler->queue() == JobQueue::AQL_QUEUE) {
+    isPrio = true;
+  } else if (handler->isDirect()) {
     isDirect = true;
   } else if (_loop.scheduler->shouldExecuteDirect()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
   } else if (handler->needsOwnThread()) {
-    isPrio = true;
-  } else if (handler->queue() == JobQueue::AQL_QUEUE) {
     isPrio = true;
   }
 
@@ -254,8 +256,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   }
 
   if (isDirect) {
-    JobGuard guard(_loop);
-    guard.work();
+    TRI_ASSERT(handler->queue() != JobQueue::AQL_QUEUE); // not allowed with strands
     handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
                           std::move(handler));
     return true;

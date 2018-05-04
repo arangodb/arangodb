@@ -118,19 +118,19 @@ SocketTask::~SocketTask() {
 bool SocketTask::start() {
   if (_closedSend.load(std::memory_order_acquire) ||
       _closedReceive.load(std::memory_order_acquire)) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) << "cannot start, channel closed";
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "cannot start, channel closed";
     return false;
   }
 
   if (_closeRequested.load(std::memory_order_acquire)) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "cannot start, close alread in progress";
     return false;
   }
 
-  LOG_TOPIC(WARN, Logger::COMMUNICATION)
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
       << "starting communication between server <-> client on socket";
-  LOG_TOPIC(WARN, Logger::COMMUNICATION)
+  LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
       << _connectionInfo.serverAddress << ":" << _connectionInfo.serverPort
       << " <-> " << _connectionInfo.clientAddress << ":"
       << _connectionInfo.clientPort;
@@ -255,10 +255,8 @@ void SocketTask::closeStreamNoLock() {
 
 // will acquire the _lock
 void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
-  //MUTEX_LOCKER(locker, _lock);
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
-  //LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << std::string(data, len);
   _readBuffer.appendText(data, len);
 }
 
@@ -275,8 +273,6 @@ void SocketTask::resetKeepAlive() {
     _keepAliveTimerActive.store(true, std::memory_order_relaxed);
     auto self = shared_from_this();
     _keepAliveTimer.async_wait([self, this](const asio::error_code& error) {
-      //LOG_TOPIC(TRACE, Logger::COMMUNICATION)
-      //<< "keepAliveTimerCallback - called with: " << error.message();
       if (!error) { // error will be true if timer was canceled
         LOG_TOPIC(ERR, Logger::COMMUNICATION) << "keep alive timout - closing stream!";
         closeStream();
@@ -433,8 +429,7 @@ void SocketTask::asyncReadSome() {
         compactify();
       }
     } catch (asio::system_error const& err) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read on " << _connectionInfo.clientAddress << ":" <<
-        _connectionInfo.clientPort << " failed with: " << err.what();
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: " << err.what();
       closeStreamNoLock();
       return;
     } catch (...) {
@@ -472,8 +467,7 @@ void SocketTask::asyncReadSome() {
           return;
         } else if (ec) {
           LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
-          << "read on stream " << _connectionInfo.clientAddress << ":" <<
-          _connectionInfo.clientPort << " failed with: " << ec.message();
+          << "read on stream failed with: " << ec.message();
           closeStream();
           return;
         }
@@ -506,7 +500,6 @@ void SocketTask::asyncWriteSome() {
   TRI_ASSERT(_peer->strand.running_in_this_thread());
   
   if (_writeBuffer.empty()) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "WB empty";
     return;
   }
   size_t total = _writeBuffer._buffer->length();
@@ -535,7 +528,6 @@ void SocketTask::asyncWriteSome() {
       }
       
       if (!completedWriteBuffer()) {
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "WBs empty, wrote " << written;
         return;
       }
       
@@ -546,15 +538,13 @@ void SocketTask::asyncWriteSome() {
     
     // write could have blocked which is the only acceptable error
     if (err && err != ::asio::error::would_block) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync write on " << _connectionInfo.clientAddress << ":" <<
-      _connectionInfo.clientPort << " failed with: " << err.message();
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync write on failed with: " << err.message();
       closeStreamNoLock();
       return;
     }
   }
   
   if (_abandoned.load(std::memory_order_acquire)) {
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Abandoned 3";
     return;
   }
   
@@ -570,11 +560,9 @@ void SocketTask::asyncWriteSome() {
                       guard.work();
                       
                       if (_abandoned.load(std::memory_order_acquire)) {
-                        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Abandoned 4";
                         return;
                       } else if (ec) {
-                        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "write on " << _connectionInfo.clientAddress << ":" <<
-                        _connectionInfo.clientPort << " failed with: " << ec.message();
+                        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "write on failed with: " << ec.message();
                         closeStream();
                         return;
                       }
