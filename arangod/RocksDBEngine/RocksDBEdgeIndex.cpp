@@ -125,7 +125,12 @@ void RocksDBEdgeIndexIterator::reset() {
   _builderIterator =
       VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
-    
+   
+// returns true if we have one more key for the index lookup.
+// if true, sets the `key` Slice to point to the new key's value
+// note that the underlying data for the Slice must remain valid
+// as long as the iterator is used and the key is not moved forward.
+// returns false if there are no more keys to look for
 bool RocksDBEdgeIndexIterator::initKey(VPackSlice& key) {
   if (!_keysIterator.valid()) {
     // no next key

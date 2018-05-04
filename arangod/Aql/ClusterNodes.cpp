@@ -113,7 +113,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
       _allowSpecifiedKeys(false) {
  
-  if (base.hasKey("variable")) {     
+  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) { 
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
   } else {
