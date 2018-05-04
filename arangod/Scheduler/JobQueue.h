@@ -45,6 +45,7 @@ class JobQueue {
   // ordered by priority (highst prio first)
   static size_t const AQL_QUEUE = 1;
   static size_t const STANDARD_QUEUE = 2;
+  static size_t const BACKGROUND_QUEUE = 3;
 
  public:
   JobQueue(size_t maxQueueSize, rest::Scheduler*);

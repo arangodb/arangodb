@@ -233,16 +233,18 @@ void GeneralCommTask::transferStatisticsTo(uint64_t id, RestHandler* handler) {
 // -----------------------------------------------------------------------------
 
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
+  int const queuePrio = handler->queue();
   bool isDirect = false;
   bool isPrio = false;
 
   // Strand implementations may cause everything to halt
   // if we handle AQL snippets directly on the network thread
-  if (handler->queue() == JobQueue::AQL_QUEUE) {
+  if (queuePrio == JobQueue::AQL_QUEUE) {
     isPrio = true;
   } else if (handler->isDirect()) {
     isDirect = true;
-  } else if (_loop.scheduler->shouldExecuteDirect()) {
+  } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
+             _loop.scheduler->shouldExecuteDirect()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;

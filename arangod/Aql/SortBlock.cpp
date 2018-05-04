@@ -159,7 +159,7 @@ void fillSortRegisters(
     std::vector<SortRegister>& sortRegisters,
     SortNode const& en
 ) {
-  auto const& elements = en.getElements();
+  auto const& elements = en.elements();
   sortRegisters.reserve(elements.size());
 
   for (auto const& p : elements) {
