@@ -309,7 +309,7 @@ protected:
   /// @brief Get array value
   Slice getArray() const;
 
-public:
+ public:
   /// @brief Clear key value store
   void clear();
 

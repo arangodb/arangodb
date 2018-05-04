@@ -35,26 +35,7 @@ class LogicalCollection;
 class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
-/*
-arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
-                                       arangodb::LogicalCollection* col,
-                                       std::string const& keysId,
-                                       std::string const& leaderColl,
-                                       TRI_voc_tick_t maxTick);
-
-arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
-                                       arangodb::LogicalCollection* col,
-                                       std::string const& keysId, 
-                                       std::string const& leaderColl,
-                                       TRI_voc_tick_t maxTick);
-
-arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                                  std::string const& keysId, uint64_t chunkId,
-                                  std::string const& lowString,
-                                  std::string const& highString,
-                                  std::vector<std::pair<std::string, uint64_t>> const& markers);
-  */
-class DatabaseInitialSyncer : public InitialSyncer {
+class DatabaseInitialSyncer final : public InitialSyncer {
   friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
                                                               std::string const& keysId);
   

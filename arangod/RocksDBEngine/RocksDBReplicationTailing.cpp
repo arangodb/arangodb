@@ -89,7 +89,7 @@ TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
 }
 
 /// WAL parser
-class WALParser : public rocksdb::WriteBatch::Handler {
+class WALParser final : public rocksdb::WriteBatch::Handler {
   // internal WAL parser states
   enum State : char {
     INVALID = 0,

@@ -153,7 +153,7 @@ class Traverser {
   /// @brief Class to read vertices. Will return each vertex exactly once!
   /////////////////////////////////////////////////////////////////////////////
 
-  class UniqueVertexGetter : public VertexGetter {
+  class UniqueVertexGetter final : public VertexGetter {
    public:
     explicit UniqueVertexGetter(Traverser* traverser)
         : VertexGetter(traverser) {}

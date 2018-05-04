@@ -80,7 +80,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result drop() = 0;
+  virtual arangodb::Result drop() override = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief renames an existing view
@@ -88,7 +88,7 @@ class LogicalView : public LogicalDataSource {
   virtual Result rename(
     std::string&& newName,
     bool doSync
-  ) = 0;
+  ) override = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds a VelocyPack representation of the node LogicalView

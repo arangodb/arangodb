@@ -411,18 +411,18 @@ class IndexMock final : public arangodb::Index {
   IndexMock()
     : arangodb::Index(0, nullptr, std::vector<std::vector<arangodb::basics::AttributeName>>(), false, false) {
   }
-  virtual char const* typeName() const { return "IndexMock"; }
-  virtual bool allowExpansion() const { return false; }
-  virtual IndexType type() const { return TRI_IDX_TYPE_UNKNOWN; }
-  virtual bool canBeDropped() const { return true; }
-  virtual bool isSorted() const { return true; }
-  virtual bool hasSelectivityEstimate() const { return false; }
-  virtual size_t memory() const { return 0; }
+  virtual char const* typeName() const override { return "IndexMock"; }
+  virtual bool allowExpansion() const override { return false; }
+  virtual IndexType type() const override { return TRI_IDX_TYPE_UNKNOWN; }
+  virtual bool canBeDropped() const override { return true; }
+  virtual bool isSorted() const override { return true; }
+  virtual bool hasSelectivityEstimate() const override { return false; }
+  virtual size_t memory() const override { return 0; }
   virtual arangodb::Result insert(
       arangodb::transaction::Methods*,
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const&,
-      OperationMode mode) {
+      OperationMode mode) override {
     TRI_ASSERT(false);
     return arangodb::Result();
   }
@@ -430,12 +430,12 @@ class IndexMock final : public arangodb::Index {
       arangodb::transaction::Methods*,
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const&,
-      OperationMode mode) {
+      OperationMode mode) override {
     TRI_ASSERT(false);
     return arangodb::Result();
   }
-  virtual void load() {}
-  virtual void unload() {}
+  virtual void load() override {}
+  virtual void unload() override {}
 } EMPTY_INDEX;
 
 class ReverseAllIteratorMock final : public arangodb::IndexIterator {
