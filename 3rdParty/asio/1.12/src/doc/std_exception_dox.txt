@@ -1,7 +1,0 @@
-/**
-\namespace std
-*/
-
-/**
-\class std::exception
-*/

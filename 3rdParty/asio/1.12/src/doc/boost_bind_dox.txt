@@ -1,5 +1,0 @@
-/**
-\page boost_bind boost::bind
-See the <a href="http://www.boost.org/libs/bind/bind.html">Boost: bind.hpp
-documentation</a> for more information on how to use <tt>boost::bind</tt>.
-*/
