@@ -29,11 +29,11 @@
 
 #include <list>
 #include <utility>
+#include <asio/deadline_timer.hpp>
 
 #include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/asio-helper.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Scheduler/Socket.h"
 #include "Statistics/RequestStatistics.h"
@@ -59,7 +59,7 @@ class SocketTask : virtual public Task {
   virtual ~SocketTask();
 
  public:
-  void start();
+  bool start();
 
  protected:
   // caller will hold the _lock
@@ -170,11 +170,12 @@ protected:
   void asyncWriteSome();
   
  protected:
+  
+  std::unique_ptr<Socket> _peer;
+  ConnectionInfo _connectionInfo;
 
   ConnectionStatistics* _connectionStatistics;
-  ConnectionInfo _connectionInfo;
   basics::StringBuffer _readBuffer;
-  std::unique_ptr<Socket> _peer;
   
  private:
   Mutex _bufferLock;
@@ -185,16 +186,16 @@ protected:
   std::list<WriteBuffer> _writeBuffers;
 
   boost::posix_time::milliseconds _keepAliveTimeout;
-  boost::asio::deadline_timer _keepAliveTimer;
+  asio::deadline_timer _keepAliveTimer;
   bool const _useKeepAliveTimer;
   
   std::atomic<bool> _keepAliveTimerActive;
   std::atomic<bool> _closeRequested;
   /// Was task abandoned for another task
   std::atomic<bool> _abandoned;
-  /// Close was send
+  /// Close socket send
   std::atomic<bool> _closedSend;
-  /// We received a close
+  /// Closed socket received
   std::atomic<bool> _closedReceive;
 };
 }

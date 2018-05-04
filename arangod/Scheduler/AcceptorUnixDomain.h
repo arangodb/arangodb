@@ -25,10 +25,12 @@
 
 #include "Scheduler/Acceptor.h"
 
+#include <asio/local/stream_protocol.hpp>
+
 namespace arangodb {
 class AcceptorUnixDomain final : public Acceptor {
   public:
-    AcceptorUnixDomain(boost::asio::io_service& ioService, Endpoint* endpoint)
+    AcceptorUnixDomain(asio::io_context& ioService, Endpoint* endpoint)
     : Acceptor(ioService, endpoint),
       _acceptor(ioService) {
     }
@@ -37,7 +39,7 @@ class AcceptorUnixDomain final : public Acceptor {
     void asyncAccept(AcceptHandler const& handler) override;
 
   private:
-    boost::asio::local::stream_protocol::acceptor _acceptor;
+    asio::local::stream_protocol::acceptor _acceptor;
 };
 }
 

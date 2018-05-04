@@ -25,7 +25,7 @@
 
 #include "Scheduler/Socket.h"
 
-#include <boost/asio/local/stream_protocol.hpp>
+#include <asio/local/stream_protocol.hpp>
 
 namespace arangodb {
 class AcceptorUnixDomain;
@@ -36,7 +36,7 @@ class StringBuffer;
 class SocketUnixDomain final : public Socket {
   friend class AcceptorUnixDomain;
   public:
-    SocketUnixDomain(boost::asio::io_service& ioService)
+    SocketUnixDomain(asio::io_context& ioService)
         : Socket(ioService, false), _socket(ioService) {}
 
     SocketUnixDomain(SocketUnixDomain&& that) = default;
@@ -46,25 +46,25 @@ class SocketUnixDomain final : public Socket {
   
     void setNonBlocking(bool v) override { _socket.non_blocking(v); }
     
-    size_t writeSome(basics::StringBuffer* buffer, boost::system::error_code& ec) override;
+    size_t writeSome(basics::StringBuffer* buffer, asio::error_code& ec) override;
     
-    void asyncWrite(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
+    void asyncWrite(asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
     
-    size_t readSome(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) override;
+    size_t readSome(asio::mutable_buffers_1 const& buffer, asio::error_code& ec) override;
     
-    std::size_t available(boost::system::error_code& ec) override;
+    std::size_t available(asio::error_code& ec) override;
   
-    void asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
+    void asyncRead(asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
 
   protected:
     bool sslHandshake() override { return false; }
-    void shutdownReceive(boost::system::error_code& ec) override;
-    void shutdownSend(boost::system::error_code& ec) override;
-    void close(boost::system::error_code& ec) override;
+    void shutdownReceive(asio::error_code& ec) override;
+    void shutdownSend(asio::error_code& ec) override;
+    void close(asio::error_code& ec) override;
 
 private:
-    boost::asio::local::stream_protocol::socket _socket;
-    boost::asio::local::stream_protocol::acceptor::endpoint_type _peerEndpoint;
+    asio::local::stream_protocol::socket _socket;
+    asio::local::stream_protocol::acceptor::endpoint_type _peerEndpoint;
 };
 }
 

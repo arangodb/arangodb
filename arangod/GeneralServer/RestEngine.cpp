@@ -37,7 +37,7 @@ int RestEngine::asyncRun(std::shared_ptr<rest::RestHandler> handler) {
 }
 
 int RestEngine::syncRun(std::shared_ptr<rest::RestHandler> handler) {
-  _loop.ioService = nullptr;
+  _loop.ioContext = nullptr;
   _loop.scheduler = nullptr;
 
   return run(handler, true);

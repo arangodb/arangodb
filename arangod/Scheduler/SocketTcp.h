@@ -27,14 +27,15 @@
 //#include "Basics/MutexLocker.h"
 #include "Scheduler/Socket.h"
 
-#include <boost/asio/ip/tcp.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/ssl.hpp>
 
 namespace arangodb {
 
 class SocketTcp final : public Socket {
   friend class AcceptorTcp;
  public:
-  SocketTcp(boost::asio::io_service& ioService)
+  SocketTcp(asio::io_context& ioService)
       : Socket(ioService, /*encrypted*/false), _socket(ioService),
         _peerEndpoint() {}
 
@@ -52,48 +53,48 @@ class SocketTcp final : public Socket {
     _socket.non_blocking(v);
   }
 
-  size_t writeSome(basics::StringBuffer* buffer, boost::system::error_code& ec) override {
-    return _socket.write_some(boost::asio::buffer(buffer->begin(), buffer->length()), ec);
+  size_t writeSome(basics::StringBuffer* buffer, asio::error_code& ec) override {
+    return _socket.write_some(asio::buffer(buffer->begin(), buffer->length()), ec);
   }
   
-  void asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
+  void asyncWrite(asio::mutable_buffers_1 const& buffer,
                   AsyncHandler const& handler) override {
-    return boost::asio::async_write(_socket, buffer, handler);
+    return asio::async_write(_socket, buffer, handler);
   }
   
-  size_t readSome(boost::asio::mutable_buffers_1 const& buffer,
-                  boost::system::error_code& ec) override {
+  size_t readSome(asio::mutable_buffers_1 const& buffer,
+                  asio::error_code& ec) override {
     return _socket.read_some(buffer, ec);
   }
   
-  void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
+  void asyncRead(asio::mutable_buffers_1 const& buffer,
                  AsyncHandler const& handler) override {
     return _socket.async_read_some(buffer, handler);
   }
 
-  void close(boost::system::error_code& ec) override;
-  std::size_t available(boost::system::error_code& ec) override {
+  void close(asio::error_code& ec) override;
+  std::size_t available(asio::error_code& ec) override {
     return static_cast<size_t>(_socket.available(ec));
   }
 
  protected:
   
   bool sslHandshake() override { return false; }
-  void shutdownReceive(boost::system::error_code& ec) override;
-  void shutdownSend(boost::system::error_code& ec) override;
+  void shutdownReceive(asio::error_code& ec) override;
+  void shutdownSend(asio::error_code& ec) override;
 
  private:
   /// socket of the connection
-  boost::asio::ip::tcp::socket _socket;
+  asio::ip::tcp::socket _socket;
   /// socket endpoint
-  boost::asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
+  asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
   
 class SocketSslTcp final : public Socket {
   friend class AcceptorTcp;
 public:
-  SocketSslTcp(boost::asio::io_service& ioService,
-               boost::asio::ssl::context&& context)
+  SocketSslTcp(asio::io_context& ioService,
+               asio::ssl::context&& context)
   : Socket(ioService, /*encrypted*/true),
     _sslContext(std::move(context)),
     _sslSocket(ioService, _sslContext),
@@ -115,21 +116,21 @@ public:
   }
   
   size_t writeSome(basics::StringBuffer* buffer,
-                   boost::system::error_code& ec) override {
-    return _sslSocket.write_some(boost::asio::buffer(buffer->begin(), buffer->length()), ec);
+                   asio::error_code& ec) override {
+    return _sslSocket.write_some(asio::buffer(buffer->begin(), buffer->length()), ec);
   }
   
-  void asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
+  void asyncWrite(asio::mutable_buffers_1 const& buffer,
                   AsyncHandler const& handler) override {
-    return boost::asio::async_write(_sslSocket, buffer, handler);
+    return asio::async_write(_sslSocket, buffer, handler);
   }
   
-  size_t readSome(boost::asio::mutable_buffers_1 const& buffer,
-                  boost::system::error_code& ec) override {
+  size_t readSome(asio::mutable_buffers_1 const& buffer,
+                  asio::error_code& ec) override {
     return _sslSocket.read_some(buffer, ec);
   }
   
-  void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
+  void asyncRead(asio::mutable_buffers_1 const& buffer,
                  AsyncHandler const& handler) override {
     return _sslSocket.async_read_some(buffer, handler);
   }
@@ -139,24 +140,24 @@ public:
   // functions access the _socket only and it is ok that they are not implemented for
   // _sslSocket in the children
   
-  std::size_t available(boost::system::error_code& ec) override {
+  std::size_t available(asio::error_code& ec) override {
     return static_cast<size_t>(_socket.available(ec));
   }
   
-  //void shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) override;
-  void close(boost::system::error_code& ec) override;
+  //void shutdown(asio::error_code& ec, bool closeSend, bool closeReceive) override;
+  void close(asio::error_code& ec) override;
   
 protected:
   
   bool sslHandshake() override;
-  void shutdownReceive(boost::system::error_code& ec) override;
-  void shutdownSend(boost::system::error_code& ec) override;
+  void shutdownReceive(asio::error_code& ec) override;
+  void shutdownSend(asio::error_code& ec) override;
   
 private:
-  boost::asio::ssl::context _sslContext;
-  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> _sslSocket;
-  boost::asio::ip::tcp::socket& _socket;
-  boost::asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
+  asio::ssl::context _sslContext;
+  asio::ssl::stream<asio::ip::tcp::socket> _sslSocket;
+  asio::ip::tcp::socket& _socket;
+  asio::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
 }
 

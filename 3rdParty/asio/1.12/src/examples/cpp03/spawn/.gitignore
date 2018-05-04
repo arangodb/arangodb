@@ -1,0 +1,12 @@
+.deps
+.dirstamp
+parallel_grep
+*.o
+*.obj
+*.exe
+*_server
+*_client
+*.ilk
+*.manifest
+*.pdb
+*.tds

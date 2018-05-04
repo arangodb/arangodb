@@ -1,0 +1,11 @@
+.deps
+.dirstamp
+receiver
+sender
+*.o
+*.obj
+*.exe
+*.ilk
+*.manifest
+*.pdb
+*.tds

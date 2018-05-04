@@ -41,7 +41,7 @@ ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
     : Task(loop, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
-      _acceptor(Acceptor::factory(*loop.ioService, endpoint)) {}
+      _acceptor(Acceptor::factory(*loop.ioContext, endpoint)) {}
 
 ListenTask::~ListenTask() {}
 
@@ -51,10 +51,11 @@ ListenTask::~ListenTask() {}
 
 bool ListenTask::start() {
   MUTEX_LOCKER(mutex, _shutdownMutex);
+  TRI_ASSERT(_acceptor);
 
   try {
     _acceptor->open();
-  } catch (boost::system::system_error const& err) {
+  } catch (asio::system_error const& err) {
     LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
               << "' with error: " << err.what();
     return false;
@@ -64,12 +65,16 @@ bool ListenTask::start() {
     return false;
   }
 
-  _handler = [this](boost::system::error_code const& ec) {
+  LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "Setting up acceptor!!!";
+  
+  _handler = [this](asio::error_code const& ec) {
     MUTEX_LOCKER(mutex, _shutdownMutex);
+    _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
-
+    
     if (!_bound) {
+      LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "Acceptor not bound to socket";
       _handler = nullptr;
       return;
     }
@@ -78,7 +83,8 @@ bool ListenTask::start() {
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {
-      if (ec == boost::asio::error::operation_aborted) {
+      if (ec == asio::error::operation_aborted) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
         return;
       }
 
@@ -95,6 +101,7 @@ bool ListenTask::start() {
     ConnectionInfo info;
 
     std::unique_ptr<Socket> peer = _acceptor->movePeer();
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "Accepting connection from " << peer->peerAddress() << ":" << peer->peerPort();
 
     // set the endpoint
     info.endpoint = _endpoint->specification();
@@ -107,9 +114,12 @@ bool ListenTask::start() {
 
     handleConnected(std::move(peer), std::move(info));
 
+    _loop.scheduler->_nrQueued++;
     _acceptor->asyncAccept(_handler);
   };
-
+  
+  
+  _loop.scheduler->_nrQueued++;
   _bound = true;
   _acceptor->asyncAccept(_handler);
   return true;

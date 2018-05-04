@@ -1,0 +1,319 @@
+[/
+ / Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:using Using Asio]
+
+[heading Supported Platforms]
+
+The following platform and compiler combinations are regularly tested:
+
+* Linux using g++ 4.1 or later
+* Linux using clang 3.2 or later
+* FreeBSD using g++ 4.1 or later
+* macOS using Xcode 8 or later
+* Win32 using Visual C++ 9.0 or later
+* Win32 using g++ 4.1 or later (MinGW)
+* Win64 using Visual C++ 9.0 or later
+
+The following platforms may also work:
+
+* AIX
+* Android
+* HP-UX
+* iOS
+* NetBSD
+* OpenBSD
+* QNX Neutrino
+* Solaris
+* Tru64
+* Win32 using Cygwin. (`__USE_W32_SOCKETS` must be defined.)
+
+[heading Dependencies]
+
+The following libraries must be available in order to link programs that use
+Asio:
+
+* Boost.Coroutine (optional) if you use [link asio.reference.spawn
+`spawn()`] to launch coroutines.
+
+* Boost.Regex (optional) if you use any of the [link
+asio.reference.read_until `read_until()`] or [link
+asio.reference.async_read_until `async_read_until()`] overloads that take
+a `boost::regex` parameter.
+
+* [@http://www.openssl.org OpenSSL] (optional) if you use Asio's SSL
+support.
+
+Furthermore, some of the examples also require Boost.Date_Time or
+Boost.Serialization libraries.
+
+[note With MSVC or Borland C++ you may want to add `-DBOOST_DATE_TIME_NO_LIB`
+and `-DBOOST_REGEX_NO_LIB` to your project settings to disable autolinking of
+the Boost.Date_Time and Boost.Regex libraries respectively. Alternatively, you
+may choose to build these libraries and link to them.]
+
+[heading Optional separate compilation]
+
+By default, Asio is a header-only library. However, some developers may prefer
+to build Asio using separately compiled source code. To do this, add `#include
+<asio/impl/src.hpp>` to one (and only one) source file in a program, then build
+the program with `ASIO_SEPARATE_COMPILATION` defined in the project\/compiler
+settings. Alternatively, `ASIO_DYN_LINK` may be defined to build a
+separately-compiled Asio as part of a shared library.
+
+If using Asio's SSL support, you will also need to add `#include
+<asio/ssl/impl/src.hpp>`.
+
+[heading Building the tests and examples on Linux or UNIX]
+
+If the boost directory (e.g. the directory called `boost_1_34_1`) is in the
+same directory as the asio source kit, then you may configure asio by simply
+going:
+
+  ./configure
+
+in the root directory of the asio source kit. Note that configure will always
+use the most recent boost version it knows about (i.e. 1.34.1) in preference to
+earlier versions, if there is more than one version present.
+
+If the boost directory is in some other location, then you need to
+specify this directory when running configure:
+
+  ./configure --with-boost=``['path_to_boost]``
+
+When specifying the boost directory in this way you should ensure that you use
+an absolute path.
+
+To build the examples, simply run `make` in the root directory of the asio
+source kit. To also build and run the unit tests, to confirm that asio is
+working correctly, run `make check`.
+
+[heading Building the tests and examples with MSVC]
+
+To build using the MSVC 9.0 (or later) command line compiler, perform the
+following steps in a Command Prompt window:
+
+* If you are using a version of boost other than 1.34.1, or if the boost
+  directory (i.e. the directory called `boost_1_34_1`) is not in the same
+  directory as the asio source kit, then specify the location of boost by
+  running a command similar to [^set BOOSTDIR=['path_to_boost]]. Ensure that
+  you specify an absolute path.
+
+* Change to the asio `src` directory.
+
+* Execute the command `nmake -f Makefile.msc`.
+
+* Execute the command `nmake -f Makefile.msc check` to run a suite of tests to
+  confirm that asio is working correctly.
+
+[heading Building the tests and examples with MinGW]
+
+To build using the MinGW g++ compiler from the command line, perform the
+following steps in a Command Prompt window:
+
+* If you are using a version of boost other than 1.34.1, or if the boost
+  directory (i.e. the directory called `boost_1_34_1`) is not in the same
+  directory as the asio source kit, then specify the location of boost by
+  running a command similar to [^set BOOSTDIR=['path_to_boost]]. Ensure that
+  you specify an absolute path using ['forward slashes] (i.e.
+  `c:/projects/boost_1_34_1` rather than `c:\projects\boost_1_34_1`).
+
+* Change to the asio `src` directory.
+
+* Execute the command `make -f Makefile.mgw`.
+
+* Execute the command `make -f Makefile.mgw check` to run a suite of tests to
+  confirm that asio is working correctly.
+
+[note The above instructions do not work when building inside MSYS. If you want
+to build using MSYS, you should use [^export] rather than [^set] to specify the
+location of boost.]
+
+[heading Macros]
+
+The macros listed in the table below may be used to control the behaviour of
+Asio.
+
+[table
+  [[Macro][Description]]
+  [
+    [`ASIO_ENABLE_BUFFER_DEBUGGING`]
+    [
+      Enables Asio's buffer debugging support, which can help identify when
+      invalid buffers are used in read or write operations (e.g. if a
+      std::string object being written is destroyed before the write operation
+      completes).
+
+      When using Microsoft Visual C++ 11.0 or later, this macro is defined
+      automatically if the compiler's iterator debugging support is enabled,
+      unless `ASIO_DISABLE_BUFFER_DEBUGGING` has been defined.
+
+      When using g++, this macro is defined automatically if standard library
+      debugging is enabled (`_GLIBCXX_DEBUG` is defined), unless
+      `ASIO_DISABLE_BUFFER_DEBUGGING` has been defined.
+    ]
+  ]
+  [
+    [`ASIO_DISABLE_BUFFER_DEBUGGING`]
+    [
+      Explictly disables Asio's buffer debugging support.
+    ]
+  ]
+  [
+    [`ASIO_DISABLE_DEV_POLL`]
+    [
+      Explicitly disables [^/dev/poll] support on Solaris, forcing the use of
+      a `select`-based implementation.
+    ]
+  ]
+  [
+    [`ASIO_DISABLE_EPOLL`]
+    [
+      Explicitly disables `epoll` support on Linux, forcing the use of a
+      `select`-based implementation.
+    ]
+  ]
+  [
+    [`ASIO_DISABLE_EVENTFD`]
+    [
+      Explicitly disables `eventfd` support on Linux, forcing the use of a
+      pipe to interrupt blocked epoll/select system calls.
+    ]
+  ]
+  [
+    [`ASIO_DISABLE_KQUEUE`]
+    [
+      Explicitly disables `kqueue` support on macOS and BSD variants,
+      forcing the use of a `select`-based implementation.
+    ]
+  ]
+  [
+    [`ASIO_DISABLE_IOCP`]
+    [
+      Explicitly disables I/O completion ports support on Windows, forcing the
+      use of a `select`-based implementation.
+    ]
+  ]
+  [
+    [`ASIO_DISABLE_THREADS`]
+    [
+      Explicitly disables Asio's threading support, independent of whether or
+      not Boost supports threads.
+    ]
+  ]
+  [
+    [`ASIO_NO_WIN32_LEAN_AND_MEAN`]
+    [
+      By default, Asio will automatically define `WIN32_LEAN_AND_MEAN` when
+      compiling for Windows, to minimise the number of Windows SDK header files
+      and features that are included. The presence of
+      `ASIO_NO_WIN32_LEAN_AND_MEAN` prevents `WIN32_LEAN_AND_MEAN` from
+      being defined.
+    ]
+  ]
+  [
+    [`ASIO_NO_NOMINMAX`]
+    [
+      By default, Asio will automatically define `NOMINMAX` when compiling for
+      Windows, to suppress the definition of the `min()` and `max()` macros.
+      The presence of `ASIO_NO_NOMINMAX` prevents `NOMINMAX` from being
+      defined.
+    ]
+  ]
+  [
+    [`ASIO_NO_DEFAULT_LINKED_LIBS`]
+    [
+      When compiling for Windows using Microsoft Visual C++ or Borland C++, Asio
+      will automatically link in the necessary Windows SDK libraries for sockets
+      support (i.e. [^ws2_32.lib] and [^mswsock.lib], or [^ws2.lib] when
+      building for Windows CE). The `ASIO_NO_DEFAULT_LINKED_LIBS` macro
+      prevents these libraries from being linked.
+    ]
+  ]
+  [
+    [`ASIO_ENABLE_CANCELIO`]
+    [
+      Enables use of the `CancelIo` function on older versions of Windows. If
+      not enabled, calls to `cancel()` on a socket object will always fail with
+      `asio::error::operation_not_supported` when run on Windows XP, Windows
+      Server 2003, and earlier versions of Windows. When running on Windows
+      Vista, Windows Server 2008, and later, the `CancelIoEx` function is
+      always used.
+
+      The `CancelIo` function has two issues that should be considered before
+      enabling its use:
+
+      * It will only cancel asynchronous operations that were initiated in the
+        current thread.
+
+      * It can appear to complete without error, but the request
+        to cancel the unfinished operations may be silently ignored by the
+        operating system. Whether it works or not seems to depend on the
+        drivers that are installed.
+
+      For portable cancellation, consider using one of the following
+      alternatives:
+
+      * Disable asio's I/O completion port backend by defining
+        ASIO_DISABLE_IOCP.
+
+      * Use the socket object's close() function to simultaneously
+        cancel the outstanding operations and close the socket.
+    ]
+  ]
+  [
+    [`ASIO_NO_TYPEID`]
+    [
+      Disables uses of the `typeid` operator in asio. Defined automatically if
+      `BOOST_NO_TYPEID` is defined.
+    ]
+  ]
+  [
+    [`ASIO_HASH_MAP_BUCKETS`]
+    [
+      Determines the number of buckets in asio's internal `hash_map` objects.
+      The value should be a comma separated list of prime numbers, in ascending
+      order. The `hash_map` implementation will automatically increase the
+      number of buckets as the number of elements in the map increases.
+
+      Some examples:
+
+      * Defining `ASIO_HASH_MAP_BUCKETS` to `1021` means that the `hash_map`
+        objects will always contain 1021 buckets, irrespective of the number of
+        elements in the map.
+
+      * Defining `ASIO_HASH_MAP_BUCKETS` to `53,389,1543` means that the
+        `hash_map` objects will initially contain 53 buckets. The number of
+        buckets will be increased to 389 and then 1543 as elements are added to
+        the map.
+    ]
+  ]
+  [
+    [`ASIO_ENABLE_OLD_SERVICES`]
+    [
+      The service template parameters, and the corresponding classes, are
+      disabled by default. For example, instead of `basic_socket<Protocol,
+      SocketService>` we now have simply `basic_socket<Protocol>`. The old
+      interface can be enabled by defining the `ASIO_ENABLE_OLD_SERVICES`
+      macro.
+    ]
+  ]
+]
+
+[heading Mailing List]
+
+A mailing list specifically for Asio may be found on
+[@http://sourceforge.net/mail/?group_id=122478 SourceForge.net]. Newsgroup
+access is provided via [@http://dir.gmane.org/gmane.comp.lib.boost.asio.user
+Gmane].
+
+[heading Wiki]
+
+Users are encouraged to share examples, tips and FAQs on the Asio wiki,
+which is located at [@http://think-async.com/Asio/].
+
+[endsect]

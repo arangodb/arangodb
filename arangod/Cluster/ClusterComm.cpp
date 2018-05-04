@@ -554,8 +554,12 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   _communicator->addRequest(createCommunicatorDestination(result->endpoint, path),
                std::move(request), callbacks, opt);
 
+  int i = 0;
   while (!wasSignaled) {
     cv.wait(100000);
+    if (i++ >= 300) {
+      LOG_TOPIC(ERR, Logger::FIXME) << "(" << coordTransactionID << ") client: " << clientTransactionID << "  waiting for " << destination << path;
+    }
   }
   return result;
 }

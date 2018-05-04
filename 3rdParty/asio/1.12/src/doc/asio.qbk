@@ -1,0 +1,126 @@
+[/
+ / Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[library Asio
+    [quickbook 1.4]
+    [copyright 2003 - 2017 Christopher M. Kohlhoff]
+    [purpose Networking library]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+    [category template]
+    [category generic]
+]
+
+[template mdash[] '''&mdash; ''']
+[template half_open_range[text] '''&#91;'''[text])]
+[template indexterm1[id term1] '''<indexterm id="'''[id]'''"><primary>'''[term1]'''</primary></indexterm>''']
+[template indexterm2[id term1 term2] '''<indexterm id="'''[id]'''"><primary>'''[term1]'''</primary><secondary>'''[term2]'''</secondary></indexterm>''']
+[template inline_note[text] \[['Note:] [text] '''&mdash;'''['end note]\] ]
+[template ticket[number]'''<ulink url="https://svn.boost.org/trac/boost/ticket/'''[number]'''">'''#[number]'''</ulink>''']
+[def __POSIX__ /POSIX/]
+[def __Windows__ /Windows/]
+[def __accept__ [@http://www.opengroup.org/onlinepubs/000095399/functions/accept.html `accept()`]]
+[def __connect__ [@http://www.opengroup.org/onlinepubs/000095399/functions/connect.html `connect()`]]
+[def __getpeername__ [@http://www.opengroup.org/onlinepubs/000095399/functions/getpeername.html `getpeername()`]]
+[def __getsockname__ [@http://www.opengroup.org/onlinepubs/000095399/functions/getsockname.html `getsockname()`]]
+[def __getsockopt__ [@http://www.opengroup.org/onlinepubs/000095399/functions/getsockopt.html `getsockopt()`]]
+[def __ioctl__ [@http://www.opengroup.org/onlinepubs/000095399/functions/ioctl.html `ioctl()`]]
+[def __poll__ [@http://www.opengroup.org/onlinepubs/000095399/functions/poll.html `poll()`]]
+[def __recvfrom__ [@http://www.opengroup.org/onlinepubs/000095399/functions/recvfrom.html `recvfrom()`]]
+[def __sendto__ [@http://www.opengroup.org/onlinepubs/000095399/functions/sendto.html `sendto()`]]
+[def __setsockopt__ [@http://www.opengroup.org/onlinepubs/000095399/functions/setsockopt.html `setsockopt()`]]
+[def __shutdown__ [@http://www.opengroup.org/onlinepubs/000095399/functions/shutdown.html `shutdown()`]]
+[def __socket__ [@http://www.opengroup.org/onlinepubs/000095399/functions/socket.html `socket()`]]
+
+[/=============================================================================]
+
+Asio is a cross-platform C++ library for network and low-level I/O programming
+that provides developers with a consistent asynchronous model using a modern
+C++ approach.
+
+[variablelist
+  [
+    [
+      [link asio.overview Overview]
+    ]
+    [
+      An overview of the features included in Asio, plus rationale and design information.
+    ]
+  ]
+  [
+    [
+      [link asio.using Using Asio]
+    ]
+    [
+      How to use Asio in your applications. Includes information on
+      library dependencies and supported platforms.
+    ]
+  ]
+  [
+    [
+      [link asio.tutorial Tutorial]
+    ]
+    [
+      A tutorial that introduces the fundamental concepts required to use
+      Asio, and shows how to use Asio to develop simple client and
+      server programs.
+    ]
+  ]
+  [
+    [
+      [link asio.examples Examples]
+    ]
+    [
+      Examples that illustrate the use of Asio in more complex applications.
+    ]
+  ]
+  [
+    [
+      [link asio.reference Reference]
+    ]
+    [
+      Detailed class and function reference.
+    ]
+  ]
+  [
+    [
+      [link asio.net_ts Networking TS Compatibility]
+    ]
+    [
+      Description of changes to provide compatibility with the "C++ Extensions
+      for Networking" Technical Specification.
+    ]
+  ]
+  [
+    [
+      [link asio.history Revision History]
+    ]
+    [
+      Log of Asio changes made in each release.
+    ]
+  ]
+  [
+    [
+      [link asio.index Index]
+    ]
+    [
+      Book-style text index of Asio documentation.
+    ]
+  ]
+]
+
+[include overview.qbk]
+[include using.qbk]
+[include tutorial.qbk]
+[include examples.qbk]
+[include reference.qbk]
+[include net_ts.qbk]
+[include history.qbk]
+[xinclude index.xml]

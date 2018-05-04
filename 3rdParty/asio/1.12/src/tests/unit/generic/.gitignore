@@ -1,0 +1,14 @@
+.deps
+.dirstamp
+*.o
+*.obj
+*.exe
+*.ilk
+*.manifest
+*.pdb
+*.tds
+basic_endpoint
+datagram_protocol
+raw_protocol
+seq_packet_protocol
+stream_protocol

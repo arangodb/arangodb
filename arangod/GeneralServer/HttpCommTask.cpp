@@ -225,6 +225,7 @@ bool HttpCommTask::processRead(double startTime) {
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Request pending, skipping " << _peer->peerPort();
     return false;
   }
 
@@ -260,6 +261,7 @@ bool HttpCommTask::processRead(double startTime) {
 
     // read buffer contents are way too small. we can exit here directly
     if (ptr >= end) {
+      LOG_TOPIC(WARN, Logger::FIXME) << "Not enough data in buffer " << _peer->peerPort();
       return false;
     }
 
@@ -342,7 +344,7 @@ bool HttpCommTask::processRead(double startTime) {
       if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
         handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, *_incompleteRequest, 1);
-
+        LOG_TOPIC(WARN, Logger::FIXME) << "HTTP version not supported";
         _closeRequested = true;
         return false;
       }
@@ -352,6 +354,7 @@ bool HttpCommTask::processRead(double startTime) {
 
       if (_fullUrl.size() > 16384) {
         handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, *_incompleteRequest, 1);
+        LOG_TOPIC(WARN, Logger::FIXME) << "requst uri too long";
 
         _closeRequested = true;
         return false;
@@ -490,6 +493,8 @@ bool HttpCommTask::processRead(double startTime) {
   if (_readRequestBody) {
     if (_readBuffer.length() - _bodyPosition < _bodyLength) {
       // let client send more
+      LOG_TOPIC(WARN, Logger::FIXME) << "waiting for more data from client " << _peer->peerPort();
+      
       return false;
     }
 
@@ -534,6 +539,7 @@ bool HttpCommTask::processRead(double startTime) {
   }
 
   if (!handleRequest) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Skipping request for now " << _peer->peerPort();
     return false;
   }
 
@@ -564,7 +570,6 @@ bool HttpCommTask::processRead(double startTime) {
     // we should close the connection
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "no keep-alive, connection close requested by client";
     _closeRequested = true;
-
   } else if (!_useKeepAliveTimer) {
     // if keepAliveTimeout was set to 0.0, we'll close even keep-alive
     // connections immediately
@@ -624,8 +629,8 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
 
     std::string const& body = request->body();
 
-    if (!body.empty()) {
-      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE)) {
+      LOG_TOPIC(TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";
     }
@@ -649,7 +654,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
       request->header(StaticStrings::ClusterCommSource, found);
 
   if (found) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"http-request-source\",\"" << (void*)this << "\",\""
         << source << "\"";
   }

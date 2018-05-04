@@ -308,6 +308,8 @@ class Query {
 
  public:
   constexpr static uint64_t DontCache = 0;
+  
+  TRI_voc_tick_t _snippetId = 0;
 
  private:
   /// @brief query id

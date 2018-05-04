@@ -1,0 +1,11 @@
+.deps
+.dirstamp
+*.o
+*.obj
+*.exe
+*_client
+*_server
+*.ilk
+*.manifest
+*.pdb
+*.tds

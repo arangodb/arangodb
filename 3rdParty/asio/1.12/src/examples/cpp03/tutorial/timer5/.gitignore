@@ -1,0 +1,10 @@
+timer
+.deps
+.dirstamp
+*.o
+*.obj
+*.exe
+*.ilk
+*.manifest
+*.pdb
+*.tds

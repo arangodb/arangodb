@@ -1,0 +1,94 @@
+[/
+ / Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:Endpoint Endpoint requirements]
+
+A type `X` meets the `Endpoint` requirements if it satisfies the requirements
+of `Destructible` (C++Std [destructible]), `DefaultConstructible` (C++Std
+[defaultconstructible]), `CopyConstructible` (C++Std [copyconstructible]),
+and `CopyAssignable` (C++Std [copyassignable]), as well as the additional
+requirements listed below.
+
+In the table below, `a` denotes a (possibly const) value of type `X`, and `u`
+denotes an identifier.
+
+[table Endpoint requirements
+  [[expression] [type] [assertion/note\npre/post-conditions]]
+  [
+    [`X::protocol_type`]
+    [type meeting [link asio.reference.Protocol `Protocol`] requirements]
+    []
+  ]
+  [
+    [`a.protocol()`]
+    [`protocol_type`]
+    []
+  ]
+]
+
+In the table below, `a` denotes a (possibly const) value of type `X`, `b`
+denotes a value of type `X`, and `s` denotes a (possibly const) value of a type
+that is convertible to `size_t` and denotes a size in bytes.
+
+[table Endpoint requirements for extensible implementations
+  [[expression] [type] [assertion/note\npre/post-conditions]]
+  [
+    [`a.data()`]
+    [`const void*`]
+    [
+      Returns a pointer suitable for passing as the /address/ argument to
+      functions such as __POSIX__ __connect__, or as the /dest_addr/ argument
+      to functions such as  __POSIX__ __sendto__. The implementation shall
+      perform a `static_cast` on the pointer to convert it to `const
+      sockaddr*`.
+    ]
+  ]
+  [
+    [`b.data()`]
+    [`void*`]
+    [
+      Returns a pointer suitable for passing as the /address/ argument to
+      functions such as __POSIX__ __accept__, __getpeername__, __getsockname__
+      and __recvfrom__. The implementation shall perform a `static_cast` on the
+      pointer to convert it to `sockaddr*`.
+    ]
+  ]
+  [
+    [`a.size()`]
+    [`size_t`]
+    [
+      Returns a value suitable for passing as the /address_len/ argument
+      to functions such as __POSIX__ __connect__, or as the /dest_len/ argument
+      to functions such as __POSIX__ __sendto__, after appropriate integer
+      conversion has been performed.
+    ]
+  ]
+  [
+    [`b.resize(s)`]
+    []
+    [
+      pre: `s >= 0`\n
+      post: `a.size() == s`\n
+      Passed the value contained in the /address_len/ argument to functions
+      such as __POSIX__ __accept__, __getpeername__, __getsockname__ and
+      __recvfrom__, after successful completion of the function. Permitted to
+      throw an exception if the protocol associated with the endpoint object
+      `a` does not support the specified size.
+    ]
+  ]
+  [
+    [`a.capacity()`]
+    [`size_t`]
+    [
+      Returns a value suitable for passing as the /address_len/ argument to
+      functions such as __POSIX__ __accept__, __getpeername__, __getsockname__
+      and __recvfrom__, after appropriate integer conversion has been performed.
+    ]
+  ]
+]
+
+[endsect]

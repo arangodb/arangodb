@@ -23,22 +23,25 @@
 #include "Scheduler/SocketTcp.h"
 #include "Logger/Logger.h"
 
+#include <asio/ssl.hpp>
+#include <asio/ip/tcp.hpp>
+#include <thread>
+
 using namespace arangodb;
 
 namespace  {
   template <typename T>
   bool doSslHandshake(T& socket) {
-    boost::system::error_code ec;
+    asio::error_code ec;
     
     uint64_t tries = 0;
     double start = 0.0;
     
     while (true) {
-      ec.assign(boost::system::errc::success,
-                boost::system::generic_category());
-      socket.handshake(boost::asio::ssl::stream_base::handshake_type::server, ec);
+      ec.clear();
+      socket.handshake(asio::ssl::stream_base::handshake_type::server, ec);
       
-      if (ec.value() != boost::asio::error::would_block) {
+      if (ec.value() != asio::error::would_block) {
         break;
       }
       
@@ -62,8 +65,8 @@ namespace  {
         TRI_ASSERT(start != 0.0);
         
         if (TRI_microtime() - start >= 3) {
-          ec.assign(boost::asio::error::connection_reset,
-                    boost::system::generic_category());
+          ec.assign(asio::error::connection_reset,
+                    std::generic_category());
           LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "forcefully shutting down connection after wait time";
           break;
         } else {
@@ -93,27 +96,27 @@ bool SocketSslTcp::sslHandshake() {
 }
 /*
 size_t SocketTcp::write(basics::StringBuffer* buffer,
-                        boost::system::error_code& ec) {
+                        asio::error_code& ec) {
   //MUTEX_LOCKER(guard, _lock);
   if (_encrypted) {
-    return _sslSocket.write_some(boost::asio::buffer(buffer->begin(), buffer->length()), ec);
+    return _sslSocket.write_some(asio::buffer(buffer->begin(), buffer->length()), ec);
   } else {
-    return _socket.write_some(boost::asio::buffer(buffer->begin(), buffer->length()), ec);
+    return _socket.write_some(asio::buffer(buffer->begin(), buffer->length()), ec);
   }
 }
 
-void SocketTcp::asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
+void SocketTcp::asyncWrite(asio::mutable_buffers_1 const& buffer,
                            AsyncHandler const& handler) {
   //MUTEX_LOCKER(guard, _lock);
   if (_encrypted) {
-    return boost::asio::async_write(_sslSocket, buffer, handler);
+    return asio::async_write(_sslSocket, buffer, handler);
   } else {
-    return boost::asio::async_write(_socket, buffer, handler);
+    return asio::async_write(_socket, buffer, handler);
   }
 }
 
-size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer,
-                       boost::system::error_code& ec) {
+size_t SocketTcp::read(asio::mutable_buffers_1 const& buffer,
+                       asio::error_code& ec) {
   //MUTEX_LOCKER(guard, _lock);
   if (_encrypted) {
     return _sslSocket.read_some(buffer, ec);
@@ -122,11 +125,11 @@ size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer,
   }
 }
 
-void SocketTcp::shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
+void SocketTcp::shutdown(asio::error_code& ec, bool closeSend, bool closeReceive) {
   MUTEX_LOCKER(guard, _lock);
   Socket::shutdown(ec, closeSend, closeReceive);
 }
- void SocketTcp::asyncRead(boost::asio::mutable_buffers_1 const& buffer,
+ void SocketTcp::asyncRead(asio::mutable_buffers_1 const& buffer,
  AsyncHandler const& handler) {
  //MUTEX_LOCKER(guard, _lock);
  if (_encrypted) {
@@ -136,51 +139,51 @@ void SocketTcp::shutdown(boost::system::error_code& ec, bool closeSend, bool clo
  }
  }*/
 
-void SocketTcp::close(boost::system::error_code& ec) {
+void SocketTcp::close(asio::error_code& ec) {
   //MUTEX_LOCKER(guard, _lock);
   if (_socket.is_open()) {
     _socket.close(ec);
-    if (ec && ec != boost::asio::error::not_connected) {
+    if (ec && ec != asio::error::not_connected) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "closing socket failed with: " << ec.message();
     }
   }
 }
 
-/*std::size_t SocketTcp::available(boost::system::error_code& ec) {
+/*std::size_t SocketTcp::available(asio::error_code& ec) {
   //MUTEX_LOCKER(guard, _lock);
   return static_cast<size_t>(_socket.available(ec));
 }*/
 
-void SocketTcp::shutdownReceive(boost::system::error_code& ec) {
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
+void SocketTcp::shutdownReceive(asio::error_code& ec) {
+  _socket.shutdown(asio::ip::tcp::socket::shutdown_receive, ec);
 }
 
-void SocketTcp::shutdownSend(boost::system::error_code& ec) {
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+void SocketTcp::shutdownSend(asio::error_code& ec) {
+  _socket.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
 }
 
-void SocketSslTcp::close(boost::system::error_code& ec) {
+void SocketSslTcp::close(asio::error_code& ec) {
   //MUTEX_LOCKER(guard, _lock);
   if (_socket.is_open()) {
     _socket.close(ec);
-    if (ec && ec != boost::asio::error::not_connected) {
+    if (ec && ec != asio::error::not_connected) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
       << "closing socket failed with: " << ec.message();
     }
   }
 }
 
-/*std::size_t SocketTcp::available(boost::system::error_code& ec) {
+/*std::size_t SocketTcp::available(asio::error_code& ec) {
  //MUTEX_LOCKER(guard, _lock);
  return static_cast<size_t>(_socket.available(ec));
  }*/
 
-void SocketSslTcp::shutdownReceive(boost::system::error_code& ec) {
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_receive, ec);
+void SocketSslTcp::shutdownReceive(asio::error_code& ec) {
+  _socket.shutdown(asio::ip::tcp::socket::shutdown_receive, ec);
 }
 
-void SocketSslTcp::shutdownSend(boost::system::error_code& ec) {
-  _socket.shutdown(boost::asio::ip::tcp::socket::shutdown_send, ec);
+void SocketSslTcp::shutdownSend(asio::error_code& ec) {
+  _socket.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
 }
 

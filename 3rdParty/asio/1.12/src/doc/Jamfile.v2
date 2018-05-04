@@ -1,0 +1,62 @@
+#
+# Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+project asio-doc ;
+
+import os ;
+local boost = [ os.environ BOOST_ROOT ] ;
+
+using quickbook ;
+
+xml asio : asio.qbk ;
+
+boostbook standalone
+  :
+    asio
+  :
+    <xsl:param>boost.image.src=asio.png
+    <xsl:param>boost.image.alt="asio C++ library"
+    <xsl:param>boost.image.w=250
+    <xsl:param>boost.image.h=60
+    <xsl:param>nav.layout=none
+    <xsl:param>navig.graphics.path=""
+    <xsl:param>admon.graphics.path=""
+    <xsl:param>chapter.autolabel=0
+    <xsl:param>chunk.section.depth=8
+    <xsl:param>chunk.first.sections=1
+    <xsl:param>toc.section.depth=2
+    <xsl:param>toc.max.depth=1
+    <xsl:param>generate.section.toc.level=1
+    <xsl:param>generate.toc="chapter nop section nop"
+  ;
+
+install html
+  :
+    $(boost)/doc/src/boostbook.css
+    $(boost)/doc/src/images/blank.png
+    $(boost)/doc/src/images/caution.png
+    $(boost)/doc/src/images/draft.png
+    $(boost)/doc/src/images/home.png
+    $(boost)/doc/src/images/important.png
+    $(boost)/doc/src/images/next_disabled.png
+    $(boost)/doc/src/images/next.png
+    $(boost)/doc/src/images/note.png
+    $(boost)/doc/src/images/prev_disabled.png
+    $(boost)/doc/src/images/prev.png
+    $(boost)/doc/src/images/tip.png
+    $(boost)/doc/src/images/up_disabled.png
+    $(boost)/doc/src/images/up.png
+    $(boost)/doc/src/images/warning.png
+    overview/proactor.png
+    overview/sync_op.png
+    overview/async_op1.png
+    overview/async_op2.png
+    asio.png
+  ;
+
+install asioref : standalone : <location>. <format>docbook ;
+explicit asioref ;

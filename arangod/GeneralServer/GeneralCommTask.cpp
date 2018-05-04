@@ -238,7 +238,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   if (handler->isDirect()) {
     isDirect = true;
-  } else if (_loop.scheduler->hasQueueCapacity()) {
+  } else if (_loop.scheduler->shouldExecuteDirect()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
@@ -254,6 +254,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   }
 
   if (isDirect) {
+    JobGuard guard(_loop);
+    guard.work();
     handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
                           std::move(handler));
     return true;

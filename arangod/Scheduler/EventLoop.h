@@ -27,7 +27,8 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/asio-helper.h"
+//#include "Basics/asio-helper.h"
+#include <asio/io_context.hpp>
 
 namespace arangodb {
 namespace rest {
@@ -35,12 +36,12 @@ class Scheduler;
 }
 
 struct EventLoop {
-  EventLoop(boost::asio::io_service* service, rest::Scheduler* schdlr)
-      : ioService(service), scheduler(schdlr) {}
+  EventLoop(asio::io_context* service, rest::Scheduler* schdlr)
+      : ioContext(service), scheduler(schdlr) {}
 
   EventLoop() : EventLoop(nullptr, nullptr) {}
 
-  boost::asio::io_service* ioService;
+  asio::io_context* ioContext;
   rest::Scheduler* scheduler;
 };
 }

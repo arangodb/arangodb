@@ -26,7 +26,7 @@
 #include "Logger/Logger.h"
 
 #include <openssl/err.h>
-#include <boost/asio/ssl.hpp>
+#include <asio/ssl.hpp>
 
 using namespace arangodb;
 
@@ -38,11 +38,11 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 /// @brief creates an SSL context
 ////////////////////////////////////////////////////////////////////////////////
 
-boost::asio::ssl::context arangodb::sslContext(
+asio::ssl::context arangodb::sslContext(
     SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
-  using boost::asio::ssl::context;
+  using asio::ssl::context;
   context::method meth;
 
   switch (protocol) {
@@ -72,7 +72,7 @@ boost::asio::ssl::context arangodb::sslContext(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown SSL protocol method");
   }
 
-  boost::asio::ssl::context sslctx(meth);
+  asio::ssl::context sslctx(meth);
 
   if (sslctx.native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
