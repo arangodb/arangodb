@@ -135,8 +135,9 @@ static int BN_ext_count_low_zero_bits(const BIGNUM* bn) {
   // converts the absolute value of `a into little-endian form and
   // stores it at `to`. `tolen` indicates the length of the output buffer `to`
   int size = BN_num_bytes(bn);
-  std::unique_ptr<unsigned char> bin(new unsigned char[size]);
-  size = BN_bn2lebinpad(bn, bin.get(), size);
+  std::unique_ptr<unsigned char> bin_up(new unsigned char[size]);
+  unsigned char* bin = bin_up.get();
+  size = BN_bn2lebinpad(bn, bin, size);
   
   for (int i = 0; i < size; ++i) {
     if (bin[i] != 0) {
