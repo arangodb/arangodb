@@ -427,7 +427,7 @@ void Scheduler::rebalanceThreads() {
         break;
       }
       
-      LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. " << this->infoStatus();
+      // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. " << this->infoStatus();
 
       // all threads are maxed out
       _lastAllBusyStamp = now;
