@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, btoa, templateEngine, $, window, arangoHelper */
+/* global _, Backbone, btoa, moment, templateEngine, $, window, arangoHelper, nv, d3 */
 (function () {
   'use strict';
 
@@ -14,13 +14,22 @@
     //  3: Active-Failover replication found.
     mode: null,
 
+    interval: 5000, // refresh interval
+    keepEntries: 100, // keep n-entries (history)
+
+    charts: {},
+    nvchartsInit: false,
+
+    loggerGraphsData: [],
+
     // general info object, valid in all modes
     info: {
       state: null,
       mode: null,
       level: null,
       role: null,
-      msg: 'There are no known issues'
+      health: 'Good',
+      msg: 'No issues detected.'
     },
 
     // nodes info object, valid in active failover mode (3)
@@ -29,11 +38,29 @@
       followers: []
     },
 
+    initialize: function (options) {
+      var self = this;
+
+      // start polling with interval
+      window.setInterval(function () {
+        // fetch the replication state
+        self.getStateData();
+      }, this.interval);
+    },
+
     template: templateEngine.createTemplate('replicationView.ejs'),
 
     events: {
       'click #nodes-followers-id span': 'goToApplier',
       'click #repl-follower-table tr': 'goToApplierFromTable'
+    },
+
+    remove: function () {
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
     },
 
     render: function () {
@@ -45,28 +72,33 @@
           nodes: this.nodes
         }));
 
-        // fetching mode 3 related information
-        if (this.mode === 3) {
-          this.getActiveFailoverEndpoints();
-          this.getLoggerState();
-          this.getActiveFailoverHealth();
-        } else if (this.mode === 2) {
-          if (this.info.role === 'leader') {
-            this.getLoggerState();
-          } else {
-            // global follower
-            this.getApplierStates(true);
-          }
-        } else if (this.mode === 1) {
-          if (this.info.role === 'leader') {
-            this.getLoggerState();
-          } else {
-            // single follower
-            this.getApplierStates();
-          }
-        }
+        this.getStateData();
       } else {
         this.getMode(this.render.bind(this));
+      }
+    },
+
+    renderStatisticBox: function (name, value, title, rowCount) {
+      // box already rendered, just update value
+      if ($('#replication-info #nodeattribute-' + name).length) {
+        $('#replication-info #nodeattribute-' + name).html(value);
+      } else {
+        var elem = '';
+        if (rowCount === 6) {
+          elem += '<div class="pure-u-1-2 pure-u-md-1-3 pure-u-lg-1-6" style="background-color: #fff">';
+        } else {
+          elem += '<div class="pure-u-1-2 pure-u-md-1-4" style="background-color: #fff">';
+        }
+        elem += '<div class="valueWrapper">';
+        if (title) {
+          elem += '<div id="nodeattribute-' + name + '" class="value tippy" title="' + value + '">' + value + '</div>';
+        } else {
+          elem += '<div id="nodeattribute-' + name + '" class="value">' + value + '</div>';
+        }
+        elem += '<div class="graphLabel">' + name + '</div>';
+        elem += '</div>';
+        elem += '</div>';
+        $('#replication-info').append(elem);
       }
     },
 
@@ -172,7 +204,18 @@
         url: arangoHelper.databaseUrl('/_api/replication/logger-state'),
         contentType: 'application/json',
         success: function (data) {
-          self.renderLoggerState(data.server, data.clients, data.state);
+          if (window.location.hash === '#replication') {
+            self.updateLoggerGraphsData(data);
+            if (!self.nvchartsInit) {
+              self.initLoggerGraphs();
+            } else {
+              self.rerenderLoggerGraphs();
+            }
+            self.renderLoggerState(data.server, data.clients, data.state);
+          } else {
+            // update values
+            self.updateLoggerGraphsData(data);
+          }
         },
         error: function () {
           arangoHelper.arangoError('Replication', 'Could not fetch the leaders logger state.');
@@ -282,6 +325,190 @@
       }
     },
 
+    formatTime: function () {
+
+    },
+
+    getStateData: function (cb) {
+      // fetching mode 3 related information
+      if (this.mode === 3) {
+        this.getActiveFailoverEndpoints();
+        this.getLoggerState();
+        this.getActiveFailoverHealth();
+      } else if (this.mode === 2) {
+        if (this.info.role === 'leader') {
+          this.getLoggerState();
+        } else {
+          // global follower
+          this.getApplierStates(true);
+        }
+      } else if (this.mode === 1) {
+        if (this.info.role === 'leader') {
+          this.getLoggerState();
+        } else {
+          // single follower
+          this.getApplierStates();
+        }
+      }
+      if (cb) {
+        cb();
+      }
+    },
+
+    updateLoggerGraphsData: function (data) {
+      this.loggerGraphsData.push(data);
+      if (this.loggerGraphsData.length > this.keepEntries) {
+        this.loggerGraphsData.pop();
+      }
+    },
+
+    parseLoggerData: function () {
+      var datasets = this.loggerGraphsData;
+
+      var graphDataTime = {
+        leader: {
+          key: 'Leader',
+          values: []
+        }
+      };
+
+      var graphDataTick = {
+        leader: {
+          key: 'Leader',
+          values: []
+        }
+      };
+
+      _.each(datasets, function (data) {
+        graphDataTime.leader.values.push({x: Date.parse(data.state.time), y: 0});
+        graphDataTick.leader.values.push({x: Date.parse(data.state.time), y: 0});
+
+        _.each(data.clients, function (client) {
+          if (!graphDataTime[client.serverId]) {
+            graphDataTime[client.serverId] = {
+              key: 'Follower (' + client.serverId + ')',
+              values: []
+            };
+            graphDataTick[client.serverId] = {
+              key: 'Follower (' + client.serverId + ')',
+              values: []
+            };
+          }
+          // time
+          graphDataTime[client.serverId].values.push({
+            x: Date.parse(client.time),
+            y: (Date.parse(data.state.time) - Date.parse(client.time)) / 1000 * (-1)}
+          );
+          // ticks
+          graphDataTick[client.serverId].values.push({
+            x: Date.parse(client.time),
+            y: (data.state.lastLogTick - client.lastServedTick) * (-1)}
+          );
+        });
+      });
+
+      return {
+        graphDataTick: _.toArray(graphDataTick),
+        graphDataTime: _.toArray(graphDataTime)
+      };
+    },
+
+    initLoggerGraphs: function () {
+      var self = this;
+
+      // time chart
+      nv.addGraph(function () {
+        self.charts.replicationTimeChart = nv.models.lineChart()
+          .options({
+            duration: 300,
+            useInteractiveGuideline: true,
+            forceY: [2, -10]
+          })
+        ;
+        self.charts.replicationTimeChart.xAxis
+          .axisLabel('')
+          .tickFormat(function (d) {
+            var x = new Date(d);
+            return (x.getHours() < 10 ? '0' : '') + x.getHours() + ':' +
+              (x.getMinutes() < 10 ? '0' : '') + x.getMinutes() + ':' +
+              (x.getSeconds() < 10 ? '0' : '') + x.getSeconds();
+          })
+          .staggerLabels(false);
+
+        self.charts.replicationTimeChart.yAxis
+          .axisLabel('Last Call (s)')
+          .tickFormat(function (d) {
+            if (d === null) {
+              return 'N/A';
+            }
+            return d3.format(',.1f')(d);
+          })
+        ;
+        var data = self.parseLoggerData().graphDataTime;
+        d3.select('#replicationTimeChart svg')
+          .datum(data)
+          .call(self.charts.replicationTimeChart);
+        nv.utils.windowResize(self.charts.replicationTimeChart.update);
+        return self.charts.replicationTimeChart;
+      });
+
+      // tick chart
+      nv.addGraph(function () {
+        self.charts.replicationTickChart = nv.models.lineChart()
+          .options({
+            duration: 300,
+            useInteractiveGuideline: true
+          })
+        ;
+        self.charts.replicationTickChart.xAxis
+          .axisLabel('')
+          .tickFormat(function (d) {
+            var x = new Date(d);
+            return (x.getHours() < 10 ? '0' : '') + x.getHours() + ':' +
+              (x.getMinutes() < 10 ? '0' : '') + x.getMinutes() + ':' +
+              (x.getSeconds() < 10 ? '0' : '') + x.getSeconds();
+          })
+          .staggerLabels(false);
+
+        self.charts.replicationTickChart.yAxis
+          .axisLabel('Ticks behind')
+          .tickFormat(function (d) {
+            if (d === null) {
+              return 'N/A';
+            }
+            return d3.format(',.0f')(d);
+          })
+        ;
+        var data = self.parseLoggerData().graphDataTick;
+        d3.select('#replicationTickChart svg')
+          .datum(data)
+          .call(self.charts.replicationTickChart);
+        nv.utils.windowResize(self.charts.replicationTickChart.update);
+        return self.charts.replicationTickChart;
+      });
+
+      self.nvchartsInit = true;
+    },
+
+    rerenderLoggerGraphs: function () {
+      var self = this;
+      // time chart
+      d3.select('#replicationTimeChart svg')
+          .datum(self.parseLoggerData().graphDataTime)
+        .transition().duration(500)
+        .call(this.charts.replicationTimeChart);
+
+      // tick chart
+      d3.select('#replicationTickChart svg')
+          .datum(self.parseLoggerData().graphDataTick)
+        .transition().duration(500)
+        .call(this.charts.replicationTickChart);
+
+      _.each(this.charts, function (chart) {
+        nv.utils.windowResize(chart.update);
+      });
+    },
+
     renderLoggerState: function (server, clients, state) {
       if (server && clients && state) {
         // render logger information
@@ -329,9 +556,9 @@
             if (Number.isInteger(data.mode)) {
               self.mode = data.mode;
               if (data.mode !== 0) {
-                self.info.state = 'Replication is enabled';
+                self.info.state = 'enabled';
               } else {
-                self.info.state = 'Replication is disabled';
+                self.info.state = 'disabled';
               }
             } else {
               self.mode = 'undefined';
@@ -340,17 +567,17 @@
               self.info.role = data.role;
             }
             if (self.mode === 3) {
-              self.info.mode = 'Active-Failover';
-              self.info.level = 'Server-wide replication';
+              self.info.mode = 'Active Failover';
+              self.info.level = 'Server';
             } else if (self.mode === 2) {
-              self.info.mode = 'Asynchronous replication';
-              self.info.level = 'Server-wide replication';
+              self.info.mode = 'Master/Slave';
+              self.info.level = 'Server';
             } else if (self.mode === 1) {
-              self.info.mode = 'Asynchronous replication';
+              self.info.mode = 'Master/Slave';
               if (self.info.role === 'follower') {
-                self.info.level = 'Database-level replication';
+                self.info.level = 'Database';
               } else {
-                self.info.level = 'Database-level or Server-level replication';
+                self.info.level = 'Database/Server';
               }
             }
           }

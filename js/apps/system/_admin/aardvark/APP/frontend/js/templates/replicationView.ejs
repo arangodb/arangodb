@@ -1,33 +1,81 @@
 <script id="replicationView.ejs" type="text/template">
   <div id="replicationContent" class="innerContent replicationContent">
-    
-    <div class="repl-state">
-      <table class="pure-table half-split">
-          <tbody>
-            <tr>
-              <td>
-                <div><i class="fa fa-server"></i></div>
-                <div id="info-state-id"><%=info.state%></div>
-              </td>
-             
-              <% if (mode !== 0) { %>
-              <td>
-                <div id="state-status-id"><i class="fa fa-check-circle"></i></div>
-                <div id="info-health-id"><%=info.msg%></div>
-              </td>
-              <% } %>
-            </tr>
-            <% if (mode === 0) { %>
-              <tr>
-                <td><div>This node is not replicating from any other node. Also there are no active slaves or followers found. </br>Please visit our <a href="https://docs.arangodb.com/">Documentation</a> to find out how to setup replication.</div></td>
-              </tr>
-            <% } %>
-          </tbody>
-      </table>
+
+    <div class="pure-g cluster-values" style="margin-top: 0;">
+
+      <div class="pure-u-1-2 pure-u-md-1-3">
+        <div class="valueWrapper">
+          <div id="info-mode-id" class="value"><%=info.state%></div>
+          <div class="graphLabel">State</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-2 pure-u-md-1-3">
+        <div class="valueWrapper">
+          <div id="info-mode-id" class="value"><%=info.mode%></div>
+          <div class="graphLabel">Mode</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-2 pure-u-md-1-3">
+        <div class="valueWrapper">
+          <div id="info-role-id" class="value"><%=info.role%></div>
+          <div class="graphLabel">Role</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-2 pure-u-md-1-3">
+        <div class="valueWrapper">
+          <div id="info-level-id" class="value"><%=info.level%></div>
+          <div class="graphLabel">Level</div>
+        </div>
+      </div>
+
+      <div class="pure-u-1-2 pure-u-md-1-3">
+        <div class="valueWrapper">
+          <div id="info-msg-id" class="value"><%=info.health%></div>
+          <div class="graphLabel">Health</div>
+        </div>
+      </div>
+
+      <% if (info.role === 'follower') { %>
+        <div class="pure-u-1-2 pure-u-md-1-3">
+          <div class="valueWrapper">
+            <div id="logger-lastLogTick-id" class="value"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+            <div class="graphLabel">DONT KNOW</div>
+          </div>
+        </div>
+      <% } else { %>
+        <div class="pure-u-1-2 pure-u-md-1-3">
+          <div class="valueWrapper">
+            <div id="logger-lastLogTick-id" class="value"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+            <div class="graphLabel">Last tick</div>
+          </div>
+        </div>
+      <% } %>
+
     </div>
 
+    <% if (mode === 0) { %>
+      <div class="repl-state">
+        <table class="pure-table half-split">
+            <tbody>
+              <tr>
+                <td>
+                  <div><i class="fa fa-server"></i></div>
+                  <div id="info-state-id"><%=info.state%></div>
+                </td>
+              </tr>
+                <tr>
+                  <td><div>This node is not replicating from any other node. Also there are no active slaves or followers found. </br>Please visit our <a href="https://docs.arangodb.com/">Documentation</a> to find out how to setup replication.</div></td>
+                </tr>
+            </tbody>
+        </table>
+      </div>
+    <% } %>
+
     
-    <% if (mode !== 0) { %>
+    <% if (mode === 5) { %>
       <div class="repl-info">
         <div class="categoryBar">
           <h4>Info</h4>
@@ -60,6 +108,35 @@
     <% } %>
 
     <% if (mode === 3) { %>
+      <div class="repl-comparison">
+        <div class="categoryBar">
+          <h4>Comparison</h4>
+        </div>
+        
+        <div class="pure-g cluster-graphs">
+
+          <div class="pure-u-1-1 pure-u-md-1-2">
+            <div class="graphWrapper">
+              <div id="replicationTimeChart">
+                <svg></svg>
+              </div>
+              <div class="graphLabel">COMMUNICATION</div>
+            </div>
+          </div>
+
+          <div class="pure-u-1-1 pure-u-md-1-2">
+            <div class="graphWrapper">
+              <div id="replicationTickChart">
+                <svg></svg>
+              </div>
+              <div class="graphLabel">LAST TICKS</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
       <div class="repl-nodes">
         <div class="categoryBar">
           <h4>Nodes</h4>
@@ -91,24 +168,12 @@
         <table class="pure-table">
             <tbody>
               <tr>
-                <td>Running:</td>
-                <td id="logger-running-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-              </tr>
-              <tr>
-                <td>Version:</td>
-                <td id="logger-version-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-              </tr>
-              <tr>
                 <td>Server ID:</td>
                 <td id="logger-serverid-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
               </tr>
               <tr>
                 <td>Time:</td>
                 <td id="logger-time-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-              </tr>
-              <tr>
-                <td>Last tick:</td>
-                <td id="logger-lastLogTick-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
               </tr>
               <tr>
                 <td>Last uncommited tick:</td>
@@ -158,7 +223,7 @@
           <thead>
             <tr>
               <th>Database</th>
-              <th>Running</th>
+              <th>Enabled</th>
               <th>Phase</th>
               <th>Replicating from</th>
               <th>Version</th>

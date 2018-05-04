@@ -940,9 +940,9 @@
         return;
       }
 
-      if (this.replicationView === undefined) {
-        this.replicationView = new window.ReplicationView({
-        });
+      if (!this.replicationView) {
+        // this.replicationView.remove();
+        this.replicationView = new window.ReplicationView({});
       }
       this.replicationView.render();
     },

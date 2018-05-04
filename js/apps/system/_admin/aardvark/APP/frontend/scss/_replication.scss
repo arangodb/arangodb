@@ -1,5 +1,29 @@
 .replicationContent {
 
+  .pure-g {
+    .value {
+      color: rgba(62, 74, 82, .95) !important;
+      font-weight: 100;
+      font-size: 12pt !important;
+      height: 73px !important;
+      margin-top: -6px !important;
+      line-height: 53px !important;
+      text-transform: capitalize;
+    }
+
+    .graphLabel {
+      margin-top: -40px;
+      padding-bottom: 0px;
+      font-size: 8pt;
+    }
+  }
+
+  .repl-comparison {
+    .graphLabel {
+      margin-top: -30px;
+    }
+  }
+
   .pure-table {
 
     thead {
@@ -58,6 +82,10 @@
         }
       }
     }
+  }
+
+  .neutral {
+    color: rgb(62, 74, 82);
   }
 
   .positive {
