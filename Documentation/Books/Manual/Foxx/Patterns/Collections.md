@@ -1,17 +1,25 @@
-Working with collections
-========================
+Collections
+===========
 
-Prefixed collections
---------------------
+The preferred way to work with collections in Foxx services is via the [Foxx context](../Reference/Context.md). It provides methods that automatically qualify the collection name with the prefix of the service's mount path to make it unique. This procedure avoids naming conflicts of collection names between different services or multiple installed instances of the same service.
 
-Working with `db._collection` and a hardcoded collection name means, multiple copies of the service installed alongside each other in the same database will share the same collection. Because this may not always be what you want, the [Foxx context](../Reference/Context.md) also provides the `collectionName` method which applies a mount point specific prefix to any given collection name to make it unique to the service. It also provides the `collection` method, which behaves almost exactly like `db._collection` except it also applies the prefix before looking the collection up.
-
-**Example**
+With the method `module.context.collectionName` you can get the prefixed collection name.
 
 ```js
 module.context.mount === '/hello'
 module.context.collectionName('myFoxxCollection') === 'hello_myFoxxCollection'
 ```
+
+For direct access to the collection, use `module.context.collection`, which behaves exactly like `collectionName` in case of prefixing the collection name.
+
+```js
+module.context.collection('myFoxxCollection') === db._collection(module.context.collectionName('myFoxxCollection'))
+```
+
+Low-level collection access
+---------------------------
+
+
 
 Creating collections
 --------------------
