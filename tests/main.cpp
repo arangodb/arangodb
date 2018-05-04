@@ -2,6 +2,8 @@
 #include "catch.hpp"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/Thread.h"
+#include "Basics/ConditionLocker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogAppender.h"
@@ -9,25 +11,36 @@
 #include "RestServer/ServerIdFeature.h"
 #include "tests/Basics/icu-helper.h"
 
+#include <chrono>
 #include <thread>
 
 template<class Function> class TestThread : public arangodb::Thread {
 public:
 
   TestThread(Function&& f, int i, char* c[]) :
-    arangodb::Thread("catch"), _f(f), _i(i), _c(c) {
+    arangodb::Thread("catch"), _f(f), _i(i), _c(c), _done(false) {
     run();
+    while (true) {
+      if (_done) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
   }
+  
   void run() {
     _result = _f(_i,_c);
+    _done = true;
   }
-  int result() {return _result;}
+  
+  int result() { return _result; }
 
 private:
   Function _f;
-  int _result;
   int _i;
   char** _c;
+  std::atomic<bool> _done;
+  std::atomic<int> _result;
 };
 
 char const* ARGV0 = "";
