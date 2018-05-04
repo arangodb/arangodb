@@ -125,7 +125,7 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
     }
   }
 
-  int rc = pthread_create(thread, nullptr, &ThreadStarter, d.get());
+  int rc = pthread_create(thread, &stackSizeAttribute, &ThreadStarter, d.get());
 
   if (rc != 0) {
     errno = rc;
