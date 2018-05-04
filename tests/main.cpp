@@ -20,17 +20,20 @@ public:
   TestThread(Function&& f, int i, char* c[]) :
     arangodb::Thread("catch"), _f(f), _i(i), _c(c), _done(false) {
     run();
+    CONDITION_LOCKER(guard, _wait);
     while (true) {
       if (_done) {
         break;
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+      _wait.wait(uint64_t(1000000));
     }
   }
   
   void run() {
+    CONDITION_LOCKER(guard, _wait);
     _result = _f(_i,_c);
     _done = true;
+    _wait.broadcast();
   }
   
   int result() { return _result; }
@@ -41,6 +44,7 @@ private:
   char** _c;
   std::atomic<bool> _done;
   std::atomic<int> _result;
+  arangodb::basics::ConditionVariable _wait;
 };
 
 char const* ARGV0 = "";
