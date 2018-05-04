@@ -1083,5 +1083,4 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #     message(STATUS "${_variableName}=${${_variableName}}")
 #   endforeach ()
 # endif ()
-include("cmake/dump_vars.cmake")
 
