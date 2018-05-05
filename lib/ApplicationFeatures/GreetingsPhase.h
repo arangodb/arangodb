@@ -20,30 +20,19 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "BasicPhase.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_GREETINGS_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_GREETINGS_FEATURE_PHASE_H 1
 
-using namespace arangodb;
-using namespace arangodb::application_features;
+#include "ApplicationFeaturePhase.h"
 
-BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server)
-    : ApplicationFeaturePhase(server, "BasicsPhase") {
-  setOptional(false);
-  startsAfter("GreetingsPhase");
+namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
+ public:
+  explicit GreetingsFeaturePhase(ApplicationServer* server);
+};
+}  // namespace application_features
+}  // namespace arangodb
 
-  startsAfter("Audit");
-  startsAfter("Daemon");
-  startsAfter("DatabasePath");
-  startsAfter("Environment");
-  startsAfter("FileDescriptors");
-  startsAfter("Language");
-  startsAfter("MaxMapCount");
-  startsAfter("Nonce");
-  startsAfter("PageSize");
-  startsAfter("Privilege");
-  startsAfter("Random");
-  startsAfter("Scheduler");
-  startsAfter("Ssl");
-  startsAfter("Supervisor");
-  startsAfter("Temp");
-  startsAfter("WindowsService");
-}
+#endif
+

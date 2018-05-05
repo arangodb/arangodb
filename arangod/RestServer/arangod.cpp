@@ -35,6 +35,7 @@
 #include "ApplicationFeatures/DatabasePhase.h"
 #include "ApplicationFeatures/FinalPhase.h"
 #include "ApplicationFeatures/FoxxPhase.h"
+#include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/ServerPhase.h"
 #include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
@@ -155,6 +156,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new application_features::DatabaseFeaturePhase(&server));
     server.addFeature(new application_features::FinalFeaturePhase(&server));
     server.addFeature(new application_features::FoxxFeaturePhase(&server));
+    server.addFeature(new application_features::GreetingsFeaturePhase(&server));
     server.addFeature(new application_features::ServerFeaturePhase(&server));
     server.addFeature(new application_features::V8FeaturePhase(&server));
 
