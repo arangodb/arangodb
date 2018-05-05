@@ -44,7 +44,7 @@ PrivilegeFeature::PrivilegeFeature(
     : ApplicationFeature(server, "Privilege"),
       _numericUid(0), _numericGid(0) {
   setOptional(true);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void PrivilegeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

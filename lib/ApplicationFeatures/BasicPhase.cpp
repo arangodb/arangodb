@@ -40,7 +40,6 @@ BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server)
   startsAfter("Nonce");
   startsAfter("PageSize");
   startsAfter("Privilege");
-  startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("Ssl");
   startsAfter("Supervisor");

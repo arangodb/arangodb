@@ -32,7 +32,7 @@ PageSizeFeature::PageSizeFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "PageSize") {
   setOptional(false);
-  startsAfter("Logger");
+  startsAfter("GreetingsPhase");
 }
 
 void PageSizeFeature::prepare() {

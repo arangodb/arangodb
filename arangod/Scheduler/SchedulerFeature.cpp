@@ -55,10 +55,9 @@ SchedulerFeature::SchedulerFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
   setOptional(true);
+  startsAfter("GreetingsPhase");
+
   startsAfter("FileDescriptors");
-  startsAfter("Logger");
-  startsAfter("Random");
-  startsAfter("WorkMonitor");
 }
 
 SchedulerFeature::~SchedulerFeature() {}
