@@ -242,6 +242,7 @@ namespace iresearch {
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& info,
+    bool /*isNew*/,
     uint64_t planVersion,
     LogicalView::PreCommitCallback const& /*preCommit*/
 ) {
