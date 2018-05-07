@@ -204,6 +204,8 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
+  Cluster/ClusterRepairDistributeShardsLike.cpp
+  Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
   Cluster/FollowerInfo.cpp
@@ -317,6 +319,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestPregelHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestRepairHandler.cpp
   RestHandler/RestReplicationHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp

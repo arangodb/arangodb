@@ -1,5 +1,10 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
+
+* added `/_admin/repair/distributeShardsLike` that repairs collections with
+  distributeShardsLike where the shards aren't actually distributed like in the
+  prototype collection, as could happen due to internal issue #1770
+
 * fixed issue #4919: c++ implementation of LIKE function now matches the old and correct
   behaviour of the javascript implementation.
 
