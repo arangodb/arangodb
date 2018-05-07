@@ -814,6 +814,8 @@ if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
 endif ()
 
+include_directories(${ASIO_INCLUDES})
+
 ################################################################################
 ## VELOCYPACK
 ################################################################################

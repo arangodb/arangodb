@@ -31,9 +31,9 @@
 namespace arangodb {
 class Acceptor {
   public:
-    typedef std::function<void(boost::system::error_code const&)> AcceptHandler;
+    typedef std::function<void(asio::error_code const&)> AcceptHandler;
 
-    Acceptor(boost::asio::io_service& ioService, Endpoint* endpoint);
+    Acceptor(asio::io_context& ioService, Endpoint* endpoint);
     virtual ~Acceptor() {}
 
     virtual void open() = 0;
@@ -43,13 +43,10 @@ class Acceptor {
   
   public:
     static std::unique_ptr<Acceptor> factory(
-        boost::asio::io_service& _ioService, Endpoint* endpoint);
+        asio::io_context& _ioService, Endpoint* endpoint);
   
   protected:
-    virtual void createPeer() = 0;
-  
-  protected:
-    boost::asio::io_service& _ioService;
+    asio::io_context& _ioContext;
     Endpoint* _endpoint;
     std::unique_ptr<Socket> _peer;
 };

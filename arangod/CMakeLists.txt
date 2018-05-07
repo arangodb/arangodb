@@ -445,7 +445,6 @@ SET(ARANGOD_SOURCES
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
-  Scheduler/Socket.cpp
   Scheduler/SocketTask.cpp
   Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
