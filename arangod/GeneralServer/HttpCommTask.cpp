@@ -111,7 +111,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
 
 void HttpCommTask::addResponse(GeneralResponse& baseResponse,
                                RequestStatistics* stat) {
-  _lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
 #else
@@ -119,7 +119,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 #endif
 
   resetKeepAlive();
-
+  
   // response has been queued, allow further requests
   _requestPending = false;
 
@@ -196,8 +196,9 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
         << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
         << "\"," << stat->timingsCsv();
   }
-
   addWriteBuffer(std::move(buffer));
+  // read pipelined requests
+  triggerProcessAll();
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
@@ -216,7 +217,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 // reads data from the socket
 // caller must hold the _lock
 bool HttpCommTask::processRead(double startTime) {
-  _lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
   
   cancelKeepAlive();
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
@@ -292,6 +293,7 @@ bool HttpCommTask::processRead(double startTime) {
       ProtocolVersion protocolVersion = _readBuffer.c_str()[6] == '0' 
           ? ProtocolVersion::VST_1_0 : ProtocolVersion::VST_1_1;
 
+      // mark task as abandoned, no more reads will happen on _peer
       if (!abandon()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "task is already abandoned");
       }
@@ -302,10 +304,7 @@ bool HttpCommTask::processRead(double startTime) {
           protocolVersion, /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
                                 _readBuffer.length() - 11);
-      {
-        MUTEX_LOCKER(locker, commTask->_lock);
-        commTask->processAll();
-      }
+      commTask->processAll();
       commTask->start();
       return false;
     }
@@ -341,7 +340,7 @@ bool HttpCommTask::processRead(double startTime) {
       if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
         handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, *_incompleteRequest, 1);
-
+        LOG_TOPIC(WARN, Logger::FIXME) << "HTTP version not supported";
         _closeRequested = true;
         return false;
       }
@@ -351,7 +350,7 @@ bool HttpCommTask::processRead(double startTime) {
 
       if (_fullUrl.size() > 16384) {
         handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, *_incompleteRequest, 1);
-
+        LOG_TOPIC(WARN, Logger::REQUESTS) << "requst uri too long";
         _closeRequested = true;
         return false;
       }
@@ -359,9 +358,6 @@ bool HttpCommTask::processRead(double startTime) {
       // update the connection information, i. e. client and server addresses
       // and ports
       _incompleteRequest->setProtocol(_protocol);
-
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "server port " << _connectionInfo.serverPort
-                 << ", client port " << _connectionInfo.clientPort;
 
       // set body start to current position
       _bodyPosition = _readPosition;
@@ -473,6 +469,7 @@ bool HttpCommTask::processRead(double startTime) {
               TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
           buffer._buffer->ensureNullTerminated();
           addWriteBuffer(std::move(buffer));
+          triggerProcessAll(); // read pipelined requests
         }
       }
     } else {
@@ -532,6 +529,7 @@ bool HttpCommTask::processRead(double startTime) {
   }
 
   if (!handleRequest) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Skipping request for now " << _peer->peerPort();
     return false;
   }
 
@@ -562,7 +560,6 @@ bool HttpCommTask::processRead(double startTime) {
     // we should close the connection
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "no keep-alive, connection close requested by client";
     _closeRequested = true;
-
   } else if (!_useKeepAliveTimer) {
     // if keepAliveTimeout was set to 0.0, we'll close even keep-alive
     // connections immediately
@@ -610,7 +607,7 @@ bool HttpCommTask::processRead(double startTime) {
 }
 
 void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
-  _lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
   {
     LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
@@ -621,8 +618,8 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
 
     std::string const& body = request->body();
 
-    if (!body.empty()) {
-      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE)) {
+      LOG_TOPIC(TRACE, Logger::REQUESTS)
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";
     }
@@ -646,7 +643,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
       request->header(StaticStrings::ClusterCommSource, found);
 
   if (found) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"http-request-source\",\"" << (void*)this << "\",\""
         << source << "\"";
   }

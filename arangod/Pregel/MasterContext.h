@@ -29,6 +29,8 @@
 
 namespace arangodb {
 namespace pregel {
+  
+class Conductor;
 
 class MasterContext {
   friend class Conductor;

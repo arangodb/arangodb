@@ -54,5 +54,7 @@ void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
                                         ConnectionInfo&& info) {
   auto commTask = std::make_shared<HttpCommTask>(_loop, _server, std::move(socket),
                                                  std::move(info), _keepAliveTimeout);
-  commTask->start();
+  bool res = commTask->start();
+  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, res) << "Started comm task";
+  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res) << "Failed to start comm task";
 }

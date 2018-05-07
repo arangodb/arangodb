@@ -157,6 +157,7 @@ LogicalView::LogicalView(
 /*static*/ std::shared_ptr<LogicalView> LogicalView::create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
+    bool isNew,
     uint64_t planVersion /*= 0*/,
     PreCommitCallback const& preCommit /*= PreCommitCallback()*/
 ) {
@@ -184,7 +185,7 @@ LogicalView::LogicalView(
     return nullptr;
   }
 
-  auto view = viewFactory(vocbase, definition, planVersion, preCommit);
+  auto view = viewFactory(vocbase, definition, isNew, planVersion, preCommit);
 
   if (!view) {
     LOG_TOPIC(ERR, Logger::VIEWS)
@@ -219,7 +220,7 @@ DBServerLogicalView::~DBServerLogicalView() {
 
 /*static*/ arangodb::Result DBServerLogicalView::create(
     DBServerLogicalView const& view
-) noexcept {
+) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);

@@ -60,11 +60,11 @@ using StringBuffer = arangodb::basics::StringBuffer;
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
-      _isSimple(en->getElements().empty()),
+      _isSimple(en->elements().empty()),
       _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
 
   if (!_isSimple) {
-    for (auto const& p : en->getElements()) {
+    for (auto const& p : en->elements()) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_registerPlan is set up
       auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
@@ -342,19 +342,25 @@ AqlItemBlock* GatherBlock::getSome(size_t atMost) {
       TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
       AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
       if (!x.isEmpty()) {
-        auto it = cache[val.first].find(x);
+        if (x.requiresDestruction()) {
+          // complex value, with ownership transfer
+          auto it = cache[val.first].find(x);
 
-        if (it == cache[val.first].end()) {
-          AqlValue y = x.clone();
-          try {
-            res->setValue(i, col, y);
-          } catch (...) {
-            y.destroy();
-            throw;
+          if (it == cache[val.first].end()) {
+            AqlValue y = x.clone();
+            try {
+              res->setValue(i, col, y);
+            } catch (...) {
+              y.destroy();
+              throw;
+            }
+            cache[val.first].emplace(x, y);
+          } else {
+            res->setValue(i, col, (*it).second);
           }
-          cache[val.first].emplace(x, y);
         } else {
-          res->setValue(i, col, (*it).second);
+          // simple value, no ownership transfer needed
+          res->setValue(i, col, x);
         }
       }
     }
@@ -847,7 +853,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
       _alternativeRegId(ExecutionNode::MaxRegisterId),
       _allowSpecifiedKeys(false) {
   // get the variable to inspect . . .
-  VariableId varId = ep->_varId;
+  VariableId varId = ep->_variable->id;
 
   // get the register id of the variable to inspect . . .
   auto it = ep->getRegisterPlan()->varInfo.find(varId);
@@ -856,9 +862,9 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
 
   TRI_ASSERT(_regId < ExecutionNode::MaxRegisterId);
 
-  if (ep->_alternativeVarId != ep->_varId) {
+  if (ep->_alternativeVariable != ep->_variable) {
     // use second variable
-    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVarId);
+    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVariable->id);
     TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     _alternativeRegId = (*it).second.registerId;
 
@@ -1107,8 +1113,8 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   TRI_ASSERT(value.isObject());
 
-  bool buildNewObject = false;
   if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
+    bool buildNewObject = false;
     // we are responsible for creating keys if none present
 
     if (_usesDefaultSharding) {
@@ -1281,7 +1287,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     // nullptr only happens on controlled shutdown
 
     // Later, we probably want to set these sensibly:
-    ClientTransactionID const clientTransactionId = "AQL";
+    ClientTransactionID const clientTransactionId = std::string("AQL");
     CoordTransactionID const coordTransactionId = TRI_NewTickServer();
     std::unordered_map<std::string, std::string> headers;
     if (!_ownName.empty()) {
@@ -1293,14 +1299,13 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
       JobGuard guard(SchedulerFeature::SCHEDULER);
       guard.block();
 
+      std::string const url = std::string("/_db/") +
+      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->name()) +
+      urlPart + _queryId;
       auto result =
           cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                          std::string("/_db/") +
-                              arangodb::basics::StringUtils::urlEncode(
-                                  _engine->getQuery()->trx()->vocbase()->name()) +
-                              urlPart + _queryId,
-                          body, headers, defaultTimeOut);
-
+                          std::move(url), body, headers, defaultTimeOut);
+      
       return result;
     }
   }

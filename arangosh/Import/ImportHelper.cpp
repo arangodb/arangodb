@@ -759,7 +759,7 @@ bool ImportHelper::checkCreateCollection() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
-        << "; server returned message: " << result->getBody();
+        << "; server returned message: " << Logger::CHARS(result->getBody().c_str(), result->getBody().length());
   }
   _hasError = true;
   return false;

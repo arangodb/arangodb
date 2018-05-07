@@ -43,7 +43,7 @@ SslServerFeature::SslServerFeature(
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
       _sslProtocol(TLS_V12),
-      _sslOptions(boost::asio::ssl::context::default_workarounds | boost::asio::ssl::context::single_dh_use),
+      _sslOptions(asio::ssl::context::default_workarounds | asio::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {
   setOptional(true);
   startsAfter("Ssl");
@@ -158,13 +158,13 @@ class BIOGuard {
 };
 }
 
-boost::asio::ssl::context SslServerFeature::createSslContext() const {
+asio::ssl::context SslServerFeature::createSslContext() const {
   try {
     // create context
-    boost::asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
+    asio::ssl::context sslContext = ::sslContext(SslProtocol(_sslProtocol), _keyfile);
     
     // and use this native handle
-    boost::asio::ssl::context::native_handle_type nativeContext =
+    asio::ssl::context::native_handle_type nativeContext =
         sslContext.native_handle();
 
     // set cache mode

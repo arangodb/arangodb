@@ -1696,7 +1696,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   }
 
   if (ignoreHiddenEnterpriseCollection(name, force)) {
-    return {TRI_ERROR_NO_ERROR};
+    return TRI_ERROR_NO_ERROR;
   }
 
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",

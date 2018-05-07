@@ -49,6 +49,8 @@
 #include "Transaction/Helpers.h"
 #include "Aql/AstNode.h"
 
+#include <asio/io_context.hpp>
+
 namespace {
 
 /// @brief hard-coded vector of the index attributes
@@ -587,9 +589,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   }
 
 
-  boost::asio::io_service ioService;
-  auto poster = [&ioService](std::function<void()> fn) -> void {
-    ioService.post(fn);
+  asio::io_context ioContext;
+  auto poster = [&ioContext](std::function<void()> fn) -> void {
+    ioContext.post(fn);
   };
   arangodb::basics::LocalTaskQueue taskQueue(poster);
   std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
