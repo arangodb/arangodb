@@ -820,7 +820,7 @@ void RestoreFeature::start() {
             << "input directory '" << _options.inputPath << "' does not exist";
         break;
       default:
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
             << _directory->status().errorMessage();
         break;
     }
@@ -835,7 +835,7 @@ void RestoreFeature::start() {
 
   std::unique_ptr<SimpleHttpClient> httpClient;
   Result result =
-      _clientManager.getConnectedClient(httpClient, _options.force, true);
+      _clientManager.getConnectedClient(httpClient, _options.force, true, !_options.createDatabase);
   if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC(FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -861,13 +861,16 @@ void RestoreFeature::start() {
 
     // re-check connection and version
     result =
-        _clientManager.getConnectedClient(httpClient, _options.force, true);
+        _clientManager.getConnectedClient(httpClient, _options.force, true, true);
     if (result.fail() &&
         !(_options.force && result.is(TRI_ERROR_INCOMPATIBLE_VERSION))) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << "cannot create server connection, giving up!";
       FATAL_ERROR_EXIT();
     }
+  } else if (result.fail() && !_options.force) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << result.errorMessage();
+    FATAL_ERROR_EXIT();
   }
 
   // read encryption info
