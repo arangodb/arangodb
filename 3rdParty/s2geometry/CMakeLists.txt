@@ -1,10 +1,11 @@
 # -*- mode: CMAKE; -*-
 
+set (PYTHON_INCLUDE_DIR "")
 project(s2-geometry C CXX)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
-set(ARANGO_S2GEOMETRY_VERSION "309c076")
+set(ARANGO_S2GEOMETRY_VERSION "552f562")
 
 set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
