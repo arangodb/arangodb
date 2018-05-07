@@ -1362,7 +1362,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
   auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection,
                                        outVariable, _random);
 
-  c->setProjection(_projection);
+  c->projections(_projections);
 
   cloneHelper(c, withDependencies, withProperties);
 

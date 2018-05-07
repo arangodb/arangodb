@@ -94,7 +94,7 @@ class AqlItemBlock {
 
   /// @brief getValue, get the value of a register by reference
   inline AqlValue const& getValueReference(size_t index, RegisterId varNr) const {
-    TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+    TRI_ASSERT(_data.size() > index * _nrRegs + varNr);
     return _data[index * _nrRegs + varNr];
   }
 
