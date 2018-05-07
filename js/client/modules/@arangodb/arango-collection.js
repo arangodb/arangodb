@@ -895,6 +895,10 @@ ArangoCollection.prototype.save =
       url = this._appendBoolParameter(url, 'silent', options.silent);
     }
 
+    if (options.overwrite) {
+      url = this._appendBoolParameter(url, 'overwrite', options.overwrite);
+    }
+
     if (data === undefined || typeof data !== 'object') {
       throw new ArangoError({
         errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
