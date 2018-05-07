@@ -62,7 +62,7 @@ void AcceptorTcp::open() {
     asioEndpoint = iter->endpoint(); // function not documented in boost?!
   }
   _acceptor.open(asioEndpoint.protocol());
-
+  
 #ifdef _WIN32
   // on Windows everything is different of course:
   // we need to set SO_EXCLUSIVEADDRUSE to prevent others from binding to our
@@ -70,7 +70,7 @@ void AcceptorTcp::open() {
   // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740621(v=vs.85).aspx
   BOOL trueOption = 1;
 
-  if (::setsockopt(_acceptor.native(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (char const*) &trueOption, sizeof(BOOL)) != 0) {
+  if (::setsockopt(_acceptor.native_handle(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE, (char const*) &trueOption, sizeof(BOOL)) != 0) {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to set acceptor socket option: " << WSAGetLastError();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to set acceptor socket option");
   }
