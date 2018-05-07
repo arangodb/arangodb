@@ -56,7 +56,7 @@ constexpr double MIN_SECONDS = 30.0;
 namespace {
 class SchedulerManagerThread : public Thread {
  public:
-  SchedulerManagerThread(Scheduler* scheduler, boost::asio::io_service* service)
+  SchedulerManagerThread(Scheduler* scheduler, asio::io_context* service)
       : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerManagerThread() { shutdown(); }
@@ -75,7 +75,7 @@ class SchedulerManagerThread : public Thread {
 
  private:
   Scheduler* _scheduler;
-  boost::asio::io_service* _service;
+  asio::io_context* _service;
 };
 }
 
@@ -86,7 +86,7 @@ class SchedulerManagerThread : public Thread {
 namespace {
 class SchedulerThread : public Thread {
  public:
-  SchedulerThread(Scheduler* scheduler, boost::asio::io_service* service)
+  SchedulerThread(Scheduler* scheduler, asio::io_context* service)
     : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
@@ -153,7 +153,7 @@ class SchedulerThread : public Thread {
 
  private:
   Scheduler* _scheduler;
-  boost::asio::io_service* _service;
+  asio::io_context* _service;
 };
 }
 
@@ -180,13 +180,13 @@ Scheduler::~Scheduler() {
   _managerService.reset();
 
   _serviceGuard.reset();
-  _ioService.reset();
+  _ioContext.reset();
 }
 
 void Scheduler::post(std::function<void()> callback) {
   ++_nrQueued;
 
-  _ioService.get()->post([this, callback]() {
+  _ioContext.get()->post([this, callback]() {
     --_nrQueued;
 
     JobGuard guard(this);
@@ -230,18 +230,18 @@ bool Scheduler::start() {
 }
 
 void Scheduler::startIoService() {
-  _ioService.reset(new boost::asio::io_service());
-  _serviceGuard.reset(new boost::asio::io_service::work(*_ioService));
+  _ioContext.reset(new asio::io_context());
+  _serviceGuard.reset(new asio::io_context::work(*_ioContext));
 
-  _managerService.reset(new boost::asio::io_service());
-  _managerGuard.reset(new boost::asio::io_service::work(*_managerService));
+  _managerService.reset(new asio::io_context());
+  _managerGuard.reset(new asio::io_context::work(*_managerService));
 }
 
 void Scheduler::startRebalancer() {
   std::chrono::milliseconds interval(100);
-  _threadManager.reset(new boost::asio::steady_timer(*_managerService));
+  _threadManager.reset(new asio::steady_timer(*_managerService));
 
-  _threadHandler = [this, interval](const boost::system::error_code& error) {
+  _threadHandler = [this, interval](const asio::error_code& error) {
     if (error || isStopping()) {
       return;
     }
@@ -280,7 +280,7 @@ void Scheduler::startManagerThread() {
 }
 
 void Scheduler::startNewThread() {
-  auto thread = new SchedulerThread(this, _ioService.get());
+  auto thread = new SchedulerThread(this, _ioContext.get());
   if (!thread->start()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start scheduler thread");
   }
@@ -347,15 +347,18 @@ bool Scheduler::shouldQueueMore() const {
   return false;
 }
 
-bool Scheduler::hasQueueCapacity() const {
-  if (!shouldQueueMore()) {
-    return false;
+bool Scheduler::shouldExecuteDirect() const {
+  uint64_t const counters = _counters.load();
+  uint64_t const nrWorking = numWorking(counters);
+  uint64_t const nrBlocked = numBlocked(counters);
+  
+  if (nrWorking + nrBlocked + _nrQueued < numRunning(counters) / 2 + 1) {
+    auto jobQueue = _jobQueue.get();
+    auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
+    return queueSize == 0;
   }
-
-  auto jobQueue = _jobQueue.get();
-  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
-
-  return queueSize == 0;
+  
+  return false;
 }
 
 bool Scheduler::queue(std::unique_ptr<Job> job) {
@@ -404,7 +407,7 @@ void Scheduler::rebalanceThreads() {
       uint64_t const nrWorking = numWorking(counters);
       uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + nrQueued + 1)) { 
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + nrQueued + 1)) {
         // all threads are working, and none are blocked. so there is no
         // need to start a new thread now
         if (nrWorking == nrRunning) {
@@ -424,7 +427,7 @@ void Scheduler::rebalanceThreads() {
         break;
       }
       
-      // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. nrRunning: " << nrRunning << ", nrWorking: " << nrWorking << ", nrBlocked: " << nrBlocked << ", nrQueued: " << nrQueued;
+      // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. " << this->infoStatus();
 
       // all threads are maxed out
       _lastAllBusyStamp = now;
@@ -466,7 +469,7 @@ void Scheduler::beginShutdown() {
   _managerService->stop();
 
   _serviceGuard.reset();
-  _ioService->stop();
+  _ioContext->stop();
 
   // set the flag AFTER stopping the threads
   setStopping();
@@ -500,7 +503,7 @@ void Scheduler::shutdown() {
   WorkMonitor::clearWorkDescriptions();
 
   _managerService.reset();
-  _ioService.reset();
+  _ioContext.reset();
 }
 
 void Scheduler::initializeSignalHandlers() {

@@ -106,13 +106,11 @@ class RocksDBCollection final : public PhysicalCollection {
                    std::shared_ptr<Index>&) override;
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                bool reverse) const override;
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx) const override;
 
-  std::unique_ptr<IndexIterator> getSortedAllIterator(
-      transaction::Methods* trx) const;
+  std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
 
   void invokeOnAllElements(
       transaction::Methods* trx,
@@ -189,8 +187,6 @@ class RocksDBCollection final : public PhysicalCollection {
   /// trigger rocksdb compaction for documentDB and indexes
   void compact();
   void estimateSize(velocypack::Builder& builder);
-
-  bool hasGeoIndex() const { return _numberOfGeoIndexes > 0; }
 
   std::pair<Result, rocksdb::SequenceNumber> serializeIndexEstimates(
     rocksdb::Transaction*, rocksdb::SequenceNumber) const;
@@ -273,8 +269,6 @@ class RocksDBCollection final : public PhysicalCollection {
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
 
-  /// upgrade write locks to exclusive locks if this is > 0
-  uint32_t _numberOfGeoIndexes;
   /// cache the primary index for performance, do not delete
   RocksDBPrimaryIndex* _primaryIndex;
 

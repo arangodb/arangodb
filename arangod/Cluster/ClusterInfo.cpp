@@ -675,7 +675,7 @@ void ClusterInfo::loadPlan() {
 
             try {
               const auto newView = LogicalView::create(
-                *vocbase, viewPairSlice.value, newPlanVersion
+                *vocbase, viewPairSlice.value, true, newPlanVersion
               );
 
               if (!newView) {
@@ -1787,6 +1787,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
+  TRI_ASSERT(info->replicationFactor() <= 10 && info->replicationFactor() >= 0);
   VPackBuilder temp;
   temp.openObject();
   temp.add("waitForSync", VPackValue(info->waitForSync()));

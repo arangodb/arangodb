@@ -28,9 +28,9 @@
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
-#include <boost/asio/ssl.hpp>
+#include <asio/ssl.hpp>
 
-#include "Basics/asio-helper.h"
+//#include "Basics/asio-helper.h"
 
 namespace arangodb {
 // SSL protocol methods
@@ -51,7 +51,7 @@ enum SslProtocol {
 #define SSL_CONST const
 #endif
 
-boost::asio::ssl::context sslContext(
+asio::ssl::context sslContext(
     SslProtocol, std::string const& keyfile);
 
 std::string protocolName(SslProtocol protocol);

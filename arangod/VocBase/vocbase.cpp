@@ -1582,6 +1582,8 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
+  std::shared_ptr<arangodb::LogicalView> view;
+
   if (ServerState::instance()->isCoordinator()) {
     auto* ci = ClusterInfo::instance();
     std::string errorMsg;
@@ -1591,65 +1593,64 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       name(), parameters, viewId, errorMsg
     );
 
-    // FIXME don't forget to open created view
     if (res == TRI_ERROR_NO_ERROR) {
-      return ci->getView(name(), viewId);
+      view = ci->getView(name(), viewId);
+    } else {
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+        << "Could not create view in agency, error: " << errorMsg
+        << ", errorCode: " << res;
+    }
+  } else {
+    std::shared_ptr<arangodb::LogicalView> registeredView;
+    auto callback = [this, &registeredView](
+      std::shared_ptr<arangodb::LogicalView> const& view
+    )->bool {
+      TRI_ASSERT(false == !view);
+      RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+      auto itr = _dataSourceByName.find(view->name());
+
+      if (itr != _dataSourceByName.end()) {
+        events::CreateView(view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+      }
+
+      registerView(basics::ConditionalLocking::DoNotLock, view);
+      registeredView = view;
+
+      return true;
+    };
+
+    READ_LOCKER(readLocker, _inventoryLock);
+
+    // Try to create a new view. This is not registered yet
+    view = LogicalView::create(*this, parameters, true, 0, callback);
+
+    if (!view) {
+      if (registeredView) {
+        unregisterView(*registeredView);
+      }
+
+      auto const name =
+        arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failed to instantiate view '") + name + "'"
+      );
     }
 
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "Could not create view in agency, error: " << errorMsg
-      << ", errorCode: " << res;
+    events::CreateView(view->name(), TRI_ERROR_NO_ERROR);
 
-    return nullptr;
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("create view");
+    }
   }
-
-  std::shared_ptr<arangodb::LogicalView> registeredView;
-  auto callback = [this, &registeredView](
-    std::shared_ptr<arangodb::LogicalView> const& view
-  )->bool {
-    TRI_ASSERT(false == !view);
-    RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-    auto itr = _dataSourceByName.find(view->name());
-
-    if (itr != _dataSourceByName.end()) {
-      events::CreateView(view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
-
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-    }
-
-    registerView(basics::ConditionalLocking::DoNotLock, view);
-    registeredView = view;
-
-    return true;
-  };
-
-  READ_LOCKER(readLocker, _inventoryLock);
-
-  // Try to create a new view. This is not registered yet
-  auto const view = LogicalView::create(*this, parameters, 0, callback);
-
-  if (!view) {
-    if (registeredView) {
-      unregisterView(*registeredView);
-    }
-
-    auto name =
-      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failed to instantiate view '") + name + "'"
-    );
-  }
-
-  events::CreateView(view->name(), TRI_ERROR_NO_ERROR);
 
   // And lets open it.
-  view->open();
-
-  if (DatabaseFeature::DATABASE != nullptr &&
-      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-    DatabaseFeature::DATABASE->versionTracker()->track("create view");
+  if (view) {
+    view->open();
   }
 
   return view;

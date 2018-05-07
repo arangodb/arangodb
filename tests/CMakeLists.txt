@@ -122,7 +122,11 @@ add_executable(
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/ShardDistributionReporterTest.cpp
-  Geo/georeg.cpp
+  Geo/GeoConstructorTest.cpp
+  Geo/GeoJsonTest.cpp
+  Geo/GeoFunctionsTest.cpp
+  Geo/NearUtilsTest.cpp
+  Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp

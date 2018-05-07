@@ -303,7 +303,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
     trx.reset(new SingleCollectionTransaction(
       ctx, coll->id(), AccessMode::Type::READ
     ));
-  
+
     // we actually need this hint here, so that the collection is not
     // loaded if it has status unloaded.
     trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
@@ -558,7 +558,7 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     return revisionOnCoordinator(databaseName, cid, rid);
-  } 
+  }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
   SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
@@ -610,7 +610,7 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 
     // We directly read the entire cursor. so batchsize == limit
     std::unique_ptr<OperationCursor> opCursor =
-    trx.indexScan(cname, transaction::Methods::CursorType::ALL, false);
+    trx.indexScan(cname, transaction::Methods::CursorType::ALL);
 
     if (!opCursor->hasMore()) {
       return TRI_ERROR_OUT_OF_MEMORY;

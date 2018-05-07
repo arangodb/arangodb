@@ -124,8 +124,7 @@ class PhysicalCollection {
 
   virtual bool dropIndex(TRI_idx_iid_t iid) = 0;
 
-  virtual std::unique_ptr<IndexIterator> getAllIterator(
-      transaction::Methods* trx, bool reverse) const = 0;
+  virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(
       transaction::Methods* trx) const = 0;
   virtual void invokeOnAllElements(

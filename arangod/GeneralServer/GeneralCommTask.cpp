@@ -233,18 +233,22 @@ void GeneralCommTask::transferStatisticsTo(uint64_t id, RestHandler* handler) {
 // -----------------------------------------------------------------------------
 
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
+  int const queuePrio = handler->queue();
   bool isDirect = false;
   bool isPrio = false;
 
-  if (handler->isDirect()) {
+  // Strand implementations may cause everything to halt
+  // if we handle AQL snippets directly on the network thread
+  if (queuePrio == JobQueue::AQL_QUEUE) {
+    isPrio = true;
+  } else if (handler->isDirect()) {
     isDirect = true;
-  } else if (_loop._scheduler->hasQueueCapacity()) {
+  } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
+             _loop.scheduler->shouldExecuteDirect()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
   } else if (handler->needsOwnThread()) {
-    isPrio = true;
-  } else if (handler->queue() == JobQueue::AQL_QUEUE) {
     isPrio = true;
   }
 
@@ -254,6 +258,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   }
 
   if (isDirect) {
+    TRI_ASSERT(handler->queue() != JobQueue::AQL_QUEUE); // not allowed with strands
     handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
                           std::move(handler));
     return true;
@@ -262,7 +267,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   if (isPrio) {
-    SchedulerFeature::SCHEDULER->post([self, this, handler]() {
+    _loop.scheduler->post([self, this, handler]() {
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
                             std::move(handler));
     });
@@ -271,17 +276,14 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   // ok, we need to queue the request
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _loop._scheduler->infoStatus();
+                                    << _loop.scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
-
-  std::unique_ptr<Job> job(new Job(
-      _server, std::move(handler),
-      [self, this](std::shared_ptr<RestHandler> h) {
-        handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
-      }));
+  auto job = std::make_unique<Job>(_server, std::move(handler),
+                                   [self, this](std::shared_ptr<RestHandler> h) {
+    handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
+  });
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
-
   if (!ok) {
     handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                       *(handler->request()), TRI_ERROR_QUEUE_FULL,
@@ -293,18 +295,24 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
 void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
-  if (!doLock) {
-    _lock.assertLockedByCurrentThread();
-  }
+  TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
 
-  auto self = shared_from_this();
-  handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
+  handler->initEngine(_loop, [this, doLock](std::shared_ptr<rest::RestHandler> h) {
     RequestStatistics* stat = h->stealStatistics();
-
-    CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
-    _lock.assertLockedByCurrentThread();
-
-    addResponse(*h->response(), stat);
+    // TODO we could reduce all of this to strand::dispatch ?
+    if (doLock) {
+      auto self = shared_from_this();
+      _loop.scheduler->_nrQueued++;
+      _peer->strand.post([self, this, stat, h]() {
+        _loop.scheduler->_nrQueued--;
+        JobGuard guard(_loop);
+        guard.work();
+        addResponse(*(h->response()), stat);
+      });
+    } else {
+      TRI_ASSERT(_peer->strand.running_in_this_thread());
+      addResponse(*h->response(), stat);
+    }
   });
 
   HandlerWorkStack monitor(handler);
@@ -319,12 +327,12 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
     // callback will persist the response with the AsyncJobManager
-    handler->initEngine(_loop, [self](RestHandler* handler) {
-      GeneralServerFeature::JOB_MANAGER->finishAsyncJob(handler);
+    handler->initEngine(_loop, [self](std::shared_ptr<RestHandler> h) {
+      GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h.get());
     });
   } else {
     // here the response will just be ignored
-    handler->initEngine(_loop, [](RestHandler* handler) {});
+    handler->initEngine(_loop, [](std::shared_ptr<RestHandler>) {});
   }
 
   // queue this job, asyncRunEngine will later call above lambdas
@@ -397,7 +405,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
     if (result != rest::ResponseCode::OK) {
       if (path == "/" || StringUtils::isPrefix(path, Open) ||
-          StringUtils::isPrefix(path, AdminAardvark)) {
+          StringUtils::isPrefix(path, AdminAardvark) ||
+          path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;

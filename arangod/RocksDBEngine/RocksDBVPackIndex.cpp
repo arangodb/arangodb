@@ -122,6 +122,28 @@ bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb,
   return false;
 }
 
+bool RocksDBVPackUniqueIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+    
+  if (limit == 0 || _done) {
+    // already looked up something
+    return false;
+  }
+
+  _done = true;
+
+  auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(_trx);
+  arangodb::Result r = mthds->Get(_index->columnFamily(), _key.ref(), value.buffer());
+
+  if (r.ok()) {
+    cb(LocalDocumentId(RocksDBValue::documentId(*value.buffer())), RocksDBKey::indexedVPack(_key.ref()));
+  }
+
+  // there is at most one element, so we are done now
+  return false;
+}
+
 RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     arangodb::RocksDBVPackIndex const* index,
@@ -188,6 +210,40 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb,
     cb(_index->_unique
            ? RocksDBValue::documentId(_iterator->value())
            : RocksDBKey::documentId(_bounds.type(), _iterator->key()));
+
+    --limit;
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+
+    if (!_iterator->Valid() || outOfRange()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  while (limit > 0) {
+    TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
+
+    LocalDocumentId const documentId(
+        _index->_unique
+            ? RocksDBValue::documentId(_iterator->value())
+            : RocksDBKey::documentId(_bounds.type(), _iterator->key()));
+    cb(documentId, RocksDBKey::indexedVPack(_iterator->key()));
 
     --limit;
     if (_reverse) {
@@ -497,7 +553,7 @@ void RocksDBVPackIndex::buildIndexValues(VPackBuilder& leased,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     }
   };
-  for (auto const& member : VPackArrayIterator(current)) {
+  for (VPackSlice member : VPackArrayIterator(current)) {
     VPackSlice current2(member);
     bool doneNull = false;
     for (size_t i = _expanding[level] + 1; i < n; i++) {
@@ -1185,7 +1241,10 @@ bool RocksDBVPackIndex::supportsSortCondition(
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
+  
   VPackBuilder searchValues;
   searchValues.openArray();
   bool needNormalize = false;
@@ -1371,8 +1430,8 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     VPackSlice expandedSlice = expandedSearchValues.slice();
     std::vector<IndexIterator*> iterators;
     try {
-      for (auto const& val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, val, reverse);
+      for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
+        auto iterator = lookup(trx, val, !opts.ascending);
         try {
           iterators.push_back(iterator);
         } catch (...) {
@@ -1381,7 +1440,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
           throw;
         }
       }
-      if (reverse) {
+      if (!opts.ascending) {
         std::reverse(iterators.begin(), iterators.end());
       }
     } catch (...) {
@@ -1396,7 +1455,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   VPackSlice searchSlice = searchValues.slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
-  return lookup(trx, searchSlice, reverse);
+  return lookup(trx, searchSlice, !opts.ascending);
 }
 
 /// @brief specializes the condition for use with the index

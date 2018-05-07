@@ -52,9 +52,6 @@ class ListenTask : virtual public rest::Task {
   void stop();
 
  private:
-  void createPeer();
-
- private:
   Endpoint* _endpoint;
   size_t _acceptFailures = 0;
   
@@ -62,7 +59,7 @@ class ListenTask : virtual public rest::Task {
   bool _bound;
 
   std::unique_ptr<Acceptor> _acceptor;
-  std::function<void(boost::system::error_code const&)> _handler;
+  std::function<void(asio::error_code const&)> _handler;
 };
 }
 

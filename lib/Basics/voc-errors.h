@@ -963,8 +963,8 @@ constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   
 
 /// 1498: ERROR_CLUSTER_VIEW_ID_EXISTS
 /// "view ID already exists"
-/// Will be raised when a coordinator in a cluster tries to create a view
-/// and the view ID already exists.
+/// Will be raised when a coordinator in a cluster tries to create a view and
+/// the view ID already exists.
 constexpr int TRI_ERROR_CLUSTER_VIEW_ID_EXISTS                                  = 1498;
 
 /// 1500: ERROR_QUERY_KILLED

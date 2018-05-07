@@ -66,7 +66,8 @@ function makeResult (f) {
 }
 
 function optimizerIndexesMultiTestSuite () {
-  var c;
+  let c;
+  let noProjections = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
 
   return {
     setUp : function () {
@@ -991,12 +992,12 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a0123" || x.a === "a1234" ||
                            x.a === "a4567" || x.a === "a5567";
                   });
-
+      
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
-        var plan = AQL_EXPLAIN(query).plan;
+        var plan = AQL_EXPLAIN(query, null, noProjections).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
@@ -1214,7 +1215,7 @@ function optimizerIndexesMultiTestSuite () {
         var query = queries[i];
         var maker = makers[i];
 
-        var plan = AQL_EXPLAIN(query).plan;
+        var plan = AQL_EXPLAIN(query, null, noProjections).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
@@ -1275,7 +1276,7 @@ function optimizerIndexesMultiTestSuite () {
         var query = queries[i];
         var maker = makers[i];
 
-        var plan = AQL_EXPLAIN(query).plan;
+        var plan = AQL_EXPLAIN(query, null, noProjections).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
@@ -1335,7 +1336,7 @@ function optimizerIndexesMultiTestSuite () {
         var query = queries[i];
         var maker = makers[i];
 
-        var plan = AQL_EXPLAIN(query).plan;
+        var plan = AQL_EXPLAIN(query, null, noProjections).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
