@@ -356,7 +356,7 @@ VPackSlice RepairOperationToTransactionVisitor::createSingleValueVPack(T val) {
   VPackBuilder builder;
   builder.add(VPackValue(val));
   VPackSlice slice = builder.slice();
-  _vpackBufferArray.emplace_back(std::move(builder.steal()));
+  _vpackBufferArray.emplace_back(builder.steal());
   return slice;
 };
 
@@ -489,7 +489,7 @@ RepairOperationToTransactionVisitor::operator()(
       dbServerBuilder.close();
 
       dbServersSlice = dbServerBuilder.slice();
-      _vpackBufferArray.emplace_back(std::move(dbServerBuilder.steal()));
+      _vpackBufferArray.emplace_back(dbServerBuilder.steal());
     }
 
     preconditions.emplace_back(AgencyPrecondition{
