@@ -29,7 +29,7 @@
 namespace arangodb {
 
 /// Meta Syncer driving multiple initial syncer
-class GlobalInitialSyncer : public InitialSyncer {
+class GlobalInitialSyncer final : public InitialSyncer {
  public:
   explicit GlobalInitialSyncer(ReplicationApplierConfiguration const&);
 

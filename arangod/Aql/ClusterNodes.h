@@ -39,7 +39,7 @@ class ExecutionPlan;
 struct Collection;
 
 /// @brief class RemoteNode
-class RemoteNode : public ExecutionNode {
+class RemoteNode final : public ExecutionNode {
   friend class ExecutionBlock;
   friend class RemoteBlock;
 
@@ -308,7 +308,7 @@ class DistributeNode : public ExecutionNode {
 };
 
 /// @brief class GatherNode
-class GatherNode : public ExecutionNode {
+class GatherNode final : public ExecutionNode {
   friend class ExecutionBlock;
   friend class GatherBlock;
   friend class RedundantCalculationsReplacer;

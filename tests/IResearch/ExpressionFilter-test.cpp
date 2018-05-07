@@ -215,7 +215,7 @@ struct custom_sort: public irs::sort {
 
   DECLARE_FACTORY_DEFAULT();
   custom_sort(): sort(custom_sort::type()) {}
-  virtual prepared::ptr prepare() const {
+  virtual prepared::ptr prepare() const override {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
   }
 };

@@ -56,7 +56,7 @@ class VstResponse : public GeneralResponse {
 
   VPackMessageNoOwnBuffer prepareForNetwork();
   
-  void reset(ResponseCode code) final;
+  void reset(ResponseCode code) override final;
   void addPayload(VPackSlice const&,
                   arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;

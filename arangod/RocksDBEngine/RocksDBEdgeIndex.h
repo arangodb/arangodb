@@ -104,7 +104,7 @@ class RocksDBEdgeIndexWarmupTask : public basics::LocalTask {
       transaction::Methods* trx,
       rocksdb::Slice const& lower,
       rocksdb::Slice const& upper);
-  void run();
+  void run() override;
 };
 
 class RocksDBEdgeIndex final : public RocksDBIndex {

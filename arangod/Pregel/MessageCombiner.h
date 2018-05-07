@@ -49,7 +49,7 @@ template <typename M>
 struct SumCombiner : public MessageCombiner<M> {
   static_assert(std::is_arithmetic<M>::value, "Message type must be numeric");
   SumCombiner() {}
-  void combine(M& firstValue, M const& secondValue) const {
+  void combine(M& firstValue, M const& secondValue) const override {
     firstValue += secondValue;
   }
 };
