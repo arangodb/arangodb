@@ -1132,7 +1132,7 @@ void Query::exitContext() {
 void Query::getStats(VPackBuilder& builder) {
   if (_engine != nullptr) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    _engine->_stats.toVelocyPack(builder, _queryOptions.fullCount);
+    _engine->_stats.toVelocyPack(builder);
   } else {
     ExecutionStats::toVelocyPackStatic(builder);
   }
@@ -1278,7 +1278,7 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
       if (statsBuilder != nullptr) {
         TRI_ASSERT(statsBuilder->isOpenObject());
         statsBuilder->add(VPackValue("stats"));
-        _engine->_stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
+        _engine->_stats.toVelocyPack(*statsBuilder);
       }
     } catch (...) {
       // shutdown may fail but we must not throw here

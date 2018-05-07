@@ -1890,7 +1890,8 @@ double FilterNode::estimateCost(size_t& nrItems) const {
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
+      _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")),
+      _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
 /// @brief toVelocyPack, for ReturnNode
 void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -1900,6 +1901,7 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
+  nodes.add("count", VPackValue(_count));
 
   // And close it:
   nodes.close();
@@ -1924,6 +1926,10 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   auto c = new ReturnNode(plan, _id, inVariable);
+
+  if (_count) {
+    c->setCount();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
