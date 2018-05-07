@@ -1,5 +1,9 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
+* fixed issue #4919: c++ implementation of LIKE function now matches the old and correct
+  behaviour of the javascript implementation.
+
+* added REST API endpoint /_admin/server/availability for monitoring purposes
 
 * UI: fixed an unreasonable event bug within the modal view engine
 
@@ -18,6 +22,9 @@ v3.3.9 (xxxx-xx-xx)
 
 v3.3.8 (2018-04-24)
 -------------------
+
+* included version of ArangoDB Starter (`arangodb` binary) updated to v0.10.11,
+  see [Starter changelog](https://github.com/arangodb-helper/arangodb/blob/master/CHANGELOG.md)
 
 * added arangod startup option `--dump-options` to print all configuration parameters
   as a JSON object
