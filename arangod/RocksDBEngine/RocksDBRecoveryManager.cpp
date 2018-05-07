@@ -76,6 +76,7 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
 
   startsAfter("Database");
   startsAfter("RocksDBEngine");
+  startsAfter("ServerId");
   startsAfter("StorageEngine");
 
   onlyEnabledWith("RocksDBEngine");

@@ -44,6 +44,7 @@ MMFilesWalRecoveryFeature::MMFilesWalRecoveryFeature(ApplicationServer* server)
   startsAfter("Database"); 
   startsAfter("MMFilesLogfileManager");
   startsAfter("MMFilesPersistentIndex");
+  startsAfter("ServerId");
 
   onlyEnabledWith("MMFilesEngine");
   onlyEnabledWith("MMFilesLogfileManager");
