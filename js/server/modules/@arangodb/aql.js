@@ -756,71 +756,6 @@ function AQL_WITHIN_RECTANGLE (collection, latitude1, longitude1, latitude2, lon
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief return true if a point is contained inside a polygon
-// //////////////////////////////////////////////////////////////////////////////
-
-function AQL_IS_IN_POLYGON (points, latitude, longitude) {
-  'use strict';
-
-  if (TYPEWEIGHT(points) !== TYPEWEIGHT_ARRAY) {
-    WARN('POINT_IN_POLYGON', INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
-    return false;
-  }
-
-  var searchLat, searchLon, pointLat, pointLon, geoJson = false;
-  if (TYPEWEIGHT(latitude) === TYPEWEIGHT_ARRAY) {
-    geoJson = AQL_TO_BOOL(longitude);
-    if (geoJson) {
-      // first list value is longitude, then latitude
-      searchLat = latitude[1];
-      searchLon = latitude[0];
-      pointLat = 1;
-      pointLon = 0;
-    } else {
-      // first list value is latitude, then longitude
-      searchLat = latitude[0];
-      searchLon = latitude[1];
-      pointLat = 0;
-      pointLon = 1;
-    }
-  } else if (TYPEWEIGHT(latitude) === TYPEWEIGHT_NUMBER &&
-    TYPEWEIGHT(longitude) === TYPEWEIGHT_NUMBER) {
-    searchLat = latitude;
-    searchLon = longitude;
-    pointLat = 0;
-    pointLon = 1;
-  } else {
-    WARN('POINT_IN_POLYGON', INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return false;
-  }
-
-  var i, j = points.length - 1;
-  var oddNodes = false;
-
-  for (i = 0; i < points.length; ++i) {
-    if (TYPEWEIGHT(points[i]) !== TYPEWEIGHT_ARRAY) {
-      continue;
-    }
-
-    if (((points[i][pointLat] < searchLat && points[j][pointLat] >= searchLat) ||
-      (points[j][pointLat] < searchLat && points[i][pointLat] >= searchLat)) &&
-      (points[i][pointLon] <= searchLon || points[j][pointLon] <= searchLon)) {
-      oddNodes ^= ((points[i][pointLon] + (searchLat - points[i][pointLat]) /
-        (points[j][pointLat] - points[i][pointLat]) *
-        (points[j][pointLon] - points[i][pointLon])) < searchLon);
-    }
-
-    j = i;
-  }
-
-  if (oddNodes) {
-    return true;
-  }
-
-  return false;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return documents that match a fulltext query
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -851,39 +786,6 @@ function AQL_PASSTHRU (value) {
   'use strict';
 
   return value;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test helper function
-// / this is no actual function the end user should call
-// //////////////////////////////////////////////////////////////////////////////
-
-function AQL_TEST_INTERNAL (test, what) {
-  'use strict';
-  if (test === 'MODIFY_ARRAY') {
-    what[0] = 1;
-    what[1] = 42;
-    what[2] = [ 1, 2 ];
-    what[3].push([ 1, 2 ]);
-    what[4] = { a: 9, b: 2 };
-    what.push('foo');
-    what.push('bar');
-    what.pop();
-  } else if (test === 'MODIFY_OBJECT') {
-    what.a = 1;
-    what.b = 3;
-    what.c = [ 1, 2 ];
-    what.d.push([ 1, 2 ]);
-    what.e.f = { a: 1, b: 2 };
-    delete what.f;
-    what.g = 'foo';
-  } else if (test === 'DEADLOCK') {
-    var err = new ArangoError();
-    err.errorNum = INTERNAL.errors.ERROR_DEADLOCK.code;
-    err.errorMessage = INTERNAL.errors.ERROR_DEADLOCK.message;
-    throw err;
-  }
-  return what;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1193,10 +1095,8 @@ exports.FCALL_USER = FCALL_USER;
 exports.AQL_NEAR = AQL_NEAR;
 exports.AQL_WITHIN = AQL_WITHIN;
 exports.AQL_WITHIN_RECTANGLE = AQL_WITHIN_RECTANGLE;
-exports.AQL_IS_IN_POLYGON = AQL_IS_IN_POLYGON;
 exports.AQL_FULLTEXT = AQL_FULLTEXT;
 exports.AQL_V8 = AQL_PASSTHRU;
-exports.AQL_TEST_INTERNAL = AQL_TEST_INTERNAL;
 exports.AQL_CURRENT_USER = AQL_CURRENT_USER;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 exports.AQL_PREGEL_RESULT = AQL_PREGEL_RESULT;
