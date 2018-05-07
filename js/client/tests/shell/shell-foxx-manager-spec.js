@@ -327,5 +327,38 @@ describe('Foxx Manager', function () {
         expect(res.code).to.equal(404);
       });
     });
+
+    describe('installed service with heal during setup', function () {
+      // Regression test: There was a race condition during foxx service
+      // install when selfHeal() ran between _buildServiceInPath() and
+      // _install(), or more specifically, when selfHeal() ran after the service
+      // files were put in their final location and before the service was
+      // written to _apps.
+      // This service calls selfHeal() during setup to simulate that case.
+      const setupHealApp = fs.join(basePath, 'heal-during-setup');
+
+      beforeEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: true});
+        } catch (e) {
+        }
+      });
+
+      afterEach(function () {
+        try {
+          FoxxManager.uninstall(mount, {force: false});
+        } catch (e) {
+        }
+      });
+
+      it('should be available', function () {
+        FoxxManager.install(setupHealApp, mount);
+        let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
+        const url = endpoint + mount;
+        const res = download(url);
+        expect(res.code).to.equal(200);
+        expect(res.body).to.equal('true');
+      });
+    });
   });
 });
