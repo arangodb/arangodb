@@ -125,7 +125,7 @@ bool RestDocumentHandler::createDocument() {
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
 
-  if (!isMultiple) {
+  if (!isMultiple && !opOptions.overwrite) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 

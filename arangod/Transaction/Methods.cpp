@@ -1484,6 +1484,7 @@ OperationResult transaction::Methods::insertLocal(
       resultMarkerTick = 0;
       TRI_voc_rid_t revision;
       ManagedDocumentResult previousDocumentResult; // return OLD/NEW?
+      _localHints.unset(transaction::Hints::Hint::SINGLE_OPERATION);
       res = collection->replace( this, value, result, options
                                , resultMarkerTick, needsLock(), revision
                                , previousDocumentResult);
