@@ -342,19 +342,25 @@ AqlItemBlock* GatherBlock::getSome(size_t atMost) {
       TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
       AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
       if (!x.isEmpty()) {
-        auto it = cache[val.first].find(x);
+        if (x.requiresDestruction()) {
+          // complex value, with ownership transfer
+          auto it = cache[val.first].find(x);
 
-        if (it == cache[val.first].end()) {
-          AqlValue y = x.clone();
-          try {
-            res->setValue(i, col, y);
-          } catch (...) {
-            y.destroy();
-            throw;
+          if (it == cache[val.first].end()) {
+            AqlValue y = x.clone();
+            try {
+              res->setValue(i, col, y);
+            } catch (...) {
+              y.destroy();
+              throw;
+            }
+            cache[val.first].emplace(x, y);
+          } else {
+            res->setValue(i, col, (*it).second);
           }
-          cache[val.first].emplace(x, y);
         } else {
-          res->setValue(i, col, (*it).second);
+          // simple value, no ownership transfer needed
+          res->setValue(i, col, x);
         }
       }
     }
