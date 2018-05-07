@@ -37,6 +37,8 @@ Cluster
 
 @startDocuBlock get_admin_server_id
 
+@startDocuBlock get_admin_server_availability
+
 <!-- js/actions/api-cluster.js -->
 
 @startDocuBlock get_cluster_statistics

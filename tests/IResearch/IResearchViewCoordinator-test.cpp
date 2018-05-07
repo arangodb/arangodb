@@ -239,7 +239,7 @@ SECTION("test_rename") {
 
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
 
-  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+  auto view = arangodb::LogicalView::create(vocbase, json->slice(), true);
   CHECK(nullptr != view);
   CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   CHECK(0 == view->planVersion());
@@ -261,7 +261,7 @@ SECTION("visit_collections") {
 
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
 
-  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+  auto view = arangodb::LogicalView::create(vocbase, json->slice(), true);
 
   CHECK(nullptr != view);
   CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -288,7 +288,7 @@ SECTION("test_defaults") {
   // view definition with LogicalView (for persistence)
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
 
-  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+  auto view = arangodb::LogicalView::create(vocbase, json->slice(), true);
 
   CHECK(nullptr != view);
   CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));

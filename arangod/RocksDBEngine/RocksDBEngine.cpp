@@ -1748,7 +1748,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
       TRI_ASSERT(!it.get("id").isNone());
 
-      auto const view = LogicalView::create(*vocbase, it);
+      auto const view = LogicalView::create(*vocbase, it, false);
 
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";

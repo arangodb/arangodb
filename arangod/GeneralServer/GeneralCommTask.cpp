@@ -397,7 +397,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
     if (result != rest::ResponseCode::OK) {
       if (path == "/" || StringUtils::isPrefix(path, Open) ||
-          StringUtils::isPrefix(path, AdminAardvark)) {
+          StringUtils::isPrefix(path, AdminAardvark) ||
+          path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
