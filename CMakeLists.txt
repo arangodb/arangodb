@@ -814,7 +814,7 @@ if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
 endif ()
 
-include_directories(${ASIO_INCLUDES})
+include_directories(SYSTEM ${ASIO_INCLUDES})
 
 ################################################################################
 ## VELOCYPACK
@@ -831,7 +831,7 @@ endforeach()
 ## ICU
 ################################################################################
 
-include_directories(${ICU_INCLUDE_DIR})
+include_directories(SYSTEM ${ICU_INCLUDE_DIR})
 
 ################################################################################
 ## OPENSSL
