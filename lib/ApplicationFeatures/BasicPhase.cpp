@@ -28,28 +28,21 @@ using namespace arangodb::application_features;
 BasicFeaturePhase::BasicFeaturePhase(ApplicationServer* server)
     : ApplicationFeaturePhase(server, "BasicsPhase") {
   setOptional(false);
+  startsAfter("GreetingsPhase");
+
   startsAfter("Audit");
-  startsAfter("Config");
   startsAfter("Daemon");
   startsAfter("DatabasePath");
   startsAfter("Environment");
   startsAfter("FileDescriptors");
-  startsAfter("Greetings");
-  startsAfter("Jemalloc");
   startsAfter("Language");
-  startsAfter("LoggerBuffer");
-  startsAfter("Logger");
   startsAfter("MaxMapCount");
   startsAfter("Nonce");
   startsAfter("PageSize");
   startsAfter("Privilege");
-  startsAfter("Random");
   startsAfter("Scheduler");
-  startsAfter("ShellColors");
   startsAfter("Ssl");
   startsAfter("Supervisor");
   startsAfter("Temp");
-  startsAfter("Version");
   startsAfter("WindowsService");
-  startsAfter("Workmonitor");
 }

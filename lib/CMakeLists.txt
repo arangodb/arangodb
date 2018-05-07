@@ -121,6 +121,7 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/DatabasePhase.cpp
   ApplicationFeatures/FinalPhase.cpp
   ApplicationFeatures/FoxxPhase.cpp
+  ApplicationFeatures/GreetingsPhase.cpp
   ApplicationFeatures/ServerPhase.cpp
   ApplicationFeatures/V8Phase.cpp
   ApplicationFeatures/ConfigFeature.cpp

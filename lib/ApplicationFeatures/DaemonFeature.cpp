@@ -42,8 +42,7 @@ using namespace arangodb::options;
 DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Daemon") {
   setOptional(true);
-  startsAfter("Logger");
-  startsAfter("WorkMonitor");
+  startsAfter("GreetingsPhase");
 
 #ifndef _WIN32
   _workingDirectory = "/var/tmp";

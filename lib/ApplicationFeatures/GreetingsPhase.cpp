@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,25 +17,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PageSizeFeature.h"
-#include "Logger/Logger.h"
+#include "GreetingsPhase.h"
 
 using namespace arangodb;
-using namespace arangodb::basics;
+using namespace arangodb::application_features;
 
-size_t PageSizeFeature::PageSize = 0;
-
-PageSizeFeature::PageSizeFeature(
-    application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "PageSize") {
+GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer* server)
+    : ApplicationFeaturePhase(server, "GreetingsPhase") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
-}
 
-void PageSizeFeature::prepare() {
-  PageSize = static_cast<size_t>(getpagesize());
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
+  startsAfter("Config");
+  startsAfter("Greetings");
+  startsAfter("Jemalloc");
+  startsAfter("Logger");
+  startsAfter("LoggerBuffer");
+  startsAfter("ShellColors");
+  startsAfter("Random");
+  startsAfter("Version");
+  startsAfter("WorkMonitor");
 }

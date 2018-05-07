@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,25 +17,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PageSizeFeature.h"
-#include "Logger/Logger.h"
+#ifndef ARANGODB_APPLICATION_FEATURES_GREETINGS_FEATURE_PHASE_H
+#define ARANGODB_APPLICATION_FEATURES_GREETINGS_FEATURE_PHASE_H 1
 
-using namespace arangodb;
-using namespace arangodb::basics;
+#include "ApplicationFeaturePhase.h"
 
-size_t PageSizeFeature::PageSize = 0;
+namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase final : public ApplicationFeaturePhase {
+ public:
+  explicit GreetingsFeaturePhase(ApplicationServer* server);
+};
+}  // namespace application_features
+}  // namespace arangodb
 
-PageSizeFeature::PageSizeFeature(
-    application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "PageSize") {
-  setOptional(false);
-  startsAfter("GreetingsPhase");
-}
+#endif
 
-void PageSizeFeature::prepare() {
-  PageSize = static_cast<size_t>(getpagesize());
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
-}
