@@ -254,18 +254,20 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
           // somehow invalid
           continue; 
         }
+
         VPackSlice const params = coll.get("parameters");
         auto existingCollection = resolveCollection(vocbase, params);
+
         if (existingCollection != nullptr) {
-          survivingCollections.emplace(existingCollection->globallyUniqueId());
+          survivingCollections.emplace(existingCollection->guid());
         }
       }
-    
+
       std::vector<arangodb::LogicalCollection*> toDrop;
 
       // drop all collections that do not exist (anymore) on the master 
       vocbase->processCollections([&survivingCollections, &toDrop](arangodb::LogicalCollection* collection) {
-        if (survivingCollections.find(collection->globallyUniqueId()) != survivingCollections.end()) {
+        if (survivingCollections.find(collection->guid()) != survivingCollections.end()) {
           // collection should surive
           return;
         }
