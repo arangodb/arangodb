@@ -98,13 +98,13 @@ class LogAppenderStdStream : public LogAppenderStream {
   void writeLogMessage(LogLevel, char const*, size_t) override final;
 };
 
-class LogAppenderStderr : public LogAppenderStdStream {
+class LogAppenderStderr final : public LogAppenderStdStream {
  public:
   explicit LogAppenderStderr(std::string const& filter)
       : LogAppenderStdStream("+", filter, STDERR_FILENO) {}
 };
 
-class LogAppenderStdout : public LogAppenderStdStream {
+class LogAppenderStdout final : public LogAppenderStdStream {
  public:
   explicit LogAppenderStdout(std::string const& filter)
       : LogAppenderStdStream("-", filter, STDOUT_FILENO) {}
