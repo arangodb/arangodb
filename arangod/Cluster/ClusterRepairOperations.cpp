@@ -692,9 +692,9 @@ BeginRepairsOperation::BeginRepairsOperation(
         protoCollectionId_,
     const tagged_argument<tag::protoCollectionName, std::string>
         protoCollectionName_,
-    const tagged_argument<tag::collectionReplicationFactor, size_t>
+    const tagged_argument<tag::collectionReplicationFactor, uint64_t>
         collectionReplicationFactor_,
-    const tagged_argument<tag::protoReplicationFactor, size_t>
+    const tagged_argument<tag::protoReplicationFactor, uint64_t>
         protoReplicationFactor_,
     const tagged_argument<tag::renameDistributeShardsLike, bool>
         renameDistributeShardsLike_)
@@ -717,7 +717,7 @@ FinishRepairsOperation::FinishRepairsOperation(
         protoCollectionName_,
     const tagged_argument<tag::shards, std::vector<ShardWithProtoAndDbServers>>
         shards_,
-    const tagged_argument<tag::replicationFactor, size_t> replicationFactor_)
+    const tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_)
     : database(database_.value),
       collectionId(collectionId_.value),
       collectionName(collectionName_.value),
