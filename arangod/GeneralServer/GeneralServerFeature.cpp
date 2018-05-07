@@ -70,6 +70,7 @@
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
+#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
@@ -570,6 +571,14 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler(
     "/_admin/statistics-description",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+
+  if (cluster->isEnabled()) {
+    _handlerFactory->addPrefixHandler(
+      "/_admin/repair",
+      RestHandlerCreator<arangodb::RestRepairHandler>
+      ::createNoData
+    );
+  }
 
   // ...........................................................................
   // actions defined in v8
