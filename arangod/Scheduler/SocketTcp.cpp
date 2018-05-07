@@ -94,50 +94,6 @@ bool SocketSslTcp::sslHandshake() {
   //MUTEX_LOCKER(guard, _lock);
   return ::doSslHandshake(_sslSocket);
 }
-/*
-size_t SocketTcp::write(basics::StringBuffer* buffer,
-                        asio::error_code& ec) {
-  //MUTEX_LOCKER(guard, _lock);
-  if (_encrypted) {
-    return _sslSocket.write_some(asio::buffer(buffer->begin(), buffer->length()), ec);
-  } else {
-    return _socket.write_some(asio::buffer(buffer->begin(), buffer->length()), ec);
-  }
-}
-
-void SocketTcp::asyncWrite(asio::mutable_buffers_1 const& buffer,
-                           AsyncHandler const& handler) {
-  //MUTEX_LOCKER(guard, _lock);
-  if (_encrypted) {
-    return asio::async_write(_sslSocket, buffer, handler);
-  } else {
-    return asio::async_write(_socket, buffer, handler);
-  }
-}
-
-size_t SocketTcp::read(asio::mutable_buffers_1 const& buffer,
-                       asio::error_code& ec) {
-  //MUTEX_LOCKER(guard, _lock);
-  if (_encrypted) {
-    return _sslSocket.read_some(buffer, ec);
-  } else {
-    return _socket.read_some(buffer, ec);
-  }
-}
-
-void SocketTcp::shutdown(asio::error_code& ec, bool closeSend, bool closeReceive) {
-  MUTEX_LOCKER(guard, _lock);
-  Socket::shutdown(ec, closeSend, closeReceive);
-}
- void SocketTcp::asyncRead(asio::mutable_buffers_1 const& buffer,
- AsyncHandler const& handler) {
- //MUTEX_LOCKER(guard, _lock);
- if (_encrypted) {
- return _sslSocket.async_read_some(buffer, handler);
- } else {
- return _socket.async_read_some(buffer, handler);
- }
- }*/
 
 void SocketTcp::close(asio::error_code& ec) {
   //MUTEX_LOCKER(guard, _lock);
@@ -149,11 +105,6 @@ void SocketTcp::close(asio::error_code& ec) {
     }
   }
 }
-
-/*std::size_t SocketTcp::available(asio::error_code& ec) {
-  //MUTEX_LOCKER(guard, _lock);
-  return static_cast<size_t>(_socket.available(ec));
-}*/
 
 void SocketTcp::shutdownReceive(asio::error_code& ec) {
   _socket.shutdown(asio::ip::tcp::socket::shutdown_receive, ec);
@@ -173,11 +124,6 @@ void SocketSslTcp::close(asio::error_code& ec) {
     }
   }
 }
-
-/*std::size_t SocketTcp::available(asio::error_code& ec) {
- //MUTEX_LOCKER(guard, _lock);
- return static_cast<size_t>(_socket.available(ec));
- }*/
 
 void SocketSslTcp::shutdownReceive(asio::error_code& ec) {
   _socket.shutdown(asio::ip::tcp::socket::shutdown_receive, ec);

@@ -295,9 +295,6 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
 void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
-  /*if (!doLock) {
-    _lock.assertLockedByCurrentThread();
-  }*/
   TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
 
   handler->initEngine(_loop, [this, doLock](std::shared_ptr<rest::RestHandler> h) {

@@ -85,9 +85,7 @@ SocketTask::~SocketTask() {
     _connectionStatistics = nullptr;
   }
 
-  //MUTEX_LOCKER(locker, _lock);
   asio::error_code err;
-
   if (_keepAliveTimerActive.load(std::memory_order_relaxed)) {
     _keepAliveTimer.cancel(err);
   }
@@ -105,9 +103,6 @@ SocketTask::~SocketTask() {
   // delete all string buffers we have allocated
   for (auto& it : _stringBuffers) {
     delete it;
-  }
-  if (!_writeBuffer.empty() || !_writeBuffers.empty()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Shutting down connection while still containing data";
   }
 }
 
@@ -152,7 +147,6 @@ bool SocketTask::start() {
 
 // caller must hold the _lock
 void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
-  //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer->strand.running_in_this_thread());
 
   if (_closedSend.load(std::memory_order_acquire) ||
@@ -161,20 +155,6 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
     buffer.release();
     return;
   }
-  
-  /*{ // if (_readBuffer.size() > 0)
-   #warning FIXME try to get rid of this call for VST
-   // strand::post guarantees this is not called directly
-   auto self = shared_from_this();
-   _loop.scheduler->_nrQueued++;
-   _peer->strand.post([self, this]() {
-   _loop.scheduler->_nrQueued--;
-   JobGuard guard(_loop);
-   guard.work();
-   //MUTEX_LOCKER(locker, _lock);
-   processAll();
-   });
-   }*/
 
   TRI_ASSERT(!buffer.empty());
   if (!buffer.empty()) {
@@ -190,7 +170,6 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 
 // caller must hold the _lock
 bool SocketTask::completedWriteBuffer() {
-  //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
 
@@ -211,7 +190,6 @@ bool SocketTask::completedWriteBuffer() {
 
 // caller must not hold the _lock
 void SocketTask::closeStream() {
-  //MUTEX_LOCKER(locker, _lock);
   if (_abandoned.load(std::memory_order_acquire)) {
     return;
   }
@@ -229,7 +207,6 @@ void SocketTask::closeStream() {
 
 // caller must hold the _lock
 void SocketTask::closeStreamNoLock() {
-  //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
 
@@ -283,7 +260,6 @@ void SocketTask::resetKeepAlive() {
 
 // caller must hold the _lock
 void SocketTask::cancelKeepAlive() {
-  //_lock.assertLockedByCurrentThread();
   if (_useKeepAliveTimer &&
       _keepAliveTimerActive.load(std::memory_order_relaxed)) {
     asio::error_code err;
@@ -294,11 +270,10 @@ void SocketTask::cancelKeepAlive() {
 
 // caller must hold the _lock
 bool SocketTask::reserveMemory() {
-  //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
   if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "out of memory while reading from client";
+    LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "out of memory while reading from client";
     closeStreamNoLock();
     return false;
   }
@@ -308,7 +283,6 @@ bool SocketTask::reserveMemory() {
 
 // caller must be on _peer->strand()
 bool SocketTask::trySyncRead() {
-  //_lock.assertLockedByCurrentThread();
   if (_abandoned.load(std::memory_order_acquire)) {
     return false;
   }
@@ -358,7 +332,6 @@ bool SocketTask::trySyncRead() {
 // runs until _closeRequested or ProcessRead Returns false is true or task becomes abandoned
 // returns bool - true value signals that processRead should continue to run (new read)
 bool SocketTask::processAll() {
-  //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
 
@@ -402,7 +375,6 @@ bool SocketTask::processAll() {
 
 // must be invoked on strand
 void SocketTask::asyncReadSome() {
-  //MUTEX_LOCKER(locker, _lock);
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
   
@@ -459,7 +431,6 @@ void SocketTask::asyncReadSome() {
       asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
       [self, this](const asio::error_code& ec,
                    std::size_t transferred) {
-        //MUTEX_LOCKER(locker, _lock);
         JobGuard guard(_loop);
         guard.work();
 
@@ -495,7 +466,6 @@ void SocketTask::asyncReadSome() {
 }
 
 void SocketTask::asyncWriteSome() {
-  //_lock.assertLockedByCurrentThread();
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
   
@@ -555,7 +525,6 @@ void SocketTask::asyncWriteSome() {
                                         total - written),
                     [self, this](const asio::error_code& ec,
                                  std::size_t transferred) {
-                      //MUTEX_LOCKER(locker, _lock);
                       JobGuard guard(_loop);
                       guard.work();
                       
@@ -567,8 +536,6 @@ void SocketTask::asyncWriteSome() {
                         return;
                       }
                       
-                      // FIXME: this is a behaviour change, previously completedWriteBuffer
-                      // would run immediately in the previous handler
                       _loop.scheduler->_nrQueued++;
                       _peer->strand.post([self, this, transferred] {
                         _loop.scheduler->_nrQueued--;
@@ -597,7 +564,6 @@ void SocketTask::asyncWriteSome() {
 }
 
 StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
-  //_lock.assertLockedByCurrentThread();
   MUTEX_LOCKER(guard, _bufferLock);
   
   StringBuffer* buffer = nullptr;
@@ -630,7 +596,6 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
 
 void SocketTask::returnStringBuffer(StringBuffer* buffer) {
   TRI_ASSERT(buffer != nullptr);
-  //_lock.assertLockedByCurrentThread();
   MUTEX_LOCKER(guard, _bufferLock);
   
   if (_stringBuffers.size() > 4 || buffer->capacity() >= 4 * 1024 * 1024) {
