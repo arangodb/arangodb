@@ -66,7 +66,7 @@ arangodb::Result EnsureIndex::run(
   if (col == nullptr) {
     std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
     errorMsg += collection + " in database " + database;
-    return actionError(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);    
+    return actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
   }
 
   auto const properties = _description.properties();

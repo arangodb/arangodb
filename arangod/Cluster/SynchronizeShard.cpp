@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -67,10 +68,10 @@ arangodb::Result getReadLockid (
 
   std::string error("startReadLockOnLeader: Failed to get read lock - ");
   
-  auto comm = ClusterComm::instance();
+  auto comm = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
     return arangodb::Result(
-      ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
+      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
   }
   
   auto comres = cc->syncRequest(
@@ -112,10 +113,10 @@ arangodb::Result getReadLock(
 
   auto start = std::chrono::steady_clock::now();
 
-  auto comm = ClusterComm::instance();
+  auto cc = arangodb::ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
     return arangodb::Result(
-      ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
+      TRI_ERROR_SHUTTING_DOWN, "startReadLockOnLeader: Shutting down");
   }
 
   VPackBuilder b;
