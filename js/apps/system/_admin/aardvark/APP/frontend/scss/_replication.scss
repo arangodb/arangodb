@@ -1,5 +1,17 @@
 .replicationContent {
 
+  .neutral {
+    color: rgb(62, 74, 82);
+  }
+
+  .positive {
+    color: $c-positive;
+  }
+
+  .negative {
+    color: $c-negative;
+  }
+
   .pure-g {
     .value {
       color: rgba(62, 74, 82, .95) !important;
@@ -9,6 +21,14 @@
       margin-top: -6px !important;
       line-height: 53px !important;
       text-transform: capitalize;
+    }
+
+    .positive {
+      color: $c-positive !important;
+    }
+
+    .negative {
+      color: $c-negative !important;
     }
 
     .graphLabel {
@@ -82,18 +102,6 @@
         }
       }
     }
-  }
-
-  .neutral {
-    color: rgb(62, 74, 82);
-  }
-
-  .positive {
-    color: $c-positive;
-  }
-
-  .negative {
-    color: $c-negative;
   }
 }
 

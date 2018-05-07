@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, btoa, moment, templateEngine, $, window, arangoHelper, nv, d3 */
+/* global _, Backbone, btoa, templateEngine, $, window, randomColor, arangoHelper, nv, d3 */
 (function () {
   'use strict';
 
@@ -143,7 +143,7 @@
     },
 
     getActiveFailoverHealth: function () {
-      /* TODO - currently not working - investigate!
+      /*
       $.ajax({
         type: 'GET',
         cache: false,
@@ -265,7 +265,26 @@
         data = {'All databases': data};
       }
       var errors = 0;
+      var serverId;
 
+      var a = [];
+      var b = [];
+
+      _.each(data, function (applier, db) {
+        if (applier.state.running) {
+          a.push(data[db]);
+        } else {
+          data[db].database = db;
+          b.push(data[db]);
+        }
+      });
+
+      a = _.sortBy(a, 'database');
+      b = _.sortBy(b, 'database');
+
+      data = a.concat(b);
+
+      $('#repl-follower-table tbody').html('');
       _.each(data, function (applier, db) {
         if (applier.endpoint !== 'undefined' && applier.endpoint) {
           endpoint = self.parseEndpoint(applier.endpoint);
@@ -292,15 +311,18 @@
 
         $('#repl-follower-table tbody').append(
         '<tr>' +
-          '<td id="applier-database-id">' + db + '</td>' +
+          '<td id="applier-database-id">' + applier.database + '</td>' +
           '<td id="applier-running-id">' + applier.state.running + '</td>' +
           '<td>' + applier.state.phase + '</td>' +
           '<td id="applier-endpoint-id">' + endpoint + '</td>' +
-          '<td>' + applier.server.version + '</td>' +
+          '<td>' + applier.state.lastAppliedContinuousTick + '</td>' +
           '<td>' + health + '</td>' +
         '</tr>'
         );
+        serverId = applier.server.serverId;
       });
+
+      $('#logger-lastLogTick-id').html(serverId);
 
       // health part
       if (errors === 0) {
@@ -314,21 +336,21 @@
 
     renderHealth: function (errors, message) {
       if (errors) {
-        $('#state-status-id').addClass('negative');
-        $('#state-status-id').html('<i class="fa fa-times-circle"></i>');
+        $('#info-msg-id').addClass('negative');
+        $('#info-msg-id').removeClass('positive');
+        $('#info-msg-id').html('Bad <i class="fa fa-times-circle"></i>');
 
         if (message) {
-          $('#info-health-id').html(message);
+          $('#info-msg-id').attr('title', message);
+          $('#info-msg-id').addClass('modalTooltips');
+          arangoHelper.createTooltips('.modalTooltips');
         }
       } else {
-        $('#state-status-id').addClass('positive');
-        $('#state-status-id').html('<i class="fa fa-check-circle"></i>');
-        $('#info-health-id').html('There are no known issues');
+        $('#info-msg-id').addClass('positive');
+        $('#info-msg-id').removeClass('negative');
+        $('#info-msg-id').removeClass('modalTooltips');
+        $('#info-msg-id').html('Good <i class="fa fa-check-circle"></i>');
       }
-    },
-
-    formatTime: function () {
-
     },
 
     getStateData: function (cb) {
@@ -365,19 +387,31 @@
     },
 
     parseLoggerData: function () {
+      var self = this;
       var datasets = this.loggerGraphsData;
+
+      if (!this.colors) {
+        this.colors = randomColor({
+          hue: 'blue',
+          count: this.loggerGraphsData.length
+        });
+      }
 
       var graphDataTime = {
         leader: {
           key: 'Leader',
-          values: []
+          values: [],
+          strokeWidth: 2,
+          color: '#2ecc71'
         }
       };
 
       var graphDataTick = {
         leader: {
           key: 'Leader',
-          values: []
+          values: [],
+          strokeWidth: 2,
+          color: '#2ecc71'
         }
       };
 
@@ -385,16 +419,22 @@
         graphDataTime.leader.values.push({x: Date.parse(data.state.time), y: 0});
         graphDataTick.leader.values.push({x: Date.parse(data.state.time), y: 0});
 
+        var colorCount = 0;
         _.each(data.clients, function (client) {
           if (!graphDataTime[client.serverId]) {
             graphDataTime[client.serverId] = {
               key: 'Follower (' + client.serverId + ')',
+              color: self.colors[colorCount],
+              strokeWidth: 1,
               values: []
             };
             graphDataTick[client.serverId] = {
               key: 'Follower (' + client.serverId + ')',
+              color: self.colors[colorCount],
+              strokeWidth: 1,
               values: []
             };
+            colorCount++;
           }
           // time
           graphDataTime[client.serverId].values.push({
@@ -438,12 +478,12 @@
           .staggerLabels(false);
 
         self.charts.replicationTimeChart.yAxis
-          .axisLabel('Last Call (s)')
+          .axisLabel('Last call ago (in s)')
           .tickFormat(function (d) {
             if (d === null) {
               return 'N/A';
             }
-            return d3.format(',.1f')(d);
+            return d3.format(',.0f')(d);
           })
         ;
         var data = self.parseLoggerData().graphDataTime;
@@ -459,7 +499,8 @@
         self.charts.replicationTickChart = nv.models.lineChart()
           .options({
             duration: 300,
-            useInteractiveGuideline: true
+            useInteractiveGuideline: true,
+            forceY: [2, undefined]
           })
         ;
         self.charts.replicationTickChart.xAxis
