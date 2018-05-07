@@ -191,6 +191,7 @@ target_link_libraries(
 # target_link_libraries(<target_name> s2)
 target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+if (INSTALL_HEADERS)
 # We don't need to install all headers, only those
 # transitively included by s2 headers we are exporting.
 install(FILES src/s2/_fp_contract_off.h
@@ -368,7 +369,7 @@ install(FILES src/s2/util/units/length-units.h
               src/s2/util/units/physical-units.h
         DESTINATION include/s2/util/units)
 install(TARGETS s2 DESTINATION lib)
-
+endif()
 message("GTEST_ROOT: ${GTEST_ROOT}")
 if (GTEST_ROOT)
   add_subdirectory(${GTEST_ROOT} build_gtest)
