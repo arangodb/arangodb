@@ -88,6 +88,8 @@ function agencyDoctor(obj) {
   var nshards = 0;
   var ncolinplannotincurrent = 0;
 
+  var report = {};
+
   INFO('Analysing agency dump ...');
   
   // Must be array with length 1
@@ -124,12 +126,14 @@ function agencyDoctor(obj) {
 
   // Planned databases check if also in collections and current
   INFO("  Databases")
+  report.Databases = {};
   if (!plan.hasOwnProperty('Databases')) {
     ERROR('no databases in plan');
-    process.exit(1);  
+    return;
   }
   Object.keys(plan.Databases).forEach(function(database) {
     INFO('    ' + database);
+    report.Databases[database] = {};
     if (!plan.Collections.hasOwnProperty(database)) {
       WARN('found planned database "' + database + '" without planned collectinos');
     }
@@ -139,6 +143,7 @@ function agencyDoctor(obj) {
   });
 
   INFO("  Collections")
+
   // Planned collections
   if (!plan.hasOwnProperty('Collections')) {
     ERROR('no collections in plan');
@@ -149,11 +154,15 @@ function agencyDoctor(obj) {
   Object.keys(plan.Collections).forEach(function(database) {
     ++ndatabases;
     INFO('    ' + database);
+
     if (!plan.Databases.hasOwnProperty(database)) {
       ERROR('found planned collections in unplanned database ' + database);
     }
 
     Object.keys(plan.Collections[database]).forEach(function(collection) {
+      report.Databases[database]
+      [plan.Collections[database][collection].name] = {};
+
       ++ncollections;
       const col = plan.Collections[database][collection];
       INFO('      ' + col.name);
@@ -228,8 +237,10 @@ function agencyDoctor(obj) {
     });
   });
 
+  report.servers = {};
   INFO('Server health')
   INFO('  DB Servers')
+  report.servers.dbservers = {};
   const supervision = agency.Supervision;
   const target = agency.Target;
   var servers = plan.DBServers;
@@ -242,6 +253,7 @@ function agencyDoctor(obj) {
         ERROR('planned db server ' + serverId + ' missing in supervision\'s health records.');
       }
       servers[serverId] = supervision.Health[serverId];
+      report.servers.dbservers[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName, status : servers[serverId].Status};
       if (servers[serverId].Status == "BAD") {
         WARN('bad db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
       } else if (servers[serverId].Status == "FAILED") {
@@ -251,12 +263,15 @@ function agencyDoctor(obj) {
   });
 
   INFO('  Coordinators')
+  report.servers.coordinators = {};
   var servers = plan.Coordinators;
   Object.keys(servers).forEach(function(serverId) {
     if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
       WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
     } else { 
       INFO('    ' + serverId + '(' + target.MapUniqueToShortID[serverId].ShortName + ')');
+      report.servers.coordinators[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName, status : servers[serverId].Status};
+
       if (!supervision.Health.hasOwnProperty(serverId)) {
         ERROR('planned db server ' + serverId + ' missing in supervision\'s health records.');
       }
@@ -281,12 +296,14 @@ function agencyDoctor(obj) {
 
   var i = 0;
   INFO('Supervision activity');
-  INFO('  Jobs: ' + nall+ '(' +
-       'To do: ' + njobs[i++] + ', ' +
-       'Pending: ' + njobs[i++] + ', ' +
-       'Finished: ' + njobs[i++] + ', ' +
-       'Failed: ' + njobs[i] + ')'
+  INFO('  Jobs: ' + nall + '(' +
+       'To do: ' + njobs[0] + ', ' +
+       'Pending: ' + njobs[1] + ', ' +
+       'Finished: ' + njobs[2] + ', ' +
+       'Failed: ' + njobs[3] + ')'
       );
+
+  report.jobs = { todo: njobs[0], pending: njobs[1], finished: njobs[2], failed: njobs[3]};
   
   INFO('Summary');
   if (nerrors > 0) {
@@ -298,7 +315,9 @@ function agencyDoctor(obj) {
   INFO('  ' + ndatabases + ' databases');
   INFO('  ' + ncollections + ' collections ');
   INFO('  ' + nshards + ' shards ');
-  INFO('... agency analysis finished.')
+  INFO('... agency analysis finished.');
+
+  return report;
   
 }
 
@@ -352,7 +371,8 @@ function loadAgency(conn, seen) {
         INFO("switching to " + leader);
 
         conn.reconnect(leader, "_system");
-        return loadAgencyConfig(arango, seen);
+
+        return loadAgencyConfig(conn, seen);
       }
     }
   }
@@ -588,11 +608,43 @@ exports.listServers = listServers;
     
     // Agency dump and analysis
     var agencyConfig = loadAgencyConfig();
-    var agencyDump = loadAgency(arango, {});
+    var agencyDump = {};
+    var tries = 0;
+    while (true) {
+      if (agencyDump.leaderId !== "") {
+        if (agencyConfig.configuration.pool.hasOwnProperty(agencyConfig.leaderId)) {
+          arango.reconnect(
+            agencyConfig.configuration.pool[agencyConfig.leaderId], "_system");
+          INFO(arango);
+          agencyDump = loadAgency(arango, {});
+          break;
+        } else { // Leader is not in pool? Fatal error;
+          console.error("Fatal error: " + agencyDump.leaderId +
+                        " is not a member of the agent pool " +
+                        JSON.stringify(agencyConfig.configuration.pool));
+          console.error("This deployment needs immediate administrative attention.");
+          possibleAgent = null;
+          return;
+        }
+      } else {
+        if (tries < 100) {
+          tries++;
+          internal.wait(1);
+        } else {
+          console.error("Error: Agency cannot elect a leader configured as " +
+                        JSON.stringify(agencyConfig));
+          console.error("This deployment needs immediate administrative attention.");
+          possibleAgent = null;
+          return;
+        }
+      }
+    }
+    
     if (agencyDump !== null) {
       locateServers(agencyDump);
     }
-    agencyDoctor(agencyDump);
+
+    healthRecord['analysis'] = agencyDoctor(agencyDump);
     healthRecord['agency'] = agencyDump[0].arango;
     
     // Get all sorts of meta data from all servers
