@@ -806,6 +806,19 @@ typedef unsigned char bool;
 // we do not have owner read and owner write under windows; so map these to
 // global read, global write these are used when creating a file
 
+#ifdef S_IRGRP
+#undef S_IRGRP
+#endif
+#ifdef S_IRUSR
+#undef S_IRUSR
+#endif
+#ifdef S_IWGRP
+#undef S_IWGRP
+#endif
+#ifdef S_IWUSR
+#undef S_IWUSR
+#endif
+
 #define S_IRGRP _S_IREAD
 #define S_IRUSR _S_IREAD
 #define S_IWGRP _S_IWRITE
