@@ -33,7 +33,6 @@ namespace transaction {
 class Methods;
 }
 namespace aql {
-struct Index;
 
 struct Collection {
   Collection& operator=(Collection const&) = delete;

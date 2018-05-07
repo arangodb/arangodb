@@ -1894,7 +1894,7 @@ describe ArangoDB do
 
         idx = indexes[0]
         idx["id"].should match(/^\d+$/)
-        idx["type"].should eq("geo2")
+        idx["type"].should eq("geo")
         idx["unique"].should eq(false)
         idx["fields"].should eq([ "a", "b" ])
 

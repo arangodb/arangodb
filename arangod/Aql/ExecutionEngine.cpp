@@ -447,11 +447,14 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     };
     TRI_DEFER(cleanup());
 
-    _dbserverParts.buildEngines(queryIds, lockedShards);
+    ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, lockedShards);
+    if (res.fail()) {
+      return res;
+    }
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    auto res = _coordinatorParts.buildEngines(
+    res = _coordinatorParts.buildEngines(
         _query, registry, _query->vocbase()->name(),
         _query->queryOptions().shardIds, queryIds, lockedShards);
     if (res.ok()) {

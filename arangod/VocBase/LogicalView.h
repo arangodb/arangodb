@@ -68,6 +68,7 @@ class LogicalView : public LogicalDataSource {
   static std::shared_ptr<LogicalView> create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
+    bool isNew,
     uint64_t planVersion = 0,
     PreCommitCallback const& preCommit = PreCommitCallback() // called before
   );
@@ -166,7 +167,7 @@ class DBServerLogicalView : public LogicalView {
   /// @brief called by view factories during view creation to persist the view
   ///        to the storage engine
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result create(DBServerLogicalView const& view) noexcept;
+  static arangodb::Result create(DBServerLogicalView const& view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view

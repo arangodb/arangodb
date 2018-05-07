@@ -40,6 +40,7 @@ namespace {
 std::shared_ptr<arangodb::LogicalView> makeTestView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
+    bool /*isNew*/,
     uint64_t planVersion,
     arangodb::LogicalView::PreCommitCallback const& preCommit
   ) {

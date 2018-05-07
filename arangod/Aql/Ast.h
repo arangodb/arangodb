@@ -234,6 +234,10 @@ class Ast {
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(Variable const*);
+  
+  /// @brief create an AST variable access
+  AstNode* createNodeAccess(Variable const*,
+                            std::vector<basics::AttributeName> const&);
 
   /// @brief create an AST parameter node
   AstNode* createNodeParameter(
@@ -405,13 +409,7 @@ class Ast {
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
   static std::unordered_set<std::string> getReferencedAttributesForKeep(AstNode const*, Variable const* searchVariable, bool&);
 
-  static bool populateSingleAttributeAccess(AstNode const* node,
-                                            Variable const* variable,
-                                            std::vector<std::string>& attributeName);
-
-  static bool variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
-                                                       Variable const* variable,
-                                                       std::vector<std::string> const& attributeName);
+  static bool getReferencedAttributes(AstNode const*, Variable const*, std::unordered_set<std::string>&);
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node,
@@ -437,16 +435,18 @@ class Ast {
 
   /// @brief get the n-ary operator type equivalent for a binary operator type
   static AstNodeType NaryOperatorType(AstNodeType);
+  
+  /// @brief return whether this is an `AND` operator
+  static bool IsAndOperatorType(AstNodeType);
+  
+  /// @brief return whether this is an `OR` operator
+  static bool IsOrOperatorType(AstNodeType);
 
   /// @brief create an AST node from vpack
   AstNode* nodeFromVPack(arangodb::velocypack::Slice const&, bool);
 
   /// @brief resolve an attribute access
   static AstNode const* resolveConstAttributeAccess(AstNode const*);
-
-  /// @brief traverse the AST using a depth-first visitor
-  static AstNode* traverseAndModify(AstNode*,
-                                    std::function<AstNode*(AstNode*)> const&);
 
  private:
   /// @brief make condition from example
@@ -514,6 +514,10 @@ public:
                                     std::function<bool(AstNode const*)> const&,
                                     std::function<AstNode*(AstNode*)> const&,
                                     std::function<void(AstNode const*)> const&);
+  
+  /// @brief traverse the AST using a depth-first visitor
+  static AstNode* traverseAndModify(AstNode*,
+                                    std::function<AstNode*(AstNode*)> const&);
 
   /// @brief traverse the AST, using pre- and post-order visitors
   static void traverseReadOnly(AstNode const*,

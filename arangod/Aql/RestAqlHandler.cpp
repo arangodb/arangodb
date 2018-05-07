@@ -116,10 +116,10 @@ void RestAqlHandler::setupClusterQuery() {
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
+    // if no success here, generateError will have been called already
     LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Failed to setup query. Could not "
                                              "parse the transmitted plan. "
                                              "Aborting query.";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
     return;
   }
 
