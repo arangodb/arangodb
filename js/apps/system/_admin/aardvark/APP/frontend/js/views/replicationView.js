@@ -64,6 +64,7 @@
     },
 
     render: function () {
+      this.undelegateEvents();
       if (this.mode || this.mode === 0) {
         // mode found
         this.$el.html(this.template.render({
@@ -76,6 +77,7 @@
       } else {
         this.getMode(this.render.bind(this));
       }
+      this.delegateEvents();
     },
 
     renderStatisticBox: function (name, value, title, rowCount) {
@@ -356,10 +358,10 @@
     },
 
     updateLoggerGraphsData: function (data) {
-      this.loggerGraphsData.push(data);
       if (this.loggerGraphsData.length > this.keepEntries) {
         this.loggerGraphsData.pop();
       }
+      this.loggerGraphsData.push(data);
     },
 
     parseLoggerData: function () {
