@@ -329,11 +329,9 @@ describe('Foxx Manager', function () {
     });
 
     describe('service with heal during setup', function () {
-      // Regression test: There was a race condition during foxx service
-      // install when selfHeal() ran between _buildServiceInPath() and
-      // _install(), or more specifically, when selfHeal() ran after the service
-      // files were put in their final location and before the service was
-      // written to _apps.
+      // Regression test: There was a race condition during foxx service install
+      // when selfHeal() ran after the service files were put in their final
+      // location and before the service was written to _apps.
       // This service calls selfHeal() during setup to simulate that case.
       const setupHealApp = fs.join(basePath, 'heal-during-setup');
       const setupMinimalApp = fs.join(basePath, 'minimal-working-service');
