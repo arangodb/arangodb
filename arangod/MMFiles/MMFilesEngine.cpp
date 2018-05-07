@@ -1014,7 +1014,7 @@ arangodb::Result MMFilesEngine::dropCollection(
     builder.openObject();
     builder.add("id", VPackValue(std::to_string(collection->id())));
     builder.add("name", VPackValue(collection->name()));
-    builder.add("cuid", VPackValue(collection->globallyUniqueId()));
+    builder.add("cuid", VPackValue(collection->guid()));
     builder.close();
 
     MMFilesCollectionMarker marker(
@@ -2109,7 +2109,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
         );
       }
 
-      auto const view = LogicalView::create(*vocbase, it);
+      auto const view = LogicalView::create(*vocbase, it, false);
 
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";

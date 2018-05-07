@@ -103,7 +103,8 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
 
 void VstCommTask::addResponse(GeneralResponse& baseResponse,
                               RequestStatistics* stat) {
-    _lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
+    //_lock.assertLockedByCurrentThread();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     VstResponse& response = dynamic_cast<VstResponse&>(baseResponse);
 #else
@@ -120,7 +121,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
     slices.push_back(response_message._header);
 
     for (auto& payload : response_message._payloads) {
-      LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
+      LOG_TOPIC(TRACE, Logger::REQUESTS) << "\"vst-request-result\",\""
                                          << (void*)this << "/" << mid << "\","
                                          << payload.toJson() << "\"";
 
@@ -138,7 +139,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
 
   if (stat != nullptr && arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE,
                                                      Logger::REQUESTS)) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << VstRequest::translateVersion(_protocolVersion) << "\","
         << static_cast<int>(response.responseCode()) << ","
@@ -163,7 +164,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       ++c;
     }
   }
-
+  
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
@@ -171,6 +172,9 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
+  
+  // process remaining requests ?
+  //processAll();
 }
 
 static uint32_t readLittleEndian32bit(char const* p) {
@@ -312,10 +316,10 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
 
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
-  _lock.assertLockedByCurrentThread();
-
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  //_lock.assertLockedByCurrentThread();
+  
   auto& prv = _processReadVariables;
-
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
   if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
     return false;  // no data or incomplete
@@ -338,12 +342,12 @@ bool VstCommTask::processRead(double startTime) {
     // CASE 1: message is in one chunk
     if (!getMessageFromSingleChunk(chunkHeader, message, doExecute,
                                    vpackBegin, chunkEnd)) {
-      return false;
+      return false; // error, closeTask was called
     }
   } else {
     if (!getMessageFromMultiChunks(chunkHeader, message, doExecute,
                                    vpackBegin, chunkEnd)) {
-      return false;
+      return false; // error, closeTask was called
     }
   }
 
@@ -383,11 +387,12 @@ bool VstCommTask::processRead(double startTime) {
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
-
+    
     // handle request types
     if (type == 1000) {
       handleAuthHeader(header, chunkHeader._messageID);
     } else {
+      
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
@@ -428,7 +433,7 @@ bool VstCommTask::processRead(double startTime) {
             request->setClientTaskId(_taskId);
 
             // temporarily release the mutex
-            MUTEX_UNLOCKER(locker, _lock);
+            //MUTEX_UNLOCKER(locker, _lock);
 
             std::unique_ptr<VstResponse> response(new VstResponse(
                  rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));

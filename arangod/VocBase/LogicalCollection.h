@@ -354,17 +354,14 @@ class LogicalCollection: public LogicalDataSource {
 
   void increaseInternalVersion();
 
-  std::string generateGloballyUniqueId() const;
-
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
- protected:
   // SECTION: Meta Information
   //
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-  
+
   bool const _isAStub;
 
   // @brief Collection type
@@ -411,10 +408,6 @@ class LogicalCollection: public LogicalDataSource {
   std::shared_ptr<velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
-
-  /// @brief globally unique collection id. assigned by the
-  /// initial creator of the collection
-  std::string _globallyUniqueId;
 
   std::unique_ptr<PhysicalCollection> _physical;
 

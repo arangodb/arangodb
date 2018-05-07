@@ -1,6 +1,10 @@
 devel
 -----
 
+* added `/_admin/repair/distributeShardsLike` that repairs collections with
+  distributeShardsLike where the shards aren't actually distributed like in the
+  prototype collection, as could happen due to internal issue #1770
+
 * Fixed issue #4271: Change the behavior of the `fullCount` option for AQL query 
   cursors so that it will only take into account `LIMIT` statements on the top level 
   of the query.

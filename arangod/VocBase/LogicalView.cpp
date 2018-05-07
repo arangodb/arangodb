@@ -24,15 +24,13 @@
 #include "LogicalView.h"
 
 #include "RestServer/ViewTypesFeature.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/Exceptions.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "velocypack/Iterator.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 using Helper = arangodb::basics::VelocyPackHelper;
 
@@ -56,55 +54,6 @@ bool ReadIsSystem(arangodb::velocypack::Slice info) {
   );
 }
 
-TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
-  if (!info.isObject()) {
-    // ERROR CASE
-    return 0;
-  }
-  VPackSlice id = info.get("planId");
-  if (id.isNone()) {
-    return vid;
-  }
-
-  if (id.isString()) {
-    // string cid, e.g. "9988488"
-    return arangodb::basics::StringUtils::uint64(id.copyString());
-  } else if (id.isNumber()) {
-    // numeric cid, e.g. 9988488
-    return id.getNumericValue<uint64_t>();
-  }
-  // TODO Throw error for invalid type?
-  return vid;
-}
-
-/*static*/ TRI_voc_cid_t ReadViewId(VPackSlice info) {
-  if (!info.isObject()) {
-    // ERROR CASE
-    return 0;
-  }
-
-  // Somehow the id is now propagated to dbservers
-  TRI_voc_cid_t id = Helper::extractIdValue(info);
-
-  if (id) {
-    return id;
-  }
-
-  if (arangodb::ServerState::instance()->isDBServer()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-
-    return ci ? ci->uniqid(1) : 0;
-  }
-
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-
-    return ci ? ci->uniqid(1) : 0;
-  }
-
-  return TRI_NewTickServer();
-}
-
 } // namespace
 
 namespace arangodb {
@@ -126,13 +75,22 @@ LogicalView::LogicalView(
        arangodb::basics::VelocyPackHelper::getStringRef(definition, "type", "")
      ),
      vocbase,
-     ReadViewId(definition),
-     ReadPlanId(definition, 0),
+     arangodb::basics::VelocyPackHelper::extractIdValue(definition),
+     arangodb::basics::VelocyPackHelper::getStringValue(definition, "globallyUniqueId", ""),
+     arangodb::basics::VelocyPackHelper::stringUInt64(definition.get("planId")),
      arangodb::basics::VelocyPackHelper::getStringValue(definition, "name", ""),
      planVersion,
      ReadIsSystem(definition),
      Helper::readBooleanValue(definition, "deleted", false)
    ) {
+  // ensure that the 'definition' was used as the configuration source
+  if (!definition.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "got an invalid view definition while constructing LogicalView"
+    );
+  }
+
   if (!TRI_vocbase_t::IsAllowedName(definition)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -157,6 +115,7 @@ LogicalView::LogicalView(
 /*static*/ std::shared_ptr<LogicalView> LogicalView::create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
+    bool isNew,
     uint64_t planVersion /*= 0*/,
     PreCommitCallback const& preCommit /*= PreCommitCallback()*/
 ) {
@@ -184,7 +143,7 @@ LogicalView::LogicalView(
     return nullptr;
   }
 
-  auto view = viewFactory(vocbase, definition, planVersion, preCommit);
+  auto view = viewFactory(vocbase, definition, isNew, planVersion, preCommit);
 
   if (!view) {
     LOG_TOPIC(ERR, Logger::VIEWS)
@@ -219,7 +178,7 @@ DBServerLogicalView::~DBServerLogicalView() {
 
 /*static*/ arangodb::Result DBServerLogicalView::create(
     DBServerLogicalView const& view
-) noexcept {
+) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
@@ -326,6 +285,7 @@ void DBServerLogicalView::toVelocyPack(
 
   if (includeSystem) {
     result.add("deleted", VPackValue(deleted()));
+    result.add("globallyUniqueId", VPackValue(guid()));
     result.add("isSystem", VPackValue(system()));
 
     // FIXME not sure if the following is relevant

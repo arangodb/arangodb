@@ -39,15 +39,15 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the IResearch View definition denoting the
-///        corresponding linked collections
-////////////////////////////////////////////////////////////////////////////////
-const std::string COLLECTIONS_FIELD("collections");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
 ///        view deletion marker (from LogicalView.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 const std::string DELETED_FIELD("deleted");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        view globaly-unique id (from LogicalView.cpp)
+////////////////////////////////////////////////////////////////////////////////
+const std::string GLOBALLY_UNIQUE_ID_FIELD("globallyUniqueId");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the IResearch View definition denoting the
@@ -199,7 +199,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != COLLECTIONS_FIELD && key != StaticStrings::LinksField; // ignored fields
+    return key != StaticStrings::CollectionsField && key != StaticStrings::LinksField; // ignored fields
   };
   arangodb::velocypack::Builder builder;
 
@@ -254,10 +254,11 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
 }
 
 /*static*/ std::shared_ptr<LogicalView> IResearchViewDBServer::make(
-  TRI_vocbase_t& vocbase,
-  arangodb::velocypack::Slice const& info,
-  uint64_t planVersion,
-  LogicalView::PreCommitCallback const& preCommit /*= LogicalView::PreCommitCallback()*/
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& info,
+    bool isNew,
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit /*= {}*/
 ) {
   if (!info.isObject()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -437,7 +438,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return nullptr;
   }
 
-  auto impl = IResearchView::make(vocbase, info, planVersion, preCommit);
+  auto impl = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
 
   if (!impl) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -496,6 +497,7 @@ void IResearchViewDBServer::toVelocyPack(
 
   if (includeSystem) {
     result.add(DELETED_FIELD, arangodb::velocypack::Value(deleted()));
+    result.add(GLOBALLY_UNIQUE_ID_FIELD, arangodb::velocypack::Value(guid()));
     result.add(IS_SYSTEM_FIELD, arangodb::velocypack::Value(system()));
     result.add(PLAN_ID_FIELD, arangodb::velocypack::Value(std::to_string(planId())));
   }
@@ -504,7 +506,7 @@ void IResearchViewDBServer::toVelocyPack(
     static const std::function<bool(irs::string_ref const& key)> acceptor = [](
         irs::string_ref const& key
     )->bool {
-      return key != COLLECTIONS_FIELD && key != StaticStrings::LinksField; // ignored fields
+      return key != StaticStrings::CollectionsField && key != StaticStrings::LinksField; // ignored fields
     };
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_collections'/'_meta' can be asynchronously modified
@@ -516,7 +518,7 @@ void IResearchViewDBServer::toVelocyPack(
 
     {
       result.add(
-        COLLECTIONS_FIELD,
+        StaticStrings::CollectionsField,
         arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array)
       );
 
@@ -524,7 +526,7 @@ void IResearchViewDBServer::toVelocyPack(
         result.add(arangodb::velocypack::Value(entry.first));
       }
 
-      result.close(); // close COLLECTIONS_FIELD
+      result.close(); // close StaticStrings::CollectionsField
     }
 
     if (!mergeSliceSkipKeys(result, _meta.slice(), acceptor)) {
@@ -555,7 +557,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   static const std::function<bool(irs::string_ref const& key)> propsAcceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != COLLECTIONS_FIELD && key != StaticStrings::LinksField; // ignored fields
+    return key != StaticStrings::CollectionsField && key != StaticStrings::LinksField; // ignored fields
   };
   arangodb::velocypack::Builder props;
 

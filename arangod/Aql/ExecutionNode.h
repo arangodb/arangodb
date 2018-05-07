@@ -138,7 +138,7 @@ class ExecutionNode {
   };
 
 #ifdef USE_IRESEARCH
-  static constexpr size_t MaxNodeTypeValue = ENUMERATE_IRESEARCH_VIEW;
+  static constexpr size_t MaxNodeTypeValue = SCATTER_IRESEARCH_VIEW;
 #else 
   static constexpr size_t MaxNodeTypeValue = SHORTEST_PATH;
 #endif
