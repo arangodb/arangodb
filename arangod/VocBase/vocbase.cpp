@@ -1647,8 +1647,9 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
         unregisterView(*registeredView);
       }
 
-      auto const name =
-        arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+      auto name = arangodb::basics::VelocyPackHelper::getStringValue(
+        parameters, StaticStrings::DataSourceName, ""
+      );
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -1827,8 +1828,12 @@ bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
   return !slice.isObject()
     ? false
     : IsAllowedName(
-        arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "isSystem", false),
-        arangodb::basics::VelocyPackHelper::getStringRef(slice, "name", "")
+        arangodb::basics::VelocyPackHelper::readBooleanValue(
+          slice, StaticStrings::DataSourceSystem, false
+        ),
+        arangodb::basics::VelocyPackHelper::getStringRef(
+          slice, StaticStrings::DataSourceName, ""
+        )
       )
     ;
 }

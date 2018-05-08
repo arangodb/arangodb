@@ -26,58 +26,18 @@
 #include "IResearchView.h"
 #include "IResearchViewDBServer.h"
 #include "VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "VocBase/vocbase.h"
 
 NS_LOCAL
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view deletion marker (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string DELETED_FIELD("deleted");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view globaly-unique id (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string GLOBALLY_UNIQUE_ID_FIELD("globallyUniqueId");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view id (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string ID_FIELD("id");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view id (from vocbase.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string IS_SYSTEM_FIELD("isSystem");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view name (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string NAME_FIELD("name");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view plan ID (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string PLAN_ID_FIELD("planId");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view type (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string TYPE_FIELD("type");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the view name prefix of per-cid view instances
@@ -144,10 +104,86 @@ IResearchViewDBServer::IResearchViewDBServer(
      ? info.get(StaticStrings::PropertiesField) : emptyObjectSlice()
    ),
    _persistedPath(getPersistedPath(dbPathFeature, id())) {
+
+  auto* viewPtr = this;
+
+  // initialize transaction read callback
+  _trxReadCallback = [viewPtr](arangodb::TransactionState& state)->void {
+    switch(state.status()) {
+     case arangodb::transaction::Status::RUNNING:
+      viewPtr->snapshot(state, true);
+      return;
+     default:
+      {} // NOOP
+    }
+  };
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
   _collections.clear(); // ensure view distructors called before mutex is deallocated
+}
+
+arangodb::Result IResearchViewDBServer::appendVelocyPack(
+  arangodb::velocypack::Builder& builder,
+  bool detailed,
+  bool //forPersistence
+) const {
+  if (!builder.isOpenObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid builder provided for IResearchViewDBServer definition")
+    );
+  }
+
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(type().name())
+  );
+
+  if (!detailed) {
+    return arangodb::Result();
+  }
+
+  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+      irs::string_ref const& key
+  )->bool {
+    // ignored fields
+    return key != StaticStrings::CollectionsField
+      && key != StaticStrings::LinksField;
+  };
+  ReadMutex mutex(_mutex);
+  SCOPED_LOCK(mutex); // '_collections'/'_meta' can be asynchronously modified
+
+  builder.add(
+    StaticStrings::PropertiesField,
+    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+  );
+
+  {
+    builder.add(
+      StaticStrings::CollectionsField,
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array)
+    );
+
+    for (auto& entry: _collections) {
+      builder.add(arangodb::velocypack::Value(entry.first));
+    }
+
+    builder.close(); // close COLLECTIONS_FIELD
+  }
+
+  if (!mergeSliceSkipKeys(builder, _meta.slice(), acceptor)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failure to generate definition while generating properties jSON IResearch View in database '" << vocbase().name() << "'";
+  }
+
+  builder.close(); // close PROPERTIES_FIELD
+
+  return arangodb::Result();
+}
+
+void IResearchViewDBServer::apply(arangodb::TransactionState& state) {
+  state.addStatusChangeCallback(_trxReadCallback);
 }
 
 arangodb::Result IResearchViewDBServer::drop() {
@@ -204,9 +240,18 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  builder.add(IS_SYSTEM_FIELD, arangodb::velocypack::Value(true)); // required to for use of VIEW_NAME_PREFIX
-  builder.add(NAME_FIELD, toValuePair(generateName(name(), id(), cid))); // mark the view definition as an internal per-cid instance
-  builder.add(TYPE_FIELD, toValuePair(DATA_SOURCE_TYPE.name())); // type required for proper factory selection
+  builder.add(
+    arangodb::StaticStrings::DataSourceSystem,
+    arangodb::velocypack::Value(true)
+  ); // required to for use of VIEW_NAME_PREFIX
+  builder.add(
+    arangodb::StaticStrings::DataSourceName,
+    toValuePair(generateName(name(), id(), cid))
+  ); // mark the view definition as an internal per-cid instance
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    toValuePair(DATA_SOURCE_TYPE.name())
+  ); // type required for proper factory selection
 
   {
     builder.add(
@@ -270,7 +315,8 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   irs::string_ref name;
   bool seen;
 
-  if (!getString(name, info, NAME_FIELD, seen, std::string()) || !seen) {
+  if (!getString(name, info, arangodb::StaticStrings::DataSourceName, seen, std::string())
+      || !seen) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "definition supplied without a 'name' while instantiating IResearch View in database '" << vocbase.name() << "'";
 
@@ -401,13 +447,21 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     static const std::function<bool(irs::string_ref const& key)> acceptor = [](
         irs::string_ref const& key
     )->bool {
-      return key != ID_FIELD && key != IS_SYSTEM_FIELD && key != NAME_FIELD; // ignored fields
+      return key != arangodb::StaticStrings::DataSourceId
+        && key != arangodb::StaticStrings::DataSourceSystem
+        && key != arangodb::StaticStrings::DataSourceName; // ignored fields
     };
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    builder.add(ID_FIELD, arangodb::velocypack::Value(viewId));
-    builder.add(NAME_FIELD, arangodb::velocypack::Value(viewName));
+    builder.add(
+      arangodb::StaticStrings::DataSourceId,
+      arangodb::velocypack::Value(viewId)
+    );
+    builder.add(
+      arangodb::StaticStrings::DataSourceName,
+      arangodb::velocypack::Value(viewName)
+    );
     builder.add(// mark the view definition as a DBServer instance
       VIEW_CONTAINER_MARKER,
       arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
@@ -484,58 +538,14 @@ arangodb::Result IResearchViewDBServer::rename(
   return arangodb::Result();
 }
 
-void IResearchViewDBServer::toVelocyPack(
-    arangodb::velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
+PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
+    TransactionState& state,
+    bool force /*= false*/
 ) const {
-  TRI_ASSERT(result.isOpenObject());
-
-  result.add(ID_FIELD, arangodb::velocypack::Value(std::to_string(id())));
-  result.add(NAME_FIELD, arangodb::velocypack::Value(name()));
-  result.add(TYPE_FIELD, arangodb::velocypack::Value(type().name()));
-
-  if (includeSystem) {
-    result.add(DELETED_FIELD, arangodb::velocypack::Value(deleted()));
-    result.add(GLOBALLY_UNIQUE_ID_FIELD, arangodb::velocypack::Value(guid()));
-    result.add(IS_SYSTEM_FIELD, arangodb::velocypack::Value(system()));
-    result.add(PLAN_ID_FIELD, arangodb::velocypack::Value(std::to_string(planId())));
-  }
-
-  if (includeProperties) {
-    static const std::function<bool(irs::string_ref const& key)> acceptor = [](
-        irs::string_ref const& key
-    )->bool {
-      return key != StaticStrings::CollectionsField && key != StaticStrings::LinksField; // ignored fields
-    };
-    ReadMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_collections'/'_meta' can be asynchronously modified
-
-    result.add(
-      StaticStrings::PropertiesField,
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-    );
-
-    {
-      result.add(
-        StaticStrings::CollectionsField,
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array)
-      );
-
-      for (auto& entry: _collections) {
-        result.add(arangodb::velocypack::Value(entry.first));
-      }
-
-      result.close(); // close StaticStrings::CollectionsField
-    }
-
-    if (!mergeSliceSkipKeys(result, _meta.slice(), acceptor)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to generate definition while properties generating jSON IResearch View in database '" << vocbase().name() << "'";
-    }
-
-    result.close(); // close StaticStrings::PropertiesField
-  }
+  // FIXME TODO
+  // retrieve master shards from all collections involved
+  // and build up a corresponding index reader
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 arangodb::Result IResearchViewDBServer::updateProperties(

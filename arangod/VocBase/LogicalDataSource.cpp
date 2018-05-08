@@ -29,6 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/ServerIdFeature.h"
 #include "velocypack/StringRef.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -94,6 +95,35 @@ TRI_voc_cid_t ensureId(TRI_voc_cid_t id) {
   return TRI_NewTickServer();
 }
 
+bool readIsSystem(arangodb::velocypack::Slice definition) {
+  if (!definition.isObject()) {
+    return false;
+  }
+
+  static const std::string empty;
+  auto name = arangodb::basics::VelocyPackHelper::getStringValue(
+    definition, arangodb::StaticStrings::DataSourceName, empty
+  );
+
+  if (!TRI_vocbase_t::IsSystemName(name)) {
+    return false;
+  }
+
+  // same condition as in LogicalCollection
+  return arangodb::basics::VelocyPackHelper::readBooleanValue(
+    definition, arangodb::StaticStrings::DataSourceSystem, false
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief create an arangodb::velocypack::ValuePair for a string value
+//////////////////////////////////////////////////////////////////////////////
+arangodb::velocypack::ValuePair toValuePair(std::string const& value) {
+  return arangodb::velocypack::ValuePair(
+    &value[0], value.size(), arangodb::velocypack::ValueType::String
+  );
+}
+
 } // namespace
 
 namespace arangodb {
@@ -127,6 +157,34 @@ LogicalDataSource::LogicalDataSource(
     Category const& category,
     Type const& type,
     TRI_vocbase_t& vocbase,
+    velocypack::Slice const& definition,
+    uint64_t planVersion
+): LogicalDataSource(
+     category,
+     type,
+     vocbase,
+     basics::VelocyPackHelper::extractIdValue(definition),
+     basics::VelocyPackHelper::getStringValue(
+       definition, StaticStrings::DataSourceGuid, ""
+     ),
+     basics::VelocyPackHelper::stringUInt64(
+       definition.get(StaticStrings::DataSourcePlanId)
+     ),
+     basics::VelocyPackHelper::getStringValue(
+       definition, StaticStrings::DataSourceName, ""
+     ),
+     planVersion,
+     readIsSystem(definition),
+     basics::VelocyPackHelper::readBooleanValue(
+       definition, StaticStrings::DataSourceDeleted, false
+     )
+   ) {
+}
+
+LogicalDataSource::LogicalDataSource(
+    Category const& category,
+    Type const& type,
+    TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     std::string&& guid,
     TRI_voc_cid_t planId,
@@ -146,6 +204,43 @@ LogicalDataSource::LogicalDataSource(
    _system(system) {
   TRI_ASSERT(_id);
   TRI_ASSERT(!_guid.empty());
+}
+
+Result LogicalDataSource::toVelocyPack(
+    velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+) const {
+  if (!builder.isOpenObject()) {
+    return Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid builder provided for data-source definition")
+    );
+  }
+
+  builder.add(
+    StaticStrings::DataSourceId,
+    velocypack::Value(std::to_string(id()))
+  );
+  builder.add(StaticStrings::DataSourceName, toValuePair(name()));
+
+  // note: includeSystem and forPersistence are not 100% synonymous,
+  // however, for our purposes this is an okay mapping; we only set
+  // includeSystem if we are persisting the properties
+  if (forPersistence) {
+    builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
+    builder.add(StaticStrings::DataSourceGuid, toValuePair(guid()));
+    builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
+
+    // FIXME not sure if the following is relevant
+    // Cluster Specific
+    builder.add(
+      StaticStrings::DataSourcePlanId,
+      velocypack::Value(std::to_string(planId()))
+    );
+  }
+
+  return appendVelocyPack(builder, detailed, forPersistence);
 }
 
 } // arangodb
