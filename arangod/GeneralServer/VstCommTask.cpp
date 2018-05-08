@@ -89,6 +89,7 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
                       skipInit),
       _authorized(false),
+      _authMethod(rest::AuthenticationMethod::NONE),
       _authenticatedUser(),
       _protocolVersion(protocolVersion) {
   _protocol = "vst";
@@ -254,27 +255,27 @@ bool VstCommTask::isChunkComplete(char* start) {
 
 void VstCommTask::handleAuthHeader(VPackSlice const& header,
                                    uint64_t messageId) {
-  _authorized = false;
   
   std::string authString;
   std::string user = "";
-  AuthenticationMethod authType = AuthenticationMethod::NONE;
+  _authorized = false;
+  _authMethod = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();
   if (encryption == "jwt") {// doing JWT
     authString = header.at(3).copyString();
-    authType = AuthenticationMethod::JWT;
+    _authMethod = AuthenticationMethod::JWT;
   } else if (encryption == "plain") {
     user = header.at(3).copyString();
     std::string pass = header.at(4).copyString();
     authString = basics::StringUtils::encodeBase64(user + ":" + pass);
-    authType = AuthenticationMethod::BASIC;
+    _authMethod = AuthenticationMethod::BASIC;
   } else {
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
   
   if (_auth->isActive()) { // will just fail if method is NONE
-    auto entry = _auth->tokenCache()->checkAuthentication(authType, authString);
+    auto entry = _auth->tokenCache()->checkAuthentication(_authMethod, authString);
     _authorized = entry.authenticated();
     if (_authorized) {
       _authenticatedUser = std::move(entry._username);
@@ -398,6 +399,7 @@ bool VstCommTask::processRead(double startTime) {
           _connectionInfo, std::move(message), chunkHeader._messageID));
       request->setAuthenticated(_authorized);
       request->setUser(_authenticatedUser);
+      request->setAuthenticationMethod(_authMethod);
       if (_authorized && _auth->userManager() != nullptr) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
