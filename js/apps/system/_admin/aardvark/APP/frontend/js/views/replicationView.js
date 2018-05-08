@@ -397,9 +397,16 @@
         });
       }
 
+      var leader;
+      if (self.mode === 3) {
+        leader = 'Leader';
+      } else {
+        leader = 'Master';
+      }
+
       var graphDataTime = {
         leader: {
-          key: 'Leader',
+          key: leader,
           values: [],
           strokeWidth: 2,
           color: '#2ecc71'
@@ -408,7 +415,7 @@
 
       var graphDataTick = {
         leader: {
-          key: 'Leader',
+          key: leader,
           values: [],
           strokeWidth: 2,
           color: '#2ecc71'
@@ -422,14 +429,21 @@
         var colorCount = 0;
         _.each(data.clients, function (client) {
           if (!graphDataTime[client.serverId]) {
+            var key;
+            if (self.mode === 3) {
+              key = 'Follower (' + client.serverId + ')';
+            } else {
+              key = 'Slave (' + client.serverId + ')';
+            }
+
             graphDataTime[client.serverId] = {
-              key: 'Follower (' + client.serverId + ')',
+              key: key,
               color: self.colors[colorCount],
               strokeWidth: 1,
               values: []
             };
             graphDataTick[client.serverId] = {
-              key: 'Follower (' + client.serverId + ')',
+              key: key,
               color: self.colors[colorCount],
               strokeWidth: 1,
               values: []
