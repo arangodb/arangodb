@@ -281,8 +281,8 @@ SCENARIO("Broken distributeShardsLike collections",
 
         REQUIRE(collectionResult.errorNumber() ==
                 TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                            "not enough (healthy) db servers"));
+        REQUIRE(std::string{TRI_errno_string(collectionResult.errorNumber())} ==
+                    "not enough (healthy) db servers");
         REQUIRE(collectionResult.fail());
       }
 
@@ -304,8 +304,8 @@ SCENARIO("Broken distributeShardsLike collections",
 
         REQUIRE(collectionResult.errorNumber() ==
                 TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                            "not enough (healthy) db servers"));
+        REQUIRE(std::string{TRI_errno_string(collectionResult.errorNumber())} ==
+                    "not enough (healthy) db servers");
         REQUIRE(collectionResult.fail());
       }
     }
