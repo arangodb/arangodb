@@ -66,12 +66,17 @@ SynchronizeShard::SynchronizeShard(ActionDescription const& d) :
   TRI_ASSERT(d.properties().get(TYPE).isInteger());  */
 }
 
-class SynchronizeShardCallback {
+class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {
+public:
   SynchronizeShardCallback(SynchronizeShard* callie) : _callie(callie) {};
+  virtual bool operator()(arangodb::ClusterCommResult*) override final {
+    return true;
+  }
+private:
   std::shared_ptr<SynchronizeShard> _callie;
 };
 
-arangodb::Result getReadLockid (
+arangodb::Result getReadLockId (
   std::string const& endpoint, std::string const& database,
   std::string const& clientId, double timeout, uint64_t& id) {
 
@@ -90,7 +95,7 @@ arangodb::Result getReadLockid (
   
   auto result = comres->result;
   if (result != nullptr) { 
-    if (result->getHttpReturnCode() == rest::ResponseCode::OK) {
+    if (result->getHttpReturnCode() == 200) {
       auto const idv = comres->result->getBodyVelocyPack();
       auto const& idSlice = idv->slice();
       TRI_ASSERT(idSlice.isObject());
@@ -119,7 +124,7 @@ arangodb::Result getReadLockid (
 arangodb::Result getReadLock(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  uint64_t rlid, double timeout) {
+  uint64_t rlid, SynchronizeShard* s, double timeout) {
 
   auto start = std::chrono::steady_clock::now();
 
@@ -135,29 +140,27 @@ arangodb::Result getReadLock(
     b.add(COLLECTION, VPackValue(collection));
     b.add(TTL, VPackValue(timeout)); }
 
-  auto hf =
-    std::make_unique<std::unordered_map<std::string, std::string>>();
-
   auto url = DB + database + REPL_HOLD_READ_LOCK;
   
-  auto postres = cc->asyncRequest(
-    clientId, 2, endpoint, rest::RequestType::POST, url, b.toJson(), hf,
-    std::make_shared<SynchronizeShardCallback>(this), 1.0, true, 0.5);
+  cc->asyncRequest(
+    clientId, 2, endpoint, rest::RequestType::POST, url,
+    std::make_shared<std::string>(b.toJson()),
+    std::unordered_map<std::string, std::string>(),
+    std::make_shared<SynchronizeShardCallback>(s), 1.0, true, 0.5);
   
   // Intentionally do not look at the outcome, even in case of an error
   // we must make sure that the read lock on the leader is not active!
   // This is done automatically below.
   
-  decltype(postres) putres;
   size_t count = 0;
   while (++count < 20) { // wait for some time until read lock established:
     // Now check that we hold the read lock:
-    putres = cc->syncRequest(
-      std::hash(_description), 1, endpoint, rest::RequestType::PUT, url,
-      b.toJson(), std::unordered_map<std::string, std::string>(), timeout);
+    auto putres = cc->syncRequest(
+      clientId, 1, endpoint, rest::RequestType::PUT, url, b.toJson(),
+      std::unordered_map<std::string, std::string>(), timeout);
     
     auto result = putres->result; 
-    if (result->getHttpReturnCode() == rest::ResponseCode::OK) {
+    if (result->getHttpReturnCode() == 200) {
       auto const vp = putres->result->getBodyVelocyPack();
       auto const& slice = vp->slice();
       TRI_ASSERT(slice.isObject());
@@ -174,7 +177,7 @@ arangodb::Result getReadLock(
     }
 
     // std::hash<ActionDescription>(_description)
-    std::this_thread::sleep_for(std::chrono::duration(.5));
+    std::this_thread::sleep_for(std::chrono::duration<double>(.5));
     if ((std::chrono::steady_clock::now() - start).count() > timeout) {
       LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
       return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
@@ -190,7 +193,7 @@ bool isStopping() {
 arangodb::Result startReadLockOnLeader(
   std::string const& endpoint, std::string const& database,
   std::string const& collection, std::string const& clientId,
-  double timeout = 120.0) {
+  SynchronizeShard* s,  double timeout = 120.0) {
 
   auto start = std::chrono::steady_clock::now();
 
@@ -198,12 +201,12 @@ arangodb::Result startReadLockOnLeader(
   uint64_t rlid = 0;
   arangodb::Result result =
     getReadLockId(endpoint, database, clientId, timeout, rlid);
-  if (!result.successful()) {
+  if (!result.ok()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << result.errorMessage();
     return result;
   }
 
-  result = getReadLock(endpoint, database, collection, clientId, rlid, timeout);
+  result = getReadLock(endpoint, database, collection, clientId, rlid, s, timeout);
   
   auto elapsed = (std::chrono::steady_clock::now() - start).count();
 
@@ -213,7 +216,7 @@ arangodb::Result startReadLockOnLeader(
 
 
 arangodb::Result terminateAndStartOther() {
-  return arangodb::Result;
+  return arangodb::Result();
 }
 
 
@@ -222,7 +225,7 @@ arangodb::Result synchroniseOneShard(
   std::string const& planId, std::string const& leader) {
 
   auto* clusterInfo = ClusterInfo::instance();
-  auto const ourselves = clusterInfo;
+  auto const ourselves = arangodb::ServerState::instance()->getId();
   auto const startTime = std::chrono::system_clock::now();
   
   while(true) {
@@ -233,8 +236,8 @@ arangodb::Result synchroniseOneShard(
     }
 
     std::vector<std::string> planned;
-    auto result = clusterInfo->shards(shard, planned);
-    if (!result.successful() ||
+    auto result = clusterInfo->getShardServers(shard, planned);
+    if (!result.ok() ||
         std::find(planned.begin(), planned.end(), ourselves) != planned.end() ||
         planned.front() != leader) {
       // Things have changed again, simply terminate:
@@ -243,19 +246,20 @@ arangodb::Result synchroniseOneShard(
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: cancelled, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
-        << TimepointToString(startTime) << ", ended " << TimepointToString(endTime);
-      return arangodb::Result(ERROR_FAILED, "synchronizeOneShard: cancelled");
+        << timepointToString(startTime) << ", ended " << timepointToString(endTime);
+      return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
     std::shared_ptr<LogicalCollection> ci =
       clusterInfo->getCollection(database, planId);
     TRI_ASSERT(ci != nullptr);
 
-    std::string const cid = ci->cid_as_string();
+    std::string const cid = std::to_string(ci->id());
     std::string const& name = ci->name();
     std::shared_ptr<CollectionInfoCurrent> cic =
       ClusterInfo::instance()->getCollectionCurrent(database, cid);
-    auto const current = cic->servers(shard);
+    std::vector<std::string> current;
+    auto curres = cic->servers(shard);
 
     TRI_ASSERT(!current.empty());
     if (current.front() == leader) {
@@ -269,7 +273,7 @@ arangodb::Result synchroniseOneShard(
         << "synchronizeOneShard: already done, " << database << "/" << shard
         << ", " << database << "/" << planId << ", started "
         << timepointToString(startTime) << ", ended " << timepointToString(endTime);
-      return arangodb::Result(ERROR_FAILED, "synchronizeOneShard: cancelled");
+      return arangodb::Result(TRI_ERROR_FAILED, "synchronizeOneShard: cancelled");
     }
 
     std::this_thread::sleep_for(std::chrono::duration<double>(0.2));

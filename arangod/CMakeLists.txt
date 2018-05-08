@@ -307,7 +307,6 @@ SET(ARANGOD_SOURCES
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
-  Cluster/SelectivityEstimates.cpp
   Cluster/ServerState.cpp
   Cluster/ShardDistributionReporter.cpp
   Cluster/SynchronizeShard.cpp
