@@ -40,6 +40,24 @@
 
 namespace {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        corresponding link definitions
+////////////////////////////////////////////////////////////////////////////////
+const std::string LINKS_FIELD("links");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        view properties (from LogicalView.cpp)
+////////////////////////////////////////////////////////////////////////////////
+const std::string PROPERTIES_FIELD("properties");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        view type (from LogicalView.cpp)
+////////////////////////////////////////////////////////////////////////////////
+const std::string TYPE_FIELD("type");
+
 using namespace arangodb::basics;
 using namespace arangodb::iresearch;
 
@@ -239,6 +257,41 @@ using namespace basics;
 
 namespace iresearch {
 
+arangodb::Result IResearchViewCoordinator::appendVelocyPack(
+  arangodb::velocypack::Builder& builder,
+  bool detailed,
+  bool //forPersistence
+) const {
+  if (!builder.isOpenObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid builder provided for IResearchViewCoordinator definition")
+    );
+  }
+
+  builder.add(TYPE_FIELD, arangodb::velocypack::Value(type().name()));
+
+  if (!detailed) {
+    return arangodb::Result();
+  }
+
+  builder.add(
+    PROPERTIES_FIELD,
+    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+  );
+  _meta.json(builder); // regular properites
+
+  auto links = _links.slice();
+
+  if (links.isObject() && links.length()) {
+    builder.add(LINKS_FIELD, links);
+  }
+
+  builder.close(); // close PROPERTIES_FIELD
+
+  return arangodb::Result();
+}
+
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& info,
@@ -328,42 +381,6 @@ bool IResearchViewCoordinator::visitCollections(
   }
 
   return true;
-}
-
-void IResearchViewCoordinator::toVelocyPack(
-    velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-) const {
-  // We write into an open object
-  TRI_ASSERT(result.isOpenObject());
-
-  // Meta Information
-  result.add("id", VPackValue(StringUtils::itoa(id())));
-  result.add("name", VPackValue(name()));
-  result.add("type", VPackValue(type().name()));
-
-  if (includeSystem) {
-    result.add("deleted", VPackValue(deleted()));
-    result.add("planId", VPackValue(std::to_string(planId())));
-  }
-
-  if (includeProperties) {
-    VPackObjectBuilder guard(&result, StaticStrings::PropertiesField);
-
-    // regular properites
-    _meta.json(result);
-
-    // view links
-    auto const links = _links.slice();
-
-    if (links.isObject() && links.length()) {
-      VPackObjectBuilder guard(&result, StaticStrings::LinksField);
-      mergeSlice(result, links);
-    }
-  }
-
-  TRI_ASSERT(result.isOpenObject()); // We leave the object open
 }
 
 arangodb::Result IResearchViewCoordinator::updateProperties(

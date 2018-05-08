@@ -71,17 +71,18 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     return { TRI_ERROR_NOT_IMPLEMENTED };
   }
 
-  virtual void toVelocyPack(
-    velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const override;
-
   virtual arangodb::Result updateProperties(
     velocypack::Slice const& properties,
     bool partialUpdate,
     bool doSync
   ) override;
+
+ protected:
+  virtual Result appendVelocyPack(
+      arangodb::velocypack::Builder& builder,
+      bool detailed,
+      bool forPersistence
+  ) const override ;
 
  private:
   IResearchViewCoordinator(
@@ -90,6 +91,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
   IResearchViewMeta _meta;
   velocypack::Builder _links;
+
 }; // IResearchViewCoordinator
 
 } // iresearch

@@ -746,25 +746,31 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   result.close();  // CollectionInfo
 }
 
-void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
-                                     bool forPersistence) const {
+arangodb::Result LogicalCollection::appendVelocyPack(
+    arangodb::velocypack::Builder& result,
+    bool translateCids,
+    bool forPersistence
+) const {
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 
   // Collection Meta Information
   result.add("cid", VPackValue(std::to_string(id())));
-  result.add("id", VPackValue(std::to_string(id())));
-  result.add("name", VPackValue(name()));
   result.add("type", VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("statusString", VPackValue(::translateStatus(_status)));
   result.add("version", VPackValue(_version));
 
   // Collection Flags
-  result.add("deleted", VPackValue(deleted()));
-  result.add("isSystem", VPackValue(system()));
   result.add("waitForSync", VPackValue(_waitForSync));
-  result.add("globallyUniqueId", VPackValue(guid()));
+
+  if (!forPersistence) {
+    // with 'forPersistence' added by LogicalDataSource::toVelocyPack
+    // FIXME TODO is this needed in !forPersistence???
+    result.add("deleted", VPackValue(deleted()));
+    result.add("globallyUniqueId", VPackValue(guid()));
+    result.add("isSystem", VPackValue(system()));
+  }
 
   // TODO is this still releveant or redundant in keyGenerator?
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
@@ -789,7 +795,13 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
 
   // Cluster Specific
   result.add("isSmart", VPackValue(_isSmart));
-  result.add("planId", VPackValue(std::to_string(planId())));
+
+  if (!forPersistence) {
+    // with 'forPersistence' added by LogicalDataSource::toVelocyPack
+    // FIXME TODO is this needed in !forPersistence???
+    result.add("planId", VPackValue(std::to_string(planId())));
+  }
+
   result.add("numberOfShards", VPackValue(_numberOfShards));
   result.add(VPackValue("shards"));
   result.openObject();
@@ -842,6 +854,8 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
 
   TRI_ASSERT(result.isOpenObject());
   // We leave the object open
+
+  return arangodb::Result();
 }
 
 void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,

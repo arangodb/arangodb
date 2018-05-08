@@ -32,29 +32,21 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-using Helper = arangodb::basics::VelocyPackHelper;
-
 namespace {
 
-bool ReadIsSystem(arangodb::velocypack::Slice info) {
-  if (!info.isObject()) {
-    return false;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        view properties
+////////////////////////////////////////////////////////////////////////////////
+const std::string PROPERTIES_FIELD("properties");
 
-  auto name =
-    arangodb::basics::VelocyPackHelper::getStringValue(info, "name", "");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        view type
+////////////////////////////////////////////////////////////////////////////////
+const std::string TYPE_FIELD("type");
 
-  if (!TRI_vocbase_t::IsSystemName(name)) {
-    return false;
-  }
-
-  // same condition as in LogicalCollection
-  return arangodb::basics::VelocyPackHelper::readBooleanValue(
-    info, "isSystem", false
-  );
 }
-
-} // namespace
 
 namespace arangodb {
 
@@ -75,13 +67,8 @@ LogicalView::LogicalView(
        arangodb::basics::VelocyPackHelper::getStringRef(definition, "type", "")
      ),
      vocbase,
-     arangodb::basics::VelocyPackHelper::extractIdValue(definition),
-     arangodb::basics::VelocyPackHelper::getStringValue(definition, "globallyUniqueId", ""),
-     arangodb::basics::VelocyPackHelper::stringUInt64(definition.get("planId")),
-     arangodb::basics::VelocyPackHelper::getStringValue(definition, "name", ""),
-     planVersion,
-     ReadIsSystem(definition),
-     Helper::readBooleanValue(definition, "deleted", false)
+     definition,
+     planVersion
    ) {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
@@ -176,6 +163,52 @@ DBServerLogicalView::~DBServerLogicalView() {
   }
 }
 
+arangodb::Result DBServerLogicalView::appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+) const {
+  if (!builder.isOpenObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid builder provided for IResearchViewDBServer definition")
+    );
+  }
+
+  builder.add(TYPE_FIELD, arangodb::velocypack::Value(type().name()));
+
+  // note: includeSystem and forPersistence are not 100% synonymous,
+  // however, for our purposes this is an okay mapping; we only set
+  // includeSystem if we are persisting the properties
+  if (forPersistence) {
+    // storage engine related properties
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+    if (!engine) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    engine->getViewProperties(vocbase(), this, builder);
+  }
+
+  if (detailed) {
+    // implementation Information
+    builder.add(
+      PROPERTIES_FIELD,
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+    );
+    getPropertiesVPack(builder, forPersistence);
+    builder.close();
+  }
+
+  // ensure that the object is still open
+  if (!builder.isOpenObject()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return arangodb::Result();
+}
+
 /*static*/ arangodb::Result DBServerLogicalView::create(
     DBServerLogicalView const& view
 ) {
@@ -266,49 +299,6 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
 
   // write WAL 'rename' marker
   return engine->renameView(vocbase(), *this, oldName);
-}
-
-void DBServerLogicalView::toVelocyPack(
-    velocypack::Builder &result,
-    bool includeProperties,
-    bool includeSystem
-) const {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  // We write into an open object
-  TRI_ASSERT(result.isOpenObject());
-
-  // Meta Information
-  result.add("id", VPackValue(std::to_string(id())));
-  result.add("name", VPackValue(name()));
-  result.add("type", VPackValue(type().name()));
-
-  if (includeSystem) {
-    result.add("deleted", VPackValue(deleted()));
-    result.add("globallyUniqueId", VPackValue(guid()));
-    result.add("isSystem", VPackValue(system()));
-
-    // FIXME not sure if the following is relevant
-    // Cluster Specific
-    result.add("planId", VPackValue(std::to_string(planId())));
-
-    // storage engine related properties
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine);
-    engine->getViewProperties(vocbase(), this, result);
-  }
-
-  if (includeProperties) {
-    // implementation Information
-    result.add("properties", VPackValue(VPackValueType::Object));
-    // note: includeSystem and forPersistence are not 100% synonymous,
-    // however, for our purposes this is an okay mapping; we only set
-    // includeSystem if we are persisting the properties
-    getPropertiesVPack(result, includeSystem);
-    result.close();
-  }
-
-  TRI_ASSERT(result.isOpenObject()); // We leave the object open
 }
 
 arangodb::Result DBServerLogicalView::updateProperties(

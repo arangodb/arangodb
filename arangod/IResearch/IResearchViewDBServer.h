@@ -73,11 +73,6 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
 
   virtual void open() override;
   virtual arangodb::Result rename(std::string&& newName, bool doSync) override;
-  virtual void toVelocyPack(
-    arangodb::velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const override;
   virtual arangodb::Result updateProperties(
     arangodb::velocypack::Slice const& properties,
     bool partialUpdate,
@@ -85,6 +80,13 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ) override;
   virtual bool visitCollections(
     CollectionVisitor const& visitor
+  ) const override;
+
+ protected:
+  virtual arangodb::Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
   ) const override;
 
  private:
