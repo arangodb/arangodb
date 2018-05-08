@@ -25,8 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/asio-helper.h"
-
 namespace arangodb {
 
 namespace aql {

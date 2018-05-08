@@ -121,14 +121,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  public:
   void initEngine(EventLoop loop,
-                  std::function<void(RestHandler*)> const& storeResult) {
+                  std::function<void(std::shared_ptr<rest::RestHandler>)> const& storeResult) {
     _storeResult = storeResult;
     _engine.init(loop);
   }
 
   int asyncRunEngine() { return _engine.asyncRun(shared_from_this()); }
   int syncRunEngine() {
-    _storeResult = [](RestHandler*) {};
+    _storeResult = [](std::shared_ptr<rest::RestHandler>) {};
     return _engine.syncRun(shared_from_this());
   }
 
@@ -139,7 +139,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  private:
   RestEngine _engine;
-  std::function<void(rest::RestHandler*)> _storeResult;
+  std::function<void(std::shared_ptr<rest::RestHandler>)> _storeResult;
 };
 
 }

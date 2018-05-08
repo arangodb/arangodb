@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,10 +27,11 @@
 
 #include "Basics/Common.h"
 
-#include <boost/asio/steady_timer.hpp>
+#include <asio/steady_timer.hpp>
+#include <asio/io_context.hpp>
 
 #include "Basics/Mutex.h"
-#include "Basics/asio-helper.h"
+//#include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/Job.h"
@@ -43,13 +44,21 @@ namespace velocypack {
 class Builder;
 }
 
+class ListenTask;
+
 namespace rest {
 
+  class GeneralCommTask;
+  class SocketTask;
+  
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
 
   friend class arangodb::JobGuard;
+  friend class arangodb::rest::GeneralCommTask;
+  friend class arangodb::rest::SocketTask;
+  friend class arangodb::ListenTask;
 
  public:
   Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
@@ -57,15 +66,15 @@ class Scheduler {
   virtual ~Scheduler();
 
  public:
-  boost::asio::io_service* ioService() const { return _ioService.get(); }
-  boost::asio::io_service* managerService() const {
+  asio::io_context* ioContext() const { return _ioContext.get(); }
+  asio::io_context* managerService() const {
     return _managerService.get();
   }
 
   EventLoop eventLoop() {
     // return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
     // windows complains ...
-    return EventLoop{_ioService.get(), this};
+    return EventLoop{_ioContext.get(), this};
   }
 
   void post(std::function<void()> callback);
@@ -88,7 +97,7 @@ class Scheduler {
   bool stopThreadIfTooMany(double now);
 
   bool shouldQueueMore() const;
-  bool hasQueueCapacity() const;
+  bool shouldExecuteDirect() const;
 
   /// queue processing of an async rest job
   bool queue(std::unique_ptr<Job> job);
@@ -96,10 +105,14 @@ class Scheduler {
   std::string infoStatus();
 
   uint64_t minimum() const { return _nrMinimum; }
+  /// number of queued handlers
   inline uint64_t numQueued() const noexcept { return  _nrQueued; };
   inline uint64_t getCounters() const noexcept { return _counters; }
+  /// Number of running threads
   static uint64_t numRunning(uint64_t value) noexcept { return value & 0xFFFFULL; }
+  /// Number of running threads
   static uint64_t numWorking(uint64_t value) noexcept { return (value >> 16) & 0xFFFFULL; }
+  /// Number of blocked threads
   static uint64_t numBlocked(uint64_t value) noexcept { return (value >> 32) & 0xFFFFULL; }
 
   inline void queueJob() noexcept { ++_nrQueued; } 
@@ -163,14 +176,14 @@ class Scheduler {
 
   std::unique_ptr<JobQueue> _jobQueue;
 
-  boost::shared_ptr<boost::asio::io_service::work> _serviceGuard;
-  std::unique_ptr<boost::asio::io_service> _ioService;
+  std::shared_ptr<asio::io_context::work> _serviceGuard;
+  std::unique_ptr<asio::io_context> _ioContext;
 
-  boost::shared_ptr<boost::asio::io_service::work> _managerGuard;
-  std::unique_ptr<boost::asio::io_service> _managerService;
+  std::shared_ptr<asio::io_context::work> _managerGuard;
+  std::unique_ptr<asio::io_context> _managerService;
 
-  std::unique_ptr<boost::asio::steady_timer> _threadManager;
-  std::function<void(const boost::system::error_code&)> _threadHandler;
+  std::unique_ptr<asio::steady_timer> _threadManager;
+  std::function<void(const asio::error_code&)> _threadHandler;
 
   mutable Mutex _threadCreateLock;
   double _lastAllBusyStamp;

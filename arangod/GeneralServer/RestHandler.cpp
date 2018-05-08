@@ -107,7 +107,7 @@ int RestHandler::prepareEngine() {
                   "request has been canceled by user", __FILE__, __LINE__);
     handleError(err);
 
-    _storeResult(this);
+    _storeResult(shared_from_this());
     return TRI_ERROR_REQUEST_CANCELED;
   }
 
@@ -129,7 +129,7 @@ int RestHandler::prepareEngine() {
   }
 
   _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _storeResult(shared_from_this());
   return TRI_ERROR_INTERNAL;
 }
 
@@ -170,7 +170,7 @@ int RestHandler::finalizeEngine() {
     _engine.setState(RestEngine::State::DONE);
   } else {
     _engine.setState(RestEngine::State::FAILED);
-    _storeResult(this);
+    _storeResult(shared_from_this());
   }
   
   return res;
@@ -192,7 +192,7 @@ int RestHandler::executeEngine() {
       }
 
       _engine.setState(RestEngine::State::FINALIZE);
-      _storeResult(this);
+      _storeResult(shared_from_this());
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -242,7 +242,7 @@ int RestHandler::executeEngine() {
   }
 
   _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _storeResult(shared_from_this());
   return TRI_ERROR_INTERNAL;
 }
 
@@ -257,12 +257,12 @@ int RestHandler::runEngine(bool synchron) {
       switch (result->state()) {
         case RestStatusElement::State::DONE:
           _engine.setState(RestEngine::State::FINALIZE);
-          _storeResult(this);
+          _storeResult(shared_from_this());
           break;
 
         case RestStatusElement::State::FAIL:
           _engine.setState(RestEngine::State::FINALIZE);
-          _storeResult(this);
+          _storeResult(shared_from_this());
           return TRI_ERROR_NO_ERROR;
 
         case RestStatusElement::State::WAIT_FOR:
@@ -324,7 +324,7 @@ int RestHandler::runEngine(bool synchron) {
   }
 
   _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _storeResult(shared_from_this());
   return TRI_ERROR_INTERNAL;
 }
 

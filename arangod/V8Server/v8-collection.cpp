@@ -2349,7 +2349,7 @@ static void JS_GloballyUniqueIdVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  std::string uniqueId = collection->globallyUniqueId();
+  auto& uniqueId = collection->guid();
 
   TRI_V8_RETURN(TRI_V8_ASCII_STD_STRING(isolate, uniqueId));
   TRI_V8_TRY_CATCH_END
@@ -2688,7 +2688,6 @@ static void JS_CompletionsVocbase(
   }
 
   // add function names. these are hard coded
-  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_changeMode()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_collection()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_collections()"));
   result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_create()"));

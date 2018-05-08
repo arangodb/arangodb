@@ -80,7 +80,7 @@ class MMFilesIndexFillerTask : public basics::LocalTask {
       std::shared_ptr<std::vector<std::pair<LocalDocumentId, VPackSlice>>> const& documents)
       : LocalTask(queue), _trx(trx), _idx(idx), _documents(documents) {}
 
-  void run() {
+  void run() override {
     TRI_ASSERT(_idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
     try {

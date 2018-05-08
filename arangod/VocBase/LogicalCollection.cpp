@@ -24,46 +24,27 @@
 
 #include "LogicalCollection.h"
 
-#include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
-#include "Basics/conversions.h"
 #include "Basics/fasthash.h"
-#include "Basics/LocalTaskQueue.h"
-#include "Basics/PerformanceLogScope.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/Result.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/encoding.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
-#include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Utils/VersionTracker.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/ticks.h"
-#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -90,46 +71,32 @@ static std::string translateStatus(TRI_vocbase_col_status_e status) {
   }
 }
 
-static TRI_voc_cid_t ReadCid(VPackSlice info) {
-  if (!info.isObject()) {
-    // ERROR CASE
-    return 0;
+std::string ReadGloballyUniqueId(arangodb::velocypack::Slice info) {
+  static const std::string empty;
+  auto guid = arangodb::basics::VelocyPackHelper::getStringValue(
+    info,
+    "globallyUniqueId",
+    empty
+  );
+
+  if (!guid.empty()) {
+    return guid;
   }
 
-  // Somehow the cid is now propagated to dbservers
-  TRI_voc_cid_t cid = Helper::extractIdValue(info);
+  auto version = arangodb::basics::VelocyPackHelper::readNumericValue<uint32_t>(
+    info,
+    "version",
+    LogicalCollection::currentVersion()
+  );
 
-  if (cid == 0) {
-    if (ServerState::instance()->isDBServer()) {
-      cid = ClusterInfo::instance()->uniqid(1);
-    } else if (ServerState::instance()->isCoordinator()) {
-      cid = ClusterInfo::instance()->uniqid(1);
-    } else {
-      cid = TRI_NewTickServer();
-    }
-  }
-  return cid;
-}
-
-static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t cid) {
-  if (!info.isObject()) {
-    // ERROR CASE
-    return 0;
-  }
-  VPackSlice id = info.get("planId");
-  if (id.isNone()) {
-    return cid;
+  // predictable UUID for legacy collections
+  if (version < LogicalCollection::CollectionVersions::VERSION_33) {
+    return info.isObject()
+      ? arangodb::basics::VelocyPackHelper::getStringValue(info, "name", empty)
+      : empty;
   }
 
-  if (id.isString()) {
-    // string cid, e.g. "9988488"
-    return arangodb::basics::StringUtils::uint64(id.copyString());
-  } else if (id.isNumber()) {
-    // numeric cid, e.g. 9988488
-    return id.getNumericValue<uint64_t>();
-  }
-  // TODO Throw error for invalid type?
-  return cid;
+  return empty;
 }
 
 std::string ReadStringValue(
@@ -191,17 +158,14 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _shardIds(new ShardMap()),  // Not needed
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _globallyUniqueId(other._globallyUniqueId),
       _physical(other.getPhysical()->clone(this)),
       _clusterEstimateTTL(0) {
-  
   TRI_ASSERT(_physical != nullptr);
+
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
   }
-  
-  TRI_ASSERT(!_globallyUniqueId.empty());
 }
 
 // The Slice contains the part of the plan that
@@ -215,8 +179,9 @@ LogicalCollection::LogicalCollection(
      category(),
      ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
      vocbase,
-     ReadCid(info),
-     ReadPlanId(info, 0),
+     arangodb::basics::VelocyPackHelper::extractIdValue(info),
+     ReadGloballyUniqueId(info),
+     arangodb::basics::VelocyPackHelper::stringUInt64(info.get("planId")),
      ReadStringValue(info, "name", ""),
      planVersion,
      TRI_vocbase_t::IsSystemName(ReadStringValue(info, "name", ""))
@@ -242,7 +207,6 @@ LogicalCollection::LogicalCollection(
       _shardIds(new ShardMap()),
       _keyOptions(nullptr),
       _keyGenerator(),
-      _globallyUniqueId(Helper::getStringValue(info, "globallyUniqueId", "")),
       _physical(
           EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
       _clusterEstimateTTL(0) {
@@ -261,12 +225,7 @@ LogicalCollection::LogicalCollection(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
 
-  if (_globallyUniqueId.empty()) {
-    // no id found. generate a new one
-    _globallyUniqueId = generateGloballyUniqueId();
-  }
-
-  TRI_ASSERT(!_globallyUniqueId.empty());
+  TRI_ASSERT(!guid().empty());
 
   // add keyOptions from slice
   VPackSlice keyOpts = info.get("keyOptions");
@@ -461,14 +420,6 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
 
 TRI_col_type_e LogicalCollection::type() const { return _type; }
-
-std::string LogicalCollection::globallyUniqueId() const {
-  if (!_globallyUniqueId.empty()) {
-    return _globallyUniqueId;
-  }
-
-  return generateGloballyUniqueId();
-}
 
 std::string const LogicalCollection::distributeShardsLike() const {
   return _distributeShardsLike;
@@ -813,7 +764,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
   result.add("deleted", VPackValue(deleted()));
   result.add("isSystem", VPackValue(system()));
   result.add("waitForSync", VPackValue(_waitForSync));
-  result.add("globallyUniqueId", VPackValue(_globallyUniqueId));
+  result.add("globallyUniqueId", VPackValue(guid()));
 
   // TODO is this still releveant or redundant in keyGenerator?
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
@@ -1337,43 +1288,6 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
   }
 
   return Result();
-}
-
-std::string LogicalCollection::generateGloballyUniqueId() const {
-  if (_version < VERSION_33) {
-    return name(); // predictable UUID for legacy collections
-  }
-
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
-  std::string result;
-  result.reserve(64);
-  if (ServerState::isCoordinator(role)) {
-    TRI_ASSERT(planId());
-    result.append("c");
-    result.append(std::to_string(planId()));
-  } else if (ServerState::isDBServer(role)) {
-    TRI_ASSERT(planId());
-    result.append("c");
-    // we add the shard name to the collection. If we ever
-    // replicate shards, we can identify them cluster-wide
-    result.append(std::to_string(planId()));
-    result.push_back('/');
-    result.append(name());
-  } else { // single server
-    if (system()) { // system collection can't be renamed
-      result.append(name());
-    } else {
-      TRI_ASSERT(id());
-      result.append("h");
-      char buff[sizeof(TRI_server_id_t) * 2 + 1];
-      size_t len = TRI_StringUInt64HexInPlace(ServerIdFeature::getId(), buff);
-      result.append(buff, len);
-      TRI_ASSERT(result.size() > 3);
-      result.push_back('/');
-      result.append(std::to_string(id()));
-    }
-  }
-  return result;
 }
 
 // -----------------------------------------------------------------------------
