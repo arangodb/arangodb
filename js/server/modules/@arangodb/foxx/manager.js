@@ -664,52 +664,55 @@ function _deleteServiceFromPath (mount, options) {
 // avoid a race condition with selfHeal() which could delete the files before
 // the service is saved to the database.
 function _install (mount, tempPaths, options = {}) {
-  const {tempServicePath: servicePath, tempBundlePath: bundlePath} = tempPaths;
-  const collection = utils.getStorage();
-  let service;
   try {
-    service = FoxxService.create({
-      mount,
-      options,
-      basePath: servicePath,
-      noisy: true
-    });
-    if (options.setup !== false) {
-      service.executeScript('setup');
+    const {tempServicePath: servicePath, tempBundlePath: bundlePath} = tempPaths;
+    const collection = utils.getStorage();
+    let service;
+    try {
+      service = FoxxService.create({
+        mount,
+        options,
+        basePath: servicePath,
+        noisy: true
+      });
+      if (options.setup !== false) {
+        service.executeScript('setup');
+      }
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      } else {
+        console.warnStack(e);
+      }
     }
-  } catch (e) {
-    if (!options.force) {
-      _deleteServiceFromPath(mount, options);
-      throw e;
-    } else {
-      console.warnStack(e);
+    // instead of service.updateChecksum(), update the checksum
+    // manually from the temporary path.
+    service.checksum = FoxxService._checksumPath(bundlePath);
+    const bundleCollection = utils.getBundleStorage();
+    if (!bundleCollection.exists(service.checksum)) {
+      bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
     }
-  }
-  // instead of service.updateChecksum(), update the checksum
-  // manually from the temporary path.
-  service.checksum = FoxxService._checksumPath(bundlePath);
-  const bundleCollection = utils.getBundleStorage();
-  if (!bundleCollection.exists(service.checksum)) {
-    bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
-  }
-  const serviceDefinition = service.toJSON();
-  const meta = db._query(aql`
-    UPSERT {mount: ${mount}}
-    INSERT ${serviceDefinition}
-    REPLACE ${serviceDefinition}
-    IN ${collection}
-    RETURN NEW
-  `).next();
-  service._rev = meta._rev;
-  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
-  try {
-    ensureServiceExecuted(service, true);
-  } catch (e) {
-    if (!options.force) {
-      console.errorStack(e);
-    } else {
-      console.warnStack(e);
+    const serviceDefinition = service.toJSON();
+    const meta = db._query(aql`
+      UPSERT {mount: ${mount}}
+      INSERT ${serviceDefinition}
+      REPLACE ${serviceDefinition}
+      IN ${collection}
+      RETURN NEW
+    `).next();
+    service._rev = meta._rev;
+    GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
+    try {
+      ensureServiceExecuted(service, true);
+    } catch (e) {
+      if (!options.force) {
+        console.errorStack(e);
+      } else {
+        console.warnStack(e);
+      }
     }
+  } finally {
+    _deleteTempPaths(tempPaths);
   }
 }
 
@@ -849,7 +852,6 @@ function install (serviceInfo, mount, options = {}) {
   }
   const tempPaths = _prepareService(serviceInfo, options);
   _install(mount, tempPaths, options);
-  _deleteTempPaths(tempPaths);
   selfHeal();
   propagateSelfHeal();
 
@@ -890,7 +892,6 @@ function replace (serviceInfo, mount, options = {}) {
   });
   _uninstall(mount, Object.assign({teardown: true}, options, {force: true}));
   _install(mount, tempPaths, Object.assign({}, options, {force: true}));
-  _deleteTempPaths(tempPaths);
   selfHeal();
   propagateSelfHeal();
 
@@ -924,7 +925,6 @@ function upgrade (serviceInfo, mount, options = {}) {
   });
   _uninstall(mount, Object.assign({teardown: false}, options, {force: true}));
   _install(mount, tempPaths, Object.assign({}, options, serviceOptions, {force: true}));
-  _deleteTempPaths(tempPaths);
   selfHeal();
   propagateSelfHeal();
 
