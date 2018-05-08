@@ -22,6 +22,8 @@
           <div class="valueWrapper">
             <% if (info.role === 'follower' && mode !== 3) { %>
               <div id="info-role-id" class="value">Slave</div>
+            <% else if (info.role === 'leader' && mode !== 3) { %>
+              <div id="info-role-id" class="value">Master</div>
             <% } else { %>
               <div id="info-role-id" class="value"><%=info.role%></div>
             <% } %>
