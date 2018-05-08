@@ -2851,19 +2851,20 @@ AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
 AqlValue Functions::DateTrunc(arangodb::aql::Query* query,
                             transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_TRUNC";
   using namespace std::chrono;
   using namespace date;
 
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_TRUNC", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
   AqlValue durationType = ExtractFunctionParameterValue(parameters, 1);
 
   if (!durationType.isString()) { // unit type must be string
-    RegisterInvalidArgumentWarning(query, "DATE_TRUNC");
+    RegisterInvalidArgumentWarning(query, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2889,7 +2890,7 @@ AqlValue Functions::DateTrunc(arangodb::aql::Query* query,
   } else if (duration == "f" || duration == "millisecond" || duration == "milliseconds") {
     ms = day_time.to_duration();
   } else {
-    RegisterWarning(query, "DATE_TRUNC", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    RegisterWarning(query, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
   tp = tp_sys_clock_ms{sys_days(ymd) + ms};
