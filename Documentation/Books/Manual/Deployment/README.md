@@ -3,7 +3,7 @@ Deployment
 
 This _Chapter_ describes various possibilities to deploy ArangoDB.
 
-By ArangoDB _deployment mode_:
+By ArangoDB _Deployment Mode_:
 
 - [Single instance](SingleInstance/README.md)
 - [Master/Slave](MasterSlave/README.md)
@@ -11,7 +11,7 @@ By ArangoDB _deployment mode_:
 - [Cluster](Cluster/README.md)
 - [Multiple Datacenters](DC2DC.md) 
 
-By technology:
+By _Technology_:
 
 - [Manually](Manually/README.md)
 - [ArangoDB Starter](ArangoDBStarter/README.md)

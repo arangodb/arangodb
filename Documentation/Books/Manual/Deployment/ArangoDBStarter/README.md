@@ -1,6 +1,8 @@
 Deploying using the ArangoDB Starter
 ====================================
 
+WIP
+
 Single instance
 
 - _Starter_ using processes
@@ -21,6 +23,5 @@ Cluster
 - _Starter_ using Docker containers 
 
 Multiple Datacenters
-
 
 WIP

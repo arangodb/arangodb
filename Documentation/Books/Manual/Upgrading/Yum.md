@@ -1,2 +1,0 @@
-Upgrading via YUM
-=================

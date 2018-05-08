@@ -1,4 +1,16 @@
-Upgrading a cluster on Debian & Ubuntu
+--> TMP <---
+
+
+Upgrading a Cluster
+===================
+
+This page will guide you through the process of an in-place upgrade (see also
+[General Upgrade Information](../GeneralInfo/README.md)). The different
+nodes in a cluster can be updated one at a time without incurring downtime
+of the cluster and very short downtimes of the single nodes.
+
+
+Upgrading a Cluster on Debian & Ubuntu
 ======================================
 
 Please note that this procedure is not guaranteed to work for upgrades between minor versions, e.g. from `3.2.x` to `3.3.x`, but only for upgrades between patch versions, e.g. from `3.2.6` to `3.2.12`.
@@ -113,3 +125,5 @@ to stop the process(es) (by sending `SIGTERM`), but start it (or them) again
 manually.
 
 After repeating this process on every node you're done!
+
+
