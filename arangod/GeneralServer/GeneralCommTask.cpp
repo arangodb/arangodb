@@ -37,6 +37,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Meta/conversion.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Job.h"
 #include "Scheduler/JobQueue.h"
@@ -44,6 +45,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Socket.h"
 #include "Utils/Events.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -111,6 +113,55 @@ void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
+
+namespace {
+  TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest* request) {
+    DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
+    
+    // get database name from request
+    std::string const& dbName = request->databaseName();
+    
+    if (dbName.empty()) {
+      // if no databases was specified in the request, use system database name
+      // as a fallback
+      request->setDatabaseName(StaticStrings::SystemDatabase);
+      if (ServerState::instance()->isCoordinator()) {
+        return databaseFeature->useDatabaseCoordinator(
+                                                       StaticStrings::SystemDatabase);
+      }
+      return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
+    }
+    
+    if (ServerState::instance()->isCoordinator()) {
+      return databaseFeature->useDatabaseCoordinator(dbName);
+    }
+    return databaseFeature->useDatabase(dbName);
+  }
+}
+
+bool GeneralCommTask::resolveRequestContext(GeneralRequest* request) {
+  TRI_vocbase_t* vocbase = ::lookupDatabaseFromRequest(request);
+  
+  // invalid database name specified, database not found etc.
+  if (vocbase == nullptr) {
+    return false;
+  }
+  
+  TRI_ASSERT(!vocbase->isDangling());
+  
+  // database needs upgrade
+  if (vocbase->state() == TRI_vocbase_t::State::FAILED_VERSION) {
+    request->setRequestPath("/_msg/please-upgrade");
+    vocbase->release();
+    return false;
+  }
+  
+  // the vocbase context is now responsible for releasing the vocbase
+  request->setRequestContext(VocbaseContext::create(request, *vocbase), true);
+  
+  // the "true" means the request is the owner of the context
+  return true;
+}
 
 void GeneralCommTask::executeRequest(
     std::unique_ptr<GeneralRequest>&& request,

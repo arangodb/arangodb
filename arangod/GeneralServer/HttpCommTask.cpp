@@ -801,8 +801,7 @@ rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
   if (code != ResponseCode::SERVER_ERROR) {
     // now populate the VocbaseContext
     if (request->requestContext() == nullptr) {
-      bool res =
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
+      bool res = GeneralCommTask::resolveRequestContext(request);
       if (!res) {
         return rest::ResponseCode::NOT_FOUND;
       } else if (request->requestContext() == nullptr) {

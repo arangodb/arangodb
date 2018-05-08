@@ -109,6 +109,7 @@ class GeneralCommTask : public SocketTask {
   virtual bool allowDirectHandling() const = 0;
 
  protected:
+  bool resolveRequestContext(GeneralRequest* request);
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
                       std::unique_ptr<GeneralResponse>&&);
 
@@ -116,7 +117,7 @@ class GeneralCommTask : public SocketTask {
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);
   void transferStatisticsTo(uint64_t, RestHandler*);
-
+  
  protected:
   GeneralServer* const _server;
   AuthenticationFeature* _auth;

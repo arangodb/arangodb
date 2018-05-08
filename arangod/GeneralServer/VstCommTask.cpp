@@ -33,7 +33,6 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/VstNetwork.h"
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
@@ -402,7 +401,7 @@ bool VstCommTask::processRead(double startTime) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
-      bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      bool res = GeneralCommTask::resolveRequestContext(request.get());
       if (!res || request->requestContext() == nullptr) {
         handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
