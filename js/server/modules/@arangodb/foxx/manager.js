@@ -711,11 +711,6 @@ function _install (mount, tempPaths, options = {}) {
       console.warnStack(e);
     }
   }
-  // recreate service so it doesn't reference the temporary basePath anymore
-  return FoxxService.create({
-    mount,
-    options
-  });
 }
 
 function _uninstall (mount, options = {}) {
@@ -853,11 +848,15 @@ function install (serviceInfo, mount, options = {}) {
     });
   }
   const tempPaths = _prepareService(serviceInfo, options);
-  const service = _install(mount, tempPaths, options);
+  _install(mount, tempPaths, options);
   _deleteTempPaths(tempPaths);
   selfHeal();
   propagateSelfHeal();
-  return service;
+
+  return FoxxService.create({
+    mount,
+    options
+  });
 }
 
 function uninstall (mount, options = {}) {
@@ -890,11 +889,15 @@ function replace (serviceInfo, mount, options = {}) {
     noisy: true
   });
   _uninstall(mount, Object.assign({teardown: true}, options, {force: true}));
-  const service = _install(mount, tempPaths, Object.assign({}, options, {force: true}));
+  _install(mount, tempPaths, Object.assign({}, options, {force: true}));
   _deleteTempPaths(tempPaths);
   selfHeal();
   propagateSelfHeal();
-  return service;
+
+  return FoxxService.create({
+    mount,
+    options
+  });
 }
 
 function upgrade (serviceInfo, mount, options = {}) {
@@ -920,11 +923,15 @@ function upgrade (serviceInfo, mount, options = {}) {
     noisy: true
   });
   _uninstall(mount, Object.assign({teardown: false}, options, {force: true}));
-  const service = _install(mount, tempPaths, Object.assign({}, options, serviceOptions, {force: true}));
+  _install(mount, tempPaths, Object.assign({}, options, serviceOptions, {force: true}));
   _deleteTempPaths(tempPaths);
   selfHeal();
   propagateSelfHeal();
-  return service;
+
+  return FoxxService.create({
+    mount,
+    options
+  });
 }
 
 function runScript (scriptName, mount, options) {
