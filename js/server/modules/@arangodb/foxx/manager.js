@@ -708,7 +708,11 @@ function _install (mount, tempPaths, options = {}) {
       console.warnStack(e);
     }
   }
-  return service;
+  // recreate service so it doesn't reference the temporary basePath anymore
+  return FoxxService.create({
+    mount,
+    options
+  });
 }
 
 function _uninstall (mount, options = {}) {
