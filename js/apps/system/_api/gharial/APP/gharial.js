@@ -745,7 +745,7 @@ router.post('/:graph/edge/:collection', function (req, res) {
   // check existence of _from and _to vertices
   // _from vertex
   try {
-    db._document(req.body._from);
+    db._exists(req.body._from);
   } catch (e) {
     if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw Object.assign(
@@ -762,7 +762,7 @@ router.post('/:graph/edge/:collection', function (req, res) {
 
   // _to vertex
   try {
-    db._document(req.body._to);
+    db._exists(req.body._to);
   } catch (e) {
     if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw Object.assign(
