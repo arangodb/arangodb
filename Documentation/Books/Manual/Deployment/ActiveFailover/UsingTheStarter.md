@@ -12,7 +12,7 @@ option of the _Starter_. This will start all servers within the context of a sin
 starter process:
 
 ```bash
-arangodb --starter.local --starter.mode=activefailover
+arangodb --starter.local --starter.mode=activefailover --starter.data-dir=./localdata
 ```
 
 **Note:** When you restart the _Starter_, it remembers the original `--starter.local` flag.
@@ -20,22 +20,27 @@ arangodb --starter.local --starter.mode=activefailover
 Multiple Machines
 -----------------
 
-If you want to start an Active Failover setup using the ArangoDB [_Starter_](../../Programs/Starter/README.md),
-, use the `--starter.mode=activefailover` option of the _Starter_.
-
-In this mode a 3 machine _Agency_ is started as well as 2 single servers that perform
-asynchronous replication and failover:
+If you want to start an Active Failover setup using the _Starter_, use the `--starter.mode=activefailover`
+option of the _Starter_. A 3 "machine" _Agency_ is started as well as 2 single servers,
+that perform asynchronous replication and failover:
 
 ```bash
-arangodb --starter.mode=activefailover --starter.join A,B,C
+arangodb --starter.mode=activefailover --server.storage-engine=rocksdb --starter.data-dir=./data --starter.join A,B,C
 ```
 
-Run this on machine A, B & C.
+Run the above command on machine A, B & C.
 
 The _Starter_ will decide on which 2 machines to run a single server instance.
 To override this decision (only valid while bootstrapping), add a
 `--cluster.start-single=false` to the machine where the single server
 instance should _not_ be started.
+
+Once all the processes started by the _Starter_ are up and running, and joined the
+Active Failover setup (this may take a while depending on your system), the _Starter_ will inform
+you where to connect the Active Failover from a Browser, shell or your program.
+
+For a full list of options of the _Starter_ please refer to [this](../../Programs/Starter/Options.md)
+section.
 
 Using the ArangoDB Starter in Docker
 ------------------------------------
@@ -56,7 +61,7 @@ docker run -it --name=adb --rm -p 8528:8528 \
     --starter.join=A,B,C
 ```
 
-Run this on machine A, B & C.
+Run the above command on machine A, B & C.
 
 The _Starter_ will decide on which 2 machines to run a single server instance.
 To override this decision (only valid while bootstrapping), add a
