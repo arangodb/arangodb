@@ -713,6 +713,11 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
       break;
     }
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
   return false;
 }
