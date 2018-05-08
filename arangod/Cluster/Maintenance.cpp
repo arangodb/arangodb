@@ -252,7 +252,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
           }
         }
       }
-    } else {
+    } else { // Create new database
       actions.push_back(
         ActionDescription({{NAME, "CreateDatabase"}, {DATABASE, dbname}}));
     }
@@ -355,9 +355,6 @@ arangodb::Result arangodb::maintenance::phaseOne (
   if (result.fail()) {
     return result;
   }
-  // Synchronise shards
-  result = synchroniseShards(plan, cur, local);
-  
   return result;
 }
 
@@ -366,6 +363,10 @@ arangodb::Result arangodb::maintenance::phaseOne (
 arangodb::Result arangodb::maintenance::phaseTwo (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local) {
   arangodb::Result result;
+
+  // Synchronise shards
+  result = synchroniseShards(plan, cur, local);
+
   return result;
 }
 

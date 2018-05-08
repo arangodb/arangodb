@@ -33,10 +33,10 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-CreateDatabase::CreateDatabase(arangodb::MaintenanceFeature & feature,
-                 std::shared_ptr<ActionDescription_t> const & description,
-                 std::shared_ptr<VPackBuilder> const & properties)
-  : MaintenanceAction(feature, description, properties) {
+CreateDatabase::CreateDatabase(
+  std::make_shared<arangodb::MaintenanceFeature> feature,
+  ActionDescription const& description)
+  : MaintenanceAction(feature, description) {
   TRI_ASSERT(description->end()!=description->find(MaintenanceAction::DATABASE));
 }
 
@@ -45,9 +45,9 @@ CreateDatabase::~CreateDatabase() {};
 bool CreateDatabase::first() {
 
   VPackSlice users;
-  auto db_it = _description->find(MaintenanceAction::DATABASE);
+  auto db = _description.find(MaintenanceAction::DATABASE);
 
-  if (_description->end() != db_it) {
+  if (_description->end() != db) {
     auto* systemVocbase =
       ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
 
@@ -56,11 +56,11 @@ bool CreateDatabase::first() {
       FATAL_ERROR_EXIT();
     }
 
-    _result = Databases::create(db_it->second, users, _properties->slice());
+    _result = Databases::create(db.second, users, properties()->slice());
   } else {
     _result.reset(TRI_ERROR_BAD_PARAMETER, "CreateDatabase called without required \"database\" field.");
   } // else
-
+  
   // false means no more processing
   return false;
 

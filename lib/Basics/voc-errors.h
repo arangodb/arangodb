@@ -1804,15 +1804,15 @@ constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           
 /// Will be returned if a queue with this name is full.
 constexpr int TRI_ERROR_QUEUE_FULL                                              = 21003;
 
-/// 5001: ERROR_ACTION_ALREADY_REGISTERED
+/// 6001: ERROR_ACTION_ALREADY_REGISTERED
 /// "maintenance action already registered"
 /// Action with this description has been registered already
-constexpr int TRI_ERROR_ACTION_ALREADY_REGISTERED                               = 5001;
+constexpr int TRI_ERROR_ACTION_ALREADY_REGISTERED                               = 6001;
 
-/// 5002: ERROR_ACTION_OPERATION_UNABORTABLE
+/// 6002: ERROR_ACTION_OPERATION_UNABORTABLE
 /// "this maintenance action cannot be stopped"
 /// This maintenance action cannot be stopped once it is started
-constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 5002;
+constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 6002;
 
 
 /// register all errors for ArangoDB

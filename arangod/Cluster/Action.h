@@ -32,6 +32,9 @@
 #include <chrono>
 
 namespace arangodb {
+
+class MaintenanceFeature;
+
 namespace maintenance {
 
 class ActionBase;
@@ -41,7 +44,7 @@ class Action {
 public:
 
   /// @brief construct with description
-  Action(ActionDescription const&);
+  Action(std::shared_ptr<MaintenanceFeature>, ActionDescription const&);
   
   /// @brief clean up
   virtual ~Action();
@@ -57,7 +60,10 @@ public:
   arangodb::Result progress(double& progress);
 
   /// @brief describe action
-  ActionDescription describe() const;
+  ActionDescription const& describe() const;
+
+  // @brief get properties
+  std::shared_ptr<VPackBuilder> const properties() const;
   
 private:
   

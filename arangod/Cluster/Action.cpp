@@ -33,15 +33,17 @@
 
 using namespace arangodb::maintenance;
 
-Action::Action(ActionDescription const& d) : _action(nullptr) {
+Action::Action(
+  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& d)
+  : _action(nullptr) {
   TRI_ASSERT(d.has("name"));
   std::string name = d.name();
   if (name == "CreateDatabase") {
-//    _action = new CreateDatabase(d);
+    _action = new CreateDatabase(feature, d);
   } else if (name == "DropDatabase") {
-    _action = new DropDatabase(d);
+    _action = new DropDatabase(feature, d);
   } else if (name == "UpdateCollection") {
-    _action = new UpdateCollection(d);
+    _action = new UpdateCollection(feature, d);
   } else {
     // We should never get here
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
@@ -49,9 +51,13 @@ Action::Action(ActionDescription const& d) : _action(nullptr) {
   }
 }
 
-ActionDescription Action::describe() const {
+ActionDescription const& Action::describe() const {
   TRI_ASSERT(_action != nullptr);
   return _action->describe();
+}
+
+ActionDescription const& Action::properties() const {
+  return describe().properties();
 }
 
 arangodb::Result Action::run(

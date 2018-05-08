@@ -270,11 +270,6 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(std::shared
 // All action creators should go here.
 //  (actionFactory is a virtual function to allow unit tests to
 //   quietly create specialty actions for testing)
-#if 0
-  void * MaintenanceFeature::actionFactory(std::string & name) {
-    return nullptr;
-  }
-#else
 maintenance::MaintenanceActionPtr_t MaintenanceFeature::actionFactory(std::string & name,
                                                                       std::shared_ptr<maintenance::ActionDescription_t> const & description,
                                                                       std::shared_ptr<VPackBuilder> const & properties) {
@@ -288,7 +283,7 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::actionFactory(std::strin
   return newAction;
 
 } // MaintenanceFeature::actionFactory
-#endif
+
 
 maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionHash(size_t hash) {
   READ_LOCKER(rLock, _actionRegistryLock);

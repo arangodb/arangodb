@@ -486,5 +486,5 @@ ERROR_QUEUE_FULL,21003,"named queue is full","Will be returned if a queue with t
 ## Maintenance errors
 ################################################################################
 
-ERROR_ACTION_ALREADY_REGISTERED,5001,"maintenance action already registered","Action with this description has been registered already"
-ERROR_ACTION_OPERATION_UNABORTABLE,5002,"this maintenance action cannot be stopped","This maintenance action cannot be stopped once it is started"
+ERROR_ACTION_ALREADY_REGISTERED,6001,"maintenance action already registered","Action with this description has been registered already"
+ERROR_ACTION_OPERATION_UNABORTABLE,6002,"this maintenance action cannot be stopped","This maintenance action cannot be stopped once it is started"

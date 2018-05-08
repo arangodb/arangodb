@@ -34,9 +34,8 @@ class CreateDatabase : public MaintenanceAction {
 
 public:
 
-  CreateDatabase(arangodb::MaintenanceFeature & feature,
-                 std::shared_ptr<ActionDescription_t> const & description,
-                 std::shared_ptr<VPackBuilder> const & properties);
+  CreateDatabase(std::shared_ptr<arangodb::MaintenanceFeature> feature,
+                 ActionDescription const& description);
 
   virtual ~CreateDatabase();
 

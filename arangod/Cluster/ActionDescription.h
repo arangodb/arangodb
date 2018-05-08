@@ -65,8 +65,9 @@ public:
    * @param  desc  Descriminatory properties, which are considered for hash
    * @param  supp  Non discriminatory properties
    */
-  ActionDescription(std::map<std::string, std::string> const& desc,
-                    VPackBuilder const& suppl = VPackBuilder());
+  ActionDescription(
+    std::map<std::string, std::string> const& desc,
+    std::shared_ptr<VPackBuilder> const suppl = std::make_shared<VPackBuilder>());
 
   /**
    * @brief Clean up
@@ -77,24 +78,24 @@ public:
    * @brief Check equality (only _description considered)
    * @param  other  Other descriptor
    */
-  bool operator== (ActionDescription const& other) const noexcept;
+  bool operator== (ActionDescription const& other) const;
 
   /**
    * @brief Calculate hash of _description as concatenation
    * @param  other  Other descriptor
    */
-  std::size_t hash() const noexcept;
+  std::size_t hash() const;
   static std::size_t hash(std::map<std::string, std::string> desc);
 
   /// @brief Name of action
-  std::string const& name() const noexcept;
+  std::string const& name() const;
 
   /**
    * @brief Check if key exists in discrimantory container
    * @param  key   Key to lookup
    * @return       true if key is found
    */
-  bool has(std::string const& keu) const noexcept;
+  bool has(std::string const& keu) const;
 
   /**
    * @brief Get a string value from description
@@ -111,7 +112,7 @@ public:
    * @param  value If key is found the value is assigned to this variable
    * @return       Success (key found?)
    */
-  Result get(std::string const& key, std::string& value) const noexcept;
+  Result get(std::string const& key, std::string& value) const;
 
   /**
    * @brief Dump to JSON(vpack)
@@ -138,7 +139,7 @@ public:
    *            This function does not throw as builder is always when here.
    * @return    Non discriminatory properties
    */
-  VPackSlice properties() const noexcept;
+  std::shared_ptr<VPackBuilder> const properties() const;
 
 private:
 
@@ -148,7 +149,7 @@ private:
   std::map<std::string, std::string> const _description;
 
   /** @brief non-discriminatory properties */
-  VPackBuilder const _properties;
+  std::shared_ptr<VPackBuilder> const _properties;
 
 };
 

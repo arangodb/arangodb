@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CreateCollection.h"
+#include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -45,8 +46,9 @@ using namespace arangodb::methods;
 constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
-CreateCollection::CreateCollection(ActionDescription const& d) :
-  ActionBase(d, arangodb::maintenance::FOREGROUND) {
+CreateCollection::CreateCollection(
+  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& d)
+  : ActionBase(feature, d) {
   TRI_ASSERT(d.has(COLLECTION));
   TRI_ASSERT(d.has(DATABASE));
   TRI_ASSERT(d.has(ID));

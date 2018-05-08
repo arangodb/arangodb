@@ -32,7 +32,8 @@ using namespace arangodb::maintenance;
 
 /// @brief ctor
 ActionDescription::ActionDescription(
-  std::map<std::string, std::string> const& d, VPackBuilder const& p) :
+  std::map<std::string, std::string> const& d,
+  std::shared_ptr<VPackBuilder> const p) :
   _description(d), _properties(p) {
   TRI_ASSERT(d.find(NAME) != d.end());
 }
@@ -41,20 +42,20 @@ ActionDescription::ActionDescription(
 ActionDescription::~ActionDescription() {}
 
 /// @brief Does this description have a "p" parameter?
-bool ActionDescription::has(std::string const& p) const noexcept {
-  return _description.find(p) != _description.end();
+bool ActionDescription::has(std::string const& p) const {
+  return _description->find(p) != _description->end();
 }
 
 /// @brief Does this description have a "p" parameter?
 std::string ActionDescription::get(std::string const& p) const {
-  return _description.at(p);
+  return _description->at(p);
 }
 
 /// @brief Get parameter
-Result ActionDescription::get(std::string const& p, std::string& r) const noexcept {
+Result ActionDescription::get(std::string const& p, std::string& r) const {
   Result result;
   auto const& it = _description.find(p);
-  if (it == _description.end()) {
+  if (it == _description->end()) {
     result.reset(TRI_ERROR_FAILED);
   } else {
     r = it->second;
@@ -63,9 +64,9 @@ Result ActionDescription::get(std::string const& p, std::string& r) const noexce
 }
 
 /// @brief Hash function
-std::size_t ActionDescription::hash() const noexcept {
+std::size_t ActionDescription::hash() const {
   std::string propstr;
-  for (auto const& i : _description) {
+  for (auto const& i : *_description) {
     propstr += i.first + i.second;
   }
   return std::hash<std::string>{}(propstr);
@@ -81,20 +82,20 @@ std::size_t ActionDescription::hash(std::map<std::string, std::string> desc) {
 
 /// @brief Equality operator
 bool ActionDescription::operator==(
-  ActionDescription const& other) const noexcept {
-  return _description==other._description;
+  ActionDescription const& other) const {
+  return *_description== *other._description;
 }
 
 /// @brief Get action name. Cannot throw. See constructor
-std::string const& ActionDescription::name() const noexcept {
-  return _description.at(NAME);
+std::string const& ActionDescription::name() const {
+  return _description->at(NAME);
 }
 
 /// @brief summary to velocypack
 VPackBuilder ActionDescription::toVelocyPack() const {
   VPackBuilder b;
   { VPackObjectBuilder bb(&b);
-    for (auto const& i : _description) {
+    for (auto const& i : *_description) {
       b.add(i.first, VPackValue(i.second));
     }
     if (!_properties.isEmpty()) {
@@ -111,7 +112,7 @@ std::string ActionDescription::toJson() const {
 
 
 /// @brief non discrimantory properties.
-VPackSlice ActionDescription::properties() const noexcept {
+VPackSlice ActionDescription::properties() const {
   return _properties.slice();
 }
 
@@ -120,8 +121,7 @@ namespace std {
 std::size_t hash<ActionDescription>::operator()(
   ActionDescription const& a) const noexcept {
   return a.hash();
-}
-}
+}}
 
 std::ostream& operator<< (
   std::ostream& out, arangodb::maintenance::ActionDescription const& d) {
