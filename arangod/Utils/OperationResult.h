@@ -33,13 +33,13 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-  
+
 struct OperationResult {
-  OperationResult() {} 
-  
+  OperationResult() {}
+
   // create from integer status code
   explicit OperationResult(int code) : result(code) {}
-  
+
   // create from Result
   explicit OperationResult(Result const& other) : result(other) {}
   explicit OperationResult(Result&& other) : result(std::move(other)) {}
@@ -60,8 +60,8 @@ struct OperationResult {
     }
     return *this;
   }
- 
-  // create result with details 
+
+  // create result with details
   OperationResult(Result&& result,
                   std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
                   std::shared_ptr<VPackCustomTypeHandler> const& handler,
@@ -71,8 +71,13 @@ struct OperationResult {
         buffer(buffer),
         customTypeHandler(handler),
         wasSynchronous(wasSynchronous),
-        countErrorCodes(countErrorCodes) {}
-  
+        countErrorCodes(countErrorCodes) {
+          if(result.ok()){
+            TRI_ASSERT(buffer != nullptr);
+            TRI_ASSERT(buffer->data() != nullptr);
+          }
+        }
+
   ~OperationResult() = default;
 
   // Result-like interface
@@ -84,7 +89,7 @@ struct OperationResult {
   std::string errorMessage() const { return result.errorMessage(); }
 
   inline VPackSlice slice() const {
-    TRI_ASSERT(buffer != nullptr); 
+    TRI_ASSERT(buffer != nullptr);
     return VPackSlice(buffer->data());
   }
 

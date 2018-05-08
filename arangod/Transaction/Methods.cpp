@@ -1390,13 +1390,6 @@ OperationResult transaction::Methods::insertCoordinator(
     OperationOptions& options) {
   rest::ResponseCode responseCode;
 
-  TRI_ASSERT(options.overwrite == false); // TODO implement
-  // has the document a key?
-  // what is createDocumentOnCoordinator doing (adding a key?)
-  // - create documents on shard
-  // - nedd to pass overwrite option to db servers
-  // what is cluster result insert? custercommrequest to dbservers?
-
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
 
@@ -1404,7 +1397,7 @@ OperationResult transaction::Methods::insertCoordinator(
       databaseName(), collectionName, options, value, responseCode,
       errorCounter, resultBody);
 
-  if (res.fail()) {
+  if (res.ok()) {
     return clusterResultInsert(responseCode, resultBody, errorCounter);
   }
   return OperationResult(res);
@@ -2573,7 +2566,6 @@ OperationResult transaction::Methods::countCoordinator(
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
-
   return buildCountResult(count, aggregate);
 }
 #endif
