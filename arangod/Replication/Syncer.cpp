@@ -893,7 +893,8 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_LOOP, std::string("got same server id (") + _localServerIdString + ")" + endpointString + " as the local applier server's id");
   }
 
-  int major = 0, minor = 0;
+  int major = 0;
+  int minor = 0;
   std::string const versionString(version.copyString());
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
     return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE,

@@ -128,12 +128,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
         tmp.add(s); // just copy
       } else {
         tmp.openObject();
-        for (auto const& it : VPackObjectIterator(s, true)) {
-          VPackValueLength l;
-          char const* p = it.key.getString(l);
-          tmp.add(VPackValuePair(p, l, VPackValueType::String));
-          tmp.add(it.value);
-        }
+        tmp.add(VPackObjectIterator(s, true));
         tmp.add("selectivityEstimate", VPackValue(found->second));
         tmp.close();
       }

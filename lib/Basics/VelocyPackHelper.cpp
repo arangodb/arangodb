@@ -1106,23 +1106,6 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
     output.add(input);
   }
 }
-/*
-VPackBuffer<uint8_t> VelocyPackHelper::sanitizeNonClientTypesChecked(
-    VPackSlice input, VPackOptions const* options, bool sanitizeExternals, bool sanitizeCustom) {
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer, options);
-  bool resolveExt = true;
-  if (sanitizeExternals) {
-    resolveExt = hasNonClientTypes(input, sanitizeExternals, sanitizeCustom);
-  }
-  if (resolveExt) {  // resolve
-    buffer.reserve(input.byteSize()); // reserve space already
-    sanitizeNonClientTypes(input, VPackSlice::noneSlice(), builder, options, sanitizeExternals, sanitizeCustom);
-  } else {
-    builder.add(input);
-  }
-  return buffer;  // elided
-}*/
 
 /// @brief extract the collection id from VelocyPack
 uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {

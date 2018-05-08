@@ -54,7 +54,7 @@ using namespace arangodb::velocypack;
 namespace {
 TRI_voc_cid_t normalizeIdentifier(transaction::Methods const& trx,
                                   std::string const& identifier) {
-  TRI_voc_cid_t id = 0;
+  TRI_voc_cid_t id{0};
   std::shared_ptr<LogicalCollection> logical{
       trx.vocbase()->lookupCollection(identifier)};
   if (logical) {
@@ -384,6 +384,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpVPack(TRI_vocbase_t* voc
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, collection->currentTick);
 }
 
+/// Dump all key chunks for the bound collection
 arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
                                                           uint64_t chunkSize) {
   TRI_ASSERT(_trx);
@@ -464,7 +465,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   }
   _collection->setSorted(true, _trx.get());
   TRI_ASSERT(_collection->iter);
-  TRI_ASSERT(_collection->sorted() && _lastIteratorOffset == 0);
+  TRI_ASSERT(_collection->sorted());
   
   RocksDBSortedAllIterator* primary =
       static_cast<RocksDBSortedAllIterator*>(_collection->iter.get());
