@@ -462,6 +462,46 @@ struct Functions {
     static AqlValue CollectionCount(arangodb::aql::Query*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+    static AqlValue VarianceSample(arangodb::aql::Query*, transaction::Methods*,
+                                   VPackFunctionParameters const&);
+    static AqlValue PregelResult(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+    static AqlValue VariancePopulation(arangodb::aql::Query*,
+                                       transaction::Methods*,
+                                       VPackFunctionParameters const&);
+    static AqlValue StdDevSample(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+    static AqlValue StdDevPopulation(arangodb::aql::Query*,
+                                     transaction::Methods*,
+                                     VPackFunctionParameters const&);
+    static AqlValue Median(arangodb::aql::Query*, transaction::Methods*,
+                           VPackFunctionParameters const&);
+    static AqlValue Percentile(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+    static AqlValue Range(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+    static AqlValue Position(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
+    static AqlValue CallApplyBackend(arangodb::aql::Query* query,
+                                     transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters,
+                                     char const* AFN,
+                                     AqlValue const& invokeFN,
+                                     VPackFunctionParameters const& invokeParams);
+    static AqlValue Call(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+    static AqlValue Apply(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+    static AqlValue IsSameCollection(arangodb::aql::Query*,
+                                     transaction::Methods*,
+                                     VPackFunctionParameters const&);
+    static AqlValue Assert(arangodb::aql::Query*, transaction::Methods*,
+                           VPackFunctionParameters const&);
+    static AqlValue Warn(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+    static AqlValue Fail(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+
    static AqlValue CurrentUser(arangodb::aql::Query*,
                                 transaction::Methods*,
                                 VPackFunctionParameters const&);

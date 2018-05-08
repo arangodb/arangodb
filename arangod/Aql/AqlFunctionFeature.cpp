@@ -351,7 +351,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_DOCUMENT", ".|+", true, false, true, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", true, false, true, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", true, false, true, &Functions::IsSameCollection});
-  add({"CURRENT_USER", "", false, false, false, true, &Functions::CurrentUser});
+  add({"CURRENT_USER", "", false, false, false, &Functions::CurrentUser});
   add({"CURRENT_DATABASE", "", false, false, false, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", ".h", false, true, false, &Functions::CollectionCount});
   add({"ASSERT", ".,.", false, true, true, &Functions::Assert});
