@@ -171,7 +171,7 @@
       * [Using the ArangoDB Starter](Deployment/ActiveFailover/UsingTheStarter.md)	
     * [Cluster](Deployment/Cluster/README.md)  
       * [Preliminary Information](Deployment/Cluster/PreliminaryInformation.md)	
-      * [Using the ArangoDB Starter](Deployment/Cluster/ArangoDBStarter.md)
+      * [Using the ArangoDB Starter](Deployment/Cluster/UsingTheStarter.md)
       * [Manual Start](Deployment/Cluster/ManualStart.md)
       * [Kubernetes](Deployment/Cluster/Kubernetes.md)	
       * [Mesos, DC/OS](Deployment/Cluster/Mesos.md)	

@@ -1,6 +1,8 @@
 Manual Deployment
 =================
 
+WIP
+
 Single instance
 
 - Manually created processes
@@ -13,13 +15,13 @@ Master/Slave
 
 Active Failover
 
-- Manually created processes
-- Manually created Docker containers
+- [Manually created processes](../ActiveFailover/ManualStart.md)
+- [Manually created Docker containers](../ActiveFailover/ManualStart.md#manual-start-in-docker)
 
 Cluster
 
-- Manually created processes
-- Manually created Docker containers
+- [Manually created processes](../Cluster/ManualStart.md)
+- [Manually created Docker containers](../Cluster/ManualStart.md#manual-start-in-docker)
 
 Multiple Datacenters
 

@@ -1,12 +1,33 @@
 Using the ArangoDB Starter
 ==========================
 
-If you want to start a resilient single database server, use `--starter.mode=resilientsingle`.
-In this mode a 3 machine _Agency_ is started as well as 2 single servers that perform
-asynchronous replication an failover, if needed:
+This section describes how to start an Active Failover setup the tool [_Starter_](../../Programs/Starter/README.md)
+(the _arangodb_ binary program).
+
+Local Tests
+-----------
+
+If you want to start a local Active Failover setup quickly, use the `--starter.local`
+option of the _Starter_. This will start all servers within the context of a single
+starter process:
 
 ```bash
-arangodb --starter.mode=resilientsingle --starter.join A,B,C
+arangodb --starter.local --starter.mode=activefailover
+```
+
+**Note:** When you restart the _Starter_, it remembers the original `--starter.local` flag.
+
+Multiple Machines
+-----------------
+
+If you want to start an Active Failover setup using the ArangoDB [_Starter_](../../Programs/Starter/README.md),
+, use the `--starter.mode=activefailover` option of the _Starter_.
+
+In this mode a 3 machine _Agency_ is started as well as 2 single servers that perform
+asynchronous replication and failover:
+
+```bash
+arangodb --starter.mode=activefailover --starter.join A,B,C
 ```
 
 Run this on machine A, B & C.
@@ -14,13 +35,14 @@ Run this on machine A, B & C.
 The _Starter_ will decide on which 2 machines to run a single server instance.
 To override this decision (only valid while bootstrapping), add a
 `--cluster.start-single=false` to the machine where the single server
-instance should NOT be scheduled.
+instance should _not_ be started.
 
-Starting a resilient single server pair in Docker
--------------------------------------------------
+Using the ArangoDB Starter in Docker
+------------------------------------
 
-If you want to start a resilient single database server running in docker containers,
-use the normal docker arguments, combined with `--starter.mode=resilientsingle`.
+The _Starter_ can also be used to launch an Active Failover setup based on _Docker_
+containers. To do this, you can use the normal Docker arguments, combined with
+`--starter.mode=activefailover`:
 
 ```bash
 export IP=<IP of docker host>
@@ -30,25 +52,14 @@ docker run -it --name=adb --rm -p 8528:8528 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     arangodb/arangodb-starter \
     --starter.address=$IP \
-    --starter.mode=resilientsingle \
+    --starter.mode=activefailover \
     --starter.join=A,B,C
 ```
 
 Run this on machine A, B & C.
 
-The starter will decide on which 2 machines to run a single server instance.
+The _Starter_ will decide on which 2 machines to run a single server instance.
 To override this decision (only valid while bootstrapping), add a
 `--cluster.start-single=false` to the machine where the single server
-instance should NOT be scheduled.
+instance should _not_ be started.
 
-Starting a local test resilient single sever pair
--------------------------------------------------
-
-If you want to start a local resilient server pair quickly, use the `--starter.local` flag.
-It will start all servers within the context of a single starter process.
-
-```bash
-arangodb --starter.local --starter.mode=resilientsingle
-```
-
-**Note:** When you restart the started, it remembers the original `--starter.local` flag.

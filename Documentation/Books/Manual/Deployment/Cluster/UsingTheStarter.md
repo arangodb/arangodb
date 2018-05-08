@@ -71,8 +71,8 @@ endpoint, http://h01:4002/, http://h02:4002/ or http://h03:4002/.
 
 Using the ArangoDB Starter in Docker
 ------------------------------------
-The ArangoDB [_Starter_](../../Programs/Starter/README.md) can also be used to launch
-Clusters based on _Docker_ containers.
+
+The _Starter_ can also be used to launch Clusters based on _Docker_ containers.
 
 Its a bit more complicated, since you need to provide information about your environment
 that cannot be autodetected.

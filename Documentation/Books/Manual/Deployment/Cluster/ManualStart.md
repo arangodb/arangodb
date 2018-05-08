@@ -1,5 +1,5 @@
-Manual Start
-============
+Starting Manually
+=================
 
 An ArangoDB Cluster consists of several running _tasks_ or _processes_ which
 form the Cluster. 
@@ -17,7 +17,7 @@ and for a more real production scenario, which makes use of 3 different machines
 Local Tests
 -----------
 
-In this section we will include commands to manually start a Cluster with 3 _Agents_,
+In this paragraph we will include commands to manually start a Cluster with 3 _Agents_,
 2 _DBservers_ and 2 _Coordinators_
 
 We will assume that all processes runs on the same machine (127.0.0.1). Such scenario
@@ -139,13 +139,13 @@ their corresponding web UI) at the endpoint `tcp://127.0.0.1:7001` and `tcp://12
 Multiple Machines
 -----------------
 
-The method from the previous section can be extended to a more real production scenario,
+The method from the previous paragraph can be extended to a more real production scenario,
 to start an ArangoDB Cluster on multiple machines. The only changes are that one
 has to replace all local addresses `127.0.0.1` by the actual IP address of the
 corresponding server. Obviously, it would no longer be necessary to use different port numbers
 on different servers.
 
-Let's assume that you want to start you ArangoDB Cluster with 3 _Agents_, 3 _DBServers_
+Let's assume that you want to start your ArangoDB Cluster with 3 _Agents_, 3 _DBServers_
 and 3 _Coordinators_ on three different machines with IP addresses:
 
 ```
@@ -163,14 +163,14 @@ If we use:
 - _8530_ as port of the _DBServers_
 - _8529_ as port of the _Coordinators_
 
-then the commands you have to use are reported in the following sections.
+then the commands you have to use are reported in the following subparagraphs.
 
 ### Agency  
  
 On 192.168.1.1:
 
 ```
-sudo arangod --server.endpoint tcp://0.0.0.0:8531 \
+arangod --server.endpoint tcp://0.0.0.0:8531 \
 	--agency.my-address tcp://192.168.1.1:8531 \
 	--server.authentication false \
 	--agency.activate true \
@@ -182,7 +182,7 @@ sudo arangod --server.endpoint tcp://0.0.0.0:8531 \
 On 192.168.1.2:
 
 ```
-sudo arangod --server.endpoint tcp://0.0.0.0:8531 \
+arangod --server.endpoint tcp://0.0.0.0:8531 \
 	--agency.my-address tcp://192.168.1.2:8531 \
 	--server.authentication false \
 	--agency.activate true \
@@ -194,7 +194,7 @@ sudo arangod --server.endpoint tcp://0.0.0.0:8531 \
 On 192.168.1.3:
 
 ```
-sudo arangod --server.endpoint tcp://0.0.0.0:8531 \
+arangod --server.endpoint tcp://0.0.0.0:8531 \
 	--agency.my-address tcp://192.168.1.3:8531 \
 	--server.authentication false \
 	--agency.activate true \
@@ -211,7 +211,7 @@ sudo arangod --server.endpoint tcp://0.0.0.0:8531 \
 On 192.168.1.1:
 
 ```
-sudo arangod --server.authentication=false \
+arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:8530 \
 	--cluster.my-address tcp://192.168.1.1:8530 \
 	--cluster.my-role PRIMARY \
@@ -224,7 +224,7 @@ sudo arangod --server.authentication=false \
 On 192.168.1.2:
 
 ```
-sudo arangod --server.authentication=false \
+arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:8530 \
 	--cluster.my-address tcp://192.168.1.2:8530 \
 	--cluster.my-role PRIMARY \
@@ -298,7 +298,7 @@ machine with IP 192.168.1.4, you can execute the following commands
 On 192.168.1.4:
 
 ```
-sudo arangod --server.authentication=false \
+arangod --server.authentication=false \
 	--server.endpoint tcp://0.0.0.0:8530 \
 	--cluster.my-address tcp://192.168.4.1:8530 \
 	--cluster.my-role PRIMARY \
@@ -321,7 +321,7 @@ Manual Start in Docker
 ----------------------
 
 Manually starting a Cluster via Docker is basically the same as described in the 
-sections above. 
+paragraphs above. 
 
 A bit of extra care has to be invested due to the way in which Docker isolates its network. 
 By default it fully isolates the network and by doing so an endpoint like `--server.endpoint tcp://0.0.0.0:8530`
@@ -331,20 +331,20 @@ to access it locally but in case you want to expose it to the outside you must
 facilitate Dockers port forwarding using the `-p` command line option. Be sure to
 check the [official Docker documentation](https://docs.docker.com/engine/reference/run/).
 
-You can simply use the `-p` flag in Docker to make the individual task available on the host
+You can simply use the `-p` flag in Docker to make the individual processes available on the host
 machine or you could use Docker's [links](https://docs.docker.com/engine/reference/run/)
-to enable task intercommunication.
+to enable process intercommunication.
 
 An example configuration might look like this:
 
 ```
 docker run -e ARANGO_NO_AUTH=1 -p 192.168.1.1:10000:8530 arangodb/arangodb arangod \
---server.endpoint tcp://0.0.0.0:8530 \
---cluster.my-address tcp://192.168.1.1:10000 \
---cluster.my-role PRIMARY \
---cluster.agency-endpoint tcp://192.168.1.1:5001 \
---cluster.agency-endpoint tcp://192.168.1.2:5002 \
---cluster.agency-endpoint tcp://192.168.1.3:5003 
+	--server.endpoint tcp://0.0.0.0:8530 \
+	--cluster.my-address tcp://192.168.1.1:10000 \
+	--cluster.my-role PRIMARY \
+	--cluster.agency-endpoint tcp://192.168.1.1:9001 \
+	--cluster.agency-endpoint tcp://192.168.1.2:9001 \
+	--cluster.agency-endpoint tcp://192.168.1.3:9001 
 ```
 
 This will start a _DBServer_ within a Docker container with an isolated network. 
