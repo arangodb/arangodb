@@ -62,6 +62,12 @@ devel
 
 * Add revision id to RocksDB values in primary indexes to speed up replication (~10x).
 
+* added `overwrite` option to the `document rest-handler` to allow for easier syncing.
+
+  This implements almost the much inquired UPSERT. In reality it is a REPSERT
+  (replace/insert) because modification of documents is not possible. The option does
+  not in cluster collections with custom sharding.
+
 * PR #5238: Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
   on VMs with limited disk throughput
 
