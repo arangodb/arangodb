@@ -27,21 +27,29 @@
 #include "utils/async_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/utf8_path.hpp"
-
+#include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
 NS_BEGIN(arangodb)
 
 class DatabasePathFeature; // forward declaration
+class TransactionState; // forward declaration
 
 NS_END // arangodb
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+class PrimaryKeyIndexReader; // forward declaration
+
 class IResearchViewDBServer final: public arangodb::LogicalView {
  public:
   virtual ~IResearchViewDBServer();
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief apply any changes to 'state' required by this view
+  ///////////////////////////////////////////////////////////////////////////////
+  void apply(arangodb::TransactionState& state);
 
   virtual arangodb::Result drop() override;
 
@@ -73,6 +81,18 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
 
   virtual void open() override;
   virtual arangodb::Result rename(std::string&& newName, bool doSync) override;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @return pointer to an index reader containing the datastore record snapshot
+  ///         associated with 'state'
+  ///         (nullptr == no view snapshot associated with the specified state)
+  ///         if force == true && no snapshot -> associate current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  PrimaryKeyIndexReader* snapshot(
+    TransactionState& state,
+    bool force = false
+  ) const;
+
   virtual arangodb::Result updateProperties(
     arangodb::velocypack::Slice const& properties,
     bool partialUpdate,
@@ -96,6 +116,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   arangodb::velocypack::Builder _meta; // the view definition
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
   irs::utf8_path const _persistedPath;
+  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,

@@ -29,48 +29,13 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/ServerIdFeature.h"
 #include "velocypack/StringRef.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
 #include "LogicalDataSource.h"
 
 namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view deletion marker
-////////////////////////////////////////////////////////////////////////////////
-const std::string DELETED_FIELD("deleted");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view globaly-unique id
-////////////////////////////////////////////////////////////////////////////////
-const std::string GLOBALLY_UNIQUE_ID_FIELD("globallyUniqueId");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view id
-////////////////////////////////////////////////////////////////////////////////
-const std::string ID_FIELD("id");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view id (from vocbase.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string IS_SYSTEM_FIELD("isSystem");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view name
-////////////////////////////////////////////////////////////////////////////////
-const std::string NAME_FIELD("name");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view plan ID
-////////////////////////////////////////////////////////////////////////////////
-const std::string PLAN_ID_FIELD("planId");
 
 std::string ensureGuid(
     std::string&& guid,
@@ -137,7 +102,7 @@ bool readIsSystem(arangodb::velocypack::Slice definition) {
 
   static const std::string empty;
   auto name = arangodb::basics::VelocyPackHelper::getStringValue(
-    definition, NAME_FIELD, empty
+    definition, arangodb::StaticStrings::DataSourceName, empty
   );
 
   if (!TRI_vocbase_t::IsSystemName(name)) {
@@ -146,7 +111,7 @@ bool readIsSystem(arangodb::velocypack::Slice definition) {
 
   // same condition as in LogicalCollection
   return arangodb::basics::VelocyPackHelper::readBooleanValue(
-    definition, IS_SYSTEM_FIELD, false
+    definition, arangodb::StaticStrings::DataSourceSystem, false
   );
 }
 
@@ -199,12 +164,20 @@ LogicalDataSource::LogicalDataSource(
      type,
      vocbase,
      basics::VelocyPackHelper::extractIdValue(definition),
-     basics::VelocyPackHelper::getStringValue(definition, GLOBALLY_UNIQUE_ID_FIELD, ""),
-     basics::VelocyPackHelper::stringUInt64(definition.get(PLAN_ID_FIELD)),
-     basics::VelocyPackHelper::getStringValue(definition, NAME_FIELD, ""),
+     basics::VelocyPackHelper::getStringValue(
+       definition, StaticStrings::DataSourceGuid, ""
+     ),
+     basics::VelocyPackHelper::stringUInt64(
+       definition.get(StaticStrings::DataSourcePlanId)
+     ),
+     basics::VelocyPackHelper::getStringValue(
+       definition, StaticStrings::DataSourceName, ""
+     ),
      planVersion,
      readIsSystem(definition),
-     basics::VelocyPackHelper::readBooleanValue(definition, DELETED_FIELD, false)
+     basics::VelocyPackHelper::readBooleanValue(
+       definition, StaticStrings::DataSourceDeleted, false
+     )
    ) {
 }
 
@@ -245,20 +218,26 @@ Result LogicalDataSource::toVelocyPack(
     );
   }
 
-  builder.add(ID_FIELD, velocypack::Value(std::to_string(id())));
-  builder.add(NAME_FIELD, toValuePair(name()));
+  builder.add(
+    StaticStrings::DataSourceId,
+    velocypack::Value(std::to_string(id()))
+  );
+  builder.add(StaticStrings::DataSourceName, toValuePair(name()));
 
   // note: includeSystem and forPersistence are not 100% synonymous,
   // however, for our purposes this is an okay mapping; we only set
   // includeSystem if we are persisting the properties
   if (forPersistence) {
-    builder.add(DELETED_FIELD, velocypack::Value(deleted()));
-    builder.add(GLOBALLY_UNIQUE_ID_FIELD, toValuePair(guid()));
-    builder.add(IS_SYSTEM_FIELD, velocypack::Value(system()));
+    builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
+    builder.add(StaticStrings::DataSourceGuid, toValuePair(guid()));
+    builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
 
     // FIXME not sure if the following is relevant
     // Cluster Specific
-    builder.add(PLAN_ID_FIELD, velocypack::Value(std::to_string(planId())));
+    builder.add(
+      StaticStrings::DataSourcePlanId,
+      velocypack::Value(std::to_string(planId()))
+    );
   }
 
   return appendVelocyPack(builder, detailed, forPersistence);

@@ -24,6 +24,7 @@
 #include "LogicalView.h"
 
 #include "RestServer/ViewTypesFeature.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,12 +40,6 @@ namespace {
 ///        view properties
 ////////////////////////////////////////////////////////////////////////////////
 const std::string PROPERTIES_FIELD("properties");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view type
-////////////////////////////////////////////////////////////////////////////////
-const std::string TYPE_FIELD("type");
 
 }
 
@@ -64,7 +59,9 @@ LogicalView::LogicalView(
 ): LogicalDataSource(
      category(),
      LogicalDataSource::Type::emplace(
-       arangodb::basics::VelocyPackHelper::getStringRef(definition, "type", "")
+       arangodb::basics::VelocyPackHelper::getStringRef(
+         definition, StaticStrings::DataSourceType, ""
+       )
      ),
      vocbase,
      definition,
@@ -116,8 +113,9 @@ LogicalView::LogicalView(
     return nullptr;
   }
 
-  auto const viewType =
-    basics::VelocyPackHelper::getStringRef(definition, "type", "");
+  auto const viewType = basics::VelocyPackHelper::getStringRef(
+    definition, StaticStrings::DataSourceType, ""
+  );
   auto const& dataSourceType =
     arangodb::LogicalDataSource::Type::emplace(viewType);
   auto const& viewFactory = viewTypes->factory(dataSourceType);
@@ -175,7 +173,10 @@ arangodb::Result DBServerLogicalView::appendVelocyPack(
     );
   }
 
-  builder.add(TYPE_FIELD, arangodb::velocypack::Value(type().name()));
+  builder.add(
+    StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(type().name())
+  );
 
   // note: includeSystem and forPersistence are not 100% synonymous,
   // however, for our purposes this is an okay mapping; we only set
@@ -230,7 +231,9 @@ arangodb::Result DBServerLogicalView::appendVelocyPack(
         // We have not yet persisted this view
         for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
           auto id = arangodb::basics::VelocyPackHelper::getStringRef(
-            entry, "id", arangodb::velocypack::StringRef()
+            entry,
+            StaticStrings::DataSourceId,
+            arangodb::velocypack::StringRef()
           );
 
           if (!id.compare(viewId)) {

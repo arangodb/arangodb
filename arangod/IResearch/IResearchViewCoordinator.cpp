@@ -40,24 +40,6 @@
 
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        corresponding link definitions
-////////////////////////////////////////////////////////////////////////////////
-const std::string LINKS_FIELD("links");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view properties (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string PROPERTIES_FIELD("properties");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the IResearch View definition denoting the
-///        view type (from LogicalView.cpp)
-////////////////////////////////////////////////////////////////////////////////
-const std::string TYPE_FIELD("type");
-
 using namespace arangodb::basics;
 using namespace arangodb::iresearch;
 
@@ -269,14 +251,17 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
     );
   }
 
-  builder.add(TYPE_FIELD, arangodb::velocypack::Value(type().name()));
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(type().name())
+  );
 
   if (!detailed) {
     return arangodb::Result();
   }
 
   builder.add(
-    PROPERTIES_FIELD,
+    StaticStrings::PropertiesField,
     arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
   );
   _meta.json(builder); // regular properites
@@ -284,7 +269,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
   auto links = _links.slice();
 
   if (links.isObject() && links.length()) {
-    builder.add(LINKS_FIELD, links);
+    builder.add(StaticStrings::LinksField, links);
   }
 
   builder.close(); // close PROPERTIES_FIELD

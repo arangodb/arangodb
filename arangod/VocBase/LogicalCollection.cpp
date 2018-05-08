@@ -75,7 +75,7 @@ std::string ReadGloballyUniqueId(arangodb::velocypack::Slice info) {
   static const std::string empty;
   auto guid = arangodb::basics::VelocyPackHelper::getStringValue(
     info,
-    "globallyUniqueId",
+    arangodb::StaticStrings::DataSourceGuid,
     empty
   );
 
@@ -90,10 +90,11 @@ std::string ReadGloballyUniqueId(arangodb::velocypack::Slice info) {
   );
 
   // predictable UUID for legacy collections
-  if (version < LogicalCollection::CollectionVersions::VERSION_33) {
-    return info.isObject()
-      ? arangodb::basics::VelocyPackHelper::getStringValue(info, "name", empty)
-      : empty;
+  if (version < LogicalCollection::CollectionVersions::VERSION_33
+      && info.isObject()) {
+    return arangodb::basics::VelocyPackHelper::getStringValue(
+      info, arangodb::StaticStrings::DataSourceName, empty
+    );
   }
 
   return empty;
@@ -177,21 +178,27 @@ LogicalCollection::LogicalCollection(
     uint64_t planVersion /*= 0*/
 ): LogicalDataSource(
      category(),
-     ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
+     ReadType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
      vocbase,
      arangodb::basics::VelocyPackHelper::extractIdValue(info),
      ReadGloballyUniqueId(info),
-     arangodb::basics::VelocyPackHelper::stringUInt64(info.get("planId")),
-     ReadStringValue(info, "name", ""),
+     arangodb::basics::VelocyPackHelper::stringUInt64(
+       info.get(StaticStrings::DataSourcePlanId)
+     ),
+     ReadStringValue(info, StaticStrings::DataSourceName, ""),
      planVersion,
-     TRI_vocbase_t::IsSystemName(ReadStringValue(info, "name", ""))
-       && Helper::readBooleanValue(info, "isSystem", false),
-     Helper::readBooleanValue(info, "deleted", false)
+     TRI_vocbase_t::IsSystemName(ReadStringValue(
+       info, StaticStrings::DataSourceName, ""
+     )) && Helper::readBooleanValue(
+       info, StaticStrings::DataSourceSystem, false
+     ),
+     Helper::readBooleanValue(info, StaticStrings::DataSourceDeleted, false)
    ),
       _internalVersion(0),
       _isAStub(isAStub),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(
-          info, "type", TRI_COL_TYPE_UNKNOWN)),
+        info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN)
+      ),
       _distributeShardsLike(ReadStringValue(info, "distributeShardsLike", "")),
       _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
@@ -756,7 +763,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(
 
   // Collection Meta Information
   result.add("cid", VPackValue(std::to_string(id())));
-  result.add("type", VPackValue(static_cast<int>(_type)));
+  result.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
   result.add("status", VPackValue(_status));
   result.add("statusString", VPackValue(::translateStatus(_status)));
   result.add("version", VPackValue(_version));
@@ -767,9 +774,9 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
-    result.add("deleted", VPackValue(deleted()));
-    result.add("globallyUniqueId", VPackValue(guid()));
-    result.add("isSystem", VPackValue(system()));
+    result.add(StaticStrings::DataSourceDeleted, VPackValue(deleted()));
+    result.add(StaticStrings::DataSourceGuid, VPackValue(guid()));
+    result.add(StaticStrings::DataSourceSystem, VPackValue(system()));
   }
 
   // TODO is this still releveant or redundant in keyGenerator?
@@ -799,7 +806,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
-    result.add("planId", VPackValue(std::to_string(planId())));
+    result.add(StaticStrings::DataSourcePlanId, VPackValue(std::to_string(planId())));
   }
 
   result.add("numberOfShards", VPackValue(_numberOfShards));
