@@ -62,14 +62,14 @@ class RocksDBReplicationContext {
     std::shared_ptr<arangodb::velocypack::CustomTypeHandler> customTypeHandler;
     arangodb::velocypack::Options vpackOptions;
     
-    bool sorted() const { return sortedIterator; }
+    bool sorted() const { return _sortedIterator; }
     void setSorted(bool, transaction::Methods*);
 
     void release();
     
   private:
     /// primary-index sorted iterator
-    bool sortedIterator;
+    bool _sortedIterator;
   };
 
  public:

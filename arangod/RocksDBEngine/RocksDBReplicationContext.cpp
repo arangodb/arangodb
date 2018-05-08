@@ -751,7 +751,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
       hasMore{true},
       customTypeHandler{},
       vpackOptions{Options::Defaults},
-      sortedIterator{!sorted} {
+      _sortedIterator{!sorted} {
   // we are getting into trouble during the dumping of "_users"
   // this workaround avoids the auth check in addCollectionAtRuntime
   ExecContext const* old = ExecContext::CURRENT;
@@ -768,7 +768,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
 
 void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted,
                                                   transaction::Methods* trx) {
-  if (sortedIterator != sorted) {
+  if (_sortedIterator != sorted) {
     iter.reset();
     if (sorted) {
       iter = static_cast<RocksDBCollection*>(logical.getPhysical())
@@ -779,7 +779,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted,
     }
     currentTick = 1;
     hasMore = true;
-    sortedIterator = sorted;
+    _sortedIterator = sorted;
   }
 }
 
