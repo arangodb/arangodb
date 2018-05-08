@@ -49,6 +49,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <array>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -810,9 +811,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       // not found...
       col = vocbase()->lookupCollection(masterName).get();
 
-      if (col != nullptr && (col->name() != masterName ||
-                             
-                             (!masterUuid.empty() && col->globallyUniqueId() != masterUuid))) {
+      if (col != nullptr
+          && (col->name() != masterName
+              || (!masterUuid.empty() && col->guid() != masterUuid))) {
         // found another collection with the same name locally.
         // in this case we must drop it because we will run into duplicate
         // name conflicts otherwise

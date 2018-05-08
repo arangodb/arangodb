@@ -585,7 +585,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
   if (col != nullptr) {
     if (col->system()) {
-      TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
+      TRI_ASSERT(!simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase),
         col->id(),
@@ -621,12 +621,15 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
     s.add("id", VPackSlice::nullSlice());
     s.add("cid", VPackSlice::nullSlice());
   }
+
   s.close();
+
   VPackBuilder merged = VPackCollection::merge(slice, s.slice(), /*mergeValues*/true,
                                                /*nullMeansRemove*/true);
-  
+
   // we need to remove every occurence of objectId as a key
   auto stripped = rocksutils::stripObjectIds(merged.slice());
+
   try {
     col = vocbase->createCollection(stripped.first);
   } catch (basics::Exception const& ex) {
@@ -638,12 +641,12 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   }
 
   TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(!uuid.isString() ||
-             uuid.compareString(col->globallyUniqueId()) == 0);
+  TRI_ASSERT(!uuid.isString() || uuid.compareString(col->guid()) == 0);
 
   if (dst != nullptr) {
     *dst = col;
   }
+
   return Result();
 }
 

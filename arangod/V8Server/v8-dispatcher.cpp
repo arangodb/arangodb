@@ -106,7 +106,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   void work(ExecContext const*);
   void queue(std::chrono::microseconds offset);
   void unqueue() noexcept;
-  std::function<void(boost::system::error_code const&)> callbackFunction();
+  std::function<void(asio::error_code const&)> callbackFunction();
   std::string const& name() const { return _name; }
 
  private:
@@ -115,7 +115,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   double const _created;
   std::string _user;
 
-  std::unique_ptr<boost::asio::steady_timer> _timer;
+  std::unique_ptr<asio::steady_timer> _timer;
 
   // guard to make sure the database is not dropped while used by us
   std::unique_ptr<DatabaseGuard> _dbGuard;
@@ -285,11 +285,11 @@ void V8Task::setUser(std::string const& user) {
   _user = user;
 }
 
-std::function<void(const boost::system::error_code&)>
+std::function<void(const asio::error_code&)>
 V8Task::callbackFunction() {
   auto self = shared_from_this();
 
-  return [self, this](const boost::system::error_code& error) {
+  return [self, this](const asio::error_code& error) {
     unqueue();
     
     // First tell the scheduler that this thread is working:
@@ -351,8 +351,8 @@ void V8Task::start() {
              ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
   
-  auto ioService = SchedulerFeature::SCHEDULER->ioService();
-  _timer.reset(new boost::asio::steady_timer(*ioService));
+  auto ioService = SchedulerFeature::SCHEDULER->ioContext();
+  _timer.reset(new asio::steady_timer(*ioService));
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
   }
@@ -394,7 +394,7 @@ void V8Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic = false;
 
-  boost::system::error_code ec;
+  asio::error_code ec;
   _timer->cancel(ec);
 
   unqueue();

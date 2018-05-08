@@ -49,6 +49,8 @@
 #include "Transaction/Helpers.h"
 #include "Aql/AstNode.h"
 
+#include <asio/io_context.hpp>
+
 namespace {
 
 /// @brief hard-coded vector of the index attributes
@@ -411,18 +413,18 @@ class IndexMock final : public arangodb::Index {
   IndexMock()
     : arangodb::Index(0, nullptr, std::vector<std::vector<arangodb::basics::AttributeName>>(), false, false) {
   }
-  virtual char const* typeName() const { return "IndexMock"; }
-  virtual bool allowExpansion() const { return false; }
-  virtual IndexType type() const { return TRI_IDX_TYPE_UNKNOWN; }
-  virtual bool canBeDropped() const { return true; }
-  virtual bool isSorted() const { return true; }
-  virtual bool hasSelectivityEstimate() const { return false; }
-  virtual size_t memory() const { return 0; }
+  virtual char const* typeName() const override { return "IndexMock"; }
+  virtual bool allowExpansion() const override { return false; }
+  virtual IndexType type() const override { return TRI_IDX_TYPE_UNKNOWN; }
+  virtual bool canBeDropped() const override { return true; }
+  virtual bool isSorted() const override { return true; }
+  virtual bool hasSelectivityEstimate() const override { return false; }
+  virtual size_t memory() const override { return 0; }
   virtual arangodb::Result insert(
       arangodb::transaction::Methods*,
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const&,
-      OperationMode mode) {
+      OperationMode mode) override {
     TRI_ASSERT(false);
     return arangodb::Result();
   }
@@ -430,12 +432,12 @@ class IndexMock final : public arangodb::Index {
       arangodb::transaction::Methods*,
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const&,
-      OperationMode mode) {
+      OperationMode mode) override {
     TRI_ASSERT(false);
     return arangodb::Result();
   }
-  virtual void load() {}
-  virtual void unload() {}
+  virtual void load() override {}
+  virtual void unload() override {}
 } EMPTY_INDEX;
 
 class ReverseAllIteratorMock final : public arangodb::IndexIterator {
@@ -587,9 +589,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   }
 
 
-  boost::asio::io_service ioService;
-  auto poster = [&ioService](std::function<void()> fn) -> void {
-    ioService.post(fn);
+  asio::io_context ioContext;
+  auto poster = [&ioContext](std::function<void()> fn) -> void {
+    ioContext.post(fn);
   };
   arangodb::basics::LocalTaskQueue taskQueue(poster);
   std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});

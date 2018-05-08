@@ -45,6 +45,12 @@ const std::string DELETED_FIELD("deleted");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the IResearch View definition denoting the
+///        view globaly-unique id (from LogicalView.cpp)
+////////////////////////////////////////////////////////////////////////////////
+const std::string GLOBALLY_UNIQUE_ID_FIELD("globallyUniqueId");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
 ///        view id (from LogicalView.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 const std::string ID_FIELD("id");
@@ -491,6 +497,7 @@ void IResearchViewDBServer::toVelocyPack(
 
   if (includeSystem) {
     result.add(DELETED_FIELD, arangodb::velocypack::Value(deleted()));
+    result.add(GLOBALLY_UNIQUE_ID_FIELD, arangodb::velocypack::Value(guid()));
     result.add(IS_SYSTEM_FIELD, arangodb::velocypack::Value(system()));
     result.add(PLAN_ID_FIELD, arangodb::velocypack::Value(std::to_string(planId())));
   }

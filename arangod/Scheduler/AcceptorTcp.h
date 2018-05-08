@@ -25,21 +25,22 @@
 
 #include "Scheduler/Acceptor.h"
 
+#include <asio/ip/tcp.hpp>
+
 namespace arangodb {
 class AcceptorTcp final : public Acceptor {
   public:
-    AcceptorTcp(boost::asio::io_service& ioService, Endpoint* endpoint)
-    : Acceptor(ioService, endpoint),
-      _acceptor(ioService) {
+    AcceptorTcp(asio::io_context& ioContext, Endpoint* endpoint)
+    : Acceptor(ioContext, endpoint),
+      _acceptor(ioContext) {
     }
 
     void open() override;
     void close() override { _acceptor.close(); };
     void asyncAccept(Acceptor::AcceptHandler const& handler) override;
-    void createPeer() override;
 
   private:
-    boost::asio::ip::tcp::acceptor _acceptor;
+    asio::ip::tcp::acceptor _acceptor;
 };
 }
 

@@ -34,6 +34,8 @@
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 
+#include <asio/deadline_timer.hpp>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -134,7 +136,7 @@ class Worker : public IWorker {
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
-  std::unique_ptr<boost::asio::deadline_timer> _boost_timer;
+  std::unique_ptr<asio::deadline_timer> _boost_timer;
 
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);

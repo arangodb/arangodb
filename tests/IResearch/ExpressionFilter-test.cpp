@@ -52,7 +52,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
@@ -215,7 +214,7 @@ struct custom_sort: public irs::sort {
 
   DECLARE_FACTORY_DEFAULT();
   custom_sort(): sort(custom_sort::type()) {}
-  virtual prepared::ptr prepare() const {
+  virtual prepared::ptr prepare() const override {
     return custom_sort::prepared::make<custom_sort::prepared>(*this);
   }
 };
@@ -250,7 +249,6 @@ struct IResearchExpressionFilterSetup {
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);

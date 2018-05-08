@@ -935,13 +935,13 @@ constexpr int TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     
 /// "conflicting replication factor with distributeShardsLike parameter
 /// "assignment"
 /// Will be raised if intended replication factor does not match that of the
-/// prototype shard given in ditributeShardsLike parameter.
+/// prototype shard given in distributeShardsLike parameter.
 constexpr int TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR       = 1493;
 
 /// 1494: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS
 /// "conflicting shard number with distributeShardsLike parameter assignment"
 /// Will be raised if intended number of shards does not match that of the
-/// prototype shard given in ditributeShardsLike parameter.
+/// prototype shard given in distributeShardsLike parameter.
 constexpr int TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         = 1494;
 
 /// 1495: ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING
@@ -1659,6 +1659,74 @@ constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         
 /// The given smartGraph attribute is illegal and connot be used for sharding.
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
+
+/// 5000: ERROR_CLUSTER_REPAIRS_FAILED
+/// "error during cluster repairs"
+/// General error during cluster repairs
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_FAILED                                  = 5000;
+
+/// 5001: ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY
+/// "not enough (healthy) db servers"
+/// Will be raised when, during repairDistributeShardsLike, there must be a
+/// free db server to move a shard, but there is no candidate or none is
+/// healthy.
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY                      = 5001;
+
+/// 5002: ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED
+/// "replication factor violated during cluster repairs"
+/// Will be raised on various inconsistencies regarding the replication factor
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED             = 5002;
+
+/// 5003: ERROR_CLUSTER_REPAIRS_NO_DBSERVERS
+/// "no dbservers during cluster repairs"
+/// Will be raised if a collection that is fixed has some shard without DB
+/// Servers
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS                            = 5003;
+
+/// 5004: ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS
+/// "mismatching leaders during cluster repairs"
+/// Will be raised if a shard in collection and its prototype in the
+/// corresponding distributeShardsLike collection have mismatching leaders
+/// (when they should already have been fixed)
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS                     = 5004;
+
+/// 5005: ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS
+/// "mismatching followers during cluster repairs"
+/// Will be raised if a shard in collection and its prototype in the
+/// corresponding distributeShardsLike collection don't have the same followers
+/// (when they should already have been adjusted)
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS                   = 5005;
+
+/// 5006: ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES
+/// "inconsistent attributes during cluster repairs"
+/// Will be raised if a collection that is fixed does (not) have
+/// distributeShardsLike when it is expected, or does (not) have
+/// repairingDistributeShardsLike when it is expected
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES                 = 5006;
+
+/// 5007: ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS
+/// "mismatching shards during cluster repairs"
+/// Will be raised if in a collection and its distributeShardsLike prototype
+/// collection some shard and its prototype have an unequal number of DB Servers
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS                      = 5007;
+
+/// 5008: ERROR_CLUSTER_REPAIRS_JOB_FAILED
+/// "move shard job failed during cluster repairs"
+/// Will be raised if a move shard job in the agency failed during cluster
+/// repairs
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED                              = 5008;
+
+/// 5009: ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED
+/// "move shard job disappeared during cluster repairs"
+/// Will be raised if a move shard job in the agency cannot be found anymore
+/// before it finished
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         = 5009;
+
+/// 5010: ERROR_CLUSTER_REPAIRS_OPERATION_FAILED
+/// "agency transaction failed during cluster repairs"
+/// Will be raised if an agency transaction failed during either sending or
+/// executing it.
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        = 5010;
 
 /// 20001: ERROR_AGENCY_INQUIRY_SYNTAX
 /// "Illegal inquiry syntax"

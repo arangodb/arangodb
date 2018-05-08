@@ -26,7 +26,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/asio-helper.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 

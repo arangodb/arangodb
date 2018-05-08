@@ -229,7 +229,7 @@ void TRI_vocbase_t::signalCleanup() {
 
 void TRI_vocbase_t::checkCollectionInvariants() const {
   TRI_ASSERT(_dataSourceByName.size() == _dataSourceById.size());
-  TRI_ASSERT(_dataSourceByUuid.size() <= _dataSourceById.size()); // does not contain views
+  TRI_ASSERT(_dataSourceByUuid.size() == _dataSourceById.size());
 }
 
 /// @brief adds a new collection
@@ -274,11 +274,11 @@ void TRI_vocbase_t::registerCollection(
     }
 
     try {
-      auto it2 = _dataSourceByUuid.emplace(collection->globallyUniqueId(), collection);
+      auto it2 = _dataSourceByUuid.emplace(collection->guid(), collection);
 
       if (!it2.second) {
         std::string msg;
-        msg.append(std::string("duplicate entry for collection uuid '") + collection->globallyUniqueId() + "'");
+        msg.append(std::string("duplicate entry for collection uuid '") + collection->guid() + "'");
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
@@ -294,7 +294,7 @@ void TRI_vocbase_t::registerCollection(
     } catch (...) {
       _dataSourceByName.erase(name);
       _dataSourceById.erase(cid);
-      _dataSourceByUuid.erase(collection->globallyUniqueId());
+      _dataSourceByUuid.erase(collection->guid());
       throw;
     }
 
@@ -327,7 +327,7 @@ bool TRI_vocbase_t::unregisterCollection(
     // this is because someone else might have created a new collection with the
     // same name, but with a different id
   _dataSourceByName.erase(collection->name());
-  _dataSourceByUuid.erase(collection->globallyUniqueId());
+  _dataSourceByUuid.erase(collection->guid());
 
   // post-condition
   checkCollectionInvariants();
@@ -369,13 +369,28 @@ void TRI_vocbase_t::registerView(
         _dataSourceByName.erase(name);
 
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "duplicate view identifier " << view->id() << " for name '"
+            << "duplicate view identifier '" << view->id() << "' for name '"
             << name << "'";
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
       }
     } catch (...) {
       _dataSourceByName.erase(name);
+      throw;
+    }
+
+    try {
+      auto it2 = _dataSourceByUuid.emplace(view->guid(), view);
+
+      if (!it2.second) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "duplicate view globally-unique identifier '" << view->guid() << "' for name '" << name << "'";
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+      }
+    } catch (...) {
+      _dataSourceByName.erase(name);
+      _dataSourceById.erase(id);
       throw;
     }
 
@@ -405,6 +420,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
     // this is because someone else might have created a new view with the
     // same name, but with a different id
   _dataSourceByName.erase(view.name());
+  _dataSourceByUuid.erase(view.guid());
 
   // post-condition
   checkCollectionInvariants();

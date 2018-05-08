@@ -43,9 +43,9 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
   RocksDBPrefixExtractor() {}
   ~RocksDBPrefixExtractor() {}
 
-  const char* Name() const { return "RocksDBPrefixExtractor"; }
+  const char* Name() const override { return "RocksDBPrefixExtractor"; }
 
-  rocksdb::Slice Transform(rocksdb::Slice const& key) const {
+  rocksdb::Slice Transform(rocksdb::Slice const& key) const override {
     // 8-byte objectID + 0..n-byte string + 1-byte '\0'
     // + 8 byte revisionID + 1-byte 0xFF (these are for cut off)
     TRI_ASSERT(key.size() >= sizeof(char) + sizeof(uint64_t));
@@ -62,18 +62,18 @@ class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
     }
   }
 
-  bool InDomain(rocksdb::Slice const& key) const {
+  bool InDomain(rocksdb::Slice const& key) const override {
     // 8-byte objectID + n-byte string + 1-byte '\0' + ...
     TRI_ASSERT(key.size() >= sizeof(char) + sizeof(uint64_t));
     return key.data()[key.size() - 1] != '\0';
   }
 
-  bool InRange(rocksdb::Slice const& dst) const {
+  bool InRange(rocksdb::Slice const& dst) const override {
     TRI_ASSERT(dst.size() >= sizeof(char) + sizeof(uint64_t));
     return dst.data()[dst.size() - 1] != '\0';
   }
 
-  bool SameResultWhenAppended(rocksdb::Slice const& prefix) const {
+  bool SameResultWhenAppended(rocksdb::Slice const& prefix) const override {
     return prefix.data()[prefix.size() - 1] == '\0';
   }
 
