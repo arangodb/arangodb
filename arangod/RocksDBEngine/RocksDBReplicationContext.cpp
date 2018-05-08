@@ -394,6 +394,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
         TRI_ERROR_BAD_PARAMETER,
         "the replication context iterator has not been initialized");
   }
+  _collection->setSorted(true, _trx.get());
   TRI_ASSERT(_collection->sorted() && _lastIteratorOffset == 0);
 
   std::string lowKey;
@@ -461,7 +462,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
         TRI_ERROR_BAD_PARAMETER,
         "the replication context iterator has not been initialized");
   }
-
+  _collection->setSorted(true, _trx.get());
   TRI_ASSERT(_collection->iter);
   TRI_ASSERT(_collection->sorted() && _lastIteratorOffset == 0);
   
@@ -543,7 +544,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         TRI_ERROR_BAD_PARAMETER,
         "the replication context iterator has not been initialized");
   }
-
+  _collection->setSorted(true, _trx.get());
   TRI_ASSERT(_collection->iter);
   TRI_ASSERT(_collection->sorted());
   
