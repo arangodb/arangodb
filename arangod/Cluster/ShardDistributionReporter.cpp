@@ -60,11 +60,14 @@ std::shared_ptr<ShardDistributionReporter>
 //////////////////////////////////////////////////////////////////////////////
 
 static inline bool TestIsShardInSync(
-    std::vector<ServerID> const& plannedServers,
-    std::vector<ServerID> const& realServers) {
-  // TODO We need to verify that lists are identical despite ordering?
-  return plannedServers.at(0) == realServers.at(0) &&
-         plannedServers.size() == realServers.size();
+    std::vector<ServerID> plannedServers,
+    std::vector<ServerID> realServers) {
+  // The leader at [0] must be the same, while the order of the followers must
+  // be ignored.
+  std::sort(plannedServers.begin() + 1, plannedServers.end());
+  std::sort(realServers.begin() + 1, realServers.end());
+
+  return plannedServers == realServers;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -313,8 +316,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
             {
               // First Ask the leader
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
+              std::unordered_map<std::string, std::string> headers;
               leaderOpId = _cc->asyncRequest(
                   "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
                   path, body, headers, nullptr, timeleft);
@@ -335,9 +337,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             }
 
             // Ask them
+            std::unordered_map<std::string, std::string> headers;
             for (auto const& server : serversToAsk) {
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
               _cc->asyncRequest("", coordId, "server:" + server,
                                 rest::RequestType::GET, path, body, headers,
                                 nullptr, timeleft);

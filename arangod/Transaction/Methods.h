@@ -81,6 +81,7 @@ class CollectionNameResolver;
 class LocalDocumentId;
 class Index;
 class ManagedDocumentResult;
+struct IndexIteratorOptions;
 struct OperationCursor;
 struct OperationOptions;
 class TransactionState;
@@ -160,6 +161,7 @@ class Methods {
   inline TransactionState* state() const { return _state; }
 
   Result resolveId(char const* handle, size_t length, TRI_voc_cid_t& cid, char const*& key, size_t& outLength);
+  Result resolveId(char const* handle, size_t length, std::shared_ptr<LogicalCollection>& collection, char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
   std::shared_ptr<transaction::Context> transactionContext() const {
@@ -359,15 +361,15 @@ class Methods {
   OperationCursor* indexScanForCondition(IndexHandle const&,
                                          arangodb::aql::AstNode const*,
                                          arangodb::aql::Variable const*,
-                                         ManagedDocumentResult*, bool reverse);
+                                         ManagedDocumentResult*,
+                                         IndexIteratorOptions const&);
 
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   ENTERPRISE_VIRT
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
-                                             CursorType cursorType,
-                                             bool reverse);
+                                             CursorType cursorType);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,

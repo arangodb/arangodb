@@ -72,7 +72,6 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(
       _db(nullptr),
       _inRecovery(true) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("RocksDBEngine");
   startsAfter("StorageEngine");

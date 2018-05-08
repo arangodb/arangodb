@@ -57,6 +57,9 @@ struct OptimizerRule {
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1,
+    
+    // remove legacy geo functions
+    removeLegacyGeoFunctions_pass1,
 
     inlineSubqueriesRule_pass1,
 
@@ -76,7 +79,7 @@ struct OptimizerRule {
 
     // "Pass 2": try to remove redundant or unnecessary nodes
     // ======================================================
-
+    
     // remove filters from the query that are not necessary at all
     // filters that are always true will be removed entirely
     // filters that are always false will be replaced with a NoResults node
@@ -87,6 +90,9 @@ struct OptimizerRule {
 
     // remove redundant sort blocks
     removeRedundantSortsRule_pass2,
+    
+    // try to inline subqueries after removing unecessary calculations
+    //inlineSubqueriesRule_pass2,
 
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher
@@ -164,8 +170,10 @@ struct OptimizerRule {
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule_pass6,
 
+#ifdef USE_IRESEARCH
     // move filters and sort conditions into views and remove them
     handleViewsRule_pass6,
+#endif
 
     // remove now obsolete path variables
     removeTraversalPathVariable_pass6,
@@ -201,6 +209,12 @@ struct OptimizerRule {
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule_pass10,
 
+#ifdef USE_IRESEARCH
+    // FIXME order-???
+    // make operations on sharded IResearch views use scatter / gather / remote
+    scatterIResearchViewInClusterRule_pass10,
+#endif
+
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule_pass10,
@@ -214,13 +228,16 @@ struct OptimizerRule {
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule_pass10,
-    
+
     // push collect operations to the db servers
     collectInClusterRule_pass10,
 
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule_pass10,
+
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
-    reduceExtractionToProjectionRule_pass6
+    reduceExtractionToProjectionRule_pass10,
   };
 
   std::string name;

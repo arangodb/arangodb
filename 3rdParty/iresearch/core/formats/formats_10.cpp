@@ -296,19 +296,24 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   doc_id_t read_skip(skip_state& state, index_input& in) {
-    state.doc = in.read_vint();
+    state.doc = in.read_vlong();
     state.doc_ptr += in.read_vlong();
+
     if (features_.position()) {
       state.pend_pos = in.read_vint();
       state.pos_ptr += in.read_vlong();
+
       const bool has_pay = features_.payload();
+
       if (has_pay || features_.offset()) {
         if (has_pay) {
           state.pay_pos = in.read_vint();
         }
+
         state.pay_ptr += in.read_vlong();
       }
     }
+
     return state.doc;
   }
 
@@ -1091,9 +1096,9 @@ class pos_doc_iterator : public doc_iterator {
     const irs::attribute_view& attrs,
     const index_input* pos_in,
     const index_input* pay_in
-  ) final;
+  ) override final;
 
-  virtual void seek_notify(const skip_context &ctx) final {
+  virtual void seek_notify(const skip_context &ctx) override final {
     assert(pos_);
     // notify positions
     pos_->prepare(ctx);
@@ -1148,9 +1153,12 @@ NS_END // detail
 // --SECTION--                                                index_meta_writer
 // ----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref index_meta_writer::FORMAT_PREFIX = "segments_";
 const string_ref index_meta_writer::FORMAT_PREFIX_TMP = "pending_segments_";
 const string_ref index_meta_writer::FORMAT_NAME = "iresearch_10_index_meta";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<index_meta_reader, index_meta>(const index_meta& meta) {
@@ -1344,8 +1352,11 @@ void index_meta_reader::read(
 // --SECTION--                                              segment_meta_writer 
 // ----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref segment_meta_writer::FORMAT_EXT = "sm";
 const string_ref segment_meta_writer::FORMAT_NAME = "iresearch_10_segment_meta";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<segment_meta_writer, segment_meta>(const segment_meta& meta) {
@@ -1440,8 +1451,11 @@ void segment_meta_reader::read(
 // --SECTION--                                             document_mask_writer 
 // ----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref document_mask_writer::FORMAT_NAME = "iresearch_10_doc_mask";
 const string_ref document_mask_writer::FORMAT_EXT = "doc_mask";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<document_mask_writer, segment_meta>(const segment_meta& meta) {
@@ -1580,8 +1594,11 @@ class meta_writer final : public iresearch::column_meta_writer {
   field_id count_{}; // number of written objects
 }; // meta_writer 
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref meta_writer::FORMAT_NAME = "iresearch_10_columnmeta";
 const string_ref meta_writer::FORMAT_EXT = "cm";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<column_meta_writer, segment_meta>(
@@ -1606,13 +1623,13 @@ bool meta_writer::prepare(directory& dir, const segment_meta& meta) {
 }
 
 void meta_writer::write(const std::string& name, field_id id) {
-  out_->write_vint(id);
+  out_->write_vlong(id);
   write_string(*out_, name);
   ++count_;
 }
 
 void meta_writer::flush() {
-  out_->write_int(count_); // write total number of written objects
+  out_->write_long(count_); // write total number of written objects
   format_utils::write_footer(*out_);
   out_.reset();
   count_ = 0;
@@ -1653,7 +1670,7 @@ bool meta_reader::prepare(
   in->seek(in->length() - sizeof(field_id) - format_utils::FOOTER_LEN);
 
   // read number of objects to read
-  count = in->read_int();
+  count = in->read_long();
 
   format_utils::check_footer(*in, checksum);
 
@@ -1676,7 +1693,7 @@ bool meta_reader::read(column_meta& column) {
     return false;
   }
 
-  const auto id = in_->read_vint();
+  const auto id = in_->read_vlong();
   column.name = read_string<std::string>(*in_);
   column.id = id;
   --count_;
@@ -1799,9 +1816,12 @@ class index_block {
   static const size_t SIZE = Size;
 
   bool push_back(doc_id_t key, uint64_t offset) {
-    assert(keys_ <= key_);
+    assert(key_ >= keys_);
+    assert(key_ < keys_ + Size);
     *key_++ = key;
     assert(key >= key_[-1]);
+    assert(offset_ >= offsets_);
+    assert(offset_ < offsets_ + Size);
     *offset_++ = offset;
     assert(offset >= offset_[-1]);
     return key_ == std::end(keys_);
@@ -1914,6 +1934,13 @@ class writer final : public iresearch::columnstore_writer {
 
       // commit previous key and offset unless the 'reset' method has been called
       if (max_ != pending_key_) {
+        // flush block if we've overcome INDEX_BLOCK_SIZE size (before push_back)
+        if (INDEX_BLOCK_SIZE <= block_index_.size()) {
+          flush_block();
+          min_ = key;
+          offset = block_buf_.size(); // reset offset to position in the current block
+        }
+
         // will trigger 'flush_block' if offset >= MAX_DATA_BLOCK_SIZE
         offset = offsets_[size_t(block_index_.push_back(pending_key_, offset))];
         max_ = pending_key_;
@@ -2035,8 +2062,11 @@ class writer final : public iresearch::columnstore_writer {
   directory* dir_;
 }; // writer
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref writer::FORMAT_NAME = "iresearch_10_columnstore";
 const string_ref writer::FORMAT_EXT = "cs";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<columnstore_writer, segment_meta>(
@@ -3047,8 +3077,8 @@ class column_iterator final: public irs::doc_iterator {
 
   struct payload_iterator: public irs::payload_iterator {
     const irs::bytes_ref* value_{ nullptr };
-    virtual bool next() { return nullptr != value_; }
-    virtual const irs::bytes_ref& value() const {
+    virtual bool next() override { return nullptr != value_; }
+    virtual const irs::bytes_ref& value() const override {
       return value_ ? *value_ : irs::bytes_ref::NIL;
     }
   };
@@ -3785,6 +3815,9 @@ NS_END // columns
 // --SECTION--                                                  postings_writer
 // ----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
+
 const string_ref postings_writer::TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
 
 const string_ref postings_writer::DOC_FORMAT_NAME = "iresearch_10_postings_documents";
@@ -3795,6 +3828,8 @@ const string_ref postings_writer::POS_EXT = "pos";
 
 const string_ref postings_writer::PAY_FORMAT_NAME = "iresearch_10_postings_payloads";
 const string_ref postings_writer::PAY_EXT = "pay";
+
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 void postings_writer::doc_stream::flush(uint64_t* buf, bool freq) {
   encode::bitpack::write_block(*out, deltas, BLOCK_SIZE, buf);
@@ -4100,18 +4135,20 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
     /* write remaining documents using
      * variable length encoding */
     data_output& out = *doc.out;
+
     for (uint32_t i = 0; i < doc.size; ++i) {
-      const uint32_t doc_delta = doc.deltas[i];
+      const uint64_t doc_delta = doc.deltas[i];
 
       if (!features_.freq()) {
-        out.write_vint(doc_delta);
+        out.write_vlong(doc_delta);
       } else {
         assert(doc.freqs);
-        const uint32_t freq = doc.freqs[i];
+        const uint64_t freq = doc.freqs[i];
+
         if (1 == freq) {
-          out.write_vint(shift_pack_32(doc_delta, true));
+          out.write_vlong(shift_pack_64(doc_delta, true));
         } else {
-          out.write_vint(shift_pack_32(doc_delta, false));
+          out.write_vlong(shift_pack_64(doc_delta, false));
           out.write_vlong(freq);
         }
       }
@@ -4203,10 +4240,10 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
 }
 
 void postings_writer::write_skip(size_t level, index_output& out) {
-  const uint32_t doc_delta = doc.block_last; //- doc.skip_doc[level];
+  const uint64_t doc_delta = doc.block_last; //- doc.skip_doc[level];
   const uint64_t doc_ptr = doc.out->file_pointer();
 
-  out.write_vint(doc_delta);
+  out.write_vlong(doc_delta);
   out.write_vlong(doc_ptr - doc.skip_ptr[level]);
 
   doc.skip_doc[level] = doc.block_last;

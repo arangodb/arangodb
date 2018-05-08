@@ -170,7 +170,7 @@ if (USE_IRESEARCH)
   else()
     # 'cmake -E copy_directory' does not preserve timestamps, use 'cp' directly where avalable
     add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND cp -rp "${IRESEARCH_ROOT}.build" "${IRESEARCH_BUILD_DIR}/"
+      COMMAND cp -rp "${IRESEARCH_ROOT}.build/*" "${IRESEARCH_BUILD_DIR}/" # MacOS requires '/*' suffix
     )
   endif()
 
@@ -221,6 +221,12 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
+## Google S2
+################################################################################
+
+add_subdirectory(s2geometry)
+
+################################################################################
 ## SNAPPY
 ################################################################################
 
@@ -232,7 +238,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
 
 if (USE_JEMALLOC)
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories("${JEMALLOC_HOME}/include")
+  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
   set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
 endif ()
@@ -250,6 +256,12 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 include_directories(${ROCKSDB_INCLUDE_DIR})
+
+################################################################################
+## ASIO
+################################################################################
+
+set(ASIO_INCLUDES "${CMAKE_CURRENT_SOURCE_DIR}/asio/1.12/include" PARENT_SCOPE)
 
 ################################################################################
 ## LINK_DIRECTORIES

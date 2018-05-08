@@ -103,7 +103,32 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 
   TRI_ASSERT(d != nullptr);
 
-  int rc = pthread_create(thread, nullptr, &ThreadStarter, d.get());
+  pthread_attr_t 	stackSizeAttribute;
+  size_t			stackSize = 0;
+
+  auto err = pthread_attr_init (&stackSizeAttribute);
+  if (err) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "could not initialise stack size attribute.";
+    return false;
+  }
+  err = pthread_attr_getstacksize(&stackSizeAttribute, &stackSize); 
+  if (err) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "could not acquire stack size from pthread.";
+    return false;
+  }
+
+  if (stackSize < 8388608) { // 8MB
+    err = pthread_attr_setstacksize (&stackSizeAttribute, 8388608);
+    if (err) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "could not assign new stack size in pthread.";
+      return false;
+    }
+  }
+
+  int rc = pthread_create(thread, &stackSizeAttribute, &ThreadStarter, d.get());
 
   if (rc != 0) {
     errno = rc;

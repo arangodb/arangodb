@@ -552,8 +552,8 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   auto result = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
   TRI_ASSERT(cid != 0);
   std::string cidString = arangodb::basics::StringUtils::itoa(cid);
-  TRI_ASSERT(col->vocbase());
-  auto other = ci->getCollection(col->vocbase()->name(), cidString);
+  TRI_ASSERT(col);
+  auto other = ci->getCollection(col->vocbase().name(), cidString);
 
   // The function guarantees that no nullptr is returned
   TRI_ASSERT(other != nullptr);
@@ -722,9 +722,8 @@ int revisionOnCoordinator(std::string const& dbname,
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
@@ -794,9 +793,8 @@ int warmupOnCoordinator(std::string const& dbname,
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
@@ -842,9 +840,8 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
@@ -920,7 +917,7 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
           "shard:" + p.first, arangodb::rest::RequestType::GET,
           "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
               StringUtils::urlEncode(p.first) + "/count",
-          body, headers);
+          body, std::move(headers));
     }
   } else {
     for (auto const& p : *shards) {
@@ -1487,9 +1484,8 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   // We have to contact everybody:
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
@@ -1543,12 +1539,10 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
   unsigned int expected = 0;
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
     auto serverList = ci->getResponsibleServer(p.first);
-
     for (auto& s : *serverList) {
-      auto headers =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
       cc->asyncRequest("", coordTransactionID, "server:" + s,
                       arangodb::rest::RequestType::PUT,
                       "/_db/" + StringUtils::urlEncode(dbname) +
@@ -1585,7 +1579,7 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
-    std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
+    std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<VPackBuilder>& resultBody) {
@@ -1693,7 +1687,7 @@ int getDocumentOnCoordinator(
                 StringUtils::urlEncode(keySlice.copyString()) +
                 optsUrlPart,
             body);
-        requests[0].setHeaders(headers);
+        requests[0].setHeaders(std::move(headers));
       } else {
         reqBuilder.clear();
         reqBuilder.openArray();
@@ -1767,7 +1761,7 @@ int getDocumentOnCoordinator(
       auto headersCopy =
           std::make_unique<std::unordered_map<std::string, std::string>>(
               *headers);
-      req.setHeaders(headersCopy);
+      req.setHeaders(std::move(headersCopy));
       requests.emplace_back(std::move(req));
     }
   } else {
@@ -2555,9 +2549,8 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   }
 
   auto body = std::make_shared<std::string const>();
+  std::unordered_map<std::string, std::string> headers;
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     // set collection name (shard id)
     cc->asyncRequest("", coordTransactionID, "server:" + *it,
                      arangodb::rest::RequestType::PUT, url, body,
@@ -2600,10 +2593,14 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
 
 #ifndef USE_ENTERPRISE
 std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
-  TRI_col_type_e collectionType, TRI_vocbase_t* vocbase, VPackSlice parameters,
-  bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-  bool enforceReplicationFactor) {
-  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, 0, true);
+    TRI_col_type_e collectionType,
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice parameters,
+    bool ignoreDistributeShardsLikeErrors,
+    bool waitForSyncReplication,
+    bool enforceReplicationFactor
+) {
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, true, 0);
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
@@ -2630,11 +2627,10 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
   if (!distributeShardsLike.empty()) {
-
-    CollectionNameResolver resolver(col->vocbase());
+    CollectionNameResolver resolver(&(col->vocbase()));
     TRI_voc_cid_t otherCid =
       resolver.getCollectionIdCluster(distributeShardsLike);
-    
+
     if (otherCid != 0) {
       shards = CloneShardDistribution(ci, col, otherCid);
     } else {
@@ -2644,7 +2640,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   } else {
     // system collections should never enforce replicationfactor
     // to allow them to come up with 1 dbserver
-    if (col->isSystem()) {
+    if (col->system()) {
       enforceReplicationFactor = false;
     }
 
@@ -2682,7 +2678,9 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
           }), dbServers.end());
     }
     std::random_shuffle(dbServers.begin(), dbServers.end());
-    shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor, dbServers, !col->isSystem());
+    shards = DistributeShardsEvenly(
+      ci, numberOfShards, replicationFactor, dbServers, !col->system()
+    );
   }
 
   if (shards->empty() && !col->isSmart()) {
@@ -2699,8 +2697,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   col->setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
-  TRI_ASSERT(col->vocbase());
-  auto& dbName = col->vocbase()->name();
+  auto& dbName = col->vocbase().name();
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
       dbName,

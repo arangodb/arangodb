@@ -80,6 +80,8 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
 
+uint64_t getCurrentPlanVersion();
+
 }
 }
 

@@ -122,7 +122,7 @@ int deleteDocumentOnCoordinator(
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     VPackSlice const slice, OperationOptions const& options,
-    std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
+    std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody);
@@ -261,7 +261,8 @@ class ClusterMethods {
   // transferred
   // to the caller, which is expressed by the returned unique_ptr.
   static std::shared_ptr<LogicalCollection> createCollectionOnCoordinator(
-      TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
+      TRI_col_type_e collectionType,
+      TRI_vocbase_t& vocbase,
       arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors,
       bool waitForSyncReplication,

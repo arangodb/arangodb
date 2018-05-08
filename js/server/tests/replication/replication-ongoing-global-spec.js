@@ -32,6 +32,7 @@
 const expect = require('chai').expect;
 const arangodb = require("@arangodb");
 const replication = require("@arangodb/replication");
+const compareTicks = replication.compareTicks;
 const errors = arangodb.errors;
 const db = arangodb.db;
 const internal = require("internal");
@@ -59,28 +60,6 @@ const delay = 10;
 
 // Flag if we need to reconnect.
 let onMaster = true;
-
-const compareTicks = function(l, r) {
-  if (l === null) {
-    l = "0";
-  }
-  if (r === null) {
-    r = "0";
-  }
-  if (l.length !== r.length) {
-    return l.length - r.length < 0 ? -1 : 1;
-  }
-
-  // length is equal
-  for (let i = 0; i < l.length; ++i) {
-    if (l[i] !== r[i]) {
-      return l[i] < r[i] ? -1 : 1;
-    }
-  }
-
-  return 0;
-};
-
 
 const compareIndexes = function(l, r, eq) {
   // This can modify l and r and remove id and selectivityEstimate

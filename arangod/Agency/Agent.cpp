@@ -67,7 +67,7 @@ Agent::Agent(config_t const& config)
   if (size() > 1) {
     _inception = std::make_unique<Inception>(this);
   } else {
-    _leaderSince = std::chrono::steady_clock::now();
+    _leaderSince = 0;
   }
 }
 
@@ -572,8 +572,7 @@ void Agent::sendAppendEntriesRPC() {
         << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       // Send request
-      auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
+      std::unordered_map<std::string, std::string> headerFields;
       cc->asyncRequest(
         "1", 1, _config.poolAt(followerId),
         arangodb::rest::RequestType::POST, path.str(),
@@ -650,8 +649,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   }
 
   // Send request
-  auto headerFields =
-    std::make_unique<std::unordered_map<std::string, std::string>>();
+  std::unordered_map<std::string, std::string> headerFields;
   cc->asyncRequest(
     "1", 1, _config.poolAt(followerId),
     arangodb::rest::RequestType::POST, path.str(),
@@ -1319,7 +1317,6 @@ bool Agent::prepareLead() {
     for (auto const& i : _config.active()) {
       _lastAcked[i] = steady_clock::now();
     }
-    _leaderSince = steady_clock::now();
   }
 
   return true;
@@ -1358,9 +1355,10 @@ void Agent::lead() {
   // Then we will copy the _readDB to the _spearhead and start service.
 }
 
-// When did we take on leader ship?
-SteadyTimePoint const& Agent::leaderSince() const {
-  return _leaderSince;
+// How long back did I take over leadership, result in seconds
+int64_t Agent::leaderFor() const {
+  return std::chrono::duration_cast<std::chrono::duration<int64_t>>(
+    std::chrono::steady_clock::now().time_since_epoch()).count() - _leaderSince;
 }
 
 // Notify inactive pool members of configuration change()
@@ -1386,10 +1384,9 @@ void Agent::notifyInactive() const {
     out.add("timeoutMult", VPackValue(_config.timeoutMult()));
   }
 
+  std::unordered_map<std::string, std::string> headerFields;
   for (auto const& p : pool) {
     if (p.first != id()) {
-      auto headerFields =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
       cc->asyncRequest("1", 1, p.second, arangodb::rest::RequestType::POST,
                        path, std::make_shared<std::string>(out.toJson()),
                        headerFields, nullptr, 1.0, true);

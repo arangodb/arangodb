@@ -165,7 +165,6 @@ function clusterSubqueriesTestSuite () {
               }
             }
       `;
-      db._explain(q);
       let c = db._query(q).toArray();
       assertEqual(c.length, 10 * 5);
       // For 10 A values we find 5 C values. Each sharing identical 5 B values.

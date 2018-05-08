@@ -80,6 +80,8 @@ void SortedCollectBlock::CollectGroup::initialize(size_t capacity) {
   for (auto& it : aggregators) {
     it->reset();
   }
+  
+  rowsAreValid = false;
 }
 
 void SortedCollectBlock::CollectGroup::reset() {
@@ -452,6 +454,8 @@ int SortedCollectBlock::getOrSkipSome(size_t atMost,
 
       returnBlock(cur);
       cur = _buffer.front();
+      _currentGroup.firstRow = 0; 
+      _currentGroup.lastRow = 0; 
     }
   }
 
@@ -467,6 +471,8 @@ int SortedCollectBlock::getOrSkipSome(size_t atMost,
 /// @brief writes the current group data into the result
 void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
                                    size_t row, bool skipping) {
+  TRI_ASSERT(res != nullptr);
+
   if (row > 0 && !skipping) {
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);

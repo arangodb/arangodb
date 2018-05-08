@@ -78,6 +78,15 @@ class StaticStrings {
   // database and collection names 
   static std::string const SystemDatabase;
 
+  // LogicalDataSource definition fields
+  static std::string const DataSourceDeleted; // data-source deletion marker
+  static std::string const DataSourceGuid; // data-source globaly-unique id
+  static std::string const DataSourceId; // data-source id
+  static std::string const DataSourceName; // data-source name
+  static std::string const DataSourcePlanId; // data-source plan id
+  static std::string const DataSourceSystem; // data-source system marker
+  static std::string const DataSourceType; // data-source type
+
   // HTTP headers
   static std::string const Accept;
   static std::string const AcceptEncoding;
@@ -121,6 +130,7 @@ class StaticStrings {
   static std::string const Queue;
   static std::string const Server;
   static std::string const StartThread;
+  static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
 

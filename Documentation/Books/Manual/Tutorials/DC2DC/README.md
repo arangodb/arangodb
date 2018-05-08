@@ -58,7 +58,7 @@ is available immediately in the other cluster.
 ArangoSync is not a good solution when one of the following applies:
 
 - You want to replicate data from cluster A to cluster B and from cluster B
-  to cluster A at the same time. 
+  to cluster A at the same time.
 - You need synchronous replication between 2 clusters.
 - There is no network connection betwee cluster A and B.
 - You want complete control over which database, collection & documents are replicate and which not.
@@ -91,7 +91,8 @@ Besides the above list, you probably want to use the following:
 ## Deployment
 
 In the following paragraphs you'll learn which components have to be deployed
-for datacenter to datacenter replication. For detailed deployment instructions,
+for datacenter to datacenter replication using the `direct` message queue.
+For detailed deployment instructions or instructions for the `kafka` message queue,
 consult the [reference manual](../../Deployment/DC2DC.md).
 
 ### ArangoDB cluster
@@ -103,15 +104,6 @@ Since the cluster agents are so critical to the availability of both the ArangoD
 it is recommended to run agents on dedicated machines. Consider these machines "pets".
 
 Coordinators and dbservers can be deployed of other machines that should be considered "cattle".
-
-### Kafka & Zookeeper
-
-Kafka & Zookeeper are needed when using the `kafka` type message queue.
-
-Since the kafka brokers are really CPU and memory intensive,
-it is recommended to run zookeeper & kakfa on dedicated machines.
-
-Consider these machines "pets".
 
 ### Sync Master
 
@@ -149,13 +141,6 @@ down for a restart.
 
 The sync worker must be reachable on a TCP port 8729 (default).
 This port must be reachable from inside the datacenter (by sync masters).
-When using the `direct` message queue type, this port must also be reachable from
-the other datacenter.
-
-Note the large file descriptor limit when using the `kafka` message queue type.
-With kafka, the sync worker requires about 30 file descriptors per shard.
-If you use hardware with huge resources, and still run out of file descriptors,
-you can decide to run multiple sync workers on each machine in order to spread the tasks across them.
 
 The sync workers should be run on all machines that also contain an ArangoDB dbserver.
 The sync worker can be memory intensive when running lots of databases & collections.
@@ -283,12 +268,6 @@ Below you'll find an overview per component.
   E.g. `--log.output=file://myLogFile` or `--log.level=info`.
   - A statistics API `GET /_admin/statistics`
 
-- Kafka cluster: The kafka brokers provide:
-  - A log file, see settings with `log.` prefix in its `server.properties` configuration file.
-
-- Zookeeper: The zookeeper agents provide:
-  - A log on standard output.
-
 ### What to look for while monitoring status
 
 The very first thing to do when monitoring the status of ArangoSync is to
@@ -360,7 +339,7 @@ target & lifetime.
 <br/> A certificate created for client authentication (function) cannot be used as a TLS server certificate
 (same is true for the reverse).
 <br/> A certificate for host `myserver` (target) cannot be used for host `anotherserver`.
-<br/> A certficiate that is valid until October 2017 (limetime) cannot be used after October 2017.
+<br/> A certificate that is valid until October 2017 (limetime) cannot be used after October 2017.
 
 If anything changes in function, target or lifetime you need a new certificate.
 

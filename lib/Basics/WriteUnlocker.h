@@ -75,7 +75,7 @@ class WriteUnlocker {
   /// The constructor unlocks the lock, the destructors aquires a write-lock.
   //////////////////////////////////////////////////////////////////////////////
 
-  WriteUnlocker(ReadWriteLocker* readWriteLock, char const* file, int line)
+  WriteUnlocker(ReadWriteLock* readWriteLock, char const* file, int line)
       : _readWriteLock(readWriteLock), _file(file), _line(line) {
     _readWriteLock->unlock();
   }

@@ -36,7 +36,7 @@
       });
     },
 
-    setCollection: function (id) {
+    setCollection: function (id, page) {
       var callback = function (error) {
         if (error) {
           arangoHelper.arangoError('Documents', 'Could not fetch documents count');
@@ -44,7 +44,11 @@
       };
       this.resetFilter();
       this.collectionID = id;
-      this.setPage(1);
+      if (page) {
+        this.setPage(page);
+      } else {
+        this.setPage(1);
+      }
       this.loadTotal(callback);
     },
 
@@ -148,12 +152,17 @@
             data: JSON.stringify(queryObj2),
             contentType: 'application/json',
             success: function () {
+              var error = false;
               if (callback) {
-                callback();
+                callback(error);
               }
               window.progressView.hide();
             },
             error: function () {
+              var error = true;
+              if (callback) {
+                callback(error);
+              }
               window.progressView.hide();
               arangoHelper.arangoError(
                 'Document error', 'Documents inserted, but could not be removed.'
@@ -208,6 +217,12 @@
         query: query,
         bindVars: bindVars
       };
+
+      if (this.filters.length > 0) {
+        queryObj.options = {
+          fullCount: true
+        };
+      }
 
       var checkCursorStatus = function (jobid) {
         $.ajax({

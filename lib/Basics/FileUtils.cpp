@@ -130,7 +130,7 @@ static void throwFileReadError(std::string const& filename) {
                       strerror(res));
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
 }
 
 static void fillStringBuffer(int fd, std::string const& filename,

@@ -90,7 +90,7 @@ be inhomogeneous.
 
 Please note that by default, _arangoimport_ will import data into the specified
 collection in the default database (*_system*). To specify a different database,
-use the *--server.database* option when invoking _arangoimport_. If you want to 
+use the *--server.database* option when invoking _arangoimport_. If you want to
 import into a nonexistent database you need to pass *--create-database true*.
 Note *--create-database* defaults to *false*
 
@@ -165,7 +165,7 @@ data records and will be imported.
 
 The CSV import requires the data to have a homogeneous structure. All records
 must have exactly the same amount of columns as there are headers. By default,
-lines with a different number of values will not be imported and there will be 
+lines with a different number of values will not be imported and there will be
 warnings for them. To still import lines with less values than in the header,
 there is the *--ignore-missing* option. If set to true, lines that have a
 different amount of fields will be imported. In this case only those attributes
@@ -450,3 +450,41 @@ Importing the following document will then create an edge between *users/1234* a
 ```js
 { "_from" : "1234", "_to" : "4321", "desc" : "users/1234 is connected to products/4321" }
 ```
+
+
+### Automatic pacing with busy or low throughput disk subsystems
+
+Arangoimport has an automatic pacing algorithm that limits how fast
+data is sent to the ArangoDB servers.  This pacing algorithm exists to
+prevent the import operation from failing due to slow responses.
+
+Google Compute and other VM providers limit the throughput of disk
+devices. Google's limit is more strict for smaller disk rentals, than
+for larger. Specifically, a user could choose the smallest disk space
+and be limited to 3 Mbytes per second.  Similarly, other users'
+processes on the shared VM can limit available throughput of the disk
+devices.
+
+The automatic pacing algorithm adjusts the transmit block size
+dynamically based upon the actual throughput of the server over the
+last 20 seconds. Further, each thread delivers its portion of the data
+in mostly non-overlapping chunks. The thread timing creates
+intentional windows of non-import activity to allow the server extra
+time for meta operations.
+
+Automatic pacing intentionally does not use the full throughput of a
+disk device.  An unlimited (really fast) disk device might not need
+pacing. Raising the number of threads via the "--threads X" command
+line to any value of X greater than 2 will increase the total
+throughput used.
+
+Automatic pacing frees the user from adjusting the throughput used to
+match available resources.  It is disabled by manually specifying any
+"--batch-size". 16777216 was the previous default for --batch-size.
+Having --batch-size too large can lead to transmitted data backing-up
+on the server, resulting in a TimeoutError.
+
+The pacing algorithm works successfully with mmfiles with disks
+limited to read and write throughput as small as 1 Mbyte per
+second. The algorithm works successfully with rocksdb with disks
+limited to read and write throughput as small as 3 Mbyte per second.

@@ -75,9 +75,12 @@ class RocksDBReplicationContext {
   TRI_vocbase_t* vocbase() const;
 
   // creates new transaction/snapshot
-  void bind(TRI_vocbase_t*);
-  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
-  int chooseDatabase(TRI_vocbase_t*);
+  void bind(TRI_vocbase_t& vocbase);
+  int bindCollection(
+    TRI_vocbase_t& vocbase,
+    std::string const& collectionIdentifier
+  );
+  int chooseDatabase(TRI_vocbase_t& vocbase);
 
   // returns inventory
   Result getInventory(TRI_vocbase_t* vocbase, bool includeSystem,
@@ -115,9 +118,8 @@ class RocksDBReplicationContext {
  private:
   void releaseDumpingResources();
   CollectionIterator* getCollectionIterator(TRI_voc_cid_t id);
-  void internalBind(TRI_vocbase_t*, bool allowChange = true);
+  void internalBind(TRI_vocbase_t& vocbase, bool allowChange = true);
 
- private:
   mutable Mutex _contextLock;
   TRI_vocbase_t* _vocbase;
   TRI_server_id_t const _serverId;

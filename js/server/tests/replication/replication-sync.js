@@ -28,17 +28,17 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var errors = arangodb.errors;
-var db = arangodb.db;
-var _ = require('lodash');
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const errors = arangodb.errors;
+const db = arangodb.db;
+const _ = require('lodash');
 
-var replication = require("@arangodb/replication");
-var console = require("console");
-var internal = require("internal");
-var masterEndpoint = arango.getEndpoint();
-var slaveEndpoint = ARGUMENTS[0];
+const replication = require("@arangodb/replication");
+const console = require("console");
+const internal = require("internal");
+const masterEndpoint = arango.getEndpoint();
+const slaveEndpoint = ARGUMENTS[0];
 
 var mmfilesEngine = false;
 if (db._engine().name === "mmfiles") {

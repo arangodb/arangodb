@@ -1,8 +1,7 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,15 +40,18 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
                            JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
   // Get job details from jobId:
-  try {
-    std::string path = pos[status] + _jobId + "/";
-    _server = _snapshot(path + "server").getString();
-    _creator = _snapshot(path + "creator").getString();
-  } catch (std::exception const& e) {
+  std::string path = pos[status] + _jobId + "/";
+  auto tmp_server = _snapshot.hasAsString(path + "server");
+  auto tmp_creator = _snapshot.hasAsString(path + "creator");
+
+  if (tmp_server.second && tmp_creator.second) {
+    _server = tmp_server.first;
+    _creator =  tmp_creator.first;
+  } else {
     std::stringstream err;
-    err << "Failed to find job " << _jobId << " in agency: " << e.what();
+    err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
-    finish(_server, "", false, err.str());
+    finish(tmp_server.first, "", false, err.str());
     _status = FAILED;
   }
 }
@@ -61,11 +63,12 @@ void FailedServer::run() {
 }
 
 bool FailedServer::start() {
-  
+
   using namespace std::chrono;
 
   // Fail job, if Health back to not FAILED
-  if (_snapshot(healthPrefix + _server + "/Status").getString() != "FAILED") {
+  auto status = _snapshot.hasAsString(healthPrefix + _server + "/Status");
+  if (status.second && status.first != "FAILED") {
     std::stringstream reason;
     reason
       << "Server " << _server
@@ -74,24 +77,23 @@ bool FailedServer::start() {
     finish(_server, "", false, reason.str());
     return false;
   }
-  
+
   // Abort job blocking server if abortable
-  try {
-     std::string jobId = _snapshot(blockedServersPrefix + _server).getString();
-    if (!abortable(_snapshot, jobId)) {
-      return false;
-    } else {
-      JobContext(PENDING, jobId, _snapshot, _agent).abort();
-    }
-  } catch (...) {}
-    
+  auto jobId = _snapshot.hasAsString(blockedServersPrefix + _server);
+  if (jobId.second && !abortable(_snapshot, jobId.first)) {
+    return false;
+  } else if (jobId.second) {
+      JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+  }
+
   // Todo entry
   Builder todo;
   { VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      try {
-        _snapshot(toDoPrefix + _jobId).toBuilder(todo);
-      } catch (std::exception const&) {
+      auto toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      if (toDoJob.second) {
+        toDoJob.first.toBuilder(todo);
+      } else {
         LOG_TOPIC(INFO, Logger::SUPERVISION)
           << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
         return false;
@@ -99,13 +101,13 @@ bool FailedServer::start() {
     } else {
       todo.add(_jb->slice()[0].get(toDoPrefix + _jobId));
     }} // Todo entry
-  
+
   // Pending entry
   Builder pending;
   { VPackArrayBuilder a(&pending);
-    
+
     // Operations -------------->
-    { VPackObjectBuilder oper(&pending); 
+    { VPackObjectBuilder oper(&pending);
       // Add pending
       pending.add(VPackValue(pendingPrefix + _jobId));
       { VPackObjectBuilder ts(&pending);
@@ -116,27 +118,20 @@ bool FailedServer::start() {
         }
       }
       // Delete todo
-      pending.add(VPackValue(toDoPrefix + _jobId));
-      { VPackObjectBuilder del(&pending);
-        pending.add("op", VPackValue("delete")); }
-
+      addRemoveJobFromSomewhere(pending, "ToDo", _jobId);
       addBlockServer(pending, _server, _jobId);
     } // <------------ Operations
-    
+
     // Preconditions ----------->
     { VPackObjectBuilder prec(&pending);
       // Check that toServer not blocked
-      pending.add(VPackValue(blockedServersPrefix + _server));
-      { VPackObjectBuilder block(&pending);
-        pending.add("oldEmpty", VPackValue(true)); }
+      addPreconditionServerNotBlocked(pending, _server);
       // Status should still be FAILED
-      pending.add(VPackValue(healthPrefix + _server + "/Status"));
-      { VPackObjectBuilder old(&pending);
-        pending.add("old", VPackValue("FAILED")); }
+      addPreconditionServerHealth(pending, _server, "FAILED");
     } // <--------- Preconditions
   }
 
-  
+
   // Transact to agency
   write_ret_t res = singleWriteTransaction(_agent, pending);
 
@@ -144,19 +139,19 @@ bool FailedServer::start() {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION)
       << "Pending job for failed DB Server " << _server;
 
-    auto const& databases = _snapshot("/Plan/Collections").children();
-    auto const& current = _snapshot("/Current/Collections").children();
+    auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
+    auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
 
     size_t sub = 0;
 
     // FIXME: looks OK, but only the non-clone shards are put into the job
     for (auto const& database : databases) {
-      auto cdatabase = current.at(database.first)->children();
+      // dead code   auto cdatabase = current.at(database.first)->children();
 
       for (auto const& collptr : database.second->children()) {
         auto const& collection = *(collptr.second);
 
-        auto const& replicationFactor = collection("replicationFactor");
+        auto const& replicationFactor = collection.hasAsNode("replicationFactor").first;
 
         if (replicationFactor.slice().getUInt() == 1) {
           continue;  // no point to try salvaging unreplicated data
@@ -166,7 +161,7 @@ bool FailedServer::start() {
           continue;  // we only deal with the master
         }
 
-        for (auto const& shard : collection("shards").children()) {
+        for (auto const& shard : collection.hasAsChildren("shards").first) {
 
           size_t pos = 0;
 
@@ -237,9 +232,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     //Preconditions
     { VPackObjectBuilder health(_jb.get());
       // Status should still be BAD
-      _jb->add(VPackValue(healthPrefix + _server + "/Status"));
-      { VPackObjectBuilder old(_jb.get());
-        _jb->add("old", VPackValue("BAD")); }
+      addPreconditionServerHealth(*_jb, _server, "BAD");
       // Target/FailedServers does not already include _server
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
       { VPackObjectBuilder old(_jb.get());
@@ -247,7 +240,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
       // Target/FailedServers is still as in the snapshot
       _jb->add(VPackValue(failedServersPrefix));
       { VPackObjectBuilder old(_jb.get());
-        _jb->add("old", _snapshot(failedServersPrefix).toBuilder().slice());}
+        _jb->add("old", _snapshot.hasAsBuilder(failedServersPrefix).first.slice());}
     } // Preconditions
   }
 
@@ -268,16 +261,16 @@ JOB_STATUS FailedServer::status() {
     return _status;
   }
 
-  auto const& serverHealth =
-    _snapshot(healthPrefix + _server + "/Status").getString();
+  auto serverHealth = _snapshot.hasAsString(healthPrefix + _server + "/Status");
 
   // mop: ohhh...server is healthy again!
-  bool serverHealthy = serverHealth == Supervision::HEALTH_STATUS_GOOD;
+  bool serverHealthy =
+    serverHealth.second && serverHealth.first == Supervision::HEALTH_STATUS_GOOD;
 
   std::shared_ptr<Builder> deleteTodos;
 
-  Node::Children const todos = _snapshot(toDoPrefix).children();
-  Node::Children const pends = _snapshot(pendingPrefix).children();
+  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
   bool hasOpenChildTasks = false;
 
   for (auto const& subJob : todos) {
@@ -338,4 +331,3 @@ arangodb::Result FailedServer::abort() {
   return result;
   // FIXME: No abort procedure, simply throw error or so
 }
-

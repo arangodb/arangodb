@@ -28,7 +28,7 @@
 #include "AgencyCommon.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Basics/Thread.h"
+#include "Cluster/CriticalThread.h"
 
 #include <chrono>
 
@@ -44,7 +44,7 @@ struct check_t {
   check_t(std::string const& n, bool g) : good(g), name(n) {}
 };
 
-class Supervision : public arangodb::Thread {
+class Supervision : public arangodb::CriticalThread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;
@@ -127,10 +127,10 @@ class Supervision : public arangodb::Thread {
   /// @brief Upgrade agency with FailedServers an object from array
   void upgradeZero(VPackBuilder&);
 
-  /// @brief Upgrade agency to supervision overhaul jobs 
+  /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeOne(VPackBuilder&);
 
-  /// @brief Upgrade agency to supervision overhaul jobs 
+  /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
@@ -164,14 +164,20 @@ class Supervision : public arangodb::Thread {
 
   void shrinkCluster();
 
+  /**
+   * @brief Report status of supervision in agency
+   * @param  status  Status, which will show in Supervision/State
+   */
+  void reportStatus(std::string const& status);
+
   bool isShuttingDown();
 
   bool handleJobs();
   void handleShutdown();
 
-  /// @brief Migrate chains of distributeShardsLike to depth 1 
+  /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
-  
+
   Mutex _lock; // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
   Node _snapshot;
@@ -197,7 +203,7 @@ class Supervision : public arangodb::Thread {
   bool _selfShutdown;
 
   std::atomic<bool> _upgraded;
-  
+
   std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature

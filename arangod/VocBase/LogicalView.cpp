@@ -24,66 +24,24 @@
 #include "LogicalView.h"
 
 #include "RestServer/ViewTypesFeature.h"
-#include "Basics/ReadLocker.h"
-#include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/Exceptions.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "velocypack/Iterator.h"
 #include "VocBase/ticks.h"
-
-using Helper = arangodb::basics::VelocyPackHelper;
+#include "VocBase/vocbase.h"
 
 namespace {
 
-TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
-  if (!info.isObject()) {
-    // ERROR CASE
-    return 0;
-  }
-  VPackSlice id = info.get("planId");
-  if (id.isNone()) {
-    return vid;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        view properties
+////////////////////////////////////////////////////////////////////////////////
+const std::string PROPERTIES_FIELD("properties");
 
-  if (id.isString()) {
-    // string cid, e.g. "9988488"
-    return arangodb::basics::StringUtils::uint64(id.copyString());
-  } else if (id.isNumber()) {
-    // numeric cid, e.g. 9988488
-    return id.getNumericValue<uint64_t>();
-  }
-  // TODO Throw error for invalid type?
-  return vid;
 }
-
-/*static*/ TRI_voc_cid_t ReadViewId(VPackSlice info) {
-  if (!info.isObject()) {
-    // ERROR CASE
-    return 0;
-  }
-
-  // Somehow the id is now propagated to dbservers
-  TRI_voc_cid_t id = Helper::extractIdValue(info);
-
-  if (id) {
-    return id;
-  }
-
-  if (arangodb::ServerState::instance()->isDBServer()) {
-    return arangodb::ClusterInfo::instance()->uniqid(1);
-  }
-
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    return arangodb::ClusterInfo::instance()->uniqid(1);
-  }
-
-  return TRI_NewTickServer();
-}
-
-} // namespace
 
 namespace arangodb {
 
@@ -95,21 +53,28 @@ namespace arangodb {
 // The Slice contains the part of the plan that
 // is relevant for this view
 LogicalView::LogicalView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalDataSource(
      category(),
      LogicalDataSource::Type::emplace(
-       arangodb::basics::VelocyPackHelper::getStringRef(definition, "type", "")
+       arangodb::basics::VelocyPackHelper::getStringRef(
+         definition, StaticStrings::DataSourceType, ""
+       )
      ),
      vocbase,
-     ReadViewId(definition),
-     ReadPlanId(definition, 0),
-     arangodb::basics::VelocyPackHelper::getStringValue(definition, "name", ""),
-     planVersion,
-     Helper::readBooleanValue(definition, "deleted", false)
+     definition,
+     planVersion
    ) {
+  // ensure that the 'definition' was used as the configuration source
+  if (!definition.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "got an invalid view definition while constructing LogicalView"
+    );
+  }
+
   if (!TRI_vocbase_t::IsAllowedName(definition)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
@@ -134,6 +99,7 @@ LogicalView::LogicalView(
 /*static*/ std::shared_ptr<LogicalView> LogicalView::create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
+    bool isNew,
     uint64_t planVersion /*= 0*/,
     PreCommitCallback const& preCommit /*= PreCommitCallback()*/
 ) {
@@ -147,8 +113,9 @@ LogicalView::LogicalView(
     return nullptr;
   }
 
-  auto const viewType =
-    basics::VelocyPackHelper::getStringRef(definition, "type", "");
+  auto const viewType = basics::VelocyPackHelper::getStringRef(
+    definition, StaticStrings::DataSourceType, ""
+  );
   auto const& dataSourceType =
     arangodb::LogicalDataSource::Type::emplace(viewType);
   auto const& viewFactory = viewTypes->factory(dataSourceType);
@@ -161,29 +128,11 @@ LogicalView::LogicalView(
     return nullptr;
   }
 
-  auto view = viewFactory(vocbase, definition, planVersion);
+  auto view = viewFactory(vocbase, definition, isNew, planVersion, preCommit);
 
   if (!view) {
     LOG_TOPIC(ERR, Logger::VIEWS)
       << "Failure to instantiate view of type: " << viewType.toString();
-
-    return nullptr;
-  }
-
-  if (preCommit && !preCommit(view)) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
-      << "Failure during pre-commit callback for view of type: "
-      << viewType.toString();
-
-    return nullptr;
-  }
-
-  auto res = view->create();
-
-  if (!res.ok()) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
-      << "Failure during commit of creation for view of type: "
-      << viewType.toString();
 
     return nullptr;
   }
@@ -196,10 +145,11 @@ LogicalView::LogicalView(
 // -----------------------------------------------------------------------------
 
 DBServerLogicalView::DBServerLogicalView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalView(vocbase, definition, planVersion) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
 DBServerLogicalView::~DBServerLogicalView() {
@@ -211,7 +161,58 @@ DBServerLogicalView::~DBServerLogicalView() {
   }
 }
 
-arangodb::Result DBServerLogicalView::create() noexcept {
+arangodb::Result DBServerLogicalView::appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+) const {
+  if (!builder.isOpenObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid builder provided for IResearchViewDBServer definition")
+    );
+  }
+
+  builder.add(
+    StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(type().name())
+  );
+
+  // note: includeSystem and forPersistence are not 100% synonymous,
+  // however, for our purposes this is an okay mapping; we only set
+  // includeSystem if we are persisting the properties
+  if (forPersistence) {
+    // storage engine related properties
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
+    if (!engine) {
+      return TRI_ERROR_INTERNAL;
+    }
+
+    engine->getViewProperties(vocbase(), this, builder);
+  }
+
+  if (detailed) {
+    // implementation Information
+    builder.add(
+      PROPERTIES_FIELD,
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+    );
+    getPropertiesVPack(builder, forPersistence);
+    builder.close();
+  }
+
+  // ensure that the object is still open
+  if (!builder.isOpenObject()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return arangodb::Result();
+}
+
+/*static*/ arangodb::Result DBServerLogicalView::create(
+    DBServerLogicalView const& view
+) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
@@ -221,16 +222,18 @@ arangodb::Result DBServerLogicalView::create() noexcept {
       // during recovery entry is being played back from the engine
       if (!engine->inRecovery()) {
         arangodb::velocypack::Builder builder;
-        auto res = engine->getViews(vocbase(), builder);
+        auto res = engine->getViews(view.vocbase(), builder);
         TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
         auto slice  = builder.slice();
         TRI_ASSERT(slice.isArray());
-        auto viewId = std::to_string(id());
+        auto viewId = std::to_string(view.id());
 
         // We have not yet persisted this view
         for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
           auto id = arangodb::basics::VelocyPackHelper::getStringRef(
-            entry, "id", arangodb::velocypack::StringRef()
+            entry,
+            StaticStrings::DataSourceId,
+            arangodb::velocypack::StringRef()
           );
 
           if (!id.compare(viewId)) {
@@ -243,18 +246,18 @@ arangodb::Result DBServerLogicalView::create() noexcept {
       }
     #endif
 
-    engine->createView(vocbase(), id(), *this);
+    engine->createView(view.vocbase(), view.id(), view);
 
-    return engine->persistView(vocbase(), *this);
+    return engine->persistView(view.vocbase(), view);
   } catch (std::exception const& e) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception during storage engine persistance of view '") + name() + "': " + e.what()
+      std::string("caught exception during storage engine persistance of view '") + view.name() + "': " + e.what()
     );
   } catch (...) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception during storage engine persistance of view '") + name() + "'"
+      std::string("caught exception during storage engine persistance of view '") + view.name() + "'"
     );
   }
 }
@@ -299,47 +302,6 @@ Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
 
   // write WAL 'rename' marker
   return engine->renameView(vocbase(), *this, oldName);
-}
-
-void DBServerLogicalView::toVelocyPack(
-    velocypack::Builder &result,
-    bool includeProperties,
-    bool includeSystem
-) const {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  // We write into an open object
-  TRI_ASSERT(result.isOpenObject());
-
-  // Meta Information
-  result.add("id", VPackValue(std::to_string(id())));
-  result.add("name", VPackValue(name()));
-  result.add("type", VPackValue(type().name()));
-
-  if (includeSystem) {
-    result.add("deleted", VPackValue(deleted()));
-
-    // FIXME not sure if the following is relevant
-    // Cluster Specific
-    result.add("planId", VPackValue(std::to_string(planId())));
-
-    // storage engine related properties
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine);
-    engine->getViewProperties(vocbase(), this, result);
-  }
-
-  if (includeProperties) {
-    // implementation Information
-    result.add("properties", VPackValue(VPackValueType::Object));
-    // note: includeSystem and forPersistence are not 100% synonymous,
-    // however, for our purposes this is an okay mapping; we only set
-    // includeSystem if we are persisting the properties
-    getPropertiesVPack(result, includeSystem);
-    result.close();
-  }
-
-  TRI_ASSERT(result.isOpenObject()); // We leave the object open
 }
 
 arangodb::Result DBServerLogicalView::updateProperties(

@@ -436,7 +436,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   };
 
   arangodb::SingleCollectionTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
+    arangodb::transaction::StandaloneContext::Create(&(collection->vocbase())),
     collection->id(),
     AccessMode::Type::WRITE
   );
@@ -1045,6 +1045,6 @@ int MMFilesCompactorThread::copyMarker(MMFilesDatafile* compactor, MMFilesMarker
     return TRI_ERROR_ARANGO_NO_JOURNAL;
   }
 
-  return compactor->writeElement(*result, marker, false);
+  return compactor->writeElement(*result, marker, /*forceSync*/ false);
 }
 

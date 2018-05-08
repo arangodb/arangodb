@@ -473,7 +473,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 /// @brief called when the index is dropped
 int MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(
-    _collection->vocbase()->id(), _collection->id(), _iid
+    _collection->vocbase().id(), _collection->id(), _iid
   );
 }
 
@@ -873,7 +873,9 @@ bool MMFilesPersistentIndex::supportsSortCondition(
 IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   VPackBuilder searchValues;
   searchValues.openArray();
   bool needNormalize = false;
@@ -1033,8 +1035,8 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
     VPackSlice expandedSlice = expandedSearchValues.slice();
     std::vector<IndexIterator*> iterators;
     try {
-      for (auto const& val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, val, reverse);
+      for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
+        auto iterator = lookup(trx, val, !opts.ascending);
         try {
           iterators.push_back(iterator);
         } catch (...) {
@@ -1043,7 +1045,7 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
           throw;
         }
       }
-      if (reverse) {
+      if (!opts.ascending) {
         std::reverse(iterators.begin(), iterators.end());
       }
     } catch (...) {
@@ -1058,7 +1060,7 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
   VPackSlice searchSlice = searchValues.slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
-  return lookup(trx, searchSlice, reverse);
+  return lookup(trx, searchSlice, !opts.ascending);
 }
 
 /// @brief specializes the condition for use with the index

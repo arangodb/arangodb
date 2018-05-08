@@ -49,7 +49,7 @@ class AgentInterface {
   virtual bool isCommitted(index_t last_entry) = 0;
 
   // Suffice warnings
-  virtual ~AgentInterface() {};
+  virtual ~AgentInterface() {}
 };
 }
 }

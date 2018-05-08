@@ -42,7 +42,6 @@ using namespace arangodb::options;
 DaemonFeature::DaemonFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Daemon") {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Logger");
   startsAfter("WorkMonitor");
 

@@ -38,7 +38,8 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _exeNode(ep),
       _pos(0),
       _done(false),
-      _tracing(engine->getQuery()->queryOptions().tracing) {
+      _profile(engine->getQuery()->queryOptions().profile),
+      _getSomeBegin(0) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -154,36 +155,54 @@ int ExecutionBlock::shutdown(int errorCode) {
 }
 
 // Trace the start of a getSome call
-void ExecutionBlock::traceGetSomeBegin(size_t atMost) const {
-  if (_tracing > 0) {
-    auto node = getPlanNode();
-    LOG_TOPIC(INFO, Logger::QUERIES)
+void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    _getSomeBegin = TRI_microtime();
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      auto node = getPlanNode();
+      LOG_TOPIC(INFO, Logger::QUERIES)
       << "getSome type=" << node->getTypeString()
       << " atMost = " << atMost
       << " this=" << (uintptr_t) this << " id=" << node->id();
+    }
   }
 }
 
 // Trace the end of a getSome call, potentially with result
 void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
-  if (_tracing > 0) {
-    auto node = getPlanNode();
-    LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    ExecutionNode const* en = getPlanNode();
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = result != nullptr ? result->size() : 0;
+    stats.runtime = TRI_microtime() - _getSomeBegin;
+    auto it = _engine->_stats.nodes.find(en->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(en->id(), std::move(stats));
+    }
+    
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      ExecutionNode const* node = getPlanNode();
+      LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
       << node->getTypeString() << " this=" << (uintptr_t) this
       << " id=" << node->id();
-    if (_tracing > 1) {
-      if (result == nullptr) {
-        LOG_TOPIC(INFO, Logger::QUERIES)
-            << "getSome type=" << node->getTypeString() << " result: nullptr";
-      } else {
-        VPackBuilder builder;
-        { 
-          VPackObjectBuilder guard(&builder);
-          result->toVelocyPack(_trx, builder);
+      
+      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+        if (result == nullptr) {
+          LOG_TOPIC(INFO, Logger::QUERIES)
+          << "getSome type=" << node->getTypeString() << " result: nullptr";
+        } else {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder guard(&builder);
+            result->toVelocyPack(_trx, builder);
+          }
+          LOG_TOPIC(INFO, Logger::QUERIES)
+          << "getSome type=" << node->getTypeString()
+          << " result: " << builder.toJson();
         }
-        LOG_TOPIC(INFO, Logger::QUERIES)
-            << "getSome type=" << node->getTypeString()
-            << " result: " << builder.toJson();
       }
     }
   }

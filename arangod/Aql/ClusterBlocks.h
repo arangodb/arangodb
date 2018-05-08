@@ -30,6 +30,8 @@
 #include "Aql/ExecutionNode.h"
 #include "Rest/GeneralRequest.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -41,6 +43,19 @@ namespace aql {
 class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
+  
+
+/// @brief sort element for block, consisting of register, sort direction,
+/// and a possible attribute path to dig into the document
+struct SortElementBlock {
+  RegisterId reg;
+  bool ascending;
+  std::vector<std::string> attributePath;
+  
+  SortElementBlock(RegisterId r, bool asc)
+  : reg(r), ascending(asc) {
+  }
+};
 
 class GatherBlock : public ExecutionBlock {
  public:
@@ -268,6 +283,12 @@ class DistributeBlock : public BlockWithClients {
   /// @brief create a new document key
   std::string createKey(arangodb::velocypack::Slice) const;
 
+  // a reusable Builder object for building _key values
+  arangodb::velocypack::Builder _keyBuilder;
+  
+  // a reusable Builder object for building document objects
+  arangodb::velocypack::Builder _objectBuilder;
+
   /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
   //  _buffer.at(j) row k should be sent to the client with id = i.
   std::vector<std::deque<std::pair<size_t, size_t>>> _distBuffer;
@@ -292,7 +313,7 @@ class DistributeBlock : public BlockWithClients {
   bool _allowSpecifiedKeys;
 };
 
-class RemoteBlock : public ExecutionBlock {
+class RemoteBlock final : public ExecutionBlock {
   /// @brief constructors/destructors
  public:
   RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,

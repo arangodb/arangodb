@@ -192,7 +192,9 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    bool isNew,
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit = {}
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -228,7 +230,10 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  PrimaryKeyIndexReader* snapshot(TransactionState& state, bool force = false);
+  PrimaryKeyIndexReader* snapshot(
+    TransactionState& state,
+    bool force = false
+  ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores
@@ -237,11 +242,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
   bool sync(size_t maxMsec = 0);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the view type as used when selecting which view to instantiate
-  ////////////////////////////////////////////////////////////////////////////////
-  static arangodb::LogicalDataSource::Type const& type() noexcept;
 
   using LogicalView::updateProperties;
 
@@ -325,7 +325,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   > FlushTransactionPtr;
 
   IResearchView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
     uint64_t planVersion

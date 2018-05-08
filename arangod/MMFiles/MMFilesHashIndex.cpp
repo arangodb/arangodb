@@ -259,14 +259,13 @@ void MMFilesHashIndexIterator::reset() {
 MMFilesHashIndexIteratorVPack::MMFilesHashIndexIteratorVPack(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesHashIndex const* index,
-    std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
+    std::unique_ptr<arangodb::velocypack::Builder> searchValues)
     : IndexIterator(collection, trx, index),
       _index(index),
-      _searchValues(searchValues.get()),
+      _searchValues(std::move(searchValues)),
       _iterator(_searchValues->slice()),
       _buffer(),
       _posInBuffer(0) {
-  searchValues.release();  // now we have ownership for searchValues
 }
 
 MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {
@@ -889,7 +888,9 @@ bool MMFilesHashIndex::supportsFilterCondition(
 IndexIterator* MMFilesHashIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_IF_FAILURE("HashIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

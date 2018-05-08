@@ -32,11 +32,16 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
+namespace arangodb {
 
-MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t* vocbase, CursorId id,
-                           arangodb::MMFilesCollectionExport* ex, size_t batchSize,
-                           double ttl, bool hasCount)
+MMFilesExportCursor::MMFilesExportCursor(
+    TRI_vocbase_t& vocbase,
+    CursorId id,
+    arangodb::MMFilesCollectionExport* ex,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+)
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _ex(ex),
@@ -73,7 +78,7 @@ VPackSlice MMFilesExportCursor::next() {
 size_t MMFilesExportCursor::count() const { return _size; }
 
 Result MMFilesExportCursor::dump(VPackBuilder& builder) {
-  auto ctx = transaction::StandaloneContext::Create(_guard.database());
+  auto ctx = transaction::StandaloneContext::Create(&(_guard.database()));
   VPackOptions const* oldOptions = builder.options;
 
   builder.options = ctx->getVPackOptions();
@@ -144,5 +149,7 @@ Result MMFilesExportCursor::dump(VPackBuilder& builder) {
 }
 
 std::shared_ptr<transaction::Context> MMFilesExportCursor::context() const {
-  return transaction::StandaloneContext::Create(_guard.database()); // likely not used
+  return transaction::StandaloneContext::Create(&(_guard.database())); // likely not used
 }
+
+} // arangodb

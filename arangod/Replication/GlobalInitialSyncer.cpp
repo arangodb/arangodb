@@ -158,46 +158,49 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       VPackSlice const nameSlice = it.get("name");
       VPackSlice const idSlice = it.get("id");
       VPackSlice const collections = it.get("collections");
+
       if (!nameSlice.isString() ||
           !idSlice.isString() ||
           !collections.isArray()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "database declaration is invalid in response");
       }
-      
+
       TRI_vocbase_t* vocbase = resolveVocbase(nameSlice);
+
       if (vocbase == nullptr) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
       }
-      
+
       DatabaseGuard guard(nameSlice.copyString());
-      
+
       // change database name in place
       auto configurationCopy = _configuration;
+
       configurationCopy._database = nameSlice.copyString();
-      
-      DatabaseInitialSyncer syncer(vocbase, configurationCopy);
-      
+
+      DatabaseInitialSyncer syncer(*vocbase, configurationCopy);
+
       syncer.useAsChildSyncer(_masterInfo, _barrierId, _barrierUpdateTime,
                               _batchId, _batchUpdateTime);
+
       // run the syncer with the supplied inventory collections
       Result r = syncer.runWithInventory(false, collections);
       if (r.fail()) {
         return r;
       }
-    
+
       // we need to pass on the update times to the next syncer
       _barrierUpdateTime = syncer.barrierUpdateTime();
       _batchUpdateTime = syncer.batchUpdateTime();
-    
+
       sendExtendBatch();
       sendExtendBarrier();
     }
-  
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL, "caught an unexpected exception");
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -251,23 +254,25 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
           // somehow invalid
           continue; 
         }
+
         VPackSlice const params = coll.get("parameters");
         auto existingCollection = resolveCollection(vocbase, params);
+
         if (existingCollection != nullptr) {
-          survivingCollections.emplace(existingCollection->globallyUniqueId());
+          survivingCollections.emplace(existingCollection->guid());
         }
       }
-    
+
       std::vector<arangodb::LogicalCollection*> toDrop;
 
       // drop all collections that do not exist (anymore) on the master 
       vocbase->processCollections([&survivingCollections, &toDrop](arangodb::LogicalCollection* collection) {
-        if (survivingCollections.find(collection->globallyUniqueId()) != survivingCollections.end()) {
+        if (survivingCollections.find(collection->guid()) != survivingCollections.end()) {
           // collection should surive
           return;
         }
 
-        if (collection->isSystem()) {
+        if (collection->system()) {
           // we will not drop system collections here
           return;
         }
@@ -277,7 +282,9 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
       for (auto const& collection : toDrop) { 
         try {
-          int res = vocbase->dropCollection(collection, false, -1.0);
+          auto res =
+            vocbase->dropCollection(collection->id(), false, -1.0).errorNumber();
+
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC(ERR, Logger::FIXME) << "unable to drop collection " << collection->name() << ": " << TRI_errno_string(res);
           }

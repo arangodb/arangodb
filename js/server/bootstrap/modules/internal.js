@@ -382,8 +382,8 @@
   // / @brief getCollectionShardDistrbiution
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION) {
-    exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION;
-    delete global.SYS_CLUSTER_COLLETION_SHARD_DISTRIBUTION;
+  if (global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION) {
+    exports.getCollectionShardDistribution = global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
+    delete global.SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION;
   }
 }());

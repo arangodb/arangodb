@@ -9,7 +9,7 @@ the collection does not exist, it will be created.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name,string,required}
 The name of the graph.
 
 @RESTRETURNCODES

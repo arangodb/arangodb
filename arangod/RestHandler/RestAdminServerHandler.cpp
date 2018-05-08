@@ -42,6 +42,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleId();
   } else if (suffixes.size() == 1 && suffixes[0] == "role") {
     handleRole();
+  } else if (suffixes.size() == 1 && suffixes[0] == "availability") {
+    handleAvailability();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, 404);
   }
@@ -109,21 +111,55 @@ void RestAdminServerHandler::handleRole() {
   generateOk(rest::ResponseCode::OK, builder);
 }
 
+/// @brief simple availability check
+/// this handler does not require authentication
+/// it will return HTTP 200 in case the server is up and usable,
+/// and not in read-only mode (or a follower in case of active failover)
+/// will return HTTP 503 in case the server is starting, stopping, set
+/// to read-only or a follower in case of active failover
+void RestAdminServerHandler::handleAvailability() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+  
+  bool available = false;
+  switch (ServerState::serverMode()) {
+    case ServerState::Mode::DEFAULT:
+      available = !application_features::ApplicationServer::isStopping();
+      break;
+    case ServerState::Mode::MAINTENANCE: 
+    case ServerState::Mode::REDIRECT:
+    case ServerState::Mode::TRYAGAIN: 
+    case ServerState::Mode::READ_ONLY:
+    case ServerState::Mode::INVALID:
+      TRI_ASSERT(!available);
+      break;
+  }
+ 
+  if (!available) {
+    // this will produce an HTTP 503 result
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+  } else {
+    // this will produce an HTTP 200 result
+    writeModeResult(ServerState::serverMode());
+  }
+}
+
 void RestAdminServerHandler::handleMode() {
     auto const requestType = _request->requestType();
     if (requestType == rest::RequestType::GET) {
         writeModeResult(ServerState::serverMode());
     } else if (requestType == rest::RequestType::PUT) {
-        bool parseSuccess;
-        std::shared_ptr<VPackBuilder> parsedBody =
-            parseVelocyPackBody(parseSuccess);
+        bool parseSuccess = false;
+        VPackSlice slice = this->parseVPackBody(parseSuccess);
         if (!parseSuccess) {
             generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_BAD_PARAMETER, "invalid JSON");
             return;
         }
 
-        auto slice = parsedBody->slice();
         if (!slice.isObject()) {
           generateError(rest::ResponseCode::BAD,
             TRI_ERROR_HTTP_BAD_PARAMETER, "body must be an object");

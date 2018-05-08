@@ -43,6 +43,7 @@ class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 class StringRef;
+struct IndexIteratorOptions;
 
 namespace velocypack {
 class Builder;
@@ -78,6 +79,7 @@ class Index {
   enum IndexType {
     TRI_IDX_TYPE_UNKNOWN = 0,
     TRI_IDX_TYPE_PRIMARY_INDEX,
+    TRI_IDX_TYPE_GEO_INDEX,
     TRI_IDX_TYPE_GEO1_INDEX,
     TRI_IDX_TYPE_GEO2_INDEX,
     TRI_IDX_TYPE_HASH_INDEX,
@@ -189,6 +191,12 @@ class Index {
 
   static IndexType type(std::string const& type);
 
+  static bool isGeoIndex(IndexType type) {
+    return type == TRI_IDX_TYPE_GEO1_INDEX ||
+           type == TRI_IDX_TYPE_GEO2_INDEX ||
+           type == TRI_IDX_TYPE_GEO_INDEX;
+  }
+
   virtual char const* typeName() const = 0;
 
   virtual bool allowExpansion() const = 0;
@@ -220,6 +228,13 @@ class Index {
 
   virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
+ 
+  /// @brief whether or not the index provides an iterator that can extract
+  /// attribute values from the index data, without having to refer to the
+  /// actual document data
+  /// By default, indexes do not have this type of iterator, but they can
+  /// add it as a performance optimization
+  virtual bool hasCoveringIterator() const { return false; }
 
   /// @brief Checks if this index is identical to the given definition
   virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;
@@ -275,7 +290,7 @@ class Index {
   virtual int drop();
 
   // called after the collection was truncated
-  virtual int afterTruncate(); 
+  virtual int afterTruncate();
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);
@@ -294,7 +309,9 @@ class Index {
                                               ManagedDocumentResult*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
-                                              bool);
+                                              IndexIteratorOptions const&) {
+    return nullptr; // IResearch will never use this
+  };
 
   virtual arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;

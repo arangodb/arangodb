@@ -22,6 +22,7 @@
 
 #include "ViewTypesFeature.h"
 
+#include "BootstrapFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -39,7 +40,6 @@ ViewTypesFeature::ViewTypesFeature(
   application_features::ApplicationServer* server
 ): application_features::ApplicationFeature(server, ViewTypesFeature::name()) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
 }
 
@@ -51,6 +51,18 @@ arangodb::Result ViewTypesFeature::emplace(
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("view factory undefined during view factory registration for view type '") + type.name() + "'"
+    );
+  }
+
+  auto* feature =
+    arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
+  auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
+
+  // ensure new factories are not added at runtime since that would require additional locks
+  if (bootstrapFeature && bootstrapFeature->isReady()) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("view factory registration is only allowed during server startup")
     );
   }
 

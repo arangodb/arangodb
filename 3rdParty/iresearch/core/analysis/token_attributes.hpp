@@ -184,7 +184,7 @@ class IRESEARCH_API position : public attribute {
     explicit impl(size_t reserve_attrs);
     virtual void clear() = 0;
 
-    const attribute_view& attributes() const NOEXCEPT {
+    const attribute_view& attributes() const NOEXCEPT override {
       return attrs_;
     }
 

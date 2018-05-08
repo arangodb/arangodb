@@ -34,14 +34,19 @@
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 
+#include <asio/deadline_timer.hpp>
+
 struct TRI_vocbase_t;
+
 namespace arangodb {
+
 class RestPregelHandler;
+
 namespace pregel {
 
 class IWorker {
  public:
-  virtual ~IWorker(){};
+  virtual ~IWorker() {}
   virtual void setupWorker() = 0;
   virtual void prepareGlobalStep(VPackSlice const& data,
                                  VPackBuilder& result) = 0;
@@ -131,7 +136,7 @@ class Worker : public IWorker {
   std::atomic<uint64_t> _nextGSSSendMessageCount;
   /// if the worker has started sendng messages to the next GSS
   std::atomic<bool> _requestedNextGSS;
-  std::unique_ptr<boost::asio::deadline_timer> _boost_timer;
+  std::unique_ptr<asio::deadline_timer> _boost_timer;
 
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
@@ -146,8 +151,11 @@ class Worker : public IWorker {
                                   std::function<void(VPackSlice slice)> handle);
 
  public:
-  Worker(TRI_vocbase_t* vocbase, Algorithm<V, E, M>* algorithm,
-         VPackSlice params);
+  Worker(
+    TRI_vocbase_t& vocbase,
+    Algorithm<V, E, M>* algorithm,
+    VPackSlice params
+  );
   ~Worker();
 
   // ====== called by rest handler =====
@@ -165,6 +173,8 @@ class Worker : public IWorker {
 
   void aqlResult(VPackBuilder*) const override;
 };
+
 }
 }
+
 #endif

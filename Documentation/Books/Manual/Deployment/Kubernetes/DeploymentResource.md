@@ -52,10 +52,10 @@ Below you'll find all settings of the `ArangoDeployment` custom resource.
 Several settings are for various groups of servers. These are indicated
 with `<group>` where `<group>` can be any of:
 
-- `agents` for all agents of a `Cluster` or `ResilientSingle` pair.
+- `agents` for all agents of a `Cluster` or `ActiveFailover` pair.
 - `dbservers` for all dbservers of a `Cluster`.
 - `coordinators` for all coordinators of a `Cluster`.
-- `single` for all single servers of a `Single` instance or `ResilientSingle` pair.
+- `single` for all single servers of a `Single` instance or `ActiveFailover` pair.
 - `syncmasters` for all syncmasters of a `Cluster`.
 - `syncworkers` for all syncworkers of a `Cluster`.
 
@@ -65,7 +65,7 @@ This setting specifies the type of deployment you want to create.
 Possible values are:
 
 - `Cluster` (default) Full cluster. Defaults to 3 agents, 3 dbservers & 3 coordinators.
-- `ResilientSingle` Resilient single pair. Defaults to 3 agents and 2 single servers.
+- `ActiveFailover` Active-failover single pair. Defaults to 3 agents and 2 single servers.
 - `Single` Single server only (note this does not provide high availability or reliability).
 
 This setting cannot be changed after the deployment has been created.
@@ -122,6 +122,32 @@ The encryption key cannot be changed after the cluster has been created.
 
 The secret specified by this setting, must have a data field named 'key' containing
 an encryption key that is exactly 32 bytes long.
+
+### `spec.externalAccess.type: string`
+
+This setting specifies the type of `Service` that will be created to provide
+access to the ArangoDB deployment from outside the Kubernetes cluster.
+Possible values are:
+
+- `None` To limit access to application running inside the Kubernetes cluster.
+- `LoadBalancer` To create a `Service` of type `LoadBalancer` for the ArangoDB deployment.
+- `NodePort` To create a `Service` of type `NodePort` for the ArangoDB deployment.
+- `Auto` (default) To create a `Service` of type `LoadBalancer` and fallback to a `Service` or type `NodePort` when the
+  `LoadBalancer` is not assigned an IP address.
+
+### `spec.externalAccess.loadBalancerIP: string`
+
+This setting specifies the IP used to for the LoadBalancer to expose the ArangoDB deployment on.
+This setting is used when `spec.externalAccess.type` is set to `LoadBalancer` or `Auto`.
+
+If you do not specify this setting, an IP will be chosen automatically by the load-balancer provisioner.
+
+### `spec.externalAccess.nodePort: int`
+
+This setting specifies the port used to expose the ArangoDB deployment on.
+This setting is used when `spec.externalAccess.type` is set to `NodePort` or `Auto`.
+
+If you do not specify this setting, a random port will be chosen automatically.
 
 ### `spec.auth.jwtSecretName: string`
 
@@ -255,7 +281,7 @@ The default is `false`.
 This setting specifies the number of servers to start for the given group.
 For the agent group, this value must be a positive, odd number.
 The default value is `3` for all groups except `single` (there the default is `1`
-for `spec.mode: single` and `2` for `spec.mode: resilientsingle`).
+for `spec.mode: Single` and `2` for `spec.mode: ActiveFailover`).
 
 For the `syncworkers` group, it is highly recommended to use the same number
 as for the `dbservers` group.

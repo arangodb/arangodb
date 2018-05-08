@@ -49,9 +49,12 @@ class TraverserEngineRegistry {
   ///        It can be referred to by the returned
   ///        ID. If the returned ID is 0 something
   ///        internally went wrong.
-  TEST_VIRTUAL TraverserEngineID createNew(TRI_vocbase_t*, arangodb::velocypack::Slice,
-                                           bool needToLock,
-                                           double ttl = 600.0);
+  TEST_VIRTUAL TraverserEngineID createNew(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice engineInfo,
+    bool needToLock,
+    double ttl = 600.0
+  );
 
   /// @brief Get the engine with the given ID.
   ///        TODO Test what happens if this pointer
@@ -90,7 +93,11 @@ class TraverserEngineRegistry {
     double _timeToLive;                            // in seconds
     double _expires;                               // UNIX UTC timestamp for expiration
 
-    EngineInfo(TRI_vocbase_t*, arangodb::velocypack::Slice, bool needToLock);
+    EngineInfo(
+      TRI_vocbase_t& vocbase,
+      arangodb::velocypack::Slice info,
+      bool needToLock
+    );
     ~EngineInfo();
   };
 

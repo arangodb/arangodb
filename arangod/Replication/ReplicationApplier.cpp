@@ -58,7 +58,7 @@ struct ApplierThread : public Thread {
     shutdown();
   }
   
-  void run() {
+  void run() override {
     TRI_ASSERT(_syncer != nullptr);
     TRI_ASSERT(_applier != nullptr);
     
@@ -555,6 +555,13 @@ ReplicationApplierConfiguration ReplicationApplier::configuration() const {
 std::string ReplicationApplier::endpoint() const {
   READ_LOCKER_EVENTUAL(readLocker, _statusLock);
   return _configuration._endpoint;
+}
+
+/// @brief return last persisted tick
+TRI_voc_tick_t ReplicationApplier::lastTick() const {
+  READ_LOCKER_EVENTUAL(readLocker, _statusLock);
+  return std::max(_state._lastAppliedContinuousTick,
+                  _state._lastProcessedContinuousTick);
 }
 
 /// @brief register an applier error

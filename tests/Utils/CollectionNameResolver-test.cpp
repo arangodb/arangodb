@@ -36,18 +36,21 @@
 
 namespace {
 
-std::unique_ptr<arangodb::LogicalView> makeTestView(
+std::shared_ptr<arangodb::LogicalView> makeTestView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    bool /*isNew*/,
+    uint64_t planVersion,
+    arangodb::LogicalView::PreCommitCallback const& preCommit
   ) {
   struct Impl: public arangodb::DBServerLogicalView {
     Impl(
         TRI_vocbase_t& vocbase,
         arangodb::velocypack::Slice const& info,
         uint64_t planVersion
-    ): arangodb::DBServerLogicalView(&vocbase, info, planVersion) {
+    ): arangodb::DBServerLogicalView(vocbase, info, planVersion) {
     }
+    arangodb::Result create() { return DBServerLogicalView::create(*this); }
     virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
     virtual void getPropertiesVPack(
       arangodb::velocypack::Builder&,
@@ -68,7 +71,12 @@ std::unique_ptr<arangodb::LogicalView> makeTestView(
     }
   };
 
-  return std::make_unique<Impl>(vocbase, info, planVersion);
+  auto view = std::make_shared<Impl>(vocbase, info, planVersion);
+
+  return
+    (!preCommit || preCommit(std::static_pointer_cast<arangodb::LogicalView>(view)))
+    && view->create().ok()
+    ? view : nullptr;
 }
 
 }
@@ -226,8 +234,8 @@ SECTION("test_getDataSource") {
     CHECK((true == !resolver.getView("testViewGUID")));
   }
 
-  CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(collection, true, 0)));
-  CHECK((true == vocbase.dropView(*view).ok()));
+  CHECK((true == vocbase.dropCollection(collection->id(), true, 0).ok()));
+  CHECK((true == vocbase.dropView(view->id(), true).ok()));
   CHECK((true == collection->deleted()));
   CHECK((true == view->deleted()));
 

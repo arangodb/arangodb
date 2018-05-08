@@ -45,25 +45,27 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-QueryResultCursor::QueryResultCursor(TRI_vocbase_t* vocbase, CursorId id,
-                                     aql::QueryResult&& result,
-                                     size_t batchSize, double ttl,
-                                     bool hasCount)
+QueryResultCursor::QueryResultCursor(
+    TRI_vocbase_t& vocbase,
+    CursorId id,
+    aql::QueryResult&& result,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+)
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
-      _extra(_result.extra()),
       _iterator(_result.result->slice()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());
-  result.profile = nullptr;
 }
 
 VPackSlice QueryResultCursor::extra() const {
-  if (_extra == nullptr) {
-    return VPackSlice();
+  if (_result.extra) {
+    _result.extra->slice();
   }
-  return _extra->slice();
+  return VPackSlice();
 }
 
 /// @brief check whether the cursor contains more data
@@ -118,8 +120,8 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    if (extra().isObject()) {
-      builder.add("extra", extra());
+    if (_result.extra.get() != nullptr) {
+      builder.add("extra", _result.extra->slice());
     }
 
     builder.add("cached", VPackValue(_cached));
@@ -140,23 +142,33 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
   return TRI_ERROR_NO_ERROR;
 }
 
-QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t* vocbase, CursorId id,
-                                     std::string const& query,
-                                     std::shared_ptr<VPackBuilder> bindVars,
-                                     std::shared_ptr<VPackBuilder> opts,
-                                     size_t batchSize, double ttl)
+QueryStreamCursor::QueryStreamCursor(
+    TRI_vocbase_t& vocbase,
+    CursorId id,
+    std::string const& query,
+    std::shared_ptr<VPackBuilder> bindVars,
+    std::shared_ptr<VPackBuilder> opts,
+    size_t batchSize,
+    double ttl
+)
     : Cursor(id, batchSize, ttl, /*hasCount*/ false),
       _guard(vocbase),
       _queryString(query) {
   TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
   auto prevLockHeaders = CollectionLockState::_noLockHeaders;
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
-        
-  _query = std::make_unique<Query>(false, _guard.database(),
-      aql::QueryString(_queryString.c_str(), _queryString.length()),
-      std::move(bindVars), std::move(opts), arangodb::aql::PART_MAIN);
+
+  _query = std::make_unique<Query>(
+    false,
+    _guard.database(),
+    aql::QueryString(_queryString.c_str(), _queryString.length()),
+    std::move(bindVars),
+    std::move(opts),
+    arangodb::aql::PART_MAIN
+  );
   _query->prepare(QueryRegistryFeature::QUERY_REGISTRY, aql::Query::DontCache);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
+
   // If we have set _noLockHeaders, we need to unset it:
   if (CollectionLockState::_noLockHeaders != nullptr &&
       CollectionLockState::_noLockHeaders == _query->engine()->lockedShards()) {
@@ -184,8 +196,9 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
   // we do have a query string... pass query to WorkMonitor
-  AqlWorkStack work(_guard.database(), _query->id(), _queryString.data(),
-                    _queryString.size());
+  AqlWorkStack work(
+    &(_guard.database()), _query->id(), _queryString.data(), _queryString.size()
+  );
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _queryString.substr(1024) << "'";
 
@@ -243,9 +256,8 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
     if (!hasMore) {
       QueryResult result;
       _query->finalize(result);
-      auto extra = result.extra();
-      if (extra && extra->slice().isObject()) {
-        builder.add("extra", extra->slice());
+      if (result.extra && result.extra->slice().isObject()) {
+        builder.add("extra", result.extra->slice());
       }
       _query.reset();
       this->deleted();

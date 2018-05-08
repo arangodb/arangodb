@@ -38,19 +38,31 @@ NS_BEGIN(iresearch)
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLink {
  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief finds first link between specified collection and view
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<IResearchLink> find(
+    LogicalCollection const& collection,
+    LogicalView const& view
+  );
+
   virtual ~IResearchLink();
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this iResearch Link reference the supplied view
+  /// @brief does this IResearch Link reference the supplied view
   ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(IResearchView const& view) const noexcept;
-  bool operator!=(IResearchView const& view) const noexcept;
+  bool operator==(LogicalView const& view) const noexcept;
+  bool operator!=(LogicalView const& view) const noexcept {
+    return !(*this == view);
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this iResearch Link match the meta definition
   ////////////////////////////////////////////////////////////////////////////////
   bool operator==(IResearchLinkMeta const& meta) const noexcept;
-  bool operator!=(IResearchLinkMeta const& meta) const noexcept;
+  bool operator!=(IResearchLinkMeta const& meta) const noexcept {
+    return !(*this == meta);
+  }
 
   bool allowExpansion() const; // arangodb::Index override
 
@@ -143,23 +155,6 @@ class IResearchLink {
   );
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set the iResearch link 'type' field in the builder to the proper
-  ///        value
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setType(arangodb::velocypack::Builder& builder);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief set the iResearch view identifier field in the builder to the
-  ///        specified value
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool setView(
-    arangodb::velocypack::Builder& builder,
-    TRI_voc_cid_t value
-  );
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief iResearch Link index type enum value
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Index::IndexType type() const; // arangodb::Index override
@@ -208,17 +203,9 @@ class IResearchLink {
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
   IResearchView* _view; // effectively the IResearch datastore itself (nullptr == not associated)
+  std::shared_ptr<arangodb::LogicalView> _wiew; // the DBServer view instance (valid only on DBServer)
   std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _viewLock; // prevent view deallocation (lock @ AsyncSelf)
 }; // IResearchLink
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy required fields from the 'definition' into the 'builder'
-////////////////////////////////////////////////////////////////////////////////
-int EnhanceJsonIResearchLink(
-  VPackSlice const definition,
-  VPackBuilder& builder,
-  bool create
-) noexcept;
 
 NS_END // iresearch
 NS_END // arangodb
