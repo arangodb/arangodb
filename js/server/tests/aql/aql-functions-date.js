@@ -59,20 +59,20 @@ function ahuacatlDateFunctionsTestSuite () {
       assertEqual([ date ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%z'))", { value: date }));
 
       const values = [
-        // TODO:        ["-300-04-29", "-300", "-300", "00", "-300"],
-        ["7200-04-29", "7200", "7200", "00", "007200", "04", "29"],
-        ["200-04-29", "200", "0200", "00", "000200", "04", "29"],
-        ["20-04-29", "20", "0020", "20", "000020", "04", "29"],
-        ["2-12-29", "2", "0002", "02", "000002", "12", "29"],
-        ["0-04-07", "0", "0000", "00", "000000", "04", "07"]
+        ["-300-04-29", "-300", "-0300", "00", "-000300", "04", "29"],
+        ["7200-04-29", "7200", "7200", "00", "+007200", "04", "29"],
+        ["200-04-29", "200", "0200", "00", "+000200", "04", "29"],
+        ["20-04-29", "20", "0020", "20", "+000020", "04", "29"],
+        ["2-12-29", "2", "0002", "02", "+000002", "12", "29"],
+        ["0-04-07", "0", "0000", "00", "+000000", "04", "07"]
       ];
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%y'))", { value: value[0] }));
-        assertEqual([ value[2] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%yyyy'))", { value: value[0] }));
-        assertEqual([ value[3] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%yy'))", { value: value[0] }));
-        assertEqual([ value[4] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%yyyyyy'))", { value: value[0] }));
-        assertEqual([ value[5] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%mm'))", { value: value[0] }));
-        assertEqual([ value[6] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%dd'))", { value: value[0] }));
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%y'))", { value: value[0] }), "%y");
+        assertEqual([ value[2] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%yyyy'))", { value: value[0] }), "%yyyy");
+        assertEqual([ value[3] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%yy'))", { value: value[0] }), "%yy");
+        assertEqual([ value[4] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%yyyyyy'))", { value: value[0] }), "%yyyyyyy");
+        assertEqual([ value[5] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%mm'))", { value: value[0] }), "%mm");
+        assertEqual([ value[6] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%dd'))", { value: value[0] }), "%dd");
       });
       const tvalues = [
         ["2012-01-01T17:17:17.177Z", "17", "17", "17", "177", "001", "52"],
@@ -89,18 +89,18 @@ function ahuacatlDateFunctionsTestSuite () {
       });
 
       const dates = [
-        ["2012-01-01", "Jan", "January", "Sun", "Sunday", "001", "52"],
-        ["2012-02-06", "Feb", "February", "Mon", "Monday", "366", "01"],
-        ["2012-03-06", "Mar", "March", "Tue", "Tuesday", "365", "01"],
-        ["2012-04-04", "Apr", "April", "Wed", "Wednesday", "001", "52"],
-        ["2012-05-03", "May", "May", "Thu", "Thursday", "366", "01"],
-        ["2012-06-08", "Jun", "June", "Fri", "Friday", "365", "01"],
-        ["2012-07-07", "Jul", "July", "Sat", "Saturday", "001", "52"],
-        ["2012-08-05", "Aug", "August", "Sun", "Sunday", "366", "01"],
-        ["2012-09-03", "Sep", "September", "Mon", "Monday", "365", "01"],
-        ["2012-10-02", "Oct", "October", "Tue", "Tuesday", "001", "52"],
-        ["2012-11-07", "Nov", "November", "Wed", "Wednesday", "366", "01"],
-        ["2012-12-06", "Dec", "December", "Thu", "Thursday", "365", "01"]
+        ["2012-01-01", "Jan", "January", "Sun", "Sunday"],
+        ["2012-02-06", "Feb", "February", "Mon", "Monday"],
+        ["2012-03-06", "Mar", "March", "Tue", "Tuesday"],
+        ["2012-04-04", "Apr", "April", "Wed", "Wednesday"],
+        ["2012-05-03", "May", "May", "Thu", "Thursday"],
+        ["2012-06-08", "Jun", "June", "Fri", "Friday"],
+        ["2012-07-07", "Jul", "July", "Sat", "Saturday"],
+        ["2012-08-05", "Aug", "August", "Sun", "Sunday"],
+        ["2012-09-03", "Sep", "September", "Mon", "Monday"],
+        ["2012-10-02", "Oct", "October", "Tue", "Tuesday"],
+        ["2012-11-07", "Nov", "November", "Wed", "Wednesday"],
+        ["2012-12-06", "Dec", "December", "Thu", "Thursday"]
       ];
       dates.forEach(function (value) {
         assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%mmm'))", { value: value[0] }), "mmm " + value[0]);
@@ -1099,7 +1099,7 @@ function ahuacatlDateFunctionsTestSuite () {
 
       values.forEach(function (value) {
         assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_LEAPYEAR(@value))", { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%l'))", { value: value[0] }));
+        assertEqual([ value[1] ? 1:0 ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%l'))", { value: value[0] }));
       });
     },
 

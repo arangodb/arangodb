@@ -6591,25 +6591,43 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
   {"%yyyyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
+      if (yearnum < 0) {
+        if (yearnum > -10) {
+          return std::string("-00000") + std::to_string(abs(yearnum));
+        }
+        if (yearnum > -100) {
+          return std::string("-0000") + std::to_string(abs(yearnum));
+        }
+        if (yearnum > -1000) {
+          return std::string("-000") + std::to_string(abs(yearnum));
+        }
+        if (yearnum > -10000) {
+          return std::string("-00") + std::to_string(abs(yearnum));
+        }
+        if (yearnum > -100000) {
+          return std::string("-0") + std::to_string(abs(yearnum));
+        }
+        return std::string("-") + std::to_string(abs(yearnum));
+      }
       if (yearnum > 99999) {
         return std::to_string(yearnum);
       }
       if (yearnum > 9999) {
-        return std::string("0") + std::to_string(yearnum);
+        return std::string("+0") + std::to_string(yearnum);
       }
       if (yearnum > 999) {
-        return std::string("00") + std::to_string(yearnum);
+        return std::string("+00") + std::to_string(yearnum);
       }
       if (yearnum > 99) {
-        return std::string("000") + std::to_string(yearnum);
+        return std::string("+000") + std::to_string(yearnum);
       }
       if (yearnum > 9) {
-        return std::string("0000") + std::to_string(yearnum);
+        return std::string("+0000") + std::to_string(yearnum);
       }
       if (yearnum >= 0) {
-        return std::string("00000") + std::to_string(yearnum);
+        return std::string("+00000") + std::to_string(yearnum);
       }
-      return std::to_string(yearnum);
+      return std::string("+") + std::to_string(yearnum);
     }},
   {"%mmmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
@@ -6618,6 +6636,18 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
   {"%yyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
+      if (yearnum < 0) {
+        if (yearnum > -10) {
+          return std::string("-000") + std::to_string(abs(yearnum));
+        }
+        if (yearnum > -100) {
+          return std::string("-00") + std::to_string(abs(yearnum));
+        }
+        if (yearnum > -1000) {
+          return std::string("-0") + std::to_string(abs(yearnum));
+        }
+        return std::string("-") + std::to_string(abs(yearnum));
+      }
       if (yearnum < 0) {
         return std::string("0000") + std::to_string(yearnum);
       }
@@ -6678,14 +6708,10 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
   {"%yy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
-      if (yearnum < 0) {
-        return std::string("0000") + std::to_string(yearnum);
+      if (yearnum < 10 && yearnum > -10) {
+        return std::string("0") + std::to_string(abs(yearnum));
       }
-
-      if (yearnum < 10 && yearnum >= 0) {
-        return std::string("0") + std::to_string(yearnum);
-      }
-      std::string yearstr(std::to_string(yearnum));
+      std::string yearstr(std::to_string(abs(yearnum)));
       return tail(yearstr, 2);
     }},
   {"%mm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
@@ -6796,7 +6822,7 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
     }},
   {"%l", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       year_month_day ymd{floor<days>(tp)};
-      return (ymd.year().is_leap())? std::string("true"): std::string("false");
+      return (ymd.year().is_leap())? std::string("1"): std::string("0");
   }},
   {"%q", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       year_month_day ymd{floor<days>(tp)};
