@@ -51,29 +51,29 @@ static std::string const planCollections("/arango/Plan/Collections");
 static std::string const PRIMARY("primary");
 
 
-VPackBuilder createProps(VPackSlice const& s) {
-  VPackBuilder builder;
+std::shared_ptr<VPackBuilder> createProps(VPackSlice const& s) {
+  auto builder = std::make_shared<VPackBuilder>();
   TRI_ASSERT(s.isObject());
-  { VPackObjectBuilder b(&builder);
+  { VPackObjectBuilder b(builder.get());
     for (auto const& attr : VPackObjectIterator(s)) {
       std::string const key = attr.key.copyString();
       if (key == ID || key == NAME) {
         continue;
       }
-      builder.add(key, attr.value);
+      builder->add(key, attr.value);
     }}
   return builder;
 }
 
 
-VPackBuilder compareRelevantProps (
+std::shared_ptr<VPackBuilder> compareRelevantProps (
   VPackSlice const& first, VPackSlice const& second) {
-  VPackBuilder result;
-  { VPackObjectBuilder b(&result);
+  auto result = std::make_shared<VPackBuilder>();
+  { VPackObjectBuilder b(result.get());
     for (auto property : cmp) {
       auto const& planned = first.get(property);
       if (planned != second.get(property)) { // Register any change
-        result.add(property,planned);
+        result->add(property,planned);
       }
     }
   }
@@ -135,14 +135,14 @@ void handlePlanShard(
   // We only care for shards, where we find our own ID
   if (db.copyString() == serverId)  {
     colis.emplace(shname);
-    VPackBuilder props = createProps(cprops); // Only once might need often!
+    auto props = createProps(cprops); // Only once might need often!
 
     if (ldb.hasKey(shname)) {   // Have local collection with that name
       auto const lcol = ldb.get(shname);
       auto const properties = compareRelevantProps(cprops, lcol);
 
       // If comparison has brought any updates
-      if (properties.slice() != VPackSlice::emptyObjectSlice()) {
+      if (properties->slice() != VPackSlice::emptyObjectSlice()) {
         actions.push_back(
           ActionDescription(
             {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, shname},
@@ -163,7 +163,7 @@ void handlePlanShard(
               ActionDescription({{NAME, "EnsureIndex"}, {COLLECTION, shname},
                   {DATABASE, dbname}, {TYPE, index.get(TYPE).copyString()},
                   {FIELDS, index.get(FIELDS).toJson()}
-                }, VPackBuilder(index))
+                }, std::make_shared<VPackBuilder>(index))
               );
           }
         }
@@ -172,8 +172,7 @@ void handlePlanShard(
       actions.push_back(
         ActionDescription({
             {NAME, "CreateCollection"}, {COLLECTION, shname}, {DATABASE, dbname},
-            {LEADER, shouldBeLeader ? std::string() : leaderId}},
-          props));
+            {LEADER, shouldBeLeader ? std::string() : leaderId}}, props));
     }
   }
 }            
@@ -291,7 +290,7 @@ arangodb::Result arangodb::maintenance::executePlan (
 
   // enact all
   for (auto const& action : actions) {
-    registry->dispatch(action);
+    //registry->dispatch(action);
   }
 
   return result;  

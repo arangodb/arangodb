@@ -25,12 +25,13 @@
 #ifndef ARANGODB_MAINTENANCE_CREATE_DATABASE_H
 #define ARANGODB_MAINTENANCE_CREATE_DATABASE_H
 
-#include "MaintenanceAction.h"
+#include "ActionBase.h"
 
 namespace arangodb {
+
 namespace maintenance {
 
-class CreateDatabase : public MaintenanceAction {
+class CreateDatabase : public ActionBase {
 
 public:
 
@@ -39,7 +40,7 @@ public:
 
   virtual ~CreateDatabase();
 
-  virtual bool first() override;
+  virtual arangodb::Result first() override;
 
 };
 

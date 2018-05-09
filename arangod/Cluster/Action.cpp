@@ -39,12 +39,12 @@ Action::Action(
   TRI_ASSERT(d.has("name"));
   std::string name = d.name();
   if (name == "CreateDatabase") {
-    _action = new CreateDatabase(feature, d);
-  } else if (name == "DropDatabase") {
-    _action = new DropDatabase(feature, d);
+    _action = (ActionBase*) new CreateDatabase(feature, d);
+  } /*else if (name == "DropDatabase") {
+    _action = (ActionBase*) new DropDatabase(feature, d);
   } else if (name == "UpdateCollection") {
-    _action = new UpdateCollection(feature, d);
-  } else {
+    _action = (ActionBase*) new UpdateCollection(feature, d);
+    } */else {
     // We should never get here
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
     TRI_ASSERT(false);
@@ -56,7 +56,7 @@ ActionDescription const& Action::describe() const {
   return _action->describe();
 }
 
-ActionDescription const& Action::properties() const {
+std::shared_ptr<VPackBuilder> const Action::properties() const {
   return describe().properties();
 }
 

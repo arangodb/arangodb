@@ -31,13 +31,16 @@
 #include <chrono>
 
 namespace arangodb {
+
+class MaintenanceAction;
+
 namespace maintenance {
 
 class SynchronizeShard : public ActionBase {
 
 public:
 
-  SynchronizeShard(ActionDescription const& d);
+  SynchronizeShard(std::shared_ptr<MaintenanceFeature>, ActionDescription const& d);
 
   virtual ~SynchronizeShard();
 

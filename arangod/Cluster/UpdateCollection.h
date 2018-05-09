@@ -37,12 +37,11 @@ class UpdateCollection : public ActionBase {
 
 public:
 
-  UpdateCollection(ActionDescription const& d);
+  UpdateCollection(std::shared_ptr<MaintenanceFeature>, ActionDescription const&);
 
   virtual ~UpdateCollection();
 
-  virtual arangodb::Result run(
-    std::chrono::duration<double> const&, bool& finished) override final;
+  virtual arangodb::Result first() override final;
   
   virtual arangodb::Result kill(Signal const& signal) override final;
   

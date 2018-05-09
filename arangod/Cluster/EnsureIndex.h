@@ -37,12 +37,11 @@ class EnsureIndex : public ActionBase {
 
 public:
 
-  EnsureIndex(ActionDescription const& d);
+  EnsureIndex(std::shared_ptr<MaintenanceFeature>, ActionDescription const& d);
 
   virtual ~EnsureIndex();
 
-  virtual arangodb::Result run(
-    std::chrono::duration<double> const&, bool& finished) override final;
+  virtual arangodb::Result first() override final;
   
   virtual arangodb::Result kill(Signal const& signal) override final;
   

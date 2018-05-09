@@ -34,18 +34,17 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-DropCollection::DropCollection(ActionDescription const& d) :
-  ActionBase(d, arangodb::maintenance::FOREGROUND) {
+DropCollection::DropCollection(
+  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& d) :
+  ActionBase(feature, d) {
   TRI_ASSERT(d.has(COLLECTION));
   TRI_ASSERT(d.has(DATABASE));
 }
 
 DropCollection::~DropCollection() {};
 
-arangodb::Result DropCollection::run(
-  std::chrono::duration<double> const&, bool& finished) {
-  arangodb::Result res;
-
+arangodb::Result DropCollection::first() {
+  
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
 
@@ -60,7 +59,7 @@ arangodb::Result DropCollection::run(
     vocbase, collection, [&](LogicalCollection* coll) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Dropping local collection " + collection;
-      res = Collections::drop(vocbase, coll, false, 120);
+      _result = Collections::drop(vocbase, coll, false, 120);
     });
 
   if (found.fail()) {
@@ -69,7 +68,8 @@ arangodb::Result DropCollection::run(
     return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
   
-  return res;
+  return _result;
+  
 }
 
 arangodb::Result DropCollection::kill(Signal const& signal) {

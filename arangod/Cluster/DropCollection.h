@@ -37,12 +37,11 @@ class DropCollection : public ActionBase {
 
 public:
 
-  DropCollection(ActionDescription const& d);
+  DropCollection(std::shared_ptr<MaintenanceFeature>, ActionDescription const&);
 
   virtual ~DropCollection();
 
-  virtual arangodb::Result run(
-    std::chrono::duration<double> const&, bool& finished) override final;
+  virtual arangodb::Result first() override final;
   
   virtual arangodb::Result kill(Signal const& signal) override final;
   

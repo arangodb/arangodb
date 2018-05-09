@@ -33,7 +33,9 @@ using namespace arangodb::application_features;
 using namespace arangodb::methods;
 using namespace arangodb::maintenance;
 
-DropDatabase::DropDatabase(ActionDescription const& d) : ActionBase(d) {}
+DropDatabase::DropDatabase(
+  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& desc)
+  : ActionBase(feature, desc) {}
 
 DropDatabase::~DropDatabase() {};
 

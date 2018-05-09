@@ -59,7 +59,7 @@ class ActionBase {
   /// @brief initial call to object to perform a unit of work.
   ///   really short tasks could do all work here and return false
   /// @return true to continue processing, false done (result() set)
-  virtual bool first() = 0 ;
+  virtual arangodb::Result first() = 0 ;
 
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
@@ -109,16 +109,16 @@ class ActionBase {
   ActionState state() const {return _state;};
 
   virtual arangodb::Result run(
-    std::chrono::duration<double> const&, bool& finished) = 0;
+    std::chrono::duration<double> const&, bool& finished);
   
-  virtual arangodb::Result kill(Signal const& signal) = 0;
+  virtual arangodb::Result kill(Signal const& signal);
   
-  virtual arangodb::Result progress(double& progress) = 0;
+  virtual arangodb::Result progress(double& progress);
 
-  ActionDescription describe() const;
+  ActionDescription const& describe() const;
 
   std::string const& get(std::string const&) const;
-  VPackSlice const& properties() const;
+  VPackSlice const properties() const;
 
 protected:
 
@@ -154,6 +154,9 @@ protected:
 }; // class ActionBase
 
 } // namespace maintenance
+
+Result actionError(int errorCode, std::string const& errorMessage);	
+Result actionWarn(int errorCode, std::string const& errorMessage);
 
 } // namespace arangodb
 

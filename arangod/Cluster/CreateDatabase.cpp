@@ -22,6 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ActionBase.h"
 #include "CreateDatabase.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -34,34 +35,28 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 CreateDatabase::CreateDatabase(
-  std::make_shared<arangodb::MaintenanceFeature> feature,
-  ActionDescription const& description)
-  : MaintenanceAction(feature, description) {
-  TRI_ASSERT(description->end()!=description->find(MaintenanceAction::DATABASE));
+  std::shared_ptr<arangodb::MaintenanceFeature> feature,
+  ActionDescription const& desc) : ActionBase(feature, desc) {
+  TRI_ASSERT(desc.has(DATABASE));
 }
 
 CreateDatabase::~CreateDatabase() {};
 
-bool CreateDatabase::first() {
+arangodb::Result CreateDatabase::first() {
 
   VPackSlice users;
-  auto db = _description.find(MaintenanceAction::DATABASE);
 
-  if (_description->end() != db) {
-    auto* systemVocbase =
-      ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
+  auto* systemVocbase =
+    ApplicationServer::getFeature<DatabaseFeature>(DATABASE)->systemDatabase();
 
-    if (systemVocbase == nullptr) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
-      FATAL_ERROR_EXIT();
-    }
+  if (systemVocbase == nullptr) {
+    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
+    FATAL_ERROR_EXIT();
+  }
 
-    _result = Databases::create(db.second, users, properties()->slice());
-  } else {
-    _result.reset(TRI_ERROR_BAD_PARAMETER, "CreateDatabase called without required \"database\" field.");
-  } // else
-  
-  // false means no more processing
-  return false;
+  // Assertion in constructor makes sure that we have DATABASE.
+  _result = Databases::create(_description.get(DATABASE), users, properties());
+
+  return _result;
 
 }

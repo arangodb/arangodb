@@ -47,28 +47,27 @@ constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
 CreateCollection::CreateCollection(
-  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& d)
-  : ActionBase(feature, d) {
-  TRI_ASSERT(d.has(COLLECTION));
-  TRI_ASSERT(d.has(DATABASE));
-  TRI_ASSERT(d.has(ID));
-  TRI_ASSERT(d.has(LEADER));
-  TRI_ASSERT(d.properties().hasKey(TYPE));
-  TRI_ASSERT(d.properties().get(TYPE).isInteger());  
+  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& desc)
+  : ActionBase(feature, desc) {
+  TRI_ASSERT(desc.has(COLLECTION));
+  TRI_ASSERT(desc.has(DATABASE));
+  TRI_ASSERT(desc.has(ID));
+  TRI_ASSERT(desc.has(LEADER));
+  TRI_ASSERT(properties().hasKey(TYPE));
+  TRI_ASSERT(properties().get(TYPE).isInteger());  
 }
 
 CreateCollection::~CreateCollection() {};
 
-arangodb::Result CreateCollection::run(
-  std::chrono::duration<double> const&, bool& finished) {
 
-  arangodb::Result res;
+
+arangodb::Result CreateCollection::first() {
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& planId = _description.get(ID);
   auto const& leader = _description.get(LEADER);
-  auto const& properties = _description.properties();
+  auto const& props = properties();
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
     << "creating local shard '" << database << "/" << collection
@@ -85,25 +84,25 @@ arangodb::Result CreateCollection::run(
     ApplicationServer::getFeature<ClusterFeature>("Cluster");
   
   bool waitForRepl =
-    (properties.hasKey(WAIT_FOR_SYNC_REPL) &&
-     properties.get(WAIT_FOR_SYNC_REPL).isBool()) ?
-    properties.get(WAIT_FOR_SYNC_REPL).getBool() :
+    (props.hasKey(WAIT_FOR_SYNC_REPL) &&
+     props.get(WAIT_FOR_SYNC_REPL).isBool()) ?
+    props.get(WAIT_FOR_SYNC_REPL).getBool() :
     cluster->createWaitsForSyncReplication();
   
   bool enforceReplFact = 
-    (properties.hasKey(ENF_REPL_FACT) &&
-     properties.get(ENF_REPL_FACT).isBool()) ?
-    properties.get(ENF_REPL_FACT).getBool() : true;
+    (props.hasKey(ENF_REPL_FACT) &&
+     props.get(ENF_REPL_FACT).isBool()) ?
+    props.get(ENF_REPL_FACT).getBool() : true;
 
-  TRI_col_type_e type(properties.get(TYPE).getNumericValue<TRI_col_type_e>());
+  TRI_col_type_e type(props.get(TYPE).getNumber<TRI_col_type_e>());
   
   VPackBuilder docket;
-  for (auto const& i : VPackObjectIterator(properties)) {
+  for (auto const& i : VPackObjectIterator(props)) {
     auto const& key = i.key.copyString();
     if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
       if (key == GLOB_UID || key == OBJECT_ID) {
         LOG_TOPIC(WARN, Logger::MAINTENANCE)
-          << "unexpected " << key << " in " << properties.toJson();
+          << "unexpected " << key << " in " << props.toJson();
       } else if (key == ID) {
         docket.add("planId", i.value);
       }
@@ -112,7 +111,7 @@ arangodb::Result CreateCollection::run(
     docket.add(key, i.value);
   }
   
-  res = Collections::create(
+  _result = Collections::create(
     vocbase, collection, type, docket.slice(), waitForRepl, enforceReplFact,
     [=](LogicalCollection* col) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
@@ -123,14 +122,15 @@ arangodb::Result CreateCollection::run(
       }
     });
 
-  if (res.fail()) {
+  if (_result.fail()) {
     LOG_TOPIC(ERR, Logger::MAINTENANCE)
       << "creating local shard '" << database << "/" << collection
       << "' for central '" << database << "/" << planId << "' failed: "
-      << res;
+      << _result;
   }
+
+  return _result;
   
-  return res;
 }
 
 arangodb::Result CreateCollection::kill(Signal const& signal) {

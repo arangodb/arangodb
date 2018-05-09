@@ -38,22 +38,22 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-EnsureIndex::EnsureIndex(ActionDescription const& d) :
-  ActionBase(d, arangodb::maintenance::FOREGROUND) {
-  TRI_ASSERT(d.properties().hasKey(ID));
-  TRI_ASSERT(d.has(COLLECTION));
-  TRI_ASSERT(d.has(DATABASE));
+EnsureIndex::EnsureIndex(
+  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& desc) :
+  ActionBase(feature, desc) {
+  TRI_ASSERT(properties().hasKey(ID));
+  TRI_ASSERT(desc.has(COLLECTION));
+  TRI_ASSERT(desc.has(DATABASE));
 }
 
 EnsureIndex::~EnsureIndex() {};
 
-arangodb::Result EnsureIndex::run(
-  std::chrono::duration<double> const&, bool& finished) {
+arangodb::Result EnsureIndex::first() {
   arangodb::Result res;
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
-  auto const& id = _description.properties().get(ID).copyString();
+  auto const& id = properties().get(ID).copyString();
 
   auto* vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
@@ -69,19 +69,19 @@ arangodb::Result EnsureIndex::run(
     return actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
   }
 
-  auto const properties = _description.properties();
+  auto const props = properties();
   VPackBuilder body;
   { VPackObjectBuilder b(&body);
     body.add(COLLECTION, VPackValue(collection));
-    for (auto const& i : VPackObjectIterator(properties)) {
+    for (auto const& i : VPackObjectIterator(props)) {
       body.add(i.key.copyString(), i.value);
     }}
 
-  VPackBuilder result;
-  res = methods::Indexes::ensureIndex(col.get(), body.slice(), true, result);
+  VPackBuilder index;
+  _result = methods::Indexes::ensureIndex(col.get(), body.slice(), true, index);
   
-  if (res.ok()) {
-    VPackSlice created = result.slice().get("isNewlyCreated");
+  if (_result.ok()) {
+    VPackSlice created = index.slice().get("isNewlyCreated");
     std::string log =  std::string("Index ") + id;
     log += (created.isBool() && created.getBool() ? std::string(" created")
             : std::string(" updated"));
@@ -91,7 +91,7 @@ arangodb::Result EnsureIndex::run(
       << "Failed to ensure index " << body.slice().toJson();
   }
   
-  return res;
+  return _result;
 }
 
 arangodb::Result EnsureIndex::kill(Signal const& signal) {

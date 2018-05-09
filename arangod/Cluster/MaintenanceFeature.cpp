@@ -277,7 +277,8 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::actionFactory(std::strin
 
     // walk list until we find the object of our desire
     if (name == "CreateDatabase") {
-      newAction.reset(new maintenance::CreateDatabase(*this, description, properties));
+      #warning fixme
+//      newAction.reset(new maintenance::CreateDatabase(*this, description, properties));
     }
 
   return newAction;

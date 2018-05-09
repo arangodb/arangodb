@@ -56,14 +56,15 @@ std::string const READ_LOCK_TIMEOUT("startReadLockOnLeader: giving up");
 std::string const DB("/_db/");
 std::string const TTL("ttl");
 
-SynchronizeShard::SynchronizeShard(ActionDescription const& d) :
-  ActionBase(d, arangodb::maintenance::FOREGROUND) {
-/*  TRI_ASSERT(d.has(COLLECTION));
-  TRI_ASSERT(d.has(DATABASE));
-  TRI_ASSERT(d.has(ID));
-  TRI_ASSERT(d.has(LEADER));
-  TRI_ASSERT(d.properties().hasKey(TYPE));
-  TRI_ASSERT(d.properties().get(TYPE).isInteger());  */
+SynchronizeShard::SynchronizeShard(
+  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& desc) :
+  ActionBase(feature, desc) {
+  TRI_ASSERT(desc.has(COLLECTION));
+  TRI_ASSERT(desc.has(DATABASE));
+  TRI_ASSERT(desc.has(ID));
+  TRI_ASSERT(desc.has(LEADER));
+  TRI_ASSERT(properties().hasKey(TYPE));
+  TRI_ASSERT(properties().get(TYPE).isInteger()); 
 }
 
 class SynchronizeShardCallback  : public arangodb::ClusterCommCallback {

@@ -277,7 +277,6 @@ SET(ARANGOD_SOURCES
   Cluster/ActionBase.cpp
   Cluster/Action.cpp
   Cluster/ActionDescription.cpp
-  Cluster/ActionRegistry.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
   Cluster/ClusterComm.cpp

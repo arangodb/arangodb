@@ -56,10 +56,14 @@ bool MaintenanceAction::done() const {
 
 ActionBase::~ActionBase() {}
 
-ActionDescription ActionBase::describe() const {
+ActionDescription const& ActionBase::describe() const {
   return _description;
 }
 
+
+VPackSlice const ActionBase::properties() const {
+  return _description.properties()->slice();
+}
 
 
 /// @brief Initiate a new action that will start immediately, pausing this action
@@ -129,4 +133,13 @@ void MaintenanceAction::endStats() {
 } // MaintenanceAction::endStats
 
 
+Result arangodb::actionError(int errorCode, std::string const& errorMessage) {	
+  LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;	
+  return Result(errorCode, errorMessage);	
+}	
+ 	 
+Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) { 
+  LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMessage;
+  return Result(errorCode, errorMessage);
+}
 

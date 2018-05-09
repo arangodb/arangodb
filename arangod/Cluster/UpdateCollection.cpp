@@ -38,12 +38,13 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-UpdateCollection::UpdateCollection(ActionDescription const& d) :
-  ActionBase(d, arangodb::maintenance::FOREGROUND) {
-  TRI_ASSERT(d.has(COLLECTION));
-  TRI_ASSERT(d.has(DATABASE));
-  TRI_ASSERT(d.has(LEADER));
-  TRI_ASSERT(d.has(LOCAL_LEADER));
+UpdateCollection::UpdateCollection(
+  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& desc) :
+  ActionBase(feature, desc) {
+  TRI_ASSERT(desc.has(COLLECTION));
+  TRI_ASSERT(desc.has(DATABASE));
+  TRI_ASSERT(desc.has(LEADER));
+  TRI_ASSERT(desc.has(LOCAL_LEADER));
 }
 
 void handleLeadership(
@@ -88,15 +89,13 @@ void handleLeadership(
 
 UpdateCollection::~UpdateCollection() {};
 
-arangodb::Result UpdateCollection::run(
-  std::chrono::duration<double> const&, bool& finished) {
-  arangodb::Result res;
+arangodb::Result UpdateCollection::first() {
 
   auto const& database   = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& plannedLeader = _description.get(LEADER);
   auto const& localLeader = _description.get(LOCAL_LEADER);
-  auto const& properties = _description.properties();
+  auto const& props = properties();
 
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
@@ -117,16 +116,16 @@ arangodb::Result UpdateCollection::run(
       // under "Drop local shards" to see the proper handling
       // of this case. Place is marked with *** in comments.
       handleLeadership(coll, localLeader, plannedLeader);
-      res = Collections::updateProperties(coll, properties);
+      _result = Collections::updateProperties(coll, props);
     });
   
   if (found.fail()) {
     std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
     errorMsg += collection + "in database " + database;
-    return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
   
-  return res;
+  return _result;
 }
 
 arangodb::Result UpdateCollection::kill(Signal const& signal) {

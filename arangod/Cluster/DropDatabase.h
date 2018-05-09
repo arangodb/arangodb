@@ -31,13 +31,14 @@
 #include <chrono>
 
 namespace arangodb {
+
 namespace maintenance {
 
 class DropDatabase : public ActionBase {
 
 public:
 
-  DropDatabase(ActionDescription const& d);
+  DropDatabase(std::shared_ptr<MaintenanceFeature>, ActionDescription const&);
 
   virtual ~DropDatabase();
 
