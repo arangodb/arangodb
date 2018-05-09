@@ -40,7 +40,7 @@ class SimpleHttpResult;
 namespace import {
 struct ImportStatistics;
 
-class SenderThread : public arangodb::Thread {
+class SenderThread final : public arangodb::Thread {
  private:
   SenderThread(SenderThread const&) = delete;
   SenderThread& operator=(SenderThread const&) = delete;

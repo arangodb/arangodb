@@ -313,7 +313,7 @@ class DistributeBlock : public BlockWithClients {
   bool _allowSpecifiedKeys;
 };
 
-class RemoteBlock : public ExecutionBlock {
+class RemoteBlock final : public ExecutionBlock {
   /// @brief constructors/destructors
  public:
   RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,

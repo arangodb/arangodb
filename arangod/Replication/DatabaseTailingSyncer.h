@@ -31,7 +31,7 @@
 namespace arangodb {
 class DatabaseReplicationApplier;
 
-class DatabaseTailingSyncer : public TailingSyncer {
+class DatabaseTailingSyncer final : public TailingSyncer {
  public:
   DatabaseTailingSyncer(
     TRI_vocbase_t& vocbase,

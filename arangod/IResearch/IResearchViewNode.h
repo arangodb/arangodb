@@ -213,7 +213,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   );
 
   /// @brief return the type of the node
-  NodeType getType() const noexcept final {
+  NodeType getType() const noexcept override final {
     return SCATTER_IRESEARCH_VIEW;
   }
 
@@ -221,21 +221,21 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   void toVelocyPackHelper(
     arangodb::velocypack::Builder&,
     bool
-  ) const final;
+  ) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
     aql::ExecutionEngine& engine,
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
     std::unordered_set<std::string> const& includedShards
-  ) const final;
+  ) const override final;
 
   /// @brief clone ExecutionNode recursively
   aql::ExecutionNode* clone(
       aql::ExecutionPlan* plan,
       bool withDependencies,
       bool withProperties
-  ) const final {
+  ) const override final {
     auto node = std::make_unique<IResearchViewScatterNode>(
       *plan, _id, *_vocbase, *_view
     );
@@ -246,7 +246,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const final;
+  double estimateCost(size_t&) const override final;
 
   /// @brief return the database
   TRI_vocbase_t& vocbase() const noexcept { 

@@ -33,25 +33,26 @@ namespace methods {
 /// Code to create and initialize databases
 /// Replaces ugrade-database.js for good
 struct UpgradeTasks {
-  static bool upgradeGeoIndexes(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool setupGraphs(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool setupUsers(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool createUsersIndex(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool addDefaultUserOther(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool updateUserModels(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool createModules(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool setupAnalyzers(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool createRouting(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool insertRedirections(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool setupAqlFunctions(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool createFrontend(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool setupQueues(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool setupJobs(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool createJobsIndex(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool setupApps(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool createAppsIndex(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool setupAppBundles(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool upgradeGeoIndexes(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool setupGraphs(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool setupUsers(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createUsersIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool addDefaultUserOther(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool updateUserModels(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createModules(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool setupAnalyzers(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createRouting(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool insertRedirections(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool setupAqlFunctions(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createFrontend(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool setupQueues(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool setupJobs(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createJobsIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool setupApps(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool createAppsIndex(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+  static bool setupAppBundles(TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
 };
+
 }
 }
 

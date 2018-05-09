@@ -22,6 +22,7 @@
 
 #include "RestRepairHandler.h"
 
+#include <array>
 #include <chrono>
 #include <list>
 #include <thread>
@@ -469,7 +470,7 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
 
 ResultT<VPackBufferPtr> RestRepairHandler::getFromAgency(
     std::string const& agencyKey) {
-  ResultT<std::array<VPackBufferPtr, 1>> rv = getFromAgency<1>({agencyKey});
+  ResultT<std::array<VPackBufferPtr, 1>> rv = getFromAgency<1>({{agencyKey}});
 
   if (rv.ok()) {
     return ResultT<VPackBufferPtr>::success(rv.get()[0]);
@@ -485,8 +486,8 @@ ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(
   // introduce a race condition which would result in JobStatus::missing
   // despite it being finished.
   auto rv =
-      getFromAgency<4>({"Target/ToDo/" + jobId, "Target/Pending/" + jobId,
-                        "Target/Finished/" + jobId, "Target/Failed/" + jobId});
+      getFromAgency<4>({{"Target/ToDo/" + jobId, "Target/Pending/" + jobId,
+                       "Target/Finished/" + jobId, "Target/Failed/" + jobId}});
 
   if (rv.fail()) {
     return ResultT<JobStatus>(rv);

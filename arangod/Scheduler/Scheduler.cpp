@@ -54,7 +54,7 @@ constexpr double MIN_SECONDS = 30.0;
 // -----------------------------------------------------------------------------
 
 namespace {
-class SchedulerManagerThread : public Thread {
+class SchedulerManagerThread final : public Thread {
  public:
   SchedulerManagerThread(Scheduler* scheduler, asio::io_context* service)
       : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
@@ -62,7 +62,7 @@ class SchedulerManagerThread : public Thread {
   ~SchedulerManagerThread() { shutdown(); }
 
  public:
-  void run() {
+  void run() override {
     while (!_scheduler->isStopping()) {
       try {
         _service->run_one();
@@ -92,7 +92,7 @@ class SchedulerThread : public Thread {
   ~SchedulerThread() { shutdown(); }
 
  public:
-  void run() {
+  void run() override {
     constexpr size_t EVERY_LOOP = size_t(MIN_SECONDS);
     
     // when we enter this method, 

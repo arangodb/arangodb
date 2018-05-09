@@ -349,7 +349,7 @@ class ExecutionPlan {
   std::unordered_set<ExecutionNode const*> _excludeFromScatterGather;
 
   /// @brief number of nodes used in the plan, by type
-  std::array<uint32_t, ExecutionNode::MaxNodeTypeValue + 1> _typeCounts;
+  std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
 };
 }
 }

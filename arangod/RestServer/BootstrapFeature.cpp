@@ -116,10 +116,12 @@ void raceForClusterBootstrap() {
     // OK, we handle things now
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
-    
+
     // let's see whether a DBserver is there:
     ci->loadCurrentDBServers();
+
     auto dbservers = ci->getCurrentDBServers();
+
     if (dbservers.size() == 0) {
       LOG_TOPIC(TRACE, Logger::STARTUP)
           << "raceForClusterBootstrap: no DBservers, waiting";
@@ -127,9 +129,13 @@ void raceForClusterBootstrap() {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
-    
+
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-    auto upgradeRes = methods::Upgrade::clusterBootstrap(vocbase);
+    auto upgradeRes = vocbase
+      ? methods::Upgrade::clusterBootstrap(*vocbase)
+      : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)
+      ;
+
     if (upgradeRes.fail()) {
       LOG_TOPIC(ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
       << "marking as not successful.";
@@ -137,11 +143,11 @@ void raceForClusterBootstrap() {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
-    
+
     // become Foxxmater, ignore result
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Write Foxxmaster";
     agency.setValue("Current/Foxxmaster", b.slice(), 0);
-    
+
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
@@ -245,6 +251,7 @@ void BootstrapFeature::start() {
 
   auto ss = ServerState::instance();
   ServerState::RoleEnum role =  ServerState::instance()->getRole();
+
   if (ServerState::isRunningInCluster(role)) {
     // the coordinators will race to perform the cluster initialization.
     // The coordinatpr who does it will create system collections and
@@ -252,19 +259,18 @@ void BootstrapFeature::start() {
     if (ServerState::isCoordinator(role)) {
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
       raceForClusterBootstrap();
-      
+
       if (v8Enabled) {
         ::runCoordinatorJS(vocbase);
       }
-      
     } else if (ServerState::isDBServer(role)) {
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running bootstrap";
 
-      auto upgradeRes = methods::Upgrade::clusterBootstrap(vocbase);
+      auto upgradeRes = methods::Upgrade::clusterBootstrap(*vocbase);
+
       if (upgradeRes.fail()) {
         LOG_TOPIC(ERR, Logger::STARTUP) << "Problem during startup";
       }
-    
     } else {
       TRI_ASSERT(false);
     }

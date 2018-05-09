@@ -40,13 +40,13 @@ class JobQueueThread final
 
   ~JobQueueThread() { shutdown(); }
 
-  void beginShutdown() {
+  void beginShutdown() override {
     Thread::beginShutdown();
     _jobQueue->wakeup();
   }
 
  public:
-  void run() {
+  void run() override {
     int idleTries = 0;
 
     auto self = shared_from_this();

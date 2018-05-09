@@ -81,7 +81,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result drop() = 0;
+  virtual arangodb::Result drop() override = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief renames an existing view
@@ -89,16 +89,7 @@ class LogicalView : public LogicalDataSource {
   virtual Result rename(
     std::string&& newName,
     bool doSync
-  ) = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief builds a VelocyPack representation of the node LogicalView
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void toVelocyPack(
-    velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const = 0;
+  ) override = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
@@ -144,12 +135,6 @@ class DBServerLogicalView : public LogicalView {
     bool doSync
   ) override final;
 
-  void toVelocyPack(
-    velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const override final;
-
   arangodb::Result updateProperties(
     velocypack::Slice const& properties,
     bool partialUpdate,
@@ -162,6 +147,12 @@ class DBServerLogicalView : public LogicalView {
     velocypack::Slice const& definition,
     uint64_t planVersion
   );
+
+  virtual Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called by view factories during view creation to persist the view

@@ -54,7 +54,7 @@ class IResearchLinkMMFilesCoordinator final
     _sparse = true;  // always sparse
   }
 
-  bool allowExpansion() const noexcept {
+  bool allowExpansion() const noexcept override {
     return true;
   }
 
@@ -69,7 +69,7 @@ class IResearchLinkMMFilesCoordinator final
     return true;
   }
 
-  int drop() {
+  int drop() override {
     return IResearchLinkCoordinator::drop().errorNumber();
   }
 
@@ -100,7 +100,7 @@ class IResearchLinkMMFilesCoordinator final
     return false;
   }
 
-  void load() noexcept {
+  void load() noexcept override {
     // NOOP
   }
 
@@ -142,7 +142,7 @@ class IResearchLinkMMFilesCoordinator final
       arangodb::velocypack::Builder& builder,
       bool withFigures,
       bool /*forPersistence*/
-  ) const {
+  ) const override {
     TRI_ASSERT(!builder.isOpenObject());
     builder.openObject();
     bool const success = IResearchLinkCoordinator::toVelocyPack(builder);
@@ -184,7 +184,7 @@ class IResearchLinkRocksDBCoordinator final
     _sparse = true;  // always sparse
   }
 
-  bool allowExpansion() const noexcept {
+  bool allowExpansion() const noexcept override {
     // maps to multivalued
     return true;
   }
@@ -201,7 +201,7 @@ class IResearchLinkRocksDBCoordinator final
     return true;
   }
 
-  int drop() {
+  int drop() override {
     return IResearchLinkCoordinator::drop().errorNumber();
   }
 
@@ -230,7 +230,7 @@ class IResearchLinkRocksDBCoordinator final
     return false;
   }
 
-  void load() noexcept {
+  void load() noexcept override {
     // NOOP
   }
 
@@ -277,7 +277,7 @@ class IResearchLinkRocksDBCoordinator final
       arangodb::velocypack::Builder& builder,
       bool withFigures,
       bool /*forPersistence*/
-  ) const {
+  ) const override {
     TRI_ASSERT(!builder.isOpenObject());
     builder.openObject();
     bool const success = IResearchLinkCoordinator::toVelocyPack(builder);

@@ -210,7 +210,7 @@ class RandomDeviceDirect : public RandomDevice {
     }
   }
 
-  uint32_t random() {
+  uint32_t random() override {
     if (pos >= N) {
       fillBuffer();
     }
@@ -294,7 +294,7 @@ class RandomDeviceCombined : public RandomDevice {
     }
   }
 
-  uint32_t random() {
+  uint32_t random() override {
     if (pos >= N) {
       fillBuffer();
     }
@@ -365,7 +365,7 @@ class RandomDeviceMersenne : public RandomDevice {
   RandomDeviceMersenne()
       : engine((uint_fast32_t)RandomDevice::seed()) {}
 
-  uint32_t random() { return engine(); }
+  uint32_t random() override { return engine(); }
   void seed(uint64_t seed) { engine.seed(static_cast<decltype(engine)::result_type>(seed)); }
 
   std::mt19937 engine;

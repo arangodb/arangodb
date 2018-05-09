@@ -35,26 +35,7 @@ class LogicalCollection;
 class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
-/*
-arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
-                                       arangodb::LogicalCollection* col,
-                                       std::string const& keysId,
-                                       std::string const& leaderColl,
-                                       TRI_voc_tick_t maxTick);
-
-arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
-                                       arangodb::LogicalCollection* col,
-                                       std::string const& keysId, 
-                                       std::string const& leaderColl,
-                                       TRI_voc_tick_t maxTick);
-
-arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                                  std::string const& keysId, uint64_t chunkId,
-                                  std::string const& lowString,
-                                  std::string const& highString,
-                                  std::vector<std::pair<std::string, uint64_t>> const& markers);
-  */
-class DatabaseInitialSyncer : public InitialSyncer {
+class DatabaseInitialSyncer final : public InitialSyncer {
   friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
                                                               std::string const& keysId);
   
@@ -150,20 +131,26 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// @brief send a WAL flush command
   Result sendFlush();
   
+  
+  /// @brief handle a single dump marker
+  Result parseCollectionDumpMarker(transaction::Methods&,
+                                   arangodb::LogicalCollection*,
+                                   arangodb::velocypack::Slice const&);
+  
   /// @brief apply the data from a collection dump
-  Result applyCollectionDump(transaction::Methods&, LogicalCollection* col,
+  Result parseCollectionDump(transaction::Methods&, LogicalCollection* col,
                              httpclient::SimpleHttpResult*, uint64_t&);
-
+  
   /// @brief determine the number of documents in a collection
   int64_t getSize(arangodb::LogicalCollection*);
-
+  
   /// @brief incrementally fetch data from a collection
-  Result handleCollectionDump(arangodb::LogicalCollection*,
-                              std::string const& leaderColl, TRI_voc_tick_t);
-
+  Result fetchCollectionDump(arangodb::LogicalCollection*,
+                             std::string const& leaderColl, TRI_voc_tick_t);
+  
   /// @brief incrementally fetch data from a collection
-  Result handleCollectionSync(arangodb::LogicalCollection*,
-                              std::string const& leaderColl, TRI_voc_tick_t);
+  Result fetchCollectionSync(arangodb::LogicalCollection*,
+                             std::string const& leaderColl, TRI_voc_tick_t);
    
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided

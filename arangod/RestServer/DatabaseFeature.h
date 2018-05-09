@@ -42,7 +42,7 @@ namespace aql {
 class QueryRegistry;
 }
 
-class DatabaseManagerThread : public Thread {
+class DatabaseManagerThread final : public Thread {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
