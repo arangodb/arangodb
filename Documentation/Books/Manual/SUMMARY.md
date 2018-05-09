@@ -22,7 +22,7 @@
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
   * [Kubernetes](Tutorials/Kubernetes/README.md)
 * [Programs & Tools](Programs/README.md)
-  * [ArangoDB server](Programs/Arangod.md)
+  * [ArangoDB server](Programs/Arangod/README.md)
   * [Web Interface](Programs/WebInterface/README.md)
     * [Dashboard](Programs/WebInterface/Dashboard.md)
     * [Cluster](Programs/WebInterface/Cluster.md)
@@ -34,8 +34,7 @@
     * [Users](Programs/WebInterface/Users.md)
     * [Logs](Programs/WebInterface/Logs.md)
   * [ArangoDB Shell](Programs/Arangosh/README.md)
-    * [Shell Output](Programs/Arangosh/Output.md)
-    * [Configuration](Programs/Arangosh/Configuration.md)
+    * [Examples](Programs/Arangosh/Examples.md)
     * [Details](Programs/Arangosh/Details.md)
 #   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](Programs/Starter/README.md)
@@ -58,7 +57,8 @@
   * [Arangobench](Programs/Arangobench/README.md)
     * [Examples](Programs/Arangobench/Examples.md)
     * [Options](Programs/Arangobench/Options.md)
-  * [Datafile Debugger](Programs/DatafileDebugger.md)
+  * [Datafile Debugger](Programs/Arango-dfdb/README.md)
+    * [Examples](Programs/Arango-dfdb/Examples.md)
 
 ## CORE TOPICS	
 

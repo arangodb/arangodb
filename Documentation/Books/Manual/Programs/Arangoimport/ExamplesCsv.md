@@ -1,6 +1,10 @@
-### Importing CSV Data
+Arangoimport Examples: CSV / TSV
+================================
 
-_arangoimport_ also offers the possibility to import data from CSV files. This
+Importing CSV Data
+------------------
+
+_arangoimport_ offers the possibility to import data from CSV files. This
 comes handy when the data at hand is in CSV format already and you don't want to
 spend time converting them to JSON for the import.
 
@@ -51,7 +55,7 @@ Wayne,Brewer,,false,
 
 The command line to execute the import is:
 
-    > arangoimport --file "data.csv" --type csv --collection "users"
+    arangoimport --file "data.csv" --type csv --collection "users"
 
 The above data will be imported into 5 documents which will look as follows:
 
@@ -102,8 +106,8 @@ Extra whitespace at the end of each line will be ignored. Whitespace at the
 start of lines or between field values will not be ignored, so please make sure
 that there is no extra whitespace in front of values or between them.
 
-
-### Importing TSV Data
+Importing TSV Data
+------------------
 
 You may also import tab-separated values (TSV) from a file. This format is very
 simple: every line in the file represents a data record. There is no quoting or
@@ -120,8 +124,8 @@ An example command line to execute the TSV import is:
 
     > arangoimport --file "data.tsv" --type tsv --collection "users"
 
-
-### Attribute Name Translation
+Attribute Name Translation
+--------------------------
 
 For the CSV and TSV input formats, attribute names can be translated automatically.
 This is useful in case the import file has different attribute names than those
@@ -131,18 +135,17 @@ A common use case is to rename an "id" column from the input file into "_key" as
 it is expected by ArangoDB. To do this, specify the following translation when
 invoking arangoimport:
 
-    > arangoimport --file "data.csv" --type csv --translate "id=_key"
+    arangoimport --file "data.csv" --type csv --translate "id=_key"
 
 Other common cases are to rename columns in the input file to *_from* and *_to*:
 
-    > arangoimport --file "data.csv" --type csv --translate "from=_from" --translate "to=_to"
+    arangoimport --file "data.csv" --type csv --translate "from=_from" --translate "to=_to"
 
 The *translate* option can be specified multiple types. The source attribute name
 and the target attribute must be separated with a *=*.
 
-
-### Ignoring Attributes
-
+Ignoring Attributes
+-------------------
 
 For the CSV and TSV input formats, certain attribute names can be ignored on imports.
 In an ArangoDB cluster there are cases where this can come in handy,
@@ -151,8 +154,8 @@ and your collection has a sharding attribute other than `_key`: In the cluster t
 configuration is not supported, because ArangoDB needs to guarantee the uniqueness of the `_key`
 attribute in *all* shards of the collection.
 
-    > arangoimport --file "data.csv" --type csv --remove-attribute "_key"
+    arangoimport --file "data.csv" --type csv --remove-attribute "_key"
 
 The same thing would apply if your data contains an *_id* attribute:
 
-    > arangoimport --file "data.csv" --type csv --remove-attribute "_id"
+    arangoimport --file "data.csv" --type csv --remove-attribute "_id"

@@ -1,80 +1,128 @@
-Details about the ArangoDB Shell
-================================
+Arangosh Details
+================
 
-After the server has been started,
-you can use the ArangoDB shell (_arangosh_) to administrate the
-server. Without any arguments, the ArangoDB shell will try to contact
-the server on port 8529 on the localhost. You might need to set additional options
-(endpoint, username and password) when connecting:
+Interaction
+-----------
 
-```
-unix> ./arangosh --server.endpoint tcp://127.0.0.1:8529 --server.username root
-```
+You can paste multiple lines into Arangosh, given the first line ends with an
+opening brace:
 
-The shell will print its own version number and if successfully connected
-to a server the version number of the ArangoDB server.
+    @startDocuBlockInline shellPaste
+    @EXAMPLE_ARANGOSH_OUTPUT{shellPaste}
+    |for (var i = 0; i < 10; i ++) {
+    |         require("@arangodb").print("Hello world " + i + "!\n");
+    }
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock shellPaste
 
-Command-Line Options
---------------------
 
-Use `--help` to get a list of command-line options:
+To load your own JavaScript code into the current JavaScript interpreter context,
+use the load command:
 
-```
-unix> ./arangosh --help
-STANDARD options:
-  --audit-log <string>          audit log file to save commands and results to
-  --configuration <string>      read configuration file
-  --help                        help message
-  --max-upload-size <uint64>    maximum size of import chunks (in bytes) (default: 500000)
-  --no-auto-complete            disable auto completion
-  --no-colors                   deactivate color support
-  --pager <string>              output pager (default: "less -X -R -F -L")
-  --pretty-print                pretty print values
-  --quiet                       no banner
-  --temp.path <string>          path for temporary files (default: "/tmp/arangodb")
-  --use-pager                   use pager
-  
-JAVASCRIPT options:
-  --javascript.check <string>                syntax check code JavaScript code from file
-  --javascript.execute <string>              execute JavaScript code from file
-  --javascript.execute-string <string>       execute JavaScript code from string
-  --javascript.startup-directory <string>    startup paths containing the JavaScript files
-  --javascript.unit-tests <string>           do not start as shell, run unit tests instead
-  --jslint <string>                          do not start as shell, run jslint instead
-  
-LOGGING options:
-  --log.level <string>    log level (default: "info")
-  
-CLIENT options:
-  --server.connect-timeout <double>         connect timeout in seconds (default: 3)
-  --server.authentication <bool>            whether or not to use authentication (default: true)
-  --server.endpoint <string>                endpoint to connect to, use 'none' to start without a server (default: "tcp://127.0.0.1:8529")
-  --server.password <string>                password to use when connecting (leave empty for prompt)
-  --server.request-timeout <double>         request timeout in seconds (default: 300)
-  --server.username <string>                username to use when connecting (default: "root")
-```
+    require("internal").load("/tmp/test.js")     // <- Linux / MacOS
+    require("internal").load("c:\\tmp\\test.js") // <- Windows
+
+Exiting arangosh can be done using the key combination ```<CTRL> + D``` or by
+typing ```quit<CR>```
+
+Shell Output
+------------
+
+The ArangoDB shell will print the output of the last evaluated expression
+by default:
+    
+    @startDocuBlockInline lastExpressionResult
+    @EXAMPLE_ARANGOSH_OUTPUT{lastExpressionResult}
+    42 * 23
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock lastExpressionResult
+    
+In order to prevent printing the result of the last evaluated expression,
+the expression result can be captured in a variable, e.g.
+
+    @startDocuBlockInline lastExpressionResultCaptured
+    @EXAMPLE_ARANGOSH_OUTPUT{lastExpressionResultCaptured}
+    var calculationResult = 42 * 23
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock lastExpressionResultCaptured
+
+There is also the `print` function to explicitly print out values in the
+ArangoDB shell:
+
+    @startDocuBlockInline printFunction
+    @EXAMPLE_ARANGOSH_OUTPUT{printFunction}
+    print({ a: "123", b: [1,2,3], c: "test" });
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock printFunction
+
+By default, the ArangoDB shell uses a pretty printer when JSON documents are
+printed. This ensures documents are printed in a human-readable way:
+
+    @startDocuBlockInline usingToArray
+    @EXAMPLE_ARANGOSH_OUTPUT{usingToArray}
+    db._create("five")
+    for (i = 0; i < 5; i++) db.five.save({value:i})
+    db.five.toArray()
+    ~db._drop("five");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock usingToArray
+
+While the pretty-printer produces nice looking results, it will need a lot of
+screen space for each document. Sometimes a more dense output might be better.
+In this case, the pretty printer can be turned off using the command
+*stop_pretty_print()*.
+
+To turn on pretty printing again, use the *start_pretty_print()* command.
+
+Escaping
+--------
+
+In AQL, escaping is done traditionally with the backslash character: `\`.
+As seen above, this leads to double backslashes when specifying Windows paths.
+Arangosh requires another level of escaping, also with the backslash character.
+It adds up to four backslashes that need to be written in Arangosh for a single
+literal backslash (`c:\tmp\test.js`):
+
+    db._query('RETURN "c:\\\\tmp\\\\test.js"')
+
+You can use [bind variables](../../../AQL/Invocation/WithArangosh.html) to
+mitigate this:
+
+    var somepath = "c:\\tmp\\test.js"
+    db._query(aql`RETURN ${somepath}`)
 
 Database Wrappers
 -----------------
 
+_Arangosh_ provides the *db* object by default, and this object can
+be used for switching to a different database and managing collections inside the
+current database.
+
+For a list of available methods for the *db* object, type 
+    
+    @startDocuBlockInline shellHelp
+    @EXAMPLE_ARANGOSH_OUTPUT{shellHelp}
+    db._help(); 
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock shellHelp
+  
 The [`db` object](../../Appendix/References/DBObject.md) is available in *arangosh*
 as well as on *arangod* i.e. if you're using [Foxx](../../Foxx/README.md). While its
-interface is persistant between the *arangosh* and the *arangod* implementations,
+interface is persistent between the *arangosh* and the *arangod* implementations,
 its underpinning is not. The *arangod* implementation are JavaScript wrappers
 around ArangoDB's native C++ implementation, whereas the *arangosh* implementation
 wraps HTTP accesses to ArangoDB's [RESTfull API](../../../HTTP/index.html).
 
 So while this code may produce similar results when executed in *arangosh* and
-*arangod*, the cpu usage and time required will be really different:
+*arangod*, the CPU usage and time required will be really different since the
+*arangosh* version will be doing around 100k HTTP requests, and the
+*arangod* version will directly write to the database:
 
 ```js
 for (i = 0; i < 100000; i++) {
     db.test.save({ name: { first: "Jan" }, count: i});
 }
 ```
-
-Since the *arangosh* version will be doing around 100k HTTP requests, and the
-*arangod* version will directly write to the database.
 
 Using `arangosh` via unix shebang mechanisms
 --------------------------------------------
@@ -95,3 +143,44 @@ and finaly try it out:
     #> ~/test.js
 
 
+Shell Configuration
+-------------------
+
+_arangosh_ will look for a user-defined startup script named *.arangosh.rc* in the
+user's home directory on startup. The home directory will likely be `/home/<username>/`
+on Unix/Linux, and is determined on Windows by peeking into the environment variables
+`%HOMEDRIVE%` and `%HOMEPATH%`. 
+
+If the file *.arangosh.rc* is present in the home directory, _arangosh_ will execute
+the contents of this file inside the global scope.
+
+You can use this to define your own extra variables and functions that you need often.
+For example, you could put the following into the *.arangosh.rc* file in your home
+directory:
+
+```js
+// "var" keyword avoided intentionally...
+// otherwise "timed" would not survive the scope of this script
+global.timed = function (cb) {
+  console.time("callback");
+  cb();
+  console.timeEnd("callback");
+};
+```
+
+This will make a function named *timed* available in _arangosh_ in the global scope.
+
+You can now start _arangosh_ and invoke the function like this:
+
+```js
+timed(function () { 
+  for (var i = 0; i < 1000; ++i) {
+    db.test.save({ value: i }); 
+  }
+});
+```
+
+Please keep in mind that, if present, the *.arangosh.rc* file needs to contain valid
+JavaScript code. If you want any variables in the global scope to survive you need to
+omit the *var* keyword for them. Otherwise the variables will only be visible inside
+the script itself, but not outside.

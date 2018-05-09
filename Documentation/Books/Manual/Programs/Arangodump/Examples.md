@@ -1,11 +1,9 @@
-Dumping Data from an ArangoDB database
-======================================
+Arangodump Examples
+===================
 
-To dump data from an ArangoDB server instance, you will need to invoke _arangodump_.
-Dumps can be re-imported with _arangorestore_. _arangodump_ can be invoked by executing
-the following command:
+_arangodump_ can be invoked in a command line by executing the following command:
 
-    unix> arangodump --output-directory "dump"
+    arangodump --output-directory "dump"
 
 This will connect to an ArangoDB server and dump all non-system collections from
 the default database (*_system*) into an output directory named *dump*.
@@ -14,23 +12,23 @@ an intentional security measure to prevent you from accidentally overwriting alr
 dumped data. If you are positive that you want to overwrite data in the output 
 directory, you can use the parameter *--overwrite true* to confirm this:
 
-    unix> arangodump --output-directory "dump" --overwrite true
+    arangodump --output-directory "dump" --overwrite true
 
 _arangodump_ will by default connect to the *_system* database using the default
 endpoint. If you want to connect to a different database or a different endpoint, 
 or use authentication, you can use the following command-line options:
 
-* *--server.database <string>*: name of the database to connect to
-* *--server.endpoint <string>*: endpoint to connect to
-* *--server.username <string>*: username
-* *--server.password <string>*: password to use (omit this and you'll be prompted for the
+- *--server.database <string>*: name of the database to connect to
+- *--server.endpoint <string>*: endpoint to connect to
+- *--server.username <string>*: username
+- *--server.password <string>*: password to use (omit this and you'll be prompted for the
   password)
-* *--server.authentication <bool>*: whether or not to use authentication
+- *--server.authentication <bool>*: whether or not to use authentication
 
 Here's an example of dumping data from a non-standard endpoint, using a dedicated
 [database name](../../Appendix/Glossary.md#database-name):
 
-    unix> arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --output-directory "dump"
+    arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --output-directory "dump"
 
 When finished, _arangodump_ will print out a summary line with some aggregate 
 statistics about what it did, e.g.:
@@ -41,20 +39,20 @@ By default, _arangodump_ will dump both structural information and documents fro
 non-system collections. To adjust this, there are the following command-line 
 arguments:
 
-* *--dump-data <bool>*: set to *true* to include documents in the dump. Set to *false* 
+- *--dump-data <bool>*: set to *true* to include documents in the dump. Set to *false* 
   to exclude documents. The default value is *true*.
-* *--include-system-collections <bool>*: whether or not to include system collections
+- *--include-system-collections <bool>*: whether or not to include system collections
   in the dump. The default value is *false*.
   
 For example, to only dump structural information of all collections (including system
 collections), use:
 
-    unix> arangodump --dump-data false --include-system-collections true --output-directory "dump"
+    arangodump --dump-data false --include-system-collections true --output-directory "dump"
 
 To restrict the dump to just specific collections, there is is the *--collection* option.
 It can be specified multiple times if required:
     
-    unix> arangodump --collection myusers --collection myvalues --output-directory "dump"
+    arangodump --collection myusers --collection myvalues --output-directory "dump"
 
 Structural information for a collection will be saved in files with name pattern 
 *<collection-name>.structure.json*. Each structure file will contains a JSON object 
@@ -74,7 +72,7 @@ in the cluster.
 However, as opposed to the single instance situation, this operation 
 does not guarantee to dump a consistent snapshot if write operations 
 happen during the dump operation. It is therefore recommended not to 
-perform any data-modifcation operations on the cluster whilst *arangodump* 
+perform any data-modification operations on the cluster whilst *arangodump* 
 is running.
 
 As above, the output will be one structure description file and one data
@@ -85,7 +83,6 @@ and the shard keys.
 
 Note that the version of the arangodump client tool needs to match the 
 version of the ArangoDB server it connects to.
-    
 
 Advanced cluster options
 ------------------------
@@ -94,29 +91,28 @@ Starting with version 3.1.17, collections may be created with shard
 distribution identical to an existing prototypical collection;
 i.e. shards are distributed in the very same pattern as in the
 prototype collection. Such collections cannot be dumped without the
-reference collection or arangodump with yield an error.
+reference collection or arangodump yields an error.
 
-    unix> arangodump --collection clonedCollection --output-directory "dump"
+    arangodump --collection clonedCollection --output-directory "dump"
 
     ERROR Collection clonedCollection's shard distribution is based on a that of collection prototypeCollection, which is not dumped along. You may dump the collection regardless of the missing prototype collection by using the --ignore-distribute-shards-like-errors parameter.
 
-There are two ways to approach that problem: Solve it, i.e. dump the
-prototype collection along:
+There are two ways to approach that problem.
+Dump the prototype collection along:
 
-    unix> arangodump --collection clonedCollection --collection prototypeCollection --output-directory "dump"
+    arangodump --collection clonedCollection --collection prototypeCollection --output-directory "dump"
     
     Processed 2 collection(s), wrote 81920 byte(s) into datafiles, sent 1 batch(es)
 
 Or override that behavior to be able to dump the collection
-individually.
+individually:
 
-    unix> arangodump --collection B clonedCollection --output-directory "dump" --ignore-distribute-shards-like-errors
+    arangodump --collection B clonedCollection --output-directory "dump" --ignore-distribute-shards-like-errors
     
     Processed 1 collection(s), wrote 34217 byte(s) into datafiles, sent 1 batch(es)
 
-No that in consequence, restoring such a collection without its
+Note that in consequence, restoring such a collection without its
 prototype is affected. [arangorestore](../Arangorestore/README.md)
-
 
 Encryption
 ----------
@@ -153,4 +149,3 @@ dd if=/dev/random bs=1 count=32 of=yourSecretKeyFile
 For security, it is best to create these keys offline (away from your
 database servers) and directly store them in you secret management
 tool.
-
