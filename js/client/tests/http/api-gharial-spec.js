@@ -175,7 +175,6 @@ describe('_api/gharial', () => {
     const exampleGraphName = 'knows_graph';
     const vName = 'persons';
     const eName = 'knows';
-    console.error(db._collection(eName));
     expect(db._collection(eName)).to.be.null; // edgec
     expect(db._collection(vName)).to.be.null; // vertexc
     const g = examples.loadGraph(exampleGraphName);
