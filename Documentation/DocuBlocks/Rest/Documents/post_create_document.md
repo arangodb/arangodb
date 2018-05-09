@@ -31,6 +31,11 @@ If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the created document. This option can be used to
 save some network traffic.
 
+@RESTQUERYPARAM{overwrite,boolean,optional}
+If set to *true*, the insert becomes a replace-insert. If a document with the
+same *_key* already existst the new document is not rejected with unique
+constraint violated but will replace the old document.
+
 @RESTDESCRIPTION
 Creates a new document from the document given in the body, unless there
 is already a document with the *_key* given. If no *_key* is given, a new
@@ -239,5 +244,27 @@ Use of returnNew:
     logJsonResponse(response);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
+
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostOverwrite}
+    var cn = "products";
+    db._drop(cn);
+    db._create(cn, { waitForSync: true });
+
+    var url = "/_api/document/" + cn;
+    var body = '{ "Hello": "World", "_key" : "lock" }';
+    var response = logCurlRequest('POST', url, body);
+    // insert
+    assert(response.code === 201);
+    logJsonResponse(response);
+
+    url = "/_api/document/" + cn + "?overwrite=true";
+    response = logCurlRequest('POST', url, body);
+    // insert same key
+    assert(response.code === 201);
+    logJsonResponse(response);
+
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
 
