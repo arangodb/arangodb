@@ -36,6 +36,15 @@ div.example_show_button {
   columns: 3;
 }
 
+.book .book-body .program-options code {
+  background-color: #f0f0f0;
+  white-space: nowrap;
+}
+
+.book .book-body .program-options td {
+  vertical-align: top;
+}
+
 .localized-footer {
   opacity: 0.5;
 }
