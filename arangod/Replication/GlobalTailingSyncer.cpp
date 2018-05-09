@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GlobalTailingSyncer.h"
+#include "Basics/Thread.h"
 #include "Logger/Logger.h"
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/ReplicationFeature.h"
@@ -60,7 +61,7 @@ Result GlobalTailingSyncer::saveApplierState() {
   << "saving replication applier state. last applied continuous tick: "
   << applier()->_state._lastAppliedContinuousTick
   << ", safe resume tick: " << applier()->_state._safeResumeTick;
-  
+
   try {
     _applier->persistState(false);
     return Result();

@@ -237,11 +237,11 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
-    for (auto const& v : VPackArrayIterator(value)) {
+    for (VPackSlice v : VPackArrayIterator(value)) {
       ExtractWords(words, v, minWordLength, level + 1);
     }
   } else if (value.isObject() && level == 0) {
-    for (auto const& v : VPackObjectIterator(value)) {
+    for (VPackObjectIterator::ObjectPair v : VPackObjectIterator(value)) {
       ExtractWords(words, v.value, minWordLength, level + 1);
     }
   }
@@ -457,10 +457,12 @@ Result RocksDBFulltextIndex::applyQueryToken(
 IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* trx,
                                                           ManagedDocumentResult*,
                                                           aql::AstNode const* condNode,
-                                                          aql::Variable const* var, bool reverse) {
+                                                          aql::Variable const* var,
+                                                          IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
-  
   TRI_ASSERT(condNode->numMembers() == 1);  // should only be an FCALL
+  
   aql::AstNode const* fcall = condNode->getMember(0);
   TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
   TRI_ASSERT(fcall->numMembers() == 1);

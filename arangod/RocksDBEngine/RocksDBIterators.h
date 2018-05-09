@@ -23,14 +23,12 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ITERATORS_H 1
 
-#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace rocksdb {
 class Iterator;
@@ -42,13 +40,12 @@ class RocksDBCollection;
 class RocksDBPrimaryIndex;
 
 /// @brief iterator over all documents in the collection
-/// basically sorted after revision ID
+/// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   RocksDBAllIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          RocksDBPrimaryIndex const* index, bool reverse);
-
+                          RocksDBPrimaryIndex const* index);
   ~RocksDBAllIndexIterator() {}
 
   char const* typeName() const override { return "all-index-iterator"; }
@@ -62,7 +59,6 @@ class RocksDBAllIndexIterator final : public IndexIterator {
  private:
   bool outOfRange() const;
 
-  bool const _reverse;
   RocksDBKeyBounds const _bounds;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   rocksdb::Comparator const* _cmp;

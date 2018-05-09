@@ -1,7 +1,8 @@
 #!/bin/bash
 
+set -e
 
-ALLBOOKS="HTTP AQL Manual Cookbook"
+ALLBOOKS="HTTP AQL Manual Cookbook Drivers"
 
 GITAUTH="$1"
 
@@ -28,6 +29,17 @@ for book in ${ALLBOOKS}; do
         else
             git clone "${AUTHREPO}" "${CODIR}"
         fi
+
+        # extract branch/tag/... for checkout from VERSIONS file
+        branch=$(cat ../../VERSIONS|grep "EXTERNAL_DOC_${CLONEDIR}=" | sed "s/^EXTERNAL_DOC_${CLONEDIR}=//")
+
+        if [ -z "${branch}" ]; then
+            echo "no branch for ${CLONEDIR}, specify in VERSIONS file."
+            exit 1
+        fi
+
+        # checkout name from VERSIONS file and pull=merge origin
+        (cd "${CODIR}" && git checkout "${branch}" && git pull)
 
         for oneMD in $(cd "${CODIR}/${SUBDIR}"; find "./${SRC}" -type f |sed "s;\./;;"); do
             export oneMD

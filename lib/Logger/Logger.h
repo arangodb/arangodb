@@ -59,15 +59,13 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
-#include "Basics/Common.h"
-
 #include "Basics/Mutex.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
-#include "Logger/LogThread.h"
 #include "Logger/LogTopic.h"
 
 namespace arangodb {
+class LogThread;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief message container
@@ -152,6 +150,7 @@ class Logger {
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REQUESTS;
+  static LogTopic RESTORE;
   static LogTopic ROCKSDB;
   static LogTopic SSL;
   static LogTopic STARTUP;

@@ -51,8 +51,12 @@ if (USE_IRESEARCH)
     IResearch/Containers.cpp IResearch/Containers.h
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
     IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
+    IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
+    IResearch/IResearchViewDBServer.cpp IResearch/IResearchViewDBServer.h
     IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
     IResearch/IResearchLink.cpp IResearch/IResearchLink.h
+    IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
+    IResearch/IResearchLinkHelper.cpp IResearch/IResearchLinkHelper.h
     IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
     IResearch/IResearchMMFilesLink.cpp IResearch/IResearchMMFilesLink.h
     IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
@@ -97,7 +101,7 @@ if (USE_IRESEARCH)
 
   target_link_libraries(${LIB_ARANGO_IRESEARCH}
     ${IRESEARCH_TARGET_DEPENDENCY}
-    boost_filesystem # required by iResearch
+    s2 # needed for some includes
     boost_locale # required by iResearch
   )
 
@@ -139,6 +143,7 @@ SET(ARANGOD_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
@@ -228,7 +233,6 @@ SET(ARANGOD_SOURCES
   Aql/QueryOptions.cpp
   Aql/QueryRegistry.cpp
   Aql/QueryResources.cpp
-  Aql/QueryResult.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
   Aql/RegexCache.cpp
@@ -278,8 +282,11 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
+  Cluster/ClusterRepairDistributeShardsLike.cpp
+  Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
+  Cluster/CriticalThread.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
@@ -303,6 +310,8 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VstCommTask.cpp
+  GeoIndex/Index.cpp
+  GeoIndex/Near.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
@@ -394,6 +403,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestPregelHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestRepairHandler.cpp
   RestHandler/RestReplicationHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
@@ -438,7 +448,6 @@ SET(ARANGOD_SOURCES
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
-  Scheduler/Socket.cpp
   Scheduler/SocketTask.cpp
   Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
@@ -518,6 +527,7 @@ add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
+  ${LIB_ARANGO_GEO}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
@@ -525,6 +535,7 @@ target_link_libraries(arangoserver
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
+  s2
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}

@@ -57,7 +57,6 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _supervisionGracePeriod(10.0),
       _cmdLineTimings(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Cluster");
   startsAfter("Database");
   startsAfter("Endpoint");

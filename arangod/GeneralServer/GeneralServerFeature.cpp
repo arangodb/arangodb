@@ -70,6 +70,7 @@
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
+#include "RestHandler/RestRepairHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
@@ -104,7 +105,6 @@ GeneralServerFeature::GeneralServerFeature(
       _allowMethodOverride(false),
       _proxyCheck(true) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Agency");
   startsAfter("Authentication");
   startsAfter("CheckVersion");
@@ -259,12 +259,11 @@ void GeneralServerFeature::start() {
     server->startListening();
   }
 
-  // populate the authentication cache. otherwise no one can access the new
-  // database
-  auto authentication = AuthenticationFeature::instance();
-  TRI_ASSERT(authentication != nullptr);
-  if (authentication->isActive()) {
-    authentication->userManager()->outdate();
+  // initially populate the authentication cache. otherwise no one
+  // can access the new database
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->outdate();
   }
 }
 
@@ -441,9 +440,11 @@ void GeneralServerFeature::defineHandlers() {
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_api/aqlfunction",
-      RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addPrefixHandler(
+        "/_api/aqlfunction",
+        RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(
       "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
@@ -503,8 +504,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
   
-  _handlerFactory->addHandler(
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addHandler(
       "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _handlerFactory->addHandler(
@@ -531,9 +534,11 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
-  _handlerFactory->addPrefixHandler(
-      "/_admin/routing",
-      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+  if (server()->isEnabled("V8Dealer")) {
+    _handlerFactory->addPrefixHandler(
+        "/_admin/routing",
+        RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+  }
 
   _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
@@ -567,12 +572,20 @@ void GeneralServerFeature::defineHandlers() {
     "/_admin/statistics-description",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
+  if (cluster->isEnabled()) {
+    _handlerFactory->addPrefixHandler(
+      "/_admin/repair",
+      RestHandlerCreator<arangodb::RestRepairHandler>
+      ::createNoData
+    );
+  }
+
   // ...........................................................................
   // actions defined in v8
   // ...........................................................................
-
+  
   _handlerFactory->addPrefixHandler(
-      "/", RestHandlerCreator<RestActionHandler>::createNoData);
+     "/", RestHandlerCreator<RestActionHandler>::createNoData);
 
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;

@@ -112,6 +112,7 @@ RestHandler* RestHandlerFactory::createHandler(
       if (path.find("/_admin/shutdown") == std::string::npos &&
           path.find("/_admin/cluster/health") == std::string::npos &&
           path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_admin/server/availability") == std::string::npos &&
           path.find("/_api/agency/agency-callbacks") == std::string::npos &&
           path.find("/_api/cluster/") == std::string::npos &&
           path.find("/_api/replication") == std::string::npos &&

@@ -38,7 +38,7 @@ class IRESEARCH_API mmap_directory : public fs_directory {
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
-  ) const NOEXCEPT final;
+  ) const NOEXCEPT override final;
 }; // mmap_directory
 
 NS_END // ROOT

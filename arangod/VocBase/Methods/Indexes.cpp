@@ -20,10 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -130,9 +128,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
         tmp.add(s); // just copy
       } else {
         tmp.openObject();
-        for(auto const& i : VPackObjectIterator(s)){
-          tmp.add(i.key.copyString(), i.value);
-        }
+        tmp.add(VPackObjectIterator(s, true));
         tmp.add("selectivityEstimate", VPackValue(found->second));
         tmp.close();
       }
@@ -339,8 +335,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
   VPackBuilder defBuilder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  int res = idxFactory->enhanceIndexDefinition(
+  int res = engine->indexFactory().enhanceIndexDefinition(
     definition, defBuilder, create, ServerState::instance()->isCoordinator()
   ).errorNumber();
 

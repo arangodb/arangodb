@@ -495,6 +495,8 @@ fi
 
 if [ "${USE_JEMALLOC}" = 1 ]; then
     CONFIGURE_OPTIONS+=(-DUSE_JEMALLOC=On)
+else
+    CONFIGURE_OPTIONS+=(-DUSE_JEMALLOC=Off)
 fi
 
 if [ "$SANITIZE" == 1 ]; then

@@ -64,7 +64,7 @@ class Syncer {
     MasterInfo() 
         : _serverId(0),
           _majorVersion(0), 
-          _minorVersion(0), 
+          _minorVersion(0),
           _lastLogTick(0), 
           _active(false) {}
   };
@@ -75,11 +75,6 @@ class Syncer {
   explicit Syncer(ReplicationApplierConfiguration const&);
 
   virtual ~Syncer();
-
-  /// @brief sleeps (nanoseconds)
-  void sleep(uint64_t time) {
-    std::this_thread::sleep_for(std::chrono::microseconds(time));
-  }
 
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
@@ -116,7 +111,6 @@ class Syncer {
   Result applyCollectionDumpMarker(transaction::Methods&,
                                    LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&, 
                                    arangodb::velocypack::Slice const&);
 
   /// @brief creates a collection, based on the VelocyPack provided
@@ -169,7 +163,6 @@ class Syncer {
   Result applyCollectionDumpMarkerInternal(transaction::Methods&,
                                            LogicalCollection* coll,
                                            TRI_replication_operation_e,
-                                           arangodb::velocypack::Slice const&, 
                                            arangodb::velocypack::Slice const&); 
   
   /// @brief extract the collection id from VelocyPack

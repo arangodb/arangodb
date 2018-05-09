@@ -75,7 +75,7 @@ struct Entry<Element, IndexType, false> {
 };
 
 template <class Element, class IndexType, bool useHashCache>
-class MultiInserterTask : public LocalTask {
+class MultiInserterTask final : public LocalTask {
  private:
   typedef Entry<Element, IndexType, useHashCache> EntryType;
   typedef arangodb::basics::IndexBucket<EntryType, IndexType, SIZE_MAX> Bucket;
@@ -109,7 +109,7 @@ class MultiInserterTask : public LocalTask {
         _userData(userData),
         _allBuckets(allBuckets) {}
 
-  void run() {
+  void run() override {
     // sort first so we have a deterministic insertion order
     std::sort((*_allBuckets)[_i].begin(), (*_allBuckets)[_i].end(),
               [](DocumentsPerBucket const& lhs,
@@ -145,7 +145,7 @@ class MultiInserterTask : public LocalTask {
 };
 
 template <class Element, class IndexType, bool useHashCache>
-class MultiPartitionerTask : public LocalTask {
+class MultiPartitionerTask final : public LocalTask {
  private:
   typedef MultiInserterTask<Element, IndexType, useHashCache> Inserter;
   typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
@@ -191,7 +191,7 @@ class MultiPartitionerTask : public LocalTask {
         _inserters(inserters),
         _bucketsMask(_allBuckets->size() - 1) {}
 
-  void run() {
+  void run() override {
     try {
       std::vector<DocumentsPerBucket> partitions;
       partitions.resize(

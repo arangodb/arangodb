@@ -76,7 +76,7 @@ void fillSortRegisters(
   TRI_ASSERT(en.plan());
   auto& execPlan = *en.plan();
 
-  auto const& elements = en.getElements();
+  auto const& elements = en.elements();
   sortRegisters.reserve(elements.size());
   std::unordered_map<ExecutionNode const*, size_t> offsets(sortRegisters.capacity());
 
@@ -159,7 +159,7 @@ void fillSortRegisters(
     std::vector<SortRegister>& sortRegisters,
     SortNode const& en
 ) {
-  auto const& elements = en.getElements();
+  auto const& elements = en.elements();
   sortRegisters.reserve(elements.size());
 
   for (auto const& p : elements) {
@@ -331,62 +331,78 @@ void SortBlock::doSorting() {
           // If we have already dealt with this value for the next
           // block, then we just put the same value again:
           if (!a.isEmpty()) {
-            auto it = cache.find(a);
+            if (a.requiresDestruction()) {
+              // complex value, with ownership transfer
+              auto it = cache.find(a);
 
-            if (it != cache.end()) {
-              // If one of the following throws, all is well, because
-              // the new block already has either a copy or stolen
-              // the AqlValue:
-              _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-              next->setValue(i, j, (*it).second);
-            } else {
-              // We need to copy a, if it has already been stolen from
-              // its original buffer, which we know by looking at the
-              // valueCount there.
-              auto vCount = _buffer[coords[count].first]->valueCount(a);
-
-              if (vCount == 0) {
-                // Was already stolen for another block
-                AqlValue b = a.clone();
-                try {
-                  TRI_IF_FAILURE("SortBlock::doSortingCache") {
-                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                  }
-                  cache.emplace(a, b);
-                } catch (...) {
-                  b.destroy();
-                  throw;
-                }
-
-                try {
-                  TRI_IF_FAILURE("SortBlock::doSortingNext1") {
-                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                  }
-                  next->setValue(i, j, b);
-                } catch (...) {
-                  cache.erase(b);
-                  b.destroy();
-                  throw;
-                }
-                // It does not matter whether the following works or not,
-                // since the original block keeps its responsibility
-                // for a:
+              if (it != cache.end()) {
+                // If one of the following throws, all is well, because
+                // the new block already has either a copy or stolen
+                // the AqlValue:
                 _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                next->setValue(i, j, (*it).second);
               } else {
-                TRI_IF_FAILURE("SortBlock::doSortingNext2") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                // We need to copy a, if it has already been stolen from
+                // its original buffer, which we know by looking at the
+                // valueCount there.
+                auto vCount = _buffer[coords[count].first]->valueCount(a);
+
+                if (vCount == 0) {
+                  // Was already stolen for another block
+                  AqlValue b = a.clone();
+                  try {
+                    TRI_IF_FAILURE("SortBlock::doSortingCache") {
+                      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                    }
+                    cache.emplace(a, b);
+                  } catch (...) {
+                    b.destroy();
+                    throw;
+                  }
+
+                  try {
+                    TRI_IF_FAILURE("SortBlock::doSortingNext1") {
+                      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                    }
+                    next->setValue(i, j, b);
+                  } catch (...) {
+                    cache.erase(b);
+                    b.destroy();
+                    throw;
+                  }
+                  // It does not matter whether the following works or not,
+                  // since the original block keeps its responsibility
+                  // for a:
+                  _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                } else {
+                  TRI_IF_FAILURE("SortBlock::doSortingNext2") {
+                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                  }
+                  // Here we are the first to want to inherit a, so we
+                  // steal it:
+                  next->setValue(i, j, a);
+                  _buffer[coords[count].first]->steal(a);
+                  _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                  // If this has worked, responsibility is now with the
+                  // new block or indeed with us!
+                  // If the following does not work, we will create a
+                  // few unnecessary copies, but this does not matter:
+                  cache.emplace(a, a);
                 }
-                // Here we are the first to want to inherit a, so we
-                // steal it:
-                next->setValue(i, j, a);
-                _buffer[coords[count].first]->steal(a);
-                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-                // If this has worked, responsibility is now with the
-                // new block or indeed with us!
-                // If the following does not work, we will create a
-                // few unnecessary copies, but this does not matter:
-                cache.emplace(a, a);
               }
+            } else {
+              // simple value, which does not need ownership transfer
+              TRI_IF_FAILURE("SortBlock::doSortingCache") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+              TRI_IF_FAILURE("SortBlock::doSortingNext1") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+              TRI_IF_FAILURE("SortBlock::doSortingNext2") {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+              }
+              next->setValue(i, j, a);
+              _buffer[coords[count].first]->eraseValue(coords[count].second, j);
             }
           }
         }

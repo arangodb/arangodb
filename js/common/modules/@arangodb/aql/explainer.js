@@ -7,9 +7,31 @@ var db = require('@arangodb').db,
   print = internal.print,
   colors = { };
 
-if (typeof internal.printBrowser === 'function') {
-  print = internal.printBrowser;
-}
+const anonymize = function(doc) {
+  if (Array.isArray(doc)) {
+    return doc.map(anonymize);
+  }
+  if (typeof doc === 'string') {
+    return Array(doc.length + 1).join("X");
+  }
+  if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
+    return doc;
+  } 
+  if (typeof doc === 'object') {
+    let result = {};
+    Object.keys(doc).forEach(function(key) {
+      if (key.startsWith("_") || key.startsWith("@")) {
+        // This excludes system attributes in examples
+        // and collections in bindVars
+        result[key] = doc[key];
+      } else {
+        result[key] = anonymize(doc[key]);
+      }
+    });
+    return result;
+  }
+  return doc;
+};
 
 var stringBuilder = {
   output: '',
@@ -115,6 +137,7 @@ function section (v) {
   return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;
 }
 
+// return n times ' '
 function pad (n) {
   'use strict';
   if (n < 0) {
@@ -197,6 +220,53 @@ function printWarnings (warnings) {
   for (var i = 0; i < warnings.length; ++i) {
     stringBuilder.appendLine(' ' + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + '   ' + keyword(warnings[i].message));
   }
+  stringBuilder.appendLine();
+}
+
+/* print stats */
+function printStats (stats) {
+  'use strict';
+  if (!stats) {
+    return;
+  }
+
+  stringBuilder.appendLine(section('Query Statistics:'));
+  var maxWELen = String('Writes Exec').length;
+  var maxWILen = String('Writes Ign').length;
+  var maxSFLen = String('Scan Full').length;
+  var maxSILen = String('Scan Index').length;
+  var maxFLen = String('Filtered').length;
+  var maxETen = String('Exec Time [s]').length;
+  stats.executionTime = stats.executionTime.toFixed(5) + "s";
+  stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
+                           header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
+                         
+  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' + 
+  pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
+  pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
+  pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
+  pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+  pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
+  stringBuilder.appendLine();
+}
+
+function printProfile (profile) {
+  'use strict';
+  if (!profile) {
+    return;
+  }
+
+  stringBuilder.appendLine(section('Query Profile:'));
+  let maxHeadLen = 0;
+  Object.keys(profile).forEach(key => {
+    if (key.length > maxHeadLen) {
+      maxHeadLen = key.length;
+    }
+  });
+  stringBuilder.appendLine(' ' + header('Query Stage') + pad(1 + maxHeadLen - String('Query Stage').length) + '   ' + header('Duration [s]'));
+  Object.keys(profile).forEach(key => {
+    stringBuilder.appendLine(' ' + keyword(key) + pad(1 + maxHeadLen - String(key).length) + '   ' + profile[key].toFixed(5));
+  });
   stringBuilder.appendLine();
 }
 
@@ -485,7 +555,14 @@ function processQuery (query, explain) {
     maxSiteLen = 0,
     maxIdLen = String('Id').length,
     maxEstimateLen = String('Est.').length,
-    plan = explain.plan;
+    maxCallsLen = String('Calls').length,
+    maxItemsLen = String('Items').length,
+    maxRuntimeLen = String('Runtime [s]').length,
+    plan = explain.plan,
+    stats = explain.stats;
+
+  /// mode with actual runtime stats per node
+  let profileMode = stats && stats.hasOwnProperty("nodes");
 
   var isCoordinator = false;
   if (typeof ArangoClusterComm === 'object') {
@@ -529,8 +606,10 @@ function processQuery (query, explain) {
       if (String(node.site).length > maxSiteLen) {
         maxSiteLen = String(node.site).length;
       }
-      if (String(node.estimatedNrItems).length > maxEstimateLen) {
-        maxEstimateLen = String(node.estimatedNrItems).length;
+      if (!profileMode) { // not shown when we got actual runtime stats
+        if (String(node.estimatedNrItems).length > maxEstimateLen) {
+          maxEstimateLen = String(node.estimatedNrItems).length;
+        }
       }
     });
 
@@ -547,6 +626,36 @@ function processQuery (query, explain) {
     }
   };
   recursiveWalk(plan.nodes, 0);
+
+  if (profileMode) { // merge runtime info into plan
+    stats.nodes.forEach(n => {
+      if (nodes.hasOwnProperty(n.id)) {
+        nodes[n.id].calls = n.calls;
+        nodes[n.id].items = n.items;
+        nodes[n.id].runtime = n.runtime;
+
+        if (String(n.calls).length > maxCallsLen) {
+          maxCallsLen = String(n.calls).length;
+        }
+        if (String(n.items).length > maxItemsLen) {
+          maxCallsLen = String(n.items).length;
+        }
+        let l = String(nodes[n.id].runtime.toFixed(3)).length;
+        if (l > maxRuntimeLen) {
+          maxCallsLen = l;
+        }
+      }
+    });
+    // by design the runtime is cumulative right now.
+    // by subtracting the dependencies from parent runtime we get the runtime per node
+    stats.nodes.forEach(n => {
+      if (parents.hasOwnProperty(n.id)) {
+        parents[n.id].forEach(pid => {
+          nodes[pid].runtime -= n.runtime;
+        });
+      }
+    });
+  }
 
   var references = { },
     collectionVariables = { },
@@ -830,8 +939,15 @@ function processQuery (query, explain) {
   };
 
   var projection = function (node) {
-    if (node.projection && node.projection.length > 0) {
-      return ', projection: `' + node.projection.join('`.`') + '`';
+    if (node.projections && node.projections.length > 0) {
+      return ', projections: `' + node.projections.join('`, `') + '`';
+    }
+    return '';
+  };
+
+  const restriction = function (node) {
+    if (node.restrictedTo) {
+      return `, shard: ${node.restrictedTo}`;
     }
     return '';
   };
@@ -846,7 +962,7 @@ function processQuery (query, explain) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + (node.producesResult ? '' : ', index only') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + ' */');
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -855,7 +971,7 @@ function processQuery (query, explain) {
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [];
         node.indexes.forEach(function (idx, i) {
-          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + (node.producesResult ? '' : ', index only');
+          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
           if (types.length === 0 || what !== types[types.length - 1]) {
             types.push(what);
           }
@@ -868,7 +984,7 @@ function processQuery (query, explain) {
           }
           indexes.push(idx);
         });
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + types.join(', ') + projection(node) + (node.satellite ? ', satellite' : '') + ' */');
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
       case 'IndexRangeNode':
         collectionVariables[node.outVariable.id] = node.collection;
         var index = node.index;
@@ -1108,38 +1224,66 @@ function processQuery (query, explain) {
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }).join(', ');
       case 'LimitNode':
-        return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit));
+        return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
-      case 'InsertNode':
+      case 'InsertNode': {
         modificationFlags = node.modificationFlags;
-        return keyword('INSERT') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'UpdateNode':
-        modificationFlags = node.modificationFlags;
-        if (node.hasOwnProperty('inKeyVariable')) {
-          return keyword('UPDATE') + ' ' + variableName(node.inKeyVariable) + ' ' + keyword('WITH') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
         }
-        return keyword('UPDATE') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'ReplaceNode':
+        return keyword('INSERT') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + ' ' + restrictString;
+      }
+      case 'UpdateNode': {
         modificationFlags = node.modificationFlags;
+        let inputExplain = '';
         if (node.hasOwnProperty('inKeyVariable')) {
-          return keyword('REPLACE') + ' ' + variableName(node.inKeyVariable) + ' ' + keyword('WITH') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+          inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
+        } else {
+          inputExplain = `variableName(node.inDocVariable)`;
         }
-        return keyword('REPLACE') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+        }
+        return `${keyword('UPDATE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
+      case 'ReplaceNode': {
+        modificationFlags = node.modificationFlags;
+        let inputExplain = '';
+        if (node.hasOwnProperty('inKeyVariable')) {
+          inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
+          } else {
+          inputExplain = `variableName(node.inDocVariable)`;
+          }
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+          }
+        return `${keyword('REPLACE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
       case 'UpsertNode':
         modificationFlags = node.modificationFlags;
         return keyword('UPSERT') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('INSERT') + ' ' + variableName(node.insertVariable) + ' ' + keyword(node.isReplace ? 'REPLACE' : 'UPDATE') + ' ' + variableName(node.updateVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'RemoveNode':
+      case 'RemoveNode': {
         modificationFlags = node.modificationFlags;
-        return keyword('REMOVE') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+          }
+        return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
         return keyword('DISTRIBUTE');
       case 'ScatterNode':
         return keyword('SCATTER');
+      case 'ScatterViewNode':
+        return keyword('SCATTER VIEW');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
             if (node.path && node.path.length) {
@@ -1213,8 +1357,15 @@ function processQuery (query, explain) {
       line += variable(node.site) + pad(1 + maxSiteLen - String(node.site).length) + '  ';
     }
 
-    line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
-    indent(level, node.type === 'SingletonNode') + label(node);
+    if (profileMode) {
+      line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
+              pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
+              pad(1 + maxRuntimeLen - String(node.runtime.toFixed(4)).length) + value(node.runtime.toFixed(4)) + '   ' +
+              indent(level, node.type === 'SingletonNode') + label(node);
+    } else {
+      line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
+              indent(level, node.type === 'SingletonNode') + label(node);
+    }
 
     if (node.type === 'CalculationNode') {
       line += variablesUsed() + constNess();
@@ -1234,8 +1385,16 @@ function processQuery (query, explain) {
     line += header('Site') + pad(1 + maxSiteLen - String('Site').length) + '  ';
   }
 
-  line += pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
-  header('Comment');
+  if (profileMode) {
+    line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
+            pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
+            pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
+            header('Comment');
+  } else {
+    line += pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
+    header('Comment');
+  }
+
 
   stringBuilder.appendLine(line);
 
@@ -1260,13 +1419,17 @@ function processQuery (query, explain) {
   printRules(plan.rules);
   printModificationFlags(modificationFlags);
   printWarnings(explain.warnings);
+  if (profileMode) {
+    printStats(explain.stats);
+    printProfile(explain.profile);
+  }
 }
 
 /* the exposed explain function */
 function explain(data, options, shouldPrint) {
   'use strict';
   if (typeof data === 'string') {
-    data = { query: data };
+    data = { query: data, options:options };
   }
   if (!(data instanceof Object)) {
     throw 'ArangoStatement needs initial data';
@@ -1278,12 +1441,11 @@ function explain(data, options, shouldPrint) {
   options = options || { };
   setColors(options.colors === undefined ? true : options.colors);
 
-  let stmt = db._createStatement(data);
-  let result = stmt.explain(options);
-
   stringBuilder.clearOutput();
-  processQuery(data.query, result, true);
-
+  let stmt = db._createStatement(data);
+  let result = stmt.explain(options); // TODO why is this there ?
+  processQuery(data.query, result);
+  
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
   } else {
@@ -1291,10 +1453,29 @@ function explain(data, options, shouldPrint) {
   }
 }
 
+
+/* the exposed profile query function */
+function profileQuery(data) {
+  'use strict';
+  if (!(data instanceof Object) || !data.hasOwnProperty("options")) {
+    throw 'ArangoStatement needs initial data';
+  }
+  let options =  data.options || { };
+  setColors(options.colors === undefined ? true : options.colors);
+
+  stringBuilder.clearOutput();
+  let stmt = db._createStatement(data);
+  let cursor = stmt.execute();
+  let extra = cursor.getExtra();
+  processQuery(data.query, extra);
+  print(stringBuilder.getOutput());
+}
+
 /* the exposed debug function */
 function debug(query, bindVars, options) {
   'use strict';
   let input = {};
+
   if (query instanceof Object) {
     if (typeof query.toAQL === 'function') {
       query = query.toAQL();
@@ -1303,7 +1484,7 @@ function debug(query, bindVars, options) {
   } else {
     input.query = query;
     if (bindVars !== undefined) {
-      input.bindVars = bindVars;
+      input.bindVars = anonymize(bindVars);
     }
     if (options !== undefined) {
       input.options = options;
@@ -1312,27 +1493,6 @@ function debug(query, bindVars, options) {
   if (!input.options) {
     input.options = {};
   }
-
-  let anonymize = function(doc) {
-    if (Array.isArray(doc)) {
-      return doc.map(anonymize);
-    }
-    if (typeof doc === 'string') {
-      return Array(doc.length).join("X");
-    }
-    if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
-      return doc;
-    } 
-    if (typeof doc === 'object') {
-      let result = {};
-      Object.keys(doc).forEach(function(key) {
-        result[key] = anonymize(doc[key]);
-      });
-      return result;
-    }
-    return doc;
-  };
-
   let result = {
     engine: db._engine(),
     version: db._version(true),
@@ -1445,6 +1605,7 @@ function inspectDump(filename) {
 }
 
 exports.explain = explain;
+exports.profileQuery = profileQuery;
 exports.debug = debug;
 exports.debugDump = debugDump;
 exports.inspectDump = inspectDump;

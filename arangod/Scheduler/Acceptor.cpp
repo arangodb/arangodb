@@ -31,13 +31,13 @@
 
 using namespace arangodb;
 
-Acceptor::Acceptor(boost::asio::io_service& ioService, Endpoint* endpoint)
-  : _ioService(ioService),
+Acceptor::Acceptor(asio::io_context& ioService, Endpoint* endpoint)
+  : _ioContext(ioService),
     _endpoint(endpoint) {
 }
 
 std::unique_ptr<Acceptor> Acceptor::factory(
-    boost::asio::io_service& ioService, Endpoint* endpoint) {
+    asio::io_context& ioService, Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
     return std::make_unique<AcceptorUnixDomain>(ioService, endpoint);

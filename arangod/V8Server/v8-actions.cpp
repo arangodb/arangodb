@@ -1422,9 +1422,8 @@ static int clusterSendToAllServers(
   auto reqBodyString = std::make_shared<std::string>(body);
 
   DBServers = ci->getCurrentDBServers();
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& sid : DBServers) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "server:" + sid, method, url,
                      reqBodyString, headers, nullptr, 3600.0);
   }

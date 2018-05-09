@@ -38,6 +38,10 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/VirtualCollection.h"
+#endif
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -55,12 +59,11 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 MMFilesPrimaryIndexIterator::MMFilesPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesPrimaryIndex const* index,
-    std::unique_ptr<VPackBuilder>& keys)
+    std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx, index),
       _index(index),
-      _keys(keys.get()),
+      _keys(std::move(keys)),
       _iterator(_keys->slice()) {
-  keys.release();  // now we have ownership for _keys
   TRI_ASSERT(_keys->slice().isArray());
 }
 
@@ -94,20 +97,15 @@ void MMFilesPrimaryIndexIterator::reset() { _iterator.reset(); }
 MMFilesAllIndexIterator::MMFilesAllIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     MMFilesPrimaryIndex const* index,
-    MMFilesPrimaryIndexImpl const* indexImpl, bool reverse)
+    MMFilesPrimaryIndexImpl const* indexImpl)
     : IndexIterator(collection, trx, index),
       _index(indexImpl),
-      _reverse(reverse),
       _total(0) {}
 
 bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(nullptr, _position);
-    } else {
-      element = _index->findSequential(nullptr, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       cb(LocalDocumentId{element.localDocumentId()});
       --limit;
@@ -124,12 +122,8 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
 
   bool done = false;
   while (limit > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(nullptr, _position);
-    } else {
-      element = _index->findSequential(nullptr, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       _documentIds.emplace_back(std::make_pair(element.localDocumentId(), nullptr));
       --limit;
@@ -147,12 +141,8 @@ bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t li
 // Skip the first count-many entries
 void MMFilesAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   while (count > 0) {
-    MMFilesSimpleIndexElement element;
-    if (_reverse) {
-      element = _index->findSequentialReverse(nullptr, _position);
-    } else {
-      element = _index->findSequential(nullptr, _position, _total);
-    }
+    MMFilesSimpleIndexElement element = _index->findSequential(nullptr, _position, _total);
+    
     if (element) {
       ++skipped;
       --count;
@@ -342,9 +332,8 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
 
 /// @brief request an iterator over all elements in the index in
 ///        a sequential order.
-IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx,
-                                                bool reverse) const {
-  return new MMFilesAllIndexIterator(_collection, trx, this, _primaryIndex.get(), reverse);
+IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx) const {
+  return new MMFilesAllIndexIterator(_collection, trx, this, _primaryIndex.get());
 }
 
 /// @brief request an iterator over all elements in the index in
@@ -460,7 +449,9 @@ bool MMFilesPrimaryIndex::supportsFilterCondition(
 IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   TRI_ASSERT(node->numMembers() == 1);
@@ -532,7 +523,7 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new MMFilesPrimaryIndexIterator(_collection, trx, this, keys);
+  return new MMFilesPrimaryIndexIterator(_collection, trx, this, std::move(keys));
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -555,7 +546,7 @@ IndexIterator* MMFilesPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new MMFilesPrimaryIndexIterator(_collection, trx, this, keys);
+  return new MMFilesPrimaryIndexIterator(_collection, trx, this, std::move(keys));
 }
 
 /// @brief add a single value node to the iterator's keys
@@ -570,32 +561,49 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
   if (isId) {
     // lookup by _id. now validate if the lookup is performed for the
     // correct collection (i.e. _collection)
-    TRI_voc_cid_t cid;
-    char const* key;
-    size_t outLength;
+    char const* key = nullptr;
+    size_t outLength = 0;
+    std::shared_ptr<LogicalCollection> collection;
     Result res =
-        trx->resolveId(valNode->getStringValue(), valNode->getStringLength(),
-                       cid, key, outLength);
+        trx->resolveId(valNode->getStringValue(),
+                       valNode->getStringLength(), collection, key, outLength);
 
     if (!res.ok()) {
       return;
     }
 
-    TRI_ASSERT(cid != 0);
+    TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(key != nullptr);
 
     bool const isInCluster = trx->state()->isRunningInCluster();
-
-    if (!isInCluster && cid != _collection->id()) {
+    
+    if (!isInCluster && collection->id() != _collection->id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (isInCluster && cid != _collection->planId()) {
-      // only continue lookup if the id value is syntactically correct and
-      // refers to "our" collection, using cluster collection id
-      return;
+    if (isInCluster) {
+#ifdef USE_ENTERPRISE
+      if (collection->isSmart() && collection->type() == TRI_COL_TYPE_EDGE) {
+        auto c = dynamic_cast<VirtualSmartEdgeCollection const*>(collection.get());
+        if (c == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
+        }
+
+        if (_collection->planId() != c->getLocalCid() && 
+            _collection->planId() != c->getFromCid() && 
+            _collection->planId() != c->getToCid()) {
+          // invalid planId
+          return;
+        }
+      } else 
+#endif
+      if (collection->planId() != _collection->planId()) {
+        // only continue lookup if the id value is syntactically correct and
+        // refers to "our" collection, using cluster collection id
+        return;
+      }
     }
 
     // use _key value from _id

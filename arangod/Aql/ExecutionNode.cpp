@@ -87,7 +87,8 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
     {static_cast<int>(TRAVERSAL), "TraversalNode"},
     {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"},
 #ifdef USE_IRESEARCH
-    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"}
+    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
+    {static_cast<int>(SCATTER_IRESEARCH_VIEW), "ScatterViewNode"}
 #endif
 };
 
@@ -110,6 +111,20 @@ void ExecutionNode::validateType(int type) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
 }
+  
+/// @brief add a dependency
+void ExecutionNode::addDependency(ExecutionNode* ep) {
+  TRI_ASSERT(ep != nullptr);
+  _dependencies.emplace_back(ep);
+  ep->_parents.emplace_back(this);
+}
+
+/// @brief add a parent
+void ExecutionNode::addParent(ExecutionNode* ep) {
+  TRI_ASSERT(ep != nullptr);
+  ep->_dependencies.emplace_back(this);
+  _parents.emplace_back(ep);
+}
 
 void ExecutionNode::getSortElements(SortElementVector& elements,
                                     ExecutionPlan* plan,
@@ -130,7 +145,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
     Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
     elements.emplace_back(v, ascending);
     // Is there an attribute path?
-    VPackSlice path = it.get("paths");
+    VPackSlice path = it.get("path");
     if (path.isArray()) {
       // Get a list of strings out and add to the path:
       auto& element = elements.back();
@@ -157,10 +172,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new EnumerateCollectionNode(plan, slice);
     case ENUMERATE_LIST:
       return new EnumerateListNode(plan, slice);
-#ifdef USE_IRESEARCH
-    case ENUMERATE_IRESEARCH_VIEW:
-      return new iresearch::IResearchViewNode(plan, slice);
-#endif
     case FILTER:
       return new FilterNode(plan, slice);
     case LIMIT:
@@ -278,6 +289,16 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+#ifdef USE_IRESEARCH
+    case ENUMERATE_IRESEARCH_VIEW:
+      return new iresearch::IResearchViewNode(*plan, slice);
+    case SCATTER_IRESEARCH_VIEW:
+      return new iresearch::IResearchViewScatterNode(*plan, slice);
+#endif
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
   return nullptr;
 }
@@ -362,12 +383,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
   _varsUsedLater.reserve(varsUsedLater.length());
   for (auto const& it : VPackArrayIterator(varsUsedLater)) {
-    auto oneVarUsedLater = std::make_unique<Variable>(it);
-    Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
+    Variable oneVarUsedLater(it);
+    Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
     if (oneVariable == nullptr) {
       std::string errmsg = "varsUsedLater: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarUsedLater->id);
+                           StringUtils::itoa(oneVarUsedLater.id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
     _varsUsedLater.emplace(oneVariable);
@@ -382,12 +403,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
   _varsValid.reserve(varsValidList.length());
   for (auto const& it : VPackArrayIterator(varsValidList)) {
-    auto oneVarValid = std::make_unique<Variable>(it);
-    Variable* oneVariable = allVars->getVariable(oneVarValid->id);
+    Variable oneVarValid(it);
+    Variable* oneVariable = allVars->getVariable(oneVarValid.id);
 
     if (oneVariable == nullptr) {
       std::string errmsg = "varsValid: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarValid->id);
+                           StringUtils::itoa(oneVarValid.id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
     _varsValid.emplace(oneVariable);
@@ -525,17 +546,17 @@ void ExecutionNode::invalidateCost() {
 }
 
 /// @brief functionality to walk an execution plan recursively
-bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
+bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Only do every node exactly once
   // note: this check is not required normally because execution
   // plans do not contain cycles
-  if (worker->done(this)) {
+  if (worker.done(this)) {
     return false;
   }
 #endif
 
-  if (worker->before(this)) {
+  if (worker.before(this)) {
     return true;
   }
 
@@ -551,9 +572,9 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
     auto p = static_cast<SubqueryNode*>(this);
     auto subquery = p->getSubquery();
 
-    if (worker->enterSubquery(this, subquery)) {
+    if (worker.enterSubquery(this, subquery)) {
       bool shouldAbort = subquery->walk(worker);
-      worker->leaveSubquery(this, subquery);
+      worker.leaveSubquery(this, subquery);
 
       if (shouldAbort) {
         return true;
@@ -561,7 +582,7 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>* worker) {
     }
   }
 
-  worker->after(this);
+  worker.after(this);
 
   return false;
 }
@@ -762,7 +783,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   }
   v->setSharedPtr(&v);
 
-  walk(v.get());
+  walk(*v);
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
     auto sq = static_cast<SubqueryNode*>(s);
@@ -774,7 +795,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   /*
   std::cout << std::endl;
   RegisterPlanningDebugger debugger;
-  walk(&debugger);
+  walk(debugger);
   std::cout << std::endl;
   */
 }
@@ -874,15 +895,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       totalNrRegs++;
       break;
     }
-#ifdef USE_IRESEARCH
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
-      TRI_ASSERT(ep);
-
-      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
-      break;
-    }
-#endif
 
     case ExecutionNode::CALCULATION: {
       nrRegsHere[depth]++;
@@ -1121,6 +1133,25 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       }
       break;
     }
+
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
+      TRI_ASSERT(ep);
+
+      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      break;
+    }
+
+    case ExecutionNode::SCATTER_IRESEARCH_VIEW:
+      // these node type does not produce any new registers
+      break;
+#endif
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
 
   en->_depth = depth;
@@ -1158,6 +1189,95 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     en->setRegsToClear(std::move(regsToClear));
   }
 }
+  
+/// @brief replace a dependency, returns true if the pointer was found and
+/// replaced, please note that this does not delete oldNode!
+bool ExecutionNode::replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
+  TRI_ASSERT(oldNode != nullptr);
+  TRI_ASSERT(newNode != nullptr);
+
+  auto it = _dependencies.begin();
+
+  while (it != _dependencies.end()) {
+    if (*it == oldNode) {
+      *it = newNode;
+      try {
+        newNode->_parents.emplace_back(this);
+      } catch (...) {
+        *it = oldNode;  // roll back
+        return false;
+      }
+      try {
+        for (auto it2 = oldNode->_parents.begin();
+              it2 != oldNode->_parents.end(); ++it2) {
+          if (*it2 == this) {
+            oldNode->_parents.erase(it2);
+            break;
+          }
+        }
+      } catch (...) {
+        // If this happens, we ignore that the _parents of oldNode
+        // are not set correctly
+      }
+      return true;
+    }
+
+    ++it;
+  }
+  return false;
+}
+  
+/// @brief remove a dependency, returns true if the pointer was found and
+/// removed, please note that this does not delete ep!
+bool ExecutionNode::removeDependency(ExecutionNode* ep) {
+  bool ok = false;
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    if (*it == ep) {
+      try {
+        it = _dependencies.erase(it);
+      } catch (...) {
+        return false;
+      }
+      ok = true;
+      break;
+    }
+  }
+
+  if (!ok) {
+    return false;
+  }
+
+  // Now remove us as a parent of the old dependency as well:
+  for (auto it = ep->_parents.begin(); it != ep->_parents.end(); ++it) {
+    if (*it == this) {
+      try {
+        ep->_parents.erase(it);
+      } catch (...) {
+      }
+      return true;
+    }
+  }
+
+  return false;
+}
+  
+/// @brief remove all dependencies for the given node
+void ExecutionNode::removeDependencies() {
+  for (auto& x : _dependencies) {
+    for (auto it = x->_parents.begin(); it != x->_parents.end(); /* no hoisting */) {
+      if (*it == this) {
+        try {
+          it = x->_parents.erase(it);
+        } catch (...) {
+        }
+        break;
+      } else {
+        ++it;
+      }
+    }
+  }
+  _dependencies.clear();
+}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
@@ -1190,9 +1310,14 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
-      _random(base.get("random").getBoolean()) {
+      _random(base.get("random").getBoolean()),
+      _restrictedTo("") {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
+  VPackSlice restrictedTo = base.get("restrictedTo");
+  if (restrictedTo.isString()) {
+    _restrictedTo = restrictedTo.copyString();
+  }
 
   if (_collection == nullptr) {
     std::string msg("collection '");
@@ -1213,6 +1338,9 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("random", VPackValue(_random));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
+  if (!_restrictedTo.empty()) {
+    nodes.add("restrictedTo", VPackValue(_restrictedTo));
+  }
 
   // add outvariable and projection
   DocumentProducingNode::toVelocyPack(nodes);
@@ -1243,7 +1371,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
   auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection,
                                        outVariable, _random);
 
-  c->setProjection(_projection);
+  c->projections(_projections);
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -1257,6 +1385,10 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(incoming);
   transaction::Methods* trx = _plan->getAst()->query()->trx();
+  if (trx->status() != transaction::Status::RUNNING) {
+    nrItems = 0;
+    return 0.0;
+  }
   size_t count = _collection->count(trx);
   nrItems = incoming * count;
   // We do a full collection scan for each incoming item.
@@ -1563,7 +1695,7 @@ bool SubqueryNode::isModificationQuery() const {
 
     stack.pop_back();
 
-    current->addDependencies(stack);
+    current->dependencies(stack);
   }
 
   return false;
@@ -1609,7 +1741,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 
   bool enterSubquery(ExecutionNode*, ExecutionNode* sub) override final {
     SubqueryVarUsageFinder subfinder;
-    sub->walk(&subfinder);
+    sub->walk(subfinder);
 
     // keep track of all variables used by a (dependent) subquery
     // this is, all variables in the subqueries _usedLater that are not in
@@ -1630,7 +1762,7 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
 /// @brief getVariablesUsedHere, returning a vector
 std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
   SubqueryVarUsageFinder finder;
-  _subquery->walk(&finder);
+  _subquery->walk(finder);
 
   std::vector<Variable const*> v;
   for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
@@ -1647,7 +1779,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
 void SubqueryNode::getVariablesUsedHere(
     std::unordered_set<Variable const*>& vars) const {
   SubqueryVarUsageFinder finder;
-  _subquery->walk(&finder);
+  _subquery->walk(finder);
 
   for (auto it = finder._usedLater.begin(); it != finder._usedLater.end();
        ++it) {
@@ -1700,13 +1832,13 @@ struct IsDeterministicFinder final : public WalkerWorker<ExecutionNode> {
 
 bool SubqueryNode::canThrow() {
   CanThrowFinder finder;
-  _subquery->walk(&finder);
+  _subquery->walk(finder);
   return finder._canThrow;
 }
 
 bool SubqueryNode::isDeterministic() {
   IsDeterministicFinder finder;
-  _subquery->walk(&finder);
+  _subquery->walk(finder);
   return finder._isDeterministic;
 }
 

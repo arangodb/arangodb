@@ -40,7 +40,6 @@ EnvironmentFeature::EnvironmentFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Environment") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Greetings");
   startsAfter("Logger");
   startsAfter("MaxMapCount");

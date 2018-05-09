@@ -104,7 +104,7 @@ ArangoStatement.prototype.parse = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoStatement.prototype.explain = function (options) {
-  var opts = this._options || { };
+  let opts = this._options || { };
   if (typeof opts === 'object' && typeof options === 'object') {
     Object.keys(options).forEach(function (o) {
       // copy options
@@ -112,13 +112,13 @@ ArangoStatement.prototype.explain = function (options) {
     });
   }
 
-  var body = {
+  let body = {
     query: this._query,
     bindVars: this._bindVars,
     options: opts
   };
 
-  var requestResult = this._database._connection.POST(
+  let requestResult = this._database._connection.POST(
     '/_api/explain',
     JSON.stringify(body));
 

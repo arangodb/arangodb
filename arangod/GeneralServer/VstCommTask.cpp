@@ -89,6 +89,7 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
                       skipInit),
       _authorized(false),
+      _authMethod(rest::AuthenticationMethod::NONE),
       _authenticatedUser(),
       _protocolVersion(protocolVersion) {
   _protocol = "vst";
@@ -101,27 +102,27 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       ->vstMaxSize();
 }
 
-void VstCommTask::addResponse(GeneralResponse* baseResponse,
+void VstCommTask::addResponse(GeneralResponse& baseResponse,
                               RequestStatistics* stat) {
-    _lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
+    //_lock.assertLockedByCurrentThread();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    VstResponse* response = dynamic_cast<VstResponse*>(baseResponse);
-    TRI_ASSERT(response != nullptr);
+    VstResponse& response = dynamic_cast<VstResponse&>(baseResponse);
 #else
-    VstResponse* response = static_cast<VstResponse*>(baseResponse);
+    VstResponse& response = static_cast<VstResponse&>(baseResponse);
 #endif
 
-  VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
+  VPackMessageNoOwnBuffer response_message = response.prepareForNetwork();
   uint64_t const mid = response_message._id;
 
   std::vector<VPackSlice> slices;
 
-  if (response->generateBody()) {
+  if (response.generateBody()) {
     slices.reserve(1 + response_message._payloads.size());
     slices.push_back(response_message._header);
 
     for (auto& payload : response_message._payloads) {
-      LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
+      LOG_TOPIC(TRACE, Logger::REQUESTS) << "\"vst-request-result\",\""
                                          << (void*)this << "/" << mid << "\","
                                          << payload.toJson() << "\"";
 
@@ -139,10 +140,10 @@ void VstCommTask::addResponse(GeneralResponse* baseResponse,
 
   if (stat != nullptr && arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE,
                                                      Logger::REQUESTS)) {
-    LOG_TOPIC(TRACE, Logger::REQUESTS)
+    LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << VstRequest::translateVersion(_protocolVersion) << "\","
-        << static_cast<int>(response->responseCode()) << ","
+        << static_cast<int>(response.responseCode()) << ","
         << _connectionInfo.clientAddress << "\"," << stat->timingsCsv();
   }
 
@@ -164,14 +165,17 @@ void VstCommTask::addResponse(GeneralResponse* baseResponse,
       ++c;
     }
   }
-
+  
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VstRequest::translateVersion(_protocolVersion) << "\","
-      << static_cast<int>(response->responseCode()) << ","
+      << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
+  
+  // process remaining requests ?
+  //processAll();
 }
 
 static uint32_t readLittleEndian32bit(char const* p) {
@@ -251,27 +255,27 @@ bool VstCommTask::isChunkComplete(char* start) {
 
 void VstCommTask::handleAuthHeader(VPackSlice const& header,
                                    uint64_t messageId) {
-  _authorized = false;
   
   std::string authString;
   std::string user = "";
-  AuthenticationMethod authType = AuthenticationMethod::NONE;
+  _authorized = false;
+  _authMethod = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();
   if (encryption == "jwt") {// doing JWT
     authString = header.at(3).copyString();
-    authType = AuthenticationMethod::JWT;
+    _authMethod = AuthenticationMethod::JWT;
   } else if (encryption == "plain") {
     user = header.at(3).copyString();
     std::string pass = header.at(4).copyString();
     authString = basics::StringUtils::encodeBase64(user + ":" + pass);
-    authType = AuthenticationMethod::BASIC;
+    _authMethod = AuthenticationMethod::BASIC;
   } else {
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
   
   if (_auth->isActive()) { // will just fail if method is NONE
-    auto entry = _auth->tokenCache()->checkAuthentication(authType, authString);
+    auto entry = _auth->tokenCache()->checkAuthentication(_authMethod, authString);
     _authorized = entry.authenticated();
     if (_authorized) {
       _authenticatedUser = std::move(entry._username);
@@ -295,7 +299,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
         VstResponse resp(ResponseCode::SERVICE_UNAVAILABLE, messageId);
         resp.setContentType(fakeRequest.contentTypeResponse());
         ReplicationFeature::prepareFollowerResponse(&resp, mode);
-        addResponse(&resp, nullptr);
+        addResponse(resp, nullptr);
       } catch (basics::Exception const& ex) {
         LOG_TOPIC(ERR, Logger::FIXME) << "Error while preparing follower response " << ex.message();
         closeStream(); // same as in handleSimpleError
@@ -313,10 +317,10 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
 
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
-  _lock.assertLockedByCurrentThread();
-
+  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  //_lock.assertLockedByCurrentThread();
+  
   auto& prv = _processReadVariables;
-
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
   if (chunkBegin == nullptr || !isChunkComplete(chunkBegin)) {
     return false;  // no data or incomplete
@@ -339,12 +343,12 @@ bool VstCommTask::processRead(double startTime) {
     // CASE 1: message is in one chunk
     if (!getMessageFromSingleChunk(chunkHeader, message, doExecute,
                                    vpackBegin, chunkEnd)) {
-      return false;
+      return false; // error, closeTask was called
     }
   } else {
     if (!getMessageFromMultiChunks(chunkHeader, message, doExecute,
                                    vpackBegin, chunkEnd)) {
-      return false;
+      return false; // error, closeTask was called
     }
   }
 
@@ -384,17 +388,19 @@ bool VstCommTask::processRead(double startTime) {
       closeTask(rest::ResponseCode::BAD);
       return false;
     }
-
+    
     // handle request types
     if (type == 1000) {
       handleAuthHeader(header, chunkHeader._messageID);
     } else {
+      
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
       request->setAuthenticated(_authorized);
       request->setUser(_authenticatedUser);
-      if (_authorized) {
+      request->setAuthenticationMethod(_authMethod);
+      if (_authorized && _auth->userManager() != nullptr) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
@@ -429,7 +435,7 @@ bool VstCommTask::processRead(double startTime) {
             request->setClientTaskId(_taskId);
 
             // temporarily release the mutex
-            MUTEX_UNLOCKER(locker, _lock);
+            //MUTEX_UNLOCKER(locker, _lock);
 
             std::unique_ptr<VstResponse> response(new VstResponse(
                  rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
@@ -492,7 +498,7 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
 
   try {
     resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    addResponse(&resp, nullptr);
+    addResponse(resp, nullptr);
   } catch (...) {
     closeStream();
   }

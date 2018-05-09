@@ -39,7 +39,6 @@ ServerIdFeature::ServerIdFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "ServerId") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("DatabasePath");
 }

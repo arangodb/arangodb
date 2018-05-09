@@ -19,7 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBValue.h"
@@ -68,6 +68,10 @@ RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
 }
 
+RocksDBValue RocksDBValue::S2Value(S2Point const& p) {
+  return RocksDBValue(p);
+}
+
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
@@ -112,6 +116,13 @@ uint64_t RocksDBValue::keyValue(std::string const& s) {
   return keyValue(s.data(), s.size());
 }
 
+S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
+  TRI_ASSERT(s.size() == sizeof(double) * 3);
+  return S2Point(intToDouble(uint64FromPersistent(s.data())),
+                 intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))),
+                 intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
+}
+
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId)
@@ -142,7 +153,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
                      static_cast<size_t>(data.byteSize()));
       break;
     }
-      
+
     case RocksDBEntryType::Document:
       TRI_ASSERT(false);// use for document => get free schellen
       break;
@@ -164,6 +175,14 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+}
+
+RocksDBValue::RocksDBValue(S2Point const& p)
+  : _type(RocksDBEntryType::GeoIndexValue), _buffer() {
+      _buffer.reserve(sizeof(uint64_t) * 3);
+  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.x()));
+  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.y()));
+  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.z()));
 }
 
 LocalDocumentId RocksDBValue::documentId(char const* data, uint64_t size) {

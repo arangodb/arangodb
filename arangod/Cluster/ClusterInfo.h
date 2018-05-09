@@ -343,15 +343,6 @@ class ClusterInfo {
       DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief (re-)load the information about current collections from the agency
-  /// Usually one does not have to call this directly. Note that this is
-  /// necessarily complicated, since here we have to consider information
-  /// about all shards of a collection.
-  //////////////////////////////////////////////////////////////////////////////
-
-  void loadCurrentCollections();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
   /// If it is not found in the cache, the cache is reloaded once.
@@ -416,8 +407,8 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   int createViewCoordinator(std::string const& databaseName,
-                            std::string const& viewID,
-                            arangodb::velocypack::Slice const& json,
+                            arangodb::velocypack::Slice json,
+                            ViewID& viewID,
                             std::string& errorMsg);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -427,6 +418,14 @@ class ClusterInfo {
   int dropViewCoordinator(std::string const& databaseName,
                           std::string const& viewID,
                           std::string& errorMsg);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set view properties in coordinator
+  //////////////////////////////////////////////////////////////////////////////
+
+  Result setViewPropertiesCoordinator(std::string const& databaseName,
+                                      std::string const& viewID,
+                                      VPackSlice const& json);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.

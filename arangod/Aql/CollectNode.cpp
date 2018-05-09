@@ -255,9 +255,7 @@ void CollectNode::getVariablesUsedHere(
     vars.emplace(p.second);
   }
   for (auto const& p : _aggregateVariables) {
-    if (Aggregator::requiresInput(p.second.second)) {
-      vars.emplace(p.second.first);
-    }
+    vars.emplace(p.second.first);
   }
 
   if (_expressionVariable != nullptr) {
@@ -270,14 +268,14 @@ void CollectNode::getVariablesUsedHere(
       // amongst our dependencies:
       UserVarFinder finder(1);
       auto myselfAsNonConst = const_cast<CollectNode*>(this);
-      myselfAsNonConst->walk(&finder);
+      myselfAsNonConst->walk(finder);
       if (finder.depth == 1) {
         // we are top level, let's run again with mindepth = 0
         finder.userVars.clear();
         finder.mindepth = 0;
         finder.depth = -1;
         finder.reset();
-        myselfAsNonConst->walk(&finder);
+        myselfAsNonConst->walk(finder);
       }
       for (auto& x : finder.userVars) {
         vars.emplace(x);

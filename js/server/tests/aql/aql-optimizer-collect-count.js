@@ -34,6 +34,7 @@ var errors = internal.errors;
 var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
+const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -45,7 +46,7 @@ function optimizerCountTestSuite () {
   return {
     setUp : function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", { numberOfShards: 4 });
 
       for (var i = 0; i < 1000; ++i) {
         c.save({ group: "test" + (i % 10), value: i });
@@ -93,6 +94,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,6 +113,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,6 +132,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,6 +151,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,6 +178,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -181,6 +197,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,6 +221,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,6 +245,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -238,6 +263,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -267,6 +295,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,6 +322,9 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      if (isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,6 +337,10 @@ function optimizerCountTestSuite () {
       var results = AQL_EXECUTE(query);
       // expectation is that we get 1000 different docs and do not crash (issue #1265)
       assertEqual(1000, results.json.length);
+      if (isCluster) {
+        var plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+      }
     }
 
   };

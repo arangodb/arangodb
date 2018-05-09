@@ -34,7 +34,7 @@
 
 namespace arangodb {
 
-class CacheRebalancerThread : public Thread {
+class CacheRebalancerThread final : public Thread {
  public:
   CacheRebalancerThread(cache::Manager* manager, uint64_t interval);
   ~CacheRebalancerThread();

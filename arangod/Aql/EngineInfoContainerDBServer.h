@@ -77,6 +77,9 @@ class EngineInfoContainerDBServer {
     explicit EngineInfo(size_t idOfRemoteNode);
     ~EngineInfo();
 
+#if (_MSC_VER != 0)
+#pragma warning( disable : 4521) // stfu wintendo.
+#endif
     EngineInfo(EngineInfo&) = delete;
     EngineInfo(EngineInfo const& other) = delete;
     EngineInfo(EngineInfo const&& other);
@@ -98,6 +101,7 @@ class EngineInfoContainerDBServer {
     size_t _idOfRemoteNode;   // id of the remote node
     QueryId _otherId;         // Id of query engine before this one
     Collection* _collection;  // The collection used to connect to this engine
+    ShardID _restrictedShard; // The shard this snippet is restricted to
   };
 
   struct DBServerInfo {
@@ -137,8 +141,19 @@ class EngineInfoContainerDBServer {
         _traverserEngineInfos;
   };
 
+  struct CollectionInfo {
+    CollectionInfo(AccessMode::Type lock, std::shared_ptr<std::vector<ShardID>> shards);
+    ~CollectionInfo();
+
+    void mergeShards(std::shared_ptr<std::vector<ShardID>> shards);
+
+    AccessMode::Type lockType;
+    std::vector<std::shared_ptr<EngineInfo>> engines;
+    std::unordered_set<ShardID> usedShards;
+  };
+
  public:
-  EngineInfoContainerDBServer();
+  EngineInfoContainerDBServer(Query* query);
 
   ~EngineInfoContainerDBServer();
 
@@ -165,10 +180,8 @@ class EngineInfoContainerDBServer {
   //   this methods a shutdown request is send to all DBServers.
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
-  Result buildEngines(Query* query,
-                      std::unordered_map<std::string, std::string>& queryIds,
-                      std::unordered_set<std::string> const& restrictToShards,
-                      std::unordered_set<ShardID>* lockedShards) const;
+  Result buildEngines(MapRemoteToSnippet& queryIds,
+                      std::unordered_set<ShardID>& lockedShards) const;
 
 /**
  * @brief Will send a shutdown to all engines registered in the list of
@@ -186,49 +199,76 @@ class EngineInfoContainerDBServer {
  */
   void cleanupEngines(
       std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
-      std::unordered_map<std::string, std::string>& queryIds) const;
+      MapRemoteToSnippet& queryIds) const;
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
-  void addGraphNode(Query* query, GraphNode* node);
+  void addGraphNode(GraphNode* node);
+
+#ifdef USE_IRESEARCH
+  void addIResearchViewNode(ExecutionNode const& node);
+#endif
 
  private:
+
+ /**
+  * @brief Take care of this collection, set the lock state accordingly
+  *        and maintain the list of used shards for this collection.
+  *        This call will not restrict the shards of this collection.
+  *
+  * @param col The collection that should be used
+  * @param accessType The lock-type of this collection
+  */
+  void handleCollection(Collection const* col,
+                        AccessMode::Type const& accessType);
+
+
+ /**
+  * @brief Take care of this collection, set the lock state accordingly
+  *        and maintain the list of used shards for this collection.
+  *
+  * @param col The collection that should be used
+  * @param accessType The lock-type of this collection
+  * @param restrictedShards The list of shards that can be relevant in this query (a subset of the collection shards)
+  */
   void handleCollection(Collection const* col,
                         AccessMode::Type const& accessType,
-                        bool updateCollection);
+                        std::unordered_set<std::string> const& restrictedShards);
+
+  /**
+   * @brief Update the collection on the last open engine. Used for communication
+   *
+   * @param col Collection to be inserted
+   */
+  void updateCollection(Collection const* col);
 
   // @brief Helper to create DBServerInfos and sort collections/shards into
   // them
   std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
-  createDBServerMapping(std::unordered_set<std::string> const& restrictToShards,
-                        std::unordered_set<ShardID>* lockedShards) const;
+  createDBServerMapping(std::unordered_set<ShardID>& lockedShards) const;
 
   // @brief Helper to inject the TraverserEngines into the correct infos
   void injectGraphNodesToMapping(
-      Query* query, std::unordered_set<std::string> const& restrictToShards,
-      std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>&
-          dbServerMapping) const;
+      std::map<ServerID, DBServerInfo>& dbServerMapping) const;
 
 #ifdef USE_ENTERPRISE
   void prepareSatellites(
-      std::map<ServerID, DBServerInfo>& dbServerMapping,
-      std::unordered_set<std::string> const& restrictToShards) const;
+      std::map<ServerID, DBServerInfo>& dbServerMapping) const;
 
   void resetSatellites() const;
 #endif
 
  private:
+
+  // @brief The query that is executed. We are not responsible for it
+  Query* _query;
+
   // @brief Reference to the last inserted EngineInfo, used for back linking of
   // QueryIds
   std::stack<std::shared_ptr<EngineInfo>> _engineStack;
 
-  // @brief List of EngineInfos to distribute accross the cluster
-  std::unordered_map<Collection const*,
-                     std::vector<std::shared_ptr<EngineInfo>>>
-      _engines;
-
-  // @brief Mapping of used collection names to lock type required
-  std::unordered_map<Collection const*, AccessMode::Type> _collections;
+  // @brief A map of Collection => Info required for distribution
+  std::unordered_map<Collection const*, CollectionInfo> _collectionInfos;
 
 #ifdef USE_ENTERPRISE
   // @brief List of all satellite collections

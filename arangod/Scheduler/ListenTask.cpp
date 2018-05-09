@@ -28,6 +28,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Acceptor.h"
+#include "Scheduler/JobGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -40,7 +41,7 @@ ListenTask::ListenTask(EventLoop loop, Endpoint* endpoint)
     : Task(loop, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
-      _acceptor(Acceptor::factory(*loop._ioService, endpoint)) {}
+      _acceptor(Acceptor::factory(*loop.ioContext, endpoint)) {}
 
 ListenTask::~ListenTask() {}
 
@@ -50,10 +51,11 @@ ListenTask::~ListenTask() {}
 
 bool ListenTask::start() {
   MUTEX_LOCKER(mutex, _shutdownMutex);
+  TRI_ASSERT(_acceptor);
 
   try {
     _acceptor->open();
-  } catch (boost::system::system_error const& err) {
+  } catch (asio::system_error const& err) {
     LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "failed to open endpoint '" << _endpoint->specification()
               << "' with error: " << err.what();
     return false;
@@ -62,11 +64,14 @@ bool ListenTask::start() {
               << "' with error: " << err.what();
     return false;
   }
-
-  _handler = [this](boost::system::error_code const& ec) {
+  
+  _handler = [this](asio::error_code const& ec) {
     MUTEX_LOCKER(mutex, _shutdownMutex);
-
+    JobGuard guard(_loop);
+    guard.work();
+    
     if (!_bound) {
+      LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "Acceptor not bound to socket";
       _handler = nullptr;
       return;
     }
@@ -75,7 +80,8 @@ bool ListenTask::start() {
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {
-      if (ec == boost::asio::error::operation_aborted) {
+      if (ec == asio::error::operation_aborted) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
         return;
       }
 
@@ -91,8 +97,8 @@ bool ListenTask::start() {
 
     ConnectionInfo info;
 
-    auto peer = _acceptor->movePeer();
-
+    std::unique_ptr<Socket> peer = _acceptor->movePeer();
+    
     // set the endpoint
     info.endpoint = _endpoint->specification();
     info.endpointType = _endpoint->domainType();
@@ -106,7 +112,8 @@ bool ListenTask::start() {
 
     _acceptor->asyncAccept(_handler);
   };
-
+  
+  
   _bound = true;
   _acceptor->asyncAccept(_handler);
   return true;

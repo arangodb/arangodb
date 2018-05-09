@@ -47,7 +47,6 @@ UpgradeFeature::UpgradeFeature(
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("CheckVersion");
   startsAfter("Database");
   startsAfter("Cluster");
@@ -80,7 +79,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
   std::vector<std::string> otherFeaturesToDisable = {
@@ -116,7 +115,7 @@ void UpgradeFeature::start() {
     upgradeDatabase();
 
     if (!init->restoreAdmin() && !init->defaultPassword().empty() &&
-        ServerState::instance()->isSingleServerOrCoordinator()) {
+        um != nullptr) {
       um->updateUser("root", [&](auth::User& user) {
         user.updatePassword(init->defaultPassword());
         return TRI_ERROR_NO_ERROR;
@@ -185,24 +184,28 @@ void UpgradeFeature::upgradeDatabase() {
   for (auto& name : databaseFeature->getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
-    
-    methods::UpgradeResult res = methods::Upgrade::startup(vocbase, _upgrade, ignoreDatafileErrors);
-    
+
+    auto res =
+      methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
+
     if (res.fail()) {
       char const* typeName = "initialization";
+
       if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
         typeName = "upgrade"; // an upgrade failed or is required
+
         if (!_upgrade) {
           LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "Database '" << vocbase->name() << "' needs upgrade. "
           << "Please start the server with --database.auto-upgrade";
         }
       }
+
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
       << "' " << typeName << " failed (" << res.errorMessage() << "). "
       << "Please inspect the logs from the " << typeName << " procedure"
       << " and try starting the server again.";
-      
+
       FATAL_ERROR_EXIT();
     }
   }

@@ -81,8 +81,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
  
   if (_configuration._chunkSize == 0) {
     _configuration._chunkSize = 2 * 1024 * 1024; // default: 2 MB
-  }
-  if (_configuration._chunkSize < 16 * 1024) {
+  } else if (_configuration._chunkSize < 16 * 1024) {
     _configuration._chunkSize = 16 * 1024;
   }
 
@@ -356,24 +355,32 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   } else if (slice.isString()) {
     name = slice.copyString();
   }
+
   if (name.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                    "could not resolve vocbase id / name");
   }
-  
+
   // will work with either names or id's
   auto const& it = _vocbases.find(name);
+
   if (it == _vocbases.end()) {
     // automatically checks for id in string
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+
     if (vocbase != nullptr) {
-      _vocbases.emplace(name, DatabaseGuard(vocbase));
+      _vocbases.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(name),
+        std::forward_as_tuple(*vocbase)
+      );
     } else {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }
+
     return vocbase;
   } else {
-    return it->second.database();
+    return &(it->second.database());
   }
 }
 
@@ -412,15 +419,14 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
 
 Result Syncer::applyCollectionDumpMarker(
     transaction::Methods& trx, LogicalCollection* coll,
-    TRI_replication_operation_e type, VPackSlice const& old, 
-    VPackSlice const& slice) {
+    TRI_replication_operation_e type, VPackSlice const& slice) {
 
   if (_configuration._lockTimeoutRetries > 0) {
     decltype(_configuration._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      Result res = applyCollectionDumpMarkerInternal(trx, coll, type, old, slice);
-
+      Result res = applyCollectionDumpMarkerInternal(trx, coll, type, slice);
+      
       if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
       }
@@ -435,18 +441,18 @@ Result Syncer::applyCollectionDumpMarker(
       // retry
     }
   } else {
-    return applyCollectionDumpMarkerInternal(trx, coll, type, old, slice);
+    return applyCollectionDumpMarkerInternal(trx, coll, type, slice);
   }
 }
 
 /// @brief apply the data from a collection dump or the continuous log
 Result Syncer::applyCollectionDumpMarkerInternal(
       transaction::Methods& trx, LogicalCollection* coll,
-      TRI_replication_operation_e type, VPackSlice const& old, 
+      TRI_replication_operation_e type,
       VPackSlice const& slice) {
 
   if (type == REPLICATION_MARKER_DOCUMENT) {
-    // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+    // {"type":2300,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     OperationOptions options;
     options.silent = true;
@@ -505,7 +511,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(
   }
 
   else if (type == REPLICATION_MARKER_REMOVE) {
-    // {"type":2402,"key":"592063"}
+    // {"type":2302,"key":"592063"}
     
     try {
       OperationOptions options;
@@ -514,7 +520,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       if (!_leaderId.empty()) {
         options.isSynchronousReplicationFrom = _leaderId;
       }
-      OperationResult opRes = trx.remove(coll->name(), old, options);
+      OperationResult opRes = trx.remove(coll->name(), slice, options);
 
       if (opRes.ok() ||
           opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -576,8 +582,8 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   col = vocbase->lookupCollection(name).get();
 
   if (col != nullptr) {
-    if (col->isSystem()) {
-      TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
+    if (col->system()) {
+      TRI_ASSERT(!simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase),
         col->id(),
@@ -598,7 +604,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
       return trx.finish(opRes.result);
     } else {
-      vocbase->dropCollection(col, false, -1.0);
+      vocbase->dropCollection(col->id(), false, -1.0);
     }
   }
 
@@ -613,12 +619,15 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
     s.add("id", VPackSlice::nullSlice());
     s.add("cid", VPackSlice::nullSlice());
   }
+
   s.close();
+
   VPackBuilder merged = VPackCollection::merge(slice, s.slice(), /*mergeValues*/true,
                                                /*nullMeansRemove*/true);
-  
+
   // we need to remove every occurence of objectId as a key
   auto stripped = rocksutils::stripObjectIds(merged.slice());
+
   try {
     col = vocbase->createCollection(stripped.first);
   } catch (basics::Exception const& ex) {
@@ -630,12 +639,12 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   }
 
   TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(!uuid.isString() ||
-             uuid.compareString(col->globallyUniqueId()) == 0);
+  TRI_ASSERT(!uuid.isString() || uuid.compareString(col->guid()) == 0);
 
   if (dst != nullptr) {
     *dst = col;
   }
+
   return Result();
 }
 
@@ -657,7 +666,7 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return Result();
   }
 
-  return Result(vocbase->dropCollection(col, true, -1.0));
+  return vocbase->dropCollection(col->id(), true, -1.0);
 }
 
 /// @brief creates an index, based on the VelocyPack provided
@@ -886,11 +895,10 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
   int major = 0;
   int minor = 0;
-
   std::string const versionString(version.copyString());
-
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE, std::string("invalid master version info") + endpointString + ": '" + versionString + "'");
+    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE,
+                  std::string("invalid master version info") + endpointString + ": '" + versionString + "'");
   }
 
   if (major != 3) {
@@ -915,7 +923,10 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
 void Syncer::reloadUsers() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  auth::UserManager* um = af->userManager();
+  if (um != nullptr) {
+    um->outdate();
+  }
 }
   
 bool Syncer::hasFailed(SimpleHttpResult* response) const {

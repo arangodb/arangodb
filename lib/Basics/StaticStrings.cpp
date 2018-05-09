@@ -73,6 +73,15 @@ std::string const StaticStrings::ReplicationHeaderActive("x-arango-replication-a
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");
 
+// LogicalDataSource definition fields
+std::string const StaticStrings::DataSourceDeleted("deleted");
+std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
+std::string const StaticStrings::DataSourceId("id");
+std::string const StaticStrings::DataSourceName("name");
+std::string const StaticStrings::DataSourcePlanId("planId");
+std::string const StaticStrings::DataSourceSystem("isSystem");
+std::string const StaticStrings::DataSourceType("type");
+
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
 std::string const StaticStrings::AcceptEncoding("accept-encoding");
@@ -126,6 +135,7 @@ std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Queue("x-arango-queue");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::StartThread("x-arango-start-thread");
+std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 

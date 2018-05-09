@@ -33,6 +33,7 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
@@ -46,19 +47,29 @@ class RocksDBReplicationContext {
       LocalDocumentIdCallback;
 
   struct CollectionIterator {
-    CollectionIterator(
-        LogicalCollection& collection, transaction::Methods& trx) noexcept;
+    CollectionIterator(LogicalCollection&, transaction::Methods&, bool) noexcept;
     LogicalCollection& logical;
+    
+    /// Iterator over primary index or documents
     std::unique_ptr<IndexIterator> iter;
+
     uint64_t currentTick;
     std::atomic<bool> isUsed;
     bool hasMore;
     ManagedDocumentResult mdr;
+    
     /// @brief type handler used to render documents
     std::shared_ptr<arangodb::velocypack::CustomTypeHandler> customTypeHandler;
     arangodb::velocypack::Options vpackOptions;
+    
+    bool sorted() const { return _sortedIterator; }
+    void setSorted(bool, transaction::Methods*);
 
     void release();
+    
+  private:
+    /// primary-index sorted iterator
+    bool _sortedIterator;
   };
 
  public:
@@ -75,19 +86,34 @@ class RocksDBReplicationContext {
   TRI_vocbase_t* vocbase() const;
 
   // creates new transaction/snapshot
-  void bind(TRI_vocbase_t*);
-  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
-  int chooseDatabase(TRI_vocbase_t*);
+  void bind(TRI_vocbase_t& vocbase);
+  
+  /// Bind collection for incremental sync
+  int bindCollectionIncremental(
+    TRI_vocbase_t& vocbase,
+    std::string const& collectionIdentifier
+  );
+  int chooseDatabase(TRI_vocbase_t& vocbase);
 
   // returns inventory
   Result getInventory(TRI_vocbase_t* vocbase, bool includeSystem,
                       bool global, velocypack::Builder&);
+  
+  // ========================= Dump API =============================
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
-                                std::string const& collectionName,
-                                basics::StringBuffer&, uint64_t chunkSize);
+  RocksDBReplicationResult dumpJson(TRI_vocbase_t* vocbase, std::string const& cname,
+                                    basics::StringBuffer&, uint64_t chunkSize);
+  
+  // iterates over at most 'limit' documents in the collection specified,
+  // creating a new iterator if one does not exist for this collection
+  RocksDBReplicationResult dumpVPack(TRI_vocbase_t* vocbase, std::string const& cname,
+                                     velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize);
+  
+  bool moreForDump(std::string const& collectionIdentifier);
+  
+  // ==================== Incremental Sync ===========================
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
@@ -110,14 +136,12 @@ class RocksDBReplicationContext {
   bool use(double ttl, bool exclusive);
   /// remove use flag
   void release();
-  bool more(std::string const& collectionIdentifier);
 
  private:
   void releaseDumpingResources();
-  CollectionIterator* getCollectionIterator(TRI_voc_cid_t id);
-  void internalBind(TRI_vocbase_t*, bool allowChange = true);
+  CollectionIterator* getCollectionIterator(TRI_voc_cid_t cid, bool sorted);
+  void internalBind(TRI_vocbase_t& vocbase, bool allowChange = true);
 
- private:
   mutable Mutex _contextLock;
   TRI_vocbase_t* _vocbase;
   TRI_server_id_t const _serverId;
