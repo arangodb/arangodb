@@ -67,7 +67,8 @@ public:
   
 private:
   
-  ActionBase* _action;
+  std::unique_ptr<ActionBase> _action;
+
 };
 
 }}

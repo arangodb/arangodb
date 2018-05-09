@@ -39,8 +39,7 @@ DropDatabase::DropDatabase(
 
 DropDatabase::~DropDatabase() {};
 
-arangodb::Result DropDatabase::run(
-  std::chrono::duration<double> const&, bool& finished) {
+arangodb::Result DropDatabase::first() {
 
   auto const& database = _description.get(DATABASE);
   auto* systemVocbase =
@@ -50,8 +49,9 @@ arangodb::Result DropDatabase::run(
     FATAL_ERROR_EXIT();
   }
 
-  return Databases::drop(systemVocbase, database);
-  
+  _result = Databases::drop(systemVocbase, database);
+  return _result;
+    
 }
 
 arangodb::Result DropDatabase::kill(Signal const& signal) {

@@ -118,7 +118,76 @@ class ActionBase {
   ActionDescription const& describe() const;
 
   std::string const& get(std::string const&) const;
+
   VPackSlice const properties() const;
+
+  /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
+  ActionState getState() const {
+    #warning check that lock is held
+    return _state;
+  }
+
+  /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
+  void setState(ActionState state) {
+#warning check that lock is held
+    _state = state;
+  }
+
+  /// @brief update incremental statistics
+  void startStats();
+
+  /// @brief update incremental statistics
+  void incStats();
+
+  /// @brief finalize statistics
+  void endStats();
+
+  /// @brief return progress statistic
+  uint64_t getProgress() const {return _progress.load();};
+
+  /// @brief Once PreAction completes, remove its pointer
+  void clearPreAction() {_preAction.reset();};
+
+  /// @brief Retrieve pointer to action that should run before this one
+  MaintenanceActionPtr_t getPreAction() {return _preAction;};
+
+  /// @brief Initiate a preAction
+  void createPreAction(std::shared_ptr<ActionDescription_t> const & description,
+                      std::shared_ptr<VPackBuilder> const & properties);
+
+  /// @brief Initiate a postAction
+  void createPostAction(std::shared_ptr<ActionDescription_t> const & description,
+                      std::shared_ptr<VPackBuilder> const & properties);
+
+  /// @brief Retrieve pointer to action that should run directly after this one
+  MaintenanceActionPtr_t getPostAction() {return _postAction;};
+
+  /// @brief Save pointer to successor action
+  void setPostAction(MaintenanceActionPtr_t post) {_postAction=post;}
+
+  /// @brief hash value of ActionDescription_t
+  /// @return uint64_t hash
+  uint64_t hash() const {return _hash;};
+
+  /// @brief hash value of ActionDescription_t
+  /// @return uint64_t hash
+  uint64_t id() const {return _id;};
+
+  /// @brief add VPackObject to supplied builder with info about this action
+  virtual void toVelocityPack(VPackBuilder & builder);
+
+  /// @brief Returns json array of object contents for status reports
+  ///  Thread safety of this function is questionable for some member objects
+//  virtual Result toJson(/* builder */) {return Result;};
+
+  /// @brief Return Result object contain action specific status
+  Result result() const {return _result;}
+
+  /// @brief access action description object
+  ActionDescription_t const * getDescription() const {return _description.get();};
+
+  /// @brief access properties builder / slice
+  VPackBuilder const * getProperties() const {return _properties.get();};
 
 protected:
 

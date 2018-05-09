@@ -39,12 +39,12 @@ Action::Action(
   TRI_ASSERT(d.has("name"));
   std::string name = d.name();
   if (name == "CreateDatabase") {
-    _action = (ActionBase*) new CreateDatabase(feature, d);
-  } /*else if (name == "DropDatabase") {
-    _action = (ActionBase*) new DropDatabase(feature, d);
+    _action.reset(new CreateDatabase(feature, d));
+  } else if (name == "DropDatabase") {
+    _action.reset(new DropDatabase(feature, d));
   } else if (name == "UpdateCollection") {
-    _action = (ActionBase*) new UpdateCollection(feature, d);
-    } */else {
+    _action.reset(new UpdateCollection(feature, d));
+  } else {
     // We should never get here
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
     TRI_ASSERT(false);
@@ -76,7 +76,4 @@ arangodb::Result Action::progress(double& p) {
   return _action->progress(p);
 }
 
-Action::~Action() {
-  if(_action != nullptr)
-    delete _action;
-}
+Action::~Action() {}

@@ -42,8 +42,7 @@ public:
 
   virtual ~DropDatabase();
 
-  virtual arangodb::Result run(
-    std::chrono::duration<double> const&, bool& finished) override final;
+  virtual arangodb::Result first() override final;
   
   virtual arangodb::Result kill(Signal const& signal) override final;
   
