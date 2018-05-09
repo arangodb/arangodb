@@ -140,11 +140,11 @@ keyword<tag::protoShard, std::string> _protoShard =
 keyword<tag::from, std::string> _from = decltype(_from)::instance;
 keyword<tag::to, std::string> _to = decltype(_to)::instance;
 keyword<tag::isLeader, bool> _isLeader = decltype(_isLeader)::instance;
-keyword<tag::protoReplicationFactor, size_t> _protoReplicationFactor =
+keyword<tag::protoReplicationFactor, uint64_t> _protoReplicationFactor =
     decltype(_protoReplicationFactor)::instance;
-keyword<tag::collectionReplicationFactor, size_t> _collectionReplicationFactor =
+keyword<tag::collectionReplicationFactor, uint64_t> _collectionReplicationFactor =
     decltype(_collectionReplicationFactor)::instance;
-keyword<tag::replicationFactor, size_t> _replicationFactor =
+keyword<tag::replicationFactor, uint64_t> _replicationFactor =
     decltype(_replicationFactor)::instance;
 keyword<tag::renameDistributeShardsLike, bool> _renameDistributeShardsLike =
     decltype(_renameDistributeShardsLike)::instance;
@@ -188,8 +188,8 @@ struct BeginRepairsOperation {
   std::string collectionName;
   CollectionID protoCollectionId;
   std::string protoCollectionName;
-  size_t collectionReplicationFactor;
-  size_t protoReplicationFactor;
+  uint64_t collectionReplicationFactor;
+  uint64_t protoReplicationFactor;
   bool renameDistributeShardsLike;
 
   BeginRepairsOperation() = delete;
@@ -202,9 +202,9 @@ struct BeginRepairsOperation {
       tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
       tagged_argument<tag::protoCollectionName, std::string>
           protoCollectionName_,
-      tagged_argument<tag::collectionReplicationFactor, size_t>
+      tagged_argument<tag::collectionReplicationFactor, uint64_t>
           collectionReplicationFactor_,
-      tagged_argument<tag::protoReplicationFactor, size_t>
+      tagged_argument<tag::protoReplicationFactor, uint64_t>
           protoReplicationFactor_,
       tagged_argument<tag::renameDistributeShardsLike, bool>
           renameDistributeShardsLike_);
@@ -231,7 +231,7 @@ struct FinishRepairsOperation {
   CollectionID protoCollectionId;
   std::string protoCollectionName;
   std::vector<ShardWithProtoAndDbServers> shards;
-  size_t replicationFactor;
+  uint64_t replicationFactor;
 
   FinishRepairsOperation() = delete;
 
@@ -245,7 +245,7 @@ struct FinishRepairsOperation {
           protoCollectionName_,
       tagged_argument<tag::shards, std::vector<ShardWithProtoAndDbServers>>
           shards_,
-      tagged_argument<tag::replicationFactor, size_t> replicationFactor_);
+      tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_);
 };
 
 // Writes a moveShard job in Target/ToDo/ to move

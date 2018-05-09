@@ -295,6 +295,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
     case SCATTER_IRESEARCH_VIEW:
       return new iresearch::IResearchViewScatterNode(*plan, slice);
 #endif
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
   return nullptr;
 }
@@ -1143,6 +1147,11 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       // these node type does not produce any new registers
       break;
 #endif
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
 
   en->_depth = depth;

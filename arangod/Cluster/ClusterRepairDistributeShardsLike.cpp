@@ -672,7 +672,7 @@ DistributeShardsLikeRepairer::createBeginRepairsOperation(
         collection.distributeShardsLike);
   }
 
-  size_t previousReplicationFactor = collection.replicationFactor;
+  uint64_t previousReplicationFactor = collection.replicationFactor;
 
   collection.replicationFactor = proto.replicationFactor;
 

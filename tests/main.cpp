@@ -29,7 +29,7 @@ public:
     }
   }
   
-  void run() {
+  void run() override {
     CONDITION_LOCKER(guard, _wait);
     _result = _f(_i,_c);
     _done = true;

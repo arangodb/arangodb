@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchCommon.h"
+#include "IResearchViewDBServer.h"
 #include "IResearchViewNode.h"
 #include "IResearchViewBlock.h"
 #include "IResearchOrderFactory.h"
@@ -322,22 +323,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     );
   }
 
-  if (ServerState::instance()->isDBServer()) {
-    // db server in a cluster
-
-    // FIXME
-    // retrieve master shards from all collections involved
-    // and build up corresponding index reader
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  // single server
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& view = dynamic_cast<IResearchView const&>(this->view());
-#else
-  auto& view = static_cast<IResearchView const&>(this->view());
-#endif
-
   auto* trx = engine.getQuery()->trx();
 
   if (!trx || !(trx->state())) {
@@ -351,11 +336,29 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto& state = *(trx->state());
-  auto* reader = view.snapshot(state);
+  PrimaryKeyIndexReader* reader;
+
+  if (ServerState::instance()->isDBServer()) {
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto& view = dynamic_cast<IResearchViewDBServer const&>(this->view());
+    #else
+      auto& view = static_cast<IResearchViewDBServer const&>(this->view());
+    #endif
+
+    reader = view.snapshot(state);
+  } else {
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto& view = dynamic_cast<IResearchView const&>(this->view());
+    #else
+      auto& view = static_cast<IResearchView const&>(this->view());
+    #endif
+
+    reader = view.snapshot(state);
+  }
 
   if (!reader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '" << state.id() << "'";
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view().name() << "' tid '" << state.id() << "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,

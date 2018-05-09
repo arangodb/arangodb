@@ -232,9 +232,6 @@ class LogicalCollection: public LogicalDataSource {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(velocypack::Builder&, bool translateCids,
-                    bool forPersistence = false) const;
-
   void toVelocyPackIgnore(velocypack::Builder& result,
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
       bool forPersistence) const;
@@ -344,6 +341,13 @@ class LogicalCollection: public LogicalDataSource {
   // compares the checksum value passed in the Slice (must be of type String)
   // with the checksum provided in the reference checksum
   Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
+
+ protected:
+  virtual arangodb::Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);

@@ -33,7 +33,6 @@
 #include "ApplicationFeatures/EngineEqualityCheckFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
@@ -161,7 +160,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new GeneralServerFeature(&server));
     server.addFeature(new GreetingsFeature(&server));
     server.addFeature(new InitDatabaseFeature(&server, nonServerFeatures));
-    server.addFeature(new JemallocFeature(&server));
     server.addFeature(new LanguageFeature(&server));
     server.addFeature(new LockfileFeature(&server));
     server.addFeature(new LoggerBufferFeature(&server));

@@ -40,7 +40,7 @@ class RocksDBCollection;
 class RocksDBPrimaryIndex;
 
 /// @brief iterator over all documents in the collection
-/// basically sorted after revision ID
+/// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
   RocksDBAllIndexIterator(LogicalCollection* collection,

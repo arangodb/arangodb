@@ -141,12 +141,7 @@ static void JS_CreateViewVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   // we require exactly 3 arguments
   if (args.Length() != 3) {
@@ -187,7 +182,7 @@ static void JS_CreateViewVocbase(
   infoSlice = full.slice();
 
   try {
-    auto view = vocbase->createView(infoSlice);
+    auto view = vocbase.createView(infoSlice);
 
     TRI_ASSERT(view != nullptr);
 
@@ -211,12 +206,7 @@ static void JS_DropViewVocbase(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   // we require exactly 1 string argument and an optional boolean argument
   if (args.Length() < 1 || args.Length() > 2) {
@@ -244,10 +234,10 @@ static void JS_DropViewVocbase(
 
   // extract the name
   std::string const name = TRI_ObjectToString(args[0]);
-  auto view = vocbase->lookupView(name);
+  auto view = vocbase.lookupView(name);
 
   if (view) {
-    auto res = vocbase->dropView(view->id(), allowDropSystem).errorNumber();
+    auto res = vocbase.dropView(view->id(), allowDropSystem).errorNumber();
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -307,14 +297,9 @@ static void JS_DropViewVocbaseObj(
 static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->isDropped()) {
+  if (vocbase.isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -324,8 +309,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> val = args[0];
-  std::shared_ptr<arangodb::LogicalView> view =
-      GetViewFromArgument(vocbase, val);
+  auto view = GetViewFromArgument(&vocbase, val);
 
   if (view == nullptr) {
     TRI_V8_RETURN_NULL();
@@ -345,14 +329,8 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  std::vector<std::shared_ptr<LogicalView>> views = vocbase->views();
+  auto& vocbase = GetContextVocBase(isolate);
+  auto views = vocbase.views();
 
   std::sort(views.begin(), views.end(),
             [](std::shared_ptr<LogicalView> const& lhs,
