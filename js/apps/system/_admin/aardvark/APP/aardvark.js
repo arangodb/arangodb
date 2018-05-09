@@ -374,7 +374,18 @@ authRouter.get('/replication/mode', function (req, res) {
     res.throw('not allowed');
   }
 
-  let endpoints = request.get('/_api/cluster/endpoints');
+  let endpoints;
+  let bearer;
+
+  if (internal.authenticationEnabled()) {
+    bearer = req.headers.authorization;
+    endpoints = request.get('/_api/cluster/endpoints', {
+      auth: bearer
+    });
+  } else {
+    endpoints = request.get('/_api/cluster/endpoints');
+  }
+
   let mode = 0;
   let role = null;
   // active failover
