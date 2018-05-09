@@ -1,6 +1,15 @@
 Arangobench Startup Options
 ===========================
 
+Usage: `arangobench [<options>]`
+
+@startDocuBlock program_options_arangobench
+
+Full description
+----------------
+
+{### TODO: Compare the differences and remove everything that is already in the auto-generated tables ###}
+
 - *--async*: Send asynchronous requests. The default value is *false*.
 
 - *--batch-size*: Number of operations to send per batch. Use 0 to disable

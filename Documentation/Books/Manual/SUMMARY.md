@@ -23,6 +23,7 @@
   * [Kubernetes](Tutorials/Kubernetes/README.md)
 * [Programs & Tools](Programs/README.md)
   * [ArangoDB server](Programs/Arangod/README.md)
+    * [Options](Programs/Arangod/Options.md)
   * [Web Interface](Programs/WebInterface/README.md)
     * [Dashboard](Programs/WebInterface/Dashboard.md)
     * [Cluster](Programs/WebInterface/Cluster.md)
@@ -36,6 +37,7 @@
   * [ArangoDB Shell](Programs/Arangosh/README.md)
     * [Examples](Programs/Arangosh/Examples.md)
     * [Details](Programs/Arangosh/Details.md)
+    * [Options](Programs/Arangosh/Options.md)
 #   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/Options.md)
@@ -64,12 +66,6 @@
 
 * [Data models & modeling](DataModeling/README.md)
   * [Concepts](DataModeling/Concepts.md)
-{###
-Multi-model
-  Key-value store
-  Document store
-  Graph store
-###}
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)
     * [Notes about Databases](DataModeling/Databases/Notes.md)
