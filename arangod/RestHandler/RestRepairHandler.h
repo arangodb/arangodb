@@ -60,7 +60,7 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
  public:
   RestRepairHandler(GeneralRequest* request, GeneralResponse* response);
 
-  char const* name() const final { return "RestRepairHandler"; }
+  char const* name() const override final { return "RestRepairHandler"; }
 
   bool isDirect() const override { return false; }
 
