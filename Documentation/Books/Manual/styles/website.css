@@ -38,11 +38,14 @@ div.example_show_button {
 
 .book .book-body .program-options code {
   background-color: #f0f0f0;
-  white-space: nowrap;
 }
 
 .book .book-body .program-options td {
   vertical-align: top;
+}
+
+.book .book-body .program-options td:first-child {
+  min-width: 250px;
 }
 
 .localized-footer {
