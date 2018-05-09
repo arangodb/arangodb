@@ -787,7 +787,7 @@ router.post('/:graph/edge/:collection', function (req, res) {
     if (!found) {
       throw Object.assign(
         new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
-        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, cause: e}
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code}
       );
     }
   } catch (e) {
@@ -810,7 +810,7 @@ router.post('/:graph/edge/:collection', function (req, res) {
     if (!found) {
       throw Object.assign(
         new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
-        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, cause: e}
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code}
       );
     }
   } catch (e) {
