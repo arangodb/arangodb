@@ -33,7 +33,7 @@ after you've downloaded the file. See https://download.arangodb.com/.
 
 
 As the package will have started the standalone instance, you might want to
-stop it now.
+stop it now. Otherwise it might block a port for the starter.
 
 ```
 $ service arangodb3 stop
@@ -81,18 +81,36 @@ kill -9 <pid=of-starter>
 
 When using a supervisor like SystemD, this will happen automatically. In case the Starter was initiated manually, the arangodb processes have to be started manually with the same command that has been used before.
 
-- Send an HTTP `POST` request with empty body to `/database-auto-upgrade` on one of the starters.
+## Send an HTTP `POST` request on every of the starter
 
-The Starter will respond to this request depending on the deployment mode.
+The `POST` request with an empty body hast to be sent to `/database-auto-upgrade` on every starter one by one. Once the upgrade on the first starter has finished, the same request can be send to the next one. The default port for the first starter is 8528. Ports of additional starters are increased by 5 (until 3.3.8/3.2.15) or 10 (since 3.3.8/3.2.15). Please not that the starter port is also shown in the starter output e.g. `Listening on 0.0.0.0:8528 (:8528)`.
 
-If the deployment mode is `single`, the Starter will:
+### `POST` request via curl
+```
+curl -X POST --dump - http://localhost:8538/database-auto-upgrade
 
+HTTP/1.1 200 OK
+Date: Wed, 09 May 2018 10:35:35 GMT
+Content-Length: 2
+Content-Type: text/plain; charset=utf-8
+```
+The response `200 OK` signals that the request was accepted and the upgrade process for this starter has begun.
+
+## Starter response
+
+The Starter will respond to the HTTP `POST` request depending on the deployment mode.
+
+### Deployment mode `single`
+
+ The Starter will:
 - Restart the single server with an additional `--database.auto-upgrade=true` argument.
   The server will perform the auto-upgrade and then stop.
   After that the Starter will automatically restart it with its normal arguments.
 
-If the deployment mode is `activefailover`, the Starters will:
 
+### Deployment mode `activefailover`
+
+ The Starter will:
 - Perform a version check on all servers, ensuring it supports the upgrade procedure.
   TODO: Specify minimal patch version for 3.2, 3.3 & 3.4,
 - Turning off supervision in the Agency and wait for it to be confirmed.
@@ -104,8 +122,10 @@ If the deployment mode is `activefailover`, the Starters will:
   After that the Starter will automatically restart it with its normal arguments.
 - Turning on supervision in the Agency and wait for it to be confirmed.
 
-If the deployment mode is `cluster`, the Starters will:
 
+### Deployment mode `cluster`
+
+ The Starter will:
 - Perform a version check on all servers, ensuring it supports the upgrade procedure.
   TODO: Specify minimal patch version for 3.2, 3.3 & 3.4,
 - Turning off supervision in the Agency and wait for it to be confirmed.
@@ -121,3 +141,65 @@ If the deployment mode is `cluster`, the Starters will:
 - Turning on supervision in the Agency and wait for it to be confirmed.
 
 Once all servers in the starter have upgraded, repeat the procedure for the next starter.
+
+### Working Example
+
+Upgrade from 3.3.7 to 3.3.8:
+Once a `POST` request to the first starter is sent, the following output is shown when the upgrade has finished:
+```
+2018/05/09 12:33:02 Upgrading agent
+2018/05/09 12:33:05 restarting agent
+2018/05/09 12:33:05 Looking for a running instance of agent on port 8531
+2018/05/09 12:33:05 Starting agent on port 8531
+2018/05/09 12:33:05 Agency is not yet healthy: Agent http://localhost:8531 is not responding
+2018/05/09 12:33:06 restarting agent
+2018/05/09 12:33:06 Looking for a running instance of agent on port 8531
+2018/05/09 12:33:06 Starting agent on port 8531
+2018/05/09 12:33:07 agent up and running (version 3.3.8).
+2018/05/09 12:33:10 Upgrading dbserver
+2018/05/09 12:33:15 restarting dbserver
+2018/05/09 12:33:15 Looking for a running instance of dbserver on port 8530
+2018/05/09 12:33:15 Starting dbserver on port 8530
+2018/05/09 12:33:15 DBServers are not yet all responding: Get http://localhost:8530/_admin/server/id: dial tcp 127.0.0.1:8530: connect: connection refused
+2018/05/09 12:33:15 restarting dbserver
+2018/05/09 12:33:15 Looking for a running instance of dbserver on port 8530
+2018/05/09 12:33:15 Starting dbserver on port 8530
+2018/05/09 12:33:16 dbserver up and running (version 3.3.8).
+2018/05/09 12:33:20 Upgrading coordinator
+2018/05/09 12:33:23 restarting coordinator
+2018/05/09 12:33:23 Looking for a running instance of coordinator on port 8529
+2018/05/09 12:33:23 Starting coordinator on port 8529
+2018/05/09 12:33:23 Coordinator are not yet all responding: Get http://localhost:8529/_admin/server/id: dial tcp 127.0.0.1:8529: connect: connection refused
+2018/05/09 12:33:23 restarting coordinator
+2018/05/09 12:33:23 Looking for a running instance of coordinator on port 8529
+2018/05/09 12:33:23 Starting coordinator on port 8529
+2018/05/09 12:33:24 coordinator up and running (version 3.3.8).
+2018/05/09 12:33:24 Your cluster can now be accessed with a browser at `http://localhost:8529` or
+2018/05/09 12:33:24 using `arangosh --server.endpoint tcp://localhost:8529`.
+2018/05/09 12:33:28 Server versions:
+2018/05/09 12:33:28 agent 1        3.3.8
+2018/05/09 12:33:28 agent 2        3.3.7
+2018/05/09 12:33:28 agent 3        3.3.7
+2018/05/09 12:33:28 dbserver 1     3.3.8
+2018/05/09 12:33:28 dbserver 2     3.3.7
+2018/05/09 12:33:28 dbserver 3     3.3.7
+2018/05/09 12:33:28 coordinator 1  3.3.8
+2018/05/09 12:33:28 coordinator 2  3.3.7
+2018/05/09 12:33:28 coordinator 3  3.3.7
+2018/05/09 12:33:28 Upgrading of all servers controlled by this starter done, you can continue with the next starter now.
+```
+Agent1, dbserver 1 and coordinator 1 are successively updated and the last messages indicates that the `POST` request can be sent so the next starter. After this procedure has been repeated for every starter the last starter shows:
+```
+2018/05/09 12:35:59 Server versions:
+2018/05/09 12:35:59 agent 1        3.3.8
+2018/05/09 12:35:59 agent 2        3.3.8
+2018/05/09 12:35:59 agent 3        3.3.8
+2018/05/09 12:35:59 dbserver 1     3.3.8
+2018/05/09 12:35:59 dbserver 2     3.3.8
+2018/05/09 12:35:59 dbserver 3     3.3.8
+2018/05/09 12:35:59 coordinator 1  3.3.8
+2018/05/09 12:35:59 coordinator 2  3.3.8
+2018/05/09 12:35:59 coordinator 3  3.3.8
+2018/05/09 12:35:59 Upgrading done.
+```
+All agents, dbservers and coordinators are upgraded and the rolling starter upgrade has successfully finished.
