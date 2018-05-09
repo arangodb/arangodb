@@ -24,23 +24,19 @@ class HttpCommTask final : public GeneralCommTask {
     return arangodb::Endpoint::TransportType::HTTP;
   }
 
-  // convert from GeneralResponse to httpResponse
-  void addResponse(GeneralResponse& response,
-                   RequestStatistics* stat) override;
-
  private:
   bool processRead(double startTime) override;
   void compactify() override;
 
   std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) override final;
-
-  void handleSimpleError(rest::ResponseCode code, GeneralRequest const&,
-                         uint64_t messageId = 1) override final;
-
-  void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
-                         std::string const& errorMessage,
-                         uint64_t messageId = 1) override final;
+  
+  void addResponse(GeneralResponse& response,
+                   RequestStatistics* stat) override;
+  
+  /// @brief send error response including response body
+  void addSimpleResponse(rest::ResponseCode, rest::ContentType,
+                         uint64_t messageId, velocypack::Buffer<uint8_t>);
 
   bool allowDirectHandling() const override final { return true; }
 

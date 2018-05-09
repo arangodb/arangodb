@@ -60,16 +60,14 @@ std::string const& lookupStringInMap(
 }
 
 VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
-                       VstInputMessage&& message, uint64_t messageId, bool isFake)
+                       VstInputMessage&& message, uint64_t messageId)
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
       _messageId(messageId) {
   _protocol = "vst";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;
-  if(!isFake){
-    parseHeaderInformation();
-  }
+  parseHeaderInformation();
   _user = "root";
 }
 

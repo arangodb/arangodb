@@ -87,30 +87,6 @@ GeneralCommTask::~GeneralCommTask() {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
-  MUTEX_LOCKER(locker, _statisticsMutex);
-
-  auto iter = _statisticsMap.find(id);
-
-  if (iter == _statisticsMap.end()) {
-    if (stat != nullptr) {
-      _statisticsMap.emplace(std::make_pair(id, stat));
-    }
-  } else {
-    iter->second->release();
-
-    if (stat != nullptr) {
-      iter->second = stat;
-    } else {
-      _statisticsMap.erase(iter);
-    }
-  }
-}
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
@@ -139,6 +115,7 @@ namespace {
   }
 }
 
+/// Set the appropriate requestContext
 bool GeneralCommTask::resolveRequestContext(GeneralRequest* request) {
   TRI_vocbase_t* vocbase = ::lookupDatabaseFromRequest(request);
   
@@ -163,6 +140,7 @@ bool GeneralCommTask::resolveRequestContext(GeneralRequest* request) {
   return true;
 }
 
+/// Push this request into the execution pipeline
 void GeneralCommTask::executeRequest(
     std::unique_ptr<GeneralRequest>&& request,
     std::unique_ptr<GeneralResponse>&& response) {
@@ -181,7 +159,8 @@ void GeneralCommTask::executeRequest(
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "could not find corresponding request/response";
   }
-
+  
+  rest::ContentType respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   std::shared_ptr<RestHandler> handler(
       GeneralServerFeature::HANDLER_FACTORY->createHandler(
@@ -191,19 +170,19 @@ void GeneralCommTask::executeRequest(
   if (handler == nullptr) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
-    handleSimpleError(rest::ResponseCode::NOT_FOUND, *request, messageId);
+    addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType,
+                      messageId, VPackBuffer<uint8_t>());
     return;
   }
 
   // asynchronous request
-  bool ok = false;
-
   if (found && (asyncExecution == "true" || asyncExecution == "store")) {
     RequestStatistics::SET_ASYNC(statistics(messageId));
     transferStatisticsTo(messageId, handler.get());
 
     uint64_t jobId = 0;
 
+    bool ok = false;
     if (asyncExecution == "store") {
       // persist the responses
       ok = handleRequestAsync(std::move(handler), &jobId);
@@ -222,22 +201,35 @@ void GeneralCommTask::executeRequest(
       }
 
       addResponse(*response, nullptr);
-      return;
     } else {
-      handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request,
-                        TRI_ERROR_QUEUE_FULL,
-                        TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
+      addErrorResponse(rest::ResponseCode::SERVER_ERROR, request->contentTypeResponse(),
+                       messageId, TRI_ERROR_QUEUE_FULL, TRI_errno_string(TRI_ERROR_QUEUE_FULL));
     }
-  }
-
-  // synchronous request
-  else {
+  } else {
+    // synchronous request
     transferStatisticsTo(messageId, handler.get());
-    ok = handleRequestSync(std::move(handler));
+    // handleRequestSync adds an error response
+    handleRequestSync(std::move(handler));
   }
+}
 
-  if (!ok) {
-    handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, messageId);
+void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
+  MUTEX_LOCKER(locker, _statisticsMutex);
+  
+  auto iter = _statisticsMap.find(id);
+  
+  if (iter == _statisticsMap.end()) {
+    if (stat != nullptr) {
+      _statisticsMap.emplace(std::make_pair(id, stat));
+    }
+  } else {
+    iter->second->release();
+    
+    if (stat != nullptr) {
+      iter->second = stat;
+    } else {
+      _statisticsMap.erase(iter);
+    }
   }
 }
 
@@ -277,6 +269,21 @@ RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
 void GeneralCommTask::transferStatisticsTo(uint64_t id, RestHandler* handler) {
   RequestStatistics* stat = stealStatistics(id);
   handler->setStatistics(stat);
+}
+
+/// @brief send response including error response body
+void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respType,
+                                       uint64_t messageId, int errorNum, std::string const& msg) {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
+  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(msg));
+  builder.add(StaticStrings::Code, VPackValue((int)code));
+  builder.close();
+  
+  addSimpleResponse(code, respType, messageId, std::move(buffer));
 }
 
 // -----------------------------------------------------------------------------
@@ -336,9 +343,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
   if (!ok) {
-    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                      *(handler->request()), TRI_ERROR_QUEUE_FULL,
-                      TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
+    addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, handler->request()->contentTypeResponse(),
+                     messageId, TRI_ERROR_QUEUE_FULL, TRI_errno_string(TRI_ERROR_QUEUE_FULL));
   }
 
   return ok;

@@ -73,38 +73,26 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   ConnectionStatistics::SET_HTTP(_connectionStatistics);
 }
 
-void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t /* messageId */) {
-  HttpResponse response(code, leaseStringBuffer(0));
-  response.setContentType(req.contentTypeResponse());
-  addResponse(response, stealStatistics(1UL));
-}
-
-void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, int errorNum,
-                                     std::string const& errorMessage,
-                                     uint64_t /* messageId */) {
-  
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.openObject();
-  builder.add(StaticStrings::Error, VPackValue(true));
-  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
-  builder.add(StaticStrings::Code, VPackValue((int)code));
-  builder.close();
-  
+/// @brief send error response including response body
+void HttpCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
+                                     uint64_t /*messageId*/, velocypack::Buffer<uint8_t> buffer) {
   try {
     HttpResponse resp(code, leaseStringBuffer(buffer.size()));
-    resp.setContentType(req.contentTypeResponse());
-    resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    resp.setContentType(respType);
+    if (!buffer.empty()) {
+      resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    }
     addResponse(resp, stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
-        << "handleSimpleError received an exception, closing connection:"
-        << ex.what();
+    << "addSimpleResponse received an exception, closing connection:"
+    << ex.what();
+    _closeRequested = true;
     // _clientClosed = true;
   } catch (...) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
-        << "handleSimpleError received an exception, closing connection";
+    << "addSimpleResponse received an exception, closing connection";
+    _closeRequested = true;
     // _clientClosed = true;
   }
 }
@@ -277,11 +265,9 @@ bool HttpCommTask::processRead(double startTime) {
           << "maximal header size is " << MaximalHeaderSize
           << ", request header size is " << headerLength;
 
-      HttpRequest tmpRequest(_connectionInfo, nullptr, 0, _allowMethodOverride);
       // header is too large
-      handleSimpleError(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE, tmpRequest,
-                        1);  // ID does not matter for http (http default is 1)
-
+      addSimpleResponse(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+                        rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
       _closeRequested = true;
       return false;
     }
@@ -339,7 +325,8 @@ bool HttpCommTask::processRead(double startTime) {
 
       if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
-        handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, *_incompleteRequest, 1);
+        addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, rest::ContentType::UNSET,
+                          1, VPackBuffer<uint8_t>());
         LOG_TOPIC(WARN, Logger::FIXME) << "HTTP version not supported";
         _closeRequested = true;
         return false;
@@ -349,7 +336,8 @@ bool HttpCommTask::processRead(double startTime) {
       _fullUrl = _incompleteRequest->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, *_incompleteRequest, 1);
+        addSimpleResponse(rest::ResponseCode::REQUEST_URI_TOO_LONG, rest::ContentType::UNSET,
+                          1, VPackBuffer<uint8_t>());
         LOG_TOPIC(WARN, Logger::REQUESTS) << "requst uri too long";
         _closeRequested = true;
         return false;
@@ -448,7 +436,8 @@ bool HttpCommTask::processRead(double startTime) {
                     << "'";
 
           // bad request, method not allowed
-          handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, *_incompleteRequest, 1);
+          addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED, rest::ContentType::UNSET,
+                            1, VPackBuffer<uint8_t>());
 
           _closeRequested = true;
           return false;
@@ -496,8 +485,8 @@ bool HttpCommTask::processRead(double startTime) {
         std::string uncompressed;
         if (!StringUtils::gzipUncompress(_readBuffer.c_str() + _bodyPosition,
                                          _bodyLength, uncompressed)) {
-          handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
-                            "gzip decoding error", 1);
+          addErrorResponse(rest::ResponseCode::BAD, _incompleteRequest->contentTypeResponse(), 1,
+                           TRI_ERROR_BAD_PARAMETER, "gzip decoding error");
           return false;
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
@@ -506,8 +495,8 @@ bool HttpCommTask::processRead(double startTime) {
         std::string uncompressed;
         if (!StringUtils::gzipDeflate(_readBuffer.c_str() + _bodyPosition,
                                       _bodyLength, uncompressed)) {
-          handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
-                            "gzip deflate error", 1);
+          addErrorResponse(rest::ResponseCode::BAD, _incompleteRequest->contentTypeResponse(), 1,
+                           TRI_ERROR_BAD_PARAMETER, "gzip deflate error");
           return false;
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
@@ -529,7 +518,6 @@ bool HttpCommTask::processRead(double startTime) {
   }
 
   if (!handleRequest) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "Skipping request for now " << _peer->peerPort();
     return false;
   }
 
@@ -586,8 +574,9 @@ bool HttpCommTask::processRead(double startTime) {
       processRequest(std::move(_incompleteRequest));
     }
   } else if (authResult == rest::ResponseCode::NOT_FOUND) { // not found
-    handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
+    addErrorResponse(authResult, _incompleteRequest->contentTypeResponse(), 1,
+                     TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
   } else {  // not authenticated, might be because _users is out of sync    
     ServerState::Mode mode = ServerState::serverMode();
     if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
@@ -667,7 +656,8 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    handleSimpleError(rest::ResponseCode::LENGTH_REQUIRED, *request);
+    addSimpleResponse(rest::ResponseCode::LENGTH_REQUIRED, rest::ContentType::UNSET,
+                      1, VPackBuffer<uint8_t>());
     return false;
   }
 
@@ -684,8 +674,8 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    handleSimpleError(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE, *request,
-                      0);  // FIXME
+    addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE, rest::ContentType::UNSET,
+                      1, VPackBuffer<uint8_t>());
     return false;
   }
 

@@ -62,9 +62,9 @@ class GeneralServer;
 //     response and still does some work afterwards. It is even possible, that a
 //     request generates a push stream.
 //
-//     As soon as a response is available, `handleResponse()` will be called.
-//     This in turn calls `addResponse()` which must be implemented in the
-//     sub-class. It will be called with an response object and an indicator if
+//     As soon as a response is available, `addResponse()` will be called.
+//     which must be implemented in the sub-class.
+//     It will be called with an response object and an indicator if
 //     an error has occurred.
 //
 //     It is the responsibility of the sub-class to govern what is supported.
@@ -74,7 +74,7 @@ class GeneralServer;
 //     VelocyPack on the other hand, allows multiple active requests. Partial
 //     responses are identified by a request id.
 //
-// (5) Error handling: In case of an error `handleSimpleError()` will be
+// (5) Error handling: In case of an error `addErrorResponse()` will be
 //     called. This will call `addResponse()` with an error indicator, which in
 //     turn will end the responding request.
 //
@@ -92,31 +92,38 @@ class GeneralCommTask : public SocketTask {
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
-  void setStatistics(uint64_t, RequestStatistics*);
-
  protected:
+  
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
-
+  
+  /// @brief send simple response including response body
+  virtual void addSimpleResponse(rest::ResponseCode, rest::ContentType,
+                                 uint64_t messageId, velocypack::Buffer<uint8_t>) = 0;
+  
+  /// @brief send the response to the client.
   virtual void addResponse(GeneralResponse &, RequestStatistics *) = 0;
-
-  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, uint64_t messageId) = 0;
-
-  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
-                                 std::string const& errorMessage,
-                                 uint64_t messageId) = 0;
-
+  
   virtual bool allowDirectHandling() const = 0;
 
  protected:
-  bool resolveRequestContext(GeneralRequest* request);
+  
+  /// Set the appropriate requestContext
+  static bool resolveRequestContext(GeneralRequest* request);
+  
+  /// Push this request into the execution pipeline
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
                       std::unique_ptr<GeneralResponse>&&);
 
+  void setStatistics(uint64_t, RequestStatistics*);
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);
   void transferStatisticsTo(uint64_t, RestHandler*);
+  
+  /// @brief send response including error response body
+  void addErrorResponse(rest::ResponseCode, rest::ContentType,
+                        uint64_t messageId, int code, std::string const&);
   
  protected:
   GeneralServer* const _server;
