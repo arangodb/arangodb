@@ -779,6 +779,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   }
 
   if (query == nullptr) {
+    LOG_TOPIC_IF(ERR, Logger::AQL, iterations == MaxIterations) << "Timeout waiting for query " << _qId;
     _qId = 0;
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;

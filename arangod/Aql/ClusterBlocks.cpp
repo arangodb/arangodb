@@ -342,19 +342,25 @@ AqlItemBlock* GatherBlock::getSome(size_t atMost) {
       TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
       AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
       if (!x.isEmpty()) {
-        auto it = cache[val.first].find(x);
+        if (x.requiresDestruction()) {
+          // complex value, with ownership transfer
+          auto it = cache[val.first].find(x);
 
-        if (it == cache[val.first].end()) {
-          AqlValue y = x.clone();
-          try {
-            res->setValue(i, col, y);
-          } catch (...) {
-            y.destroy();
-            throw;
+          if (it == cache[val.first].end()) {
+            AqlValue y = x.clone();
+            try {
+              res->setValue(i, col, y);
+            } catch (...) {
+              y.destroy();
+              throw;
+            }
+            cache[val.first].emplace(x, y);
+          } else {
+            res->setValue(i, col, (*it).second);
           }
-          cache[val.first].emplace(x, y);
         } else {
-          res->setValue(i, col, (*it).second);
+          // simple value, no ownership transfer needed
+          res->setValue(i, col, x);
         }
       }
     }
@@ -1281,7 +1287,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     // nullptr only happens on controlled shutdown
 
     // Later, we probably want to set these sensibly:
-    ClientTransactionID const clientTransactionId = "AQL";
+    ClientTransactionID const clientTransactionId = std::string("AQL");
     CoordTransactionID const coordTransactionId = TRI_NewTickServer();
     std::unordered_map<std::string, std::string> headers;
     if (!_ownName.empty()) {
@@ -1293,14 +1299,13 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
       JobGuard guard(SchedulerFeature::SCHEDULER);
       guard.block();
 
+      std::string const url = std::string("/_db/") +
+      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->name()) +
+      urlPart + _queryId;
       auto result =
           cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                          std::string("/_db/") +
-                              arangodb::basics::StringUtils::urlEncode(
-                                  _engine->getQuery()->trx()->vocbase()->name()) +
-                              urlPart + _queryId,
-                          body, headers, defaultTimeOut);
-
+                          std::move(url), body, headers, defaultTimeOut);
+      
       return result;
     }
   }

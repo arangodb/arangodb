@@ -39,7 +39,7 @@ class JobGuard : public SameThreadAsserter {
   JobGuard(JobGuard const&) = delete;
   JobGuard& operator=(JobGuard const&) = delete;
 
-  explicit JobGuard(EventLoop const& loop) : SameThreadAsserter(), _scheduler(loop._scheduler) {}
+  explicit JobGuard(EventLoop const& loop) : SameThreadAsserter(), _scheduler(loop.scheduler) {}
   explicit JobGuard(rest::Scheduler* scheduler) : SameThreadAsserter(), _scheduler(scheduler) {}
   ~JobGuard() { release(); }
 

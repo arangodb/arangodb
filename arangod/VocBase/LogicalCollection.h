@@ -232,9 +232,6 @@ class LogicalCollection: public LogicalDataSource {
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
-  void toVelocyPack(velocypack::Builder&, bool translateCids,
-                    bool forPersistence = false) const;
-
   void toVelocyPackIgnore(velocypack::Builder& result,
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
       bool forPersistence) const;
@@ -345,6 +342,13 @@ class LogicalCollection: public LogicalDataSource {
   // with the checksum provided in the reference checksum
   Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
+ protected:
+  virtual arangodb::Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override;
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -354,17 +358,14 @@ class LogicalCollection: public LogicalDataSource {
 
   void increaseInternalVersion();
 
-  std::string generateGloballyUniqueId() const;
-
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
- protected:
   // SECTION: Meta Information
   //
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-  
+
   bool const _isAStub;
 
   // @brief Collection type
@@ -411,10 +412,6 @@ class LogicalCollection: public LogicalDataSource {
   std::shared_ptr<velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
-
-  /// @brief globally unique collection id. assigned by the
-  /// initial creator of the collection
-  std::string _globallyUniqueId;
 
   std::unique_ptr<PhysicalCollection> _physical;
 

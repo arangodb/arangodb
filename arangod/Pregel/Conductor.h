@@ -26,6 +26,8 @@
 #include <string>
 
 #include <boost/date_time/posix_time/posix_time.hpp>
+#include <asio/deadline_timer.hpp>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterComm.h"
@@ -90,7 +92,7 @@ class Conductor {
   double _startTimeSecs = 0;
   double _computationStartTimeSecs = 0;
   double _endTimeSecs = 0;
-  std::unique_ptr<boost::asio::deadline_timer> _boost_timer;
+  std::unique_ptr<asio::deadline_timer> _boost_timer;
 
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& path, VPackSlice additional);

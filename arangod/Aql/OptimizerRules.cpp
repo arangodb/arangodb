@@ -2328,6 +2328,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::ENUMERATE_COLLECTION:
         return handleEnumerateCollectionNode(
             static_cast<EnumerateCollectionNode*>(en));
+
+      default: {
+        // should not reach this point
+        TRI_ASSERT(false);
+      }
     }
     return true;
   }
@@ -3657,6 +3662,11 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
             // ready to rumble!
           }
           break;
+
+        default: {
+          // should not reach this point
+          TRI_ASSERT(false);
+        }
       }
 
       if (stopSearching) {
@@ -3728,6 +3738,11 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::SCATTER_IRESEARCH_VIEW:
 #endif
+        case EN::MAX_NODE_TYPE_VALUE: {
+          // should not reach this point
+          TRI_ASSERT(false);
+        }
+
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
           // CalculationNodes that can be moved to the DBservers have
@@ -3876,14 +3891,20 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         break;
       }
       
-      case EN::ENUMERATE_COLLECTION: 
-      case EN::UPSERT: {
+      case EN::ENUMERATE_COLLECTION: {
         // track usage of the collection
         auto collection = static_cast<EnumerateCollectionNode const*>(en)->collection();
         _shardsUsed[collection].emplace("all");
         break;
       }
-      
+
+      case EN::UPSERT: {
+        // track usage of the collection
+        auto collection = static_cast<ModificationNode const*>(en)->collection();
+        _shardsUsed[collection].emplace("all");
+        break;
+      }
+
       case EN::INSERT:
       case EN::REPLACE:
       case EN::UPDATE:
@@ -4238,6 +4259,11 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       case EN::TRAVERSAL:
       case EN::SHORTEST_PATH: {
         // if we meet any of the above, then we abort . . .
+      }
+
+      default: {
+        // should not reach this point
+        TRI_ASSERT(false);
       }
     }
     _toUnlink.clear();

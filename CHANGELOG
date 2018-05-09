@@ -1,6 +1,10 @@
 devel
 -----
 
+* added `/_admin/repair/distributeShardsLike` that repairs collections with
+  distributeShardsLike where the shards aren't actually distributed like in the
+  prototype collection, as could happen due to internal issue #1770
+
 * We added a new geo-spatial index implementation. On the rocksdb storage-engine all old installations
   will need to be upgraded with `--database.auto-upgrade true`. New geo indexes will now only report with
   the type `geo` instead of `geo1` or `geo2`. The index types `geo1` and `geo2` are now deprecated.

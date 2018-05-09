@@ -120,6 +120,7 @@ add_executable(
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
+  Cluster/ClusterRepairsTest.cpp
   Cluster/ShardDistributionReporterTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoJsonTest.cpp

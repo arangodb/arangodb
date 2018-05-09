@@ -308,7 +308,7 @@ class Query {
 
  public:
   constexpr static uint64_t DontCache = 0;
-
+  
  private:
   /// @brief query id
   TRI_voc_tick_t _id;

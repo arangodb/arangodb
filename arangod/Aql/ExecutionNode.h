@@ -131,17 +131,11 @@ class ExecutionNode {
     INDEX = 23,
     SHORTEST_PATH = 24,
 #ifdef USE_IRESEARCH
-    ENUMERATE_IRESEARCH_VIEW = 25,
-    SCATTER_IRESEARCH_VIEW = 26
+    ENUMERATE_IRESEARCH_VIEW,
+    SCATTER_IRESEARCH_VIEW,
 #endif
-    // adjust MaxNodeTypeValue below when new ExecutionNode types are added!
+    MAX_NODE_TYPE_VALUE
   };
-
-#ifdef USE_IRESEARCH
-  static constexpr size_t MaxNodeTypeValue = ENUMERATE_IRESEARCH_VIEW;
-#else 
-  static constexpr size_t MaxNodeTypeValue = SHORTEST_PATH;
-#endif
 
   ExecutionNode() = delete;
   ExecutionNode(ExecutionNode const&) = delete;

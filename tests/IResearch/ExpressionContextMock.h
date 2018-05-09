@@ -41,18 +41,18 @@ struct ExpressionContextMock final : arangodb::aql::ExpressionContext {
 
   virtual ~ExpressionContextMock();
 
-  virtual size_t numRegisters() const{
+  virtual size_t numRegisters() const override {
     TRI_ASSERT(false);
     return 0;
   }
 
-  virtual arangodb::aql::AqlValue const& getRegisterValue(size_t) const {
+  virtual arangodb::aql::AqlValue const& getRegisterValue(size_t) const override {
     TRI_ASSERT(false);
     static arangodb::aql::AqlValue EMPTY;
     return EMPTY;
   }
 
-  virtual arangodb::aql::Variable const* getVariable(size_t i) const {
+  virtual arangodb::aql::Variable const* getVariable(size_t i) const override {
     TRI_ASSERT(false);
     return nullptr;
   }
@@ -61,7 +61,7 @@ struct ExpressionContextMock final : arangodb::aql::ExpressionContext {
     arangodb::aql::Variable const* variable,
     bool doCopy,
     bool& mustDestroy
-  ) const;
+  ) const override;
 
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
 }; // ExpressionContextMock

@@ -29,7 +29,6 @@
 #include "utils/utf8_path.hpp"
 #include "utils/log.hpp"
 
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/AstNode.h"
@@ -136,7 +135,6 @@ struct IResearchViewCoordinatorSetup {
     features.emplace_back(auth = new arangodb::AuthenticationFeature(&server), false);
     features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
@@ -239,7 +237,7 @@ SECTION("test_rename") {
 
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
 
-  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+  auto view = arangodb::LogicalView::create(vocbase, json->slice(), true);
   CHECK(nullptr != view);
   CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
   CHECK(0 == view->planVersion());
@@ -261,7 +259,7 @@ SECTION("visit_collections") {
 
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
 
-  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+  auto view = arangodb::LogicalView::create(vocbase, json->slice(), true);
 
   CHECK(nullptr != view);
   CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -288,7 +286,7 @@ SECTION("test_defaults") {
   // view definition with LogicalView (for persistence)
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
 
-  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+  auto view = arangodb::LogicalView::create(vocbase, json->slice(), true);
 
   CHECK(nullptr != view);
   CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
@@ -314,8 +312,10 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK(6 == slice.length());
+    CHECK(8 == slice.length());
+    CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("id").copyString() == "1");
+    CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.hasKey("planId"));
@@ -378,8 +378,10 @@ SECTION("test_defaults") {
     builder.close();
     auto slice = builder.slice();
 
-    CHECK(5 == slice.length());
+    CHECK(7 == slice.length());
+    CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("id").copyString() == "1");
+    CHECK((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() && false == slice.get("isSystem").getBoolean()));
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(false == slice.get("deleted").getBool());
