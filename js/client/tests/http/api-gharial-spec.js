@@ -189,7 +189,7 @@ describe('_api/gharial', () => {
       body: JSON.stringify(edgeDef)
     });
     expect(req.statusCode).to.equal(404);
-    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
     expect(db._collection(vName)).to.not.be.null;
@@ -213,7 +213,7 @@ describe('_api/gharial', () => {
       body: JSON.stringify(edgeDef)
     });
     expect(req.statusCode).to.equal(404);
-    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
     expect(db._collection(vName)).to.not.be.null;
@@ -237,7 +237,7 @@ describe('_api/gharial', () => {
       body: JSON.stringify(edgeDef)
     });
     expect(req.statusCode).to.equal(404);
-    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code);
 
     expect(db._collection(eName)).to.not.be.null;
     expect(db._collection(vName)).to.not.be.null;
