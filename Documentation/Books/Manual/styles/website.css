@@ -3,6 +3,8 @@ div.example_show_button {
   text-align: center;
   position: relative;
   top: -10px;
+  display: flex;
+  justify-content: center;
 }
 
 .book .book-body .navigation.navigation-next {
