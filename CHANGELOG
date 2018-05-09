@@ -1,6 +1,9 @@
 v3.2.14 (2018-04-20)
 --------------------
 
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
+
 * field "$schema" in Foxx manifest.json files no longer produce warnings
 
 * added `@arangodb/locals` module to expose the Foxx service context as an
