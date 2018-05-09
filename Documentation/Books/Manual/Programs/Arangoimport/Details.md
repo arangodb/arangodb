@@ -15,7 +15,7 @@ The import data must, for each edge to import, contain at least the *_from* and
 It is necessary that these attributes are set for all records, and point to
 valid document IDs in existing collections.
 
-*Examples*
+*Example*
 
 ```js
 { "_from" : "users/1234", "_to" : "users/4321", "desc" : "1234 is connected to 4321" }

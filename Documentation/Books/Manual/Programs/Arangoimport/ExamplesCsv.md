@@ -122,7 +122,7 @@ with the *--separator* argument.
 
 An example command line to execute the TSV import is:
 
-    > arangoimport --file "data.tsv" --type tsv --collection "users"
+    arangoimport --file "data.tsv" --type tsv --collection "users"
 
 Attribute Name Translation
 --------------------------
