@@ -64,7 +64,7 @@ namespace {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
 struct NodeCounter final : public WalkerWorker<ExecutionNode> {
-  std::array<uint32_t, ExecutionNode::MaxNodeTypeValue + 1> counts;
+  std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
 
   NodeCounter() : counts{} {}
 
