@@ -1,11 +1,9 @@
-Exporting Data from an ArangoDB database
-======================================
+Arangoexport Examples
+=====================
 
-To export data from an ArangoDB server instance, you will need to invoke _arangoexport_.
-_arangoexport_ can be invoked by executing
-the following command:
+_arangoexport_ can be invoked by executing the following command in a command line:
 
-    unix> arangoexport --collection test --output-directory "dump"
+    arangoexport --collection test --output-directory "dump"
 
 This exports the collections *test* into the directory *dump* as one big json array. Every entry
 in this array is one document from the collection without a specific order. To export more than
@@ -17,17 +15,17 @@ _arangoexport_ will by default connect to the *_system* database using the defau
 endpoint. If you want to connect to a different database or a different endpoint, 
 or use authentication, you can use the following command-line options:
 
-* *--server.database <string>*: name of the database to connect to
-* *--server.endpoint <string>*: endpoint to connect to
-* *--server.username <string>*: username
-* *--server.password <string>*: password to use (omit this and you'll be prompted for the
+- *--server.database <string>*: name of the database to connect to
+- *--server.endpoint <string>*: endpoint to connect to
+- *--server.username <string>*: username
+- *--server.password <string>*: password to use (omit this and you'll be prompted for the
   password)
-* *--server.authentication <bool>*: whether or not to use authentication
+- *--server.authentication <bool>*: whether or not to use authentication
 
 Here's an example of exporting data from a non-standard endpoint, using a dedicated
-[database name](../Appendix/Glossary.md#database-name):
+[database name](../../Appendix/Glossary.md#database-name):
 
-    unix> arangoexport --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --collection test --output-directory "my-export"
+    arangoexport --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --collection test --output-directory "my-export"
 
 When finished, _arangoexport_ will print out a summary line with some aggregate 
 statistics about what it did, e.g.:
@@ -38,7 +36,7 @@ statistics about what it did, e.g.:
 Export JSON
 -----------
 
-    unix> arangoexport --type json --collection test
+    arangoexport --type json --collection test
 
 This exports the collection *test* into the output directory *export* as one json array.
 Every array entry is one document from the collection *test*
@@ -46,24 +44,25 @@ Every array entry is one document from the collection *test*
 Export JSONL
 ------------
 
-    unix> arangoexport --type jsonl --collection test
+    arangoexport --type jsonl --collection test
 
-This exports the collection *test* into the output directory *export* as [jsonl](http://jsonlines.org). Every line in the export is one document from the collection *test* as json.
+This exports the collection *test* into the output directory *export* as [JSONL](http://jsonlines.org).
+Every line in the export is one document from the collection *test* as JSON.
 
 Export CSV
 ----------
 
-    unix> arangoexport --type csv --collection test --fields _key,_id,_rev
+    arangoexport --type csv --collection test --fields _key,_id,_rev
 
 This exports the collection *test* into the output directory *export* as CSV. The first
 line contains the header with all field names. Each line is one document represented as
-CSV and separated with a comma. Objects and Arrays are represented as a JSON string.
+CSV and separated with a comma. Objects and arrays are represented as a JSON string.
 
 
 Export XML
 ----------
 
-    unix> arangoexport --type xml --collection test
+    arangoexport --type xml --collection test
 
 This exports the collection *test* into the output directory *export* as generic XML.
 The root element of the generated XML file is named *collection*.
@@ -83,25 +82,14 @@ If you export all attributes (*--xgmml-label-only false*) note that attribute ty
 
 Bad
 
-    // doc1
-    {
-        "rank": 1
-    }
-    // doc2
-    {
-        "rank": "2"
-    }
+    { "rank": 1 }   // doc1
+    { "rank": "2" } // doc2
 
 Good
 
-    // doc1
-    {
-        "rank": 1
-    }
-    // doc2
-    {
-        "rank": 2
-    }
+    { "rank": 1 } // doc1
+    { "rank": 2 } // doc2
+
 {% endhint %}
 
 **XGMML specific options**
@@ -113,35 +101,41 @@ Good
 
 **Export based on collections**
 
-    unix> arangoexport --type xgmml --graph-name mygraph --collection vertex --collection edge
+    arangoexport --type xgmml --graph-name mygraph --collection vertex --collection edge
 
-This exports the a unnamed graph with vertex collection *vertex* and edge collection *edge* into the xgmml file *mygraph.xgmml*.
+This exports an unnamed graph with vertex collection *vertex* and edge collection *edge* into the xgmml file *mygraph.xgmml*.
 
 
 **Export based on a named graph**
 
-    unix> arangoexport --type xgmml --graph-name mygraph
+    arangoexport --type xgmml --graph-name mygraph
 
 This exports the named graph mygraph into the xgmml file *mygraph.xgmml*.
 
 
 **Export XGMML without attributes**
 
-    unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-only true
+    arangoexport --type xgmml --graph-name mygraph --xgmml-label-only true
 
 This exports the named graph mygraph into the xgmml file *mygraph.xgmml* without the *&lt;att&gt;* tag in nodes and edges.
 
 
 **Export XGMML with a specific label**
 
-    unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-attribute name
+    arangoexport --type xgmml --graph-name mygraph --xgmml-label-attribute name
 
 This exports the named graph mygraph into the xgmml file *mygraph.xgmml* with a label from documents attribute *name* instead of the default attribute *label*.
 
 Export via AQL query
 --------------------
 
-    unix> arangoexport --type jsonl --query "for book in books filter book.sells > 100 return book"
+    arangoexport --type jsonl --query "FOR book IN books FILTER book.sells > 100 RETURN book"
 
-Export via an aql query allows you to export the returned data as the type specified with *--type*.
-The example exports all books as jsonl that are sold more than 100 times.
+Export via an AQL query allows you to export the returned data as the type specified with *--type*.
+The example exports all books as JSONL that are sold more than 100 times.
+
+    arangoexport --type csv --fields title,category1,category2 --query "FOR book IN books RETURN { title: book.title, category1: book.categories[0], category2: book.categories[1] }"
+
+A *fields* list is required for CSV exports, but you can use an AQL query to produce
+these fields. For example, you can de-normalize document structures like arrays and
+nested objects to a tabular form as demonstrated above.
