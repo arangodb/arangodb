@@ -321,7 +321,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // coordinator in a cluster: empty view case
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto& view = view_cast<IResearchViewCoordinator>(this->view());
+    auto& view = LogicalView::cast<IResearchViewCoordinator>(this->view());
     TRI_ASSERT(view.visitCollections([](TRI_voc_cid_t){ return false; }));
 #endif
 
@@ -344,9 +344,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    reader = view_cast<IResearchViewDBServer>(this->view()).snapshot(state);
+    reader = LogicalView::cast<IResearchViewDBServer>(this->view()).snapshot(state);
   } else {
-    reader = view_cast<IResearchView>(this->view()).snapshot(state);
+    reader = LogicalView::cast<IResearchView>(this->view()).snapshot(state);
   }
 
   if (!reader) {

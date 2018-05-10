@@ -479,7 +479,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   }
 
   // TODO FIXME find a better way to look up an iResearch View
-  auto* view = view_cast<IResearchViewDBServer>(wiew.get());
+  auto* view = LogicalView::cast<IResearchViewDBServer>(wiew.get());
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)

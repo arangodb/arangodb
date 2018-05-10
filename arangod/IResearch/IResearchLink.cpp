@@ -168,7 +168,7 @@ int IResearchLink::drop() {
 
   if (arangodb::ServerState::instance()->isDBServer()) {
     // TODO FIXME find a better way to look up an iResearch View
-    auto* view = view_cast<IResearchViewDBServer>(_wiew.get());
+    auto* view = LogicalView::cast<IResearchViewDBServer>(_wiew.get());
 
     return view
       ? view->drop(_collection->id()).errorNumber()
@@ -231,7 +231,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       // create the IResearchView for the specific collection (on DBServer)
       if (arangodb::ServerState::instance()->isDBServer()) {
         // TODO FIXME find a better way to look up an iResearch View
-        auto* view = view_cast<IResearchViewDBServer>(logicalView.get());
+        auto* view = LogicalView::cast<IResearchViewDBServer>(logicalView.get());
 
         if (view) {
           wiew = logicalView; // remeber the DBServer view instance
@@ -242,7 +242,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       }
 
       // TODO FIXME find a better way to look up an iResearch View
-      auto* view = view_cast<IResearchView>(logicalView.get());
+      auto* view = LogicalView::cast<IResearchView>(logicalView.get());
 
       if (!view) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
