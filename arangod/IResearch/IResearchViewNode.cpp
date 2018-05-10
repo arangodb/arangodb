@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchCommon.h"
+#include "IResearchViewCoordinator.h"
 #include "IResearchViewDBServer.h"
 #include "IResearchViewNode.h"
 #include "IResearchViewBlock.h"
@@ -318,6 +319,12 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 ) const {
   if (ServerState::instance()->isCoordinator()) {
     // coordinator in a cluster: empty view case
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto& view = view_cast<IResearchViewCoordinator>(this->view());
+    TRI_ASSERT(view.visitCollections([](TRI_voc_cid_t){ return false; }));
+#endif
+
     return std::make_unique<aql::NoResultsBlock>(&engine, this);
   }
 
@@ -337,21 +344,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& view = dynamic_cast<IResearchViewDBServer const&>(this->view());
-    #else
-      auto& view = static_cast<IResearchViewDBServer const&>(this->view());
-    #endif
-
-    reader = view.snapshot(state);
+    reader = view_cast<IResearchViewDBServer>(this->view()).snapshot(state);
   } else {
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& view = dynamic_cast<IResearchView const&>(this->view());
-    #else
-      auto& view = static_cast<IResearchView const&>(this->view());
-    #endif
-
-    reader = view.snapshot(state);
+    reader = view_cast<IResearchView>(this->view()).snapshot(state);
   }
 
   if (!reader) {

@@ -182,6 +182,63 @@ class DBServerLogicalView : public LogicalView {
   ) = 0;
 }; // LogicalView
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adjusts constness of 'Out' according to 'In'
+////////////////////////////////////////////////////////////////////////////////
+template<typename In, typename Out>
+struct adjustConst {
+  typedef Out value_type;
+  typedef Out& reference;
+  typedef Out* pointer;
+};
+
+template<typename In, typename Out>
+struct adjustConst<const In, Out> {
+  typedef const Out value_type;
+  typedef const Out& reference;
+  typedef const Out* pointer;
+};
+
+template<typename Target, typename Source>
+inline typename adjustConst<Source, Target>::reference view_cast(
+    Source& view
+) noexcept {
+  typedef typename adjustConst<
+    Source,
+    typename std::enable_if<
+      std::is_base_of<LogicalView, Target>::value
+        && std::is_same<typename std::remove_const<Source>::type,
+      LogicalView
+    >::value, Target>::type
+  >::reference target_type_t;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  return dynamic_cast<target_type_t>(view);
+#else
+  return static_cast<target_type_t>(view);
+#endif
+}
+
+template<typename Target, typename Source>
+inline typename adjustConst<Source, Target>::pointer view_cast(
+    Source* view
+) noexcept {
+  typedef typename adjustConst<
+    Source,
+    typename std::enable_if<
+      std::is_base_of<LogicalView, Target>::value
+        && std::is_same<typename std::remove_const<Source>::type,
+      LogicalView
+    >::value, Target>::type
+  >::pointer target_type_t;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  return dynamic_cast<target_type_t>(view);
+#else
+  return static_cast<target_type_t>(view);
+#endif
+}
+
 }  // namespace arangodb
 
 #endif
