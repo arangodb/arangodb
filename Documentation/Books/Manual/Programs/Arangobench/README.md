@@ -1,7 +1,7 @@
 Arangobench
 ===========
 
-Arangobench is ArangoDB's benchmark and test tool. It can be used to issue test
+_Arangobench_ is ArangoDB's benchmark and test tool. It can be used to issue test
 requests to the database for performance and server function testing.
 It supports parallel querying and batch requests.
 
