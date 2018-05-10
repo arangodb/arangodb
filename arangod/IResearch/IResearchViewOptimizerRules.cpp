@@ -496,11 +496,10 @@ void scatterViewInClusterRule(
 
     if (viewNode.collections().empty()) {
       // FIXME we have to invalidate plan cache (if exists)
-      // in case if corresponding view have been modified
+      // in case if corresponding view has been modified
 
-      // view has no associated collection
-      // replace it with NoResults node
-      continue; // we're done with this particular node
+      // view has no associated collection, nothing to scatter
+      continue;
     }
 
     auto const& parents = node->getParents();
