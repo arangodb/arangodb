@@ -63,7 +63,7 @@ struct Upgrade {
     CLUSTER_DB_SERVER_LOCAL = (1u << 9)
   };
 
-  typedef std::function<bool(TRI_vocbase_t*, velocypack::Slice const&)>
+  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)>
       TaskFunction;
   struct Task {
     std::string name;
@@ -77,14 +77,23 @@ struct Upgrade {
  public:
   /// @brief initialize _system db in cluster
   /// corresponding to cluster-bootstrap.js
-  static UpgradeResult clusterBootstrap(TRI_vocbase_t* system);
+  static UpgradeResult clusterBootstrap(TRI_vocbase_t& system);
+
   /// @brief create a database
   /// corresponding to local-database.js
-  static UpgradeResult createDB(TRI_vocbase_t*, velocypack::Slice const&);
+  static UpgradeResult createDB(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& users
+  );
+
   /// @brief executed on startup
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
-  static UpgradeResult startup(TRI_vocbase_t* vocbase, bool upgrade, bool ignoreFileErrors);
+  static UpgradeResult startup(
+    TRI_vocbase_t& vocbase,
+    bool upgrade,
+    bool ignoreFileErrors
+  );
 
  private:
   static std::vector<Task> _tasks;
@@ -96,9 +105,13 @@ struct Upgrade {
 
   /// @brief register tasks, only run once on startup
   static void registerTasks();
-  static UpgradeResult runTasks(TRI_vocbase_t*, VersionResult&,
-                                velocypack::Slice const& params,
-                                uint32_t clusterFlag, uint32_t dbFlag);
+  static UpgradeResult runTasks(
+    TRI_vocbase_t& vocbase,
+    VersionResult& vinfo,
+    arangodb::velocypack::Slice const& params,
+    uint32_t clusterFlag,
+    uint32_t dbFlag
+  );
 
   /*
   /// @brief system database only
@@ -122,6 +135,7 @@ struct Upgrade {
   /// @brief for existing database, which are already at the correct version
   constexpr int DATABASE_EXISTING = 3002;*/
 };
+
 }
 }
 

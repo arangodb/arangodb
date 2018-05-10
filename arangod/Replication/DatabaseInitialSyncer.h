@@ -131,20 +131,26 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief send a WAL flush command
   Result sendFlush();
   
+  
+  /// @brief handle a single dump marker
+  Result parseCollectionDumpMarker(transaction::Methods&,
+                                   arangodb::LogicalCollection*,
+                                   arangodb::velocypack::Slice const&);
+  
   /// @brief apply the data from a collection dump
-  Result applyCollectionDump(transaction::Methods&, LogicalCollection* col,
+  Result parseCollectionDump(transaction::Methods&, LogicalCollection* col,
                              httpclient::SimpleHttpResult*, uint64_t&);
-
+  
   /// @brief determine the number of documents in a collection
   int64_t getSize(arangodb::LogicalCollection*);
-
+  
   /// @brief incrementally fetch data from a collection
-  Result handleCollectionDump(arangodb::LogicalCollection*,
-                              std::string const& leaderColl, TRI_voc_tick_t);
-
+  Result fetchCollectionDump(arangodb::LogicalCollection*,
+                             std::string const& leaderColl, TRI_voc_tick_t);
+  
   /// @brief incrementally fetch data from a collection
-  Result handleCollectionSync(arangodb::LogicalCollection*,
-                              std::string const& leaderColl, TRI_voc_tick_t);
+  Result fetchCollectionSync(arangodb::LogicalCollection*,
+                             std::string const& leaderColl, TRI_voc_tick_t);
    
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided

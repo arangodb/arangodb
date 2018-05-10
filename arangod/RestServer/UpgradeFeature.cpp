@@ -184,24 +184,28 @@ void UpgradeFeature::upgradeDatabase() {
   for (auto& name : databaseFeature->getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
-    
-    methods::UpgradeResult res = methods::Upgrade::startup(vocbase, _upgrade, ignoreDatafileErrors);
-    
+
+    auto res =
+      methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
+
     if (res.fail()) {
       char const* typeName = "initialization";
+
       if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
         typeName = "upgrade"; // an upgrade failed or is required
+
         if (!_upgrade) {
           LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "Database '" << vocbase->name() << "' needs upgrade. "
           << "Please start the server with --database.auto-upgrade";
         }
       }
+
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
       << "' " << typeName << " failed (" << res.errorMessage() << "). "
       << "Please inspect the logs from the " << typeName << " procedure"
       << " and try starting the server again.";
-      
+
       FATAL_ERROR_EXIT();
     }
   }

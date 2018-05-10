@@ -838,10 +838,11 @@ static void JS_GetResponsibleShardClusterInfo(
 
   ShardID shardId;
   CollectionID collectionId = TRI_ObjectToString(args[0]);
-  auto vocbase = GetContextVocBase(isolate);
+  auto& vocbase = GetContextVocBase(isolate);
   auto ci = ClusterInfo::instance();
-  auto collInfo = ci->getCollection(vocbase->name(), collectionId);
+  auto collInfo = ci->getCollection(vocbase.name(), collectionId);
   bool usesDefaultShardingAttributes;
+
   res = ClusterInfo::instance()->getResponsibleShard(
       collInfo.get(), builder.slice(), documentIsComplete, shardId,
       usesDefaultShardingAttributes);
@@ -1933,12 +1934,11 @@ static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& a
   ONLY_IN_CLUSTER
 
   v8::HandleScope scope(isolate);
-  auto vocbase = GetContextVocBase(isolate);
-
+  auto& vocbase = GetContextVocBase(isolate);
   auto reporter = cluster::ShardDistributionReporter::instance();
-
   VPackBuilder result;
-  reporter->getDistributionForDatabase(vocbase->name(), result);
+
+  reporter->getDistributionForDatabase(vocbase.name(), result);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   TRI_V8_TRY_CATCH_END
@@ -1959,12 +1959,13 @@ static void JS_GetCollectionShardDistribution(v8::FunctionCallbackInfo<v8::Value
   std::string const colName = TRI_ObjectToString(args[0]);
 
   v8::HandleScope scope(isolate);
-  auto vocbase = GetContextVocBase(isolate);
-
+  auto& vocbase = GetContextVocBase(isolate);
   auto reporter = cluster::ShardDistributionReporter::instance();
-
   VPackBuilder result;
-  reporter->getCollectionDistributionForDatabase(vocbase->name(), colName, result);
+
+  reporter->getCollectionDistributionForDatabase(
+    vocbase.name(), colName, result
+  );
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   TRI_V8_TRY_CATCH_END

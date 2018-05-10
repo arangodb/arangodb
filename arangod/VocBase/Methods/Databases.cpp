@@ -274,8 +274,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     }
 
     TRI_ASSERT(sanitizedUsers.slice().isArray());
-    upgradeRes = methods::Upgrade::createDB(vocbase, sanitizedUsers.slice());
-
+    upgradeRes = methods::Upgrade::createDB(*vocbase, sanitizedUsers.slice());
   } else { // Single, DBServer, Agency
     // options for database (currently only allows setting "id"
     // for testing purposes)
@@ -306,15 +305,15 @@ arangodb::Result Databases::create(std::string const& dbName,
            });
     }
 
-    upgradeRes = methods::Upgrade::createDB(vocbase, sanitizedUsers.slice());
+    upgradeRes = methods::Upgrade::createDB(*vocbase, sanitizedUsers.slice());
   }
-  
+
   if (upgradeRes.fail()) {
     LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database "
     << upgradeRes.errorMessage();
     return upgradeRes;
   }
-  
+
   // Entirely Foxx related:
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
