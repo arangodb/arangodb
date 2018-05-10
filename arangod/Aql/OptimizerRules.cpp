@@ -4265,6 +4265,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       case EN::TRAVERSAL:
       case EN::SHORTEST_PATH: {
         // if we meet any of the above, then we abort . . .
+        break;
       }
 
       default: {

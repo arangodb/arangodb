@@ -235,7 +235,8 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != StaticStrings::CollectionsField && key != StaticStrings::LinksField; // ignored fields
+    return key != StaticStrings::CollectionsField
+      && key != StaticStrings::LinksField; // ignored fields
   };
   arangodb::velocypack::Builder builder;
 
