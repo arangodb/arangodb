@@ -22,7 +22,7 @@
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
   * [Kubernetes](Tutorials/Kubernetes/README.md)
 * [Programs & Tools](Programs/README.md)
-  * [ArangoDB server](Programs/Arangod/README.md)
+  * [ArangoDB Server](Programs/Arangod/README.md)
     * [Options](Programs/Arangod/Options.md)
   * [Web Interface](Programs/WebInterface/README.md)
     * [Dashboard](Programs/WebInterface/Dashboard.md)
@@ -233,7 +233,7 @@
 * [Administration](Administration/README.md)
   * [Backup & Restore](Administration/BackupRestore.md)
   * [Import & Export](Administration/ImportExport.md)
-  * [Managing Users](Administration/ManagingUsers/README.md)
+  * [User Management](Administration/ManagingUsers/README.md)
     * [In Arangosh](Administration/ManagingUsers/InArangosh.md)
   * [Server Configuration](Administration/Configuration/README.md)
     * [Operating System Configuration](Administration/Configuration/OperatingSystem.md)
