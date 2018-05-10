@@ -85,7 +85,7 @@ int EndpointMock::port() const {
 
 GeneralClientConnectionMock::GeneralClientConnectionMock()
   : GeneralClientConnection(&endpoint, 0, 0, 0),
-    nil(file_open((file_path_t)nullptr, "rw")) {
+    nil(file_open((const file_path_t)nullptr, "rw")) {
   _socket.fileDescriptor = file_no(nil.get()); // must be a readable/writable descriptor
 }
 
