@@ -492,6 +492,17 @@ void scatterViewInClusterRule(
 
   for (auto* node : nodes) {
     TRI_ASSERT(node);
+    auto& viewNode = static_cast<IResearchViewNode&>(*node);
+
+    if (viewNode.collections().empty()) {
+      // FIXME we have to invalidate plan cache (if exists)
+      // in case if corresponding view have been modified
+
+      // view has no associated collection
+      // replace it with NoResults node
+      continue; // we're done with this particular node
+    }
+
     auto const& parents = node->getParents();
     auto const& deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
@@ -508,12 +519,11 @@ void scatterViewInClusterRule(
       continue;
     }
 
-    bool const isRootNode = plan->isRoot(node);
-    plan->unlinkNode(node, true);
-
-    auto& viewNode = static_cast<IResearchViewNode&>(*node);
     auto& vocbase = viewNode.vocbase();
     auto& view = viewNode.view();
+
+    bool const isRootNode = plan->isRoot(node);
+    plan->unlinkNode(node, true);
 
     // insert a scatter node
     auto scatterNode = plan->registerNode(

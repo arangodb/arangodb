@@ -28,9 +28,10 @@
 #include "IResearchOrderFactory.h"
 #include "IResearchView.h"
 #include "AqlHelper.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
+#include "Aql/BasicBlocks.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
@@ -316,11 +317,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::unordered_set<std::string> const&
 ) const {
   if (ServerState::instance()->isCoordinator()) {
-    // coordinator in a cluster
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "IResearchView node is not intended to use on a coordinator"
-    );
+    // coordinator in a cluster: empty view case
+    return std::make_unique<aql::NoResultsBlock>(&engine, this);
   }
 
   auto* trx = engine.getQuery()->trx();
