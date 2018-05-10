@@ -1,6 +1,7 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
-* fixed issue #4919: c++ implementation of LIKE function now matches the old and correct
+
+* fixed issue #4919: C++ implementation of LIKE function now matches the old and correct
   behaviour of the javascript implementation.
 
 * added REST API endpoint /_admin/server/availability for monitoring purposes
@@ -19,6 +20,7 @@ v3.3.9 (xxxx-xx-xx)
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 * added `query` and `aql.literal` helpers to `@arangodb` module.
+
 
 v3.3.8 (2018-04-24)
 -------------------
