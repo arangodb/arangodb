@@ -492,7 +492,6 @@ def gyp_main(args):
   generator_flags = NameValueListToDict(gen_flags)
   if DEBUG_GENERAL in gyp.debug.keys():
     DebugOutput(DEBUG_GENERAL, "generator_flags: %s", generator_flags)
-  print("Fuxx:", generator_flags)
 
   # Generate all requested formats (use a set in case we got one format request
   # twice)
@@ -508,7 +507,6 @@ def gyp_main(args):
               'root_targets': options.root_targets,
               'target_arch': cmdline_default_variables.get('target_arch', '')}
 
-    print("Fuxxx:", params)
     # Start with the default variables from the command line.
     [generator, flat_list, targets, data] = Load(
         build_files, format, cmdline_default_variables, includes, options.depth,

@@ -125,30 +125,19 @@ set(V8_INCLUDE_DIR
 ################################################################################
 ## WINDOWS & NINJA
 ################################################################################
-
-function(JOIN OUTPUT GLUE)
-    set(_TMP_RESULT "")
-    set(_GLUE "") # effective glue is empty at the beginning
-    foreach(arg ${ARGN})
-        set(_TMP_RESULT "${_TMP_RESULT}${_GLUE}${arg}")
-        set(_GLUE "${GLUE}")
-    endforeach()
-    set(${OUTPUT} "${_TMP_RESULT}" PARENT_SCOPE)
-endfunction()
-
 if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
   message(STATUS "using generator NINJA on Windows! Still WIP be patient!")
   set(GYP_MAIN ${V8_DIR}/gypfiles/gyp_v8)
 
-  if (${CMAKE_GENERATOR} MATCHES "2013") 
+  if (${CMAKE_GENERATOR} MATCHES "2013")
     # try to find 2013 in 'Visual Studio 12 2013 Win64'
     set(GYP_MSVS_VERSION "2013")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2013")
-  elseif (${CMAKE_GENERATOR} MATCHES "2015") 
+  elseif (${CMAKE_GENERATOR} MATCHES "2015")
     # try to find 2015 in 'Visual Studio 14 2015 Win64'
     set(GYP_MSVS_VERSION "2015")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2015")
-  elseif (${CMAKE_GENERATOR} MATCHES "2017") 
+  elseif (${CMAKE_GENERATOR} MATCHES "2017")
     # try to find 2017 in 'Visual Studio 15 2017 Win64'
     set(GYP_MSVS_VERSION "2017")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017")
@@ -164,7 +153,6 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
     set(MS_TARGET_PLATFORM Win32)
   endif ()
 
-  list(APPEND V8_GYP_ARGS -DDebugInformationFormat=OldStyle -GDebugInformationFormat=OldStyle)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ${V8_DIR}/gypfiles/all.gyp)
 
@@ -190,8 +178,6 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
   add_custom_target(v8_build_ninja)
 
   set(NINJA_BUILD_DIR "${V8_TARGET_DIR}/${NINJA_TARGET}")
-
-  join(V8GYPARGS " " ${V8_GYP_ARGS})
 
   ExternalProject_Add(v8_build_ninja
     SOURCE_DIR
@@ -275,8 +261,6 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
 
   set(NINJA_BUILD_DIR "${V8_TARGET_DIR}/${NINJA_TARGET}")
 
-  join(V8GYPARGS " " ${V8_GYP_ARGS})
-
   ExternalProject_Add(v8_build
     SOURCE_DIR
       "${V8_DIR}"
@@ -315,18 +299,17 @@ elseif (${CMAKE_GENERATOR} MATCHES "Ninja")
 
 elseif (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
-  MESSAGE(STATUS "CMAKE_GENERATOR is ${CMAKE_GENERATOR}")
   set(GYP_MAIN gypfiles/gyp_v8)
 
-  if (${CMAKE_GENERATOR} MATCHES "2013") 
+  if (${CMAKE_GENERATOR} MATCHES "2013")
     # try to find 2013 in 'Visual Studio 12 2013 Win64'
     set(GYP_MSVS_VERSION "2013")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2013")
-  elseif (${CMAKE_GENERATOR} MATCHES "2015") 
+  elseif (${CMAKE_GENERATOR} MATCHES "2015")
     # try to find 2015 in 'Visual Studio 14 2015 Win64'
     set(GYP_MSVS_VERSION "2015")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2015")
-  elseif (${CMAKE_GENERATOR} MATCHES "2017") 
+  elseif (${CMAKE_GENERATOR} MATCHES "2017")
     # try to find 2017 in 'Visual Studio 15 2017 Win64'
     set(GYP_MSVS_VERSION "2017")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017")
@@ -334,10 +317,10 @@ elseif (WIN32)
     set(GYP_MSVS_VERSION "2017")
     MESSAGE(STATUS "setting GYP_MSVS_VERSION to 2017 by default")
   endif()
-  
+
   list(APPEND V8_GYP_ARGS "-Dmsvs_cygwin_shell=0")
   list(APPEND V8_GYP_ARGS "-Dv8_use_snapshot=false")
-  
+
   if ("${BITS}" STREQUAL "64")
     set(MS_TARGET_PLATFORM x64)
   else ()
@@ -357,8 +340,6 @@ elseif (WIN32)
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
     -Dlibrary=static_library
-    -DDebugInformationFormat=OldStyle
-    -GDebugInformationFormat=OldStyle
     -Dgenerator_output=${V8_TARGET_DIR}
     -Ggenerator_output=${V8_TARGET_DIR}
     #--depth=2
@@ -371,10 +352,6 @@ elseif (WIN32)
   )
 
   add_custom_target(v8_build)
-
-  join(V8GYPARGS " " ${V8_GYP_ARGS})
-
-  MESSAGE(STATUS "Trying command: env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8GYPARGS} -Dmode=${MS_TARGET_CONF_LOWER}")
 
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
@@ -595,8 +572,6 @@ else ()
 
   list(APPEND V8_COMPILE_ARGS icui18n icuuc)
   list(APPEND V8_COMPILE_ARGS v8)
-
-  join(V8GYPARGS " " ${V8_GYP_ARGS})
 
   ExternalProject_Add(v8_build
     BUILD_IN_SOURCE
