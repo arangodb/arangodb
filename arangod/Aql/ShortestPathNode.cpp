@@ -306,7 +306,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
 
 double ShortestPathNode::estimateCost(size_t& nrItems) const {

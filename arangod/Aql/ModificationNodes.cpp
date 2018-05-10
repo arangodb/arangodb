@@ -141,7 +141,7 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
 
 InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -192,7 +192,7 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
 
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -260,7 +260,7 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
@@ -329,7 +329,7 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -394,5 +394,5 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
