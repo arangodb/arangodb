@@ -1,15 +1,12 @@
 v3.2.15 (XXXX-XX-XX)
 --------------------
 
-* fixed issue #4993: now checking existence of _from and _to vertices during 
-  edge creation
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
 
 
 v3.2.14 (2018-04-20)
 --------------------
-
-* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
-  during edge creation
 
 * field "$schema" in Foxx manifest.json files no longer produce warnings
 
