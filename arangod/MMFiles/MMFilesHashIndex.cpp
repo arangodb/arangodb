@@ -289,63 +289,6 @@ void MMFilesHashIndexIterator::reset() {
   _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
-MMFilesHashIndexIteratorVPack::MMFilesHashIndexIteratorVPack(
-    LogicalCollection* collection, transaction::Methods* trx,
-    MMFilesHashIndex const* index,
-    std::unique_ptr<arangodb::velocypack::Builder> searchValues)
-    : IndexIterator(collection, trx, index),
-      _index(index),
-      _searchValues(std::move(searchValues)),
-      _iterator(_searchValues->slice()),
-      _buffer(),
-      _posInBuffer(0) {
-}
-
-MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {
-  if (_searchValues != nullptr) {
-    // return the VPackBuilder to the transaction context
-    _trx->transactionContextPtr()->returnBuilder(_searchValues.release());
-  }
-}
-
-bool MMFilesHashIndexIteratorVPack::next(LocalDocumentIdCallback const& cb,
-                                         size_t limit) {
-  while (limit > 0) {
-    if (_posInBuffer >= _buffer.size()) {
-      if (!_iterator.valid()) {
-        // we're at the end of the lookup values
-        return false;
-      }
-
-      // We have to refill the buffer
-      _buffer.clear();
-      _posInBuffer = 0;
-
-      int res = TRI_ERROR_NO_ERROR;
-      _index->lookup(_trx, _iterator.value(), _buffer);
-      _iterator.next();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-    }
-
-    if (!_buffer.empty()) {
-      // found something
-      TRI_ASSERT(_posInBuffer < _buffer.size());
-      cb(_buffer[_posInBuffer++]->localDocumentId());
-      --limit;
-    }
-  }
-  return true;
-}
-
-void MMFilesHashIndexIteratorVPack::reset() {
-  _buffer.clear();
-  _posInBuffer = 0;
-  _iterator.reset();
-}
-
 /// @brief create the unique array
 MMFilesHashIndex::UniqueArray::UniqueArray(
     size_t numPaths, std::unique_ptr<TRI_HashArray_t> hashArray)
