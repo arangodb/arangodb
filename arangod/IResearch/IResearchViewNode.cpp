@@ -22,15 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchCommon.h"
+#include "IResearchViewCoordinator.h"
 #include "IResearchViewDBServer.h"
 #include "IResearchViewNode.h"
 #include "IResearchViewBlock.h"
 #include "IResearchOrderFactory.h"
 #include "IResearchView.h"
 #include "AqlHelper.h"
-#include "Aql/ExecutionPlan.h"
 #include "Aql/Ast.h"
+#include "Aql/BasicBlocks.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
@@ -316,11 +318,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::unordered_set<std::string> const&
 ) const {
   if (ServerState::instance()->isCoordinator()) {
-    // coordinator in a cluster
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "IResearchView node is not intended to use on a coordinator"
-    );
+    // coordinator in a cluster: empty view case
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto& view = LogicalView::cast<IResearchViewCoordinator>(this->view());
+    TRI_ASSERT(view.visitCollections([](TRI_voc_cid_t){ return false; }));
+#endif
+
+    return std::make_unique<aql::NoResultsBlock>(&engine, this);
   }
 
   auto* trx = engine.getQuery()->trx();
@@ -339,21 +344,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& view = dynamic_cast<IResearchViewDBServer const&>(this->view());
-    #else
-      auto& view = static_cast<IResearchViewDBServer const&>(this->view());
-    #endif
-
-    reader = view.snapshot(state);
+    reader = LogicalView::cast<IResearchViewDBServer>(this->view()).snapshot(state);
   } else {
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto& view = dynamic_cast<IResearchView const&>(this->view());
-    #else
-      auto& view = static_cast<IResearchView const&>(this->view());
-    #endif
-
-    reader = view.snapshot(state);
+    reader = LogicalView::cast<IResearchView>(this->view()).snapshot(state);
   }
 
   if (!reader) {

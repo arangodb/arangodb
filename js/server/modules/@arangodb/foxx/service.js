@@ -634,6 +634,10 @@ module.exports =
 
     static checksum (mount) {
       const bundlePath = FoxxService.bundlePath(mount);
+      return this._checksumPath(bundlePath);
+    }
+
+    static _checksumPath (bundlePath) {
       if (!fs.isFile(bundlePath)) {
         throw new ArangoError({
           errorNum: errors.ERROR_FILE_NOT_FOUND.code,

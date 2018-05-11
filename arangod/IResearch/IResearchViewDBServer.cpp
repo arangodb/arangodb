@@ -480,11 +480,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   }
 
   // TODO FIXME find a better way to look up an iResearch View
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* view = dynamic_cast<IResearchViewDBServer*>(wiew.get());
-  #else
-    auto* view = static_cast<IResearchViewDBServer*>(wiew.get());
-  #endif
+  auto* view = LogicalView::cast<IResearchViewDBServer>(wiew.get());
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
