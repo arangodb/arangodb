@@ -125,6 +125,7 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "edge-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -138,6 +139,7 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   size_t _posInBuffer;
   size_t _batchSize;
   MMFilesSimpleIndexElement _lastElement;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 };
 
 class MMFilesEdgeIndex final : public MMFilesIndex {
