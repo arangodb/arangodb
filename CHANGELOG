@@ -21,6 +21,13 @@ devel
   overhead for the logging. However, this will only be noticable when logging
   is set to a very verbose level (e.g. debug or trace).
 
+* increased the default values for the startup options `--javascript.gc-interval`
+  from every 1000 to every 2000 requests, and for `--javascript.gc-frequency` from 
+  30 to 60 seconds
+
+  This will make the V8 garbage collection run less often by default than in previous
+  versions, reducing CPU load a bit and leaving more contexts available on average.
+
 * added `/_admin/repair/distributeShardsLike` that repairs collections with
   distributeShardsLike where the shards aren't actually distributed like in the
   prototype collection, as could happen due to internal issue #1770

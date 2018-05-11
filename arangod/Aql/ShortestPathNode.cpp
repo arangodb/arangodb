@@ -272,7 +272,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
+  auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                 _directions, _inStartVariable, _startVertexId,
                                 _inTargetVariable, _targetVertexId, std::move(tmp));
   if (usesVertexOutVariable()) {
@@ -304,9 +304,9 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   c->_fromCondition = _fromCondition->clone(_plan->getAst());
   c->_toCondition = _toCondition->clone(_plan->getAst());
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 double ShortestPathNode::estimateCost(size_t& nrItems) const {
