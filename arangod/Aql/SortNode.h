@@ -82,7 +82,7 @@ class SortNode : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief estimateCost

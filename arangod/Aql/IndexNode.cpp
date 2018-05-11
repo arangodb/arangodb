@@ -248,7 +248,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
 
 /// @brief destroy the IndexNode

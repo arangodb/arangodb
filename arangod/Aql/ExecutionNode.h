@@ -61,6 +61,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <type_traits>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -154,14 +156,32 @@ class ExecutionNode {
   /// @brief constructor using a VPackSlice
   ExecutionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& slice);
 
-  /// @brief destructor, free dependencies;
+  /// @brief destructor, free dependencies
   virtual ~ExecutionNode() {}
 
  public:
-  /// @brief factory from json.
+  /// @brief factory from JSON
   static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
                                          arangodb::velocypack::Slice const& slice);
 
+  /// @brief cast an ExecutionNode to a specific sub-type
+  /// in maintainer mode, this function will perform a dynamic_cast and abort the
+  /// program if the cast is invalid. in release mode, this function will perform
+  /// a static_cast and will not abort the program
+  template<typename T, typename FromType> 
+  static inline T castTo(FromType node) noexcept {
+    static_assert(std::is_pointer<T>::value, "invalid type passed into ExecutionNode::castTo");
+    static_assert(node->IsExecutionNode, "invalid type passed into ExecutionNode::castTo");
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    T result = dynamic_cast<T>(node);
+    TRI_ASSERT(result != nullptr);
+    return result;
+#else
+    return static_cast<T>(node);
+#endif
+  }
+  
   /// @brief return the node's id
   inline size_t id() const { return _id; }
 
@@ -571,12 +591,12 @@ class ExecutionNode {
   std::unordered_set<RegisterId> _regsToClear;
 
  public:
-  /// @brief NodeType to string mapping
-  static std::unordered_map<int, std::string const> const TypeNames;
-
   /// @brief maximum register id that can be assigned.
   /// this is used for assertions
-  static RegisterId const MaxRegisterId;
+  static constexpr RegisterId MaxRegisterId = 1000;
+
+  /// @brief used as "type traits" for ExecutionNodes and derived classes
+  static constexpr bool IsExecutionNode = true;
 };
 
 /// @brief class SingletonNode
@@ -612,7 +632,7 @@ class SingletonNode : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief the cost of a singleton is 1
@@ -831,7 +851,7 @@ class LimitNode : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief estimateCost
@@ -1265,7 +1285,7 @@ class NoResultsNode : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief the cost of a NoResults is 0

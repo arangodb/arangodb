@@ -474,7 +474,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
 
 /// @brief the cost of a traversal node

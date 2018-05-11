@@ -194,7 +194,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   cloneHelper(c, withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return ExecutionNode::castTo<ExecutionNode*>(c);
 }
 
 /// @brief helper struct for finding variables
