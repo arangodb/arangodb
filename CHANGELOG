@@ -1,6 +1,9 @@
 v3.2.15 (XXXX-XX-XX)
 --------------------
 
+* self heal during a Foxx service install, upgrade or replace no longer breaks 
+  the respective operation
+
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
 
