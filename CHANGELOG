@@ -1,6 +1,9 @@
 v3.2.15 (XXXX-XX-XX)
 --------------------
 
+* make /_api/index and /_api/database REST handlers use the scheduler's internal
+  queue, so they do not run in an I/O handling thread
+
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
 
