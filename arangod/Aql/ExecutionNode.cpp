@@ -1366,14 +1366,13 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
     TRI_ASSERT(outVariable != nullptr);
   }
 
-  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection,
-                                       outVariable, _random);
+  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _vocbase, _collection, outVariable, _random);
 
   c->projections(_projections);
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -1438,11 +1437,11 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new EnumerateListNode(plan, _id, inVariable, outVariable);
+  auto c = std::make_unique<EnumerateListNode>(plan, _id, inVariable, outVariable);
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief the cost of an enumerate list node
@@ -1590,13 +1589,13 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(plan, plan->getAst()),
+  auto c = std::make_unique<CalculationNode>(plan, _id, _expression->clone(plan, plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief estimateCost
@@ -1672,12 +1671,12 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
-  auto c = new SubqueryNode(
+  auto c = std::make_unique<SubqueryNode>(
       plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief whether or not the subquery is a data-modification operation
@@ -1872,11 +1871,12 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
   if (withProperties) {
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
-  auto c = new FilterNode(plan, _id, inVariable);
 
-  cloneHelper(c, withDependencies, withProperties);
+  auto c = std::make_unique<FilterNode>(plan, _id, inVariable);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  cloneHelper(c.get(), withDependencies, withProperties);
+
+  return c.release();
 }
 
 /// @brief estimateCost
@@ -1930,11 +1930,11 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new ReturnNode(plan, _id, inVariable);
+  auto c = std::make_unique<ReturnNode>(plan, _id, inVariable);
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief estimateCost

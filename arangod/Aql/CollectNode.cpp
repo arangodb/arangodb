@@ -182,8 +182,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
   }
 
-  auto c =
-      new CollectNode(plan, _id, _options, groupVariables, aggregateVariables,
+  auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables, aggregateVariables,
                       expressionVariable, outVariable, _keepVariables,
                       _variableMap, _count, _isDistinctCommand);
 
@@ -192,9 +191,9 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specialized();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief helper struct for finding variables

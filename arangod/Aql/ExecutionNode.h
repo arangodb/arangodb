@@ -628,11 +628,11 @@ class SingletonNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new SingletonNode(plan, _id);
+    auto c = std::make_unique<SingletonNode>(plan, _id);
 
-    cloneHelper(c, withDependencies, withProperties);
+    cloneHelper(c.get(), withDependencies, withProperties);
 
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return c.release();
   }
 
   /// @brief the cost of a singleton is 1
@@ -843,15 +843,15 @@ class LimitNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new LimitNode(plan, _id, _offset, _limit);
+    auto c = std::make_unique<LimitNode>(plan, _id, _offset, _limit);
 
     if (_fullCount) {
       c->setFullCount();
     }
 
-    cloneHelper(c, withDependencies, withProperties);
+    cloneHelper(c.get(), withDependencies, withProperties);
 
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return c.release();
   }
 
   /// @brief estimateCost
@@ -1281,11 +1281,11 @@ class NoResultsNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new NoResultsNode(plan, _id);
+    auto c = std::make_unique<NoResultsNode>(plan, _id);
 
-    cloneHelper(c, withDependencies, withProperties);
+    cloneHelper(c.get(), withDependencies, withProperties);
 
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return c.release();
   }
 
   /// @brief the cost of a NoResults is 0

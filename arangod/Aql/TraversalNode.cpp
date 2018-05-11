@@ -400,7 +400,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto oldOpts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<TraverserOptions>(*oldOpts);
-  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
+  auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                              _inVariable, _vertexId, _directions, std::move(tmp));
 
   if (usesVertexOutVariable()) {
@@ -472,9 +472,9 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief the cost of a traversal node

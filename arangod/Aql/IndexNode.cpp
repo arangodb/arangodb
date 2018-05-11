@@ -239,16 +239,16 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
+  auto c = std::make_unique<IndexNode>(plan, _id, _vocbase, _collection, outVariable,
                          _indexes, _condition->clone(), _options);
 
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return ExecutionNode::castTo<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief destroy the IndexNode

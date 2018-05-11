@@ -78,11 +78,11 @@ class SortNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new SortNode(plan, _id, _elements, _stable);
+    auto c = std::make_unique<SortNode>(plan, _id, _elements, _stable);
 
-    cloneHelper(c, withDependencies, withProperties);
+    cloneHelper(c.get(), withDependencies, withProperties);
 
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return c.release();
   }
 
   /// @brief estimateCost
