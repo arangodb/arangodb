@@ -1,6 +1,9 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
 
+* self heal during a Foxx service install, upgrade or replace no longer breaks 
+  the respective operation
+
 * fixed issue #4919: C++ implementation of LIKE function now matches the old and correct
   behaviour of the javascript implementation.
 
