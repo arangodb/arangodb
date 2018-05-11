@@ -123,7 +123,7 @@ void MaintenanceRestHandler::putAction() {
 bool MaintenanceRestHandler::parsePutBody(VPackSlice const & parameters) {
   bool good(true);
 
-  _actionDesc = std::make_shared<maintenance::ActionDescription_t>();
+  _actionDesc = std::make_shared<ActionDescription>();
   _actionProp = std::make_shared<VPackBuilder>();
 
   VPackObjectIterator it(parameters, true);
@@ -154,7 +154,7 @@ void MaintenanceRestHandler::getAction() {
   // build the action
   auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
 
-  VPackBuilder registry = maintenance->toVelocityPack();
+  VPackBuilder registry = maintenance->toVelocyPack();
   generateResult(rest::ResponseCode::OK, registry.slice());
 
 } // MaintenanceRestHandler::getAction

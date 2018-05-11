@@ -37,14 +37,14 @@ ActionBase::ActionBase(
 }
 
   /// @brief execution finished successfully or failed ... and race timer expired
-bool MaintenanceAction::done() const {
+bool ActionBase::done() const {
   bool ret_flag;
 
   ret_flag = COMPLETE==_state || FAILED==_state;
 
   // test clock ... avoid race of same task happening again too quickly
   if (ret_flag) {
-    std::chrono::seconds secs(_feature.getSecondsActionsBlock());
+    std::chrono::seconds secs(_feature->getSecondsActionsBlock());
     std::chrono::system_clock::time_point raceOver = _actionDone + secs;
 
     ret_flag = (raceOver <= std::chrono::system_clock::now());
@@ -52,7 +52,7 @@ bool MaintenanceAction::done() const {
 
   return (ret_flag);
 
-} // MaintenanceAction::done
+} // ActionBase::done
 
 ActionBase::~ActionBase() {}
 
@@ -67,10 +67,9 @@ VPackSlice const ActionBase::properties() const {
 
 
 /// @brief Initiate a new action that will start immediately, pausing this action
-void MaintenanceAction::createPreAction(std::shared_ptr<ActionDescription_t> const & description,
-                                       std::shared_ptr<VPackBuilder> const & properties) {
+void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & description) {
 
-  _preAction = _feature.preAction(description, properties);
+  _preAction = _feature->preAction(description);
 
   // shift from EXECUTING to WAITINGPRE ... EXECUTING is set to block other
   //  workers from picking it up
@@ -82,16 +81,15 @@ void MaintenanceAction::createPreAction(std::shared_ptr<ActionDescription_t> con
 
   return;
 
-} // MaintenanceAction::createPreAction
+} // ActionBase::createPreAction
 
 
 /// @brief Create a new action that will start after this action successfully completes
-void MaintenanceAction::createPostAction(std::shared_ptr<ActionDescription_t> const & description,
-                                       std::shared_ptr<VPackBuilder> const & properties) {
+void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {
 
   // preAction() sets up what we need
-  _postAction = _feature.preAction(description, properties);
-
+  _postAction = _feature->preAction(description);
+  
   // shift from EXECUTING to WAITINGPOST ... EXECUTING is set to block other
   //  workers from picking it up
   if (_postAction) {
@@ -102,35 +100,35 @@ void MaintenanceAction::createPostAction(std::shared_ptr<ActionDescription_t> co
 
   return;
 
-} // MaintenanceAction::createPostAction
+} // ActionBase::createPostAction
 
 
-void MaintenanceAction::startStats() {
+void ActionBase::startStats() {
 
   _actionStarted = std::chrono::system_clock::now();
 
   return;
 
-} // MaintenanceAction::startStats
+} // ActionBase::startStats
 
 
-void MaintenanceAction::incStats() {
+void ActionBase::incStats() {
 
   ++_progress;
   _actionLastStat = std::chrono::system_clock::now();
 
   return;
 
-} // MaintenanceAction::incStats
+} // ActionBase::incStats
 
 
-void MaintenanceAction::endStats() {
+void ActionBase::endStats() {
 
   _actionDone = std::chrono::system_clock::now();
 
   return;
 
-} // MaintenanceAction::endStats
+} // ActionBase::endStats
 
 
 Result arangodb::actionError(int errorCode, std::string const& errorMessage) {	
@@ -143,3 +141,22 @@ Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
   return Result(errorCode, errorMessage);
 }
 
+void ActionBase::toVelocyPack(VPackBuilder & builder) const {
+  VPackObjectBuilder ob(&builder);
+
+  builder.add("id", VPackValue(_id));
+  builder.add("state", VPackValue(_state));
+  builder.add("progress", VPackValue(_progress));
+#if 0  /// hmm, several should be reported as duration instead of time_point
+  builder.add("created", VPackValue(timepointToString(_actionCreated.count())));
+  builder.add("started", VPackValue(_actionStarted.count()));
+  builder.add("lastStat", VPackValue(_actionLastStat.count()));
+  builder.add("done", VPackValue(_actionDone.count()));
+#endif
+  builder.add("result", VPackValue(_result.errorNumber()));
+  
+  builder.add(VPackValue("description"));
+  { VPackObjectBuilder desc(&builder);
+    _description.toVelocyPack(builder); }
+  
+} // MaintanceAction::toVelocityPack

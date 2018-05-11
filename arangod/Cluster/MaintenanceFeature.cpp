@@ -28,12 +28,12 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/CreateDatabase.h"
-#include "Cluster/MaintenanceAction.h"
+#include "Cluster/Action.h"
 #include "Cluster/MaintenanceWorker.h"
 
+using namespace arangodb;
 using namespace arangodb::options;
-
-namespace arangodb {
+using namespace arangodb::maintenance;
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer* server)
   : ApplicationFeature(server, "Maintenance") {
@@ -77,17 +77,20 @@ void MaintenanceFeature::init() {
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "Server features");
 
-  options->addHiddenOption("--server.maintenance-threads",
-                           "maximum number of threads available for maintenance actions",
-                     new Int32Parameter(&_maintenanceThreadsMax));
-
-  options->addHiddenOption("--server.maintenance-actions-block",
-                           "minimum number of seconds finished Actions block duplicates",
-                     new Int32Parameter(&_secondsActionsBlock));
-
-  options->addHiddenOption("--server.maintenance-actions-linger",
-                           "minimum number of seconds finished Actions remain in deque",
-                     new Int32Parameter(&_secondsActionsLinger));
+  options->addHiddenOption(
+    "--server.maintenance-threads",
+    "maximum number of threads available for maintenance actions",
+    new Int32Parameter(&_maintenanceThreadsMax));
+  
+  options->addHiddenOption(
+    "--server.maintenance-actions-block",
+    "minimum number of seconds finished Actions block duplicates",
+    new Int32Parameter(&_secondsActionsBlock));
+  
+  options->addHiddenOption(
+    "--server.maintenance-actions-linger",
+    "minimum number of seconds finished Actions remain in deque",
+    new Int32Parameter(&_secondsActionsLinger));
 
 } // MaintenanceFeature::collectOptions
 
@@ -150,8 +153,8 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
   auto action = findActionId(action_id);
 
   if (action) {
-    if (maintenance::MaintenanceAction::COMPLETE != action->getState()) {
-      action->setState(maintenance::MaintenanceAction::FAILED);
+    if (maintenance::COMPLETE != action->getState()) {
+      action->setState(maintenance::FAILED);
     } else {
       result.reset(TRI_ERROR_BAD_PARAMETER,"deleteAction called after action complete.");
     } // else
@@ -166,40 +169,38 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 /// @brief This is the  API for creating an Action and executing it.
 ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
 ///  not yet:  ActionDescription parameter will be MOVED to new object.
-Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                                     std::shared_ptr<VPackBuilder> const & properties,
-                                     bool executeNow) {
+Result MaintenanceFeature::addAction(
+  std::shared_ptr<maintenance::ActionDescription> const & description,
+  bool executeNow) {
+  
   Result result;
 
   // the underlying routines are believed to be safe and throw free,
   //  but just in case
   try {
-    maintenance::MaintenanceActionPtr_t newAction;
+    std::shared_ptr<Action> newAction;
 
     // is there a known name field
-    auto find_it = description->find("name");
-    if (description->end()!=find_it) {
-      size_t action_hash = maintenance::ActionDescription::hash(*description);
-      WRITE_LOCKER(wLock, _actionRegistryLock);
+    auto find_it = description->get("name");
 
-      maintenance::MaintenanceActionPtr_t curAction = findActionHashNoLock(action_hash);
+    size_t action_hash = description->hash();
+    WRITE_LOCKER(wLock, _actionRegistryLock);
 
-      // similar action not in the queue (or at least no longer viable)
-      if (!curAction || curAction->done()) {
-        newAction = createAction(description, properties, executeNow);
+    std::shared_ptr<Action> curAction = findActionHashNoLock(action_hash);
 
-        if (!newAction) {
-          /// something failed in action creation ... go check logs
-          result.reset(TRI_ERROR_BAD_PARAMETER, "createAction rejected parameters.");
-        } // if
-      } else {
-        // action already exist, need write lock to prevent race
-        result.reset(TRI_ERROR_BAD_PARAMETER, "addAction called while similar action already processing.");
-      } //else
+    // similar action not in the queue (or at least no longer viable)
+    if (!curAction || curAction->done()) {
+      newAction = std::make_shared<Action>(
+        std::make_shared<MaintenanceFeature>(this), *description);
+
+      if (!newAction) {
+        /// something failed in action creation ... go check logs
+        result.reset(TRI_ERROR_BAD_PARAMETER, "createAction rejected parameters.");
+      } // if
     } else {
-      // description lacks mandatory "name" field
-      result.reset(TRI_ERROR_BAD_PARAMETER, "addAction called without required \"name\" field.");
-    } // else
+      // action already exist, need write lock to prevent race
+      result.reset(TRI_ERROR_BAD_PARAMETER, "addAction called while similar action already processing.");
+    } //else
 
     // executeNow process on this thread, right now!
     if (result.ok() && executeNow) {
@@ -216,77 +217,59 @@ Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescript
 } // MaintenanceFeature::addAction
 
 
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::preAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                                                                  std::shared_ptr<VPackBuilder> const & properties) {
+std::shared_ptr<Action> MaintenanceFeature::preAction(
+  std::shared_ptr<ActionDescription> const & description) {
 
-  return createAction(description, properties, true);
+  return createAction(description, true);
 
 } // MaintenanceFeature::preAction
 
 
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                                                                     std::shared_ptr<VPackBuilder> const & properties,
-                                                                     bool executeNow) {
+std::shared_ptr<Action> MaintenanceFeature::createAction(
+  std::shared_ptr<ActionDescription> const & description,
+  bool executeNow) {
+  
   // write lock via _actionRegistryLock is assumed held
-  maintenance::MaintenanceActionPtr_t newAction;
+  std::shared_ptr<Action> newAction;
 
   // name should already be verified as existing ... but trust no one
-  auto find_it = description->find("name");
-  if (description->end()!=find_it) {
-    std::string name = find_it->second;
-
-    // call factory
-    newAction = actionFactory(name, description, properties);
-
-    // if a new action created
-    if (newAction) {
-
-      // mark as executing so no other workers accidentally grab it
-      if (executeNow) {
-        newAction->setState(maintenance::MaintenanceAction::EXECUTING);
-      } // if
-
+  std::string name = description->get(NAME);
+  
+  // call factory
+  newAction = std::make_shared<Action>(
+    std::make_shared<MaintenanceFeature>(this), description);
+  
+  // if a new action created
+  if (newAction) {
+    
+    // mark as executing so no other workers accidentally grab it
+    if (executeNow) {
+      newAction->setState(maintenance::EXECUTING);
+    } // if
+    
       // WARNING: holding write lock to _actionRegistry and about to
       //   lock condition variable
-      {
-        CONDITION_LOCKER(cLock, _actionRegistryCond);
-        _actionRegistry.push_back(newAction);
+    {
+      CONDITION_LOCKER(cLock, _actionRegistryCond);
+      _actionRegistry.push_back(newAction);
 
-        if (!executeNow) {
-          _actionRegistryCond.signal();
-        } // if
-      } // lock
-    } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "createAction:  unknown action name given, \"" << name.c_str() << "\".";
-    } // else
-  } // if
+      if (!executeNow) {
+        _actionRegistryCond.signal();
+      } // if
+    } // lock
+  } else {
+    LOG_TOPIC(ERR, Logger::CLUSTER)
+      << "createAction:  unknown action name given, \"" << name.c_str() << "\".";
+  } // else
+
 
   return newAction;
 
-} // MaintenanceFeature::createAction
+} // if
 
 
-// All action creators should go here.
-//  (actionFactory is a virtual function to allow unit tests to
-//   quietly create specialty actions for testing)
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::actionFactory(std::string & name,
-                                                                      std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                                                                      std::shared_ptr<VPackBuilder> const & properties) {
-  maintenance::MaintenanceActionPtr_t newAction;
 
-    // walk list until we find the object of our desire
-    if (name == "CreateDatabase") {
-      #warning fixme
-//      newAction.reset(new maintenance::CreateDatabase(*this, description, properties));
-    }
-
-  return newAction;
-
-} // MaintenanceFeature::actionFactory
-
-
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionHash(size_t hash) {
+std::shared_ptr<Action> MaintenanceFeature::findActionHash(size_t hash) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return(findActionHashNoLock(hash));
@@ -294,10 +277,10 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionHash(size_t ha
 } // MaintenanceFeature::findActionHash
 
 
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionHashNoLock(size_t hash) {
+std::shared_ptr<Action> MaintenanceFeature::findActionHashNoLock(size_t hash) {
   // assert to test lock held?
 
-  maintenance::MaintenanceActionPtr_t ret_ptr;
+  std::shared_ptr<Action> ret_ptr;
 
   for (auto action_it=_actionRegistry.begin();
        _actionRegistry.end() != action_it && !ret_ptr; ++action_it) {
@@ -311,7 +294,7 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionHashNoLock(siz
 } // MaintenanceFeature::findActionHashNoLock
 
 
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionId(uint64_t id) {
+std::shared_ptr<Action> MaintenanceFeature::findActionId(uint64_t id) {
   READ_LOCKER(rLock, _actionRegistryLock);
 
   return(findActionIdNoLock(id));
@@ -319,10 +302,10 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionId(uint64_t id
 } // MaintenanceFeature::findActionId
 
 
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionIdNoLock(uint64_t id) {
+std::shared_ptr<Action> MaintenanceFeature::findActionIdNoLock(uint64_t id) {
   // assert to test lock held?
 
-  maintenance::MaintenanceActionPtr_t ret_ptr;
+  std::shared_ptr<Action> ret_ptr;
 
   for (auto action_it=_actionRegistry.begin();
        _actionRegistry.end() != action_it && !ret_ptr; ++action_it) {
@@ -336,8 +319,8 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionIdNoLock(uint6
 } // MaintenanceFeature::findActionIdNoLock
 
 
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::findReadyAction() {
-  maintenance::MaintenanceActionPtr_t ret_ptr;
+std::shared_ptr<Action> MaintenanceFeature::findReadyAction() {
+  std::shared_ptr<Action> ret_ptr;
 
   while(!_isShuttingDown && !ret_ptr) {
     CONDITION_LOCKER(cLock, _actionRegistryCond);
@@ -349,7 +332,7 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::findReadyAction() {
       for (auto loop=_actionRegistry.begin(); _actionRegistry.end()!=loop && !ret_ptr; ) {
         if ((*loop)->runable()) {
           ret_ptr=*loop;
-          ret_ptr->setState(maintenance::MaintenanceAction::EXECUTING);
+          ret_ptr->setState(maintenance::EXECUTING);
         } else if ((*loop)->done()) {
           loop = _actionRegistry.erase(loop);
         } else {
@@ -370,21 +353,21 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::findReadyAction() {
 } // MaintenanceFeature::findReadyAction
 
 
-VPackBuilder  MaintenanceFeature::toVelocityPack() const {
+VPackBuilder  MaintenanceFeature::toVelocyPack() const {
   VPackBuilder vb;
   READ_LOCKER(rLock, _actionRegistryLock);
 
   { VPackArrayBuilder ab(&vb);
     for (auto action : _actionRegistry ) {
-      action->toVelocityPack(vb);
+      action->toVelocyPack(vb);
     } // for
 
   }
   return vb;
 
-} // MaintenanceFeature::toVelocityPack
+} // MaintenanceFeature::toVelocyPack
 #if 0
 std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
 } // MaintenanceFeature::toJson
 #endif
-} // namespace arangodb
+

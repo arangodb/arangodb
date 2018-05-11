@@ -298,7 +298,6 @@ SET(ARANGOD_SOURCES
   Cluster/EnsureIndex.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
-  Cluster/MaintenanceAction.cpp
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp

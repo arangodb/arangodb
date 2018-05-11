@@ -25,7 +25,7 @@
 #define ARANGOD_CLUSTER_MAINTENANCE_WORKER 1
 
 #include "Basics/Thread.h"
-#include "Cluster/MaintenanceAction.h"
+#include "Cluster/Action.h"
 
 namespace arangodb {
 
@@ -35,9 +35,9 @@ namespace maintenance {
 
 class MaintenanceWorker : public Thread {
  public:
-  MaintenanceWorker(arangodb::MaintenanceFeature & feature);
-  MaintenanceWorker(arangodb::MaintenanceFeature & feature,
-                    MaintenanceActionPtr_t & directAction);
+  MaintenanceWorker(MaintenanceFeature& feature);
+  MaintenanceWorker(
+    MaintenanceFeature& feature, std::shared_ptr<Action>& directAction);
 
   virtual ~MaintenanceWorker() {};
 
@@ -70,7 +70,7 @@ protected:
 
   arangodb::MaintenanceFeature & _feature;
 
-  MaintenanceActionPtr_t _curAction;
+  std::shared_ptr<Action> _curAction;
 
   WorkerState _loopState;
 

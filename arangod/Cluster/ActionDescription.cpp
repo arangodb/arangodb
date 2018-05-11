@@ -95,13 +95,20 @@ std::string const& ActionDescription::name() const {
 VPackBuilder ActionDescription::toVelocyPack() const {
   VPackBuilder b;
   { VPackObjectBuilder bb(&b);
-    for (auto const& i : _description) {
-      b.add(i.first, VPackValue(i.second));
-    }
-    if (!_properties->isEmpty()) {
-      b.add("properties", _properties->slice());
-    }}
+    toVelocyPack(b);  }
   return b;
+}
+
+
+/// @brief summary to velocypack
+void ActionDescription::toVelocyPack(VPackBuilder& b) const {
+  TRI_ASSERT(b.isOpenObject());
+  for (auto const& i : _description) {
+    b.add(i.first, VPackValue(i.second));
+  }
+  if (!_properties->isEmpty()) {
+    b.add("properties", _properties->slice());
+  }
 }
 
 

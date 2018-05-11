@@ -38,9 +38,8 @@ class MaintenanceFeature;
 
 namespace maintenance {
 
-typedef std::shared_ptr<class ActionBase> ActionPtr_t;
 
-enum ActionModel { BACKGROUND, FOREGROUND };
+class Action;
 
 class ActionBase {
 
@@ -63,7 +62,7 @@ class ActionBase {
 
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
-  virtual bool next() {return false;};
+  virtual arangodb::Result next() { return arangodb::Result(1); }
 
   //
   // common property or decription names
@@ -84,29 +83,17 @@ class ActionBase {
   static const char GLOB_UID[];
   static const char OBJECT_ID[];
 
-  //
-  // state accessor and set functions
-  //  (some require time checks and/or combination tests)
-  //
-  enum ActionState {
-    READY = 1,     // waiting for a worker on the deque
-    EXECUTING = 2, // user or worker thread currently executing
-    WAITING = 3,   // initiated a pre-task, waiting for its completion
-    WAITINGPRE = 4,// parent task created, about to execute on parent's thread
-    WAITINGPOST = 5,// parent task created, will execute after parent's success
-    PAUSED = 6,    // (not implemented) user paused task
-    COMPLETE = 7,  // task completed successfully
-    FAILED = 8,    // task failed, no longer executing
-  };
-  
   /// @brief execution finished successfully or failed ... and race timer expired
   bool done() const;
 
   /// @brief waiting for a worker to grab it and go!
-  bool runable() const {return READY==_state;};
+  bool runable() const {return READY==_state;}
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  ActionState state() const {return _state;};
+  ActionState state() const {
+    #warning assumes WRITE lock on _actionRegistryLock
+    return _state;
+  }
 
   virtual arangodb::Result run(
     std::chrono::duration<double> const&, bool& finished);
@@ -143,54 +130,46 @@ class ActionBase {
   void endStats();
 
   /// @brief return progress statistic
-  uint64_t getProgress() const {return _progress.load();};
+  uint64_t getProgress() const {return _progress.load();}
 
   /// @brief Once PreAction completes, remove its pointer
-  void clearPreAction() {_preAction.reset();};
+  void clearPreAction() {_preAction.reset();}
 
   /// @brief Retrieve pointer to action that should run before this one
-  MaintenanceActionPtr_t getPreAction() {return _preAction;};
+  std::shared_ptr<Action> getPreAction() {return _preAction;}
 
-  /// @brief Initiate a preAction
-  void createPreAction(std::shared_ptr<ActionDescription_t> const & description,
-                      std::shared_ptr<VPackBuilder> const & properties);
+  /// @brief Initiate a pre action
+  void createPreAction(std::shared_ptr<ActionDescription> const& description);
 
-  /// @brief Initiate a postAction
-  void createPostAction(std::shared_ptr<ActionDescription_t> const & description,
-                      std::shared_ptr<VPackBuilder> const & properties);
+  /// @brief Initiate a post action
+  void createPostAction(std::shared_ptr<ActionDescription> const& description);
 
   /// @brief Retrieve pointer to action that should run directly after this one
-  MaintenanceActionPtr_t getPostAction() {return _postAction;};
+  std::shared_ptr<Action> getPostAction() {return _postAction;}
 
   /// @brief Save pointer to successor action
-  void setPostAction(MaintenanceActionPtr_t post) {_postAction=post;}
+  void setPostAction(std::shared_ptr<Action> post) { _postAction=post; }
 
-  /// @brief hash value of ActionDescription_t
+  /// @brief hash value of ActionDescription
   /// @return uint64_t hash
-  uint64_t hash() const {return _hash;};
+  uint64_t hash() const {return _hash;}
 
-  /// @brief hash value of ActionDescription_t
+  /// @brief hash value of ActionDescription
   /// @return uint64_t hash
-  uint64_t id() const {return _id;};
+  uint64_t id() const {return _id;}
 
   /// @brief add VPackObject to supplied builder with info about this action
-  virtual void toVelocityPack(VPackBuilder & builder);
+  virtual void toVelocyPack(VPackBuilder & builder) const;
 
   /// @brief Returns json array of object contents for status reports
   ///  Thread safety of this function is questionable for some member objects
-//  virtual Result toJson(/* builder */) {return Result;};
-
+  //  virtual Result toJson(/* builder */) {return Result;}
+  
   /// @brief Return Result object contain action specific status
   Result result() const {return _result;}
 
-  /// @brief access action description object
-  ActionDescription_t const * getDescription() const {return _description.get();};
-
-  /// @brief access properties builder / slice
-  VPackBuilder const * getProperties() const {return _properties.get();};
-
 protected:
-
+  
   std::shared_ptr<arangodb::MaintenanceFeature> _feature;
 
   ActionDescription _description;
@@ -204,8 +183,8 @@ protected:
   std::atomic<ActionState> _state;
 
   // NOTE: preAction should only be set within first() or post(), not construction
-  ActionPtr_t _preAction;
-  ActionPtr_t _postAction;
+  std::shared_ptr<Action> _preAction;
+  std::shared_ptr<Action> _postAction;
 
   // times for user reporting (and _actionDone used by done() to prevent
   //  race conditions of same task executing twice

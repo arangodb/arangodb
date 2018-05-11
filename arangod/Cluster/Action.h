@@ -25,6 +25,7 @@
 #ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
 #define ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
 
+#include "ActionBase.h"
 #include "ActionDescription.h"
 
 #include "lib/Basics/Result.h"
@@ -37,8 +38,6 @@ class MaintenanceFeature;
 
 namespace maintenance {
 
-class ActionBase;
-
 class Action {
 
 public:
@@ -50,8 +49,16 @@ public:
   virtual ~Action();
   
   /// @brief run for some time and tell, if need more time or done
-  arangodb::Result run(
-    std::chrono::duration<double> const&, bool& finished);
+  arangodb::Result next();
+
+  /// @brief run for some time and tell, if need more time or done
+  arangodb::Result result();
+
+  /// @brief run for some time and tell, if need more time or done
+  arangodb::Result first ();
+
+  /// @brief run for some time and tell, if need more time or done
+  ActionState state() const;
 
   /// @brief kill action with signal
   arangodb::Result kill(Signal const& signal);
@@ -64,6 +71,70 @@ public:
 
   // @brief get properties
   std::shared_ptr<VPackBuilder> const properties() const;
+
+  ActionState getState() const;
+  
+  void setState(ActionState state) {
+#warning check that lock is held
+    _action->setState(state);
+  }
+  
+  /// @brief update incremental statistics
+  void startStats();
+
+  /// @brief update incremental statistics
+  void incStats();
+
+  /// @brief finalize statistics
+  void endStats();
+
+  /// @brief return progress statistic
+  uint64_t getProgress() const { return _action->getProgress(); }
+
+  /// @brief Once PreAction completes, remove its pointer
+  void clearPreAction() { _action->clearPreAction(); }
+
+  /// @brief Retrieve pointer to action that should run before this one
+  std::shared_ptr<Action> getPreAction() { return _action->getPreAction(); }
+
+  /// @brief Initiate a pre action
+  void createPreAction(ActionDescription const& description);
+
+  /// @brief Initiate a post action
+  void createPostAction(ActionDescription const& description);
+
+  /// @brief Retrieve pointer to action that should run directly after this one
+  std::shared_ptr<Action> getPostAction() { return _action->getPostAction(); }
+
+  /// @brief Save pointer to successor action
+  void setPostAction(std::shared_ptr<Action> post) {
+    _action->setPostAction(post);
+  }
+
+  /// @brief hash value of ActionDescription
+  /// @return uint64_t hash
+  uint64_t hash() const { return _action->hash(); }
+
+  /// @brief hash value of ActionDescription
+  /// @return uint64_t hash
+  uint64_t id() const { return _action->id(); }
+
+  /// @brief add VPackObject to supplied builder with info about this action
+  virtual void toVelocyPack(VPackBuilder & builder) const;
+
+  /// @brief Returns json array of object contents for status reports
+  ///  Thread safety of this function is questionable for some member objects
+//  virtual Result toJson(/* builder */) {return Result;};
+
+  /// @brief Return Result object contain action specific status
+  Result result() const { return _action->result(); }
+
+  /// @brief execution finished successfully or failed ... and race timer expired
+  bool done() const { return _action->done(); }
+
+  /// @brief waiting for a worker to grab it and go!
+  bool runable() const {return _action->runable();}
+
   
 private:
   

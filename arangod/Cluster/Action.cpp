@@ -24,7 +24,6 @@
 
 #include "Action.h"
 
-#include "Cluster/ActionBase.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/UpdateCollection.h"
@@ -60,10 +59,19 @@ std::shared_ptr<VPackBuilder> const Action::properties() const {
   return describe().properties();
 }
 
-arangodb::Result Action::run(
-  std::chrono::duration<double> const& d, bool& f) {
+arangodb::Result Action::first() {
   TRI_ASSERT(_action != nullptr);
-  return _action->run(d, f);
+  return _action->first();
+}
+
+arangodb::Result Action::next() {
+  TRI_ASSERT(_action != nullptr);
+  return _action->next();
+}
+
+arangodb::Result Action::result() {
+  TRI_ASSERT(_action != nullptr);
+  return _action->result();
 }
 
 arangodb::Result Action::kill(Signal const& signal) {

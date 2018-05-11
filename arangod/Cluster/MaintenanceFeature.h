@@ -29,7 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "Cluster/MaintenanceAction.h"
+#include "Cluster/Action.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -72,39 +72,33 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief This is the  API for creating an Action and executing it.
   ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
   ///  not yet:  ActionDescription parameter will be MOVED to new object.
-  Result addAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                   std::shared_ptr<VPackBuilder> const & properties,
-                   bool executeNow=false);
+  Result addAction(
+    std::shared_ptr<maintenance::ActionDescription> const & description,
+    bool executeNow=false);
 
 
   /// @brief Internal API that allows existing actions to create pre and post actions
-  maintenance::MaintenanceActionPtr_t preAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                                                std::shared_ptr<VPackBuilder> const & properties);
-
+  std::shared_ptr<maintenance::Action> preAction(
+    std::shared_ptr<maintenance::ActionDescription> const & description);
+  
 protected:
-  maintenance::MaintenanceActionPtr_t createAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                                                   std::shared_ptr<VPackBuilder> const & properties,
-                                                   bool executeNow);
-
-  /// @brief actionFactory is a subroutine of createAction().  Its functionality is isolated
-  ///   to allow unit tests to quietly add "test actions" via a virtual function
-  virtual maintenance::MaintenanceActionPtr_t actionFactory(std::string & name,
-                                                            std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                                                            std::shared_ptr<VPackBuilder> const & properties);
-
+  std::shared_ptr<maintenance::Action> createAction(
+    std::shared_ptr<maintenance::ActionDescription> const & description,
+    bool executeNow);
+  
 public:
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.
   Result deleteAction(uint64_t id);
 
   /// @brief Create a VPackBuilder object with snapshot of current action registry
-  VPackBuilder toVelocityPack() const;
+  VPackBuilder toVelocyPack() const;
 
   /// @brief Returns json array of all MaintenanceActions within the deque
   Result toJson(VPackBuilder & builder);
 
   /// @brief Return pointer to next ready action, or nullptr
-  maintenance::MaintenanceActionPtr_t findReadyAction();
+  std::shared_ptr<maintenance::Action> findReadyAction();
 
   /// @brief Process specific ID for a new action
   /// @returns uint64_t
@@ -121,19 +115,19 @@ protected:
 
   /// @brief Search for action by hash
   /// @return shared pointer to action object if exists, _actionRegistry.end() if not
-  maintenance::MaintenanceActionPtr_t findActionHash(size_t hash);
+  std::shared_ptr<maintenance::Action> findActionHash(size_t hash);
 
   /// @brief Search for action by hash (but lock already held by caller)
   /// @return shared pointer to action object if exists, nullptr if not
-  maintenance::MaintenanceActionPtr_t findActionHashNoLock(size_t hash);
+  std::shared_ptr<maintenance::Action> findActionHashNoLock(size_t hash);
 
   /// @brief Search for action by Id
   /// @return shared pointer to action object if exists, nullptr if not
-  maintenance::MaintenanceActionPtr_t findActionId(uint64_t id);
+  std::shared_ptr<maintenance::Action> findActionId(uint64_t id);
 
   /// @brief Search for action by Id (but lock already held by caller)
   /// @return shared pointer to action object if exists, nullptr if not
-  maintenance::MaintenanceActionPtr_t findActionIdNoLock(uint64_t hash);
+  std::shared_ptr<maintenance::Action> findActionIdNoLock(uint64_t hash);
 
 protected:
   /// @brief tunable option for thread pool size
@@ -161,7 +155,7 @@ protected:
   //    - then write lock via _actionRegistryLock
   //
   /// @brief all actions executing, waiting, and done
-  std::deque<maintenance::MaintenanceActionPtr_t> _actionRegistry;
+  std::deque<std::shared_ptr<maintenance::Action>> _actionRegistry;
 
   /// @brief lock to protect _actionRegistry and state changes to MaintenanceActions within
   mutable arangodb::basics::ReadWriteLock _actionRegistryLock;

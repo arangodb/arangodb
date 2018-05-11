@@ -32,7 +32,8 @@ namespace maintenance {
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature & feature)
   : Thread("MaintenanceWorker"),
-    _feature(feature), _loopState(eFIND_ACTION), _directAction(false) {
+    _feature(feature), _curAction(nullptr), _loopState(eFIND_ACTION),
+    _directAction(false) {
 
   return;
 
@@ -40,7 +41,7 @@ MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature & feature)
 
 
 MaintenanceWorker::MaintenanceWorker(arangodb::MaintenanceFeature & feature,
-  MaintenanceActionPtr_t & directAction)
+  std::shared_ptr<Action> & directAction)
   : Thread("MaintenanceWorker"),
     _feature(feature), _curAction(directAction), _loopState(eRUN_FIRST),
     _directAction(true) {
@@ -58,15 +59,15 @@ void MaintenanceWorker::run() {
     switch(_loopState) {
       case eFIND_ACTION:
         _curAction = _feature.findReadyAction();
-        more = (bool)_curAction;
+        more = _curAction != nullptr;
         break;
 
       case eRUN_FIRST:
-        more = _curAction->first();
+        more = _curAction->first().is(TRI_ERROR_ACTION_UNFINISHED);
         break;
 
       case eRUN_NEXT:
-        more = _curAction->next();
+        more = _curAction->next().is(TRI_ERROR_ACTION_UNFINISHED);
         break;
 
       default:
@@ -88,7 +89,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
 
   // bad result code forces actionMore to false
   if (_curAction && (!_curAction->result().ok()
-                     || MaintenanceAction::FAILED == _curAction->getState()))
+                     || maintenance::FAILED == _curAction->getState()))
   {
     actionMore = false;
   } // if
@@ -107,9 +108,9 @@ void MaintenanceWorker::nextState(bool actionMore) {
 
       // move execution to PreAction if it exists
       if (_curAction->getPreAction()) {
-        MaintenanceActionPtr_t tempPtr;
+        std::shared_ptr<Action> tempPtr;
 
-        _curAction->setState(MaintenanceAction::WAITING);
+        _curAction->setState(maintenance::WAITING);
         tempPtr=_curAction;
         _curAction=_curAction->getPreAction();
         _curAction->setPostAction(tempPtr);
@@ -126,27 +127,27 @@ void MaintenanceWorker::nextState(bool actionMore) {
 
       // if action's state not set, assume it succeeded when result ok
       if (_curAction->result().ok()
-          && MaintenanceAction::FAILED != _curAction->getState()) {
+          && maintenance::FAILED != _curAction->getState()) {
 //        _curAction->incStats();
         _curAction->endStats();
-        _curAction->setState(MaintenanceAction::COMPLETE);
+        _curAction->setState(maintenance::COMPLETE);
 
         // continue execution with "next" action tied to this one
         if (_curAction->getPostAction()) {
           _curAction = _curAction->getPostAction();
           _curAction->clearPreAction();
-          _loopState = (MaintenanceAction::WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
-          _curAction->setState(MaintenanceAction::EXECUTING);
+          _loopState = (maintenance::WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
+          _curAction->setState(maintenance::EXECUTING);
         } else {
           _curAction.reset();
           _loopState = (_directAction ? eSTOP : eFIND_ACTION);
         } // else
       } else {
-        MaintenanceActionPtr_t failAction(_curAction);
+        std::shared_ptr<Action> failAction(_curAction);
 
         // fail all actions that would follow
         do {
-          failAction->setState(MaintenanceAction::FAILED);
+          failAction->setState(maintenance::FAILED);
           failAction->endStats();
           failAction=failAction->getPostAction();
         } while(failAction);
@@ -162,8 +163,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
 } // MaintenanceWorker::nextState
 
 #if 0
-MaintenanceActionPtr_t MaintenanceWorker::findReadyAction() {
-  MaintenanceActionPtr_t ret_ptr;
+std::shared_ptr<Action> MaintenanceWorker::findReadyAction() {
+  std::shared_ptr<Action> ret_ptr;
 
 
 

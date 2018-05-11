@@ -46,7 +46,7 @@ const char MaintenanceAction::GLOB_UID[]="globallyUniqueId";
 const char MaintenanceAction::OBJECT_ID[]="objectId";
 
 MaintenanceAction::MaintenanceAction(arangodb::MaintenanceFeature & feature,
-                                     std::shared_ptr<ActionDescription_t> const & description,
+                                     std::shared_ptr<ActionDescription> const & description,
                                      std::shared_ptr<VPackBuilder> const & properties)
   : _feature(feature), _description(description), _properties(properties),
     _state(READY),
@@ -83,7 +83,7 @@ bool MaintenanceAction::done() const {
 
 
 /// @brief Initiate a new action that will start immediately, pausing this action
-void MaintenanceAction::createPreAction(std::shared_ptr<ActionDescription_t> const & description,
+void MaintenanceAction::createPreAction(std::shared_ptr<ActionDescription> const & description,
                                        std::shared_ptr<VPackBuilder> const & properties) {
 
   _preAction = _feature.preAction(description, properties);
@@ -102,7 +102,7 @@ void MaintenanceAction::createPreAction(std::shared_ptr<ActionDescription_t> con
 
 
 /// @brief Create a new action that will start after this action successfully completes
-void MaintenanceAction::createPostAction(std::shared_ptr<ActionDescription_t> const & description,
+void MaintenanceAction::createPostAction(std::shared_ptr<ActionDescription> const & description,
                                        std::shared_ptr<VPackBuilder> const & properties) {
 
   // preAction() sets up what we need

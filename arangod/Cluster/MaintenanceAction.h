@@ -42,13 +42,13 @@ class MaintenanceFeature;
 namespace maintenance {
 
 
-typedef std::map<std::string, std::string> ActionDescription_t;
-typedef std::shared_ptr<class MaintenanceAction> MaintenanceActionPtr_t;
+typedef std::map<std::string, std::string> ActionDescription;
+typedef std::shared_ptr<class MaintenanceAction> std::shared_ptr<Action>;
 
 class MaintenanceAction {
  public:
   MaintenanceAction(arangodb::MaintenanceFeature & feature,
-                    std::shared_ptr<ActionDescription_t> const & description,
+                    std::shared_ptr<ActionDescription> const & description,
                     std::shared_ptr<VPackBuilder> const & properties);
 
   MaintenanceAction() = delete;
@@ -133,27 +133,27 @@ class MaintenanceAction {
   void clearPreAction() {_preAction.reset();};
 
   /// @brief Retrieve pointer to action that should run before this one
-  MaintenanceActionPtr_t getPreAction() {return _preAction;};
+  std::shared_ptr<Action> getPreAction() {return _preAction;};
 
   /// @brief Initiate a preAction
-  void createPreAction(std::shared_ptr<ActionDescription_t> const & description,
+  void createPreAction(std::shared_ptr<ActionDescription> const & description,
                       std::shared_ptr<VPackBuilder> const & properties);
 
   /// @brief Initiate a postAction
-  void createPostAction(std::shared_ptr<ActionDescription_t> const & description,
+  void createPostAction(std::shared_ptr<ActionDescription> const & description,
                       std::shared_ptr<VPackBuilder> const & properties);
 
   /// @brief Retrieve pointer to action that should run directly after this one
-  MaintenanceActionPtr_t getPostAction() {return _postAction;};
+  std::shared_ptr<Action> getPostAction() {return _postAction;};
 
   /// @brief Save pointer to successor action
-  void setPostAction(MaintenanceActionPtr_t post) {_postAction=post;}
+  void setPostAction(std::shared_ptr<Action> post) {_postAction=post;}
 
-  /// @brief hash value of ActionDescription_t
+  /// @brief hash value of ActionDescription
   /// @return uint64_t hash
   uint64_t hash() const {return _hash;};
 
-  /// @brief hash value of ActionDescription_t
+  /// @brief hash value of ActionDescription
   /// @return uint64_t hash
   uint64_t id() const {return _id;};
 
@@ -168,7 +168,7 @@ class MaintenanceAction {
   Result result() const {return _result;}
 
   /// @brief access action description object
-  ActionDescription_t const * getDescription() const {return _description.get();};
+  ActionDescription const * getDescription() const {return _description.get();};
 
   /// @brief access properties builder / slice
   VPackBuilder const * getProperties() const {return _properties.get();};
@@ -176,7 +176,7 @@ class MaintenanceAction {
 protected:
   arangodb::MaintenanceFeature & _feature;
 
-  std::shared_ptr<ActionDescription_t> const _description;
+  std::shared_ptr<ActionDescription> const _description;
   std::shared_ptr<VPackBuilder> const _properties;
 
   uint64_t _hash;
@@ -186,8 +186,8 @@ protected:
   std::atomic<ActionState> _state;
 
   // NOTE: preAction should only be set within first() or post(), not construction
-  MaintenanceActionPtr_t _preAction;
-  MaintenanceActionPtr_t _postAction;
+  std::shared_ptr<Action> _preAction;
+  std::shared_ptr<Action> _postAction;
 
   // times for user reporting (and _actionDone used by done() to prevent
   //  race conditions of same task executing twice

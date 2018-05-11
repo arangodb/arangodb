@@ -1814,6 +1814,11 @@ constexpr int TRI_ERROR_ACTION_ALREADY_REGISTERED                               
 /// This maintenance action cannot be stopped once it is started
 constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 6002;
 
+/// 6003: ERROR_ACTION_UNFINISHED
+/// "maintenance action still processing"
+/// This maintenance action is still processing
+constexpr int TRI_ERROR_ACTION_UNFINISHED                                       = 6003;
+
 
 /// register all errors for ArangoDB
 void TRI_InitializeErrorMessages();
