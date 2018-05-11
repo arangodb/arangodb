@@ -44,7 +44,7 @@
 /// @brief get the vocbase pointer from the current V8 context
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vocbase_t* GetContextVocBase(v8::Isolate* isolate);
+TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse document or document handle from a v8 value (string | object)

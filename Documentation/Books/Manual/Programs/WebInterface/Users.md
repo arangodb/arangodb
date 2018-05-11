@@ -35,5 +35,5 @@ explicitly set). The default access levels for this user and database
 appear in the artificial row with the collection name `*`.
 
 {% hint 'info' %}
-Also see [**Managing Users**](../ManagingUsers/README.md) about access levels.
+Also see [**Managing Users**](../../Administration/ManagingUsers/README.md) about access levels.
 {% endhint %}

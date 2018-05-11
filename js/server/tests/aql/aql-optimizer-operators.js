@@ -45,7 +45,6 @@ function optimizerOperatorsTestSuite () {
     testOrLhsDynamicRhsFalse : function() {
       var queries = [ 
         "RETURN @data.value || 0",
-        "RETURN V8(@data.value || 0)",
         "RETURN NOOPT(@data.value || 0)"
       ];
 
@@ -66,7 +65,6 @@ function optimizerOperatorsTestSuite () {
     testOrLhsDynamicRhsTrue : function() {
       var queries = [ 
         "RETURN @data.value || 1",
-        "RETURN V8(@data.value || 1)",
         "RETURN NOOPT(@data.value || 1)"
       ];
 
@@ -87,7 +85,6 @@ function optimizerOperatorsTestSuite () {
     testOrRhsDynamicLhsFalse : function() {
       var queries = [ 
         "RETURN 0 || @data.value",
-        "RETURN V8(0 || @data.value)",
         "RETURN NOOPT(0 || @data.value)"
       ];
 
@@ -108,7 +105,6 @@ function optimizerOperatorsTestSuite () {
     testOrRhsDynamicLhsTrue : function() {
       var queries = [ 
         "RETURN 1 || @data.value",
-        "RETURN V8(1 || @data.value)",
         "RETURN NOOPT(1 || @data.value)"
       ];
 
@@ -129,7 +125,6 @@ function optimizerOperatorsTestSuite () {
     testAndLhsDynamicRhsFalse : function() {
       var queries = [ 
         "RETURN @data.value && 0",
-        "RETURN V8(@data.value && 0)",
         "RETURN NOOPT(@data.value && 0)"
       ];
 
@@ -149,7 +144,6 @@ function optimizerOperatorsTestSuite () {
     testAndLhsDynamicRhsTrue : function() {
       var queries = [ 
         "RETURN @data.value && 1",
-        "RETURN V8(@data.value && 1)",
         "RETURN NOOPT(@data.value && 1)"
       ];
 
@@ -169,7 +163,6 @@ function optimizerOperatorsTestSuite () {
     testNot : function() {
       var queries = [ 
         "RETURN !@data.value",
-        "RETURN V8(!@data.value)",
         "RETURN NOOPT(!@data.value)"
       ];
 

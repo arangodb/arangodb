@@ -529,7 +529,6 @@ bool HttpCommTask::processRead(double startTime) {
   }
 
   if (!handleRequest) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "Skipping request for now " << _peer->peerPort();
     return false;
   }
 

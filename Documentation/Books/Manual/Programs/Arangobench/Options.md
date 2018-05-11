@@ -1,17 +1,14 @@
-Arangobench
-===========
+Arangobench Startup Options
+===========================
 
-Arangobench is ArangoDB's benchmark and test tool. It can be used to issue test
-requests to the database for performance and server function testing.
-It supports parallel querying and batch requests.
+Usage: `arangobench [<options>]`
 
-Related blog posts:
+@startDocuBlock program_options_arangobench
 
-- [Measuring ArangoDB insert performance](https://www.arangodb.com/2012/10/gain-factor-of-5-using-batch-updates/)
-- [Gain factor of 5 using batch requests](https://www.arangodb.com/2013/11/measuring-arangodb-insert-performance/)
+Full description
+----------------
 
-Startup options
----------------
+{### TODO: Compare the differences and remove everything that is already in the auto-generated tables ###}
 
 - *--async*: Send asynchronous requests. The default value is *false*.
 
@@ -84,27 +81,3 @@ Startup options
 
 - *--verbose*: Print out replies if the HTTP header indicates DB errors.
   (default: false).
-
-### Examples
-
-    arangobench
-
-Starts Arangobench with the default user and server endpoint.
-
-    --test-case version --requests 1000 --concurrency 1
-
-Runs the 'version' test case with 1000 requests, without concurrency.
-
-    --test-case document --requests 1000 --concurrency 2
-
-Runs the 'document' test case with 2000 requests, with two concurrent threads.
-
-    --test-case document --requests 1000 --concurrency 2 --async true
-
-Runs the 'document' test case with 2000 requests, with concurrency 2,
-with async requests.
-
-    --test-case document --requests 1000 --concurrency 2 --batch-size 10
-
-Runs the 'document' test case with 2000 requests, with concurrency 2,
-using batch requests.
