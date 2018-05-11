@@ -53,6 +53,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
  public:
   uint64_t handlerId() const { return _handlerId; }
   bool needsOwnThread() const { return _needsOwnThread; }
+  uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
   std::unique_ptr<GeneralRequest> stealRequest() { return std::move(_request); }
@@ -76,13 +77,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     }
   }
 
-  uint64_t messageId() const;
-  
   /// Execute the rest handler state machine
   int runHandler(std::function<void(rest::RestHandler*)> cb);
-  
-public:
-  
   
  public:
   virtual char const* name() const = 0;
