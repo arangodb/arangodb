@@ -36,7 +36,7 @@ void SingletonBlock::deleteInputVariables() {
 
 void SingletonBlock::buildWhitelist() {
   if (!_whitelistBuilt) {
-    auto en = static_cast<SingletonNode const*>(getPlanNode());
+    auto en = ExecutionNode::castTo<SingletonNode const*>(getPlanNode());
     auto const& registerPlan = en->getRegisterPlan()->varInfo;
     std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
 
@@ -420,7 +420,7 @@ AqlItemBlock* ReturnBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   
-  auto ep = static_cast<ReturnNode const*>(getPlanNode());
+  auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
 
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
@@ -491,7 +491,7 @@ RegisterId ReturnBlock::returnInheritedResults() {
   DEBUG_BEGIN_BLOCK();
   _returnInheritedResults = true;
 
-  auto ep = static_cast<ReturnNode const*>(getPlanNode());
+  auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
 

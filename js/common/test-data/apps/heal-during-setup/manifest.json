@@ -1,0 +1,7 @@
+{
+    "name": "heal-during-setup",
+    "main": "index.js",
+    "scripts": {
+        "setup": "setup.js"
+    }
+}

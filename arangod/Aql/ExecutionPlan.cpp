@@ -266,7 +266,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
   // sett fullCount flag for last LIMIT node on main level
   if (plan->_lastLimitNode != nullptr &&
       ast->query()->queryOptions().fullCount) {
-    static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
+    ExecutionNode::castTo<LimitNode*>(plan->_lastLimitNode)->setFullCount();
   }
   
   // set count flag for final RETURN node
@@ -581,14 +581,14 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
     return nullptr;
   }
 
-  return static_cast<SubqueryNode*>((*it).second);
+  return ExecutionNode::castTo<SubqueryNode*>((*it).second);
 }
 
 /// @brief get the output variable from a node
 Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   if (node->getType() == ExecutionNode::CALCULATION) {
     // CalculationNode has an outVariale() method
-    return static_cast<CalculationNode const*>(node)->outVariable();
+    return ExecutionNode::castTo<CalculationNode const*>(node)->outVariable();
   }
 
   if (node->getType() == ExecutionNode::COLLECT) {
@@ -598,7 +598,7 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
     // so this will return the first result variable of the COLLECT
     // this part of the code should only be called for anonymous COLLECT nodes,
     // which only have one result variable
-    auto en = static_cast<CollectNode const*>(node);
+    auto en = ExecutionNode::castTo<CollectNode const*>(node);
     auto const& vars = en->groupVariables();
 
     TRI_ASSERT(vars.size() == 1);
@@ -760,7 +760,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
 }
 
 SubqueryNode* ExecutionPlan::registerSubquery(SubqueryNode* node) {
-  node = static_cast<SubqueryNode*>(registerNode(node));
+  node = ExecutionNode::castTo<SubqueryNode*>(registerNode(node));
   _subqueries[node->outVariable()->id] = node;
   return node;
 }
@@ -1057,7 +1057,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
     }
 
     en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
-    _subqueries[static_cast<SubqueryNode*>(en)->outVariable()->id] = en;
+    _subqueries[ExecutionNode::castTo<SubqueryNode*>(en)->outVariable()->id] = en;
   } else {
     // check if the LET is a reference to a subquery
     auto subquery = getSubqueryFromExpression(expression);
@@ -2108,7 +2108,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
       auto subqueryNode = fromSlice(subquery);
 
       // register the just created subquery
-      static_cast<SubqueryNode*>(ret)->setSubquery(subqueryNode, false);
+      ExecutionNode::castTo<SubqueryNode*>(ret)->setSubquery(subqueryNode, false);
     }
   }
 
