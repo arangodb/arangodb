@@ -198,7 +198,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       ++total;
       ++counter;
       batch.Delete(cf, it->key());
-      if (counter == 1000) {
+      if (counter >= 200) {
         LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";
         // Persist deletes all 1000 documents
         rocksdb::Status status = bDB->Write(rocksdb::WriteOptions(), &batch);
