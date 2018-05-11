@@ -762,29 +762,6 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-/*rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
-  // first scape the auth headers and try to determine
-  // and authenticate the user
-  ResponseCode code = handleAuthHeader(request);
-  if (code != ResponseCode::SERVER_ERROR) {
-    // now populate the VocbaseContext
-    if (request->requestContext() == nullptr) {
-      bool res = GeneralCommTask::resolveRequestContext(request);
-      if (!res) {
-        return rest::ResponseCode::NOT_FOUND;
-      } else if (request->requestContext() == nullptr) {
-        return rest::ResponseCode::SERVER_ERROR;
-      }
-    }
-    
-    // will determine if the user can access this path
-    // checks db permissions and contains exceptions for the
-    // users API to allow logins
-    return GeneralCommTask::canAccessPath(request);
-  }
-  return code;
-}*/
-  
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
   bool found;
   std::string const& authStr =
