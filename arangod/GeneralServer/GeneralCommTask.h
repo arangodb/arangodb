@@ -41,7 +41,8 @@ class GeneralResponse;
 
 namespace rest {
 class GeneralServer;
-
+class RestHandler;
+  
 //
 // The flow of events is as follows:
 //
@@ -108,8 +109,17 @@ class GeneralCommTask : public SocketTask {
 
  protected:
   
-  /// Set the appropriate requestContext
-  static bool resolveRequestContext(GeneralRequest* request);
+  enum class RequestFlow : bool {
+    Continue = true,
+    Abort = false
+  };
+  
+  /// Must be called before calling executeRequest, will add an error
+  /// response if execution is supposed to be aborted
+  RequestFlow prepareExecution(GeneralRequest&);
+  
+  /// Must be called from addResponse, before response is rendered
+  void finishExecution(GeneralResponse&) const;
   
   /// Push this request into the execution pipeline
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
@@ -119,7 +129,6 @@ class GeneralCommTask : public SocketTask {
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);
-  void transferStatisticsTo(uint64_t, RestHandler*);
   
   /// @brief send response including error response body
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
@@ -140,7 +149,7 @@ class GeneralCommTask : public SocketTask {
   /// @brief checks the access rights for a specified path, includes automatic
   ///        exceptions for /_api/users to allow logins without authorization
   ////////////////////////////////////////////////////////////////////////////////
-  rest::ResponseCode canAccessPath(GeneralRequest*) const;
+  rest::ResponseCode canAccessPath(GeneralRequest&) const;
 
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);

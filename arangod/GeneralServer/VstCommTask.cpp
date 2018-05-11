@@ -36,7 +36,6 @@
 #include "GeneralServer/VstNetwork.h"
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -127,6 +126,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
     VstResponse& response = static_cast<VstResponse&>(baseResponse);
 #endif
 
+  finishExecution(baseResponse);
   VPackMessageNoOwnBuffer response_message = response.prepareForNetwork();
   uint64_t const mid = response_message._id;
 
@@ -294,6 +294,8 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     _authorized = entry.authenticated();
     if (_authorized) {
       _authenticatedUser = std::move(entry._username);
+    } else {
+      _authenticatedUser.clear();
     }
   } else {
     _authorized = true;
@@ -306,25 +308,8 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
                      "authentication successful");
   } else {
-    _authenticatedUser.clear();
-    ServerState::Mode mode = ServerState::serverMode();
-    if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
-      try {
-        VstResponse resp(ResponseCode::SERVICE_UNAVAILABLE, messageId);
-        resp.setContentType(rest::ContentType::VPACK);
-        ReplicationFeature::prepareFollowerResponse(&resp, mode);
-        addResponse(resp, nullptr);
-      } catch (basics::Exception const& ex) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "Error while preparing follower response " << ex.message();
-        closeStream(); // same as in handleSimpleError
-      } catch (...) {
-        LOG_TOPIC(ERR, Logger::COMMUNICATION) << "Error while preparing follower response";
-        closeStream(); // same as in handleSimpleError
-      }
-    } else {
-      addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
-                        TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed");
-    }
+    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
+                     TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed");
   }
 }
 
@@ -416,42 +401,13 @@ bool VstCommTask::processRead(double startTime) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
-      bool res = GeneralCommTask::resolveRequestContext(request.get());
-      if (!res || request->requestContext() == nullptr) {
-        addErrorResponse(rest::ResponseCode::NOT_FOUND, request->contentTypeResponse(),
-                         chunkHeader._messageID, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                         TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-      } else {
-        request->setClientTaskId(_taskId);
-
-        // will determine if the user can access this path.
-        // checks db permissions and contains exceptions for the
-        // users API to allow logins
-        rest::ResponseCode code = GeneralCommTask::canAccessPath(request.get());
-        if (code != rest::ResponseCode::OK) {
-          events::NotAuthorized(request.get());
-          addErrorResponse(rest::ResponseCode::UNAUTHORIZED, request->contentTypeResponse(),
-                           chunkHeader._messageID, TRI_ERROR_FORBIDDEN,
-                           "not authorized to execute this request");
-        } else {
-          // now that we are authorized we do the request
-          // make sure we have a database
-          if (request->requestContext() == nullptr) {
-            addErrorResponse(rest::ResponseCode::NOT_FOUND, request->contentTypeResponse(),
-                             chunkHeader._messageID, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                             TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-          } else {
-            request->setClientTaskId(_taskId);
-
-            // temporarily release the mutex
-            //MUTEX_UNLOCKER(locker, _lock);
-
-            std::unique_ptr<VstResponse> response(new VstResponse(
-                 rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-            response->setContentTypeRequested(request->contentTypeResponse());
-            executeRequest(std::move(request), std::move(response));
-          }
-        }
+      
+      RequestFlow cont = prepareExecution(*request.get());
+      if (cont == RequestFlow::Continue) {
+        auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR,
+                                                  chunkHeader._messageID);
+        resp->setContentTypeRequested(request->contentTypeResponse());
+        executeRequest(std::move(request), std::move(resp));
       }
     }
   }

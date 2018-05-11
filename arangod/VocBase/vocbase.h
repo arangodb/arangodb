@@ -126,8 +126,7 @@ struct TRI_vocbase_t {
   enum class State {
     NORMAL = 0,
     SHUTDOWN_COMPACTOR = 1,
-    SHUTDOWN_CLEANUP = 2,
-    FAILED_VERSION = 3
+    SHUTDOWN_CLEANUP = 2
   };
 
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,

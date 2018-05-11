@@ -24,7 +24,6 @@
 
 #include "HttpCommTask.h"
 
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -34,11 +33,9 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/VstCommTask.h"
 #include "Meta/conversion.h"
-#include "Replication/ReplicationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
-#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -106,6 +103,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
   HttpResponse& response = static_cast<HttpResponse&>(baseResponse);
 #endif
 
+  finishExecution(baseResponse);
   resetKeepAlive();
   
   // response has been queued, allow further requests
@@ -559,36 +557,40 @@ bool HttpCommTask::processRead(double startTime) {
   // header sent)
 
   // .............................................................................
+  // CORS
+  // .............................................................................
+  
+  // OPTIONS requests currently go unauthenticated
+  if (isOptionsRequest) {
+    // handle HTTP OPTIONS requests directly
+    processCorsOptions(std::move(_incompleteRequest));
+    _incompleteRequest.reset(nullptr);
+    return true;
+  }
+  
+  // .............................................................................
   // authenticate
   // .............................................................................
 
-  rest::ResponseCode authResult = authenticateRequest(_incompleteRequest.get());
+  // first scrape the auth headers and try to determine and authenticate the user
+  rest::ResponseCode authResult = handleAuthHeader(_incompleteRequest.get());
+  
+  //rest::ResponseCode authResult = authenticateRequest(_incompleteRequest.get());
 
-  // authenticated or an OPTIONS request. OPTIONS requests currently go
-  // unauthenticated
-  if (authResult == rest::ResponseCode::OK || isOptionsRequest) {
-    // handle HTTP OPTIONS requests directly
-    if (isOptionsRequest) {
-      processCorsOptions(std::move(_incompleteRequest));
-    } else {
+  // authenticated 
+  if (authResult != rest::ResponseCode::SERVER_ERROR) {
+    
+    // prepare execution will send an error message
+    RequestFlow cont = prepareExecution(*_incompleteRequest.get());
+    if (cont == RequestFlow::Continue) {
       processRequest(std::move(_incompleteRequest));
     }
-  } else if (authResult == rest::ResponseCode::NOT_FOUND) { // not found
-    addErrorResponse(authResult, _incompleteRequest->contentTypeResponse(), 1,
-                     TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-  } else {  // not authenticated, might be because _users is out of sync    
-    ServerState::Mode mode = ServerState::serverMode();
-    if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
-      HttpResponse resp(rest::ResponseCode::SERVICE_UNAVAILABLE, leaseStringBuffer(0));
-      ReplicationFeature::prepareFollowerResponse(&resp, mode);
-      addResponse(resp, nullptr);
-    } else {
-      std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
-      HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
-      resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-      addResponse(resp, nullptr);
-    }
+    
+  } else {
+    std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
+    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
+    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    addResponse(resp, nullptr);
   }
 
   _incompleteRequest.reset(nullptr);
@@ -612,29 +614,6 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << (StringUtils::escapeUnicode(body)) << "\"";
     }
-  }
-
-  // check for an HLC time stamp
-  bool found;
-  std::string const& timeStamp =
-      request->header(StaticStrings::HLCHeader, found);
-
-  if (found) {
-    uint64_t timeStampInt =
-        arangodb::basics::HybridLogicalClock::decodeTimeStamp(timeStamp);
-    if (timeStampInt != 0 && timeStampInt != UINT64_MAX) {
-      TRI_HybridLogicalClock(timeStampInt);
-    }
-  }
-
-  // check source
-  std::string const& source =
-      request->header(StaticStrings::ClusterCommSource, found);
-
-  if (found) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"http-request-source\",\"" << (void*)this << "\",\""
-        << source << "\"";
   }
     
   // create a handler and execute
@@ -695,8 +674,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
   HttpResponse resp(rest::ResponseCode::OK, leaseStringBuffer(0));
 
-  resp.setHeaderNCIfNotSet(StaticStrings::Allow,
-                               StaticStrings::CorsMethods);
+  resp.setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "got CORS preflight request";
@@ -731,7 +709,7 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(
     rest::ResponseCode responseCode, uint64_t /* messageId */) {
-  return std::make_unique<HttpResponse>(responseCode,leaseStringBuffer(0));
+  return std::make_unique<HttpResponse>(responseCode, leaseStringBuffer(0));
 }
 
 void HttpCommTask::compactify() {
@@ -784,7 +762,7 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
+/*rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
   // first scape the auth headers and try to determine
   // and authenticate the user
   ResponseCode code = handleAuthHeader(request);
@@ -805,7 +783,7 @@ rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
     return GeneralCommTask::canAccessPath(request);
   }
   return code;
-}
+}*/
   
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
   bool found;

@@ -25,6 +25,7 @@
 
 #include "GeneralCommTask.h"
 
+#include "Basics/HybridLogicalClock.h"
 #include "Basics/Locking.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -39,12 +40,15 @@
 #include "Meta/conversion.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
+#include "Replication/ReplicationFeature.h"
 #include "Scheduler/Job.h"
+#include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Socket.h"
 #include "Utils/Events.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -91,19 +95,18 @@ GeneralCommTask::~GeneralCommTask() {
 // -----------------------------------------------------------------------------
 
 namespace {
-  TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest* request) {
+  TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
     DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
     
     // get database name from request
-    std::string const& dbName = request->databaseName();
+    std::string const& dbName = req.databaseName();
     
     if (dbName.empty()) {
       // if no databases was specified in the request, use system database name
       // as a fallback
-      request->setDatabaseName(StaticStrings::SystemDatabase);
+      req.setDatabaseName(StaticStrings::SystemDatabase);
       if (ServerState::instance()->isCoordinator()) {
-        return databaseFeature->useDatabaseCoordinator(
-                                                       StaticStrings::SystemDatabase);
+        return databaseFeature->useDatabaseCoordinator(StaticStrings::SystemDatabase);
       }
       return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
     }
@@ -116,39 +119,89 @@ namespace {
 }
 
 /// Set the appropriate requestContext
-bool GeneralCommTask::resolveRequestContext(GeneralRequest* request) {
-  TRI_vocbase_t* vocbase = ::lookupDatabaseFromRequest(request);
+namespace {
+  bool resolveRequestContext(GeneralRequest& req) {
+    TRI_vocbase_t* vocbase = ::lookupDatabaseFromRequest(req);
+    
+    // invalid database name specified, database not found etc.
+    if (vocbase == nullptr) {
+      return false;
+    }
+    
+    TRI_ASSERT(!vocbase->isDangling());
+    
+    // the vocbase context is now responsible for releasing the vocbase
+    req.setRequestContext(VocbaseContext::create(req, *vocbase), true);
+    
+    // the "true" means the request is the owner of the context
+    return true;
+  }
+}
+
+/// Must be called before calling executeRequest, will add an error
+/// response if execution is supposed to be aborted
+GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
+  if (!::resolveRequestContext(req)) {
+    addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
+                     req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                     TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
+    
+    return RequestFlow::Abort;
+  }
+  TRI_ASSERT(req.requestContext() != nullptr);
   
-  // invalid database name specified, database not found etc.
-  if (vocbase == nullptr) {
-    return false;
+  // check source
+  bool found;
+  std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
+  if (found) {
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this << "\",\""
+    << source << "\"";
   }
   
-  TRI_ASSERT(!vocbase->isDangling());
+  // now check the authentication will determine if the user can access
+  // this path checks db permissions and contains exceptions for the
+  // users API to allow logins
+  const rest::ResponseCode ok = GeneralCommTask::canAccessPath(req);
+  if (ok == rest::ResponseCode::UNAUTHORIZED) {
+    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
+                     req.messageId(), TRI_ERROR_FORBIDDEN,
+                     "not authorized to execute this request");
+    return RequestFlow::Abort;
+  }
+  TRI_ASSERT(ok == rest::ResponseCode::OK); // nothing else allowed
   
-  // database needs upgrade
-  if (vocbase->state() == TRI_vocbase_t::State::FAILED_VERSION) {
-    request->setRequestPath("/_msg/please-upgrade");
-    vocbase->release();
-    return false;
+  // check for an HLC time stamp, only after authentication
+  std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
+  if (found) {
+    uint64_t parsed = basics::HybridLogicalClock::decodeTimeStamp(timeStamp);
+    if (parsed != 0 && parsed != UINT64_MAX) {
+      TRI_HybridLogicalClock(parsed);
+    }
   }
   
-  // the vocbase context is now responsible for releasing the vocbase
-  request->setRequestContext(VocbaseContext::create(request, *vocbase), true);
+  return RequestFlow::Continue;
+}
+
+/// Must be called from addResponse, before response is rendered
+void GeneralCommTask::finishExecution(GeneralResponse& res) const {
+  ServerState::Mode mode = ServerState::serverMode();
+  if (mode == ServerState::Mode::REDIRECT ||
+      mode == ServerState::Mode::TRYAGAIN) {
+    ReplicationFeature::setEndpointHeader(&res, mode);
+  }
   
-  // the "true" means the request is the owner of the context
-  return true;
+  // TODO add server ID on coordinators ?
 }
 
 /// Push this request into the execution pipeline
-void GeneralCommTask::executeRequest(
-    std::unique_ptr<GeneralRequest>&& request,
-    std::unique_ptr<GeneralResponse>&& response) {
+void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
+                                     std::unique_ptr<GeneralResponse>&& response) {
+  
+  
+  bool found;
   // check for an async request (before the handler steals the request)
-  bool found = false;
-  std::string const& asyncExecution =
-      request->header(StaticStrings::Async, found);
-
+  std::string const& asyncExec = request->header(StaticStrings::Async, found);
+  
   // store the message id for error handling
   uint64_t messageId = 0UL;
   if (request) {
@@ -176,14 +229,14 @@ void GeneralCommTask::executeRequest(
   }
 
   // asynchronous request
-  if (found && (asyncExecution == "true" || asyncExecution == "store")) {
+  if (found && (asyncExec == "true" || asyncExec == "store")) {
     RequestStatistics::SET_ASYNC(statistics(messageId));
-    transferStatisticsTo(messageId, handler.get());
+    handler->setStatistics(stealStatistics(messageId));
 
     uint64_t jobId = 0;
 
     bool ok = false;
-    if (asyncExecution == "store") {
+    if (asyncExec == "store") {
       // persist the responses
       ok = handleRequestAsync(std::move(handler), &jobId);
     } else {
@@ -207,11 +260,15 @@ void GeneralCommTask::executeRequest(
     }
   } else {
     // synchronous request
-    transferStatisticsTo(messageId, handler.get());
+    handler->setStatistics(stealStatistics(messageId));
     // handleRequestSync adds an error response
     handleRequestSync(std::move(handler));
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION-- statistics handling                             protected methods
+// -----------------------------------------------------------------------------
 
 void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
   MUTEX_LOCKER(locker, _statisticsMutex);
@@ -266,11 +323,6 @@ RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
   return stat;
 }
 
-void GeneralCommTask::transferStatisticsTo(uint64_t id, RestHandler* handler) {
-  RequestStatistics* stat = stealStatistics(id);
-  handler->setStatistics(stat);
-}
-
 /// @brief send response including error response body
 void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respType,
                                        uint64_t messageId, int errorNum, std::string const& msg) {
@@ -290,6 +342,9 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentTyp
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+// Execute a request either on the network thread or put it in a background
+// thread. Depending on the number of running threads requests may be queued
+// and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   int const queuePrio = handler->queue();
   bool isDirect = false;
@@ -350,15 +405,17 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   return ok;
 }
 
+// Just run the handler, could have been called in a different thread
 void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
-
-  handler->initEngine(_loop, [this, doLock](std::shared_ptr<rest::RestHandler> h) {
-    RequestStatistics* stat = h->stealStatistics();
+  
+  handler->runHandler([this, doLock](rest::RestHandler* handler) {
+    RequestStatistics* stat = handler->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
     if (doLock) {
       auto self = shared_from_this();
+      auto h = handler->shared_from_this();
       _loop.scheduler->_nrQueued++;
       _peer->strand.post([self, this, stat, h]() {
         _loop.scheduler->_nrQueued--;
@@ -368,14 +425,12 @@ void GeneralCommTask::handleRequestDirectly(
       });
     } else {
       TRI_ASSERT(_peer->strand.running_in_this_thread());
-      addResponse(*h->response(), stat);
+      addResponse(*handler->response(), stat);
     }
   });
-
-  HandlerWorkStack monitor(handler);
-  monitor->asyncRunEngine();
 }
 
+// handle a request which came in with the x-arango-async header
 bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                          uint64_t* jobId) {
   auto self = shared_from_this();
@@ -384,20 +439,21 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
     // callback will persist the response with the AsyncJobManager
-    handler->initEngine(_loop, [self](std::shared_ptr<RestHandler> h) {
-      GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h.get());
-    });
+    auto job = std::make_unique<Job>(_server, std::move(handler),
+                                     [self](std::shared_ptr<RestHandler> h) {
+                                       h->runHandler([self] (RestHandler* h) {
+                                         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
+                                       });
+                                     });
+    return SchedulerFeature::SCHEDULER->queue(std::move(job));
   } else {
     // here the response will just be ignored
-    handler->initEngine(_loop, [](std::shared_ptr<RestHandler>) {});
+    auto job = std::make_unique<Job>(_server, std::move(handler),
+                                     [self](std::shared_ptr<RestHandler> h) {
+                                       h->runHandler([](RestHandler* h) {});
+                                     });
+    return SchedulerFeature::SCHEDULER->queue(std::move(job));
   }
-
-  // queue this job, asyncRunEngine will later call above lambdas
-  auto job = std::make_unique<Job>(
-      _server, std::move(handler),
-      [self](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
-
-  return SchedulerFeature::SCHEDULER->queue(std::move(job));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,23 +461,23 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 ////////////////////////////////////////////////////////////////////////////////
 
 rest::ResponseCode GeneralCommTask::canAccessPath(
-    GeneralRequest* request) const {
+    GeneralRequest& request) const {
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
 
-  std::string const& path = request->requestPath();
-  std::string const& username = request->user();
-  rest::ResponseCode result = request->authenticated()
+  std::string const& path = request.requestPath();
+  std::string const& username = request.user();
+  rest::ResponseCode result = request.authenticated()
                                   ? rest::ResponseCode::OK
                                   : rest::ResponseCode::UNAUTHORIZED;
 
-  VocbaseContext* vc = static_cast<VocbaseContext*>(request->requestContext());
+  VocbaseContext* vc = static_cast<VocbaseContext*>(request.requestContext());
   TRI_ASSERT(vc != nullptr);
   if (vc->databaseAuthLevel() == auth::Level::NONE &&
       !StringUtils::isPrefix(path, ApiUser)) {
-    events::NotAuthorized(request);
+    events::NotAuthorized(&request);
     result = rest::ResponseCode::UNAUTHORIZED;
     LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
   }
@@ -431,11 +487,11 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
-  if (!request->authenticated()) {
+  if (!request.authenticated()) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
-    ConnectionInfo const& ci = request->connectionInfo();
+    ConnectionInfo const& ci = request.connectionInfo();
 
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_auth->authenticationUnixSockets()) {
@@ -468,7 +524,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         vc->forceSuperuser();
-      } else if (request->requestType() == RequestType::POST &&
+      } else if (request.requestType() == RequestType::POST &&
                  !username.empty() &&
                  StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call

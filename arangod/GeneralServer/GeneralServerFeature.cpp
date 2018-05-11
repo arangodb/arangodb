@@ -54,7 +54,6 @@
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
-#include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
@@ -79,7 +78,6 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
-#include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
@@ -461,11 +459,6 @@ void GeneralServerFeature::defineHandlers() {
       "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _handlerFactory->addHandler(
-      "/_admin/demo-engine", RestHandlerCreator<RestDemoHandler>::createNoData);
-#endif
-
   // ...........................................................................
   // /_admin
   // ...........................................................................
@@ -491,10 +484,6 @@ void GeneralServerFeature::defineHandlers() {
         "/_admin/routing",
         RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
   }
-
-  _handlerFactory->addPrefixHandler(
-      "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
