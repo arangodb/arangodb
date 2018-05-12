@@ -249,68 +249,44 @@ bool MMFilesHashIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
   return true;
 }
 
-void MMFilesHashIndexIterator::reset() {
-  _buffer.clear();
-  _posInBuffer = 0;
-  _lookups.reset();
-  _index->lookup(_trx, _lookups.lookup(), _buffer);
-}
+bool MMFilesHashIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
 
-MMFilesHashIndexIteratorVPack::MMFilesHashIndexIteratorVPack(
-    LogicalCollection* collection, transaction::Methods* trx,
-    MMFilesHashIndex const* index,
-    std::unique_ptr<arangodb::velocypack::Builder> searchValues)
-    : IndexIterator(collection, trx, index),
-      _index(index),
-      _searchValues(std::move(searchValues)),
-      _iterator(_searchValues->slice()),
-      _buffer(),
-      _posInBuffer(0) {
-}
-
-MMFilesHashIndexIteratorVPack::~MMFilesHashIndexIteratorVPack() {
-  if (_searchValues != nullptr) {
-    // return the VPackBuilder to the transaction context
-    _trx->transactionContextPtr()->returnBuilder(_searchValues.release());
-  }
-}
-
-bool MMFilesHashIndexIteratorVPack::next(LocalDocumentIdCallback const& cb,
-                                         size_t limit) {
+  bool done = false;
   while (limit > 0) {
     if (_posInBuffer >= _buffer.size()) {
-      if (!_iterator.valid()) {
+      if (!_lookups.hasAndGetNext()) {
         // we're at the end of the lookup values
-        return false;
+        done = true;
+        break;
       }
 
       // We have to refill the buffer
       _buffer.clear();
       _posInBuffer = 0;
 
-      int res = TRI_ERROR_NO_ERROR;
-      _index->lookup(_trx, _iterator.value(), _buffer);
-      _iterator.next();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      _index->lookup(_trx, _lookups.lookup(), _buffer);
     }
 
     if (!_buffer.empty()) {
       // found something
       TRI_ASSERT(_posInBuffer < _buffer.size());
-      cb(_buffer[_posInBuffer++]->localDocumentId());
+      _documentIds.emplace_back(std::make_pair(_buffer[_posInBuffer++]->localDocumentId(), nullptr));
       --limit;
     }
   }
-  return true;
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
 }
 
-void MMFilesHashIndexIteratorVPack::reset() {
+void MMFilesHashIndexIterator::reset() {
   _buffer.clear();
   _posInBuffer = 0;
-  _iterator.reset();
+  _lookups.reset();
+  _index->lookup(_trx, _lookups.lookup(), _buffer);
 }
 
 /// @brief create the unique array
