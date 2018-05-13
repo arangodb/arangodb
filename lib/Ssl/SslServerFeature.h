@@ -33,7 +33,7 @@
 #include <asio/ssl.hpp>
 
 namespace arangodb {
-class SslServerFeature final : public application_features::ApplicationFeature {
+class SslServerFeature : public application_features::ApplicationFeature {
  public:
   static SslServerFeature* SSL;
 
@@ -41,8 +41,8 @@ class SslServerFeature final : public application_features::ApplicationFeature {
   explicit SslServerFeature(application_features::ApplicationServer* server);
 
  public:
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
 
