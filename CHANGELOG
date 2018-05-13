@@ -1,6 +1,8 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
 
+* upgraded arangodb starter version to 0.11.2
+
 * self heal during a Foxx service install, upgrade or replace no longer breaks 
   the respective operation
 
