@@ -56,6 +56,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchViewNode-test.cpp
     IResearch/VelocyPackHelper-test.cpp
     Utils/CollectionNameResolver-test.cpp
+    Utils/FromToPersistent.cpp
     VocBase/LogicalDataSource-test.cpp
     VocBase/vocbase-test.cpp
   )
