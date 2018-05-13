@@ -3817,14 +3817,20 @@ class RestrictToSingleShardChecker final : public WalkerWorker<ExecutionNode> {
         break;
       }
       
-      case EN::ENUMERATE_COLLECTION: 
-      case EN::UPSERT: {
+      case EN::ENUMERATE_COLLECTION: {
         // track usage of the collection
         auto collection = static_cast<EnumerateCollectionNode const*>(en)->collection();
         _shardsUsed[collection].emplace("all");
         break;
       }
-      
+
+      case EN::UPSERT: {
+        // track usage of the collection
+        auto collection = static_cast<ModificationNode const*>(en)->collection();
+        _shardsUsed[collection].emplace("all");
+        break;
+      }
+
       case EN::INSERT:
       case EN::REPLACE:
       case EN::UPDATE:
