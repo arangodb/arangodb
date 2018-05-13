@@ -1,6 +1,12 @@
 devel
 -----
 
+* abort startup when using SSLv2 for a server endpoint, or when connecting with
+  a client tool via an SSLv2 connection.
+  
+  SSLv2 has been disabled in the OpenSSL library by default in recent versions
+  because of security vulnerabilities inherent in this protocol. 
+
 * added startup option `--log.escape`
 
   This option toggles the escaping of log output. 
