@@ -1,5 +1,7 @@
-v3.2.15 (XXXX-XX-XX)
+v3.2.15 (2018-05-13)
 --------------------
+
+* upgraded arangodb starter version to 0.11.2
 
 * make /_api/index and /_api/database REST handlers use the scheduler's internal
   queue, so they do not run in an I/O handling thread
