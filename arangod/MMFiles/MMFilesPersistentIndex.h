@@ -78,6 +78,7 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
 
   /// @brief Get the next limit many element in the index
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -92,6 +93,7 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
       _rightEndpoint;  // Interval right border
   bool const _reverse;
   bool _probe;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 };
 
 class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
