@@ -172,7 +172,7 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 Result MaintenanceFeature::addAction(
   std::shared_ptr<maintenance::ActionDescription> const & description,
   bool executeNow) {
-  
+
   Result result;
 
   // the underlying routines are believed to be safe and throw free,
