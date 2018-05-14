@@ -288,15 +288,13 @@ void HeartbeatThread::runDBServer() {
               << "Heartbeat: Could not read from agency!";
         } else {
 
-          VPackSlice agentPool =
-            result.slice()[0].get(
-              std::vector<std::string>({".agency","pool"}));
-
+          VPackSlice agentPool = result.slice()[0].get(".agency");
           if (agentPool.isObject() && agentPool.hasKey("size") &&
-              agentPool.get("size").getUInt() > 1) {
-            _agency.updateEndpoints(agentPool);
+              agentPool.get("size").getUInt() > 1 &&
+              agentPool.get("pool").isObject()) {
+            _agency.updateEndpoints(agentPool.get("pool"));
           } else {
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
           }
           
           VPackSlice shutdownSlice =
@@ -453,14 +451,13 @@ void HeartbeatThread::runCoordinator() {
             << "Heartbeat: Could not read from agency!";
       } else {
 
-          VPackSlice agentPool =
-            result.slice()[0].get(
-              std::vector<std::string>({".agency","pool"}));
+          VPackSlice agentPool = result.slice()[0].get(".agency");
           if (agentPool.isObject() && agentPool.hasKey("size") &&
-              agentPool.get("size").getUInt() > 1) {
-            _agency.updateEndpoints(agentPool);
+              agentPool.get("size").getUInt() > 1 &&
+              agentPool.get("pool").isObject()) {
+            _agency.updateEndpoints(agentPool.get("pool"));
           } else {
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
           }
         
         VPackSlice shutdownSlice = result.slice()[0].get(
