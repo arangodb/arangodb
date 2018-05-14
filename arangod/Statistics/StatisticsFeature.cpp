@@ -24,6 +24,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
@@ -181,8 +182,23 @@ void StatisticsFeature::start() {
     return;
   }
 
+  auto* databaseFeature =
+    arangodb::application_features::ApplicationServer::server->getFeature<arangodb::DatabaseFeature>("Database");
+
+  if (!databaseFeature) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not find feature 'Database'";
+    FATAL_ERROR_EXIT();
+  }
+
+  auto* vocbase = databaseFeature->systemDatabase();
+
+  if (!vocbase) {
+    LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not find system database";
+    FATAL_ERROR_EXIT();
+  }
+
   _statisticsThread.reset(new StatisticsThread);
-  _statisticsWorker.reset(new StatisticsWorker);
+  _statisticsWorker.reset(new StatisticsWorker(*vocbase));
 
   if (!_statisticsThread->start()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not start statistics thread";
