@@ -128,7 +128,8 @@ class Methods {
  protected:
 
   /// @brief create the transaction
-  Methods(std::shared_ptr<transaction::Context> const& transactionContext, transaction::Options const& options = transaction::Options());
+  Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+          transaction::Options const& options = transaction::Options());
 
  public:
 
@@ -571,12 +572,6 @@ class Methods {
 
   /// @brief add a collection to a top-level transaction
   Result addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
-
-  /// @brief set up an embedded transaction
-  void setupEmbedded(TRI_vocbase_t*);
-
-  /// @brief set up a top-level transaction
-  void setupToplevel(TRI_vocbase_t*, transaction::Options const&);
 
  protected:
   /// @brief the state

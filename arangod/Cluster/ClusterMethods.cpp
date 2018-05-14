@@ -956,9 +956,8 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 
+/// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
-
 
 int selectivityEstimatesOnCoordinator(
   std::string const& dbname,

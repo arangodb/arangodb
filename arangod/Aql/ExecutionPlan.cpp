@@ -366,8 +366,14 @@ std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast,
 /// @brief export to VelocyPack
 void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
                                  bool verbose) const {
+  unsigned flags = 0;
+  if (verbose) {
+    flags |= ExecutionNode::SERIALIZE_PARENTS |
+             ExecutionNode::SERIALIZE_ESTIMATES |
+             ExecutionNode::SERIALIZE_DETAILS;
+  }
   // keeps top level of built object open
-  _root->toVelocyPack(builder, verbose, true);
+  _root->toVelocyPack(builder, flags, true);
 
   TRI_ASSERT(!builder.isClosed());
 

@@ -29,6 +29,7 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -42,46 +43,122 @@ RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralR
   , _v8Context(nullptr)
   , _lock() {}
 
-void RestTransactionHandler::returnContext() {
-  WRITE_LOCKER(writeLock, _lock);
-  V8DealerFeature::DEALER->exitContext(_v8Context);
-  _v8Context = nullptr;
+RestStatus RestTransactionHandler::execute() {
+  
+  switch (_request->requestType()) {
+    case rest::RequestType::GET:
+      executeGetState();
+      break;
+      
+    case rest::RequestType::POST:
+      if (_request->suffixes().size() == 1 &&
+          _request->suffixes()[0] == "start") {
+        executeStart();
+      } else if (_request->suffixes().empty()) {
+        executeJSTransaction();
+      }
+      break;
+      
+    case rest::RequestType::PUT:
+      executeCommit();
+      break;
+      
+    case rest::RequestType::DELETE_REQ:
+      executeAbort();
+      break;
+      
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      break;
+  }
+  
+  return RestStatus::DONE;
 }
 
-RestStatus RestTransactionHandler::execute() {
-  if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestStatus::DONE;
+void RestTransactionHandler::executeGetState() {
+  if (_request->suffixes().size() != 1) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+}
+
+void RestTransactionHandler::executeStart() {
+  TRI_ASSERT(_request->suffixes().size() == 1 &&
+             _request->suffixes()[0] == "start");
+  
+  
+}
+
+void RestTransactionHandler::executeCommit() {
+  if (_request->suffixes().size() != 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+  
+  TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
+  if (tid == 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "bad transaction ID");
+    return;
+  }
+  
+  
+}
+
+void RestTransactionHandler::executeAbort() {
+  if (_request->suffixes().size() != 1) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+  
+  TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
+  if (tid == 0) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "bad transaction ID");
+    return;
+  }
+  
+}
+
+
+// ====================== V8 stuff ===================
+
+/// start a legacy JS transaction
+void RestTransactionHandler::executeJSTransaction() {
+  if (!V8DealerFeature::DEALER) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                  "JavaScript transactions are not available");
+    return;
+  }
+  
   auto slice = _request->payload();
   if (!slice.isObject()) {
     generateError(Result(TRI_ERROR_BAD_PARAMETER, "could not acquire v8 context"));
-    return RestStatus::DONE;
+    return;
   }
-
+  
   std::string portType = _request->connectionInfo().portType();
-
+  
   _v8Context =
-    V8DealerFeature::DEALER->enterContext(&_vocbase, true /*allow use database*/);
-
+  V8DealerFeature::DEALER->enterContext(&_vocbase, true /*allow use database*/);
+  
   if (!_v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
-    return RestStatus::DONE;
+    return;
   }
-
+  
   TRI_DEFER(returnContext());
-
+  
   VPackBuilder result;
   try {
     {
       WRITE_LOCKER(lock, _lock);
       if (_canceled) {
         generateCanceled();
-        return RestStatus::DONE;
+        return;
       }
     }
-
+    
     Result res = executeTransaction(_v8Context->_isolate, _lock, _canceled, slice , portType, result);
     if (res.ok()) {
       VPackSlice slice = result.slice();
@@ -100,8 +177,12 @@ RestStatus RestTransactionHandler::execute() {
   } catch (...) {
     generateError(Result(TRI_ERROR_INTERNAL));
   }
+}
 
-  return RestStatus::DONE;
+void RestTransactionHandler::returnContext() {
+  WRITE_LOCKER(writeLock, _lock);
+  V8DealerFeature::DEALER->exitContext(_v8Context);
+  _v8Context = nullptr;
 }
 
 bool RestTransactionHandler::cancel() {

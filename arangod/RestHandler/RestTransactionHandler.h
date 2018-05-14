@@ -46,6 +46,14 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   bool cancel() override final;
 
  private:
+  void executeGetState();
+  void executeStart();
+  void executeCommit();
+  void executeAbort();
+  
+  /// start a legacy JS transaction
+  void executeJSTransaction();
+  /// return the currently used V8Context
   void returnContext();
 };
 }

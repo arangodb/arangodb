@@ -415,13 +415,13 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
 void ExecutionNode::toVelocyPack(VPackBuilder& builder,
-                                 bool verbose, bool keepTopLevelOpen) const {
+                                 unsigned flags, bool keepTopLevelOpen) const {
   // default value is to NOT keep top level open
   builder.openObject();
   builder.add(VPackValue("nodes"));
   {
     VPackArrayBuilder guard(&builder);
-    toVelocyPackHelper(builder, verbose);
+    toVelocyPackHelper(builder, flags);
   }
   if (!keepTopLevelOpen) {
     builder.close();
@@ -617,15 +617,15 @@ ExecutionNode const* ExecutionNode::getLoop() const {
 ///       has to be closed. The initial caller of toVelocyPackHelper
 ///       has to close the array.
 void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
-                                              bool verbose) const {
+                                              unsigned flags) const {
   TRI_ASSERT(nodes.isOpenArray());
   size_t const n = _dependencies.size();
   for (size_t i = 0; i < n; i++) {
-    _dependencies[i]->toVelocyPackHelper(nodes, verbose);
+    _dependencies[i]->toVelocyPackHelper(nodes, flags);
   }
   nodes.openObject();
   nodes.add("type", VPackValue(getTypeString()));
-  if (verbose) {
+  if (flags & ExecutionNode::SERIALIZE_DETAILS) {
     nodes.add("typeID", VPackValue(static_cast<int>(getType())));
   }
   nodes.add(VPackValue("dependencies")); // Open Key
@@ -635,19 +635,21 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes,
       nodes.add(VPackValue(static_cast<double>(it->id())));
     }
   }
-  if (verbose) {
+  nodes.add("id", VPackValue(static_cast<double>(id())));
+  if (flags & ExecutionNode::SERIALIZE_PARENTS) {
     nodes.add(VPackValue("parents")); // Open Key
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _parents) {
       nodes.add(VPackValue(static_cast<double>(it->id())));
     }
   }
-  nodes.add("id", VPackValue(static_cast<double>(id())));
-  size_t nrItems = 0;
-  nodes.add("estimatedCost", VPackValue(getCost(nrItems)));
-  nodes.add("estimatedNrItems", VPackValue(nrItems));
+  if (flags & ExecutionNode::SERIALIZE_ESTIMATES) {
+    size_t nrItems = 0;
+    nodes.add("estimatedCost", VPackValue(getCost(nrItems)));
+    nodes.add("estimatedNrItems", VPackValue(nrItems));
+  }
 
-  if (verbose) {
+  if (flags & ExecutionNode::SERIALIZE_DETAILS) {
     nodes.add("depth", VPackValue(static_cast<double>(_depth)));
 
     if (_registerPlan) {
@@ -1287,10 +1289,9 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 }
 
 /// @brief toVelocyPack, for SingletonNode
-void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                       bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
   // This node has no own information.
   nodes.close();
 }
@@ -1326,10 +1327,9 @@ EnumerateCollectionNode::EnumerateCollectionNode(
 }
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
-void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                                 bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // Now put info about vocbase and cid in there
   nodes.add("database", VPackValue(_vocbase->name()));
@@ -1402,10 +1402,9 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief toVelocyPack, for EnumerateListNode
-void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                           bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 
@@ -1513,8 +1512,9 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
 }
 
 // @brief toVelocyPack, for LimitNode
-void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
+void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
   nodes.add("offset", VPackValue(static_cast<double>(_offset)));
   nodes.add("limit", VPackValue(static_cast<double>(_limit)));
   nodes.add("fullCount", VPackValue(_fullCount));
@@ -1543,12 +1543,11 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
       _canRemoveIfThrows(false) {}
 
 /// @brief toVelocyPack, for CalculationNode
-void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                         bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
   nodes.add(VPackValue("expression"));
-  _expression->toVelocyPack(nodes, verbose);
+  _expression->toVelocyPack(nodes, flags);
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
@@ -1612,12 +1611,12 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan,
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief toVelocyPack, for SubqueryNode
-void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add(VPackValue("subquery"));
-  _subquery->toVelocyPack(nodes, verbose);
+  _subquery->toVelocyPack(nodes, flags, /*keepTopLevelOpen*/false);
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
@@ -1844,9 +1843,9 @@ FilterNode::FilterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack, for FilterNode
-void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
@@ -1901,10 +1900,9 @@ ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _count(VelocyPackHelper::getBooleanValue(base, "count", false)) {}
 
 /// @brief toVelocyPack, for ReturnNode
-void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
-
+void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
@@ -1951,10 +1949,10 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief toVelocyPack, for NoResultsNode
-void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                       bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
-
+void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  
   //And close it
   nodes.close();
 }
