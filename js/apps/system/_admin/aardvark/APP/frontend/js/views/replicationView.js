@@ -299,6 +299,10 @@
           }
         }
         var health;
+        var state = 'active';
+        if (applier.state.phase === 'inactive') {
+          state = 'inactive';
+        }
         if (applier.state.lastError.errorNum === 0) {
           if (applier.state.phase === 'inactive' && !applier.state.running) {
             health = 'n/a';
@@ -311,7 +315,7 @@
         }
 
         $('#repl-follower-table tbody').append(
-        '<tr>' +
+        '<tr class="' + state + '">' +
           '<td id="applier-database-id">' + applier.database + '</td>' +
           '<td id="applier-running-id">' + applier.state.running + '</td>' +
           '<td>' + applier.state.phase + '</td>' +

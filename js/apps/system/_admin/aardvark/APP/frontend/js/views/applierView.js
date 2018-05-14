@@ -23,7 +23,7 @@
       var self = this;
 
       if (window.App.naviView) {
-        var string = 'Follower State';
+        var string = 'Database';
         if (name) {
           string = string + ': ' + name;
         }
@@ -37,7 +37,6 @@
 
     continueRender: function () {
       this.$el.html(this.template.render({}));
-      this.breadcrumb();
     },
 
     getApplierState: function (endpoint, global) {
@@ -51,6 +50,8 @@
       }
       if (global) {
         url = url + '?global=true';
+      } else {
+        self.breadcrumb(self.database);
       }
 
       $.ajax({

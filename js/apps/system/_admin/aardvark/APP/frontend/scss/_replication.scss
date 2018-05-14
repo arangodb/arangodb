@@ -60,6 +60,11 @@
         }
       }
     }
+
+    .inactive {
+      cursor: not-allowed !important;
+      opacity: .7;
+    }
   }
 
   span {
