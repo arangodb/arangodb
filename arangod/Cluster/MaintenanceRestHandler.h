@@ -56,7 +56,7 @@ class MaintenanceRestHandler : public RestBaseHandler {
   maintenance::ActionDescription const & getActionDesc() const {return *_actionDesc;};
 
   /// @brief retrieve unparsed action properties
-  VPackBuilder const & getActionProp() const {return *_actionProp;};
+  VPackBuilder const & getActionProp() const {return *(_actionDesc->properties());};
 
 protected:
   /// @brief PUT method adds an Action to the worklist (or executes action directly)
@@ -76,7 +76,6 @@ protected:
 
 protected:
   std::shared_ptr<maintenance::ActionDescription> _actionDesc;
-  std::shared_ptr<VPackBuilder> _actionProp;
 
 
 };

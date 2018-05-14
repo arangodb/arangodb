@@ -40,7 +40,7 @@ class SynchronizeShard : public ActionBase {
 
 public:
 
-  SynchronizeShard(std::shared_ptr<MaintenanceFeature>, ActionDescription const& d);
+  SynchronizeShard(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~SynchronizeShard();
 

@@ -37,7 +37,7 @@ class EnsureIndex : public ActionBase {
 
 public:
 
-  EnsureIndex(std::shared_ptr<MaintenanceFeature>, ActionDescription const& d);
+  EnsureIndex(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~EnsureIndex();
 

@@ -44,8 +44,7 @@ class Action;
 class ActionBase {
 
  public:
-  ActionBase (std::shared_ptr<arangodb::MaintenanceFeature> feature,
-              ActionDescription const& description);
+  ActionBase (MaintenanceFeature&, ActionDescription const&);
 
   ActionBase() = delete;
 
@@ -170,7 +169,7 @@ class ActionBase {
 
 protected:
   
-  std::shared_ptr<arangodb::MaintenanceFeature> _feature;
+  arangodb::MaintenanceFeature& _feature;
 
   ActionDescription _description;
 

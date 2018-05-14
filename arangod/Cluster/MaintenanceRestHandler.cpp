@@ -108,7 +108,7 @@ void MaintenanceRestHandler::putAction() {
 
     // build the action
     auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
-    result = maintenance->addAction(_actionDesc, _actionProp);
+    result = maintenance->addAction(_actionDesc);
 
     if (!result.ok()) {
       // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID  TRI_ERROR_SHUTTING_DOWN
@@ -123,8 +123,8 @@ void MaintenanceRestHandler::putAction() {
 bool MaintenanceRestHandler::parsePutBody(VPackSlice const & parameters) {
   bool good(true);
 
-  _actionDesc = std::make_shared<ActionDescription>();
-  _actionProp = std::make_shared<VPackBuilder>();
+  std::map<std::string, std::string> desc;
+  auto prop = std::make_shared<VPackBuilder>();
 
   VPackObjectIterator it(parameters, true);
   for ( ; it.valid() && good; ++it) {
@@ -135,15 +135,18 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const & parameters) {
 
     // attempt insert into map ... but needs to be unique
     if (key.isString() && value.isString()) {
-      good = _actionDesc->insert(std::pair<std::string,std::string>(key.copyString(), value.copyString())).second;
+      good = desc.insert(
+        {key.copyString(), value.copyString()}).second;
     } else if (key.isString() && (key.copyString() == "properties")
                && value.isObject()) {
       // code here
-      _actionProp.reset(new VPackBuilder(value));
+      prop.reset(new VPackBuilder(value));
     } else {
       good = false;
     } // else
   } // for
+
+  _actionDesc = std::make_shared<maintenance::ActionDescription>(desc, prop);
 
   return good;
 

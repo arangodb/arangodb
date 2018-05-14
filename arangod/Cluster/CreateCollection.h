@@ -37,7 +37,7 @@ class CreateCollection : public ActionBase {
 
 public:
 
-  CreateCollection(std::shared_ptr<MaintenanceFeature>, ActionDescription const& d);
+  CreateCollection(MaintenanceFeature&, ActionDescription const& d);
 
   virtual ~CreateCollection();
 

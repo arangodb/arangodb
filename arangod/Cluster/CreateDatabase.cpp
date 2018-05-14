@@ -35,8 +35,8 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 CreateDatabase::CreateDatabase(
-  std::shared_ptr<arangodb::MaintenanceFeature> feature,
-  ActionDescription const& desc) : ActionBase(feature, desc) {
+  MaintenanceFeature& feature, ActionDescription const& desc)
+  : ActionBase(feature, desc) {
   TRI_ASSERT(desc.has(DATABASE));
 }
 
@@ -60,3 +60,14 @@ arangodb::Result CreateDatabase::first() {
   return _result;
 
 }
+
+arangodb::Result CreateDatabase::kill(Signal const& signal) {
+  return actionError(
+    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill CreateDatabase action");
+}
+
+arangodb::Result CreateDatabase::progress(double& progress) {
+  progress = 0.5;
+  return arangodb::Result(TRI_ERROR_NO_ERROR);
+}
+

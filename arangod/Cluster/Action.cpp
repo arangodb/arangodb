@@ -33,7 +33,7 @@
 using namespace arangodb::maintenance;
 
 Action::Action(
-  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& d)
+  MaintenanceFeature& feature, ActionDescription const& d)
   : _action(nullptr) {
   TRI_ASSERT(d.has("name"));
   std::string name = d.name();
@@ -49,6 +49,29 @@ Action::Action(
     TRI_ASSERT(false);
   }
 }
+
+Action::Action(
+  MaintenanceFeature& feature,
+  std::shared_ptr<ActionDescription> const desc)
+  : _action(nullptr) {
+  auto const& d = *desc;
+  TRI_ASSERT(d.has("name"));
+  std::string name = d.name();
+  if (name == "CreateDatabase") {
+    _action.reset(new CreateDatabase(feature, d));
+  } else if (name == "DropDatabase") {
+    _action.reset(new DropDatabase(feature, d));
+  } else if (name == "UpdateCollection") {
+    _action.reset(new UpdateCollection(feature, d));
+  } else {
+    // We should never get here
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
+    TRI_ASSERT(false);
+  }
+}
+
+
+Action::~Action() {}
 
 ActionDescription const& Action::describe() const {
   TRI_ASSERT(_action != nullptr);
@@ -84,4 +107,29 @@ arangodb::Result Action::progress(double& p) {
   return _action->progress(p);
 }
 
-Action::~Action() {}
+ActionState Action::getState() const {
+  return _action->getState();
+}
+
+void Action::startStats() {
+  _action->startStats();
+}
+
+void Action::incStats() {
+  _action->incStats();
+}
+
+void Action::endStats() {
+  _action->incStats();
+}
+
+arangodb::Result Action::run(
+  std::chrono::duration<double> const& duration, bool& finished) {
+  TRI_ASSERT(_action != nullptr);
+  return _action->run(duration, finished);
+}
+
+void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(_action != nullptr);
+  _action->toVelocyPack(builder);
+}

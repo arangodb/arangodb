@@ -47,7 +47,7 @@ constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
 CreateCollection::CreateCollection(
-  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& desc)
+  MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc) {
   TRI_ASSERT(desc.has(COLLECTION));
   TRI_ASSERT(desc.has(DATABASE));

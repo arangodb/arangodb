@@ -35,7 +35,7 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 DropCollection::DropCollection(
-  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& d) :
+  MaintenanceFeature& feature, ActionDescription const& d) :
   ActionBase(feature, d) {
   TRI_ASSERT(d.has(COLLECTION));
   TRI_ASSERT(d.has(DATABASE));

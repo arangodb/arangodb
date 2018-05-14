@@ -57,7 +57,7 @@ std::string const DB("/_db/");
 std::string const TTL("ttl");
 
 SynchronizeShard::SynchronizeShard(
-  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& desc) :
+  MaintenanceFeature& feature, ActionDescription const& desc) :
   ActionBase(feature, desc) {
   TRI_ASSERT(desc.has(COLLECTION));
   TRI_ASSERT(desc.has(DATABASE));
@@ -306,7 +306,6 @@ SynchronizeShard::~SynchronizeShard() {};
 
 arangodb::Result SynchronizeShard::run(
   std::chrono::duration<double> const&, bool& finished) {
-
   arangodb::Result res;
   return res;
 }

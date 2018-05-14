@@ -43,7 +43,10 @@ class Action {
 public:
 
   /// @brief construct with description
-  Action(std::shared_ptr<MaintenanceFeature>, ActionDescription const&);
+  Action(MaintenanceFeature&, ActionDescription const&);
+  
+  /// @brief construct with description
+  Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const);
   
   /// @brief clean up
   virtual ~Action();
@@ -60,6 +63,9 @@ public:
   /// @brief run for some time and tell, if need more time or done
   ActionState state() const;
 
+  arangodb::Result run(
+    std::chrono::duration<double> const& duration, bool& finished);
+  
   /// @brief kill action with signal
   arangodb::Result kill(Signal const& signal);
   

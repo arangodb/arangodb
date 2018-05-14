@@ -37,7 +37,7 @@ class UpdateCollection : public ActionBase {
 
 public:
 
-  UpdateCollection(std::shared_ptr<MaintenanceFeature>, ActionDescription const&);
+  UpdateCollection(MaintenanceFeature&, ActionDescription const&);
 
   virtual ~UpdateCollection();
 

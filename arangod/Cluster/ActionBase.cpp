@@ -28,25 +28,40 @@
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
-ActionBase::ActionBase(
-  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& d)
-  : _feature(feature), _description(d), _state(READY),
+const char ActionBase::KEY[]="key";
+const char ActionBase::FIELDS[]="fields";
+const char ActionBase::TYPE[]="type";
+const char ActionBase::INDEXES[]="indexes";
+const char ActionBase::SHARDS[]="shards";
+const char ActionBase::DATABASE[]="database";
+const char ActionBase::COLLECTION[]="collection";
+const char ActionBase::EDGE[]="edge";
+const char ActionBase::NAME[]="name";
+const char ActionBase::ID[]="id";
+const char ActionBase::LEADER[]="leader";
+const char ActionBase::LOCAL_LEADER[]="localLeader";
+const char ActionBase::GLOB_UID[]="globallyUniqueId";
+const char ActionBase::OBJECT_ID[]="objectId";
+
+ActionBase::ActionBase(MaintenanceFeature& feature,
+                       ActionDescription const& desc)
+  : _feature(feature), _description(desc), _state(READY),
     _actionCreated(std::chrono::system_clock::now()), _progress(0) {
   _hash = _description.hash();
-  _id = _feature->nextActionId();
+  _id = _feature.nextActionId();
 }
 
-  /// @brief execution finished successfully or failed ... and race timer expired
+/// @brief execution finished successfully or failed ... and race timer expired
 bool ActionBase::done() const {
   bool ret_flag;
-
+  
   ret_flag = COMPLETE==_state || FAILED==_state;
-
+  
   // test clock ... avoid race of same task happening again too quickly
   if (ret_flag) {
-    std::chrono::seconds secs(_feature->getSecondsActionsBlock());
+    std::chrono::seconds secs(_feature.getSecondsActionsBlock());
     std::chrono::system_clock::time_point raceOver = _actionDone + secs;
-
+    
     ret_flag = (raceOver <= std::chrono::system_clock::now());
   } // if
 
@@ -69,7 +84,7 @@ VPackSlice const ActionBase::properties() const {
 /// @brief Initiate a new action that will start immediately, pausing this action
 void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & description) {
 
-  _preAction = _feature->preAction(description);
+  _preAction = _feature.preAction(description);
 
   // shift from EXECUTING to WAITINGPRE ... EXECUTING is set to block other
   //  workers from picking it up
@@ -88,7 +103,7 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & desc
 void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {
 
   // preAction() sets up what we need
-  _postAction = _feature->preAction(description);
+  _postAction = _feature.preAction(description);
   
   // shift from EXECUTING to WAITINGPOST ... EXECUTING is set to block other
   //  workers from picking it up
@@ -160,3 +175,20 @@ void ActionBase::toVelocyPack(VPackBuilder & builder) const {
     _description.toVelocyPack(builder); }
   
 } // MaintanceAction::toVelocityPack
+
+
+arangodb::Result ActionBase::run(
+  std::chrono::duration<double> const& duration, bool& finished) {
+}
+
+
+arangodb::Result ActionBase::kill(Signal const& signal) {
+  return actionError(
+    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill some random action");
+}
+
+arangodb::Result ActionBase::progress(double& progress) {
+  progress = 0.5;
+  return arangodb::Result(TRI_ERROR_NO_ERROR);
+}
+

@@ -190,8 +190,7 @@ Result MaintenanceFeature::addAction(
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction || curAction->done()) {
-      newAction = std::make_shared<Action>(
-        std::make_shared<MaintenanceFeature>(this), *description);
+      newAction = std::make_shared<Action>(*this, *description);
 
       if (!newAction) {
         /// something failed in action creation ... go check logs
@@ -236,8 +235,7 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
   std::string name = description->get(NAME);
   
   // call factory
-  newAction = std::make_shared<Action>(
-    std::make_shared<MaintenanceFeature>(this), description);
+  newAction = std::make_shared<Action>(*this, description);
   
   // if a new action created
   if (newAction) {

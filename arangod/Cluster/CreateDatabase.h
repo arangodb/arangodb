@@ -35,12 +35,16 @@ class CreateDatabase : public ActionBase {
 
 public:
 
-  CreateDatabase(std::shared_ptr<arangodb::MaintenanceFeature> feature,
+  CreateDatabase(MaintenanceFeature& feature,
                  ActionDescription const& description);
 
   virtual ~CreateDatabase();
 
   virtual arangodb::Result first() override;
+
+  virtual arangodb::Result kill(Signal const& signal) override final;
+  
+  virtual arangodb::Result progress(double& progress) override final;
 
 };
 

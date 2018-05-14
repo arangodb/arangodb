@@ -38,7 +38,7 @@ class DropDatabase : public ActionBase {
 
 public:
 
-  DropDatabase(std::shared_ptr<MaintenanceFeature>, ActionDescription const&);
+  DropDatabase(MaintenanceFeature&, ActionDescription const&);
 
   virtual ~DropDatabase();
 

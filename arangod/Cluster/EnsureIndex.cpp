@@ -39,7 +39,7 @@ using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 EnsureIndex::EnsureIndex(
-  std::shared_ptr<MaintenanceFeature> feature, ActionDescription const& desc) :
+  MaintenanceFeature& feature, ActionDescription const& desc) :
   ActionBase(feature, desc) {
   TRI_ASSERT(properties().hasKey(ID));
   TRI_ASSERT(desc.has(COLLECTION));

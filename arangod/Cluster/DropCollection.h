@@ -37,7 +37,7 @@ class DropCollection : public ActionBase {
 
 public:
 
-  DropCollection(std::shared_ptr<MaintenanceFeature>, ActionDescription const&);
+  DropCollection(MaintenanceFeature&, ActionDescription const&);
 
   virtual ~DropCollection();
 
