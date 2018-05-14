@@ -116,7 +116,8 @@ void ensureLink(
   }
 
   // ensure null terminated string
-  auto const indexTypeSlice = indexSlice.get("type");
+  auto const indexTypeSlice =
+    indexSlice.get(arangodb::iresearch::StaticStrings::LinkTypeField);
   auto const indexTypeStr = indexTypeSlice.copyString();
   auto const indexType = arangodb::Index::type(indexTypeStr.c_str());
 

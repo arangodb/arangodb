@@ -96,7 +96,7 @@ void EngineInfoContainerDBServer::EngineInfo::connectQueryId(QueryId id) {
 void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
-      auto ecNode = static_cast<EnumerateCollectionNode*>(node);
+      auto ecNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
       if (ecNode->isRestricted()) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = ecNode->restrictedShard();
@@ -104,7 +104,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       break;
     }
     case ExecutionNode::INDEX: {
-      auto idxNode = static_cast<IndexNode*>(node);
+      auto idxNode = ExecutionNode::castTo<IndexNode*>(node);
       if (idxNode->isRestricted()) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = idxNode->restrictedShard();
@@ -116,7 +116,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
     case ExecutionNode::REMOVE:
     case ExecutionNode::REPLACE:
     case ExecutionNode::UPSERT: {
-      auto modNode = static_cast<ModificationNode*>(node);
+      auto modNode = ExecutionNode::castTo<ModificationNode*>(node);
       if (modNode->isRestricted()) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = modNode->restrictedShard();
@@ -175,7 +175,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     plan.increaseCounter(clone->getType());
 
     if (current->getType() == ExecutionNode::REMOTE) {
-      auto rem = static_cast<RemoteNode*>(clone);
+      auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
       rem->server("server:" + arangodb::ServerState::instance()->getId());
       rem->ownName(id);
@@ -234,7 +234,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
       {
-        auto ecNode = static_cast<EnumerateCollectionNode*>(node);
+        auto ecNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
         auto col = ecNode->collection();
         if (ecNode->isRestricted()) {
           std::unordered_set<std::string> restrict{ecNode->restrictedShard()};
@@ -247,7 +247,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       }
     case ExecutionNode::INDEX:
       {
-        auto idxNode = static_cast<IndexNode*>(node);
+        auto idxNode = ExecutionNode::castTo<IndexNode*>(node);
         auto col = idxNode->collection();
         if (idxNode->isRestricted()) {
           std::unordered_set<std::string> restrict{idxNode->restrictedShard()};
@@ -269,7 +269,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
     case ExecutionNode::REPLACE:
     case ExecutionNode::UPSERT:
       {
-        auto modNode = static_cast<ModificationNode*>(node);
+        auto modNode = ExecutionNode::castTo<ModificationNode*>(node);
         auto col = modNode->collection();
         if (modNode->isRestricted()) {
           std::unordered_set<std::string> restrict{modNode->restrictedShard()};

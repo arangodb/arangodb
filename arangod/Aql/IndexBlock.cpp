@@ -145,7 +145,7 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     arangodb::aql::AstNode* node) const {
   if (node->type != arangodb::aql::NODE_TYPE_ARRAY || node->numMembers() >= 2) {
     // an non-array or an array with more than 1 member
-    auto en = static_cast<IndexNode const*>(getPlanNode());
+    auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
     auto ast = en->_plan->getAst();
     auto array = ast->createNodeArray();
     array->addMember(node);
@@ -177,7 +177,7 @@ void IndexBlock::executeExpressions() {
   // the current incoming item:
 
   AqlItemBlock* cur = _buffer.front();
-  auto en = static_cast<IndexNode const*>(getPlanNode());
+  auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
   AstNode const* oldCondition = _condition;
   AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
@@ -245,7 +245,7 @@ int IndexBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
   int res = ExecutionBlock::initialize();
 
-  auto en = static_cast<IndexNode const*>(getPlanNode());
+  auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
@@ -436,7 +436,7 @@ bool IndexBlock::initIndexes() {
       }
     }
   }
-  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+  IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   if (!node->options().ascending) {
     _currentIndex = _indexes.size() - 1;
   } else {
@@ -485,7 +485,7 @@ void IndexBlock::createCursor() {
 void IndexBlock::startNextCursor() {
   DEBUG_BEGIN_BLOCK();
 
-  IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+  IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   if (!node->options().ascending) {
     --_currentIndex;
     _isLastIndex = (_currentIndex == 0);
@@ -593,7 +593,7 @@ bool IndexBlock::readIndex(size_t atMost,
       _allowCoveringIndexOptimization = _cursor->hasCovering();
       
       if (_allowCoveringIndexOptimization && 
-          !static_cast<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
+          !ExecutionNode::castTo<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
         // index covers all projections
         res = _cursor->nextCovering(callback, atMost - _returned);
       } else {
@@ -845,7 +845,7 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
   // from _condition
   if (!_nonConstExpressions.empty() || _cursors[currentIndex] == nullptr) {
     // yet no cursor for index, so create it
-    IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
+    IndexNode const* node = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
         _indexes[currentIndex], conditionNode, node->outVariable(), _mmdr.get(),
         node->_options));

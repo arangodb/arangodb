@@ -114,7 +114,7 @@ bool SortNode::simplify(ExecutionPlan* plan) {
     if (setter != nullptr) {
       if (setter->getType() == ExecutionNode::CALCULATION) {
         // variable introduced by a calculation
-        auto expression = static_cast<CalculationNode*>(setter)->expression();
+        auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
         if (expression->isConstant()) {
           // constant expression, remove it!
@@ -158,7 +158,7 @@ SortInformation SortNode::getSortInformation(
 
     if (setter->getType() == ExecutionNode::CALCULATION) {
       // variable introduced by a calculation
-      auto expression = static_cast<CalculationNode*>(setter)->expression();
+      auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
       if (!expression->isDeterministic()) {
         result.isDeterministic = false;

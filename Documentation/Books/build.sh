@@ -556,6 +556,11 @@ function check-docublocks()
         grep -v '.*~:.*' |\
         grep -v '.*#.*:.*' \
              >> /tmp/rawinprog.txt
+
+    # These files are converted to docublocks on the fly and only live in memory. 
+    for file in ../Examples/*.json ; do
+        echo "$file" |sed -e "s;.*/;Generated: @startDocuBlock program_options_;" -e "s;.json;;" >> /tmp/rawinprog.txt
+    done
     set -e
     echo "Generated: startDocuBlockInline errorCodes">> /tmp/rawinprog.txt
 
@@ -731,7 +736,6 @@ while [ $# -gt 0 ];  do
     esac
 done
 
-
 case "$VERB" in
     build-books)
         build-books
@@ -769,6 +773,15 @@ case "$VERB" in
         clean "$@"
         ;;
     *)
+        if test -d "${VERB}"; then
+            guessBookName="${VERB/\/}"
+            if [[ $ALLBOOKS = *"${guessBookName}"* ]]; then
+                build-book "$guessBookName"
+                check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+                check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
+                exit 0
+            fi
+        fi
         printHelp
         exit 1
         ;;

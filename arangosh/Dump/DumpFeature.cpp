@@ -911,14 +911,14 @@ void DumpFeature::start() {
   auto dbName = client->databaseName();
 
   // get a client to use in main thread
-  auto httpClient = _clientManager.getConnectedClient(_options.force, true);
+  auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
 
   // check if we are in cluster or single-server mode
   Result result{TRI_ERROR_NO_ERROR};
   std::tie(result, _options.clusterMode) =
       _clientManager.getArangoIsCluster(*httpClient);
   if (result.fail()) {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC(FATAL, Logger::FIXME)
         << "Error: could not detect ArangoDB instance type";
     FATAL_ERROR_EXIT();
   }

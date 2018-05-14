@@ -80,7 +80,7 @@ ClientManager::~ClientManager() {}
 
 Result ClientManager::getConnectedClient(
     std::unique_ptr<httpclient::SimpleHttpClient>& httpClient, bool force,
-    bool verbose) {
+    bool logServerVersion, bool logDatabaseNotFound) {
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
           "Client");
@@ -104,16 +104,20 @@ Result ClientManager::getConnectedClient(
   int errorCode;
   std::string const versionString = httpClient->getServerVersion(&errorCode);
   if (TRI_ERROR_NO_ERROR != errorCode) {
-    LOG_TOPIC(ERR, _topic) << "Could not connect to endpoint '"
-                           << client->endpoint() << "', database: '" << dbName
-                           << "', username: '" << client->username() << "'";
-    LOG_TOPIC(FATAL, _topic)
-        << "Error message: '" << httpClient->getErrorMessage() << "'";
+    if (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode || logDatabaseNotFound) {
+      // arangorestore does not log "database not found" errors in case
+      // it tries to create the database...
+      LOG_TOPIC(ERR, _topic) << "Could not connect to endpoint '"
+                             << client->endpoint() << "', database: '" << dbName
+                             << "', username: '" << client->username() << "'";
+      LOG_TOPIC(ERR, _topic)
+          << "Error message: '" << httpClient->getErrorMessage() << "'";
+    }
 
     return {errorCode};
   }
 
-  if (verbose) {
+  if (logServerVersion) {
     // successfully connected
     LOG_TOPIC(INFO, _topic) << "Server version: " << versionString;
   }
@@ -135,10 +139,10 @@ Result ClientManager::getConnectedClient(
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
-    bool force, bool verbose) {
+    bool force, bool logServerVersion, bool logDatabaseNotFound) {
   std::unique_ptr<httpclient::SimpleHttpClient> httpClient;
 
-  Result result = getConnectedClient(httpClient, force, verbose);
+  Result result = getConnectedClient(httpClient, force, logServerVersion, logDatabaseNotFound);
   if (result.fail() && !(force && result.is(TRI_ERROR_INCOMPATIBLE_VERSION))) {
     FATAL_ERROR_EXIT();
   }

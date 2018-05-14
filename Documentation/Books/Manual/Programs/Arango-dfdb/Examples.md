@@ -1,10 +1,7 @@
-Datafile Debugger
-=================
+Arango-dfdb Examples
+====================
 
-In Case Of Disaster
--------------------
-
-AranagoDB uses append-only journals. Data corruption should only occur when the
+ArangoDB uses append-only journals. Data corruption should only occur when the
 database server is killed. In this case, the corruption should only occur in the
 last object(s) that have being written to the journal.
 
@@ -14,7 +11,7 @@ hardware fault occurred.
 If a journal or datafile is corrupt, shut down the database server and start
 the program
 
-    unix> arango-dfdb
+    arango-dfdb
 
 in order to check the consistency of the datafiles and journals. This brings up
 
@@ -76,4 +73,3 @@ If you answer **Y**, the corrupted entry will be removed.
 If you see a corruption in a datafile (and not a journal), then something is
 terribly wrong. These files are immutable and never changed by ArangoDB. A
 corruption in such file is an indication of a hard-disk failure.
-

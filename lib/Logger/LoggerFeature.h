@@ -51,6 +51,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _file;
   bool _useLocalTime = false;
   bool _useColor = true;
+  bool _useEscaped = true;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
   bool _threadId = false;

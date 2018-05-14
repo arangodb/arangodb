@@ -64,7 +64,7 @@ class Syncer {
     MasterInfo() 
         : _serverId(0),
           _majorVersion(0), 
-          _minorVersion(0), 
+          _minorVersion(0),
           _lastLogTick(0), 
           _active(false) {}
   };
@@ -111,7 +111,6 @@ class Syncer {
   Result applyCollectionDumpMarker(transaction::Methods&,
                                    LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&, 
                                    arangodb::velocypack::Slice const&);
 
   /// @brief creates a collection, based on the VelocyPack provided
@@ -164,7 +163,6 @@ class Syncer {
   Result applyCollectionDumpMarkerInternal(transaction::Methods&,
                                            LogicalCollection* coll,
                                            TRI_replication_operation_e,
-                                           arangodb::velocypack::Slice const&, 
                                            arangodb::velocypack::Slice const&); 
   
   /// @brief extract the collection id from VelocyPack

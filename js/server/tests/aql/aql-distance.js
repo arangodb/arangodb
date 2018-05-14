@@ -74,9 +74,6 @@ function distanceSuite () {
       
       actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
       assertAlmostEqual(expected[0], actual[0]);
-      
-      actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
-      assertAlmostEqual(expected[0], actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,9 +91,6 @@ function distanceSuite () {
       
       actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
       assertAlmostEqual(expected[0], actual[0]);
-      
-      actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
-      assertAlmostEqual(expected[0], actual[0]);    
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -113,9 +107,6 @@ function distanceSuite () {
       assertAlmostEqual(expected[0], actual[0]);
       
       actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
-      assertAlmostEqual(expected[0], actual[0]);
-      
-      actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
       assertAlmostEqual(expected[0], actual[0]);
     },
 

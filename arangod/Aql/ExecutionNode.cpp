@@ -55,48 +55,46 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-static bool const Optional = true;
+namespace {
 
-/// @brief maximum register id that can be assigned.
-/// this is used for assertions
-RegisterId const ExecutionNode::MaxRegisterId = 1000;
-
-/// @brief type names
-std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
-    {static_cast<int>(SINGLETON), "SingletonNode"},
-    {static_cast<int>(ENUMERATE_COLLECTION), "EnumerateCollectionNode"},
-    {static_cast<int>(ENUMERATE_LIST), "EnumerateListNode"},
-    {static_cast<int>(INDEX), "IndexNode"},
-    {static_cast<int>(LIMIT), "LimitNode"},
-    {static_cast<int>(CALCULATION), "CalculationNode"},
-    {static_cast<int>(SUBQUERY), "SubqueryNode"},
-    {static_cast<int>(FILTER), "FilterNode"},
-    {static_cast<int>(SORT), "SortNode"},
-    {static_cast<int>(COLLECT), "CollectNode"},
-    {static_cast<int>(RETURN), "ReturnNode"},
-    {static_cast<int>(REMOVE), "RemoveNode"},
-    {static_cast<int>(INSERT), "InsertNode"},
-    {static_cast<int>(UPDATE), "UpdateNode"},
-    {static_cast<int>(REPLACE), "ReplaceNode"},
-    {static_cast<int>(REMOTE), "RemoteNode"},
-    {static_cast<int>(SCATTER), "ScatterNode"},
-    {static_cast<int>(DISTRIBUTE), "DistributeNode"},
-    {static_cast<int>(GATHER), "GatherNode"},
-    {static_cast<int>(NORESULTS), "NoResultsNode"},
-    {static_cast<int>(UPSERT), "UpsertNode"},
-    {static_cast<int>(TRAVERSAL), "TraversalNode"},
-    {static_cast<int>(SHORTEST_PATH), "ShortestPathNode"},
+/// @brief NodeType to string mapping
+std::unordered_map<int, std::string const> const typeNames{
+    {static_cast<int>(ExecutionNode::SINGLETON), "SingletonNode"},
+    {static_cast<int>(ExecutionNode::ENUMERATE_COLLECTION), "EnumerateCollectionNode"},
+    {static_cast<int>(ExecutionNode::ENUMERATE_LIST), "EnumerateListNode"},
+    {static_cast<int>(ExecutionNode::INDEX), "IndexNode"},
+    {static_cast<int>(ExecutionNode::LIMIT), "LimitNode"},
+    {static_cast<int>(ExecutionNode::CALCULATION), "CalculationNode"},
+    {static_cast<int>(ExecutionNode::SUBQUERY), "SubqueryNode"},
+    {static_cast<int>(ExecutionNode::FILTER), "FilterNode"},
+    {static_cast<int>(ExecutionNode::SORT), "SortNode"},
+    {static_cast<int>(ExecutionNode::COLLECT), "CollectNode"},
+    {static_cast<int>(ExecutionNode::RETURN), "ReturnNode"},
+    {static_cast<int>(ExecutionNode::REMOVE), "RemoveNode"},
+    {static_cast<int>(ExecutionNode::INSERT), "InsertNode"},
+    {static_cast<int>(ExecutionNode::UPDATE), "UpdateNode"},
+    {static_cast<int>(ExecutionNode::REPLACE), "ReplaceNode"},
+    {static_cast<int>(ExecutionNode::REMOTE), "RemoteNode"},
+    {static_cast<int>(ExecutionNode::SCATTER), "ScatterNode"},
+    {static_cast<int>(ExecutionNode::DISTRIBUTE), "DistributeNode"},
+    {static_cast<int>(ExecutionNode::GATHER), "GatherNode"},
+    {static_cast<int>(ExecutionNode::NORESULTS), "NoResultsNode"},
+    {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
+    {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
+    {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
 #ifdef USE_IRESEARCH
-    {static_cast<int>(ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
-    {static_cast<int>(SCATTER_IRESEARCH_VIEW), "ScatterViewNode"}
+    {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
+    {static_cast<int>(ExecutionNode::SCATTER_IRESEARCH_VIEW), "ScatterViewNode"}
 #endif
 };
 
+} // namespace
+
 /// @brief returns the type name of the node
 std::string const& ExecutionNode::getTypeString() const {
-  auto it = TypeNames.find(static_cast<int>(getType()));
+  auto it = ::typeNames.find(static_cast<int>(getType()));
 
-  if (it != TypeNames.end()) {
+  if (it != ::typeNames.end()) {
     return (*it).second;
   }
 
@@ -105,9 +103,9 @@ std::string const& ExecutionNode::getTypeString() const {
 }
 
 void ExecutionNode::validateType(int type) {
-  auto it = TypeNames.find(static_cast<int>(type));
+  auto it = ::typeNames.find(static_cast<int>(type));
 
-  if (it == TypeNames.end()) {
+  if (it == ::typeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
 }
@@ -187,9 +185,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
     }
     case COLLECT: {
       Variable* expressionVariable =
-          Variable::varFromVPack(plan->getAst(), slice, "expressionVariable", Optional);
+          Variable::varFromVPack(plan->getAst(), slice, "expressionVariable", true);
       Variable* outVariable =
-          Variable::varFromVPack(plan->getAst(), slice, "outVariable", Optional);
+          Variable::varFromVPack(plan->getAst(), slice, "outVariable", true);
 
       // keepVariables
       std::vector<Variable const*> keepVariables;
@@ -295,6 +293,10 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
     case SCATTER_IRESEARCH_VIEW:
       return new iresearch::IResearchViewScatterNode(*plan, slice);
 #endif
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
   return nullptr;
 }
@@ -536,7 +538,7 @@ void ExecutionNode::invalidateCost() {
     // etc. are already virtual
     if (dep->getType() == SUBQUERY) {
       // invalid cost of subqueries, too
-      static_cast<SubqueryNode*>(dep)->getSubquery()->invalidateCost();
+      ExecutionNode::castTo<SubqueryNode*>(dep)->getSubquery()->invalidateCost();
     }
   }
 }
@@ -565,7 +567,7 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
 
   // Now handle a subquery:
   if (getType() == SUBQUERY) {
-    auto p = static_cast<SubqueryNode*>(this);
+    auto p = ExecutionNode::castTo<SubqueryNode*>(this);
     auto subquery = p->getSubquery();
 
     if (worker.enterSubquery(this, subquery)) {
@@ -782,7 +784,7 @@ void ExecutionNode::planRegisters(ExecutionNode* super) {
   walk(*v);
   // Now handle the subqueries:
   for (auto& s : v->subQueryNodes) {
-    auto sq = static_cast<SubqueryNode*>(s);
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s);
   }
   v->reset();
@@ -853,7 +855,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = 1 + nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<EnumerateCollectionNode const*>(en);
+      auto ep = ExecutionNode::castTo<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
@@ -869,7 +871,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = 1 + nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<IndexNode const*>(en);
+      auto ep = ExecutionNode::castTo<IndexNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
@@ -885,7 +887,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = 1 + nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<EnumerateListNode const*>(en);
+      auto ep = ExecutionNode::castTo<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
@@ -895,7 +897,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::CALCULATION: {
       nrRegsHere[depth]++;
       nrRegs[depth]++;
-      auto ep = static_cast<CalculationNode const*>(en);
+      auto ep = ExecutionNode::castTo<CalculationNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
@@ -905,7 +907,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     case ExecutionNode::SUBQUERY: {
       nrRegsHere[depth]++;
       nrRegs[depth]++;
-      auto ep = static_cast<SubqueryNode const*>(en);
+      auto ep = ExecutionNode::castTo<SubqueryNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->_outVariable->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
@@ -922,7 +924,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<CollectNode const*>(en);
+      auto ep = ExecutionNode::castTo<CollectNode const*>(en);
       for (auto const& p : ep->_groupVariables) {
         // p is std::pair<Variable const*,Variable const*>
         // and the first is the to be assigned output variable
@@ -972,7 +974,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<RemoveNode const*>(en);
+      auto ep = ExecutionNode::castTo<RemoveNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -992,7 +994,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<InsertNode const*>(en);
+      auto ep = ExecutionNode::castTo<InsertNode const*>(en);
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -1012,7 +1014,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<UpdateNode const*>(en);
+      auto ep = ExecutionNode::castTo<UpdateNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -1041,7 +1043,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<ReplaceNode const*>(en);
+      auto ep = ExecutionNode::castTo<ReplaceNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -1068,7 +1070,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       RegisterId registerId = nrRegs.back();
       nrRegs.emplace_back(registerId);
 
-      auto ep = static_cast<UpsertNode const*>(en);
+      auto ep = ExecutionNode::castTo<UpsertNode const*>(en);
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -1093,7 +1095,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
 
     case ExecutionNode::TRAVERSAL: {
       depth++;
-      auto ep = static_cast<TraversalNode const*>(en);
+      auto ep = ExecutionNode::castTo<TraversalNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       auto vars = ep->getVariablesSetHere();
       nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
@@ -1112,7 +1114,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
     case ExecutionNode::SHORTEST_PATH: {
       depth++;
-      auto ep = static_cast<ShortestPathNode const*>(en);
+      auto ep = ExecutionNode::castTo<ShortestPathNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       auto vars = ep->getVariablesSetHere();
       nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
@@ -1143,6 +1145,11 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       // these node type does not produce any new registers
       break;
 #endif
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
 
   en->_depth = depth;
@@ -1359,14 +1366,13 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
     TRI_ASSERT(outVariable != nullptr);
   }
 
-  auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection,
-                                       outVariable, _random);
+  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _vocbase, _collection, outVariable, _random);
 
   c->projections(_projections);
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -1431,11 +1437,11 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new EnumerateListNode(plan, _id, inVariable, outVariable);
+  auto c = std::make_unique<EnumerateListNode>(plan, _id, inVariable, outVariable);
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief the cost of an enumerate list node
@@ -1455,7 +1461,7 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
   if (setter != nullptr) {
     if (setter->getType() == ExecutionNode::CALCULATION) {
       // list variable introduced by a calculation
-      auto expression = static_cast<CalculationNode*>(setter)->expression();
+      auto expression = ExecutionNode::castTo<CalculationNode*>(setter)->expression();
 
       if (expression != nullptr) {
         auto node = expression->node();
@@ -1482,7 +1488,7 @@ double EnumerateListNode::estimateCost(size_t& nrItems) const {
       }
     } else if (setter->getType() == ExecutionNode::SUBQUERY) {
       // length will be set by the subquery's cost estimator
-      static_cast<SubqueryNode const*>(setter)->getSubquery()->estimateCost(
+      ExecutionNode::castTo<SubqueryNode const*>(setter)->getSubquery()->estimateCost(
           length);
     }
   }
@@ -1583,13 +1589,13 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(plan, plan->getAst()),
+  auto c = std::make_unique<CalculationNode>(plan, _id, _expression->clone(plan, plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief estimateCost
@@ -1633,7 +1639,7 @@ bool SubqueryNode::isConst() {
       return false;
     }
 
-    auto expression = static_cast<CalculationNode const*>(setter)->expression();
+    auto expression = ExecutionNode::castTo<CalculationNode const*>(setter)->expression();
 
     if (expression == nullptr) {
       return false;
@@ -1665,12 +1671,12 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
-  auto c = new SubqueryNode(
+  auto c = std::make_unique<SubqueryNode>(
       plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief whether or not the subquery is a data-modification operation
@@ -1865,11 +1871,12 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
   if (withProperties) {
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
-  auto c = new FilterNode(plan, _id, inVariable);
 
-  cloneHelper(c, withDependencies, withProperties);
+  auto c = std::make_unique<FilterNode>(plan, _id, inVariable);
 
-  return static_cast<ExecutionNode*>(c);
+  cloneHelper(c.get(), withDependencies, withProperties);
+
+  return c.release();
 }
 
 /// @brief estimateCost
@@ -1923,11 +1930,11 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new ReturnNode(plan, _id, inVariable);
+  auto c = std::make_unique<ReturnNode>(plan, _id, inVariable);
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief estimateCost
