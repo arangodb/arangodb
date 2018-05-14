@@ -1,6 +1,16 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
 
+* fix C++ implementation of AQL ZIP function to return each distinct attribute
+  name only once. The previous implementation added non-unique attribute names
+  multiple times, which led to follow-up issues.
+  Now if an attribute name occurs multiple times in the input list of attribute
+  names, it will only be incorporated once into the result object, with the
+  value that corresponds to the first occurrence.
+  This fix also changes the V8 implementation of the ZIP function, which now
+  will always return the first value for non-unique attribute names and not the
+  last occurring value.
+
 * upgraded arangodb starter version to 0.11.2
 
 * self heal during a Foxx service install, upgrade or replace no longer breaks 
