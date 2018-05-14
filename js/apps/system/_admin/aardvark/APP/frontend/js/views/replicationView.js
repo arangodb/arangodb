@@ -635,7 +635,7 @@
                 self.info.level = 'Database';
               } else {
                 // self.info.level = 'Database/Server';
-                self.info.level = 'Check applier for details';
+                self.info.level = 'Check slaves for details';
               }
             }
           }
