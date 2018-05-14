@@ -77,9 +77,13 @@ class GeneralClientConnectionMock
   : public arangodb::httpclient::GeneralClientConnection {
  public:
   EndpointMock endpoint;
-  irs::file_utils::handle_t nil;
+
+  #ifndef _WIN32
+    irs::file_utils::handle_t nil;
+  #endif
 
   GeneralClientConnectionMock();
+  ~GeneralClientConnectionMock();
   virtual bool connectSocket() override;
   virtual void disconnectSocket() override;
   virtual bool readable() override;
