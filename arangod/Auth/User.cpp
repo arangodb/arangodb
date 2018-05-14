@@ -26,6 +26,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
@@ -52,7 +53,6 @@ static int HexHashFromData(std::string const& hashMethod,
                            std::string const& str, std::string& outHash) {
   char* crypted = nullptr;
   size_t cryptedLength;
-  char* hex;
 
   try {
     if (hashMethod == "sha1") {
@@ -80,26 +80,19 @@ static int HexHashFromData(std::string const& hashMethod,
       return TRI_ERROR_BAD_PARAMETER;
     }
   } catch (...) {
-    // SslInterface::ssl....() allocate strings with new, which might throw
+    // SslInterface::ssl....() allocates strings with new, which might throw
     // exceptions
     return TRI_ERROR_FAILED;
   }
+    
+  TRI_DEFER(delete[] crypted);
 
   if (crypted == nullptr || cryptedLength == 0) {
-    delete[] crypted;
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  size_t hexLen;
-  hex = TRI_EncodeHexString(crypted, cryptedLength, &hexLen);
-  delete[] crypted;
+  outHash = basics::StringUtils::encodeHex(crypted, cryptedLength);
 
-  if (hex == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  TRI_DEFER(TRI_FreeString(hex));
-  outHash = std::string(hex, hexLen);
   return TRI_ERROR_NO_ERROR;
 }
 

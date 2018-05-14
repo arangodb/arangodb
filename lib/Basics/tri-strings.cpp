@@ -569,74 +569,6 @@ void TRI_FreeString(char* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts into hex representation
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EncodeHexString(char const* source, size_t sourceLen,
-                          size_t* dstLen) {
-  char* result;
-  uint16_t* hex;
-  uint16_t* dst;
-  uint8_t* src;
-  size_t j;
-
-  *dstLen = (sourceLen * 2);
-  dst = static_cast<uint16_t*>(
-      TRI_Allocate((*dstLen) + 1));
-  if (dst == nullptr) {
-    return nullptr;
-  }
-  result = (char*)dst;
-
-  hex = (uint16_t*)HexValues;
-  src = (uint8_t*)source;
-
-  for (j = 0; j < sourceLen; j++) {
-    *dst = hex[*src];
-    dst++;
-    src++;
-  }
-
-  *((char*)dst) = 0;  // terminate the string
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts from hex representation
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_DecodeHexString(char const* source, size_t sourceLen,
-                          size_t* dstLen) {
-  char* result;
-  uint8_t* dst;
-  uint8_t* src;
-  size_t j;
-
-  *dstLen = (sourceLen / 2);
-  dst = static_cast<uint8_t*>(
-      TRI_Allocate((*dstLen) + 1));
-  if (dst == nullptr) {
-    return nullptr;
-  }
-  result = (char*)dst;
-
-  src = (uint8_t*)source;
-
-  for (j = 0; j < sourceLen; j += 2) {
-    uint8_t d;
-    d = HexDecodeLookup[*src++] << 4;
-    d |= HexDecodeLookup[*src++];
-
-    *dst++ = d;
-  }
-
-  *dst = 0;  // terminate the string
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sha256 of a string
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1001,38 +933,6 @@ char* TRI_UnescapeUtf8String(char const* in,
   }
 
   return buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the number of characters in a UTF-8 string
-/// the UTF-8 string must be well-formed and end with a NUL terminator
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_CharLengthUtf8String(char const* in) {
-  unsigned char const* p = reinterpret_cast<unsigned char const*>(in);
-  size_t chars = 0;
-
-  while (*p) {
-    unsigned char c = *p;
-
-    if (c < 128) {
-      // single byte
-      p++;
-    } else if (c < 224) {
-      p += 2;
-    } else if (c < 240) {
-      p += 3;
-    } else if (c < 248) {
-      p += 4;
-    } else {
-      // invalid UTF-8 sequence
-      break;
-    }
-
-    ++chars;
-  }
-
-  return chars;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
