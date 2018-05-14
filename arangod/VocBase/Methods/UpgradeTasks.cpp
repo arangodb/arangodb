@@ -111,21 +111,29 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                                   arangodb::RocksDBIndex* oldIndex) {
   arangodb::Result res;
   TRI_idx_iid_t iid = oldIndex->id();
-  
+
   VPackBuilder oldDesc;
   oldIndex->toVelocyPack(oldDesc, false, false);
   VPackBuilder overw;
+
   overw.openObject();
-  overw.add("type", VPackValue(arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)));
+  overw.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(
+      arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_GEO_INDEX)
+    )
+  );
   overw.close();
+
   VPackBuilder newDesc = VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
-  
+
   bool dropped = collection.dropIndex(iid);
+
   if (!dropped) {
     res.reset(TRI_ERROR_INTERNAL);
     return res;
   }
-  
+
   bool created = false;
   auto ctx = arangodb::transaction::StandaloneContext::Create(&vocbase);
   arangodb::SingleCollectionTransaction trx(ctx, collection.name(),
@@ -134,15 +142,17 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   if (res.fail()) {
     return res;
   }
-  
+
   auto newIndex = collection.createIndex(&trx, newDesc.slice(), created);
+
   if (!created) {
     res.reset(TRI_ERROR_INTERNAL);
   }
+
   TRI_ASSERT(newIndex->id() == iid); // will break cluster otherwise
   TRI_ASSERT(newIndex->type() == Index::TRI_IDX_TYPE_GEO_INDEX);
   res = trx.finish(res);
-  
+
   return res;
 }
 }  // namespace

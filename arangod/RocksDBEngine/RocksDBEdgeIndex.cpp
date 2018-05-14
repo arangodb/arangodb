@@ -556,8 +556,14 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   // add selectivity estimate hard-coded
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(false));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 

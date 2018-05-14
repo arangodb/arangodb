@@ -319,7 +319,7 @@ Result arangodb::registerUserFunction(
     opOptions.waitForSync = true;
 
     // find and load collection given by name or identifier
-    auto ctx = transaction::V8Context::CreateWhenRequired(&vocbase, true);
+    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
     SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
     res = trx.begin();
