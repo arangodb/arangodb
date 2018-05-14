@@ -380,7 +380,9 @@ authRouter.get('/replication/mode', function (req, res) {
   if (internal.authenticationEnabled()) {
     bearer = req.headers.authorization;
     endpoints = request.get('/_api/cluster/endpoints', {
-      auth: bearer
+      headers: {
+        'Authorization': bearer
+      }
     });
   } else {
     endpoints = request.get('/_api/cluster/endpoints');
