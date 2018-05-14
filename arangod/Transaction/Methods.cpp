@@ -1472,7 +1472,7 @@ OperationResult transaction::Methods::insertLocal(
                                    , resultMarkerTick, needsLock(), revisionId
                                    );
 
-    if(options.overwrite && res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED){
+    if(options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)){
       // RepSert Case - unique_constraint violated -> maxTick has not changed -> try replace
       resultMarkerTick = 0;
       TRI_voc_rid_t revision;
@@ -1826,7 +1826,7 @@ OperationResult transaction::Methods::modifyLocal(
       maxTick = resultMarkerTick;
     }
 
-    if (res.errorNumber() == TRI_ERROR_ARANGO_CONFLICT) {
+    if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
       // still return
       if (!isBabies) {
         StringRef key(newVal.get(StaticStrings::KeyString));
@@ -2124,7 +2124,7 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     if (!res.ok()) {
-      if (res.errorNumber() == TRI_ERROR_ARANGO_CONFLICT && !isBabies) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         buildDocumentIdentity(collection, resultBuilder, cid, key,
                               actualRevision, 0,
                               options.returnOld ? &previous : nullptr, nullptr);
