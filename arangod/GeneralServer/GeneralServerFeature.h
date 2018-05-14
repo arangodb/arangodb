@@ -84,7 +84,7 @@ class GeneralServerFeature final
 
     return GENERAL_SERVER->_accessControlAllowOrigins;
   }
-
+      
  private:
   static GeneralServerFeature* GENERAL_SERVER;
 
@@ -98,7 +98,7 @@ class GeneralServerFeature final
   void start() override final;
   void stop() override final;
   void unprepare() override final;
-
+  
  private:
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;

@@ -119,7 +119,6 @@ SupervisorFeature::SupervisorFeature(
   setOptional(true);
   startsAfter("Daemon");
   startsAfter("Logger");
-  startsAfter("WorkMonitor");
 }
 
 void SupervisorFeature::collectOptions(

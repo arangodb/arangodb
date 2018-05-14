@@ -1914,13 +1914,11 @@ void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  auto context = Thread::currentWorkContext();
-
-  if (context != nullptr) {
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
     result->Set(TRI_V8_ASCII_STRING(isolate, "user"),
-                TRI_V8_STD_STRING(isolate, context->_user));
-    result->Set(TRI_V8_ASCII_STRING(isolate, "database"),
-                TRI_V8_STD_STRING(isolate, context->_database));
+                TRI_V8_STD_STRING(isolate, exec->user()));
   }
 
   TRI_V8_RETURN(result);

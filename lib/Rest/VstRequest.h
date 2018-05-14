@@ -58,7 +58,7 @@ class VstRequest final : public GeneralRequest {
 
  private:
   VstRequest(ConnectionInfo const& connectionInfo, VstInputMessage&& message,
-             uint64_t messageId, bool isFake = false);
+             uint64_t messageId);
 
  public:
   ~VstRequest() {}
