@@ -310,16 +310,20 @@ void RocksDBCollection::prepareIndexes(
 
     bool alreadyHandled = false;
     // check for combined edge index from MMFiles; must split!
-    auto value = v.get("type");
+    auto value = v.get(arangodb::StaticStrings::IndexType);
+
     if (value.isString()) {
       std::string tmp = value.copyString();
       arangodb::Index::IndexType const type =
           arangodb::Index::type(tmp.c_str());
+
       if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-        VPackSlice fields = v.get("fields");
+        auto fields = v.get(arangodb::StaticStrings::IndexFields);
+
         if (fields.isArray() && fields.length() == 2) {
           VPackBuilder from;
           from.openObject();
+
           for (auto const& f : VPackObjectIterator(v)) {
             if (arangodb::StringRef(f.key) == "fields") {
               from.add(VPackValue("fields"));
@@ -331,6 +335,7 @@ void RocksDBCollection::prepareIndexes(
               from.add(f.value);
             }
           }
+
           from.close();
 
           VPackBuilder to;
@@ -437,8 +442,7 @@ static std::shared_ptr<Index> findIndex(
     std::vector<std::shared_ptr<Index>> const& indexes) {
   TRI_ASSERT(info.isObject());
 
-  // extract type
-  VPackSlice value = info.get("type");
+  auto value = info.get(arangodb::StaticStrings::IndexType); // extract type
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.

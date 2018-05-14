@@ -1300,7 +1300,7 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return transaction::V8Context::Create(&_vocbase, true);
+    return transaction::V8Context::Create(_vocbase, true);
   }
 
   return transaction::StandaloneContext::Create(&_vocbase);

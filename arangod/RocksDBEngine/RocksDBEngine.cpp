@@ -771,17 +771,20 @@ void RocksDBEngine::getCollectionInfo(
     VPackSlice indexes = fullParameters.get("indexes");
     builder.add(VPackValue("indexes"));
     builder.openArray();
+
     if (indexes.isArray()) {
       for (auto const idx : VPackArrayIterator(indexes)) {
         // This is only allowed to contain user-defined indexes.
         // So we have to exclude Primary + Edge Types
-        VPackSlice type = idx.get("type");
+        auto type = idx.get(StaticStrings::IndexType);
         TRI_ASSERT(type.isString());
+
         if (!type.isEqualString("primary") && !type.isEqualString("edge")) {
           builder.add(idx);
         }
       }
     }
+
     builder.close();
   }
 
@@ -810,10 +813,13 @@ int RocksDBEngine::getCollectionsAndIndexes(
 
     auto slice = VPackSlice(iter->value().data());
 
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted",
-                                                             false)) {
+    if (arangodb::basics::VelocyPackHelper::readBooleanValue(
+          slice, StaticStrings::DataSourceDeleted, false
+        )
+       ) {
       continue;
     }
+
     result.add(slice);
   }
 
@@ -839,8 +845,10 @@ int RocksDBEngine::getViews(
 
     LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << slice.toJson();
 
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted",
-                                                             false)) {
+    if (arangodb::basics::VelocyPackHelper::readBooleanValue(
+          slice, StaticStrings::DataSourceDeleted, false
+        )
+       ) {
       continue;
     }
 
@@ -1621,13 +1629,12 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
-        TRI_ASSERT(it.get("type").isString());
-        Index::IndexType type = Index::type(it.get("type").copyString());
-        bool unique =
-            basics::VelocyPackHelper::getBooleanValue(it, "unique", false);
-
+        TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
+        auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
+        bool unique = basics::VelocyPackHelper::getBooleanValue(
+          it, StaticStrings::IndexUnique.c_str(), false
+        );
         bool prefix_same_as_start = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
-
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
 

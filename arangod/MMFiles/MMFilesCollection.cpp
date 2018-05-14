@@ -2026,9 +2026,11 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   bool foundEdge = false;
 
   for (auto const& it : VPackArrayIterator(indexesSlice)) {
-    auto const& s = it.get("type");
+    auto const& s = it.get(arangodb::StaticStrings::IndexType);
+
     if (s.isString()) {
       std::string const type = s.copyString();
+
       if (type == "primary") {
         foundPrimary = true;
       } else if (type == "edge") {
@@ -2036,6 +2038,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
       }
     }
   }
+
   for (auto const& idx : _indexes) {
     if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
       foundPrimary = true;
@@ -2136,7 +2139,7 @@ std::shared_ptr<Index> MMFilesCollection::lookupIndex(
   TRI_ASSERT(info.isObject());
 
   // extract type
-  VPackSlice value = info.get("type");
+  auto value = info.get(arangodb::StaticStrings::IndexType);
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.

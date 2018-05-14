@@ -702,20 +702,25 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     // extract basic info about the collection
     uint64_t const cid = basics::VelocyPackHelper::extractIdValue(parameters);
     std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
-        parameters, "name", "");
+      parameters, StaticStrings::DataSourceName, ""
+    );
     bool const deleted = arangodb::basics::VelocyPackHelper::getBooleanValue(
-        parameters, "deleted", false);
+      parameters, StaticStrings::DataSourceDeleted.c_str(), false
+    );
     int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-        parameters, "type", 2);
+      parameters, StaticStrings::DataSourceType.c_str(), 2
+    );
     std::string const collectionType(type == 2 ? "document" : "edge");
 
     // basic filtering
     if (cid == 0 || name == "") {
       return ::ErrorMalformedJsonResponse;
     }
+
     if (deleted) {
       continue;
     }
+
     if (name[0] == '_' && !_options.includeSystemCollections) {
       continue;
     }

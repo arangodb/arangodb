@@ -758,58 +758,66 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   TRI_vocbase_t* vocbase = v8g->_vocbase;
+
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsNumber()) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>, <maxWorkers>)");
   }
-  
+
   std::string runAsUser;
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (exec != nullptr) {
     if (exec->databaseAuthLevel() != auth::Level::RW) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "createQueue() needs db RW permissions");
     }
+
     runAsUser = exec->user();
     TRI_ASSERT(exec->isAdminUser() || !runAsUser.empty());
   }
-  
+
   std::string key = TRI_ObjectToString(args[0]);
   uint64_t maxWorkers = std::min(TRI_ObjectToUInt64(args[1], false), (uint64_t)64);
-  
+
   VPackBuilder doc;
+
   doc.openObject();
   doc.add(StaticStrings::KeyString, VPackValue(key));
   doc.add("maxWorkers", VPackValue(maxWorkers));
   doc.add("runAsUser", VPackValue(runAsUser));
   doc.close();
-  
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
-  auto ctx = transaction::V8Context::Create(vocbase, false);
+  auto ctx = transaction::V8Context::Create(*vocbase, false);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   OperationOptions opts;
   OperationResult result = trx.insert("_queues", doc.slice(), opts);
+
   if (result.fail() &&
       result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
     result = trx.replace("_queues", doc.slice(), opts);
   }
+
   res = trx.finish(result.result);
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.ok()));
   TRI_V8_TRY_CATCH_END
 }
@@ -817,42 +825,49 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   TRI_GET_GLOBALS();
   TRI_vocbase_t* vocbase = v8g->_vocbase;
+
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  
+
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("deleteQueue(<id>)");
   }
+
   std::string key = TRI_ObjectToString(args[0]);
   VPackBuilder doc;
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
-  
+
   ExecContext const* exec = ExecContext::CURRENT;
+
   if (exec != nullptr && exec->databaseAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
-  
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextScope exscope(ExecContext::superuser());
-  auto ctx = transaction::V8Context::Create(vocbase, false);
+  auto ctx = transaction::V8Context::Create(*vocbase, false);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+
   OperationOptions opts;
   OperationResult result = trx.remove("_queues", doc.slice(), opts);
+
   res = trx.finish(result.result);
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-  
+
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.ok()));
   TRI_V8_TRY_CATCH_END
 }
