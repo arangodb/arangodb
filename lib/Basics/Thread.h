@@ -107,19 +107,6 @@ class Thread {
   // returns the current thread
   static Thread* current() { return CURRENT_THREAD; }
 
-  // checks if work has been canceled
-  /*static bool isCanceled() {
-    Thread* thread = CURRENT_THREAD;
-
-    if (thread == nullptr) {
-      return false;
-    }
-
-    WorkDescription* desc = thread->workDescription();
-
-    return desc == nullptr ? false : desc->_data._thread._canceled.load();
-  }*/
-
  public:
   Thread(std::string const& name, bool deleteOnExit = false);
   virtual ~Thread();

@@ -72,7 +72,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
 
 /// @brief send error response including response body
 void HttpCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
-                                     uint64_t /*messageId*/, velocypack::Buffer<uint8_t> buffer) {
+                                     uint64_t /*messageId*/, velocypack::Buffer<uint8_t>&& buffer) {
   try {
     HttpResponse resp(code, leaseStringBuffer(buffer.size()));
     resp.setContentType(respType);
@@ -85,12 +85,10 @@ void HttpCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType 
     << "addSimpleResponse received an exception, closing connection:"
     << ex.what();
     _closeRequested = true;
-    // _clientClosed = true;
   } catch (...) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
     << "addSimpleResponse received an exception, closing connection";
     _closeRequested = true;
-    // _clientClosed = true;
   }
 }
 
@@ -575,8 +573,6 @@ bool HttpCommTask::processRead(double startTime) {
   // first scrape the auth headers and try to determine and authenticate the user
   rest::ResponseCode authResult = handleAuthHeader(_incompleteRequest.get());
   
-  //rest::ResponseCode authResult = authenticateRequest(_incompleteRequest.get());
-
   // authenticated 
   if (authResult != rest::ResponseCode::SERVER_ERROR) {
     

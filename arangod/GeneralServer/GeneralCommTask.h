@@ -100,7 +100,7 @@ class GeneralCommTask : public SocketTask {
   
   /// @brief send simple response including response body
   virtual void addSimpleResponse(rest::ResponseCode, rest::ContentType,
-                                 uint64_t messageId, velocypack::Buffer<uint8_t>) = 0;
+                                 uint64_t messageId, velocypack::Buffer<uint8_t>&&) = 0;
   
   /// @brief send the response to the client.
   virtual void addResponse(GeneralResponse &, RequestStatistics *) = 0;

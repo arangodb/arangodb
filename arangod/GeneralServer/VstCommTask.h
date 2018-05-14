@@ -56,7 +56,7 @@ class VstCommTask final : public GeneralCommTask {
   
   /// @brief send simple response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType,
-                         uint64_t messageId, velocypack::Buffer<uint8_t>) override;
+                         uint64_t messageId, velocypack::Buffer<uint8_t>&&) override;
   
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse

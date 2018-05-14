@@ -83,7 +83,6 @@ if (USE_IRESEARCH)
   )
 
   target_include_directories(${LIB_ARANGO_IRESEARCH}
-#    PUBLIC ${Boost_INCLUDE_DIR} # for boost/lockfree/queue.hpp from WorkMonitor.h
     PUBLIC ${IRESEARCH_INCLUDE}
   )
 

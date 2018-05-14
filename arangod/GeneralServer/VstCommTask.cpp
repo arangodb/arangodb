@@ -102,7 +102,7 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
 
 /// @brief send simple response including response body
 void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
-                                    uint64_t messageId, velocypack::Buffer<uint8_t> buffer) {
+                                    uint64_t messageId, velocypack::Buffer<uint8_t>&& buffer) {
   VstResponse resp(code, messageId);
   TRI_ASSERT(respType == rest::ContentType::VPACK); // or not ?
   resp.setContentType(respType);
