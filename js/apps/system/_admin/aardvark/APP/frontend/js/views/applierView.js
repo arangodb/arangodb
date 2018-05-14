@@ -50,6 +50,7 @@
       }
       if (global) {
         url = url + '?global=true';
+        self.breadcrumb('All databases');
       } else {
         self.breadcrumb(self.database);
       }
