@@ -89,7 +89,7 @@ use a command like `kill -9`:
 
 ```
 kill -9 <pid=of-starter>
-```    
+```
     
 ### Restart the _Starter_
 
