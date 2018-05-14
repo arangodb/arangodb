@@ -1,16 +1,10 @@
 Deploying using the ArangoDB Starter
 ====================================
 
-WIP
+Single Instance
 
-Single instance
-
-- _Starter_ using processes
-- _Starter_ using Docker containers 
-
-Master/Slave
-
-WIP
+- [_Starter_ using processes](../SingleInstance/UsingTheStarter.md)
+- [_Starter_ using Docker containers](../SingleInstance/UsingTheStarter.md#using-the-arangodb-starter-in-docker)
 
 Active Failover
 
@@ -21,7 +15,3 @@ Cluster
 
 - [_Starter_ using processes](../Cluster/UsingTheStarter.md)
 - [_Starter_ using Docker containers](../Cluster/UsingTheStarter.md#using-the-arangodb-starter-in-docker)
-
-Multiple Datacenters
-
-WIP
