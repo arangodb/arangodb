@@ -328,6 +328,8 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
   options.returnOld = producesOutput;
   options.isRestore = ep->getOptions().useIsRestore;
 
+  VPackBuilder patternBuilder;
+
   // loop over all blocks
   size_t dstRow = 0;
   for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
@@ -338,9 +340,11 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     size_t const n = res->size();
     bool isMultiple = (n > 1);
     _tempBuilder.clear();
+    patternBuilder.clear();
     if (isMultiple) {
       // If we use multiple API we send an array
       _tempBuilder.openArray();
+      patternBuilder.openArray();
     }
 
     std::string key;
@@ -384,6 +388,12 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
             _tempBuilder.add(StaticStrings::RevString, VPackValue(rev));
           }
           _tempBuilder.close();
+          if (a.isObject()) {
+            patternBuilder.add(a.slice());
+          }
+          else {
+            patternBuilder.add(VPackSlice::noneSlice());
+          }
         } else {
           // We have an error, handle it
           handleResult(errorCode, ep->_options.ignoreErrors, nullptr);
@@ -394,13 +404,17 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     if (isMultiple) {
       // We have to close the array
       _tempBuilder.close();
+      patternBuilder.close();
     }
     VPackSlice toRemove = _tempBuilder.slice();
+    VPackSlice pattern = patternBuilder.slice();
 
     if (!toRemove.isNone() &&
         !(toRemove.isArray() && toRemove.length() == 0)) {
       // all exceptions are caught in _trx->remove()
-      OperationResult opRes = _trx->remove(_collection->name(), toRemove, options);
+
+      OperationResult opRes =
+          _trx->remove(_collection->name(), toRemove, options, pattern);
 
       if (isMultiple) {
         TRI_ASSERT(opRes.ok());
@@ -658,6 +672,7 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   std::string errorMessage;
   VPackBuilder object;
+  VPackBuilder patternBuilder;
 
   if (hasKeyVariable) {
     it = ep->getRegisterPlan()->varInfo.find(ep->_inKeyVariable->id);
@@ -688,8 +703,10 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
     size_t const n = res->size();
     bool isMultiple = (n > 1);
     object.clear();
+    patternBuilder.clear();
     if (isMultiple) {
       object.openArray();
+      patternBuilder.openArray();
     }
 
     std::string key;
@@ -733,10 +750,20 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
             _tempBuilder.close();
 
             VPackCollection::merge(object, a.slice(), _tempBuilder.slice(), false, false);
+
+            // add searchExpression / inKeyVariable to pattern
+            AqlValue const& searchExpression = res->getValueReference(i, keyRegisterId);
+            // cases other than object or string should have been caught above
+            // via extractKey()'s errorCode
+            TRI_ASSERT(searchExpression.isString() || searchExpression.isObject());
+            if (searchExpression.isObject()) {
+              patternBuilder.add(searchExpression.slice());
+            }
           }
           else {
             // use original slice for updating
             object.add(a.slice());
+            patternBuilder.add(VPackSlice::noneSlice());
           }
         } else {
           wasTaken.push_back(false);
@@ -749,9 +776,11 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
 
     if (isMultiple) {
       object.close();
+      patternBuilder.close();
     }
 
     VPackSlice toUpdate = object.slice();
+    VPackSlice pattern = patternBuilder.slice();
 
     if (toUpdate.isNone() ||
         (toUpdate.isArray() && toUpdate.length() == 0)) {
@@ -760,7 +789,9 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
     }
 
     // fetch old revision
-    OperationResult opRes = _trx->update(_collection->name(), toUpdate, options);
+    OperationResult opRes =
+        _trx->update(_collection->name(), toUpdate, options, pattern);
+
     if (!isMultiple) {
       int errorCode = opRes.errorNumber();
 
@@ -1124,6 +1155,7 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   std::string errorMessage;
   VPackBuilder object;
+  VPackBuilder patternBuilder;
 
   if (hasKeyVariable) {
     it = ep->getRegisterPlan()->varInfo.find(ep->_inKeyVariable->id);
@@ -1154,8 +1186,10 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
     size_t const n = res->size();
     bool isMultiple = (n > 1);
     object.clear();
+    patternBuilder.clear();
     if (isMultiple) {
       object.openArray();
+      patternBuilder.openArray();
     }
 
     std::string key;
@@ -1198,9 +1232,19 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
             _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
             _tempBuilder.close();
             VPackCollection::merge(object, a.slice(), _tempBuilder.slice(), false, false);
+
+            // add searchExpression / inKeyVariable to pattern
+            AqlValue const& searchExpression = res->getValueReference(i, keyRegisterId);
+            // cases other than object or string should have been caught above
+            // via extractKey()'s errorCode
+            TRI_ASSERT(searchExpression.isString() || searchExpression.isObject());
+            if (searchExpression.isObject()) {
+              patternBuilder.add(searchExpression.slice());
+            }
           } else {
             // Use the original slice for updating
             object.add(a.slice());
+            patternBuilder.add(VPackSlice::noneSlice());
           }
         } else {
           wasTaken.push_back(false);
@@ -1213,9 +1257,11 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
 
     if (isMultiple) {
       object.close();
+      patternBuilder.close();
     }
 
     VPackSlice toUpdate = object.slice();
+    VPackSlice pattern = patternBuilder.slice();
 
     if (toUpdate.isNone() ||
         (toUpdate.isArray() && toUpdate.length() == 0)) {
@@ -1223,7 +1269,8 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
       continue;
     }
     // fetch old revision
-    OperationResult opRes = _trx->replace(_collection->name(), toUpdate, options);
+    OperationResult opRes =
+      _trx->replace(_collection->name(), toUpdate, options, pattern);
     if (!isMultiple) {
       int errorCode = opRes.errorNumber();
 

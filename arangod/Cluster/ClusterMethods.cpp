@@ -1245,8 +1245,8 @@ Result createDocumentOnCoordinator(
 
 int deleteDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    arangodb::transaction::Methods const& trx,
-    VPackSlice const slice, arangodb::OperationOptions const& options,
+    arangodb::transaction::Methods const& trx, VPackSlice const slice,
+    arangodb::OperationOptions const& options, VPackSlice const pattern,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
     std::shared_ptr<arangodb::velocypack::Builder>& resultBody) {
@@ -2290,12 +2290,13 @@ int getFilteredEdgesOnCoordinator(
 int modifyDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     arangodb::transaction::Methods const& trx,
-    VPackSlice const& slice, arangodb::OperationOptions const& options,
-    bool isPatch,
+    arangodb::velocypack::Slice const& slice,
+    arangodb::OperationOptions const& options,
+    arangodb::velocypack::Slice const& pattern, bool isPatch,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
-    std::shared_ptr<VPackBuilder>& resultBody) {
+    std::shared_ptr<arangodb::velocypack::Builder>& resultBody) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();

@@ -312,22 +312,24 @@ class Methods {
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   OperationResult update(std::string const& collectionName,
-                         VPackSlice const updateValue,
-                         OperationOptions const& options);
+                         VPackSlice updateValue,
+                         OperationOptions const& options,
+                         VPackSlice pattern = VPackSlice::noneSlice());
 
   /// @brief replace one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
   OperationResult replace(std::string const& collectionName,
-                          VPackSlice const updateValue,
-                          OperationOptions const& options);
+                          VPackSlice updateValue,
+                          OperationOptions const& options,
+                          VPackSlice pattern = VPackSlice::noneSlice());
 
   /// @brief remove one or multiple documents in a collection
   /// the single-document variant of this operation will either succeed or,
   /// if it fails, clean up after itself
-  OperationResult remove(std::string const& collectionName,
-                         VPackSlice const value,
-                         OperationOptions const& options);
+  OperationResult remove(std::string const& collectionName, VPackSlice value,
+                         OperationOptions const& options,
+                         VPackSlice pattern = VPackSlice::noneSlice());
 
   /// @brief fetches all documents in a collection
   ENTERPRISE_VIRT OperationResult all(std::string const& collectionName,
@@ -487,24 +489,28 @@ class Methods {
 
   OperationResult updateCoordinator(std::string const& collectionName,
                                     VPackSlice const newValue,
-                                    OperationOptions& options);
+                                    OperationOptions& options,
+                                    VPackSlice const pattern);
 
   OperationResult replaceCoordinator(std::string const& collectionName,
                                      VPackSlice const newValue,
-                                     OperationOptions& options);
+                                     OperationOptions& options,
+                                     VPackSlice const pattern);
 
   OperationResult modifyLocal(std::string const& collectionName,
                               VPackSlice const newValue,
                               OperationOptions& options,
-                              TRI_voc_document_operation_e operation);
+                              TRI_voc_document_operation_e operation,
+                              VPackSlice const pattern);
 
   OperationResult removeCoordinator(std::string const& collectionName,
                                     VPackSlice const value,
-                                    OperationOptions& options);
+                                    OperationOptions& options,
+                                    VPackSlice const pattern);
 
   OperationResult removeLocal(std::string const& collectionName,
-                              VPackSlice const value,
-                              OperationOptions& options);
+                              VPackSlice const value, OperationOptions& options,
+                              VPackSlice const pattern);
 
   OperationResult allCoordinator(std::string const& collectionName,
                                  uint64_t skip, uint64_t limit,

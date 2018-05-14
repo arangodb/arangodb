@@ -61,6 +61,8 @@
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
 
+#include <arangod/Aql/Functions.h>
+#include <boost/optional.hpp>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Options.h>
@@ -1850,7 +1852,8 @@ OperationResult transaction::Methods::insertLocal(
 /// if it fails, clean up after itself
 OperationResult transaction::Methods::update(std::string const& collectionName,
                                              VPackSlice const newValue,
-                                             OperationOptions const& options) {
+                                             OperationOptions const& options,
+                                             VPackSlice pattern) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
@@ -1864,11 +1867,11 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
   OperationOptions optionsCopy = options;
 
   if (_state->isCoordinator()) {
-    return updateCoordinator(collectionName, newValue, optionsCopy);
+    return updateCoordinator(collectionName, newValue, optionsCopy, pattern);
   }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
-                     TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+                     TRI_VOC_DOCUMENT_OPERATION_UPDATE, pattern);
 }
 
 /// @brief update one or multiple documents in a collection, coordinator
@@ -1877,24 +1880,15 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::updateCoordinator(
     std::string const& collectionName, VPackSlice const newValue,
-    OperationOptions& options) {
+    OperationOptions& options, VPackSlice const pattern) {
   auto headers =
       std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::modifyDocumentOnCoordinator(
-    vocbase().name(),
-    collectionName,
-    *this,
-    newValue,
-    options,
-    true /* isPatch */,
-    headers,
-    responseCode,
-    errorCounter,
-    resultBody
-  );
+      vocbase().name(), collectionName, *this, newValue, options, pattern,
+      true /* isPatch */, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -1909,7 +1903,8 @@ OperationResult transaction::Methods::updateCoordinator(
 /// if it fails, clean up after itself
 OperationResult transaction::Methods::replace(std::string const& collectionName,
                                               VPackSlice const newValue,
-                                              OperationOptions const& options) {
+                                              OperationOptions const& options,
+                                              VPackSlice pattern) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!newValue.isObject() && !newValue.isArray()) {
@@ -1923,11 +1918,11 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
   OperationOptions optionsCopy = options;
 
   if (_state->isCoordinator()) {
-    return replaceCoordinator(collectionName, newValue, optionsCopy);
+    return replaceCoordinator(collectionName, newValue, optionsCopy, pattern);
   }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
-                     TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+                     TRI_VOC_DOCUMENT_OPERATION_REPLACE, pattern);
 }
 
 /// @brief replace one or multiple documents in a collection, coordinator
@@ -1936,24 +1931,15 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::replaceCoordinator(
     std::string const& collectionName, VPackSlice const newValue,
-    OperationOptions& options) {
+    OperationOptions& options, VPackSlice const pattern) {
   auto headers =
       std::make_unique<std::unordered_map<std::string, std::string>>();
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::modifyDocumentOnCoordinator(
-    vocbase().name(),
-    collectionName,
-    *this,
-    newValue,
-    options,
-    false /* isPatch */,
-    headers,
-    responseCode,
-    errorCounter,
-    resultBody
-  );
+      vocbase().name(), collectionName, *this, newValue, options, pattern,
+      false /* isPatch */, headers, responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
@@ -1968,7 +1954,9 @@ OperationResult transaction::Methods::replaceCoordinator(
 /// if it fails, clean up after itself
 OperationResult transaction::Methods::modifyLocal(
     std::string const& collectionName, VPackSlice const newValue,
-    OperationOptions& options, TRI_voc_document_operation_e operation) {
+    OperationOptions& options, TRI_voc_document_operation_e operation,
+    VPackSlice const pattern) {
+  TRI_ASSERT(pattern.isNone() || pattern.isArray());
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
@@ -2019,6 +2007,7 @@ OperationResult transaction::Methods::modifyLocal(
   // lambda //////////////
   auto workForOneDocument = [this, &operation, &options, &maxTick, &collection,
                              &resultBuilder, &cid](VPackSlice const newVal,
+                                                   VPackSlice const pattern,
                                                    bool isBabies) -> Result {
     Result res;
     if (!newVal.isObject()) {
@@ -2026,19 +2015,36 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
+    if (pattern.isObject()) {
+      StringRef key{newVal.get(StaticStrings::KeyString)};
+      ManagedDocumentResult currentDoc;
+      // TODO Does a READ lock suffice, or could we run into problems with that?
+      res = collection->read(this, key, currentDoc,
+                             !isLocked(collection, AccessMode::Type::WRITE));
+
+      if (res.ok() &&
+          !aql::matches(VPackSlice(currentDoc.vpack()), nullptr, pattern)) {
+        res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      }
+    }
+
     ManagedDocumentResult result;
     TRI_voc_rid_t actualRevision = 0;
     ManagedDocumentResult previous;
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
-      res = collection->replace(this, newVal, result, options, resultMarkerTick,
+    if (res.ok()) {
+      if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+        res =
+            collection->replace(this, newVal, result, options, resultMarkerTick,
                                 !isLocked(collection, AccessMode::Type::WRITE),
                                 actualRevision, previous);
-    } else {
-      res = collection->update(this, newVal, result, options, resultMarkerTick,
+      } else {
+        res =
+            collection->update(this, newVal, result, options, resultMarkerTick,
                                !isLocked(collection, AccessMode::Type::WRITE),
                                actualRevision, previous);
+      }
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -2080,8 +2086,19 @@ OperationResult transaction::Methods::modifyLocal(
     {
       VPackArrayBuilder guard(&resultBuilder);
       VPackArrayIterator it(newValue);
+
+      boost::optional<VPackArrayIterator> patternIt = boost::none;
+      if (pattern.isArray()) {
+        TRI_ASSERT(newValue.length() == pattern.length());
+        patternIt = VPackArrayIterator(pattern);
+      }
       while (it.valid()) {
-        res = workForOneDocument(it.value(), true);
+        VPackSlice patternElt = VPackSlice::noneSlice();
+        if (patternIt && patternIt.get() != patternIt->end()) {
+          patternElt = patternIt->value();
+          patternIt->next();
+        }
+        res = workForOneDocument(it.value(), patternElt, true);
         if (!res.ok()) {
           createBabiesError(resultBuilder, errorCounter, res.errorNumber(),
                             options.silent);
@@ -2091,7 +2108,7 @@ OperationResult transaction::Methods::modifyLocal(
     }
     res.reset();
   } else {
-    res = workForOneDocument(newValue, false);
+    res = workForOneDocument(newValue, pattern, false);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2228,7 +2245,8 @@ OperationResult transaction::Methods::modifyLocal(
 /// if it fails, clean up after itself
 OperationResult transaction::Methods::remove(std::string const& collectionName,
                                              VPackSlice const value,
-                                             OperationOptions const& options) {
+                                             OperationOptions const& options,
+                                             VPackSlice const pattern) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
@@ -2242,10 +2260,10 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   OperationOptions optionsCopy = options;
 
   if (_state->isCoordinator()) {
-    return removeCoordinator(collectionName, value, optionsCopy);
+    return removeCoordinator(collectionName, value, optionsCopy, pattern);
   }
 
-  return removeLocal(collectionName, value, optionsCopy);
+  return removeLocal(collectionName, value, optionsCopy, pattern);
 }
 
 /// @brief remove one or multiple documents in a collection, coordinator
@@ -2254,20 +2272,13 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::removeCoordinator(
     std::string const& collectionName, VPackSlice const value,
-    OperationOptions& options) {
+    OperationOptions& options, VPackSlice const pattern) {
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
   int res = arangodb::deleteDocumentOnCoordinator(
-    vocbase().name(),
-    collectionName,
-    *this,
-    value,
-    options,
-    responseCode,
-    errorCounter,
-    resultBody
-  );
+      vocbase().name(), collectionName, *this, value, options, pattern,
+      responseCode, errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultRemove(responseCode, resultBody, errorCounter);
@@ -2282,7 +2293,8 @@ OperationResult transaction::Methods::removeCoordinator(
 /// if it fails, clean up after itself
 OperationResult transaction::Methods::removeLocal(
     std::string const& collectionName, VPackSlice const value,
-    OperationOptions& options) {
+    OperationOptions& options, VPackSlice const pattern) {
+  TRI_ASSERT(pattern.isNone() || pattern.isArray());
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
       
@@ -2322,7 +2334,8 @@ OperationResult transaction::Methods::removeLocal(
   VPackBuilder resultBuilder;
   TRI_voc_tick_t maxTick = 0;
 
-  auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
+  auto workForOneDocument = [&](VPackSlice value, VPackSlice pattern,
+                                bool isBabies) -> Result {
     TRI_voc_rid_t actualRevision = 0;
     ManagedDocumentResult previous;
     transaction::BuilderLeaser builder(this);
@@ -2348,9 +2361,28 @@ OperationResult transaction::Methods::removeLocal(
 
     TRI_voc_tick_t resultMarkerTick = 0;
 
-    Result res = collection->remove(this, value, options, resultMarkerTick,
-                                 !isLocked(collection, AccessMode::Type::WRITE),
-                                 actualRevision, previous);
+    bool lock = !isLocked(collection, AccessMode::Type::WRITE);
+    Result res;
+
+    if (pattern.isObject()) {
+      res = collection->read(this, key, previous, lock);
+
+      if (res.ok() &&
+          !aql::matches(VPackSlice(previous.vpack()), nullptr, pattern)) {
+        res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      }
+    }
+
+    // If we tried to lookup the document for pattern matching, and
+    // either the lookup or the pattern match failed, we don't remove because
+    // either
+    //  - something unexpected went wrong during lookup and we need to abort
+    //  - the document doesn't exist so we can't remove it anyway
+    //  - the pattern doesn't match and we mustn't remove it
+    if (res.ok()) {
+      res = collection->remove(this, value, options, resultMarkerTick, lock,
+                               actualRevision, previous);
+    }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -2379,8 +2411,21 @@ OperationResult transaction::Methods::removeLocal(
   std::unordered_map<int, size_t> countErrorCodes;
   if (multiCase) {
     VPackArrayBuilder guard(&resultBuilder);
+
+    boost::optional<VPackArrayIterator> patternIt = boost::none;
+    if (pattern.isArray()) {
+      TRI_ASSERT(value.length() == pattern.length());
+      patternIt = VPackArrayIterator(pattern);
+    }
     for (auto const& s : VPackArrayIterator(value)) {
-      res = workForOneDocument(s, true);
+      VPackSlice patternElt = VPackSlice::noneSlice();
+      if (patternIt) {
+        if (patternIt.get() != patternIt->end()) {
+          patternElt = patternIt->value();
+          patternIt->next();
+        }
+      }
+      res = workForOneDocument(s, patternElt, true);
       if (!res.ok()) {
         createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
       }
@@ -2388,7 +2433,7 @@ OperationResult transaction::Methods::removeLocal(
     // With babies the reporting is handled somewhere else.
     res = Result(TRI_ERROR_NO_ERROR);
   } else {
-    res = workForOneDocument(value, false);
+    res = workForOneDocument(value, pattern, false);
   }
 
   // Now see whether or not we have to do synchronous replication:
