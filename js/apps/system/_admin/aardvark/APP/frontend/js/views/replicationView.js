@@ -262,6 +262,7 @@
       var endpoint;
 
       if (global) {
+        data.database = 'All databases';
         data = {'All databases': data};
       }
       var errors = 0;
@@ -574,7 +575,6 @@
         $('#logger-serverid-id').html(server.serverId);
         $('#logger-time-id').html(state.time);
         $('#logger-lastLogTick-id').html(state.lastLogTick);
-        $('#logger-lastUncommitedLogTick-id').html(state.lastUncommittedLogTick);
         $('#logger-totalEvents-id').html(state.totalEvents);
         // render client information
         $('#repl-logger-clients tbody').html('');
@@ -634,7 +634,8 @@
               if (self.info.role === 'follower') {
                 self.info.level = 'Database';
               } else {
-                self.info.level = 'Database/Server';
+                // self.info.level = 'Database/Server';
+                self.info.level = 'Check applier for details';
               }
             }
           }
