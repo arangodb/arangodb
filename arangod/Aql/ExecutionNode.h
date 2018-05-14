@@ -171,7 +171,8 @@ class ExecutionNode {
   template<typename T, typename FromType> 
   static inline T castTo(FromType node) noexcept {
     static_assert(std::is_pointer<T>::value, "invalid type passed into ExecutionNode::castTo");
-    static_assert(node->IsExecutionNode, "invalid type passed into ExecutionNode::castTo");
+    static_assert(std::is_pointer<FromType>::value, "invalid type passed into ExecutionNode::castTo");
+    static_assert(std::remove_pointer<FromType>::type::IsExecutionNode, "invalid type passed into ExecutionNode::castTo");
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     T result = dynamic_cast<T>(node);
