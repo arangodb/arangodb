@@ -46,6 +46,8 @@ devel
   Additionally we removed the deprecated flags `constraint` and `ignoreNull` from geo 
   index definitions, these fields were initially deprecated in ArangoDB 2.5
 
+* Add revision id to RocksDB values in primary indexes to speed up replication (~10x).
+
 * PR #5238: Create a default pacing algorithm for arangoimport to avoid TimeoutErrors
   on VMs with limited disk throughput
 
