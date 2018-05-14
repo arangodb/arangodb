@@ -278,27 +278,17 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpJson(
     }
   }
 
+  TRI_ASSERT(collectionIter->iter->bounds().columnFamily() == RocksDBColumnFamily::documents());
+
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
-  auto cb = [this, &collectionIter, &buff, &adapter](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
-
-    {
-      //get document
-      auto documentId = RocksDBValue::documentId(rocksValue);
-      bool ok = collectionIter->logical.readDocument(this->_trx.get(), documentId, collectionIter->mdr);
-      if (!ok) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "could not get document with token: " << documentId.id();
-        throw RocksDBReplicationResult(TRI_ERROR_INTERNAL, this->_lastTick);
-      }
-    }
-
+  auto cb = [&collectionIter, &buff, &adapter](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
     buff.appendText("{\"type\":");
     buff.appendInteger(REPLICATION_MARKER_DOCUMENT); // set type
     buff.appendText(",\"data\":");
 
     // printing the data, note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &collectionIter->vpackOptions);
-    dumper.dump(velocypack::Slice(collectionIter->mdr.vpack()));
-
+    dumper.dump(velocypack::Slice(rocksValue.data()));
     buff.appendText("}\n");
   };
 
@@ -351,23 +341,15 @@ RocksDBReplicationResult RocksDBReplicationContext::dumpVPack(TRI_vocbase_t* voc
     }
   }
 
-  VPackBuilder builder(buffer, &collectionIter->vpackOptions);
-  auto cb = [this,collectionIter, &builder](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
+  TRI_ASSERT(collectionIter->iter->bounds().columnFamily() == RocksDBColumnFamily::documents());
 
-    {
-      //get document
-      auto documentId = RocksDBValue::documentId(rocksValue);
-      bool ok = collectionIter->logical.readDocument(this->_trx.get(), documentId, collectionIter->mdr);
-      if (!ok) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "could not get document with token: " << documentId.id();
-        throw RocksDBReplicationResult(TRI_ERROR_INTERNAL, this->_lastTick);
-      }
-    }
+  VPackBuilder builder(buffer, &collectionIter->vpackOptions);
+  auto cb = [&builder](rocksdb::Slice const& rocksKey, rocksdb::Slice const& rocksValue) {
 
     builder.openObject();
     builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
     builder.add(VPackValue("data"));
-    collectionIter->mdr.addToBuilder(builder, false);
+    builder.add(velocypack::Slice(rocksValue.data()));
     builder.close();
   };
 
@@ -803,12 +785,10 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted,
   if (_sortedIterator != sorted) {
     iter.reset();
     if (sorted) {
-      //FIXME
       auto iterator = createPrimaryIndexIterator(trx, &logical);
       iter = std::make_unique<RocksDBGenericIterator>(std::move(iterator)); //move to heap
     } else {
-      //FIXME
-      auto iterator = createPrimaryIndexIterator(trx, &logical);
+      auto iterator = createDocumentIterator(trx, &logical);
       iter = std::make_unique<RocksDBGenericIterator>(std::move(iterator)); //move to heap
     }
     currentTick = 1;
