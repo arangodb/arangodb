@@ -1208,7 +1208,7 @@ class ReturnNode : public ExecutionNode {
   /// @brief constructors for various arguments, always with offset and limit
  public:
   ReturnNode(ExecutionPlan* plan, size_t id, Variable const* inVariable)
-      : ExecutionNode(plan, id), _inVariable(inVariable) {
+      : ExecutionNode(plan, id), _inVariable(inVariable), _count(false) {
     TRI_ASSERT(_inVariable != nullptr);
   }
 
@@ -1216,6 +1216,9 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return RETURN; }
+  
+  /// @brief tell the node to count the returned values
+  void setCount() { _count = true; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
@@ -1251,6 +1254,8 @@ class ReturnNode : public ExecutionNode {
  private:
   /// @brief we need to know the offset and limit
   Variable const* _inVariable;
+
+  bool _count;
 };
 
 /// @brief class NoResultsNode

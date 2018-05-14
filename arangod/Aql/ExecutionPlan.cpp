@@ -218,6 +218,7 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
       _root(nullptr),
       _varUsageComputed(false),
       _isResponsibleForInitialize(true),
+      _nestingLevel(0),
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
@@ -262,10 +263,15 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   plan->_root = plan->fromNode(root);
 
-  // insert fullCount flag
+  // sett fullCount flag for last LIMIT node on main level
   if (plan->_lastLimitNode != nullptr &&
       ast->query()->queryOptions().fullCount) {
     ExecutionNode::castTo<LimitNode*>(plan->_lastLimitNode)->setFullCount();
+  }
+  
+  // set count flag for final RETURN node
+  if (plan->_root->getType() == ExecutionNode::RETURN) {
+    static_cast<ReturnNode*>(plan->_root)->setCount();
   }
 
   plan->findVarUsage();
@@ -327,6 +333,7 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   plan->_nextId = _nextId;
   plan->_appliedRules = _appliedRules;
   plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
+  plan->_nestingLevel = _nestingLevel;
 
   return plan.release();
 }
@@ -1041,7 +1048,9 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
 
   if (expression->type == NODE_TYPE_SUBQUERY) {
     // operand is a subquery...
+    ++_nestingLevel;
     auto subquery = fromNode(expression);
+    --_nestingLevel;
 
     if (subquery == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1423,7 +1432,9 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
                                        static_cast<size_t>(offsetValue),
                                        static_cast<size_t>(countValue)));
 
-  _lastLimitNode = en;
+  if (_nestingLevel == 0) {
+    _lastLimitNode = en;
+  }
 
   return addDependency(previous, en);
 }
