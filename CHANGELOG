@@ -1,8 +1,17 @@
-v3.2.15 (XXXX-XX-XX)
+v3.2.16 (XXXX-XX-XX)
 --------------------
 
 * self heal during a Foxx service install, upgrade or replace no longer breaks 
   the respective operation
+
+
+v3.2.15 (2018-05-13)
+--------------------
+
+* upgraded arangodb starter version to 0.11.2
+
+* make /_api/index and /_api/database REST handlers use the scheduler's internal
+  queue, so they do not run in an I/O handling thread
 
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation

@@ -123,8 +123,10 @@ maximum number of memory mappings to a sufficiently high value. As a rule of
 thumb, one could use 8 times the number of available cores times 8,000.
 
 For a 32 core server, a good rule-of-thumb value thus would be 2,048,000 
-(32 * 8 * 8000). To set the value once, use the following command before
-starting arangod:
+(32 * 8 * 8000). For certain workloads, it may be sensible to use even a higher
+value for the number of memory mappings.
+
+To set the value once, use the following command before starting arangod:
 
     sudo bash -c "sysctl -w 'vm.max_map_count=2048000'"
 
