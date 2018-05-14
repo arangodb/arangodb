@@ -42,6 +42,12 @@ class LogAppenderStream : public LogAppender {
  protected:
   void updateFd(int fd) { _fd = fd; }
 
+  // determine the required length of the output buffer for the log message
+  size_t determineOutputBufferSize(std::string const& message) const;
+  
+  // write the log message into the already allocated output buffer
+  size_t writeIntoOutputBuffer(std::string const& message);
+
   virtual void writeLogMessage(LogLevel, char const*, size_t) = 0;
 
   /// @brief maximum size for reusable log buffer
@@ -62,6 +68,9 @@ class LogAppenderStream : public LogAppender {
   
   /// @brief whether or not we should use colors
   bool _useColors;
+
+  /// @brief whether or not to escape special chars in log output
+  bool const _escape;
 };
 
 class LogAppenderFile : public LogAppenderStream {
