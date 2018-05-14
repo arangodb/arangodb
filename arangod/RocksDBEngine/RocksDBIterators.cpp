@@ -114,7 +114,7 @@ bool RocksDBAllIndexIterator::nextDocument(
        VPackSlice(_iterator->value().data()));
     --limit;
     _iterator->Next();
-    
+
     if (!_iterator->Valid()) {
       return false;
     }
@@ -438,5 +438,28 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(transaction::Methods
 
   TRI_ASSERT(iterator.bounds().objectId() == primaryIndex->objectId());
   TRI_ASSERT(iterator.bounds().columnFamily() == RocksDBColumnFamily::primary());
+  return iterator;
+}
+
+RocksDBGenericIterator arangodb::createDocumentIterator(transaction::Methods* trx
+                                                          ,LogicalCollection* col
+                                                          ){
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(trx != nullptr);
+
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
+
+  rocksdb::ReadOptions options = mthds->readOptions(); // intentional copy of the read options
+  TRI_ASSERT(options.snapshot != nullptr); // trx must contain a valid snapshot
+  TRI_ASSERT(options.prefix_same_as_start);
+  options.fill_cache = false;
+  options.verify_checksums = false;
+
+  auto rocksColObjectId = static_cast<RocksDBCollection*>(col->getPhysical())->objectId();
+  auto bounds(RocksDBKeyBounds::CollectionDocuments(rocksColObjectId));
+  auto iterator =  RocksDBGenericIterator(options, bounds);
+
+  TRI_ASSERT(iterator.bounds().objectId() == rocksColObjectId);
+  TRI_ASSERT(iterator.bounds().columnFamily() == RocksDBColumnFamily::documents());
   return iterator;
 }
