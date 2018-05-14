@@ -1,18 +1,27 @@
-Rolling Upgrade Using the _Starter_
-=============================
-This procedure is intended to perform a rolling upgrade of a ArangoDB Starter deployment to a new minor version of ArangoDB. 
+Upgrading _Starter_ Deployments
+===============================
 
-Please note that the rolling upgrade procedure was introduced with versions 3.3.8 and 3.2.15. Therefore the upgrade version has to be 3.3.8/3.2.15 or above.  
+This procedure is intended to perform a rolling upgrade of an ArangoDB _Starter_
+deployment to a new minor version of ArangoDB. 
 
-# Upgrade Procedure
+Please note that this rolling upgrade procedure was introduced with versions 3.3.8
+and 3.2.15. Therefore the upgrade version has to be 3.3.8/3.2.15 or above.  
 
-The following procedure has to be executed on every ArangoDB Starter instance. It is assumed that a Starter deployment with mode `single`, `activefailover` or `cluster` is running.
+Upgrade Procedure
+-----------------
 
-## Install the new ArangoDB version binary
-Installing the new ArangoDB version binary also includes the latest ArangoDB Starter binary, which is necessary to perform the rolling upgrade.
+The following procedure has to be executed on every ArangoDB _Starter_ instance.
+It is assumed that a _Starter_ deployment with mode `single`, `activefailover` or
+`cluster` is running.
 
+### Install the new ArangoDB version binary
 
-The first step is to install the new package version. You don't have to stop the Starter processes before doing that.
+Installing the new ArangoDB version binary also includes the latest ArangoDB _Starter_
+binary, which is necessary to perform the rolling upgrade.
+
+The first step is to install the new ArangoDB package. 
+
+**Note:** you do not have to stop the _Starter_ processes before doing that.
 
 For example, if you want to upgrade to `3.3.8-1` on Debian or Ubuntu, either call
 
@@ -20,20 +29,19 @@ For example, if you want to upgrade to `3.3.8-1` on Debian or Ubuntu, either cal
 $ apt install arangodb=3.3.8
 ```
 
-(`apt-get` on older versions) if you've added the ArangoDB repository. Or
+(`apt-get` on older versions) if you have added the ArangoDB repository. Or
 install a specific package using
 
 ```
 $ dpkg -i arangodb3-3.3.8-1_amd64.deb
 ```
 
-after you've downloaded the file. See https://download.arangodb.com/.
+after you have downloaded the corresponding file from https://download.arangodb.com/.
 
-### Stop standalone instance
-
+#### Stop the Standalone Instance
 
 As the package will have started the standalone instance, you might want to
-stop it now. Otherwise it might block a port for the starter.
+stop it now. Otherwise it might block a port for the Starter.
 
 ```
 $ service arangodb3 stop
@@ -48,20 +56,23 @@ Ubuntu systems using a SystemV-compatible init, you can use
 $ update-rc.d -f arangodb3 remove
 ```
 
-## Shutdown the Starter without stopping the ArangoDB Server process
+### Stop the _Starter_ without stopping the ArangoDB Server processes
+
 Now all **arangodb** processes have to be stopped.
 
 Please note that no **arangod** processes should be stopped.
 
-
-### Have a look at the running arangodb processes
+#### Have a look at the running _arangodb_ processes
 
 ```
 ps -C arangodb -fww
 ```
-The output does not only show the PID's of all arangodb processes but also the used commands, which can be useful for the following restart of all arangodb processes.
+
+The output does not only show the PID's of all _arangodb_ processes but also the
+used commands, which can be useful for the following restart of all _arangodb_ processes.
 
 For example: 
+
 ```
 ps -C arangodb -fww
 UID        PID  PPID  C STIME TTY          TIME CMD
@@ -70,22 +81,39 @@ max      29504  3695  0 11:46 pts/2    00:00:00 arangodb --starter.data-dir=./db
 max      29513  3898  0 11:46 pts/4    00:00:00 arangodb --starter.data-dir=./db3 --starter.join 127.0.0.1
 ```
 
+#### Stop all running _arangodb_ processes
 
-### Shutdown all running arangodb processes
+In order to stop the _arangodb_ processes, leaving the _arangod_ processes they 
+have started up and running (as we want for a rolling upgrade), we will need to
+use a command like `kill -9`:
 
 ```
 kill -9 <pid=of-starter>
 ```    
     
-## Restart the Starter 
+### Restart the _Starter_
 
-When using a supervisor like SystemD, this will happen automatically. In case the Starter was initiated manually, the arangodb processes have to be started manually with the same command that has been used before.
+When using a supervisor like _SystemD_, this will happens automatically. In case
+the _Starter_ was initiated manually, the _arangodb_ processes have to be started
+manually with the same command that has been used before.
 
-## Send an HTTP `POST` request on every of the starter
+### Send an HTTP `POST` request to all _Starters_
 
-The `POST` request with an empty body hast to be sent to `/database-auto-upgrade` on every starter one by one. Once the upgrade on the first starter has finished, the same request can be send to the next one. The default port for the first starter is 8528. Ports of additional starters are increased by 5 (until 3.3.8/3.2.15) or 10 (since 3.3.8/3.2.15). Please not that the starter port is also shown in the starter output e.g. `Listening on 0.0.0.0:8528 (:8528)`.
+The `POST` request with an empty body hast to be sent to `/database-auto-upgrade`
+on all _Starters_ one by one. Once the upgrade on the first _Starter_ has finished,
+the same request can be sent to the next one. The default port of the first _Starter_
+is 8528. In a local test (all _Starters_ running on the same machine), the ports
+of the additional _Starters_ are increased by 5 (before 3.3.8/3.2.15) or 10 (since
+3.3.8/3.2.15).
 
-### `POST` request via curl
+Please not that the _Starter_ port is also shown in the _Starter_ output e.g.
+`Listening on 0.0.0.0:8528 (:8528)`.
+
+As the port of the _Starter_ is a configurable variable, please identify and use
+the one of your specific setup.
+
+#### `POST` request via _curl_
+
 ```
 curl -X POST --dump - http://localhost:8538/database-auto-upgrade
 
@@ -94,23 +122,26 @@ Date: Wed, 09 May 2018 10:35:35 GMT
 Content-Length: 2
 Content-Type: text/plain; charset=utf-8
 ```
-The response `200 OK` signals that the request was accepted and the upgrade process for this starter has begun.
 
-## Starter response
+The response `200 OK` signals that the request was accepted and the upgrade process
+for this starter has begun.
 
-The Starter will respond to the HTTP `POST` request depending on the deployment mode.
+### _Starter_ response
 
-### Deployment mode `single`
+The _Starter_ will respond to the HTTP `POST` request depending on the deployment mode.
 
- The Starter will:
+#### Deployment mode `single`
+
+The _Starter_ will:
+
 - Restart the single server with an additional `--database.auto-upgrade=true` argument.
   The server will perform the auto-upgrade and then stop.
-  After that the Starter will automatically restart it with its normal arguments.
+  After that the _Starter_ will automatically restart it with its normal arguments.
 
+#### Deployment mode `activefailover`
 
-### Deployment mode `activefailover`
-
- The Starter will:
+The _Starter_ will:
+ 
 - Perform a version check on all servers, ensuring it supports the upgrade procedure.
   TODO: Specify minimal patch version for 3.2, 3.3 & 3.4,
 - Turning off supervision in the Agency and wait for it to be confirmed.
@@ -122,10 +153,10 @@ The Starter will respond to the HTTP `POST` request depending on the deployment 
   After that the Starter will automatically restart it with its normal arguments.
 - Turning on supervision in the Agency and wait for it to be confirmed.
 
+#### Deployment mode `cluster`
 
-### Deployment mode `cluster`
-
- The Starter will:
+The _Starter_ will:
+ 
 - Perform a version check on all servers, ensuring it supports the upgrade procedure.
   TODO: Specify minimal patch version for 3.2, 3.3 & 3.4,
 - Turning off supervision in the Agency and wait for it to be confirmed.
@@ -142,10 +173,14 @@ The Starter will respond to the HTTP `POST` request depending on the deployment 
 
 Once all servers in the starter have upgraded, repeat the procedure for the next starter.
 
-### Working Example
+### Example: Rolling Upgrade in a Cluster
 
-Upgrade from 3.3.7 to 3.3.8:
-Once a `POST` request to the first starter is sent, the following output is shown when the upgrade has finished:
+In this example we will perform a rolling upgrade of an ArangoDB Cluster setup
+from version 3.3.7 to version 3.3.8. 
+
+Once a `POST` request to the first _Starter_ is sent, the following output is shown
+when the upgrade has finished:
+
 ```
 2018/05/09 12:33:02 Upgrading agent
 2018/05/09 12:33:05 restarting agent
@@ -188,7 +223,11 @@ Once a `POST` request to the first starter is sent, the following output is show
 2018/05/09 12:33:28 coordinator 3  3.3.7
 2018/05/09 12:33:28 Upgrading of all servers controlled by this starter done, you can continue with the next starter now.
 ```
-Agent1, dbserver 1 and coordinator 1 are successively updated and the last messages indicates that the `POST` request can be sent so the next starter. After this procedure has been repeated for every starter the last starter shows:
+
+_Agent_ 1, _DBSserver_ 1 and _Coordinator_ 1 are successively updated and the last
+messages indicate that the `POST` request can be sent so the next _Starter_. After this
+procedure has been repeated for every _Starter_ the last _Starter_ will show:
+
 ```
 2018/05/09 12:35:59 Server versions:
 2018/05/09 12:35:59 agent 1        3.3.8
@@ -202,4 +241,6 @@ Agent1, dbserver 1 and coordinator 1 are successively updated and the last messa
 2018/05/09 12:35:59 coordinator 3  3.3.8
 2018/05/09 12:35:59 Upgrading done.
 ```
-All agents, dbservers and coordinators are upgraded and the rolling starter upgrade has successfully finished.
+
+All _Agents_, _DBServers_ and _Coordinators_ are upgraded and the rolling upgrade
+has successfully finished.
