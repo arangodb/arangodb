@@ -101,7 +101,7 @@ TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice){
   if(revisionId(slice, id)){
     return id;
   }
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,"Could not receive revisionId from rocksdb::Slice");
 }
 
 StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {

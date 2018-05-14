@@ -452,7 +452,7 @@ RocksDBGenericIterator arangodb::createDocumentIterator(transaction::Methods* tr
   rocksdb::ReadOptions options = mthds->readOptions(); // intentional copy of the read options
   TRI_ASSERT(options.snapshot != nullptr); // trx must contain a valid snapshot
   TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = false;
+  options.fill_cache = true;
   options.verify_checksums = false;
 
   auto rocksColObjectId = static_cast<RocksDBCollection*>(col->getPhysical())->objectId();
