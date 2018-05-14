@@ -781,7 +781,8 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
       hasMore{true},
       customTypeHandler{},
       vpackOptions{Options::Defaults},
-      _sortedIterator{!sorted} {
+      _sortedIterator{!sorted} // this makes sure that setSorted is not a noOp
+{
   // we are getting into trouble during the dumping of "_users"
   // this workaround avoids the auth check in addCollectionAtRuntime
   ExecContext const* old = ExecContext::CURRENT;
@@ -791,9 +792,6 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   TRI_DEFER(ExecContext::CURRENT = old);
 
   trx.addCollectionAtRuntime(collection.name());
-
-  auto iterator = createPrimaryIndexIterator(&trx, &logical);
-  iter = std::make_unique<RocksDBGenericIterator>(std::move(iterator)); //move to heap
 
   customTypeHandler = trx.transactionContextPtr()->orderCustomTypeHandler();
   vpackOptions.customTypeHandler = customTypeHandler.get();
@@ -806,10 +804,12 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted,
     iter.reset();
     if (sorted) {
       //FIXME
-      //iter = static_cast<RocksDBCollection*>(logical.getPhysical()) ->getSortedAllIterator(trx);
+      auto iterator = createPrimaryIndexIterator(trx, &logical);
+      iter = std::make_unique<RocksDBGenericIterator>(std::move(iterator)); //move to heap
     } else {
       //FIXME
-      //iter = static_cast<RocksDBCollection*>(logical.getPhysical()) ->getAllIterator(trx);
+      auto iterator = createPrimaryIndexIterator(trx, &logical);
+      iter = std::make_unique<RocksDBGenericIterator>(std::move(iterator)); //move to heap
     }
     currentTick = 1;
     hasMore = true;
