@@ -32,7 +32,7 @@ modified the init script or systemd unit file for the standalone instance in way
 that it would start or stop your cluster instance instead.
 
 You can read about the details on how to deploy your cluster indendently of the
-standalone instance in the [cluster deployment preliminary](../../Cluster/Deployment/Preliminary.md).
+standalone instance in the [cluster deployment preliminary](../../Deployment/Cluster/PreliminaryInformation.md).
 
 In the following, we assume that you don't use the standalone instance from the
 package but only a cluster instance, and we will move the standalone instance

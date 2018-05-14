@@ -20,8 +20,8 @@ Recommended minor upgrade procedure
 To upgrade an existing ArangoDB database to a newer version of ArangoDB 
 (e.g. 3.0 to 3.1, 3.1 to 3.2, 3.2 to 3.3, etc), the following method is recommended:
 
-- Check the [CHANGELOG](../ReleaseNotes/README.md#changelogs) and the
-  [list of incompatible changes](../ReleaseNotes/README.md#incompatible-changes)
+- Check the [CHANGELOG](../../ReleaseNotes/README.md#changelogs) and the
+  [list of incompatible changes](../../ReleaseNotes/README.md#incompatible-changes)
   for API or other changes in the new version of ArangoDB and make sure your applications
   can deal with them
 - Stop the "old" _arangod_ service or binary
@@ -50,7 +50,7 @@ Switching the storage engine
 
 In order to use a different storage engine with an existing data directory,
 it is required to first create a logical backup of the data using the 
-tool [_arangodump_](../Administration/Arangodump.md).
+tool [_arangodump_](../../Programs/Arangodump/README.md).
 
 After that, the _arangod_ server should be restarted with the desired storage
 engine selected (this can be done by setting the option *--server.storage-engine*) 
@@ -58,4 +58,4 @@ and using a non-existing data directory.
 
 When the server is up and running with the desired storage engine, the data
 can be re-imported using the tool
-[_arangorestore_](../Administration/Arangorestore.md).
+[_arangorestore_](../../Programs/Arangorestore/README.md).

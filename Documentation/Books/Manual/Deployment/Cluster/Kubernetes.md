@@ -3,6 +3,6 @@ Cluster Deployments in Kubernetes
 
 ... 
 
-see also the [Kubernetes](../../Kubernetes/README.md) chapter.
+see also the [Kubernetes](../Kubernetes/README.md) chapter.
 
 ...
