@@ -11,6 +11,8 @@ v3.3.9 (xxxx-xx-xx)
   will always return the first value for non-unique attribute names and not the
   last occurring value.
 
+* upgraded arangodb starter version to 0.11.2
+
 * self heal during a Foxx service install, upgrade or replace no longer breaks 
   the respective operation
 
