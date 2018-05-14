@@ -94,11 +94,9 @@ void Thread::startThread(void* arg) {
     LOG_TOPIC(WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
     ptr->crashNotification(ex);
-
     ptr->cleanupMe();
     throw;
   } catch (...) {
-
     ptr->cleanupMe();
     throw;
   }

@@ -36,7 +36,7 @@ class HttpCommTask final : public GeneralCommTask {
   
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType,
-                         uint64_t messageId, velocypack::Buffer<uint8_t>) override;
+                         uint64_t messageId, velocypack::Buffer<uint8_t>&&) override;
 
   bool allowDirectHandling() const override final { return true; }
 
