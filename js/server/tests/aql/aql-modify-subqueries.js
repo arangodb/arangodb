@@ -28,12 +28,13 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var db = require("@arangodb").db;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
-var assertQueryError = helper.assertQueryError;
+const internal = require("internal");
+const db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
+const assertQueryError = helper.assertQueryError;
+const _ = require('lodash');
 const isCluster = require('@arangodb/cluster').isCluster();
 const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations" ] } };
 const disableRestrictToSingleShard = { optimizer : { rules : [ "-restrict-to-single-shard" ] } };
@@ -1569,6 +1570,153 @@ function ahuacatlModifySuite () {
       assertEqual(100, actual.json[0].length);
       assertEqual(expected, sanitizeStats(actual.stats));
     },
+
+    testRemoveObjectWithNonShardedNonMatchingPattern : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i });
+      }
+
+      const expected = { writesExecuted: 1, writesIgnored: 99 };
+      const query = `
+        FOR d IN ${cn}
+          REMOVE { _key: d._key, someAttr: '42' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      assertEqual(99, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testReplaceObjectWithNonShardedNonMatchingPattern : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i });
+      }
+
+      const expected = { writesExecuted: 1, writesIgnored: 99 };
+      const query = `
+        FOR d IN ${cn}
+          REPLACE { _key: d._key, someAttr: '42' }
+            WITH { someAttr: '-42' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      assertEqual(
+        [..._.range(0, 42), -42, ..._.range(43, 100)].map(String).sort(),
+        docs.map(d => d.someAttr).sort()
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testSimpleReplaceObjectWithNonShardedNonMatchingPattern : function () {
+      // tests that the document is not used as a pattern, i.e., only the _key
+      // may be used to select the document, while the other attributes will be
+      // used exclusively for the replace.
+
+      const c = db._create(cn);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i });
+      }
+
+      const expected = { writesExecuted: 100, writesIgnored: 0 };
+      const query = `
+        FOR d IN ${cn}
+          REPLACE { _key: d._key, someAttr: '42' }
+            IN ${cn}
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      assertEqual(
+        Array(100).fill('42', 0, 100),
+        docs.map(d => d.someAttr)
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testUpdateObjectWithNonShardedNonMatchingPattern : function () {
+      // tests that the keyExpression is used as a pattern for the document,
+      // i.e., not only the _key must match but other attributes as well.
+
+      const c = db._create(cn);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i });
+      }
+
+      const expected = { writesExecuted: 1, writesIgnored: 99 };
+      const query = `
+        FOR d IN ${cn}
+          UPDATE { _key: d._key, someAttr: '42' }
+            WITH { someAttr: '-42' }
+            IN ${cn}
+            OPTIONS { ignoreErrors: true }
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      assertEqual(
+        [..._.range(0, 42), -42, ..._.range(43, 100)].map(String).sort(),
+        docs.map(d => d.someAttr).sort()
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+    testSimpleUpdateObjectWithNonShardedNonMatchingPattern : function () {
+      // tests that the document is not used as a pattern, i.e., only the _key
+      // may be used to select the document, while the other attributes will be
+      // used exclusively for the update.
+
+      const c = db._create(cn);
+
+      for (let i = 0; i < 100; ++i) {
+        c.insert({ someAttr: "" + i });
+      }
+
+      const expected = { writesExecuted: 100, writesIgnored: 0 };
+      const query = `
+        FOR d IN ${cn}
+          UPDATE { _key: d._key, someAttr: '42' }
+            IN ${cn}
+      `;
+      const actual = getModifyQueryResultsRaw(query);
+
+      const docs = c.all().toArray();
+      assertEqual(
+        Array(100).fill('42', 0, 100),
+        docs.map(d => d.someAttr)
+      );
+
+      assertEqual(100, c.count());
+      assertEqual(0, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
 
   };
 }
