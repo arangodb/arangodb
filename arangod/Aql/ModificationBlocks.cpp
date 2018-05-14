@@ -100,7 +100,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atMost) {
 
   // loop over input until it is exhausted
   try {
-    if (static_cast<ModificationNode const*>(_exeNode)
+    if (ExecutionNode::castTo<ModificationNode const*>(_exeNode)
             ->_options.readCompleteInput) {
       // read all input into a buffer first
       while (true) {
@@ -274,7 +274,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   std::unique_ptr<AqlItemBlock> result;
 
-  auto ep = static_cast<RemoveNode const*>(getPlanNode());
+  auto ep = ExecutionNode::castTo<RemoveNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
@@ -436,7 +436,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   std::unique_ptr<AqlItemBlock> result;
 
-  auto ep = static_cast<InsertNode const*>(getPlanNode());
+  auto ep = ExecutionNode::castTo<InsertNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const registerId = it->second.registerId;
@@ -568,7 +568,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     return nullptr;
   }
 
-  auto ep = static_cast<UpdateNode const*>(getPlanNode());
+  auto ep = ExecutionNode::castTo<UpdateNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const docRegisterId = it->second.registerId;
@@ -782,7 +782,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   }
 
   std::unique_ptr<AqlItemBlock> result;
-  auto ep = static_cast<UpsertNode const*>(getPlanNode());
+  auto ep = ExecutionNode::castTo<UpsertNode const*>(getPlanNode());
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
@@ -1033,7 +1033,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     return nullptr;
   }
 
-  auto ep = static_cast<ReplaceNode const*>(getPlanNode());
+  auto ep = ExecutionNode::castTo<ReplaceNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   RegisterId const docRegisterId = it->second.registerId;

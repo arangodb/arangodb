@@ -518,10 +518,10 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
     if (_collectRegister != ExecutionNode::MaxRegisterId) {
       _currentGroup.addValues(cur, _collectRegister);
 
-      if (static_cast<CollectNode const*>(_exeNode)->_count) {
+      if (ExecutionNode::castTo<CollectNode const*>(_exeNode)->_count) {
         // only set group count in result register
         res->emplaceValue(row, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_currentGroup.groupLength)));
-      } else if (static_cast<CollectNode const*>(_exeNode)->_expressionVariable !=
+      } else if (ExecutionNode::castTo<CollectNode const*>(_exeNode)->_expressionVariable !=
                 nullptr) {
         // copy expression result into result register
         res->setValue(row, _collectRegister,
@@ -589,7 +589,7 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
   TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
 
   if (en->_outVariable != nullptr) {
-    TRI_ASSERT(static_cast<CollectNode const*>(_exeNode)->_count);
+    TRI_ASSERT(ExecutionNode::castTo<CollectNode const*>(_exeNode)->_count);
 
     auto const& registerPlan = en->getRegisterPlan()->varInfo;
     auto it = registerPlan.find(en->_outVariable->id);
@@ -598,7 +598,7 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
     TRI_ASSERT(_collectRegister > 0 &&
                _collectRegister < ExecutionNode::MaxRegisterId);
   } else {
-    TRI_ASSERT(!static_cast<CollectNode const*>(_exeNode)->_count);
+    TRI_ASSERT(!ExecutionNode::castTo<CollectNode const*>(_exeNode)->_count);
   }
 
   TRI_ASSERT(!_groupRegisters.empty());
@@ -625,7 +625,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atMost,
     _pos = 0;  // this is in the first block
   }
 
-  auto* en = static_cast<CollectNode const*>(_exeNode);
+  auto* en = ExecutionNode::castTo<CollectNode const*>(_exeNode);
 
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();

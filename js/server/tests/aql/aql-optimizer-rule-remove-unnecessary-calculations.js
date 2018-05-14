@@ -265,7 +265,6 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..2 LET a = CONCAT('UnitTestsOptimizer', i) REPLACE CONCAT('UnitTestsOptimizer', i * 2) WITH CONCAT(a, i) INTO UnitTestsOptimizerTest OPTIONS { ignoreErrors: true }",
         
         // same expression types
-        "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = V8(ATTRIBUTES(doc)) RETURN V8(KEEP(doc, a))",
         "FOR doc IN [ { a: 1 }, { a: 2 } ] LET a = ATTRIBUTES(doc) RETURN KEEP(doc, a)",
         
         // same loop
