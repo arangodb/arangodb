@@ -94,7 +94,7 @@ Result ExecutionEngine::createBlocks(
     auto const nodeType = en->getType();
 
     if (nodeType == ExecutionNode::REMOTE) {
-      remoteNode = static_cast<RemoteNode const*>(en);
+      remoteNode = ExecutionNode::castTo<RemoteNode const*>(en);
       continue;
     }
 
@@ -216,7 +216,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
       if (en->getType() == ExecutionNode::TRAVERSAL ||
           en->getType() == ExecutionNode::SHORTEST_PATH) {
         // We have to prepare the options before we build the block
-        static_cast<GraphNode*>(en)->prepareOptions();
+        ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
       }
 
       // do we need to adjust the root node?
@@ -376,7 +376,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
-          _dbserverParts.addGraphNode(static_cast<GraphNode*>(en));
+          _dbserverParts.addGraphNode(ExecutionNode::castTo<GraphNode*>(en));
           break;
         default:
           // Do nothing

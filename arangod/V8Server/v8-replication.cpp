@@ -136,11 +136,7 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() != 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
@@ -152,12 +148,13 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
     TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
 
-  auto transactionContext = transaction::V8Context::Create(vocbase, false);
+  auto transactionContext = transaction::V8Context::Create(&vocbase, false);
   auto builderSPtr = std::make_shared<VPackBuilder>();
   Result res = EngineSelectorFeature::ENGINE->lastLogger(
-    vocbase, transactionContext, tickStart, tickEnd, builderSPtr);
-
+    &vocbase, transactionContext, tickStart, tickEnd, builderSPtr
+  );
   v8::Handle<v8::Value> result;
+
   if(res.fail()){
     result = v8::Null(isolate);
     TRI_V8_THROW_EXCEPTION(res);
@@ -198,18 +195,15 @@ static void SynchronizeReplication(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
+  auto& vocbase = GetContextVocBase(isolate);
   std::string databaseName;
+
   if (applierType == APPLIER_DATABASE) { 
-    databaseName = vocbase->name();
+    databaseName = vocbase.name();
   } 
 
   bool keepBarrier = false;
+
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "keepBarrier"))) {
     keepBarrier =
         TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "keepBarrier")));
@@ -223,7 +217,7 @@ static void SynchronizeReplication(
 
   if (applierType == APPLIER_DATABASE) { 
     // database-specific synchronization
-    syncer.reset(new DatabaseInitialSyncer(*vocbase, configuration));
+    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
       syncer->setLeaderId(TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
@@ -239,7 +233,7 @@ static void SynchronizeReplication(
     Result r = syncer->run(configuration._incremental);
     
     if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "initial sync failed for database '" << vocbase->name() << "': " << r.errorMessage();
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "initial sync failed for database '" << vocbase.name() << "': " << r.errorMessage();
       TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() +
                                      ". last progress message was '" + syncer->progress() + "'");
     }
@@ -395,13 +389,9 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate,
   
   if (applierType == APPLIER_DATABASE) {
     // database-specific applier
-    TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+    auto& vocbase = GetContextVocBase(isolate);
 
-    if (vocbase == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-
-    applier = vocbase->replicationApplier();
+    applier = vocbase.replicationApplier();
   } else {
     // applier type global
     auto replicationFeature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
@@ -457,12 +447,9 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
 
     std::string databaseName;
     if (applierType == APPLIER_DATABASE) {
-      TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+      auto& vocbase = GetContextVocBase(isolate);
 
-      if (vocbase == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-      }
-      databaseName = vocbase->name();
+      databaseName = vocbase.name();
     } 
 
     // merge the passed configuration into the existing one
@@ -473,13 +460,13 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
 
     // finally store the new configuration
     applier->reconfigure(configuration);
-  
+
     // and return it
     builder.clear();
     builder.openObject();
     configuration.toVelocyPack(builder, true, true);
     builder.close();
-   
+
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
 
     TRI_V8_RETURN(result);

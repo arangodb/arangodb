@@ -781,8 +781,15 @@ router.post('/:graph/edge/:collection', function (req, res) {
   }
   // check existence of _from and _to vertices
   // _from vertex
+  var found;
   try {
-    db._document(req.body._from);
+    found = db._exists({_id: req.body._from});
+    if (!found) {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code}
+      );
+    }
   } catch (e) {
     if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw Object.assign(
@@ -799,7 +806,13 @@ router.post('/:graph/edge/:collection', function (req, res) {
 
   // _to vertex
   try {
-    db._document(req.body._to);
+    found = db._exists({_id: req.body._to});
+    if (!found) {
+      throw Object.assign(
+        new httperr.NotFound(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.message),
+        {errorNum: errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code}
+      );
+    }
   } catch (e) {
     if (e.errorNum === errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw Object.assign(

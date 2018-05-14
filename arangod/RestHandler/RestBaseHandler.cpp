@@ -120,6 +120,9 @@ void RestBaseHandler::generateResult(
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptionsForDump()));
 }
 
+/// convenience function akin to generateError,
+/// renders payload in 'result' field
+/// adds proper `error`, `code` fields
 void RestBaseHandler::generateOk(rest::ResponseCode code,
                                  VPackSlice const& payload) {
   resetResponse(code);
@@ -141,6 +144,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
   }
 }
 
+/// Add `error` and `code` fields into your response
 void RestBaseHandler::generateOk(rest::ResponseCode code,
                                  VPackBuilder const& payload) {
   resetResponse(code);

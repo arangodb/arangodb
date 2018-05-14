@@ -1092,7 +1092,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   bool hasCreatedKeyAttribute = false;
 
   if (input.isString() &&
-      static_cast<DistributeNode const*>(_exeNode)
+      ExecutionNode::castTo<DistributeNode const*>(_exeNode)
           ->_allowKeyConversionToObject) {
     _keyBuilder.clear();
     _keyBuilder.openObject(true);
@@ -1113,7 +1113,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   TRI_ASSERT(value.isObject());
 
-  if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
+  if (ExecutionNode::castTo<DistributeNode const*>(_exeNode)->_createKeys) {
     bool buildNewObject = false;
     // we are responsible for creating keys if none present
 

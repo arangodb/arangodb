@@ -56,7 +56,6 @@ class ShortestPathNode : public GraphNode {
   ~ShortestPathNode();
 
   /// @brief Internal constructor to clone the node.
- private:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                    std::vector<std::unique_ptr<Collection>> const& edgeColls,
                    std::vector<std::unique_ptr<Collection>> const& vertexColls,

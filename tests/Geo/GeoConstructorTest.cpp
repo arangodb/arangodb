@@ -77,6 +77,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       CHECK(res.slice().get("coordinates").at(1).getDouble() == 2);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Point");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking two negative integer values") {
@@ -95,6 +100,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       CHECK(res.slice().get("coordinates").at(1).getDouble() == -2);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Point");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking two positive double values") {
@@ -113,6 +123,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       CHECK(res.slice().get("coordinates").at(1).getDouble() == 2.2);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Point");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking two negative double values") {
@@ -131,6 +146,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       CHECK(res.slice().get("coordinates").at(1).getDouble() == -2.2);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Point");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking two positive integer and positive double values") {
@@ -149,6 +169,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       CHECK(res.slice().get("coordinates").at(1).getDouble() == 2.2);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Point");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking two negative integer and positive double values") {
@@ -167,6 +192,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       CHECK(res.slice().get("coordinates").at(1).getDouble() == 2.2);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Point");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking two positive integer and negative double values") {
@@ -185,6 +215,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       CHECK(res.slice().get("coordinates").at(1).getDouble() == -2.2);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Point");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
   }
@@ -208,6 +243,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(foo.slice().get("coords").at(0));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking null") {
@@ -225,6 +265,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking string") {
@@ -242,6 +287,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
 
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking positive int and bool") {
@@ -256,6 +306,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(foo.slice().get("boolean"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking bool and negative double") {
@@ -270,6 +325,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(foo.slice().get("coords").at(0));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking positive int and bool") {
@@ -284,6 +344,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(foo.slice().get("boolean"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array and positive double") {
@@ -299,6 +364,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(foo.slice().get("coords").at(0));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking negative double and array") {
@@ -314,6 +384,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(foo.slice().get("array"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object and positive double") {
@@ -332,6 +407,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(b.slice().get("coords").at(0));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object and positive double") {
@@ -350,6 +430,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(b.slice().get("object"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object and array") {
@@ -370,6 +455,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(b.slice().get("coords"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array and object") {
@@ -390,6 +480,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(b.slice().get("object"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking bool and bool") {
@@ -403,6 +498,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(foo.slice().get("booltwo"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array and array") {
@@ -424,6 +524,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(b.slice().get("arrtwo"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object and object") {
@@ -443,6 +548,11 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       params.emplace_back(b.slice().get("object"));
       AqlValue res = Functions::GeoPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
   }
@@ -483,6 +593,11 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       CHECK(res.slice().get("coordinates").at(1).at(1).getDouble() == 4.0);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "MultiPoint");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking points representing points in cologne") {
@@ -499,6 +614,11 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
       CHECK(res.slice().get("coordinates").length() == 10);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "MultiPoint");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
   }
 
@@ -520,6 +640,11 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
       AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array with positions and invalid bool") {
@@ -536,6 +661,11 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
       AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array with positions and invalid bool") {
@@ -552,6 +682,11 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
       AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array with 0 position - nested") {
@@ -568,6 +703,11 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
       AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array with 0 position") {
@@ -584,6 +724,11 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
       AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking bool") {
@@ -600,6 +745,11 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
       AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking number") {
@@ -616,6 +766,15 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
       AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object") {
@@ -632,6 +791,15 @@ SCENARIO("Testing GEO_MULTPOINT", "[AQL][GEOC][GEOMULTIPOINT]") {
 
       AqlValue res = Functions::GeoMultiPoint(&query, &trx, params);
       CHECK(res.slice().isNull());
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
   }
 }
@@ -675,6 +843,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       CHECK(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == 6.0);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Polygon");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon representing cologne") {
@@ -693,6 +866,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       CHECK(res.slice().get("coordinates").at(0).at(0).isArray());
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Polygon");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with 3 negative positions") {
@@ -722,6 +900,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       CHECK(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == -6.0);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Polygon");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with 2x3 negative positions") {
@@ -751,6 +934,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       CHECK(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == -6.0);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Polygon");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
   }
 
@@ -772,6 +960,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with 1 negative positions") {
@@ -788,6 +981,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with 2 positive tupel") {
@@ -804,6 +1002,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with 2 negative tupel") {
@@ -820,6 +1023,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with empty input") {
@@ -837,6 +1045,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with boolean") {
@@ -854,6 +1067,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with booleans") {
@@ -870,6 +1088,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with nested booleans") {
@@ -886,6 +1109,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object with single boolean") {
@@ -902,6 +1130,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object with single number") {
@@ -918,6 +1151,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object with string") {
@@ -934,6 +1172,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object with null") {
@@ -950,6 +1193,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object with some data") {
@@ -966,6 +1214,11 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
 
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
   }
 
@@ -1005,6 +1258,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       CHECK(res.slice().get("coordinates").at(1).at(1).getDouble() == 4.0);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "LineString");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking linestring representing cologne") {
@@ -1021,6 +1279,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
       CHECK(res.slice().get("coordinates").length() == 10);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "LineString");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
   }
 
@@ -1042,6 +1305,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
       AqlValue res = Functions::GeoLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array with positions and invalid bool") {
@@ -1058,6 +1326,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
       AqlValue res = Functions::GeoLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking array with positions and invalid bool") {
@@ -1074,6 +1347,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
       AqlValue res = Functions::GeoLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking empty nested array") {
@@ -1090,6 +1368,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
       AqlValue res = Functions::GeoLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking empty array") {
@@ -1106,6 +1389,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
       AqlValue res = Functions::GeoLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking bool") {
@@ -1122,6 +1410,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
       AqlValue res = Functions::GeoLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking number") {
@@ -1138,6 +1431,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
       AqlValue res = Functions::GeoLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking object") {
@@ -1154,6 +1452,11 @@ SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
 
       AqlValue res = Functions::GeoLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
   }
 }
@@ -1198,6 +1501,11 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       CHECK(res.slice().get("coordinates").at(1).at(1).at(1).getDouble() == 4.0);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "MultiLineString");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking multilinestrings with 2x2 positions") {
@@ -1226,6 +1534,11 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
       CHECK(res.slice().get("coordinates").at(1).at(1).at(1).getDouble() == -4.4);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "MultiLineString");
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
   }
 
@@ -1247,6 +1560,11 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
 
       AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with 0 position - nested") {
@@ -1263,6 +1581,11 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
 
       AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking polygon with 0 position") {
@@ -1279,6 +1602,11 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
 
       AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking bool") {
@@ -1295,6 +1623,11 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
 
       AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
 
     WHEN("checking number") {
@@ -1311,6 +1644,11 @@ SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
 
       AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
       CHECK(res.slice().isNull());
+      res.destroy();
+      // Free input parameters
+      for (auto& it : params) {
+        it.destroy();
+      }
     }
   }
 }

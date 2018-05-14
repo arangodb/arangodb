@@ -367,7 +367,9 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   
   if (_dumpOptions) {
     auto builder = _options->toVPack(false, true, std::unordered_set<std::string>());
-    std::cout << builder.slice().toJson() << std::endl;
+    arangodb::velocypack::Options options;
+    options.prettyPrint = true;
+    std::cout << builder.slice().toJson(&options) << std::endl;
     exit(EXIT_SUCCESS);
   }
 }
