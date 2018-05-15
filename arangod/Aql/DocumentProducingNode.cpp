@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentProducingNode.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Variable.h"
 
@@ -44,24 +45,37 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   TRI_ASSERT(_outVariable != nullptr);
 
   if (slice.hasKey("projection")) {
+    // old format
     VPackSlice p = slice.get("projection");
     if (p.isArray()) {
       for (auto const& it : VPackArrayIterator(p)) {
-        _projection.emplace_back(it.copyString());
+        _projections.emplace_back(it.copyString());
+        break; // stop after first sub-attribute!
       }
     }
+  } else if (slice.hasKey("projections")) {
+    // new format
+    VPackSlice p = slice.get("projections");
+    if (p.isArray()) {
+      for (auto const& it : VPackArrayIterator(p)) {
+        if (it.isString()) {
+          _projections.emplace_back(it.copyString());
+        }
+      }
+    } 
   }
 }
   
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(builder);
-  
-  if (!_projection.empty()) {
-    builder.add("projection", VPackValue(VPackValueType::Array));
-    for (auto const& it : _projection) {
-      builder.add(VPackValue(it));
-    }
-    builder.close();
+ 
+  // export in new format 
+  builder.add("projections", VPackValue(VPackValueType::Array));
+  for (auto const& it : _projections) {
+    builder.add(VPackValue(it));
   }
+  builder.close();
+  
+  builder.add("producesResult", VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
 }

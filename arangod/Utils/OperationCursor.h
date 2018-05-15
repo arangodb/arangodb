@@ -88,6 +88,7 @@ struct OperationCursor {
   }
 
   bool hasExtra() const;
+  bool hasCovering() const;
 
 /// @brief Reset the cursor
   void reset();
@@ -101,6 +102,9 @@ struct OperationCursor {
       uint64_t batchSize);
 
   bool nextDocument(IndexIterator::DocumentCallback const& callback,
+                    uint64_t batchSize);
+  
+  bool nextCovering(IndexIterator::DocumentCallback const& callback,
                     uint64_t batchSize);
   
 /// @brief convenience function to retrieve all results
