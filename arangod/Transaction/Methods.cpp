@@ -1466,10 +1466,11 @@ OperationResult transaction::Methods::insertLocal(
     ManagedDocumentResult result;
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
-    auto needsLock = [this,&collection]() -> bool {return !isLocked(collection, AccessMode::Type::WRITE);};
+
+    auto const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
 
     Result res = collection->insert( this, value, result, options
-                                   , resultMarkerTick, needsLock(), revisionId
+                                   , resultMarkerTick, needsLock, revisionId
                                    );
 
     if(options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)){
@@ -1477,9 +1478,8 @@ OperationResult transaction::Methods::insertLocal(
       resultMarkerTick = 0;
       TRI_voc_rid_t revision;
       ManagedDocumentResult previousDocumentResult; // return OLD/NEW?
-      _localHints.unset(transaction::Hints::Hint::SINGLE_OPERATION);
       res = collection->replace( this, value, result, options
-                               , resultMarkerTick, needsLock(), revision
+                               , resultMarkerTick, needsLock, revision
                                , previousDocumentResult);
 
     }

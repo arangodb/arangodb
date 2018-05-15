@@ -18,8 +18,9 @@ devel
 * added `overwrite` option to the `document rest-handler` to allow for easier syncing.
 
   This implements almost the much inquired UPSERT. In reality it is a REPSERT
-  (replace/insert) because modification of documents is not possible. The option does
-  not in cluster collections with custom sharding.
+  (replace/insert) because only replacement and not modification of documents
+  is possible. The option does not work in cluster collections with custom
+  sharding.
 
 * added startup option `--log.escape`
 
