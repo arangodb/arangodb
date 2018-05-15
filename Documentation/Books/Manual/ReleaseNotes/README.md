@@ -24,7 +24,8 @@ For a high level list of changes, please refer to one of the following sections:
 Changelogs
 ----------
 
-For a detailed list of changes, please refer to one of the following _changelogs_:
+For a detailed list of changes to the ArangoDB core programs and tools,
+please refer to the version specific changelogs:
 
 - [3.4 Changelog](https://raw.githubusercontent.com/arangodb/arangodb/3.4/CHANGELOG)
 - [3.3 Changelog](https://raw.githubusercontent.com/arangodb/arangodb/3.3/CHANGELOG)
@@ -40,6 +41,10 @@ For a detailed list of changes, please refer to one of the following _changelogs
 - [2.2 Changelog](https://raw.githubusercontent.com/arangodb/arangodb/2.2/CHANGELOG)
 - [2.1 Changelog](https://raw.githubusercontent.com/arangodb/arangodb/2.1/CHANGELOG)
 
+Additional changelogs for tools not included in the main repository:
+
+- [ArangoDB Starter](https://github.com/arangodb-helper/arangodb/blob/master/CHANGELOG.md)
+- [ArangoSync](https://github.com/arangodb/arangosync/blob/master/CHANGELOG)
 
 Known Issues
 ------------
