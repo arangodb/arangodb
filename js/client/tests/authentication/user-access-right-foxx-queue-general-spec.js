@@ -130,6 +130,22 @@ describe('Foxx service', () => {
     expect(jobResult.length).to.equal(2);
   });
 
+  it('should ignore the arango user', () => {
+    let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+      method: 'post',
+      username: 'root',
+      password: ''
+    });
+    expect(res.code).to.equal(204);
+    expect(waitForJob()).to.equal(true, 'job from foxx queue did not run!');
+    const jobResult = db._query(aql`
+      FOR i IN foxx_queue_test
+        FILTER i.job == true
+        RETURN 1
+    `).toArray();
+    expect(jobResult.length).to.equal(1);
+  });
+
   const waitForJob = (runs = 1) => {
     let i = 0;
     while (i++ < 50) {
