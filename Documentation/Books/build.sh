@@ -262,6 +262,17 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '<a href=".*\.md#*.*"' {} \; -print)
+    set -e
+    if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
+        echo "${ERR_COLOR}"
+        echo "found unconverted markdown links: "
+        echo "${ERRORS}"
+        echo "${RESET}"
+        exit 1
+    fi
+    
+    set +e
     ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\[.*\](.*[\.html|\.md|http|#.*])' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
@@ -757,6 +768,8 @@ case "$VERB" in
     	ppbook-check-directory-link "${NAME}"
     	book-check-images-referenced "${NAME}"
 	book-check-markdown-leftovers "${NAME}"
+        check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+        check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
 	;;
     build-dist-books)
         build-dist-books
