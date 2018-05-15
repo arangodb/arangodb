@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
+/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
 /* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
@@ -15,6 +15,7 @@
     outputDiv: '#outputEditors',
     outputTemplate: templateEngine.createTemplate('queryViewOutput.ejs'),
     outputCounter: 0,
+    maps: {},
 
     allowUpload: false,
     renderComplete: false,
@@ -459,14 +460,23 @@
 
         $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
+        $('#outputGeo' + count).hide();
       } else if (string === 'Table') {
         $('#outputTable' + count).show();
 
         $('#outputGraph' + count).hide();
         $('#outputEditor' + count).hide();
+        $('#outputGeo' + count).hide();
       } else if (string === 'Graph') {
         $('#outputGraph' + count).show();
 
+        $('#outputTable' + count).hide();
+        $('#outputEditor' + count).hide();
+        $('#outputGeo' + count).hide();
+      } else if (string === 'Geo') {
+        $('#outputGeo' + count).show();
+
+        $('#outputGraph' + count).hide();
         $('#outputTable' + count).hide();
         $('#outputEditor' + count).hide();
       }
@@ -1862,6 +1872,34 @@
             } else {
               $('#outputGraph' + counter).remove();
             }
+          } else if (result.defaultType === 'geo') {
+            $('#outputEditor' + counter).hide();
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGeo' + counter + '" style="height: 400px;"></div>');
+            self.maps[counter] = L.map('outputGeo' + counter).setView([51.505, -0.09], 13);
+
+            L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(self.maps[counter]);
+
+            var position = 1;
+            var geojson;
+
+            _.each(data.result, function (geo) {
+              if (geo.type === 'Point') {
+                // reverse neccessary if we are using GeoJSON order
+                // L.marker(geo.coordinates.reverse()).addTo(self.maps[counter]);
+                geojson = new L.GeoJSON(geo).addTo(self.maps[counter]);
+              } else if (geo.type === 'Polygon') {
+                console.log(geo);
+                geojson = new L.GeoJSON(geo).addTo(self.maps[counter]);
+              }
+
+              // positioning
+              if (position === data.result.length) {
+                self.maps[counter].fitBounds(geojson.getBounds());
+              }
+              position++;
+            });
           }
 
           // add active class to choosen display method
@@ -2373,6 +2411,7 @@
       // check if result could be displayed as table
       if (!found) {
         var check = true;
+        var geojson = 0;
         var attributes = {};
 
         if (result.length <= 1) {
@@ -2384,6 +2423,12 @@
             if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
               // not a document and not suitable for tabluar display
               return;
+            }
+
+            if (typeof obj === 'object') {
+              if (obj.hasOwnProperty('coordinates') && obj.hasOwnProperty('type')) {
+                geojson++;
+              }
             }
 
             _.each(obj, function (value, key) {
@@ -2413,7 +2458,11 @@
 
         if (check) {
           found = true;
-          toReturn.defaultType = 'table';
+          if (result.length === geojson) {
+            toReturn.defaultType = 'geo';
+          } else {
+            toReturn.defaultType = 'table';
+          }
         }
       }
 

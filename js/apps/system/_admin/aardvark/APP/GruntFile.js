@@ -28,7 +28,6 @@
             "frontend/css/jquery.contextmenu.css",
             "frontend/css/select2.css",
             "frontend/css/jquery.dataTables.css",
-            "frontend/css/nv.d3.css",
             "frontend/css/swaggerView.css",
             "frontend/css/ansi.css",
             "frontend/css/highlightjs.css",
@@ -36,6 +35,8 @@
             "frontend/css/grids-responsive-min.css",
             "frontend/css/tippy.css",
             "frontend/css/dygraph.css",
+            "frontend/css/leaflet.css",
+            "frontend/css/nv.d3.css",
             "frontend/ttf/arangofont/style.css"
           ]
         },
@@ -79,12 +80,10 @@
             "frontend/js/lib/worker.js",
             "frontend/js/lib/supervisor.js",
             // END SIGMA LIBRARIES
-            // START NEW
             "frontend/js/lib/wheelnav.slicePath.js",
             "frontend/js/lib/wheelnav.min.js",
             "frontend/js/lib/raphael.min.js",
             "frontend/js/lib/raphael.icons.min.js",
-            // END NEW LIBRARIES
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",
@@ -95,6 +94,7 @@
             "frontend/js/lib/md5.min.js",
             "frontend/js/lib/pretty-bytes.js",
             "frontend/js/lib/marked.min.js",
+            "frontend/js/lib/leaflet.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",

@@ -539,3 +539,10 @@
     height: 10px;
   }
 }
+
+.leaflet-pane {
+  svg {
+    width: auto;
+    height: auto;
+  }
+}
