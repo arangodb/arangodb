@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Utils/OperationOptions.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Options.h>
@@ -55,7 +56,7 @@ struct OperationResult {
       result = std::move(other.result);
       buffer = std::move(other.buffer);
       customTypeHandler = std::move(other.customTypeHandler);
-      wasSynchronous = other.wasSynchronous;
+      _options = other._options;
       countErrorCodes = std::move(other.countErrorCodes);
     }
     return *this;
@@ -65,12 +66,12 @@ struct OperationResult {
   OperationResult(Result&& result,
                   std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
                   std::shared_ptr<VPackCustomTypeHandler> const& handler,
-                  bool wasSynchronous,
+                  OperationOptions options = {},
                   std::unordered_map<int, size_t> const& countErrorCodes = std::unordered_map<int, size_t>())
       : result(std::move(result)),
         buffer(buffer),
         customTypeHandler(handler),
-        wasSynchronous(wasSynchronous),
+        _options(std::move(options)),
         countErrorCodes(countErrorCodes) {
           if(result.ok()){
             TRI_ASSERT(buffer != nullptr);
@@ -97,7 +98,7 @@ struct OperationResult {
   // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
   std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
-  bool wasSynchronous = false;
+  OperationOptions _options;
 
   // Executive summary for baby operations: reports all errors that did occur
   // during these operations. Details are stored in the respective positions of

@@ -154,11 +154,11 @@ static void createBabiesError(VPackBuilder& builder,
   }
 }
 
-static OperationResult emptyResult(bool waitForSync) {
+static OperationResult emptyResult(OperationOptions const& options) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   resultBuilder.close();
-  return OperationResult(Result(), resultBuilder.steal(), nullptr, waitForSync);
+  return OperationResult(Result(), resultBuilder.steal(), nullptr, options);
 }
 }  // namespace
 
@@ -898,7 +898,7 @@ OperationResult transaction::Methods::anyLocal(
 
   resultBuilder.close();
 
-  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
+  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler());
 }
 
 TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
@@ -1144,7 +1144,7 @@ OperationResult transaction::Methods::clusterResultDocument(
     case rest::ResponseCode::PRECONDITION_FAILED:
       return OperationResult(Result(responseCode == rest::ResponseCode::OK
                                  ? TRI_ERROR_NO_ERROR
-                                 : TRI_ERROR_ARANGO_CONFLICT), resultBody->steal(), nullptr, false, errorCounter);
+                                 : TRI_ERROR_ARANGO_CONFLICT), resultBody->steal(), nullptr, OperationOptions{}, errorCounter);
     case rest::ResponseCode::NOT_FOUND:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
@@ -1159,8 +1159,11 @@ OperationResult transaction::Methods::clusterResultInsert(
     std::unordered_map<int, size_t> const& errorCounter) const {
   switch (responseCode) {
     case rest::ResponseCode::ACCEPTED:
-    case rest::ResponseCode::CREATED:
-      return OperationResult(Result(), resultBody->steal(), nullptr, responseCode == rest::ResponseCode::CREATED, errorCounter);
+    case rest::ResponseCode::CREATED: {
+      OperationOptions options;
+      options.waitForSync = (responseCode == rest::ResponseCode::CREATED);
+      return OperationResult(Result(), resultBody->steal(), nullptr, options, errorCounter);
+    }
     case rest::ResponseCode::PRECONDITION_FAILED:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_CONFLICT);
     case rest::ResponseCode::BAD:
@@ -1190,10 +1193,11 @@ OperationResult transaction::Methods::clusterResultModify(
       }
     // Fall through
     case rest::ResponseCode::ACCEPTED:
-    case rest::ResponseCode::CREATED:
-      return OperationResult(Result(errorCode), resultBody->steal(), nullptr,
-                             responseCode == rest::ResponseCode::CREATED,
-                             errorCounter);
+    case rest::ResponseCode::CREATED: {
+      OperationOptions options;
+      options.waitForSync = (responseCode == rest::ResponseCode::CREATED);
+      return OperationResult(Result(errorCode), resultBody->steal(), nullptr, options, errorCounter);
+    }
     case rest::ResponseCode::BAD:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
@@ -1211,13 +1215,16 @@ OperationResult transaction::Methods::clusterResultRemove(
   switch (responseCode) {
     case rest::ResponseCode::OK:
     case rest::ResponseCode::ACCEPTED:
-    case rest::ResponseCode::PRECONDITION_FAILED:
+    case rest::ResponseCode::PRECONDITION_FAILED: {
+      OperationOptions options;
+      options.waitForSync = (responseCode != rest::ResponseCode::ACCEPTED);
       return OperationResult(
           Result(responseCode == rest::ResponseCode::PRECONDITION_FAILED
               ? TRI_ERROR_ARANGO_CONFLICT
               : TRI_ERROR_NO_ERROR),
           resultBody->steal(), nullptr,
-          responseCode != rest::ResponseCode::ACCEPTED, errorCounter);
+          options, errorCounter);
+    }
     case rest::ResponseCode::BAD:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
@@ -1349,7 +1356,7 @@ OperationResult transaction::Methods::documentLocal(
 
   return OperationResult(std::move(res), resultBuilder.steal(),
                          _transactionContextPtr->orderCustomTypeHandler(),
-                         options.waitForSync, countErrorCodes);
+                         options, countErrorCodes);
 }
 
 /// @brief create one or multiple documents in a collection
@@ -1365,7 +1372,7 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    return emptyResult(options.waitForSync);
+    return emptyResult(options);
   }
 
   // Validate Edges
@@ -1645,7 +1652,7 @@ OperationResult transaction::Methods::insertLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, countErrorCodes);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -1661,7 +1668,7 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    return emptyResult(options.waitForSync);
+    return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
@@ -1714,7 +1721,7 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    return emptyResult(options.waitForSync);
+    return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
@@ -2001,7 +2008,7 @@ OperationResult transaction::Methods::modifyLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, errorCounter);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, errorCounter);
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -2017,7 +2024,7 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    return emptyResult(options.waitForSync);
+    return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
@@ -2282,7 +2289,7 @@ OperationResult transaction::Methods::removeLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, countErrorCodes);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
 
 /// @brief fetches all documents in a collection
@@ -2346,7 +2353,7 @@ OperationResult transaction::Methods::allLocal(
 
   resultBuilder.close();
 
-  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
+  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler());
 }
 
 /// @brief remove all documents in a collection
@@ -2597,7 +2604,7 @@ OperationResult transaction::Methods::countLocal(
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
 
-  return OperationResult(Result(), resultBuilder.steal(), nullptr, false);
+  return OperationResult(Result(), resultBuilder.steal(), nullptr);
 }
 
 /// @brief Gets the best fitting index for an AQL condition.
