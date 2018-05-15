@@ -30,6 +30,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "VocBase/vocbase.h"
 
 #include <thread>
 #include <chrono>
