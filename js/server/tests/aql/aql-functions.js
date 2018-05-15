@@ -35,7 +35,6 @@ var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
-var internal = require('internal');
 
 var sortObj = function (obj) {
   var result = { };
