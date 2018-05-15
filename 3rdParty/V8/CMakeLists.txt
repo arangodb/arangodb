@@ -160,9 +160,8 @@ if (WIN32 AND ${CMAKE_GENERATOR} MATCHES "Ninja")
   set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
-  if ("${V8_TARGET_ARCHS}" STREQUAL "")
-    set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
-  endif()
+  list(APPEND V8_TARGET_ARCHS "Debug" "Release")
+
   list(APPEND V8_GYP_ARGS
     -Dcomponent=static_library
     -Dlibrary=static_library
@@ -330,9 +329,7 @@ elseif (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS gypfiles/all.gyp)
 
-  if ("${V8_TARGET_ARCHS}" STREQUAL "")
-    set(V8_TARGET_ARCHS "Debug;Release" CACHE string "V8 targets to build")
-  endif()
+  list(APPEND V8_TARGET_ARCHS "Debug" "Release")
   set(GYP_GENERATORS "msvs")
   set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
