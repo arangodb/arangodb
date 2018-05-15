@@ -22,7 +22,7 @@
 
 #include <date/date.h>
 #include "Basics/datetime.h"
-#include "Basics/StringUtils.h"
+#include "Basics/NumberUtils.h"
 #include "Logger/Logger.h"
 
 #include <boost/algorithm/string.hpp>
@@ -129,23 +129,40 @@ bool arangodb::basics::parse_dateTime(
     strTime = strs[1];
   }  // if
 
-  // parse date component
-  int parsedYear, parsedMonth = 1, parsedDay = 1, numParsedComponents;
+  // parse date component, moves pointer "p" forward
+  // returns true if "p" pointed to a valid number, and false otherwise
+  auto parseDateComponent = [](char const*& p, char const* e, int& result) -> bool {
+    char const* s = p; // remember initial start
+    while (p < e && *p >= '0' && *p <= '9') {
+      ++p;
+    }
+    if (p == s) {
+      // did not find any valid character
+      return false;
+    }
+    result = NumberUtils::atoi_unchecked<int>(s, p); 
+    if (p < e && *p == '-') { 
+      ++p; 
+    }
+    return true;
+  };
+  
+  char const* p = strDate.data();
+  char const* e = p + strDate.size();
 
-  numParsedComponents = sscanf(strDate.c_str(), "%d-%d-%d", &parsedYear,
-                               &parsedMonth, &parsedDay);
-
-  if (numParsedComponents == 0 || numParsedComponents == EOF) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-        << "sscanf parse failed with " << numParsedComponents;
+  // month and day are optional, so they intentionally default to 1
+  int parsedYear, parsedMonth = 1, parsedDay = 1; 
+  
+  // at least year must be valid
+  if (!parseDateComponent(p, e, parsedYear)) {
     return false;
   }
+  
+  parseDateComponent(p, e, parsedMonth);
+  parseDateComponent(p, e, parsedDay);
 
-  if (1 < numParsedComponents && (parsedMonth < 1 || 12 < parsedMonth)) {
-    return false;
-  }
-
-  if (2 < numParsedComponents && (parsedDay < 1 || 31 < parsedDay)) {
+  if (parsedMonth < 1 || parsedMonth > 12 || parsedDay < 1 || parsedDay > 31) {
+    // definitely invalid
     return false;
   }
 
