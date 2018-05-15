@@ -1956,7 +1956,7 @@ OperationResult transaction::Methods::modifyLocal(
     std::string const& collectionName, VPackSlice const newValue,
     OperationOptions& options, TRI_voc_document_operation_e operation,
     VPackSlice const pattern) {
-  TRI_ASSERT(pattern.isNone() || pattern.isArray());
+  TRI_ASSERT(pattern.isNone() || pattern.isObject() || pattern.isArray());
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
@@ -2009,6 +2009,7 @@ OperationResult transaction::Methods::modifyLocal(
                              &resultBuilder, &cid](VPackSlice const newVal,
                                                    VPackSlice const pattern,
                                                    bool isBabies) -> Result {
+    TRI_ASSERT(pattern.isNone() || pattern.isObject());
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -2023,7 +2024,8 @@ OperationResult transaction::Methods::modifyLocal(
                              !isLocked(collection, AccessMode::Type::WRITE));
 
       if (res.ok() &&
-          !aql::matches(VPackSlice(currentDoc.vpack()), nullptr, pattern)) {
+          !aql::matches(VPackSlice(currentDoc.vpack()), &VPackOptions::Defaults,
+                        pattern)) {
         res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       }
     }
@@ -2294,7 +2296,7 @@ OperationResult transaction::Methods::removeCoordinator(
 OperationResult transaction::Methods::removeLocal(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options, VPackSlice const pattern) {
-  TRI_ASSERT(pattern.isNone() || pattern.isArray());
+  TRI_ASSERT(pattern.isNone() || pattern.isObject() || pattern.isArray());
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
       
@@ -2336,6 +2338,7 @@ OperationResult transaction::Methods::removeLocal(
 
   auto workForOneDocument = [&](VPackSlice value, VPackSlice pattern,
                                 bool isBabies) -> Result {
+    TRI_ASSERT(pattern.isNone() || pattern.isObject());
     TRI_voc_rid_t actualRevision = 0;
     ManagedDocumentResult previous;
     transaction::BuilderLeaser builder(this);
@@ -2368,7 +2371,8 @@ OperationResult transaction::Methods::removeLocal(
       res = collection->read(this, key, previous, lock);
 
       if (res.ok() &&
-          !aql::matches(VPackSlice(previous.vpack()), nullptr, pattern)) {
+          !aql::matches(VPackSlice(previous.vpack()), &VPackOptions::Defaults,
+                        pattern)) {
         res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       }
     }

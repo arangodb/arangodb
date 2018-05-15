@@ -758,6 +758,8 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
             TRI_ASSERT(searchExpression.isString() || searchExpression.isObject());
             if (searchExpression.isObject()) {
               patternBuilder.add(searchExpression.slice());
+            } else {
+              patternBuilder.add(VPackSlice::noneSlice());
             }
           }
           else {
@@ -1240,6 +1242,9 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
             TRI_ASSERT(searchExpression.isString() || searchExpression.isObject());
             if (searchExpression.isObject()) {
               patternBuilder.add(searchExpression.slice());
+            }
+            else {
+              patternBuilder.add(VPackSlice::noneSlice());
             }
           } else {
             // Use the original slice for updating
