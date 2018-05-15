@@ -67,8 +67,8 @@ const char *agency =
 
 VPackBuilder createJob() {
   VPackBuilder builder;
-  VPackObjectBuilder a(&builder);
   {
+    VPackObjectBuilder a(&builder);
     builder.add("creator", VPackValue("1"));
     builder.add("type", VPackValue("failedFollower"));
     builder.add("database", VPackValue(DATABASE));

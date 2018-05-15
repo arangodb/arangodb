@@ -38,7 +38,6 @@ TransactionManagerFeature::TransactionManagerFeature(ApplicationServer* server)
     : ApplicationFeature(server, "TransactionManager") {
   setOptional(false);
   startsAfter("EngineSelector");
-  startsAfter("WorkMonitor");
 }
 
 void TransactionManagerFeature::prepare() {

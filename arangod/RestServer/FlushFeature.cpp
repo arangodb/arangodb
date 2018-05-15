@@ -43,7 +43,6 @@ FlushFeature::FlushFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Flush"),
       _flushInterval(1000000) {
   setOptional(false);
-  startsAfter("WorkMonitor");
   startsAfter("StorageEngine");
   startsAfter("MMFilesLogfileManager");
   // TODO: must start after storage engine

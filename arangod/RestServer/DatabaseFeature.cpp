@@ -1162,7 +1162,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
 
 void DatabaseFeature::updateContexts() {
   TRI_ASSERT(_vocbase != nullptr);
-  
+
   V8DealerFeature* dealer =
   ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   if (!dealer->isEnabled()) {
@@ -1179,7 +1179,7 @@ void DatabaseFeature::updateContexts() {
   dealer->defineContextUpdate(
       [queryRegistry, vocbase](v8::Isolate* isolate,
                                v8::Handle<v8::Context> context, size_t i) {
-        TRI_InitV8VocBridge(isolate, context, queryRegistry, vocbase, i);
+        TRI_InitV8VocBridge(isolate, context, queryRegistry, *vocbase, i);
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
         TRI_InitV8Agency(isolate, context);

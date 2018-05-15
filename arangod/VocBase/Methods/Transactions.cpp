@@ -318,7 +318,7 @@ Result executeTransactionJS(
   }
 
   auto transactionContext =
-    std::make_shared<transaction::V8Context>(&vocbase, embed);
+    std::make_shared<transaction::V8Context>(vocbase, embed);
 
   // start actual transaction
   std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(transactionContext, readCollections,

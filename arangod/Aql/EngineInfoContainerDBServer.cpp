@@ -310,7 +310,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 //  mergeShards(shards);
 //}
 
-void EngineInfoContainerDBServer::CollectionInfo::mergeShards(std::shared_ptr<std::vector<ShardID>> shards) {
+void EngineInfoContainerDBServer::CollectionInfo::mergeShards(std::shared_ptr<std::vector<ShardID>> const& shards) {
   for (auto const& s : *shards) {
     usedShards.emplace(s);
   }

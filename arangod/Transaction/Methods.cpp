@@ -2013,6 +2013,9 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
+  }
 
   return removeLocal(collectionName, value, optionsCopy);
 }

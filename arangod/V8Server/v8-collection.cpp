@@ -317,7 +317,7 @@ static void ExistsVocbaseVPack(
   }
 
   auto transactionContext =
-    std::make_shared<transaction::V8Context>(vocbase, true);
+    std::make_shared<transaction::V8Context>(*vocbase, true);
   VPackBuilder builder;
   std::string collectionName;
   Result res;
@@ -431,7 +431,7 @@ static void DocumentVocbaseCol(
 
   VPackSlice search = searchBuilder.slice();
   auto transactionContext =
-    std::make_shared<transaction::V8Context>(&(col->vocbase()), true);
+    std::make_shared<transaction::V8Context>(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::READ);
 
@@ -484,7 +484,7 @@ static void DocumentVocbase(
   }
 
   auto transactionContext =
-    std::make_shared<transaction::V8Context>(&vocbase, true);
+    std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder builder;
   std::string collectionName;
 
@@ -636,9 +636,8 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackSlice toRemove = searchBuilder.slice();
-  
   auto transactionContext =
-    std::make_shared<transaction::V8Context>(&(col->vocbase()), true);
+    std::make_shared<transaction::V8Context>(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::WRITE);
 
   if (!args[0]->IsArray()) {
@@ -725,7 +724,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto transactionContext =
-    std::make_shared<transaction::V8Context>(&vocbase, true);
+    std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder builder;
   std::string collectionName;
 
@@ -841,7 +840,7 @@ static void JS_BinaryDocumentVocbaseCol(
 
   VPackSlice search = searchBuilder.slice();
   auto transactionContext =
-      std::make_shared<transaction::V8Context>(&(col->vocbase()), true);
+      std::make_shared<transaction::V8Context>(col->vocbase(), true);
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::READ);
 
@@ -992,7 +991,7 @@ static void JS_FiguresVocbaseCol(
   }
 
   SingleCollectionTransaction trx(
-    transaction::V8Context::Create(&(collection->vocbase()), true),
+    transaction::V8Context::Create(collection->vocbase(), true),
     collection->id(),
     AccessMode::Type::READ
   );
@@ -1260,7 +1259,7 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::load(&vocbase, collection);
+  auto res = methods::Collections::load(vocbase, collection);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1654,14 +1653,13 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   }
 
   VPackSlice const update = updateBuilder.slice();
-
-
   auto transactionContext =
-    std::make_shared<transaction::V8Context>(&(col->vocbase()), true);
+    std::make_shared<transaction::V8Context>(col->vocbase(), true);
 
   // Now start the transaction:
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::WRITE);
+
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -1761,7 +1759,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   std::string collectionName;
   auto& vocbase = GetContextVocBase(isolate);
   auto transactionContext =
-    std::make_shared<transaction::V8Context>(&vocbase, true);
+    std::make_shared<transaction::V8Context>(vocbase, true);
   VPackBuilder updateBuilder;
 
   {
@@ -2114,7 +2112,7 @@ static void JS_RevisionVocbaseCol(
 
   TRI_voc_rid_t revisionId;
   auto res = methods::Collections::revisionId(
-    &(collection->vocbase()), collection, revisionId
+    collection->vocbase(), collection, revisionId
   );
 
   if (res.fail()) {
@@ -2281,7 +2279,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
 
   // load collection
   auto transactionContext =
-      std::make_shared<transaction::V8Context>(&(collection->vocbase()), true);
+      std::make_shared<transaction::V8Context>(collection->vocbase(), true);
   SingleCollectionTransaction trx(
     transactionContext, collection->id(), AccessMode::Type::WRITE
   );
@@ -2431,7 +2429,7 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto ctx = transaction::V8Context::Create(&(collection->vocbase()), true);
+  auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
     ctx, collection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -2811,7 +2809,7 @@ static void JS_CountVocbaseCol(
 
   std::string collectionName(col->name());
   SingleCollectionTransaction trx(
-    transaction::V8Context::Create(&(col->vocbase()), true),
+    transaction::V8Context::Create(col->vocbase(), true),
     collectionName,
     AccessMode::Type::READ
   );
@@ -2864,7 +2862,7 @@ static void JS_WarmupVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::warmup(&(collection->vocbase()), collection);
+  auto res = methods::Collections::warmup(collection->vocbase(), collection);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

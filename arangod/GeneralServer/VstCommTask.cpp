@@ -33,11 +33,9 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/VstNetwork.h"
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -102,6 +100,23 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       ->vstMaxSize();
 }
 
+/// @brief send simple response including response body
+void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
+                                    uint64_t messageId, velocypack::Buffer<uint8_t>&& buffer) {
+  VstResponse resp(code, messageId);
+  TRI_ASSERT(respType == rest::ContentType::VPACK); // or not ?
+  resp.setContentType(respType);
+  
+  try {
+    if (!buffer.empty()) {
+      resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    }
+    addResponse(resp, nullptr);
+  } catch (...) {
+    closeStream();
+  }
+}
+
 void VstCommTask::addResponse(GeneralResponse& baseResponse,
                               RequestStatistics* stat) {
   TRI_ASSERT(_peer->strand.running_in_this_thread());
@@ -112,6 +127,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
     VstResponse& response = static_cast<VstResponse&>(baseResponse);
 #endif
 
+  finishExecution(baseResponse);
   VPackMessageNoOwnBuffer response_message = response.prepareForNetwork();
   uint64_t const mid = response_message._id;
 
@@ -279,39 +295,22 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     _authorized = entry.authenticated();
     if (_authorized) {
       _authenticatedUser = std::move(entry._username);
+    } else {
+      _authenticatedUser.clear();
     }
   } else {
     _authorized = true;
     _authenticatedUser = std::move(user); // may be empty
   }
   
- VstRequest fakeRequest(_connectionInfo, VstInputMessage{}, 0, true /*fakeRequest*/);
   if (_authorized) {
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
     // obi: user who sends authentication expects a reply
-    handleSimpleError(rest::ResponseCode::OK, fakeRequest, TRI_ERROR_NO_ERROR,
-                      "authentication successful", messageId);
+    addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
+                     "authentication successful");
   } else {
-    _authenticatedUser.clear();
-    ServerState::Mode mode = ServerState::serverMode();
-    if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
-      try {
-        VstResponse resp(ResponseCode::SERVICE_UNAVAILABLE, messageId);
-        resp.setContentType(fakeRequest.contentTypeResponse());
-        ReplicationFeature::prepareFollowerResponse(&resp, mode);
-        addResponse(resp, nullptr);
-      } catch (basics::Exception const& ex) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "Error while preparing follower response " << ex.message();
-        closeStream(); // same as in handleSimpleError
-      } catch (...) {
-        LOG_TOPIC(ERR, Logger::COMMUNICATION) << "Error while preparing follower response";
-        closeStream(); // same as in handleSimpleError
-      }
-    } else {
-      handleSimpleError(rest::ResponseCode::UNAUTHORIZED, fakeRequest,
-                        TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
-                        messageId);
-    }
+    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
+                     TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed");
   }
 }
 
@@ -380,8 +379,8 @@ bool VstCommTask::processRead(double startTime) {
     try {
       type = header.at(1).getNumber<int>();
     } catch (std::exception const& e) {
-      VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0);
-      handleSimpleError(rest::ResponseCode::BAD, fakeRequest, chunkHeader._messageID);
+      addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                        chunkHeader._messageID, VPackBuffer<uint8_t>());
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "VstCommTask: "
           << "VPack Validation failed: " << e.what();
@@ -404,45 +403,13 @@ bool VstCommTask::processRead(double startTime) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authenticatedUser);
       }
-      bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
-      if (!res || request->requestContext() == nullptr) {
-        handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,
-                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                          TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
-                          chunkHeader._messageID);
-      } else {
-        request->setClientTaskId(_taskId);
-
-        // will determine if the user can access this path.
-        // checks db permissions and contains exceptions for the
-        // users API to allow logins
-        rest::ResponseCode code = GeneralCommTask::canAccessPath(request.get());
-        if (code != rest::ResponseCode::OK) {
-          events::NotAuthorized(request.get());
-          handleSimpleError(rest::ResponseCode::UNAUTHORIZED, *request, TRI_ERROR_FORBIDDEN,
-                            "not authorized to execute this request",
-                            chunkHeader._messageID);
-        } else {
-          // now that we are authorized we do the request
-          // make sure we have a database
-          if (request->requestContext() == nullptr) {
-            handleSimpleError(
-                              rest::ResponseCode::NOT_FOUND, *request,
-                              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
-                              chunkHeader._messageID);
-          } else {
-            request->setClientTaskId(_taskId);
-
-            // temporarily release the mutex
-            //MUTEX_UNLOCKER(locker, _lock);
-
-            std::unique_ptr<VstResponse> response(new VstResponse(
-                 rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-            response->setContentTypeRequested(request->contentTypeResponse());
-            executeRequest(std::move(request), std::move(response));
-          }
-        }
+      
+      RequestFlow cont = prepareExecution(*request.get());
+      if (cont == RequestFlow::Continue) {
+        auto resp = std::make_unique<VstResponse>(rest::ResponseCode::SERVER_ERROR,
+                                                  chunkHeader._messageID);
+        resp->setContentTypeRequested(request->contentTypeResponse());
+        executeRequest(std::move(request), std::move(resp));
       }
     }
   }
@@ -479,31 +446,6 @@ std::unique_ptr<GeneralResponse> VstCommTask::createResponse(
       new VstResponse(responseCode, messageId));
 }
 
-void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
-                                    GeneralRequest const& req,
-                                    int errorNum,
-                                    std::string const& errorMessage,
-                                    uint64_t messageId) {
-  VstResponse resp(responseCode, messageId);
-  resp.setContentType(req.contentTypeResponse());
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.openObject();
-  builder.add(StaticStrings::Error, VPackValue(true));
-  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
-  builder.add(StaticStrings::Code, VPackValue((int)responseCode));
-  builder.close();
-
-  try {
-    resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    addResponse(resp, nullptr);
-  } catch (...) {
-    closeStream();
-  }
-}
-
 // Returns true if and only if there was no error, if false is returned,
 // the connection is closed
 bool VstCommTask::getMessageFromSingleChunk(
@@ -518,18 +460,16 @@ bool VstCommTask::getMessageFromSingleChunk(
   try {
     payloads = validateAndCount(vpackBegin, chunkEnd);
   } catch (std::exception const& e) {
-    VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*isFake*/);
-    handleSimpleError(rest::ResponseCode::BAD, fakeRequest,
-                      TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
-                      chunkHeader._messageID);
+    addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                      chunkHeader._messageID, VPackBuffer<uint8_t>());
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "VstCommTask: "
         << "VPack Validation failed: " << e.what();
     closeTask(rest::ResponseCode::BAD);
     return false;
   } catch (...) {
-    VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*isFake*/);
-    handleSimpleError(rest::ResponseCode::BAD, fakeRequest, chunkHeader._messageID);
+    addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                      chunkHeader._messageID, VPackBuffer<uint8_t>());
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                             << "VPack Validation failed";
     closeTask(rest::ResponseCode::BAD);
@@ -611,18 +551,16 @@ bool VstCommTask::getMessageFromMultiChunks(
                                  im._buffer.data() + im._buffer.byteSize()));
 
       } catch (std::exception const& e) {
-        VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*isFake*/);
-        handleSimpleError(rest::ResponseCode::BAD, fakeRequest,
-                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
-                          chunkHeader._messageID);
+        addErrorResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                         chunkHeader._messageID, TRI_ERROR_BAD_PARAMETER, e.what());
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "VstCommTask: "
             << "VPack Validation failed: " << e.what();
         closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {
-        VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*isFake*/);
-        handleSimpleError(rest::ResponseCode::BAD, fakeRequest, chunkHeader._messageID);
+        addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
+                          chunkHeader._messageID, VPackBuffer<uint8_t>());
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                                 << "VPack Validation failed!";
         closeTask(rest::ResponseCode::BAD);

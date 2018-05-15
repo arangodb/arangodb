@@ -165,7 +165,7 @@ class EngineInfoContainerDBServer {
   struct CollectionInfo {
 //    CollectionInfo(AccessMode::Type lock, std::shared_ptr<std::vector<ShardID>> shards);
 
-    void mergeShards(std::shared_ptr<std::vector<ShardID>> shards);
+    void mergeShards(std::shared_ptr<std::vector<ShardID>> const& shards);
 
     AccessMode::Type lockType{ AccessMode::Type::NONE };
     std::vector<std::shared_ptr<EngineInfo>> engines;

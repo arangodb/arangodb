@@ -469,12 +469,10 @@ bool ShapeContainer::equals(S2Polygon const* other) const {
 }
 
 bool ShapeContainer::equals(ShapeContainer const* cc) const {
-  bool result = false;
-
   // equals function will only trigger for equal types
   // if types are not equal, result is false
   if (cc->_type != _type) {
-    return result;
+    return false;
   }
 
   switch (cc->_type) {
