@@ -47,7 +47,7 @@ class S2MultiPolyline : public S2Region {
   
   size_t num_lines() const { return lines_.size(); }
   S2Polyline const& line(size_t k) const {
-    assert(k >= 0 && k < lines_.size());
+    assert(k < lines_.size());
     //DCHECK_LT(k, lines_.size());
     return lines_[k];
   }
@@ -71,7 +71,7 @@ class S2MultiPolyline : public S2Region {
  private:
   // Internal constructor used only by Clone() that makes a deep copy of
   // its argument.
-  S2MultiPolyline(S2MultiPolyline const* src);
+  explicit S2MultiPolyline(S2MultiPolyline const* src);
 
   // We store the vertices in an array rather than a vector because we don't
   // need any STL methods, and computing the number of vertices using size()
