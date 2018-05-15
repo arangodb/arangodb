@@ -46,7 +46,6 @@ AqlFeature::AqlFeature(
   startsAfter("QueryRegistry");
   startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
 }
 
 AqlFeature* AqlFeature::lease() {

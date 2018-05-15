@@ -71,7 +71,6 @@ bool ListenTask::start() {
     guard.work();
     
     if (!_bound) {
-      LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) << "Acceptor not bound to socket";
       _handler = nullptr;
       return;
     }

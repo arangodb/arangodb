@@ -36,7 +36,7 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestIndexHandler"; }
-  bool isDirect() const override { return true; }
+  bool isDirect() const override { return false; }
   RestStatus execute() override;
 
  private:

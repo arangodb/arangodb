@@ -92,7 +92,7 @@ class RemoteNode final : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief estimateCost
@@ -177,7 +177,7 @@ class ScatterNode : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief estimateCost
@@ -246,7 +246,7 @@ class DistributeNode : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
   
   /// @brief getVariablesUsedHere, returning a vector
@@ -342,7 +342,7 @@ class GatherNode final : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief estimateCost

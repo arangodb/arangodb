@@ -47,6 +47,8 @@ var sanitizeStats = function (stats) {
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;
+  delete stats.count;
+  delete stats.fullCount;
   return stats;
 };
 

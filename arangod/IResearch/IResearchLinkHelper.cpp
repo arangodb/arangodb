@@ -25,6 +25,7 @@
 #include "IResearchCommon.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchFeature.h"
+#include "Basics/StaticStrings.h"
 
 namespace {
 
@@ -49,7 +50,7 @@ namespace iresearch {
       fieldsBuilder.openArray();
       fieldsBuilder.close(); // empty array
       _builder.openObject();
-      _builder.add("fields", fieldsBuilder.slice()); // empty array
+      _builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice()); // empty array
       arangodb::iresearch::IResearchLinkHelper::setType(_builder); // the index type required by Index
       _builder.close(); // object with just one field required by the Index constructor
       _slice = _builder.slice();
@@ -102,7 +103,7 @@ namespace iresearch {
     return false;
   }
 
-  builder.add(StaticStrings::LinkTypeField, velocypack::Value(LINK_TYPE));
+  builder.add(arangodb::StaticStrings::IndexType, velocypack::Value(LINK_TYPE));
 
   return true;
 }

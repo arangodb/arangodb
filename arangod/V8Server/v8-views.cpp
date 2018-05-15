@@ -23,6 +23,7 @@
 
 #include "v8-views.h"
 #include "Basics/conversions.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
@@ -166,8 +167,8 @@ static void JS_CreateViewVocbase(
 
   VPackBuilder full;
   full.openObject();
-  full.add("name", VPackValue(name));
-  full.add("type", VPackValue(type));
+  full.add(arangodb::StaticStrings::DataSourceName, VPackValue(name));
+  full.add(arangodb::StaticStrings::DataSourceType, VPackValue(type));
   VPackSlice infoSlice;
 
   VPackBuilder properties;

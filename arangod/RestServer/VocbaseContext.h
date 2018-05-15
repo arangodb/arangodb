@@ -43,7 +43,7 @@ class VocbaseContext : public arangodb::ExecContext {
 
   TEST_VIRTUAL ~VocbaseContext();
 
-  static VocbaseContext* create(GeneralRequest* req, TRI_vocbase_t& vocbase);
+  static VocbaseContext* create(GeneralRequest& req, TRI_vocbase_t& vocbase);
   TEST_VIRTUAL TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief upgrade to internal superuser
@@ -56,7 +56,7 @@ class VocbaseContext : public arangodb::ExecContext {
   TRI_vocbase_t& _vocbase;
 
   VocbaseContext(
-    GeneralRequest* req,
+    GeneralRequest& req,
     TRI_vocbase_t& vocbase,
     bool isInternal,
     auth::Level systemLevel,

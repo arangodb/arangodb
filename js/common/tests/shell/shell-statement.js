@@ -603,6 +603,7 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("fullCount"));
       assertTrue(stats.hasOwnProperty("filtered"));
       assertEqual(12345, stats.fullCount);
+      assertEqual(0, stats.count);
       var docs = result.toArray();
       assertEqual(0, docs.length);
     },
@@ -625,10 +626,16 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("scannedIndex"));
       assertTrue(stats.hasOwnProperty("writesExecuted"));
       assertTrue(stats.hasOwnProperty("writesIgnored"));
-      assertFalse(stats.hasOwnProperty("fullCount"));
+      assertTrue(stats.hasOwnProperty("fullCount"));
+      assertTrue(stats.hasOwnProperty("count"));
       assertTrue(stats.hasOwnProperty("filtered"));
+      
+      assertEqual(10, stats.fullCount);
+      assertEqual(10, stats.count);
+      var docs = result.toArray();
+      assertEqual(10, docs.length);
     },
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test execute method with profiling
 ////////////////////////////////////////////////////////////////////////////////

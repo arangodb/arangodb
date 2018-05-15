@@ -45,7 +45,7 @@ def file_content(filepath):
           (not searchMDPaths[2] in filepath) and
           (not searchMDPaths[3] in filepath) and
           (not searchMDPaths[4] in filepath)):
-        print "next startDocuBlock found without endDocuBlock inbetween in file %s [%s]" %(filepath, line)
+        print "next startDocuBlock found without endDocuBlock in between in file %s [%s]" %(filepath, line)
         raise
       _start = line[0]
     if "@endDocuBlock" in line[1]:
@@ -95,9 +95,9 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
   for line in infile:
     if first:
       if blockType == "arangosh" and not line.startswith("arangosh&gt;"):
-        raise Exception ("mismatching blocktype - expecting 'arangosh' to start with 'arangosh&gt' - in %s while inpecting %s - referenced via %s have '%s'" %(filepath, tag, placeIntoFilePath, line))
+        raise Exception ("mismatching blocktype - expecting 'arangosh' to start with 'arangosh&gt' - in %s while inspecting %s - referenced via %s have '%s'" %(filepath, tag, placeIntoFilePath, line))
       if blockType == "curl" and not line.startswith("shell> curl"):
-        raise Exception("mismatching blocktype - expecting 'curl' to start with 'shell > curl' in %s while inpecting %s - referenced via %s have '%s'" %(filepath, tag, placeIntoFilePath, line))
+        raise Exception("mismatching blocktype - expecting 'curl' to start with 'shell > curl' in %s while inspecting %s - referenced via %s have '%s'" %(filepath, tag, placeIntoFilePath, line))
       first = False
 
     if blockType == "arangosh":

@@ -600,7 +600,7 @@ bool mtime(time_t& result, int fd) NOEXCEPT {
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT {
   #ifdef _WIN32
     #pragma warning(disable: 4996) // '_wfopen': This function or variable may be unsafe.
-    handle_t handle(::_wfopen(path ? path : _T("NUL:"), mode));
+    handle_t handle(::_wfopen(path ? path : IR_WSTR("NUL:"), mode));
     #pragma warning(default: 4996)
   #else
     handle_t handle(::fopen(path ? path : "/dev/null", mode));
