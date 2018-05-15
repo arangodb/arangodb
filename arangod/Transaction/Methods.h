@@ -197,7 +197,7 @@ class Methods {
   /// @brief finish a transaction (commit or abort), based on the previous state
   Result finish(int errorNum);
   Result finish(Result const& res);
-  
+
   /// @brief return the transaction id
   TRI_voc_tid_t tid() const;
 
@@ -519,6 +519,7 @@ class Methods {
   OperationResult clusterResultInsert(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      OperationOptions const& options,
       std::unordered_map<int, size_t> const& errorCounter) const;
 
 /// @brief Helper create a Cluster Communication modify result

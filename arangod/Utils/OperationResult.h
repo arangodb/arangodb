@@ -40,10 +40,13 @@ struct OperationResult {
 
   // create from integer status code
   explicit OperationResult(int code) : result(code) {}
+  explicit OperationResult(int code, OperationOptions const& options) : result(code), _options(options) {};
 
   // create from Result
   explicit OperationResult(Result const& other) : result(other) {}
+  explicit OperationResult(Result const& other, OperationOptions const& options) : result(other), _options(options){}
   explicit OperationResult(Result&& other) : result(std::move(other)) {}
+  explicit OperationResult(Result&& other, OperationOptions const& options) : result(std::move(other)), _options(options) {}
 
   // copy
   OperationResult(OperationResult const& other) = delete;
@@ -66,12 +69,12 @@ struct OperationResult {
   OperationResult(Result&& result,
                   std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
                   std::shared_ptr<VPackCustomTypeHandler> const& handler,
-                  OperationOptions options = {},
+                  OperationOptions const& options = {},
                   std::unordered_map<int, size_t> const& countErrorCodes = std::unordered_map<int, size_t>())
       : result(std::move(result)),
         buffer(buffer),
         customTypeHandler(handler),
-        _options(std::move(options)),
+        _options(options),
         countErrorCodes(countErrorCodes) {
           if(result.ok()){
             TRI_ASSERT(buffer != nullptr);

@@ -1156,12 +1156,12 @@ OperationResult transaction::Methods::clusterResultDocument(
 OperationResult transaction::Methods::clusterResultInsert(
     rest::ResponseCode const& responseCode,
     std::shared_ptr<VPackBuilder> const& resultBody,
+    OperationOptions const& options,
     std::unordered_map<int, size_t> const& errorCounter) const {
   switch (responseCode) {
     case rest::ResponseCode::ACCEPTED:
     case rest::ResponseCode::CREATED: {
-      OperationOptions options;
-      options.waitForSync = (responseCode == rest::ResponseCode::CREATED);
+      TRI_ASSERT(options.waitForSync == (responseCode == rest::ResponseCode::CREATED));
       return OperationResult(Result(), resultBody->steal(), nullptr, options, errorCounter);
     }
     case rest::ResponseCode::PRECONDITION_FAILED:
@@ -1405,9 +1405,9 @@ OperationResult transaction::Methods::insertCoordinator(
       errorCounter, resultBody);
 
   if (res.ok()) {
-    return clusterResultInsert(responseCode, resultBody, errorCounter);
+    return clusterResultInsert(responseCode, resultBody, options, errorCounter);
   }
-  return OperationResult(res);
+  return OperationResult(res, options);
 }
 #endif
 
@@ -1445,15 +1445,15 @@ OperationResult transaction::Methods::insertLocal(
     std::string theLeader = collection->followers()->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
     } else {  // we are a follower following theLeader
       isFollower = true;
       if (options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
       }
     }
   } // isDBServer
@@ -1610,7 +1610,7 @@ OperationResult transaction::Methods::insertLocal(
             // error (note that we use the follower version, since we have
             // lost leadership):
             if (findRefusal(requests)) {
-              return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+              return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
             }
 
             // Otherwise we drop all followers that were not successful:
