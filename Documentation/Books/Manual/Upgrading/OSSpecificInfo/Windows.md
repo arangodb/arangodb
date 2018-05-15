@@ -1,2 +1,2 @@
-Upgrading in Windows
+Upgrading on Windows
 ====================

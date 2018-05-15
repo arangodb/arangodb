@@ -1,4 +1,4 @@
-Upgrading in Linux
+Upgrading on Linux
 ==================
 
 Upgrading via APT

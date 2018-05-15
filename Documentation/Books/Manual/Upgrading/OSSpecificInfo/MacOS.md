@@ -1,2 +1,2 @@
-Upgrading in MacOS
+Upgrading on MacOS
 ==================
