@@ -154,13 +154,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define LOG_DEVEL LOG_TOPIC(ERR,arangodb::Logger::FIXME) << "###### "
-#define LOG_DEVEL_IF(cond) LOG_TOPIC_IF(ERR,arangodb::Logger::FIXME,(cond)) << "###### "
-#define LOG_DEVEL_EVERY_N(a, n) LOG_TOPIC_EVERY_N(ERR,arangodb::Logger::FIXME,(n)) << "###### "
+#define LOG_DEVEL LOG_TOPIC(ERR,::arangodb::Logger::FIXME) << "###### "
+#define LOG_DEVEL_IF(cond) LOG_TOPIC_IF(ERR,::arangodb::Logger::FIXME,(cond)) << "###### "
+#define LOG_DEVEL_EVERY_N(a, n) LOG_TOPIC_EVERY_N(ERR,::arangodb::Logger::FIXME,(n)) << "###### "
 #else
-#define LOG_DEVEL LOG_TOPIC(DEBUG,arangodb::Logger::FIXME) << "###### "
-#define LOG_DEVEL_IF(cond) LOG_TOPIC_IF(DEBUG,arangodb::Logger::FIXME,(cond)) << "###### "
-#define LOG_DEVEL_EVERY_N(a, n) LOG_TOPIC_EVERY_N(DEBUG,arangodb::Logger::FIXME,(n)) << "###### "
+#define LOG_DEVEL LOG_TOPIC(DEBUG,::arangodb::Logger::FIXME) << "###### "
+#define LOG_DEVEL_IF(cond) LOG_TOPIC_IF(DEBUG,::arangodb::Logger::FIXME,(cond)) << "###### "
+#define LOG_DEVEL_EVERY_N(a, n) LOG_TOPIC_EVERY_N(DEBUG,::arangodb::Logger::FIXME,(n)) << "###### "
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

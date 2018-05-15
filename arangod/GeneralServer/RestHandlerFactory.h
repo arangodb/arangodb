@@ -42,17 +42,12 @@ class RestHandlerFactory {
   // handler creator
   typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*,
                                       void* data);
-
-  // context handler
-  typedef bool (*context_fptr)(GeneralRequest*, void*);
   
  public:
   // cppcheck-suppress *
-  RestHandlerFactory(context_fptr, void*);
+  RestHandlerFactory() : _notFound(nullptr) {}
   
  public:
-  // set request context, wrapper method
-  bool setRequestContext(GeneralRequest*);
 
   // creates a new handler
   RestHandler* createHandler(std::unique_ptr<GeneralRequest>,
@@ -69,11 +64,6 @@ class RestHandlerFactory {
   void addNotFoundHandler(create_fptr);
 
  private:
-  // set context callback
-  context_fptr _setContext;
-
-  // set context data
-  void* _contextData;
 
   // list of constructors
   std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;

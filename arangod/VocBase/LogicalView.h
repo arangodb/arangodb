@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
+#include "Meta/utility.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Buffer.h>
@@ -54,6 +55,53 @@ class LogicalView : public LogicalDataSource {
   typedef std::function<bool(
     std::shared_ptr<LogicalView>const& view // a pointer to the created view
   )> PreCommitCallback;
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief casts a specified 'LogicalView' to a provided Target type
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename Target, typename Source>
+  inline static typename meta::adjustConst<Source, Target>::reference cast(
+      Source& view
+  ) noexcept {
+    typedef typename meta::adjustConst<
+      Source,
+      typename std::enable_if<
+        std::is_base_of<LogicalView, Target>::value
+          && std::is_same<typename std::remove_const<Source>::type,
+        LogicalView
+      >::value, Target>::type
+    >::reference target_type_t;
+
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return dynamic_cast<target_type_t>(view);
+  #else
+    return static_cast<target_type_t>(view);
+  #endif
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief casts a specified 'LogicalView' to a provided Target type
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename Target, typename Source>
+  inline static typename meta::adjustConst<Source, Target>::pointer cast(
+      Source* view
+  ) noexcept {
+    typedef typename meta::adjustConst<
+      Source,
+      typename std::enable_if<
+        std::is_base_of<LogicalView, Target>::value
+          && std::is_same<typename std::remove_const<Source>::type,
+        LogicalView
+      >::value, Target>::type
+    >::pointer target_type_t;
+
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return dynamic_cast<target_type_t>(view);
+  #else
+    return static_cast<target_type_t>(view);
+  #endif
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view

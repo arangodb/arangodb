@@ -24,7 +24,6 @@
 
 #include "HttpCommTask.h"
 
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -34,11 +33,9 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/VstCommTask.h"
 #include "Meta/conversion.h"
-#include "Replication/ReplicationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
-#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -73,39 +70,25 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   ConnectionStatistics::SET_HTTP(_connectionStatistics);
 }
 
-void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t /* messageId */) {
-  HttpResponse response(code, leaseStringBuffer(0));
-  response.setContentType(req.contentTypeResponse());
-  addResponse(response, stealStatistics(1UL));
-}
-
-void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, int errorNum,
-                                     std::string const& errorMessage,
-                                     uint64_t /* messageId */) {
-  
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  builder.openObject();
-  builder.add(StaticStrings::Error, VPackValue(true));
-  builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
-  builder.add(StaticStrings::Code, VPackValue((int)code));
-  builder.close();
-  
+/// @brief send error response including response body
+void HttpCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType respType,
+                                     uint64_t /*messageId*/, velocypack::Buffer<uint8_t>&& buffer) {
   try {
     HttpResponse resp(code, leaseStringBuffer(buffer.size()));
-    resp.setContentType(req.contentTypeResponse());
-    resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    resp.setContentType(respType);
+    if (!buffer.empty()) {
+      resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    }
     addResponse(resp, stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
-        << "handleSimpleError received an exception, closing connection:"
-        << ex.what();
-    // _clientClosed = true;
+    << "addSimpleResponse received an exception, closing connection:"
+    << ex.what();
+    _closeRequested = true;
   } catch (...) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
-        << "handleSimpleError received an exception, closing connection";
-    // _clientClosed = true;
+    << "addSimpleResponse received an exception, closing connection";
+    _closeRequested = true;
   }
 }
 
@@ -118,6 +101,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
   HttpResponse& response = static_cast<HttpResponse&>(baseResponse);
 #endif
 
+  finishExecution(baseResponse);
   resetKeepAlive();
   
   // response has been queued, allow further requests
@@ -277,11 +261,9 @@ bool HttpCommTask::processRead(double startTime) {
           << "maximal header size is " << MaximalHeaderSize
           << ", request header size is " << headerLength;
 
-      HttpRequest tmpRequest(_connectionInfo, nullptr, 0, _allowMethodOverride);
       // header is too large
-      handleSimpleError(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE, tmpRequest,
-                        1);  // ID does not matter for http (http default is 1)
-
+      addSimpleResponse(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+                        rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
       _closeRequested = true;
       return false;
     }
@@ -339,7 +321,8 @@ bool HttpCommTask::processRead(double startTime) {
 
       if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
-        handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, *_incompleteRequest, 1);
+        addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, rest::ContentType::UNSET,
+                          1, VPackBuffer<uint8_t>());
         LOG_TOPIC(WARN, Logger::FIXME) << "HTTP version not supported";
         _closeRequested = true;
         return false;
@@ -349,7 +332,8 @@ bool HttpCommTask::processRead(double startTime) {
       _fullUrl = _incompleteRequest->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, *_incompleteRequest, 1);
+        addSimpleResponse(rest::ResponseCode::REQUEST_URI_TOO_LONG, rest::ContentType::UNSET,
+                          1, VPackBuffer<uint8_t>());
         LOG_TOPIC(WARN, Logger::REQUESTS) << "requst uri too long";
         _closeRequested = true;
         return false;
@@ -448,7 +432,8 @@ bool HttpCommTask::processRead(double startTime) {
                     << "'";
 
           // bad request, method not allowed
-          handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, *_incompleteRequest, 1);
+          addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED, rest::ContentType::UNSET,
+                            1, VPackBuffer<uint8_t>());
 
           _closeRequested = true;
           return false;
@@ -496,8 +481,8 @@ bool HttpCommTask::processRead(double startTime) {
         std::string uncompressed;
         if (!StringUtils::gzipUncompress(_readBuffer.c_str() + _bodyPosition,
                                          _bodyLength, uncompressed)) {
-          handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
-                            "gzip decoding error", 1);
+          addErrorResponse(rest::ResponseCode::BAD, _incompleteRequest->contentTypeResponse(), 1,
+                           TRI_ERROR_BAD_PARAMETER, "gzip decoding error");
           return false;
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
@@ -506,8 +491,8 @@ bool HttpCommTask::processRead(double startTime) {
         std::string uncompressed;
         if (!StringUtils::gzipDeflate(_readBuffer.c_str() + _bodyPosition,
                                       _bodyLength, uncompressed)) {
-          handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
-                            "gzip deflate error", 1);
+          addErrorResponse(rest::ResponseCode::BAD, _incompleteRequest->contentTypeResponse(), 1,
+                           TRI_ERROR_BAD_PARAMETER, "gzip deflate error");
           return false;
         }
         _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
@@ -529,7 +514,6 @@ bool HttpCommTask::processRead(double startTime) {
   }
 
   if (!handleRequest) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "Skipping request for now " << _peer->peerPort();
     return false;
   }
 
@@ -571,35 +555,38 @@ bool HttpCommTask::processRead(double startTime) {
   // header sent)
 
   // .............................................................................
+  // CORS
+  // .............................................................................
+  
+  // OPTIONS requests currently go unauthenticated
+  if (isOptionsRequest) {
+    // handle HTTP OPTIONS requests directly
+    processCorsOptions(std::move(_incompleteRequest));
+    _incompleteRequest.reset(nullptr);
+    return true;
+  }
+  
+  // .............................................................................
   // authenticate
   // .............................................................................
 
-  rest::ResponseCode authResult = authenticateRequest(_incompleteRequest.get());
-
-  // authenticated or an OPTIONS request. OPTIONS requests currently go
-  // unauthenticated
-  if (authResult == rest::ResponseCode::OK || isOptionsRequest) {
-    // handle HTTP OPTIONS requests directly
-    if (isOptionsRequest) {
-      processCorsOptions(std::move(_incompleteRequest));
-    } else {
+  // first scrape the auth headers and try to determine and authenticate the user
+  rest::ResponseCode authResult = handleAuthHeader(_incompleteRequest.get());
+  
+  // authenticated 
+  if (authResult != rest::ResponseCode::SERVER_ERROR) {
+    
+    // prepare execution will send an error message
+    RequestFlow cont = prepareExecution(*_incompleteRequest.get());
+    if (cont == RequestFlow::Continue) {
       processRequest(std::move(_incompleteRequest));
     }
-  } else if (authResult == rest::ResponseCode::NOT_FOUND) { // not found
-    handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
-  } else {  // not authenticated, might be because _users is out of sync    
-    ServerState::Mode mode = ServerState::serverMode();
-    if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
-      HttpResponse resp(rest::ResponseCode::SERVICE_UNAVAILABLE, leaseStringBuffer(0));
-      ReplicationFeature::prepareFollowerResponse(&resp, mode);
-      addResponse(resp, nullptr);
-    } else {
-      std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
-      HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
-      resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-      addResponse(resp, nullptr);
-    }
+    
+  } else {
+    std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
+    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
+    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    addResponse(resp, nullptr);
   }
 
   _incompleteRequest.reset(nullptr);
@@ -624,29 +611,6 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
           << (StringUtils::escapeUnicode(body)) << "\"";
     }
   }
-
-  // check for an HLC time stamp
-  bool found;
-  std::string const& timeStamp =
-      request->header(StaticStrings::HLCHeader, found);
-
-  if (found) {
-    uint64_t timeStampInt =
-        arangodb::basics::HybridLogicalClock::decodeTimeStamp(timeStamp);
-    if (timeStampInt != 0 && timeStampInt != UINT64_MAX) {
-      TRI_HybridLogicalClock(timeStampInt);
-    }
-  }
-
-  // check source
-  std::string const& source =
-      request->header(StaticStrings::ClusterCommSource, found);
-
-  if (found) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
-        << "\"http-request-source\",\"" << (void*)this << "\",\""
-        << source << "\"";
-  }
     
   // create a handler and execute
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
@@ -667,7 +631,8 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    handleSimpleError(rest::ResponseCode::LENGTH_REQUIRED, *request);
+    addSimpleResponse(rest::ResponseCode::LENGTH_REQUIRED, rest::ContentType::UNSET,
+                      1, VPackBuffer<uint8_t>());
     return false;
   }
 
@@ -684,8 +649,8 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    handleSimpleError(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE, *request,
-                      0);  // FIXME
+    addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE, rest::ContentType::UNSET,
+                      1, VPackBuffer<uint8_t>());
     return false;
   }
 
@@ -705,8 +670,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
   HttpResponse resp(rest::ResponseCode::OK, leaseStringBuffer(0));
 
-  resp.setHeaderNCIfNotSet(StaticStrings::Allow,
-                               StaticStrings::CorsMethods);
+  resp.setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "got CORS preflight request";
@@ -741,7 +705,7 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(
     rest::ResponseCode responseCode, uint64_t /* messageId */) {
-  return std::make_unique<HttpResponse>(responseCode,leaseStringBuffer(0));
+  return std::make_unique<HttpResponse>(responseCode, leaseStringBuffer(0));
 }
 
 void HttpCommTask::compactify() {
@@ -794,30 +758,6 @@ void HttpCommTask::resetState() {
   _readRequestBody = false;
 }
 
-rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
-  // first scape the auth headers and try to determine
-  // and authenticate the user
-  ResponseCode code = handleAuthHeader(request);
-  if (code != ResponseCode::SERVER_ERROR) {
-    // now populate the VocbaseContext
-    if (request->requestContext() == nullptr) {
-      bool res =
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
-      if (!res) {
-        return rest::ResponseCode::NOT_FOUND;
-      } else if (request->requestContext() == nullptr) {
-        return rest::ResponseCode::SERVER_ERROR;
-      }
-    }
-    
-    // will determine if the user can access this path
-    // checks db permissions and contains exceptions for the
-    // users API to allow logins
-    return GeneralCommTask::canAccessPath(request);
-  }
-  return code;
-}
-  
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
   bool found;
   std::string const& authStr =

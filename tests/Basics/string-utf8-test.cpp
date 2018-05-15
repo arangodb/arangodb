@@ -387,7 +387,7 @@ SECTION("tst_western_european") {
 SECTION("tst_char_length") {
   const char* test = "დახმარებისთვის";
 
-  CHECK((14) == (int) TRI_CharLengthUtf8String(test));
+  CHECK((14) == (int) TRI_CharLengthUtf8String(test, strlen(test)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1914,13 +1914,11 @@ void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  auto context = Thread::currentWorkContext();
-
-  if (context != nullptr) {
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
     result->Set(TRI_V8_ASCII_STRING(isolate, "user"),
-                TRI_V8_STD_STRING(isolate, context->_user));
-    result->Set(TRI_V8_ASCII_STRING(isolate, "database"),
-                TRI_V8_STD_STRING(isolate, context->_database));
+                TRI_V8_STD_STRING(isolate, exec->user()));
   }
 
   TRI_V8_RETURN(result);
@@ -1987,9 +1985,13 @@ static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                         arangodb::aql::QueryRegistry* queryRegistry,
-                         TRI_vocbase_t* vocbase, size_t threadNumber) {
+void TRI_InitV8VocBridge(
+    v8::Isolate* isolate,
+    v8::Handle<v8::Context> context,
+    arangodb::aql::QueryRegistry* queryRegistry,
+    TRI_vocbase_t& vocbase,
+    size_t threadNumber
+) {
   v8::HandleScope scope(isolate);
 
   // check the isolate
@@ -2004,7 +2006,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8g->_queryRegistry = queryRegistry;
 
   // register the database
-  v8g->_vocbase = vocbase;
+  v8g->_vocbase = &vocbase;
 
   // .............................................................................
   // generate the TRI_vocbase_t template
@@ -2059,9 +2061,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_InitV8IndexArangoDB(isolate, ArangoNS);
 
-  TRI_InitV8Collections(context, vocbase, v8g, isolate, ArangoNS);
-  TRI_InitV8Views(context, vocbase, v8g, isolate, ArangoNS);
-  TRI_InitV8Users(context, vocbase, v8g, isolate);
+  TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
+  TRI_InitV8Views(context, &vocbase, v8g, isolate, ArangoNS);
+  TRI_InitV8Users(context, &vocbase, v8g, isolate);
 
   TRI_InitV8cursor(context, v8g);
 
@@ -2117,7 +2119,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       isolate, TRI_V8_ASCII_STRING(isolate, "THROW_COLLECTION_NOT_LOADED"),
       JS_ThrowCollectionNotLoaded, true);
 
-  TRI_InitV8Replication(isolate, context, vocbase, threadNumber, v8g);
+  TRI_InitV8Replication(isolate, context, &vocbase, threadNumber, v8g);
 
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "COMPARE_STRING"),
@@ -2181,7 +2183,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // create global variables
   // .............................................................................
 
-  v8::Handle<v8::Object> v = WrapVocBase(isolate, vocbase);
+  v8::Handle<v8::Object> v = WrapVocBase(isolate, &vocbase);
+
   if (v.IsEmpty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory when initializing VocBase";
     FATAL_ERROR_ABORT();
@@ -2197,7 +2200,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()->ForceSet(TRI_V8_ASCII_STRING(isolate, "THREAD_NUMBER"),
                               v8::Number::New(isolate, (double)threadNumber),
                               v8::ReadOnly);
-  
+
   // whether or not statistics are enabled
   context->Global()->ForceSet(
       TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
@@ -2209,4 +2212,3 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   context->Global()->ForceSet(TRI_V8_ASCII_STRING(isolate, "_AQL"),
                               v8::Undefined(isolate), v8::DontEnum);
 }
-

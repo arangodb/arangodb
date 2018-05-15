@@ -28,7 +28,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/WorkMonitor.h"
 #include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -195,10 +194,6 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
   CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
-  // we do have a query string... pass query to WorkMonitor
-  AqlWorkStack work(
-    &(_guard.database()), _query->id(), _queryString.data(), _queryString.size()
-  );
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _queryString.substr(1024) << "'";
 

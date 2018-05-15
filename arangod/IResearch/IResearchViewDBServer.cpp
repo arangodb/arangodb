@@ -235,7 +235,8 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
       irs::string_ref const& key
   )->bool {
-    return key != StaticStrings::CollectionsField && key != StaticStrings::LinksField; // ignored fields
+    return key != StaticStrings::CollectionsField
+      && key != StaticStrings::LinksField; // ignored fields
   };
   arangodb::velocypack::Builder builder;
 
@@ -479,11 +480,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   }
 
   // TODO FIXME find a better way to look up an iResearch View
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* view = dynamic_cast<IResearchViewDBServer*>(wiew.get());
-  #else
-    auto* view = static_cast<IResearchViewDBServer*>(wiew.get());
-  #endif
+  auto* view = LogicalView::cast<IResearchViewDBServer>(wiew.get());
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
