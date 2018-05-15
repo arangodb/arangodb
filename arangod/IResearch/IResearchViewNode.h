@@ -143,7 +143,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief return the list of collections involved
-  std::deque<aql::Collection> const& collections() const noexcept {
+  std::vector<aql::Collection> const& collections() const noexcept {
     return _collections;
   }
 
@@ -193,9 +193,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::vector<IResearchSort> _sortCondition;
 
   /// @brief list of collections involved, need this for cluster
-  /// deque becuase aql::Collection can't be copied or moved
-  std::deque<aql::Collection> _collections;
-}; // EnumerateViewNode
+  std::vector<aql::Collection> _collections;
+}; // IResearchViewNode
 
 /// @brief class IResearchScatterNode
 class IResearchViewScatterNode final : public aql::ExecutionNode {

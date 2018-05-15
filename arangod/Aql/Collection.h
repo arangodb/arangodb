@@ -35,13 +35,12 @@ class Methods;
 namespace aql {
 
 struct Collection {
-  Collection& operator=(Collection const&) = delete;
-  Collection(Collection const&) = delete;
   Collection() = delete;
+  Collection(Collection const&) = default;
+  Collection& operator=(Collection const&) = delete;
 
   Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
-
-  ~Collection();
+  Collection(Collection&& rhs) noexcept;
 
   /// @brief set the current shard
   inline void setCurrentShard(std::string const& shard) {
@@ -56,7 +55,7 @@ struct Collection {
 
   /// @brief returns the name of the collection, translated for the sharding
   /// case. this will return currentShard if it is set, and name otherwise
-  std::string getName() const {
+  std::string const& getName() const {
     if (!currentShard.empty()) {
       // sharding case: return the current shard name instead of the collection
       // name
@@ -110,7 +109,6 @@ struct Collection {
   bool isSatellite() const;
 
  private:
-
   arangodb::LogicalCollection* collection;
 
   /// @brief currently handled shard. this is a temporary variable that will
@@ -118,7 +116,7 @@ struct Collection {
   std::string currentShard;
 
  public:
-  std::string const name;
+  std::string name; // FIXME create getter instead
   TRI_vocbase_t* vocbase;
   AccessMode::Type accessType;
   bool isReadWrite;

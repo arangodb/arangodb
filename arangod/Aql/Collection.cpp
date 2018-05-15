@@ -52,8 +52,23 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
   TRI_ASSERT(vocbase != nullptr);
 }
 
-/// @brief destroy a collection wrapper
-Collection::~Collection() {}
+Collection::Collection(Collection&& rhs) noexcept
+  : collection(rhs.collection),
+    currentShard(std::move(rhs.currentShard)),
+    name(std::move(rhs.name)),
+    vocbase(rhs.vocbase),
+    accessType(rhs.accessType),
+    isReadWrite(rhs.isReadWrite),
+    numDocuments(rhs.numDocuments) {
+  TRI_ASSERT(!name.empty());
+  TRI_ASSERT(vocbase != nullptr);
+
+  rhs.collection = nullptr;
+  rhs.vocbase = nullptr;
+  rhs.accessType = AccessMode::Type::NONE;
+  rhs.isReadWrite = false;
+  rhs.numDocuments = UNINITIALIZED;
+}
 
 
 /// @brief get the collection id

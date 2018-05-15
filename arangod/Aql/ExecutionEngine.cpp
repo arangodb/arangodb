@@ -383,15 +383,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
       }
     } else {
-#ifdef USE_IRESEARCH
-      if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
-        return false;
-      }
-#endif
-
       // on dbserver
       _dbserverParts.addNode(en);
-      if (nodeType == ExecutionNode::REMOTE) {
+      if (ExecutionNode::REMOTE == nodeType) {
         _isCoordinator = true;
         _coordinatorParts.openSnippet(en->id());
       }

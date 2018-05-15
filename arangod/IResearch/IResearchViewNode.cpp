@@ -39,6 +39,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Basics/StringUtils.h"
 
+#include "velocypack/Iterator.h"
+
 namespace {
 
 using namespace arangodb;
@@ -178,6 +180,29 @@ IResearchViewNode::IResearchViewNode(
       plan.getAst(), filterSlice
     );
   }
+
+  auto const collectionsSlice = base.get("collections");
+
+  if (!collectionsSlice.isArray()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "invalid 'IResearchViewNode' json format: unable to find 'collections' array";
+  }
+
+  TRI_ASSERT(plan.getAst() && plan.getAst()->query());
+  auto const* collections = plan.getAst()->query()->collections();
+  TRI_ASSERT(collections);
+
+  for (auto collectionSlice : velocypack::ArrayIterator(collectionsSlice)) {
+    auto const* collection = collections->get(collectionSlice.copyString());
+
+    if (!collection) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "invalid 'IResearchViewNode' json format: unable to find 'collections' array";
+      continue;
+    }
+
+    _collections.push_back(*collection);
+  }
 }
 
 void IResearchViewNode::planNodeRegisters(
@@ -253,6 +278,13 @@ void IResearchViewNode::toVelocyPackHelper(
   } else {
     nodes.openObject();
     nodes.close();
+  }
+
+  {
+    VPackArrayBuilder guard(&nodes, "collections");
+    for (auto& collection : _collections) {
+      nodes.add(VPackValue(collection.getName()));
+    }
   }
 
   nodes.add(VPackValue("sortCondition"));
