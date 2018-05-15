@@ -284,7 +284,7 @@ transaction::ContextData* MMFilesEngine::createTransactionContextData() {
 
 TransactionState* MMFilesEngine::createTransactionState(TRI_vocbase_t* vocbase,
                 transaction::Options const& options) {
-  return new MMFilesTransactionState(vocbase, options);
+  return new MMFilesTransactionState(vocbase, TRI_NewTickServer(), options);
 }
 
 TransactionCollection* MMFilesEngine::createTransactionCollection(

@@ -141,6 +141,13 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 }
 
 RestStatus RestWalAccessHandler::execute() {
+  if (ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+                  "'/_api/wal' is not yet supported in a cluster");
+    return RestStatus::DONE;
+  }
+  
   if (ExecContext::CURRENT == nullptr ||
       !ExecContext::CURRENT->isAdminUser()) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);

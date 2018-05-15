@@ -362,7 +362,7 @@ SECTION("searialize") {
     );
 
     arangodb::velocypack::Builder builder;
-    node.toVelocyPack(builder, true); // object with array of objects
+    node.toVelocyPack(builder, 0, false); // object with array of objects
 
     auto const slice = builder.slice();
     CHECK(slice.isObject());
@@ -595,7 +595,7 @@ SECTION("searialize") {
     );
 
     arangodb::velocypack::Builder builder;
-    node.toVelocyPack(builder, true); // object with array of objects
+    node.toVelocyPack(builder, 0, false); // object with array of objects
 
     auto const slice = builder.slice();
     CHECK(slice.isObject());

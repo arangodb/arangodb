@@ -620,7 +620,7 @@ transaction::Methods::Methods(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
     }
     
-    _state = _transactionContextPtr->getParentTransaction();
+    _state = parent;
     
     TRI_ASSERT(_state != nullptr);
     _state->increaseNesting();

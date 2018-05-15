@@ -51,8 +51,9 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 
 /// @brief transaction type
 MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase,
+                                                 TRI_voc_tid_t tid,
                                                  transaction::Options const& options)
-    : TransactionState(vocbase, options),
+    : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
       _hasOperations(false) {}
@@ -101,9 +102,6 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
 
     // set hints
     _hints = hints;
-
-    // get a new id
-    _id = TRI_NewTickServer();
 
     // register a protector
     int res = logfileManager->registerTransaction(_id, isReadOnlyTransaction());

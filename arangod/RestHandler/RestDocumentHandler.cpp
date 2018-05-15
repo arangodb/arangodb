@@ -112,14 +112,10 @@ bool RestDocumentHandler::createDocument() {
   }
 
   arangodb::OperationOptions opOptions;
-  opOptions.isRestore =
-      extractBooleanParameter(StaticStrings::IsRestoreString, false);
-  opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.returnNew =
-      extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
+  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -371,18 +367,12 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   OperationOptions opOptions;
-  opOptions.isRestore =
-      extractBooleanParameter(StaticStrings::IsRestoreString, false);
-  opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.returnNew =
-      extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  opOptions.returnOld =
-      extractBooleanParameter(StaticStrings::ReturnOldString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
+  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
+  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
+  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -439,9 +429,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   if (isPatch) {
     // patching an existing document
     opOptions.keepNull =
-        extractBooleanParameter(StaticStrings::KeepNullString, true);
+        _request->parsedValue(StaticStrings::KeepNullString, true);
     opOptions.mergeObjects =
-        extractBooleanParameter(StaticStrings::MergeObjectsString, true);
+        _request->parsedValue(StaticStrings::MergeObjectsString, true);
     result = trx.update(collectionName, body, opOptions);
   } else {
     result = trx.replace(collectionName, body, opOptions);
@@ -503,13 +493,13 @@ bool RestDocumentHandler::deleteDocument() {
 
   OperationOptions opOptions;
   opOptions.returnOld =
-      extractBooleanParameter(StaticStrings::ReturnOldString, false);
+      _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+      _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+      _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -598,8 +588,7 @@ bool RestDocumentHandler::readManyDocuments() {
   std::string const& collectionName = suffixes[0];
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
   auto ctx = transaction::StandaloneContext::Create(&_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName,

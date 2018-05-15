@@ -1479,24 +1479,25 @@ size_t TransactionStateMock::abortTransactionCount;
 size_t TransactionStateMock::beginTransactionCount;
 size_t TransactionStateMock::commitTransactionCount;
 
+static std::atomic<TRI_voc_tid_t> lastId(0);
+
+// ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options)
-  : TransactionState(vocbase, options) {
+  : TransactionState(vocbase, ++lastId, options) {
 }
 
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
-  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
 
   return arangodb::Result();
 }
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
-  static std::atomic<TRI_voc_tid_t> lastId(0);
 
   ++beginTransactionCount;
-  _id = ++lastId; // ensure each transaction state has a unique ID
   useCollections(_nestingLevel);
   updateStatus(arangodb::transaction::Status::RUNNING);
   return arangodb::Result();
@@ -1506,7 +1507,7 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
-  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
 
   return arangodb::Result();
 }

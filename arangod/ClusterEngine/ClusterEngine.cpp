@@ -22,7 +22,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine.h"
+#include "ClusterEngine.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -34,8 +34,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/build.h"
-#include "Cache/CacheManagerFeature.h"
-#include "Cache/Manager.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -44,50 +42,10 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RocksDBEngine/RocksDBAqlFunctions.h"
-#include "RocksDBEngine/RocksDBBackgroundThread.h"
-#include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
-#include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBComparator.h"
-#include "RocksDBEngine/RocksDBIncrementalSync.h"
-#include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBIndexFactory.h"
-#include "RocksDBEngine/RocksDBKey.h"
-#include "RocksDBEngine/RocksDBLogValue.h"
-#include "RocksDBEngine/RocksDBOptimizerRules.h"
-#include "RocksDBEngine/RocksDBPrefixExtractor.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "RocksDBEngine/RocksDBReplicationManager.h"
-#include "RocksDBEngine/RocksDBReplicationTailing.h"
-#include "RocksDBEngine/RocksDBRestHandlers.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "RocksDBEngine/RocksDBThrottle.h"
-#include "RocksDBEngine/RocksDBTransactionCollection.h"
-#include "RocksDBEngine/RocksDBTransactionContextData.h"
-#include "RocksDBEngine/RocksDBTransactionManager.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
-#include "RocksDBEngine/RocksDBTypes.h"
-#include "RocksDBEngine/RocksDBV8Functions.h"
-#include "RocksDBEngine/RocksDBValue.h"
-#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
 #include "VocBase/ticks.h"
 #include "VocBase/LogicalView.h"
-
-#include <rocksdb/convenience.h>
-#include <rocksdb/db.h>
-#include <rocksdb/env.h>
-#include <rocksdb/filter_policy.h>
-#include <rocksdb/iterator.h>
-#include <rocksdb/options.h>
-#include <rocksdb/slice_transform.h>
-#include <rocksdb/statistics.h>
-#include <rocksdb/table.h>
-#include <rocksdb/transaction_log.h>
-#include <rocksdb/utilities/transaction_db.h>
-#include <rocksdb/write_batch.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -98,39 +56,14 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-std::string const RocksDBEngine::EngineName("rocksdb");
-std::string const RocksDBEngine::FeatureName("RocksDBEngine");
-
-// static variables for all existing column families
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_definitions(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_documents(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_primary(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_edge(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpack(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
-rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
-std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
+std::string const RocksDBEngine::FeatureName("ClusterEngine");
 
 static constexpr uint64_t databaseIdForGlobalApplier = 0;
 
-// handles for recovery helpers
-std::vector<std::shared_ptr<RocksDBRecoveryHelper>>
-    RocksDBEngine::_recoveryHelpers;
 
 // create the storage engine
-RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
-      _db(nullptr),
-      _vpackCmp(new RocksDBVPackComparator()),
-      _walAccess(new RocksDBWalAccess()),
-      _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
-      _intermediateCommitSize(
-          transaction::Options::defaultIntermediateCommitSize),
-      _intermediateCommitCount(
-          transaction::Options::defaultIntermediateCommitCount),
-      _pruneWaitTime(10.0),
-      _releasedTick(0),
-      _useThrottle(true) {
+ClusterEngine::ClusterEngine(application_features::ApplicationServer* server)
+    : StorageEngine(server, EngineName, FeatureName, new ClusterIndexFactory()) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");

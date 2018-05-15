@@ -90,7 +90,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(
     arangodb::velocypack::Builder&,
-    bool
+    unsigned
   ) const override final;
 
   /// @brief clone ExecutionNode recursively
@@ -220,7 +220,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(
     arangodb::velocypack::Builder&,
-    bool
+    unsigned
   ) const override final;
 
   /// @brief creates corresponding ExecutionBlock

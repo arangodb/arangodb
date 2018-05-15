@@ -297,6 +297,14 @@ SET(ARANGOD_SOURCES
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/v8-cluster.cpp
+  ClusterEngine/ClusterAqlFunctions.cpp
+  ClusterEngine/ClusterCollection.cpp
+  ClusterEngine/ClusterEngine.cpp
+  ClusterEngine/ClusterIndex.cpp
+  ClusterEngine/ClusterIndexFactory.cpp
+  ClusterEngine/ClusterRestReplicationHandler.cpp
+  ClusterEngine/ClusterTransactionContextData.h
+  ClusterEngine/ClusterTransactionState.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralCommTask.cpp
