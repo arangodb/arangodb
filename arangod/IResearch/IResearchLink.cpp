@@ -208,15 +208,20 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false; // failed to parse metadata
   }
 
-  auto const identifier = IResearchLinkHelper::getView(definition);
+  if (!collection()
+      || !definition.isObject()
+      || !definition.hasKey(StaticStrings::ViewIdField)
+      || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "error finding view for link '" << _id << "'";
+    TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
-  if (collection() && !identifier.isNone()) {
-    if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
-      auto viewId = identifier.getUInt();
+    return false;
+  }
 
+  auto identifier = definition.get(StaticStrings::ViewIdField);
+  auto viewId = identifier.getNumber<uint64_t>();
       auto& vocbase = collection()->vocbase();
-
-      // NOTE: this will cause a deadlock if registering a link while view is being created
       auto logicalView = vocbase.lookupView(viewId);
 
       if (!logicalView
@@ -285,16 +290,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
           _defaultId = _wiew ? _wiew->id() : _view->id();
         }
       }
-    }
 
     return true;
-  }
-
-  LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-    << "error finding view for link '" << _id << "'";
-  TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-
-  return false;
 }
 
 Result IResearchLink::insert(
@@ -347,18 +344,27 @@ bool IResearchLink::json(
   }
 
   builder.add("id", VPackValue(std::to_string(_id)));
-  IResearchLinkHelper::setType(builder);
+  builder.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(IResearchLinkHelper::type())
+  );
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
   if (_wiew) {
-    IResearchLinkHelper::setView(builder, _wiew->id());
+    builder.add(
+      StaticStrings::ViewIdField, arangodb::velocypack::Value(_wiew->id())
+    );
   } else if (_view) {
-    IResearchLinkHelper::setView(builder, _view->id());
+    builder.add(
+      StaticStrings::ViewIdField, arangodb::velocypack::Value(_view->id())
+    );
   } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
   //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
-    IResearchLinkHelper::setView(builder, _defaultId);
+    builder.add(
+      StaticStrings::ViewIdField, arangodb::velocypack::Value(_defaultId)
+    );
   }
 
   return true;
@@ -372,14 +378,14 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  auto const identifier = IResearchLinkHelper::getView(slice);
-
-  if (!identifier.isNone()) {
+  if (slice.isObject() && slice.hasKey(StaticStrings::ViewIdField)) {
     if (!_view) {
       return false; // slice has identifier but the current object does not
     }
 
+    auto identifier = slice.get(StaticStrings::ViewIdField);
     auto viewId = _wiew ? _wiew->id() : _view->id();
+
     if (!identifier.isNumber()
         || uint64_t(identifier.getInt()) != identifier.getUInt()
         || identifier.getUInt() != viewId) {
