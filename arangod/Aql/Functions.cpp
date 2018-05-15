@@ -6537,7 +6537,7 @@ AqlValue Functions::Fail(arangodb::aql::Query* query, transaction::Methods* trx,
 }
 
 
-typedef std::function<std::string(std::string&, tp_sys_clock_ms const&)>  format_func_t;
+typedef void(*format_func_t)(std::string& wrk, tp_sys_clock_ms const&);
 typedef std::unordered_map<std::string,format_func_t> dateMapType;
 std::unordered_map<std::string,format_func_t> dateMap;
 
@@ -6548,7 +6548,7 @@ std::string tail(std::string const& source, size_t const length) {
   return source.substr(source.size() - length);
 } // tail
 
-std::vector<std::string> monthNames = {
+std::vector<std::string> const monthNames = {
   "January",
   "February",
   "March",
@@ -6563,7 +6563,7 @@ std::vector<std::string> monthNames = {
   "December"
 };
 
-std::vector<std::string> monthNamesShort = {
+std::vector<std::string> const monthNamesShort = {
   "Jan",
   "Feb",
   "Mar",
@@ -6582,7 +6582,7 @@ std::vector<std::string> monthNamesShort = {
 // / @brief English weekday names
 // //////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> weekDayNames = {
+std::vector<std::string> const weekDayNames = {
   "Sunday",
   "Monday",
   "Tuesday",
@@ -6592,7 +6592,7 @@ std::vector<std::string> weekDayNames = {
   "Saturday"
 };
 
-std::vector<std::string> weekDayNamesShort = {
+std::vector<std::string> const weekDayNamesShort = {
   "Sun",
   "Mon",
   "Tue",
@@ -6603,109 +6603,154 @@ std::vector<std::string> weekDayNamesShort = {
 };
 
 std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
-  {"%&", [](std::string& wrk, tp_sys_clock_ms const& tp) { return ""; }}, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+  {"%&", [](std::string& wrk, tp_sys_clock_ms const& tp) { }}, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
   // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
   {"%yyyyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
       if (yearnum < 0) {
         if (yearnum > -10) {
-          return std::string("-00000") + std::to_string(abs(yearnum));
+          wrk.append("-00000");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
         }
         if (yearnum > -100) {
-          return std::string("-0000") + std::to_string(abs(yearnum));
+          wrk.append("-0000");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
         }
         if (yearnum > -1000) {
-          return std::string("-000") + std::to_string(abs(yearnum));
+          wrk.append("-000");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
         }
         if (yearnum > -10000) {
-          return std::string("-00") + std::to_string(abs(yearnum));
+          wrk.append("-00");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
         }
         if (yearnum > -100000) {
-          return std::string("-0") + std::to_string(abs(yearnum));
+          wrk.append("-0");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
         }
-        return std::string("-") + std::to_string(abs(yearnum));
+        wrk.append("-");
+        wrk.append(std::to_string(abs(yearnum)));
+        return;
       }
       if (yearnum > 99999) {
-        return std::to_string(yearnum);
+        wrk.append(std::to_string(yearnum));
+        return;
       }
       if (yearnum > 9999) {
-        return std::string("+0") + std::to_string(yearnum);
+        wrk.append("+0");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
       if (yearnum > 999) {
-        return std::string("+00") + std::to_string(yearnum);
+        wrk.append("+00");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
       if (yearnum > 99) {
-        return std::string("+000") + std::to_string(yearnum);
+        wrk.append("+000");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
       if (yearnum > 9) {
-        return std::string("+0000") + std::to_string(yearnum);
+        wrk.append("+0000");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
       if (yearnum >= 0) {
-        return std::string("+00000") + std::to_string(yearnum);
+        wrk.append("+00000");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
-      return std::string("+") + std::to_string(yearnum);
+      wrk.append("+");
+      wrk.append(std::to_string(yearnum));
+      return;
     }},
   {"%mmmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
-      return monthNames[static_cast<uint64_t>((unsigned)ymd.month()) - 1];
+      wrk.append(monthNames[static_cast<uint64_t>((unsigned)ymd.month()) - 1]);
     }},
   {"%yyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
       if (yearnum < 0) {
         if (yearnum > -10) {
-          return std::string("-000") + std::to_string(abs(yearnum));
+          wrk.append("-000");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
         }
         if (yearnum > -100) {
-          return std::string("-00") + std::to_string(abs(yearnum));
+          wrk.append("-00");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
         }
         if (yearnum > -1000) {
-          return std::string("-0") + std::to_string(abs(yearnum));
+          wrk.append("-0");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
         }
-        return std::string("-") + std::to_string(abs(yearnum));
+        wrk.append("-");
+        wrk.append(std::to_string(abs(yearnum)));
+        return;
       }
       if (yearnum < 0) {
-        return std::string("0000") + std::to_string(yearnum);
+        wrk.append("0000");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
 
       if (yearnum < 9) {
-        return std::string("000") + std::to_string(yearnum);
+        wrk.append("000");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
       if (yearnum < 99) {
-        return std::string("00") + std::to_string(yearnum);
+        wrk.append("00");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
       if (yearnum < 999) {
-        return std::string("0") + std::to_string(yearnum);
+        wrk.append("0");
+        wrk.append(std::to_string(yearnum));
+        return;
       }
 
       std::string yearstr(std::to_string(yearnum));
-      return tail(yearstr, 4);
+      wrk.append(tail(yearstr, 4));
     }},
 
   {"%wwww", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       weekday wd{floor<days>(tp)};
-      return weekDayNames[static_cast<uint64_t>(unsigned(wd))];
+      wrk.append(weekDayNames[static_cast<uint64_t>(unsigned(wd))]);
     }},
 
   {"%mmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
-      return monthNamesShort[static_cast<uint64_t>((unsigned)ymd.month()) - 1];
+      wrk.append(monthNamesShort[static_cast<uint64_t>((unsigned)ymd.month()) - 1]);
     }},
   {"%www", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       weekday wd{floor<days>(tp)};
-      return weekDayNamesShort[static_cast<uint64_t>(unsigned(wd))];
+      wrk.append(weekDayNamesShort[static_cast<uint64_t>(unsigned(wd))]);
     }},
   {"%fff", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto day_time = make_time(tp - floor<days>(tp));
       uint64_t millis = day_time.subseconds().count();
       if (millis < 10) {
-        return std::string("00") + std::to_string(millis);
+        wrk.append("00");
+        wrk.append(std::to_string(millis));
+        return;
       }
       if (millis < 100) {
-        return std::string("0") + std::to_string(millis);
+        wrk.append("0");
+        wrk.append(std::to_string(millis));
+        return;
       }
-      return std::to_string(millis);
+      wrk.append(std::to_string(millis));
     }},
   {"%xxx", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
@@ -6713,12 +6758,16 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
       auto firstDayInYear = yyyy / 1 / 0;
       uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
       if (daysSinceFirst < 10) {
-        return std::string("00") + std::to_string(daysSinceFirst);
+        wrk.append("00");
+        wrk.append(std::to_string(daysSinceFirst));
+        return;
       }
       if (daysSinceFirst < 100) {
-        return std::string("0") + std::to_string(daysSinceFirst);
+        wrk.append("0");
+        wrk.append(std::to_string(daysSinceFirst));
+        return;
       }
-      return std::to_string(daysSinceFirst);
+      wrk.append(std::to_string(daysSinceFirst));
     }},
   
   // there"s no really sensible way to handle negative years, but better not drop the sign
@@ -6726,135 +6775,157 @@ std::vector<std::pair<std::string,format_func_t>> sortedDateMap = {
       auto ymd = year_month_day(floor<days>(tp));
       auto yearnum = static_cast<int64_t>((int)year{ymd.year()});
       if (yearnum < 10 && yearnum > -10) {
-        return std::string("0") + std::to_string(abs(yearnum));
+        wrk.append("0");
+        wrk.append(std::to_string(abs(yearnum)));
+        return;
       }
       std::string yearstr(std::to_string(abs(yearnum)));
-      return tail(yearstr, 2);
+      wrk.append(tail(yearstr, 2));
     }},
   {"%mm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto month = (unsigned)ymd.month();
       if (month < 10) {
-        return std::string("0") + std::to_string(month);
+        wrk.append("0");
+        wrk.append(std::to_string(month));
+        return;
       }
-      return std::to_string(static_cast<uint64_t>(month));
+      wrk.append(std::to_string(static_cast<uint64_t>(month)));
     }},
   {"%dd", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto day = (unsigned)ymd.day();
       if (day < 10) {
-        return std::string("0") + std::to_string(day);
+        wrk.append("0");
+        wrk.append(std::to_string(day));
       }
-      return std::to_string(static_cast<uint64_t>(day));
+      else {
+        wrk.append(std::to_string(static_cast<uint64_t>(day)));
+      }
     }},
   {"%hh", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto day_time = make_time(tp - floor<days>(tp));
       uint64_t hours = day_time.hours().count();
       if (hours < 10) {
-        return std::string("0") + std::to_string(hours);
+        wrk.append("0");
+        wrk.append(std::to_string(hours));
+        return;
       }
-      return std::to_string(hours);
+      wrk.append(std::to_string(hours));
     }},
   {"%ii", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto day_time = make_time(tp - floor<days>(tp));
       uint64_t minutes = day_time.minutes().count();
       if (minutes < 10) {
-        return std::string("0") + std::to_string(minutes);
+        wrk.append("0");
+        wrk.append(std::to_string(minutes));
+        return;
       }
-      return std::to_string(minutes);
+      wrk.append(std::to_string(minutes));
     }},
   {"%ss", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto day_time = make_time(tp - floor<days>(tp));
       uint64_t seconds = day_time.seconds().count();
       if (seconds < 10) {
-        return std::string("0") + std::to_string(seconds);
+        wrk.append("0");
+        wrk.append(std::to_string(seconds));
       }
-      return std::to_string(seconds);
+      else {
+        wrk.append(std::to_string(seconds));
+      }
     }},
   {"%kk", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       iso_week::year_weeknum_weekday yww{floor<days>(tp)};
       uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
       if (isoWeek < 10) {
-        return std::string("0") + std::to_string(isoWeek);
+        wrk.append("0");
+        wrk.append(std::to_string(isoWeek));
       }
-      return std::to_string(isoWeek);
+      else {
+        wrk.append(std::to_string(isoWeek));
+      }
     }},
   
   {"%t", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto diffDuration = tp - unix_epoch;
       auto diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
-      return std::to_string(static_cast<int64_t>(std::round(diff)));
+      wrk.append(std::to_string(static_cast<int64_t>(std::round(diff))));
     }},
   {"%z", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       std::string formatted = format("%FT%TZ", floor<milliseconds>(tp));
-      return formatted;
+      wrk.append(formatted);
     }},
   {"%w", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       weekday wd{floor<days>(tp)};
-      return std::to_string(static_cast<uint64_t>(unsigned(wd)));
+      wrk.append(std::to_string(static_cast<uint64_t>(unsigned(wd))));
     }},
   {"%y", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
-      return std::to_string(static_cast<int64_t>((int)year{ymd.year()}));
+      wrk.append(std::to_string(static_cast<int64_t>((int)year{ymd.year()})));
     }},
   {"%m", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
-      return std::to_string(static_cast<uint64_t>((unsigned)ymd.month()));
+      wrk.append(std::to_string(static_cast<uint64_t>((unsigned)ymd.month())));
     }},
   {"%d", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
-      return std::to_string(static_cast<uint64_t>((unsigned)ymd.day()));
+      wrk.append(std::to_string(static_cast<uint64_t>((unsigned)ymd.day())));
     }},
   {"%h", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto day_time = make_time(tp - floor<days>(tp));
       uint64_t hours = day_time.hours().count();
-      return std::to_string(hours);
+      wrk.append(std::to_string(hours));
     }},
   {"%i", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto day_time = make_time(tp - floor<days>(tp));
       uint64_t minutes = day_time.minutes().count();
-      return std::to_string(minutes);
+      wrk.append(std::to_string(minutes));
     }},
   {"%s", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto day_time = make_time(tp - floor<days>(tp));
       uint64_t seconds = day_time.seconds().count();
-      return std::to_string(seconds);
+      wrk.append(std::to_string(seconds));
     }},
   {"%f", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto day_time = make_time(tp - floor<days>(tp));
       uint64_t millis = day_time.subseconds().count();
-      return std::to_string(millis);
+      wrk.append(std::to_string(millis));
     }},
   {"%x", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto yyyy = year{ymd.year()};
       auto firstDayInYear = yyyy / 1 / 0;
       uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
-      return std::to_string(daysSinceFirst);
+      wrk.append(std::to_string(daysSinceFirst));
     }},
   {"%k", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       iso_week::year_weeknum_weekday yww{floor<days>(tp)};
       uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
-      return std::to_string(isoWeek);
+      wrk.append(std::to_string(isoWeek));
     }},
   {"%l", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       year_month_day ymd{floor<days>(tp)};
-      return (ymd.year().is_leap())? std::string("1"): std::string("0");
+      if (ymd.year().is_leap()) {
+        wrk.append("1");
+      }
+      else {
+        wrk.append("0");
+      }
   }},
   {"%q", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       year_month_day ymd{floor<days>(tp)};
       month m = ymd.month();
       uint64_t part = static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
       TRI_ASSERT(part <= 4);
-      return std::to_string(part);
+      wrk.append(std::to_string(part));
     }},
   {"%a", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day{floor<days>(tp)};
       auto lastMonthDay = ymd.year() / ymd.month() / last;
-      return std::to_string(static_cast<uint64_t>(unsigned(lastMonthDay.day())));
+      wrk.append(std::to_string(static_cast<uint64_t>(unsigned(lastMonthDay.day()))));
     }},
-  {"%%", [](std::string& wrk, tp_sys_clock_ms const& tp) { return std::string("%"); }},
-  {"%", [](std::string& wrk, tp_sys_clock_ms const& tp) { return ""; }}
+  {"%%", [](std::string& wrk, tp_sys_clock_ms const& tp) { wrk.append("%"); }},
+  {"%", [](std::string& wrk, tp_sys_clock_ms const& tp) { }}
 };
 
 std::string regex_replace(std::string const& search,
@@ -6881,8 +6952,7 @@ std::string regex_replace(std::string const& search,
       s.append(endOfLastMatch, startOfThisMatch);
       auto got = dateMap.find(match.str(0));
       if (got != dateMap.end()) {
-        std::string sanotehu;
-        s.append(got->second(sanotehu, tp));
+        got->second(s, tp);
       }
       auto lengthOfMatch = match.length(0);
 
