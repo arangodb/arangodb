@@ -1400,3 +1400,8 @@ exception from the GPL license:
 
 * GitHub: https://github.com/evanplaice/jquery-csv
 * License: [MIT License](https://github.com/evanplaice/jquery-csv)
+
+#### Leaflet.js
+
+* GitHub: https://github.com/Leaflet/Leaflet
+* License: [BSD-style 2-Clause License](https://github.com/Leaflet/Leaflet/blob/master/LICENSE)
