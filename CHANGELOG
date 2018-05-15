@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed Foxx queues bug when queues are created in a request handler with an
+  ArangoDB authentication header
+
 * added startup option `--log.escape`
 
   This option toggles the escaping of log output. 
