@@ -2214,7 +2214,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     }
     TRI_GET_GLOBAL_STRING(ReturnOldKey);
     if (optionsObject->Has(ReturnOldKey)) {
-      options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey)) && options.overwrite;
+      options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey)) && options.overwrite;
     }
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (optionsObject->Has(IsRestoreKey)) {
@@ -2292,7 +2292,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     transactionContext, collection->id(), AccessMode::Type::WRITE
   );
 
-  if (!payloadIsArray) {
+  if (!payloadIsArray && !options.overwrite) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 

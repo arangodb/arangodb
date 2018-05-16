@@ -1225,7 +1225,7 @@ Result createDocumentOnCoordinator(
 
   // the cluster operation was OK, however,
   // the DBserver could have reported an error.
-  return TRI_ERROR_NO_ERROR;
+  return Result{};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

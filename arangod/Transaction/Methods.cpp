@@ -701,6 +701,7 @@ void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, TRI_voc_cid_t cid,
     StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
+
   std::string temp; // TODO: pass a string into this function
   temp.reserve(64);
 
@@ -1456,7 +1457,7 @@ OperationResult transaction::Methods::insertLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
       }
     }
-  } // isDBServer
+  } // isDBServer - early block
 
   if (options.returnNew) {
     pinData(cid);  // will throw when it fails
@@ -1470,25 +1471,27 @@ OperationResult transaction::Methods::insertLocal(
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
 
-    ManagedDocumentResult result;
+    ManagedDocumentResult documentResult;
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
 
     auto const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
 
-    Result res = collection->insert( this, value, result, options
+    Result res = collection->insert( this, value, documentResult, options
                                    , resultMarkerTick, needsLock, revisionId
                                    );
 
+    ManagedDocumentResult previousDocumentResult; // return OLD
+    TRI_voc_rid_t previousRevisionId = 0;
     if(options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)){
       // RepSert Case - unique_constraint violated -> maxTick has not changed -> try replace
       resultMarkerTick = 0;
-      TRI_voc_rid_t revision;
-      ManagedDocumentResult previousDocumentResult; // return OLD/NEW?
-      res = collection->replace( this, value, result, options
-                               , resultMarkerTick, needsLock, revision
+      res = collection->replace( this, value, documentResult, options
+                               , resultMarkerTick, needsLock, previousRevisionId
                                , previousDocumentResult);
-
+      if(res.ok()){
+         revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
+      }
     }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
@@ -1501,16 +1504,28 @@ OperationResult transaction::Methods::insertLocal(
       return res;
     }
 
+
+
     if (!options.silent || _state->isDBServer()) {
-      TRI_ASSERT(!result.empty());
+      TRI_ASSERT(!documentResult.empty());
 
-      StringRef keyString(transaction::helpers::extractKeyFromDocument(
-          VPackSlice(result.vpack())));
+        StringRef keyString(transaction::helpers::extractKeyFromDocument(
+        VPackSlice(documentResult.vpack())));
 
-      buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
-                            0, nullptr, options.returnNew ? &result : nullptr);
+        bool showReplaced = false;
+        if(options.returnOld && previousRevisionId){
+          showReplaced = true;
+        }
+
+        if(showReplaced){
+          TRI_ASSERT(!previousDocumentResult.empty());
+        }
+
+        buildDocumentIdentity(collection, resultBuilder
+                             ,cid, keyString, revisionId ,previousRevisionId
+                             ,showReplaced ? &previousDocumentResult : nullptr
+                             ,options.returnNew ? &documentResult : nullptr);
     }
-
     return Result();
   };
 
@@ -1858,7 +1873,7 @@ OperationResult transaction::Methods::modifyLocal(
     }
 
     return res;  // must be ok!
-  };
+  }; // workForOneDocument
   ///////////////////////
 
   bool multiCase = newValue.isArray();

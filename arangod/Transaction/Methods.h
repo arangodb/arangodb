@@ -405,6 +405,8 @@ class Methods {
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
+
+  //SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              VPackBuilder& builder, TRI_voc_cid_t cid,
                              StringRef const& key, TRI_voc_rid_t rid,
