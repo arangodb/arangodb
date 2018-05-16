@@ -97,9 +97,9 @@ following variants are available:
 
 The default *value* is 5 (TLSv1.2).
 
-Note that SSLv2 is unsupported as of ArangoDB 3.4, because of the inherent 
+Note that SSLv2 is unsupported as of ArangoDB 3.3.9, because of the inherent 
 security vulnerabilities in this protocol. Selecting SSLv2 as protocol will
-abort the startup.
+abort the startup and requires switching to a different protocol.
 
 ### SSL cache
 
