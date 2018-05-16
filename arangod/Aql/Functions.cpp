@@ -2518,76 +2518,43 @@ AqlValue Functions::DateFromParameters(
       }
     }
 
-    // Parse the Year
     years y{ExtractFunctionParameterValue(parameters, 0).toInt64(trx)};
-    if (y < years{0}) {
-      RegisterWarning(query, AFN,
-                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    // Parse the Month
     months m{ExtractFunctionParameterValue(parameters, 1).toInt64(trx)};
-    if (m < months{0}) {
-      RegisterWarning(query, AFN,
-                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    // Parse the Day
     days d{ExtractFunctionParameterValue(parameters, 2).toInt64(trx)};
-    if (d < days{0}) {
-      RegisterWarning(query, AFN,
-                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+
+    if ( (y < years{0}) || (m < months{0}) || (d < days {0}) ) {
+      RegisterWarning(query, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
-
     year_month_day ymd = year{y.count()} / m.count() / d.count();
 
-    // Parse the Hour
+    // Parse the time
     hours h(0);
+    minutes min(0);
+    seconds s(0);
+    milliseconds ms(0);
+
     if (parameters.size() >= 4) {
       h = hours((ExtractFunctionParameterValue(parameters, 3).toInt64(trx)));
-      if (h < hours{0}) {
-        RegisterWarning(query, AFN,
-                        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
     }
-
-    // Parse the Minutes
-    minutes min(0);
     if (parameters.size() >= 5) {
-      min =
-          minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
-      if (min < minutes{0}) {
-        RegisterWarning(query, AFN,
-                        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
+      min = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx))); 
     }
-
-    // Parse the Seconds
-    seconds s(0);
     if (parameters.size() >= 6) {
       s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
-      if (s < seconds{0}) {
-        RegisterWarning(query, AFN,
-                        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
     }
-
-    // Parse the Millis
-    milliseconds ms(0);
     if (parameters.size() == 7) {
       ms = milliseconds(
           (ExtractFunctionParameterValue(parameters, 6).toInt64(trx)));
-      if (ms < milliseconds{0}) {
-        RegisterWarning(query, AFN,
-                        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
+    }
+
+    if ((h < hours{0}) ||
+        (min < minutes{0}) ||
+        (s < seconds{0}) ||
+        (ms < milliseconds{0})) {
+      RegisterWarning(query, AFN,
+                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
     }
 
     time = sys_days(ymd).time_since_epoch();
@@ -2776,6 +2743,7 @@ AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
 
   auto ymd = year_month_day(floor<days>(tp));
   auto yyyy = year{ymd.year()};
+  // we construct the date with the first day in the year:
   auto firstDayInYear = yyyy / 1 / 0;
   uint64_t daysSinceFirst =
       duration_cast<days>(tp - sys_days(firstDayInYear)).count();
@@ -6751,6 +6719,7 @@ std::vector<std::pair<std::string,format_func_t>> const sortedDateMap = {
   {"%xxx", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto yyyy = year{ymd.year()};
+      // we construct the date with the first day in the year:
       auto firstDayInYear = yyyy / 1 / 0;
       uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
       if (daysSinceFirst < 10) {
@@ -6894,6 +6863,7 @@ std::vector<std::pair<std::string,format_func_t>> const sortedDateMap = {
   {"%x", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
       auto yyyy = year{ymd.year()};
+      // We construct the date with the first day in the year:
       auto firstDayInYear = yyyy / 1 / 0;
       uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
       wrk.append(std::to_string(daysSinceFirst));
