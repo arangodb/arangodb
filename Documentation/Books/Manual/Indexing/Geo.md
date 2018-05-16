@@ -1,30 +1,29 @@
 Geo-Spatial Indexes
-===========
+===================
 
-This is an introduction to ArangoDB's geospatial indexes.
-
-ArangoDB features an [Google S2](http://s2geometry.io/) based geospatial index.
-We support indexing on a subset of the **GeoJSON** standard (as well as simple
-latitude longitude pairs),  for more information see the [GeoJSON
-section](#GeoJSON).
+ArangoDB features a [Google S2](http://s2geometry.io/) based geospatial index.
+We support indexing on a subset of the [**GeoJSON**](#GeoJSON) standard
+(as well as simple latitude longitude pairs).
 
 AQL's geospatial utility functions are described in [Geo
 functions](../../AQL/Functions/Geo.html). Helper functions to easily create
 GeoJSON objects are described in [GeoJSON
 Constructors](../../AQL/Functions/GeoConstructors.html).
 
-### Using a Geo-Spatial Index
+Using a Geo-Spatial Index
+-------------------------
 
 The geospatial index supports containment and intersection
-queries on a various geometric 2D shapes. You should be mainly using AQL queries
+queries for various geometric 2D shapes. You should be mainly using AQL queries
 to perform these types of operations. The index can operate in **two different
 modes**, depending on if you want to use the GeoJSON data-format or not. The modes
 are mainly toggled by using the `geoJson` field when creating the index.
 
-This index assumes coordinates that the latitude is between -90 and 90 degree and the longitude is between -180 and 180 degree. A geo index will ignore all 
-documents which do not fulfil these requirements.
+This index assumes coordinates with the latitude between -90 and 90 degrees and the
+longitude between -180 and 180 degrees. A geo index will ignore all 
+documents which do not fulfill these requirements.
 
-#### GeoJSON Mode
+### GeoJSON Mode
 
 To create an index in GeoJSON mode execute:
 
@@ -48,7 +47,7 @@ In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
 
-#### Non-GeoJSON mode
+### Non-GeoJSON mode
 
 This index mode exclusively supports indexing on coordinate arrays. Values that
 contain GeoJSON or other types of data will be ignored. In the non-GeoJSON mode
@@ -69,7 +68,7 @@ Alternatively you can specify only one field:
 
 `collection.ensureIndex({ type: "geo", fields: [ "location" ], geoJson:false })`
 
-Creates a geospatial index on all documents using *location* as the path to the
+It creates a geospatial index on all documents using *location* as the path to the
 coordinates. The value of the attribute has to be an array with at least two
 numeric values. The array must contain the latitude (first value) and the
 longitude (second value).
@@ -84,9 +83,10 @@ details, including the index-identifier, is returned.
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-### Indexed GeoSpatial Queries
+Indexed GeoSpatial Queries
+--------------------------
 
-The geospatial index supports a variety of AQL queries, which can build with the help
+The geospatial index supports a variety of AQL queries, which can be built with the help
 of the [geo utility functions](../../AQL/Functions/Geo.html). There are three specific
 geo functions that can be optimized, provided that they are used correctly:
 `GEO_DISTANCE, GEO_CONTAINS, GEO_INTERSECTS`. Additionally, there is a built-in support to optimize
@@ -94,9 +94,10 @@ the older geo functions `DISTANCE`, `NEAR` and `WITHIN` (the last two only if th
 used in their 4 argument version, without *distanceName*).
 
 When in doubt whether your query is being properly optimized, 
-check the [AQL explain](../../AQL/ExecutionAndPerformance/ExplainingQueries.html) output to check for index usage.
+check the [AQL explain](../../AQL/ExecutionAndPerformance/ExplainingQueries.html)
+output to check for index usage.
 
-#### Query for Results near Origin (NEAR type query)
+### Query for Results near Origin (NEAR type query)
 
 A basic example of a query for results near an origin point:
 
@@ -106,14 +107,14 @@ FOR x IN geo_collection
   RETURN x._key
 ```
 The first parameter can be a GeoJSON object or a coordinate array in `[longitude, latitude]` ordering.
-The second parameter is the documents field on which the index was created. The function
+The second parameter is the document field on which the index was created. The function
 `GEO_DISTANCE` always returns the distance in meters, so will receive results
 up until _100km_.
 
 
-#### Query for Sorted Results near Origin (NEAR type query)
+### Query for Sorted Results near Origin (NEAR type query)
 
-A basic example of a query for results near an origin point with ascending sorting:
+A basic example of a query for the 1000 nearest results to an origin point (ascending sorting):
 
 ```
 FOR x IN geo_collection
@@ -125,7 +126,7 @@ FOR x IN geo_collection
 The first parameter can be a GeoJSON object or a coordinate array in `[longitude, latitude]` ordering.
 The second parameter is the documents field on which the index was created.
 
-You may also get results sorted in a descending order:
+You may also get results farthest away (distance sorted in descending order):
 
 ```
 FOR x IN geo_collection
@@ -134,10 +135,12 @@ FOR x IN geo_collection
   RETURN x._key
 ```
 
-#### Query for Results within Distance
+### Query for Results within Distance
 
-A query which returns documents within a distance of _1km_ until _100km_.
-This will return the documents with a GeoJSON value that is located in the specified search annulus.
+A query which returns documents at a distance of _1km_ or farther away,
+up to _100km_ from the origin. This will return the documents with a GeoJSON
+value that is located in the specified search annulus.
+
 ```
 FOR x IN geo_collection
   FILTER GEO_DISTANCE([@lng, @lat], x.geometry) <= 100000
@@ -145,63 +148,78 @@ FOR x IN geo_collection
   RETURN x
 ```
 
-#### Query for Results contained in Polygon
+### Query for Results contained in Polygon
 
-A query which returns documents contained within a GeoJSON Polygon.
+A query which returns documents whose stored geometry is contained within a
+GeoJSON Polygon.
+
 ```
 LET polygon = GEO_POLYGON([[[60,35],[50,5],[75,10],[70,35]]])
 FOR x IN geo_collection
   FILTER GEO_CONTAINS(polygon, x.geometry)
   RETURN x
 ```
-The first parameter of `GEO_CONTAINS` must be a polygon other types are not valid. 
+
+The first parameter of `GEO_CONTAINS` must be a polygon. Other types are not valid. 
 The second parameter must contain the document field on which the index was created.
 
 
-#### Query for Results Intersecting a Polygon
+### Query for Results Intersecting a Polygon
 
-A query which returns documents contained within a GeoJSON Polygon.
+A query which returns documents with an intersection of their stored geometry and a
+GeoJSON Polygon.
+
 ```
 LET polygon = GEO_POLYGON([[[60,35],[50,5],[75,10],[70,35]]])
 FOR x IN geo_collection
   FILTER GEO_INTERSECTS(polygon, x.geometry)
   RETURN x
 ```
-The first parameter of `GEO_CONTAINS` must be a polygon other types are not valid. 
+
+The first parameter of `GEO_CONTAINS` must be a polygon. Other types are not valid. 
 The second parameter must contain the document field on which the index was created.
 
 
-### GeoJSON
+GeoJSON
+-------
 
 GeoJSON is a geospatial data format based on JSON. It defines several different
 types of JSON objects and the way in which they can be combined to represent
 data about geographic shapes on the earth surface. GeoJSON uses a geographic
-coordinate reference system, World Geodetic System 1984, and units of decimal
+coordinate reference system, World Geodetic System 1984 (WGS 84), and units of decimal
 degrees.
 
-Internally ArangoDB maps all coordinates onto a unit sphere, distances are
+Internally ArangoDB maps all coordinates onto a unit sphere. Distances are
 projected onto a sphere with the Earth's *Volumetric mean radius* of *6371
 km*. ArangoDB implements a useful subset of the GeoJSON format [(RFC
 7946)](https://tools.ietf.org/html/rfc7946). We do not support Feature Objects
-or the GeometryCollection type, supported geometry object types are listed
-below:
+or the GeometryCollection type. Supported geometry object types are:
 
-#### Point
+- Point
+- MultiPoint
+- LineString
+- MultiLineString
+- Polygon
+- MultiPolygon
+
+### Point
 
 The following section of the RFC specifies a [GeoJSON
 Point](https://tools.ietf.org/html/rfc7946#section-3.1.2):
-```
+
+```json
 {
   "type": "Point",
   "coordinates": [100.0, 0.0]
 }
 ```
 
-#### MultiPoint
+### MultiPoint
 
 The following section of the RFC specifies a [GeoJSON
 MultiPoint](https://tools.ietf.org/html/rfc7946#section-3.1.7):
-```
+
+```json
 {
   "type": "MultiPoint",
   "coordinates": [
@@ -212,11 +230,12 @@ MultiPoint](https://tools.ietf.org/html/rfc7946#section-3.1.7):
 ```
 
 
-#### LineString
+### LineString
 
 The following section of the RFC specifies a [GeoJSON
 LineString](https://tools.ietf.org/html/rfc7946#section-3.1.4):
-```
+
+```json
 {
   "type": "LineString",
   "coordinates": [
@@ -226,12 +245,13 @@ LineString](https://tools.ietf.org/html/rfc7946#section-3.1.4):
 }
 ```
 
-#### MultiLineString
+### MultiLineString
 
 The following section of the RFC specifies a [GeoJSON
-MultiLineString](https://tools.ietf.org/html/rfc7946#section-3.1.5): The
-"coordinates" member is an array of LineString coordinate arrays:
-```
+MultiLineString](https://tools.ietf.org/html/rfc7946#section-3.1.5).
+The "coordinates" member is an array of LineString coordinate arrays:
+
+```json
 {
   "type": "MultiLineString",
   "coordinates": [
@@ -247,17 +267,18 @@ MultiLineString](https://tools.ietf.org/html/rfc7946#section-3.1.5): The
 }
 ```
 
-#### Polygon
+### Polygon
 
 [GeoJSON polygons](https://tools.ietf.org/html/rfc7946#section-3.1.6) consists
 of a series of closed `LineString` objects (ring-like). These *LineRing* objects
 consist of four or more vertices with the first and last coordinate pairs
 being equal. Coordinates of a Polygon are an array of linear ring coordinate
-arrays.  The first element in the array represents the exterior ring.  Any
-subsequent elements represent interior rings (or holes).
+arrays. The first element in the array represents the exterior ring.
+Any subsequent elements represent interior rings (or holes).
 
 No Holes:
-```
+
+```json
 {
   "type": "Polygon",
     "coordinates": [
@@ -273,10 +294,12 @@ No Holes:
 ```
 
 With Holes:
+
 - The exterior ring should not self-intersect.
 - The interior rings must be contained in the outer ring
 - Interior rings cannot overlap (or touch) with each other
-```
+
+```json
 {
   "type": "Polygon",
   "coordinates": [
@@ -298,12 +321,13 @@ With Holes:
 }
 ```
 
-#### MultiPolygon
+### MultiPolygon
 
 The following section of the RFC specifies a [GeoJSON
-MultiPolygon](https://tools.ietf.org/html/rfc7946#section-3.1.7): The
-"coordinates" member is an array of Polygon coordinate arrays.
-```
+MultiPolygon](https://tools.ietf.org/html/rfc7946#section-3.1.7).
+The "coordinates" member is an array of Polygon coordinate arrays:
+
+```json
 {
   "type": "MultiPolygon",
   "coordinates": [
@@ -331,11 +355,10 @@ MultiPolygon](https://tools.ietf.org/html/rfc7946#section-3.1.7): The
 }
 ```
 
-## More examples Accessing Geo Indexes from the Shell
-------------------------------------
+Arangosh Examples
+-----------------
 
 <!-- js/server/modules/@arangodb/arango-collection.js-->
-
 
 ensures that a geo index exists
 `collection.ensureIndex({ type: "geo", fields: [ "location" ] })`
