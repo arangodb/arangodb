@@ -417,7 +417,6 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
   }
 
   if (!definition.isObject()
-      || !definition.hasKey(StaticStrings::ViewIdField)
       || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error finding view for link '" << _id << "'";
