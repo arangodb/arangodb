@@ -290,128 +290,32 @@ void RocksDBCollection::prepareIndexes(
     arangodb::velocypack::Slice indexesSlice) {
   WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(indexesSlice.isArray());
-  if (indexesSlice.length() == 0) {
-    createInitialIndexes();
-  }
-
+  
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto& idxFactory = engine->indexFactory();
-  bool splitEdgeIndex = false;
-  TRI_idx_iid_t last = 0;
-
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
-                                                            false)) {
-      // We have an error here.
-      // Do not add index.
-      // TODO Handle Properly
-      continue;
-    }
-
-    bool alreadyHandled = false;
-    // check for combined edge index from MMFiles; must split!
-    auto value = v.get("type");
-    if (value.isString()) {
-      std::string tmp = value.copyString();
-      arangodb::Index::IndexType const type =
-          arangodb::Index::type(tmp.c_str());
-      if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-        VPackSlice fields = v.get("fields");
-        if (fields.isArray() && fields.length() == 2) {
-          VPackBuilder from;
-          from.openObject();
-          for (auto const& f : VPackObjectIterator(v)) {
-            if (arangodb::StringRef(f.key) == "fields") {
-              from.add(VPackValue("fields"));
-              from.openArray();
-              from.add(VPackValue(StaticStrings::FromString));
-              from.close();
-            } else {
-              from.add(f.key);
-              from.add(f.value);
-            }
-          }
-          from.close();
-
-          VPackBuilder to;
-          to.openObject();
-          for (auto const& f : VPackObjectIterator(v)) {
-            if (arangodb::StringRef(f.key) == "fields") {
-              to.add(VPackValue("fields"));
-              to.openArray();
-              to.add(VPackValue(StaticStrings::ToString));
-              to.close();
-            } else if (arangodb::StringRef(f.key) == "id") {
-              auto iid = basics::StringUtils::uint64(f.value.copyString()) + 1;
-              last = iid;
-              to.add("id", VPackValue(std::to_string(iid)));
-            } else {
-              to.add(f.key);
-              to.add(f.value);
-            }
-          }
-          to.close();
-
-          auto idxFrom = idxFactory.prepareIndexFromSlice(
-            from.slice(), false, _logicalCollection, true
-          );
-
-          addIndex(idxFrom);
-
-          auto idxTo = idxFactory.prepareIndexFromSlice(
-            to.slice(), false, _logicalCollection, true
-          );
-
-            addIndex(idxTo);
-
-          alreadyHandled = true;
-          splitEdgeIndex = true;
-        }
-      } else if (splitEdgeIndex) {
-        VPackBuilder b;
-        b.openObject();
-        for (auto const& f : VPackObjectIterator(v)) {
-          if (arangodb::StringRef(f.key) == "id") {
-            last++;
-            b.add("id", VPackValue(std::to_string(last)));
-          } else {
-            b.add(f.key);
-            b.add(f.value);
-          }
-        }
-        b.close();
-
-        auto idx = idxFactory.prepareIndexFromSlice(
-          b.slice(), false, _logicalCollection, true
-        );
-
-        addIndex(idx);
-
-        alreadyHandled = true;
-      }
-    }
-
-    if (!alreadyHandled) {
-      auto idx =
-        idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
-
-      addIndex(idx);
-    }
+  std::vector<std::shared_ptr<Index>> indexes;
+  if (indexesSlice.length() == 0 && _indexes.empty()) {
+    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+  } else {
+    engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
+  }
+  
+  for (std::shared_ptr<Index>& idx : indexes) {
+    addIndex(std::move(idx));
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
         _indexes[2]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "got invalid indexes for collection '" << _logicalCollection->name()
-        << "'";
-    for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
-    }
-  }
+         std::string msg = "got invalid indexes for collection '" + _logicalCollection->name() + "'";
+         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      for (auto it : _indexes) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+      }
 #endif
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    }
 
   TRI_ASSERT(!_indexes.empty());
 }
@@ -1254,23 +1158,6 @@ void RocksDBCollection::figuresSpecific(
           rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
   builder->add("documentsSize", VPackValue(out));
-}
-
-/// @brief creates the initial indexes for the collection
-void RocksDBCollection::createInitialIndexes() {
-  // LOCKED from the outside
-  if (!_indexes.empty()) {
-    return;
-  }
-
-  std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->indexFactory().fillSystemIndexes(_logicalCollection, systemIndexes);
-
-  for (auto const& it : systemIndexes) {
-    addIndex(it);
-  }
 }
 
 void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {

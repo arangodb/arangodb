@@ -22,27 +22,22 @@
 
 #include "ClusterIndex.h"
 #include "Basics/VelocyPackHelper.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-
-/*
-ClusterIndex::ClusterIndex(
-    TRI_idx_iid_t id, LogicalCollection* collection,
-    Index::IndexType type,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-    bool unique, bool sparse)
-    : Index(id, collection, attributes, unique, sparse), _type(type) {
-}*/
+using Helper = arangodb::basics::VelocyPackHelper;
 
 ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection* collection,
                            Index::IndexType type, VPackSlice const& info)
-    : Index(id, collection, info), _type(type), _indexDefinition(info) {
-      _indexDefinition.slice().isObject();
+    : Index(id, collection, info), _type(type), _info(info) {
+      TRI_ASSERT(_info.slice().isObject());
 }
 
 ClusterIndex::~ClusterIndex() {
@@ -53,7 +48,8 @@ ClusterIndex::~ClusterIndex() {
 void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
-  builder.add(VPackObjectIterator(_indexDefinition.slice()));
+  // technically nothing sensible can be added here
+  //builder.add(VPackObjectIterator(_indexDefinition.slice()));
   // TODO fix
 }
 
@@ -66,7 +62,7 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.add("sparse", VPackValue(_sparse));
   
   //static std::vector forbidden = {};
-  for (auto pair : VPackObjectIterator(_indexDefinition.slice())) {
+  for (auto pair : VPackObjectIterator(_info.slice())) {
     if (!pair.key.isEqualString("id") &&
         !pair.key.isEqualString("type") &&
         !pair.key.isEqualString("fields") &&
@@ -81,6 +77,21 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.close();
 }
 
-void ClusterIndex::updateProperties(velocypack::Slice const&) {
-//#error engine specific properties
+void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
+  VPackBuilder merge;
+  merge.openObject();
+  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  if (ce->isMMFiles()) {
+    // nothing
+  } else if (ce->isRocksDB()) {
+    
+    merge.add("cacheEnabled", VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", false)));
+    
+  } else {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  
+  merge.close();
+  _info = VPackCollection::merge(_info.slice(), merge.slice(), true);
 }

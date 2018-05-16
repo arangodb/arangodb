@@ -32,10 +32,15 @@ class RocksDBIndexFactory final : public IndexFactory {
  public:
   RocksDBIndexFactory();
   ~RocksDBIndexFactory() = default;
-
+  
+  /// create initial system indexes
   void fillSystemIndexes(arangodb::LogicalCollection* col,
                          std::vector<std::shared_ptr<arangodb::Index>>&
-                             systemIndexes) const override;
+                         systemIndexes) const override;
+
+  /// @brief create indexes from a list of index definitions
+  void prepareIndexes(LogicalCollection* col, velocypack::Slice const&,
+                      std::vector<std::shared_ptr<arangodb::Index>>&) const override;
 
   std::vector<std::string> supportedIndexes() const override;
 };

@@ -87,17 +87,19 @@ void EngineSelectorFeature::prepare() {
   
   if (ServerState::instance()->isCoordinator()) {
     
+    ClusterEngine* ce = application_features::ApplicationServer::getFeature<ClusterEngine>("ClusterEngine");
+    ENGINE = ce;
+
     for (auto const& engine : availableEngines()) {
       StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine.second);
-    
       // turn off all other storage engines
       LOG_TOPIC(TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
       e->disable();
+      if (engine.first == _engine) {
+        ce->setActualEngine(e);
+      }
     }
     
-    ClusterEngine* e = application_features::ApplicationServer::getFeature<ClusterEngine>("ClusterEngine");
-    e->setEngineType(_engine);
-    ENGINE = e;
   } else {
     
     // deactivate all engines but the selected one

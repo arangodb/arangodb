@@ -25,8 +25,10 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "ClusterEngine/ClusterIndex.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -48,12 +50,6 @@ ClusterIndexFactory::ClusterIndexFactory() {
                      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                                     "cannot create edge index");
                    }
-
-                   auto fields = definition.get("fields");
-                   TRI_ASSERT(fields.isArray() && fields.length() == 1);
-                   auto direction = fields.at(0).copyString();
-                   TRI_ASSERT(direction == StaticStrings::FromString ||
-                              direction == StaticStrings::ToString);
 
                    return std::make_shared<ClusterIndex>(
                     id, collection, Index::TRI_IDX_TYPE_EDGE_INDEX, definition);
@@ -123,24 +119,84 @@ ClusterIndexFactory::ClusterIndexFactory() {
                  });
 }
 
+Result ClusterIndexFactory::enhanceIndexDefinition(
+        velocypack::Slice const definition,
+        velocypack::Builder& normalized,
+        bool isCreation,
+        bool isCoordinator
+      ) const {
+  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  return ce->actualEngine()->indexFactory().enhanceIndexDefinition(definition, normalized, isCreation, isCoordinator);
+}
+
 void ClusterIndexFactory::fillSystemIndexes(
     arangodb::LogicalCollection* col,
     std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const {
   // create primary index
-  VPackBuilder builder;
-  builder.openObject();
-  builder.close();
+  VPackBuilder input;
+  input.openObject();
+  input.add("type", VPackValue("primary"));
+  input.add("id", VPackValue("0"));
+  input.add("fields", VPackValue(VPackValueType::Array));
+  input.add(VPackValue(StaticStrings::KeyString));
+  input.close();
+  input.close();
 
   systemIndexes.emplace_back(
-      std::make_shared<arangodb::ClusterIndex>(0, col, Index::TRI_IDX_TYPE_PRIMARY_INDEX, builder.slice()));
+      std::make_shared<arangodb::ClusterIndex>(0, col, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));
   // create edges indexes
   if (col->type() == TRI_COL_TYPE_EDGE) {
+    ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+
+    input.clear();
+    input.openObject();
+    input.add("type", VPackValue("edge"));
+    input.add("id", VPackValue("1"));
+    input.add("fields", VPackValue(VPackValueType::Array));
+    input.add(VPackValue(StaticStrings::FromString));
+    if (ce->isMMFiles()) {
+      input.add(VPackValue(StaticStrings::ToString));
+    }
+    input.close();
+    input.close();
+
     systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
-        1, col, Index::TRI_IDX_TYPE_EDGE_INDEX, builder.slice()));
-    systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
-        2, col, Index::TRI_IDX_TYPE_EDGE_INDEX, builder.slice()));
+        1, col, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
+    if (ce->isRocksDB()) {
+      input.clear();
+      input.openObject();
+      input.add("type", VPackValue("edge"));
+      input.add("id", VPackValue("2"));
+      input.add("fields", VPackValue(VPackValueType::Array));
+      input.add(VPackValue(StaticStrings::ToString));
+      input.close();
+      input.close();
+      systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
+        2, col, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
+    }
   }
-#warning FIX for mmfiles
+}
+
+void ClusterIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice const& indexesSlice,
+                                         std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+  TRI_ASSERT(indexesSlice.isArray());
+  
+  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+    if (basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
+      // We have an error here.
+      // Do not add index.
+      continue;
+    }
+    
+    auto idx = prepareIndexFromSlice(v, false, col, true);
+    if (!idx) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      << "error creating index from definition '"
+      << indexesSlice.toString() << "'";
+      continue;
+    }
+    indexes.emplace_back(std::move(idx));
+  }
 }
 
 std::vector<std::string> ClusterIndexFactory::supportedIndexes() const {

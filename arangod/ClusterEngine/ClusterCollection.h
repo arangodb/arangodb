@@ -175,7 +175,6 @@ protected:
 private:
   
   void addIndex(std::shared_ptr<arangodb::Index> idx);
-  void createInitialIndexes();
   
 private:
   // keep locks just to adhere to behaviour in other collections

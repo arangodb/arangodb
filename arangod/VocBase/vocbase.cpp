@@ -1881,8 +1881,8 @@ bool TRI_vocbase_t::IsAllowedName(
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
+  TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
   auto* applier = DatabaseReplicationApplier::create(*this);
-
   _replicationApplier.reset(applier);
 }
 

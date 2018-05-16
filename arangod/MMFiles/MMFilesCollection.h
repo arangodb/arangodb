@@ -413,7 +413,6 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
  private:
-  void createInitialIndexes();
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
   bool openIndex(VPackSlice const& description, transaction::Methods* trx);
@@ -490,9 +489,9 @@ class MMFilesCollection final : public PhysicalCollection {
                                                 bool excludeWal) const;
   void batchLookupRevisionVPack(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const;
 
+  void createInitialIndexes();
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexLocal(std::shared_ptr<arangodb::Index> idx);
-  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
 
   bool removeIndex(TRI_idx_iid_t iid);
 

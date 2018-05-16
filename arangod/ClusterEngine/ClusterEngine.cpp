@@ -72,19 +72,14 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer* server)
 
 ClusterEngine::~ClusterEngine() { }
   
-  
-void ClusterEngine::setEngineType(std::string const& engine) {
-  _currentEngine = engine;
-}
-
 bool ClusterEngine::isRocksDB() const {
-  return _currentEngine == RocksDBEngine::EngineName;
+  return _actualEngine->name() == RocksDBEngine::FeatureName;
 }
 
 bool ClusterEngine::isMMFiles() const {
-  return _currentEngine == MMFilesEngine::EngineName;
+  return _actualEngine->name() == MMFilesEngine::FeatureName;
 }
-
+  
 // inherited from ApplicationFeature
 // ---------------------------------
 
@@ -134,7 +129,7 @@ void ClusterEngine::start() {
   if (!isEnabled()) {
     return;
   }
-
+  
   // set the database sub-directory for RocksDB
   /*auto* databasePathFeature =
       ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
@@ -188,12 +183,12 @@ TransactionCollection* ClusterEngine::createTransactionCollection(
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,
                                                   VPackSlice info) {
-  /*if (!info.hasKey("objectId")) {
-    builder.add("objectId", VPackValue(std::to_string(TRI_NewTickServer())));
+  if (isRocksDB()) {
+    // deliberately not add objectId
+    if (!info.hasKey("cacheEnabled") || !info.get("cacheEnabled").isBool()) {
+      builder.add("cacheEnabled", VPackValue(false));
+    }
   }
-  if (!info.hasKey("cacheEnabled") || !info.get("cacheEnabled").isBool()) {
-    builder.add("cacheEnabled", VPackValue(false));
-  }*/
 }
 
 void ClusterEngine::addParametersForNewIndex(VPackBuilder& builder,
@@ -220,7 +215,7 @@ void ClusterEngine::getDatabases(arangodb::velocypack::Builder& result) {
   // we should only ever need system here
   VPackArrayBuilder arr(&result);
   VPackObjectBuilder obj(&result);
-  obj->add(StaticStrings::DataSourceId, VPackValue(1)); // always pick 1
+  obj->add(StaticStrings::DataSourceId, VPackValue("1")); // always pick 1
   obj->add(StaticStrings::DataSourceDeleted, VPackValue(false));
   obj->add(StaticStrings::DataSourceName, VPackValue(StaticStrings::SystemDatabase));
 }
@@ -597,11 +592,13 @@ TRI_vocbase_t* ClusterEngine::openExistingDatabase(TRI_voc_tick_t id,
                                                    std::string const& name,
                                                    bool wasCleanShutdown,
                                                    bool isUpgrade) {
-  /*auto vocbase =
+  auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
+  
+  return vocbase.release();
 
   // scan the database path for views
-  try {
+  /*try {
     VPackBuilder builder;
     int res = getViews(*vocbase, builder);
 

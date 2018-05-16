@@ -44,8 +44,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false) {
-
-  setOptional(false);
+  setOptional(true);
   startsAfter("Database");
   startsAfter("ServerId");
   startsAfter("StorageEngine");
@@ -81,6 +80,11 @@ void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions
 }
 
 void ReplicationFeature::prepare() {
+  if (ServerState::instance()->isCoordinator()) {
+    setEnabled(false);
+    return;
+  }
+  
   INSTANCE = this;
 }
 

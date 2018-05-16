@@ -203,8 +203,6 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
-  /// @brief creates the initial indexes for the collection
-  void createInitialIndexes();
   void addIndex(std::shared_ptr<arangodb::Index> idx);
   int saveIndex(transaction::Methods* trx,
                 std::shared_ptr<arangodb::Index> idx);

@@ -54,7 +54,8 @@ class ClusterEngine final : public StorageEngine {
   
 public:
   
-  void setEngineType(std::string const& engine);
+  void setActualEngine(StorageEngine* e) { _actualEngine = e; }
+  StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
   
@@ -311,7 +312,7 @@ public:
  private:
   /// path to arangodb data dir
   std::string _basePath;
-  std::string _currentEngine;
+  StorageEngine* _actualEngine;
 };
 }  // namespace arangodb
 #endif

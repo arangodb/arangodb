@@ -108,7 +108,7 @@ class ClusterIndex : public Index {
 
 protected:
   Index::IndexType _type;
-  velocypack::Builder _indexDefinition;
+  velocypack::Builder _info;
 };
 }  // namespace arangodb
 

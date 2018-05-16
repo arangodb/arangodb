@@ -162,6 +162,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
   builder.openObject();
   builder.add("type", VPackValue(static_cast<int>(collectionType)));
   builder.add("name", VPackValue(name));
+  builder.add("indexes", VPackSlice::nullSlice()); // should never appear in props
   builder.close();
   VPackBuilder info =
       VPackCollection::merge(properties, builder.slice(), false);
