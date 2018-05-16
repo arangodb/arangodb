@@ -948,7 +948,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       allowDropSystem = TRI_ObjectToBoolean(args[0]);
     }
   }
- 
+
   auto res =
     methods::Collections::drop(&vocbase, collection, allowDropSystem, timeout);
 
@@ -2216,6 +2216,10 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     if (optionsObject->Has(IsSynchronousReplicationKey)) {
       options.isSynchronousReplicationFrom
         = TRI_ObjectToString(optionsObject->Get(IsSynchronousReplicationKey));
+    }
+    TRI_GET_GLOBAL_STRING(OverwriteKey);
+    if (optionsObject->Has(OverwriteKey)) {
+      options.overwrite = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
     }
   } else {
     options.waitForSync = ExtractBooleanArgument(args, optsIdx + 1);
