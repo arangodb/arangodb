@@ -2200,6 +2200,10 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       options.waitForSync =
           TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
     }
+    TRI_GET_GLOBAL_STRING(OverwriteKey);
+    if (optionsObject->Has(OverwriteKey)) {
+      options.overwrite = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
+    }
     TRI_GET_GLOBAL_STRING(SilentKey);
     if (optionsObject->Has(SilentKey)) {
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
@@ -2207,6 +2211,10 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(ReturnNewKey);
     if (optionsObject->Has(ReturnNewKey)) {
       options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
+    }
+    TRI_GET_GLOBAL_STRING(ReturnOldKey);
+    if (optionsObject->Has(ReturnOldKey)) {
+      options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey)) && options.overwrite;
     }
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (optionsObject->Has(IsRestoreKey)) {
@@ -2216,10 +2224,6 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     if (optionsObject->Has(IsSynchronousReplicationKey)) {
       options.isSynchronousReplicationFrom
         = TRI_ObjectToString(optionsObject->Get(IsSynchronousReplicationKey));
-    }
-    TRI_GET_GLOBAL_STRING(OverwriteKey);
-    if (optionsObject->Has(OverwriteKey)) {
-      options.overwrite = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
     }
   } else {
     options.waitForSync = ExtractBooleanArgument(args, optsIdx + 1);

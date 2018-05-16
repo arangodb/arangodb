@@ -117,6 +117,8 @@ bool RestDocumentHandler::createDocument() {
   opOptions.returnNew = extractBooleanParameter(StaticStrings::ReturnNewString, false);
   opOptions.silent = extractBooleanParameter(StaticStrings::SilentString, false);
   opOptions.overwrite = extractBooleanParameter(StaticStrings::OverWrite, false);
+  opOptions.returnOld = extractBooleanParameter(StaticStrings::ReturnOldString, false) && opOptions.overwrite;
+
   extractStringParameter(StaticStrings::IsSynchronousReplicationString
                         ,opOptions.isSynchronousReplicationFrom);
 
