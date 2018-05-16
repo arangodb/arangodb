@@ -356,7 +356,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
 }

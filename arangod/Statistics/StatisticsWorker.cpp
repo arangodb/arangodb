@@ -152,7 +152,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   opOptions.waitForSync = false;
   opOptions.silent = true;
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE);
   Result res = trx.begin();
 
@@ -161,6 +161,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   }
 
   OperationResult result = trx.remove(name, keysToRemove, opOptions);
+
   res = trx.finish(result.result);
 
   if (res.fail()) {
@@ -951,7 +952,7 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice,
   opOptions.silent = true;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);

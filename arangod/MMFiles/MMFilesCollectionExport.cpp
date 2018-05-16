@@ -81,11 +81,11 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
   {
     static uint64_t const SleepTime = 10000;
-
     uint64_t tries = 0;
     uint64_t const maxTries = maxWaitTime / SleepTime;
 
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
+
     while (++tries < maxTries) {
       if (mmColl->isFullyCollected()) {
         break;
@@ -95,18 +95,20 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   }
 
   {
-    auto ctx = transaction::StandaloneContext::Create(&(_collection->vocbase()));
+    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
     SingleCollectionTransaction trx(ctx, _name, AccessMode::Type::READ);
 
     // already locked by guard above
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+
     Result res = trx.begin();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+
     size_t maxDocuments = _collection->numberDocuments(&trx);
+
     if (limit > 0 && limit < maxDocuments) {
       maxDocuments = limit;
     } else {
