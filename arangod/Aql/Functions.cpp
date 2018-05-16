@@ -2850,13 +2850,15 @@ AqlValue Functions::DateTrunc(arangodb::aql::Query* query,
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
   milliseconds ms{0};
-
   if (duration == "y" || duration == "year" || duration == "years") {
-    ymd = year{ymd.year()}/1/1;
+    ymd = year{ymd.year()}/jan/day{1};
   } else if (duration == "m" || duration == "month" || duration == "months") {
-    ymd = year{ymd.year()}/ymd.month()/1;
+    ymd = year{ymd.year()}/ymd.month()/day{1};
   } else if (duration == "d" || duration == "day" || duration == "days") {
-    ; // ymd = year{ymd.year()}/ymd.month()/ymd.day();
+    ;
+    // this would be: ymd = year{ymd.year()}/ymd.month()/ymd.day();
+    // However, we already split ymd to the precision of days,
+    // and ms to cary the timestamp part, so nothing needs to be done here.
   } else if (duration == "h" || duration == "hour" || duration == "hours") {
     ms = day_time.hours();
   } else if (duration == "i" || duration == "minute" || duration == "minutes") {
