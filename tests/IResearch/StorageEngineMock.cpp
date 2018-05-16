@@ -1087,8 +1087,13 @@ arangodb::TransactionManager* StorageEngineMock::createTransactionManager() {
   return nullptr;
 }
 
-arangodb::TransactionState* StorageEngineMock::createTransactionState(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options) {
-  return new TransactionStateMock(vocbase, options);
+std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
+    TRI_vocbase_t& vocbase,
+    arangodb::transaction::Options const& options
+) {
+  return std::unique_ptr<arangodb::TransactionState>(
+    new TransactionStateMock(vocbase, options)
+  );
 }
 
 void StorageEngineMock::createView(
@@ -1446,7 +1451,7 @@ int TransactionCollectionMock::lockRecursive(arangodb::AccessMode::Type type, in
 
 void TransactionCollectionMock::release() {
   if (_collection) {
-    _transaction->vocbase()->releaseCollection(_collection);
+    _transaction->vocbase().releaseCollection(_collection);
     _collection = nullptr;
   }
 }
@@ -1471,7 +1476,9 @@ void TransactionCollectionMock::unuse(int nestingLevel) {
 
 int TransactionCollectionMock::use(int nestingLevel) {
   TRI_vocbase_col_status_e status;
-  _collection = _transaction->vocbase()->useCollection(_cid, status);
+
+  _collection = _transaction->vocbase().useCollection(_cid, status);
+
   return _collection ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL;
 }
 
@@ -1479,8 +1486,10 @@ size_t TransactionStateMock::abortTransactionCount;
 size_t TransactionStateMock::beginTransactionCount;
 size_t TransactionStateMock::commitTransactionCount;
 
-TransactionStateMock::TransactionStateMock(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options)
-  : TransactionState(vocbase, options) {
+TransactionStateMock::TransactionStateMock(
+    TRI_vocbase_t& vocbase,
+    arangodb::transaction::Options const& options
+): TransactionState(vocbase, options) {
 }
 
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
