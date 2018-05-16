@@ -3,6 +3,15 @@ v3.3.9 (xxxx-xx-xx)
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header
 
+* upgraded arangosync version to 0.5.1 
+
+* upgraded arangodb starter version to 0.11.2
+
+* fix cluster upgrading issue introduced in 3.3.8
+  
+  the issue made arangod crash when starting a DB server with option 
+  `--database.auto-upgrade true`
+
 * fix C++ implementation of AQL ZIP function to return each distinct attribute
   name only once. The previous implementation added non-unique attribute names
   multiple times, which led to follow-up issues.
@@ -12,8 +21,6 @@ v3.3.9 (xxxx-xx-xx)
   This fix also changes the V8 implementation of the ZIP function, which now
   will always return the first value for non-unique attribute names and not the
   last occurring value.
-
-* upgraded arangodb starter version to 0.11.2
 
 * self heal during a Foxx service install, upgrade or replace no longer breaks
   the respective operation
