@@ -37,17 +37,17 @@
 #include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 
-NS_LOCAL
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the string representing the link type
 ////////////////////////////////////////////////////////////////////////////////
 std::string const& LINK_TYPE = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
-NS_END // NS_LOCAL
+}
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 /*static*/ VPackSlice const& IResearchLinkHelper::emptyIndexSlice() {
   static const struct EmptySlice {
@@ -416,8 +416,8 @@ NS_BEGIN(iresearch)
   }
 }
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
