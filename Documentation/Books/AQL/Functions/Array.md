@@ -137,7 +137,7 @@ Get the last element of an array. It is the same as `anyArray[-1]`.
 - returns **lastElement** (any|null): the last element of *anyArray* or *null* if the
   array is empty.
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArrayLast_1
 @EXAMPLE_AQL{aqlArrayLast_1}
@@ -212,7 +212,7 @@ Return the difference of all arrays specified.
   but not in any of the subsequent arrays. The order of the result array is undefined
   and should not be relied on. Duplicates will be removed.
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArrayMinus_1
 @EXAMPLE_AQL{aqlArrayMinus_1}
@@ -264,7 +264,7 @@ Return the values that occur only once across all arrays specified.
 - returns **newArray** (array): a single array with only the elements that exist only once
   across all provided arrays. The element order is random.
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArrayOutersection_1
 @EXAMPLE_AQL{aqlArrayOutersection_1}
@@ -421,7 +421,7 @@ Remove all occurrences of any of the *values* from *anyArray*.
   be removed from *anyArray*
 - returns **newArray** (array): *anyArray* with all individual *values* removed
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArrayRemoveValues_1
 @EXAMPLE_AQL{aqlArrayRemoveValues_1}
@@ -439,7 +439,7 @@ Return an array with its elements reversed.
 - returns **reversedArray** (array): a new array with all elements of *anyArray* in
   reversed order
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArrayReverse_1
 @EXAMPLE_AQL{aqlArrayReverse_1}
@@ -533,7 +533,7 @@ order for AQL value types.
 - **anyArray** (array): array with elements of arbitrary type
 - returns **newArray** (array): *anyArray*, with elements sorted
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArraySorted_1
 @EXAMPLE_AQL{aqlArraySorted_1}
@@ -553,7 +553,7 @@ be made unique.
 - returns **newArray** (array): *anyArray*, with elements sorted and duplicates
   removed
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArraySortedUnique_1
 @EXAMPLE_AQL{aqlArraySortedUnique_1}
@@ -609,7 +609,7 @@ Return the union of distinct values of all arrays specified.
 - returns **newArray** (array): the elements of all given arrays in a single
   array, without duplicates, in any order
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArrayUnionDistinct_1
 @EXAMPLE_AQL{aqlArrayUnionDistinct_1}
@@ -630,7 +630,7 @@ function will use the comparison order.
 - **anyArray** (array): array with elements of arbitrary type
 - returns **newArray** (array): *anyArray* without duplicates, in any order
 
-### Example
+**Example**
 
 @startDocuBlockInline aqlArrayUnique_1
 @EXAMPLE_AQL{aqlArrayUnique_1}
