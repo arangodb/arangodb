@@ -2823,6 +2823,59 @@ AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(unsigned(lastMonthDay.day()))));
 }
 
+/// @brief function DATE_TRUNC
+AqlValue Functions::DateTrunc(arangodb::aql::Query* query,
+                            transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_TRUNC";
+  using namespace std::chrono;
+  using namespace date;
+
+  tp_sys_clock_ms tp;
+
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue durationType = ExtractFunctionParameterValue(parameters, 1);
+
+  if (!durationType.isString()) { // unit type must be string
+    RegisterInvalidArgumentWarning(query, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  std::string duration = durationType.slice().copyString();
+  std::transform(duration.begin(), duration.end(), duration.begin(), ::tolower);
+
+  year_month_day ymd{floor<days>(tp)};
+  auto day_time = make_time(tp - sys_days(ymd));
+  milliseconds ms{0};
+  if (duration == "y" || duration == "year" || duration == "years") {
+    ymd = year{ymd.year()}/jan/day{1};
+  } else if (duration == "m" || duration == "month" || duration == "months") {
+    ymd = year{ymd.year()}/ymd.month()/day{1};
+  } else if (duration == "d" || duration == "day" || duration == "days") {
+    ;
+    // this would be: ymd = year{ymd.year()}/ymd.month()/ymd.day();
+    // However, we already split ymd to the precision of days,
+    // and ms to cary the timestamp part, so nothing needs to be done here.
+  } else if (duration == "h" || duration == "hour" || duration == "hours") {
+    ms = day_time.hours();
+  } else if (duration == "i" || duration == "minute" || duration == "minutes") {
+    ms = day_time.hours() + day_time.minutes();
+  } else if (duration == "s" || duration == "second" || duration == "seconds") {
+    ms = day_time.to_duration() - day_time.subseconds();
+  } else if (duration == "f" || duration == "millisecond" || duration == "milliseconds") {
+    ms = day_time.to_duration();
+  } else {
+    RegisterWarning(query, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    return AqlValue(AqlValueHintNull());
+  }
+  tp = tp_sys_clock_ms{sys_days(ymd) + ms};
+
+  return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) ));
+}
+
 /// @brief function DATE_ADD
 AqlValue Functions::DateAdd(arangodb::aql::Query* query,
                             transaction::Methods* trx,

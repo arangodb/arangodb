@@ -336,6 +336,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_DIFF", ".,.,.|.", true, false, true, &Functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", true, false, true, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", true, false, true, &Functions::DateFormat});
+  add({"DATE_TRUNC",   ".,.", true, false, true, &Functions::DateTrunc});
 }
 
 void AqlFunctionFeature::addMiscFunctions() {

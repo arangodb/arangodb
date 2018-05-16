@@ -108,7 +108,6 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[4] ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%wwww'))", { value: value[0] }), "wwww " + value[0]);
       });
       assertEqual([ " - %  " ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%& - %% % '))", { value: "2012-01-01" }), "format ");
-      
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -302,7 +301,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_year function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateYearInvalid () {
+    testDateYearInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_YEAR())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_YEAR(1, 1))");
@@ -318,7 +317,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_year function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateYear () {
+    testDateYear: function () {
       const values = [
         [ "2000-04-29Z", 2000 ],
         [ "2012-02-12 13:24:12Z", 2012 ],
@@ -372,7 +371,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_month function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateMonthInvalid () {
+    testDateMonthInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_MONTH())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_MONTH(1, 1))");
@@ -390,7 +389,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_month function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateMonth () {
+    testDateMonth: function () {
       const values = [
         [ "2000-04-29Z", 4 ],
         [ "2012-02-12 13:24:12Z", 2 ],
@@ -445,7 +444,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_day function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateDayInvalid () {
+    testDateDayInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DAY())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DAY(1, 1))");
@@ -463,7 +462,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_day function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateDay () {
+    testDateDay: function () {
       const values = [
         [ "2000-04-29Z", 29 ],
         [ "2012-02-12 13:24:12Z", 12 ],
@@ -520,7 +519,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_hour function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateHourInvalid () {
+    testDateHourInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_HOUR())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_HOUR(1, 1))");
@@ -540,7 +539,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_hour function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateHour () {
+    testDateHour: function () {
       const values = [
         [ "2000-04-29", 0 ],
         [ "2000-04-29Z", 0 ],
@@ -608,7 +607,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_minute function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateMinuteInvalid () {
+    testDateMinuteInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_MINUTE())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_MINUTE(1, 1))");
@@ -626,7 +625,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_minute function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateMinute () {
+    testDateMinute: function () {
       const values = [
         [ "2000-04-29Z", 0 ],
         [ "2012-02-12 13:24:12Z", 24 ],
@@ -688,7 +687,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_second function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateSecondInvalid () {
+    testDateSecondInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_SECOND())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_SECOND(1, 1))");
@@ -706,7 +705,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_second function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateSecond () {
+    testDateSecond: function () {
       const values = [
         [ "2000-04-29Z", 0 ],
         [ "2012-02-12 13:24:12Z", 12 ],
@@ -774,7 +773,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_millisecond function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateMillisecondInvalid () {
+    testDateMillisecondInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_MILLISECOND())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_MILLISECOND(1, 1))");
@@ -792,7 +791,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_millisecond function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateMillisecond () {
+    testDateMillisecond: function () {
       const values = [
         [ "2000-04-29Z", 0 ],
         [ "2012-02-12 13:24:12Z", 0 ],
@@ -865,7 +864,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_dayofyear function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateDayOfYearInvalid () {
+    testDateDayOfYearInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DAYOFYEAR())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DAYOFYEAR(1, 1))");
@@ -883,7 +882,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_dayofyear function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateDayOfYear () {
+    testDateDayOfYear: function () {
       const values = [
         [ "2000-04-29", 120 ],
         [ "2000-04-29Z", 120 ],
@@ -950,7 +949,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_isoweek function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateISOWeekInvalid () {
+    testDateISOWeekInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_ISOWEEK())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT((DATE_ISOWEEK(1, 1))");
@@ -968,7 +967,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_isoweek function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateISOWeek () {
+    testDateISOWeek: function () {
       const values = [
         [ "2000-04-29", 17 ],
         [ "2000-04-29Z", 17 ],
@@ -1028,7 +1027,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_leapyear function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateLeapYearInvalid () {
+    testDateLeapYearInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_LEAPYEAR())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_LEAPYEAR(1, 1))");
@@ -1046,7 +1045,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_leapyear function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateLeapYear () {
+    testDateLeapYear: function () {
       const values = [
         [ "2000-04-29", true ],
         [ "2000-04-29Z", true ],
@@ -1098,7 +1097,7 @@ function ahuacatlDateFunctionsTestSuite () {
 
       values.forEach(function (value) {
         assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_LEAPYEAR(@value))", { value: value[0] }));
-        assertEqual([ value[1] ? 1:0 ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%l'))", { value: value[0] }));
+        assertEqual([ value[1] ? 1 : 0 ], getQueryResults("RETURN NOOPT(DATE_FORMAT(@value, '%l'))", { value: value[0] }));
       });
     },
 
@@ -1106,7 +1105,7 @@ function ahuacatlDateFunctionsTestSuite () {
 // / @brief test date_quarter function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateQuarterInvalid () {
+    testDateQuarterInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_QUARTER())");
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_QUARTER(1, 1))");
@@ -1121,10 +1120,67 @@ function ahuacatlDateFunctionsTestSuite () {
     },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test date_trunc function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testDateTruncInvalid: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, 1, 1))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(false, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, true))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(null, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC([], 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, []))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC({}, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, {}))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TRUNC(DATE_NOW(), 'sugar'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TRUNC(DATE_NOW(), ''))");
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test date_trunc function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testDateTrunc: function () {
+      const values = [
+        [ ["2000-04-29", "years"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-04-29 20:49:59.123", "year"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56", "y"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-04-29", "months"], "2000-04-01T00:00:00.000Z" ],
+        [ ["2000-04-29", "month"], "2000-04-01T00:00:00.000Z" ],
+        [ ["2000-04-29 23:59:59.999", "m"], "2000-04-01T00:00:00.000Z" ],
+        [ ["2000-04-29", "days"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2000-04-29 19:20:30.405", "day"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2000-04-29 03:04:05.067", "d"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "hours"], "2000-04-29T12:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "hour"], "2000-04-29T12:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "h"], "2000-04-29T12:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "minutes"], "2000-04-29T12:34:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "minute"], "2000-04-29T12:34:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "i"], "2000-04-29T12:34:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "seconds"], "2000-04-29T12:34:56.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "second"], "2000-04-29T12:34:56.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "s"], "2000-04-29T12:34:56.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "milliseconds"], "2000-04-29T12:34:56.789Z" ],
+        [ ["2000-04-29 12:34:56.789", "millisecond"], "2000-04-29T12:34:56.789Z" ],
+        [ ["2000-04-29 12:34:56.789", "f"], "2000-04-29T12:34:56.789Z" ]
+      ];
+
+      values.forEach(function (value) {
+        let actual = getQueryResults(`RETURN NOOPT(DATE_TRUNC(@val[0], @val[1]))`, {val: value[0]});
+        assertEqual([ value[1] ], actual);
+      });
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test date_quarter function
 // //////////////////////////////////////////////////////////////////////////////
 
-    testDateQuarter () {
+    testDateQuarter: function () {
       const values = [
         [ "2000-04-29", 2 ],
         [ "2000-04-29Z", 2 ],
