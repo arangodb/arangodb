@@ -879,10 +879,12 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   res = insertDocument(trx, documentId, newSlice, options);
   if (res.ok()) {
-    Result lookupResult = lookupDocumentVPack(documentId, trx, mdr, false);
-
-    if (lookupResult.fail()) {
-      return lookupResult;
+    if (options.silent) {
+      mdr.reset();
+    } else {
+      // copy result only if we need it
+      mdr.setManaged(newSlice.begin(), documentId); 
+      TRI_ASSERT(!mdr.empty());
     }
 
     // report document and key size
@@ -984,8 +986,13 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc, options);
 
   if (res.ok()) {
-    mdr.setManaged(newDoc.begin(), documentId);
-    TRI_ASSERT(!mdr.empty());
+    if (options.silent) {
+      mdr.reset();
+    } else {
+      // copy result only if we need it
+      mdr.setManaged(newDoc.begin(), documentId);
+      TRI_ASSERT(!mdr.empty());
+    }
 
     // report document and key size
     RocksDBOperationResult result = state->addOperation(
@@ -1080,8 +1087,13 @@ Result RocksDBCollection::replace(
   RocksDBOperationResult opResult = updateDocument(
       trx, oldDocumentId, oldDoc, documentId, newDoc, options);
   if (opResult.ok()) {
-    mdr.setManaged(newDoc.begin(), documentId);
-    TRI_ASSERT(!mdr.empty());
+    if (options.silent) {
+      mdr.reset();
+    } else {
+      // copy result only if we need it
+      mdr.setManaged(newDoc.begin(), documentId); 
+      TRI_ASSERT(!mdr.empty());
+   }
 
     // report document and key size
     RocksDBOperationResult result =
@@ -1114,8 +1126,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   LocalDocumentId const documentId = LocalDocumentId::create();
   prevRev = 0;
 
-  transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore, revisionId);
+  revisionId = TRI_HybridLogicalClock();
 
   VPackSlice key;
   if (slice.isString()) {
