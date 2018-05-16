@@ -83,7 +83,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   result.result = builder;
   result.cached = false;
-  result.context = transaction::V8Context::Create(&vocbase, false);
+  result.context = transaction::V8Context::Create(vocbase, false);
 
   TRI_ASSERT(builder.get() != nullptr);
 

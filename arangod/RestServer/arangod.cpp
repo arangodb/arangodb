@@ -80,7 +80,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RestServer/WorkMonitorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
@@ -192,7 +191,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new V8PlatformFeature(&server));
     server.addFeature(new VersionFeature(&server));
     server.addFeature(new ViewTypesFeature(&server));
-    server.addFeature(new WorkMonitorFeature(&server));
     server.addFeature(new aql::AqlFunctionFeature(&server));
     server.addFeature(new aql::OptimizerRulesFeature(&server));
     server.addFeature(new pregel::PregelFeature(&server));

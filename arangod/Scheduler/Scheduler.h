@@ -110,7 +110,7 @@ class Scheduler {
   inline uint64_t getCounters() const noexcept { return _counters; }
   /// Number of running threads
   static uint64_t numRunning(uint64_t value) noexcept { return value & 0xFFFFULL; }
-  /// Number of running threads
+  /// Number of working threads
   static uint64_t numWorking(uint64_t value) noexcept { return (value >> 16) & 0xFFFFULL; }
   /// Number of blocked threads
   static uint64_t numBlocked(uint64_t value) noexcept { return (value >> 32) & 0xFFFFULL; }

@@ -24,7 +24,6 @@
       'collection/:colid/:docid': 'document',
       'shell': 'shell',
       'queries': 'query',
-      'workMonitor': 'workMonitor',
       'databases': 'databases',
       'settings': 'databases',
       'services': 'applications',
@@ -854,23 +853,6 @@
         });
       }
       this.supportView.render();
-    },
-
-    workMonitor: function (initialized) {
-      this.checkUser();
-      if (!initialized) {
-        this.waitForInit(this.workMonitor.bind(this));
-        return;
-      }
-      if (!this.workMonitorCollection) {
-        this.workMonitorCollection = new window.WorkMonitorCollection();
-      }
-      if (!this.workMonitorView) {
-        this.workMonitorView = new window.WorkMonitorView({
-          collection: this.workMonitorCollection
-        });
-      }
-      this.workMonitorView.render();
     },
 
     queryManagement: function (initialized) {

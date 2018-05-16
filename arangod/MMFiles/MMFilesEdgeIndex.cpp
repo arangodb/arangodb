@@ -251,8 +251,14 @@ void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.openObject();
   Index::toVelocyPack(builder, withFigures, forPersistence);
   // hard-coded
-  builder.add("unique", VPackValue(false));
-  builder.add("sparse", VPackValue(false));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 

@@ -83,7 +83,6 @@ if (USE_IRESEARCH)
   )
 
   target_include_directories(${LIB_ARANGO_IRESEARCH}
-    PUBLIC ${Boost_INCLUDE_DIR} # for boost/lockfree/queue.hpp from WorkMonitor.h
     PUBLIC ${IRESEARCH_INCLUDE}
   )
 
@@ -319,10 +318,8 @@ SET(ARANGOD_SOURCES
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
-  GeneralServer/RestEngine.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
-  GeneralServer/RestStatus.cpp
   GeneralServer/VstCommTask.cpp
   GeoIndex/Index.cpp
   GeoIndex/Near.cpp
@@ -404,7 +401,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
-  RestHandler/RestDemoHandler.cpp
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
@@ -430,7 +426,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
-  RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
@@ -453,7 +448,6 @@ SET(ARANGOD_SOURCES
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
-  RestServer/WorkMonitorFeature.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
@@ -492,7 +486,6 @@ SET(ARANGOD_SOURCES
   Utils/FlushThread.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
-  Utils/WorkMonitorArangod.cpp
   V8Server/FoxxQueuesFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp

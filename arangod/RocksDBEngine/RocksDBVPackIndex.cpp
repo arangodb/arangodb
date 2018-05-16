@@ -316,8 +316,14 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                      bool forPersistence) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(_unique));
-  builder.add("sparse", VPackValue(_sparse));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(_unique)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(_sparse)
+  );
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }

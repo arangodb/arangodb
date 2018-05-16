@@ -43,7 +43,6 @@ class ExecutionEngineResult : public Result {
     // This is not explicit on purpose
     // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
     ExecutionEngineResult(Result const& result);
-
     explicit ExecutionEngineResult(ExecutionEngine*);
 
     ~ExecutionEngineResult();

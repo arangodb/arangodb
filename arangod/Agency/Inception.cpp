@@ -28,7 +28,6 @@
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
 #include <numeric>

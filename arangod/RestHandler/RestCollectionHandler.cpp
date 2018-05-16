@@ -163,13 +163,15 @@ void RestCollectionHandler::handleCommandGet() {
         } else if (sub == "revision") {
           // /_api/collection/<identifier>/revision
           TRI_voc_rid_t revisionId;
-          Result res =
-              methods::Collections::revisionId(&_vocbase, coll, revisionId);
+          auto res =
+            methods::Collections::revisionId(_vocbase, coll, revisionId);
 
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
           }
+
           VPackObjectBuilder obj(&builder, true);
+
           obj->add("revision", VPackValue(StringUtils::itoa(revisionId)));
           collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
@@ -310,7 +312,7 @@ void RestCollectionHandler::handleCommandPut() {
     name,
     [&](LogicalCollection* coll) {
         if (sub == "load") {
-          res = methods::Collections::load(&_vocbase, coll);
+          res = methods::Collections::load(_vocbase, coll);
 
           if (res.ok()) {
             bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
@@ -402,7 +404,8 @@ void RestCollectionHandler::handleCommandPut() {
           builder.add("result", VPackValue(true));
           builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
-          res = methods::Collections::warmup(&_vocbase, coll);
+          res = methods::Collections::warmup(_vocbase, coll);
+
           VPackObjectBuilder obj(&builder, true);
 
           obj->add("result", VPackValue(res.ok()));
