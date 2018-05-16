@@ -392,7 +392,8 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
         RocksDBLogValue logValue = RocksDBLogValue::SinglePut(_vocbase->id(), cid);
         _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        TRI_ASSERT(_numLogdata++ == 0);
+        TRI_ASSERT(_numLogdata == 0);
+        _numLogdata++;
 #endif
         break;
       }
@@ -402,7 +403,8 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
                                                                    cid, rid);
         _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        TRI_ASSERT(_numLogdata++ == 0);
+        TRI_ASSERT(_numLogdata == 0);
+        _numLogdata++;
 #endif
       } break;
       case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:

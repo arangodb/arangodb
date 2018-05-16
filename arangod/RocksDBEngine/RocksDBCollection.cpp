@@ -1093,7 +1093,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   // get the previous revision
-  Result res = lookupDocument(trx, key, previous).errorNumber();
+  Result res = lookupDocument(trx, key, previous);
 
   if (res.fail()) {
     return res;

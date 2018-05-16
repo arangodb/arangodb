@@ -319,6 +319,28 @@ Return the number of days in the month of *date*.
 - **date** (number|string): numeric timestamp or ISO 8601 date time string
 - returns **daysInMonth** (number): the number of days in *date*'s month (28..31)
 
+### DATE_TRUNC()
+
+`DATE_TRUNC(date, unit) → isoDate`
+
+Truncates the given date after *unit* and returns the modified date.
+
+- **date** (number|string): numeric timestamp or ISO 8601 date time string
+- **unit** (string): either of the following to specify the time unit (case-insensitive):
+  - y, year, years
+  - m, month, months
+  - d, day, days
+  - h, hour, hours
+  - i, minute, minutes
+  - s, second, seconds
+  - f, millisecond, milliseconds
+- returns **isoDate** (string): the truncated ISO 8601 date time string
+
+```js
+DATE_TRUNC('2017-02-03', 'month') // 2017-02-01T00:00:00.000Z
+DATE_TRUNC('2017-02-03 04:05:06', 'hours') // 2017-02-03 04:00:00.000Z
+```
+
 ### DATE_FORMAT()
 
 `DATE_FORMAT(date, format) → str`

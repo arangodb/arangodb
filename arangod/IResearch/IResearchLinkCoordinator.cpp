@@ -416,13 +416,18 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false; // failed to parse metadata
   }
 
-  auto const identifier = IResearchLinkHelper::getView(definition);
+  if (!definition.isObject()
+      || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "error finding view for link '" << _id << "'";
+    TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
-  if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
-    auto const viewId = identifier.getUInt();
+    return false;
+  }
 
+  auto identifier = definition.get(StaticStrings::ViewIdField);
+  auto viewId = identifier.getNumber<uint64_t>();
     auto& vocbase = collection().vocbase();
-
     auto logicalView  = vocbase.lookupView(viewId);
 
     if (!logicalView
@@ -448,13 +453,6 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     _view = view;
 
     return true;
-  }
-
-  LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "error finding view for link '" << _id << "'";
-  TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-
-  return false;
 }
 
 bool IResearchLinkCoordinator::matchesDefinition(VPackSlice const& slice) const {
@@ -474,11 +472,21 @@ bool IResearchLinkCoordinator::toVelocyPack(
   TRI_ASSERT(_view);
 
   builder.add("id", VPackValue(StringUtils::itoa(_id)));
-  IResearchLinkHelper::setType(builder);
-  IResearchLinkHelper::setView(builder, _view->id());
+  builder.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(IResearchLinkHelper::type())
+  );
+  builder.add(
+    StaticStrings::ViewIdField,
+    arangodb::velocypack::Value(_view->id())
+  );
 
   return true;
 }
 
 } // iresearch
 } // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
