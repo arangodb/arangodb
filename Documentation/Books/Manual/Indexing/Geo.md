@@ -2,7 +2,7 @@ Geo-Spatial Indexes
 ===================
 
 ArangoDB features a [Google S2](http://s2geometry.io/) based geospatial index.
-We support indexing on a subset of the [**GeoJSON**](#GeoJSON) standard
+We support indexing on a subset of the [**GeoJSON**](#geojson) standard
 (as well as simple latitude longitude pairs).
 
 AQL's geospatial utility functions are described in [Geo
