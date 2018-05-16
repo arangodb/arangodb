@@ -7,6 +7,11 @@ devel
   SSLv2 has been disabled in the OpenSSL library by default in recent versions
   because of security vulnerabilities inherent in this protocol. 
 
+  As it is not safe at all to use this protocol, the support for it has also 
+  been stopped in ArangoDB. End users that use SSLv2 for connecting to ArangoDB
+  should change the protocol from SSLv2 to TLSv12 if possible, by adjusting
+  the value of the `--ssl.protocol` startup option. 
+
 * added startup option `--log.escape`
 
   This option toggles the escaping of log output. 
