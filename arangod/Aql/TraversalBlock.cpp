@@ -80,11 +80,8 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
 #ifdef USE_ENTERPRISE
     if (ep->isSmart()) {
       _traverser.reset(new arangodb::traverser::SmartGraphTraverser(
-          _opts,
-          _mmdr.get(),
-          ep->engines(),
-          _trx->vocbase()->name(),
-          _trx));
+        _opts, _mmdr.get(), ep->engines(), _trx->vocbase().name(), _trx
+      ));
     } else {
 #endif
       _traverser.reset(new arangodb::traverser::ClusterTraverser(
