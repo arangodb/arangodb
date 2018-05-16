@@ -20,30 +20,17 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_CONTEXT_DATA_H
-#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_CONTEXT_DATA_H 1
+#include "RocksDBRestHandlers.h"
+#include "GeneralServer/RestHandlerFactory.h"
+#include "RestHandler/RestHandlerCreator.h"
+#include "ClusterEngine/RocksDBRestReplicationHandler.h"
 
-#include "Basics/Common.h"
-#include "Transaction/ContextData.h"
-#include "VocBase/voc-types.h"
+using namespace arangodb;
 
-namespace arangodb {
-class LogicalCollection;
+void ClusterRestHandlers::registerResources(
+    rest::RestHandlerFactory* handlerFactory) {
 
-/// @brief transaction type
-class ClusterTransactionContextData final : public transaction::ContextData {
- public:
-  ClusterTransactionContextData() = default;
-  ~ClusterTransactionContextData() = default;
-
-  /// @brief pin data for the collection
-  /// there is nothing to do for the RocksDB engine
-  void pinData(arangodb::LogicalCollection*) override {}
-
-  /// @brief whether or not the data for the collection is pinned
-  /// note that this is always true in RocksDB
-  bool isPinned(TRI_voc_cid_t) const override { return true; }
-};
+  handlerFactory->addPrefixHandler(
+      "/_api/replication",
+      RestHandlerCreator<ClusterRestReplicationHandler>::createNoData);
 }
-
-#endif

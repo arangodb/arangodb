@@ -25,30 +25,23 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
-#include <rocksdb/comparator.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace arangodb::rocksutils;
 
-// This is the number of distinct elements the index estimator can reliably
-// store
-// This correlates directly with the memory of the estimator:
-// memory == ESTIMATOR_SIZE * 6 bytes
-
-uint64_t const arangodb::RocksDBIndex::ESTIMATOR_SIZE = 4096;
-
+/*
 ClusterIndex::ClusterIndex(
     TRI_idx_iid_t id, LogicalCollection* collection,
+    Index::IndexType type,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-    bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
-    uint64_t objectId, bool useCache)
-    : Index(id, collection, attributes, unique, sparse) {
-}
+    bool unique, bool sparse)
+    : Index(id, collection, attributes, unique, sparse), _type(type) {
+}*/
 
 ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection* collection,
-                           VPackSlice const& info,
-                           rocksdb::ColumnFamilyHandle* cf, bool useCache)
-    : Index(id, collection, info), _indexDefinition(info) {
+                           Index::IndexType type, VPackSlice const& info)
+    : Index(id, collection, info), _type(type), _indexDefinition(info) {
       _indexDefinition.slice().isObject();
 }
 
@@ -74,19 +67,20 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   
   //static std::vector forbidden = {};
   for (auto pair : VPackObjectIterator(_indexDefinition.slice())) {
-    if (!pair.key.equalString("id") &&
-        !pair.key.equalString("type") &&
-        !pair.key.equalString("fields") &&
-        !pair.key.equalString("selectivityEstimate") &&
-        !pair.key.equalString("figures") &&
-        !pair.key.equalString("unique") &&
-        !pair.key.equalString("sparse")) {
-      builder.add(pair.key, pair.value);
+    if (!pair.key.isEqualString("id") &&
+        !pair.key.isEqualString("type") &&
+        !pair.key.isEqualString("fields") &&
+        !pair.key.isEqualString("selectivityEstimate") &&
+        !pair.key.isEqualString("figures") &&
+        !pair.key.isEqualString("unique") &&
+        !pair.key.isEqualString("sparse")) {
+      builder.add(pair.key);
+      builder.add(pair.value);
     }
   }
   builder.close();
 }
 
 void ClusterIndex::updateProperties(velocypack::Slice const&) {
-#error engine specific properties
+//#error engine specific properties
 }

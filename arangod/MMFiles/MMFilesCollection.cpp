@@ -1228,8 +1228,8 @@ void MMFilesCollection::getPropertiesVPackCoordinator(
   result.add("journalSize", VPackValue(_journalSize));
 }
 
-void MMFilesCollection::figuresSpecific(
-    std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void MMFilesCollection::figures(
+    std::shared_ptr<arangodb::velocypack::Builder>& builder) const {
   // fills in compaction status
   char const* lastCompactionStatus = "-";
   char lastCompactionStampString[21];

@@ -356,21 +356,13 @@ void RocksDBCollection::prepareIndexes(
             from.slice(), false, _logicalCollection, true
           );
 
-          if (ServerState::instance()->isRunningInCluster()) {
-            addIndexCoordinator(idxFrom);
-          } else {
-            addIndex(idxFrom);
-          }
+          addIndex(idxFrom);
 
           auto idxTo = idxFactory.prepareIndexFromSlice(
             to.slice(), false, _logicalCollection, true
           );
 
-          if (ServerState::instance()->isRunningInCluster()) {
-            addIndexCoordinator(idxTo);
-          } else {
             addIndex(idxTo);
-          }
 
           alreadyHandled = true;
           splitEdgeIndex = true;
@@ -393,11 +385,7 @@ void RocksDBCollection::prepareIndexes(
           b.slice(), false, _logicalCollection, true
         );
 
-        if (ServerState::instance()->isRunningInCluster()) {
-          addIndexCoordinator(idx);
-        } else {
-          addIndex(idx);
-        }
+        addIndex(idx);
 
         alreadyHandled = true;
       }
@@ -407,11 +395,7 @@ void RocksDBCollection::prepareIndexes(
       auto idx =
         idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
 
-      if (ServerState::instance()->isRunningInCluster()) {
-        addIndexCoordinator(idx);
-      } else {
-        addIndex(idx);
-      }
+      addIndex(idx);
     }
   }
 
@@ -497,13 +481,13 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   );
   TRI_ASSERT(idx != nullptr);
 
-  if (ServerState::instance()->isCoordinator()) {
+  /*if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
     // We only inform the others.
     addIndexCoordinator(idx);
     created = true;
     return idx;
-  }
+  }*/
 
   int res = saveIndex(trx, idx);
 
@@ -1256,7 +1240,7 @@ void RocksDBCollection::deferDropCollection(
 }
 
 /// @brief return engine-specific figures
-void RocksDBCollection::figuresSpecific(
+void RocksDBCollection::figures(
     std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
@@ -1292,7 +1276,8 @@ void RocksDBCollection::createInitialIndexes() {
 void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   // LOCKED from the outside
   // primary index must be added at position 0
-  TRI_ASSERT(idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster() ||
+             idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
              _indexes.empty());
 
   auto const id = idx->id();
@@ -1304,23 +1289,6 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   }
 
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
-  _indexes.emplace_back(idx);
-  if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-    TRI_ASSERT(idx->id() == 0);
-    _primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
-  }
-}
-
-void RocksDBCollection::addIndexCoordinator(
-    std::shared_ptr<arangodb::Index> idx) {
-  // LOCKED from the outside
-  auto const id = idx->id();
-  for (auto const& it : _indexes) {
-    if (it->id() == id) {
-      // already have this particular index. do not add it again
-      return;
-    }
-  }
   _indexes.emplace_back(idx);
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     TRI_ASSERT(idx->id() == 0);

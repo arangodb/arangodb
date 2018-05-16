@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,8 +21,8 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_REST_REPLICATION_HANDLER_H
-#define ARANGOD_ROCKSDB_ROCKSDB_REST_REPLICATION_HANDLER_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_REST_REPLICATION_HANDLER_H
+#define ARANGOD_CLUSTER_CLUSTER_REST_REPLICATION_HANDLER_H 1
 
 #include "RestHandler/RestReplicationHandler.h"
 
@@ -32,15 +31,15 @@
 namespace arangodb {
 
 /// @brief replication request handler
-class RocksDBRestReplicationHandler : public RestReplicationHandler {
+class ClusterRestReplicationHandler : public RestReplicationHandler {
  public:
-  RocksDBRestReplicationHandler(GeneralRequest*, GeneralResponse*);
-  ~RocksDBRestReplicationHandler() {}
+  ClusterRestReplicationHandler(GeneralRequest*, GeneralResponse*);
+  ~ClusterRestReplicationHandler() {}
 
  public:
 
   char const* name() const override final {
-    return "RocksDBRestReplicationHandler";
+    return "ClusterRestReplicationHandler";
   }
 
  private:
@@ -77,10 +76,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   void handleCommandDump() override;
 
  private:
-
-  /// Manage RocksDBReplicationContext containing the dump state for the initial
-  /// sync and incremental sync
-  RocksDBReplicationManager* _manager;
 };
 }
 

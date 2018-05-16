@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Indexes/IndexLookupContext.h"
+#include "Basics/StringRef.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -52,7 +52,7 @@ class ClusterCollection final : public PhysicalCollection {
 
  public:
  public:
-  explicit ClusterCollection(LogicalCollection*, VPackSlice const& info);
+  explicit ClusterCollection(LogicalCollection*, velocypack::Slice const& info);
   ClusterCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~ClusterCollection();
@@ -60,7 +60,7 @@ class ClusterCollection final : public PhysicalCollection {
   std::string const& path() const override;
   void setPath(std::string const& path) override;
 
-  arangodb::Result updateProperties(VPackSlice const& slice,
+  arangodb::Result updateProperties(velocypack::Slice const& slice,
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
@@ -70,15 +70,15 @@ class ClusterCollection final : public PhysicalCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
   /// @brief used for updating properties
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
+  
+  void figures(std::shared_ptr<arangodb::velocypack::Builder>&) const override;
 
   /// @brief closes an open collection
   int close() override;
   void load() override;
   void unload() override;
 
-  TRI_voc_rid_t revision() const;
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
-  uint64_t numberDocuments() const;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
   /// @brief report extra memory used by indexes etc.
@@ -167,19 +167,16 @@ class ClusterCollection final : public PhysicalCollection {
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
-
- private:
-  /// @brief track the usage of waitForSync option in an operation
-  void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
-
-  /// @brief return engine-specific figures
-  void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) override;
-
- private:
-  uint64_t const _objectId;  // rocksdb-specific object id for collection
-  std::atomic<uint64_t> _numberDocuments;
-  std::atomic<TRI_voc_rid_t> _revisionId;
+  
+private:
+  
+  void addIndex(std::shared_ptr<arangodb::Index> idx);
+  void createInitialIndexes();
+  
+private:
+  // keep locks just to adhere to behaviour in other collections
+  mutable basics::ReadWriteLock _exclusiveLock;
+  velocypack::Builder _info;
 };
 
 }  // namespace arangodb

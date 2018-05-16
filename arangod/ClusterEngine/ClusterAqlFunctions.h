@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_AQL_FUNCTIONS_H
-#define ARANGOD_ROCKSDB_ROCKSDB_AQL_FUNCTIONS_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_AQL_FUNCTIONS_H
+#define ARANGOD_CLUSTER_CLUSTER_AQL_FUNCTIONS_H 1
 
 #include "Aql/Functions.h"
 #include "Basics/Common.h"
@@ -31,16 +31,7 @@ namespace aql {
 struct Function;
 }
 
-struct RocksDBAqlFunctions : public aql::Functions {
-  static aql::AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
-                                aql::VPackFunctionParameters const&);
-
-  static aql::AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
-                            aql::VPackFunctionParameters const&);
-
-  static aql::AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
-                              aql::VPackFunctionParameters const&);
-
+struct ClusterAqlFunctions : public aql::Functions {
   static void registerResources();
 };
 

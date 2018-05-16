@@ -302,7 +302,9 @@ SET(ARANGOD_SOURCES
   ClusterEngine/ClusterEngine.cpp
   ClusterEngine/ClusterIndex.cpp
   ClusterEngine/ClusterIndexFactory.cpp
+  ClusterEngine/ClusterRestHandlers.cpp
   ClusterEngine/ClusterRestReplicationHandler.cpp
+  ClusterEngine/ClusterTransactionCollection.cpp
   ClusterEngine/ClusterTransactionContextData.h
   ClusterEngine/ClusterTransactionState.cpp
   GeneralServer/AsyncJobManager.cpp

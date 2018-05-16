@@ -31,10 +31,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace rocksdb {
-class TransactionDB;
-}
-
 namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
@@ -296,10 +292,6 @@ public:
   virtual void releaseTick(TRI_voc_tick_t) override;
 
  private:
-  
-  Result dropDatabase(TRI_voc_tick_t);
-  bool systemDatabaseExists();
-  void addSystemDatabase();
   
   /// @brief open an existing database. internal function
   TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id,

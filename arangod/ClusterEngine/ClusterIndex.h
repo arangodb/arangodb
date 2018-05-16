@@ -33,12 +33,14 @@ class LogicalCollection;
 
 class ClusterIndex : public Index {
 
- protected:
-  ClusterIndex(TRI_idx_iid_t, LogicalCollection*,
+ public:
+  /*ClusterIndex(TRI_idx_iid_t, LogicalCollection*,
+               Index::IndexType type,
                std::vector<std::vector<arangodb::basics::AttributeName>> const&
-                   attributes, bool unique, bool sparse);
+                   attributes, bool unique, bool sparse);*/
 
   ClusterIndex(TRI_idx_iid_t, LogicalCollection*,
+               Index::IndexType type,
                arangodb::velocypack::Slice const&);
 
  public:
@@ -50,8 +52,28 @@ class ClusterIndex : public Index {
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder, bool withFigures,
                     bool forPersistence) const override;
-
+  
+  IndexType type() const override { return _type; }
+  
+  char const* typeName() const override { return Index::oldtypeName(_type); }
+  
+  bool allowExpansion() const override { return false; }
+  
   bool isPersistent() const override final { return true; }
+  
+  bool canBeDropped() const override { return _type != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
+                                              _type != Index::TRI_IDX_TYPE_EDGE_INDEX; }
+  
+  bool hasCoveringIterator() const override { return true; }
+  
+  bool isSorted() const override { return false; }
+  
+  bool hasSelectivityEstimate() const override { return true; }
+  
+  double selectivityEstimateLocal(arangodb::StringRef const* = nullptr) const override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    return 0;
+  }
 
   int drop() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
@@ -83,9 +105,10 @@ class ClusterIndex : public Index {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   
-  void updateProperties(velocypack::Slice const&)
+  void updateProperties(velocypack::Slice const&);
 
 protected:
+  Index::IndexType _type;
   velocypack::Builder _indexDefinition;
 };
 }  // namespace arangodb

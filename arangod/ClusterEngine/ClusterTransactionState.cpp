@@ -38,13 +38,9 @@ using namespace arangodb;
 struct ClusterTransactionData final : public TransactionData {};
 
 /// @brief transaction type
-ClusterTransactionState::RocksDBTransactionState(
+ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t* vocbase, TRI_voc_tid_t tid, transaction::Options const& options)
-    : TransactionState(vocbase, tid, options),
-      _numCommits(0),
-      _numInserts(0),
-      _numUpdates(0),
-      _numRemoves(0) {}
+    : TransactionState(vocbase, tid, options) {}
 
 /// @brief free a transaction container
 ClusterTransactionState::~ClusterTransactionState() {
@@ -95,7 +91,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 }
 
 /// @brief commit a transaction
-Result RocksDBTransactionState::commitTransaction(
+Result ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
   LOG_TRX(this, _nestingLevel)
       << "committing " << AccessMode::typeString(_type) << " transaction";
@@ -120,7 +116,7 @@ Result RocksDBTransactionState::commitTransaction(
 }
 
 /// @brief abort and rollback a transaction
-Result RocksDBTransactionState::abortTransaction(
+Result ClusterTransactionState::abortTransaction(
     transaction::Methods* activeTrx) {
   LOG_TRX(this, _nestingLevel)
       << "aborting " << AccessMode::typeString(_type) << " transaction";

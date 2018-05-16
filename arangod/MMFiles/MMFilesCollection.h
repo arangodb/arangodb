@@ -499,8 +499,8 @@ class MMFilesCollection final : public PhysicalCollection {
   bool removeIndex(TRI_idx_iid_t iid);
 
   /// @brief return engine-specific figures
-  void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figures(
+      std::shared_ptr<arangodb::velocypack::Builder>&) const override;
 
   // SECTION: Index storage
 

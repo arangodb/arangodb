@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H
-#define ARANGOD_ROCKSDB_ROCKSDB_TRANSACTION_STATE_H 1
+#ifndef ARANGOD_CLUSTER_CLUSTER_TRANSACTION_STATE_H
+#define ARANGOD_CLUSTER_CLUSTER_TRANSACTION_STATE_H 1
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
@@ -57,19 +57,11 @@ class ClusterTransactionState final : public TransactionState {
 
   /// @brief abort a transaction
   Result abortTransaction(transaction::Methods* trx) override;
-
-  uint64_t numCommits() const { return _numCommits; }
-  uint64_t numInserts() const { return _numInserts; }
-  uint64_t numUpdates() const { return _numUpdates; }
-  uint64_t numRemoves() const { return _numRemoves; }
-
-  inline bool hasOperations() const {
-    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
-  }
-
+  
   bool hasFailedOperations() const override {
-    return (_status == transaction::Status::ABORTED) && hasOperations();
+    return false;
   }
+
 };
 
 }  // namespace arangodb
