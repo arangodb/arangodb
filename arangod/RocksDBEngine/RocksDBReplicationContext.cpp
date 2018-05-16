@@ -755,7 +755,7 @@ void RocksDBReplicationContext::releaseDumpingResources() {
 
 RocksDBReplicationContext::CollectionIterator::CollectionIterator(
     LogicalCollection& collection, transaction::Methods& trx,
-    bool sorted) noexcept
+    bool sorted) 
     : logical{collection},
       iter{nullptr},
       currentTick{1},

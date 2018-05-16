@@ -145,8 +145,8 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   if (_vpackPayloads.empty()) {
     if (_generateBody) {
       LOG_TOPIC(INFO, Logger::REQUESTS)
-          << "Response should generate body but no Data available";
-      _generateBody = false;  // no body availalbe
+          << "Response should generate body but no data available";
+      _generateBody = false;  // no body available
     }
     return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
                                    VPackSlice::noneSlice(), _messageId,
