@@ -25,7 +25,9 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: {
         <span class="hljs-string">"outVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"user"</span> 
-        } 
+        }, 
+        <span class="hljs-string">"projections"</span> : [ ], 
+        <span class="hljs-string">"producesResult"</span> : <span class="hljs-literal">true</span> 
       }, 
       { 
         <span class="hljs-string">"type"</span> : <span class="hljs-string">"CalculationNode"</span>, 
