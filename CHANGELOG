@@ -1,5 +1,7 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
+* fixed Foxx queues bug when queues are created in a request handler with an
+  ArangoDB authentication header
 
 * upgraded arangosync version to 0.5.1 
 
@@ -20,7 +22,7 @@ v3.3.9 (xxxx-xx-xx)
   will always return the first value for non-unique attribute names and not the
   last occurring value.
 
-* self heal during a Foxx service install, upgrade or replace no longer breaks 
+* self heal during a Foxx service install, upgrade or replace no longer breaks
   the respective operation
 
 * make /_api/index, /_api/database and /_api/user REST handlers use the scheduler's internal
@@ -52,16 +54,16 @@ v3.3.9 (xxxx-xx-xx)
   This optimization can speed up gathering data from multiple shards, because
   it allows to remove a merge sort of the individual shards' results.
 
-* extend the already existing "reduce-extraction-to-projection" AQL optimizer 
+* extend the already existing "reduce-extraction-to-projection" AQL optimizer
   rule for RocksDB to provide projections of up to 5 document attributes. The
-  previous implementation only supported a projection for a single document 
-  attribute. The new implementation will extract up to 5 document attributes from 
+  previous implementation only supported a projection for a single document
+  attribute. The new implementation will extract up to 5 document attributes from
   a document while scanning a collection via an EnumerateCollectionNode.
   Additionally the new version of the optimizer rule can also produce projections
-  when scanning an index via an IndexNode. 
+  when scanning an index via an IndexNode.
   The optimization is benefial especially for huge documents because it will copy
-  out only the projected attributes from the document instead of copying the entire 
-  document data from the storage engine. 
+  out only the projected attributes from the document instead of copying the entire
+  document data from the storage engine.
 
   When applied, the explainer will show the projected attributes in a `projections`
   remark for an EnumerateCollectionNode or IndexNode. The optimization is limited
@@ -73,7 +75,7 @@ v3.3.9 (xxxx-xx-xx)
   This optimization will be triggered for the RocksDB engine if an index is used
   that covers all required attributes of the document used later on in the query.
   If applied, it will save retrieving the actual document data (which would require
-  an extra lookup in RocksDB), but will instead build the document data solely 
+  an extra lookup in RocksDB), but will instead build the document data solely
   from the index values found. It will only be applied when using up to 5 attributes
   from the document, and only if the rest of the document data is not used later
   on in the query.
@@ -87,11 +89,11 @@ v3.3.9 (xxxx-xx-xx)
 * added scan-only optimization for AQL queries that iterate over collections or
   indexes and that do not need to return the actual document values.
 
-  Not fetching the document values from the storage engine will provide a 
+  Not fetching the document values from the storage engine will provide a
   considerable speedup when using the RocksDB engine, but may also help a bit
-  in case of the MMFiles engine. The optimization will only be applied when 
+  in case of the MMFiles engine. The optimization will only be applied when
   full-scanning or index-scanning a collection without refering to any of its
-  documents later on, and, for an IndexNode, if all filter conditions for the 
+  documents later on, and, for an IndexNode, if all filter conditions for the
   documents of the collection are covered by the index.
 
   If the optimization is applied, it will show up as "scan only" in an AQL
@@ -107,7 +109,7 @@ v3.3.9 (xxxx-xx-xx)
   - COLLECT var1 = expr1, ..., varn = exprn (WITH COUNT INTO ...), without INTO or KEEP
   - COLLECT var1 = expr1, ..., varn = exprn AGGREGATE ..., without INTO or KEEP, for
     aggregate functions COUNT/LENGTH, SUM, MIN and MAX.
-  
+
 * honor specified COLLECT method in AQL COLLECT options
 
   for example, when the user explicitly asks for the COLLECT method
