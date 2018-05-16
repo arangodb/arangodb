@@ -36,7 +36,7 @@ namespace arangodb {
 
 class StatisticsWorker final : public Thread {
  public:
-  StatisticsWorker(TRI_vocbase_t& vocbase);
+  explicit StatisticsWorker(TRI_vocbase_t& vocbase);
   ~StatisticsWorker() { shutdown(); }
 
   void run() override;

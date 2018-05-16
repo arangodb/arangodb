@@ -57,6 +57,7 @@ void AqlFunctionFeature::validateOptions(
 void AqlFunctionFeature::prepare() {
   // set singleton
   AQLFUNCTIONS = this;
+  Functions::init();
 
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
@@ -334,7 +335,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_SUBTRACT", ".,.|.", true, false, true, &Functions::DateSubtract});
   add({"DATE_DIFF", ".,.,.|.", true, false, true, &Functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", true, false, true, &Functions::DateCompare});
-  add({"DATE_FORMAT", ".,.", true, false, true });
+  add({"DATE_FORMAT", ".,.", true, false, true, &Functions::DateFormat});
 }
 
 void AqlFunctionFeature::addMiscFunctions() {
