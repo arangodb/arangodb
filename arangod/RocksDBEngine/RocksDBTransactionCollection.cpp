@@ -180,14 +180,16 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
+
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _collection = _transaction->vocbase()->useCollection(_cid, status);
+      _collection = _transaction->vocbase().useCollection(_cid, status);
+
       if (_collection != nullptr) {
         _usageLocked = true;
       }
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase()->lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -196,9 +198,11 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
 
     if (_collection == nullptr) {
       int res = TRI_errno();
+
       if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED) {
         return res;
       }
+
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
 
@@ -247,9 +251,10 @@ void RocksDBTransactionCollection::release() {
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
-      _transaction->vocbase()->releaseCollection(_collection);
+      _transaction->vocbase().releaseCollection(_collection);
       _usageLocked = false;
     }
+
     _collection = nullptr;
   }
 }

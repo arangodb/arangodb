@@ -469,7 +469,7 @@ void DatabaseFeature::recoveryDone() {
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
     // execute the engine-specific callbacks on successful recovery
-    engine->recoveryDone(vocbase);
+    engine->recoveryDone(*vocbase);
 
     ReplicationFeature* replicationFeature =
         static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
@@ -632,8 +632,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
     if (! engine->inRecovery()) {
       // starts compactor etc.
-      engine->recoveryDone(vocbase.get());
-    
+      engine->recoveryDone(*vocbase);
+
       ReplicationFeature* replicationFeature =
         static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
 

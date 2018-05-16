@@ -1210,7 +1210,7 @@ void IResearchView::getPropertiesVPack(
 
   try {
     arangodb::transaction::UserTransaction trx(
-      transaction::StandaloneContext::Create(&vocbase()),
+      transaction::StandaloneContext::Create(vocbase()),
       collections, // readCollections
       EMPTY, // writeCollections
       EMPTY, // exclusiveCollections
@@ -1915,7 +1915,7 @@ void IResearchView::verifyKnownCollections() {
     static const arangodb::transaction::Options defaults;
     struct State final: public arangodb::TransactionState {
       State(TRI_vocbase_t& vocbase)
-        : arangodb::TransactionState(&vocbase, defaults) {}
+        : arangodb::TransactionState(vocbase, defaults) {}
       virtual arangodb::Result abortTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }

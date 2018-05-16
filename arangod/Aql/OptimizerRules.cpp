@@ -5373,17 +5373,22 @@ static bool isValueTypeCollection(AstNode const* node) {
 static aql::Collection* addCollectionToQuery(Query* query, std::string const& cname) {
   aql::Collections* colls = query->collections();
   aql::Collection* coll = colls->get(cname);
+
   if (coll == nullptr) { // TODO: cleanup this mess
     coll = colls->add(cname, AccessMode::Type::READ);
+
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      auto cptr = query->trx()->vocbase()->lookupCollection(cname);
+      auto cptr = query->trx()->vocbase().lookupCollection(cname);
+
       coll->setCollection(cptr.get());
       // FIXME: does this need to happen in the coordinator?
       query->trx()->addCollectionAtRuntime(cname);
     }
   }
+
   TRI_ASSERT(coll != nullptr);
+
   return coll;
 }
 

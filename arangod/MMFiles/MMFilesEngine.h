@@ -35,6 +35,7 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
 class MMFilesCleanupThread;
 class MMFilesCompactorThread;
 class MMFilesWalAccess;
@@ -44,12 +45,16 @@ class TransactionCollection;
 class TransactionState;
 
 namespace rest {
+
 class RestHandlerFactory;
+
 }
 
 namespace transaction {
+
 class ContextData;
 struct Options;
+
 }
 
 /// @brief collection file structure
@@ -115,8 +120,10 @@ class MMFilesEngine final : public StorageEngine {
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(TRI_vocbase_t*,
-                  transaction::Options const&) override;
+  std::unique_ptr<TransactionState> createTransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+  ) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -205,7 +212,7 @@ class MMFilesEngine final : public StorageEngine {
   bool inRecovery() override;
 
   // start compactor thread and delete files form collections marked as deleted
-  void recoveryDone(TRI_vocbase_t* vocbase) override;
+  void recoveryDone(TRI_vocbase_t& vocbase) override;
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
@@ -527,7 +534,7 @@ class MMFilesEngine final : public StorageEngine {
   int stopCleanup(TRI_vocbase_t* vocbase);
 
   // start the compactor thread for the database
-  int startCompactor(TRI_vocbase_t* vocbase);
+  int startCompactor(TRI_vocbase_t& vocbase);
   // signal the compactor thread to stop
   int beginShutdownCompactor(TRI_vocbase_t* vocbase);
   // stop and delete the compactor thread for the database
@@ -583,6 +590,7 @@ class MMFilesEngine final : public StorageEngine {
   // per-database cleanup threads, protected by _threadsLock
   std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCleanupThread>> _cleanupThreads;
 };
+
 }
 
 #endif
