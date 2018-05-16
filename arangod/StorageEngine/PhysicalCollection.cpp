@@ -455,7 +455,7 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   builder->close();  // indexes
 
   // add engine-specific figures
-  figures(builder);
+  figuresSpecific(builder);
   builder->close();
   return builder;
 }

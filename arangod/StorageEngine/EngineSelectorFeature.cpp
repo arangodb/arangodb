@@ -23,6 +23,8 @@
 #include "EngineSelectorFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -80,26 +82,43 @@ void EngineSelectorFeature::prepare() {
   if (_engine == "auto") {
     _engine = MMFilesEngine::EngineName;
   }
-
+  
   TRI_ASSERT(_engine != "auto");
-
-  // deactivate all engines but the selected one
-  for (auto const& engine : availableEngines()) {
-    StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine.second);
-
-    if (engine.first == _engine) {
-      // this is the selected engine
-      LOG_TOPIC(INFO, Logger::FIXME) << "using storage engine " << engine.first;
-      e->enable();
-
-      // register storage engine
-      TRI_ASSERT(ENGINE == nullptr);
-      ENGINE = e;
-    } else {
+  
+  if (ServerState::instance()->isCoordinator()) {
+    
+    for (auto const& engine : availableEngines()) {
+      StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine.second);
+    
       // turn off all other storage engines
       LOG_TOPIC(TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
       e->disable();
     }
+    
+    ClusterEngine* e = application_features::ApplicationServer::getFeature<ClusterEngine>("ClusterEngine");
+    e->setEngineType(_engine);
+    ENGINE = e;
+  } else {
+    
+    // deactivate all engines but the selected one
+    for (auto const& engine : availableEngines()) {
+      StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(engine.second);
+      
+      if (engine.first == _engine) {
+        // this is the selected engine
+        LOG_TOPIC(INFO, Logger::FIXME) << "using storage engine " << engine.first;
+        e->enable();
+        
+        // register storage engine
+        TRI_ASSERT(ENGINE == nullptr);
+        ENGINE = e;
+      } else {
+        // turn off all other storage engines
+        LOG_TOPIC(TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
+        e->disable();
+      }
+    }
+    
   }
 
   if (ENGINE == nullptr) {

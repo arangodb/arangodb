@@ -159,8 +159,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-  /// @brief used for updating properties
-  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   // datafile management
   bool applyForTickRange(
@@ -499,8 +497,7 @@ class MMFilesCollection final : public PhysicalCollection {
   bool removeIndex(TRI_idx_iid_t iid);
 
   /// @brief return engine-specific figures
-  void figures(
-      std::shared_ptr<arangodb::velocypack::Builder>&) const override;
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
 
   // SECTION: Index storage
 

@@ -1220,16 +1220,16 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief used for updating properties
-void MMFilesCollection::getPropertiesVPackCoordinator(
+/*void MMFilesCollection::getPropertiesVPackCoordinator(
     velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add("doCompact", VPackValue(_doCompact));
   result.add("indexBuckets", VPackValue(_indexBuckets));
   result.add("journalSize", VPackValue(_journalSize));
-}
+}*/
 
-void MMFilesCollection::figures(
-    std::shared_ptr<arangodb::velocypack::Builder>& builder) const {
+void MMFilesCollection::figuresSpecific(
+    std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   // fills in compaction status
   char const* lastCompactionStatus = "-";
   char lastCompactionStampString[21];

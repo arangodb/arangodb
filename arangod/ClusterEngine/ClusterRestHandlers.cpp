@@ -20,10 +20,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBRestHandlers.h"
+#include "ClusterRestHandlers.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "RestHandler/RestHandlerCreator.h"
-#include "ClusterEngine/RocksDBRestReplicationHandler.h"
+#include "ClusterEngine/ClusterRestReplicationHandler.h"
 
 using namespace arangodb;
 

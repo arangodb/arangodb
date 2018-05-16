@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,8 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Jan Christoph Uhde
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterEngine.h"
@@ -44,12 +42,14 @@
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
 #include "VocBase/ticks.h"
@@ -71,6 +71,19 @@ ClusterEngine::ClusterEngine(application_features::ApplicationServer* server)
 }
 
 ClusterEngine::~ClusterEngine() { }
+  
+  
+void ClusterEngine::setEngineType(std::string const& engine) {
+  _currentEngine = engine;
+}
+
+bool ClusterEngine::isRocksDB() const {
+  return _currentEngine == RocksDBEngine::EngineName;
+}
+
+bool ClusterEngine::isMMFiles() const {
+  return _currentEngine == MMFilesEngine::EngineName;
+}
 
 // inherited from ApplicationFeature
 // ---------------------------------
@@ -192,6 +205,11 @@ void ClusterEngine::addParametersForNewIndex(VPackBuilder& builder,
 PhysicalCollection* ClusterEngine::createPhysicalCollection(
     LogicalCollection* collection, VPackSlice const& info) {
   return new ClusterCollection(collection, info);
+}
+  
+void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
+  builder.openObject();
+  builder.close();
 }
 
 // inventory functionality
@@ -355,6 +373,12 @@ int ClusterEngine::saveReplicationApplierConfiguration(
     arangodb::velocypack::Slice slice, bool doSync) {
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
+  
+Result ClusterEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer&,
+                                     arangodb::LogicalCollection*,
+                                     std::string const&)  {
+  return TRI_ERROR_NOT_IMPLEMENTED;
+}
 
 // database, collection and index management
 // -----------------------------------------
@@ -447,6 +471,14 @@ void ClusterEngine::changeCollection(
     bool doSync
 ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+  
+arangodb::Result ClusterEngine::renameCollection(
+                                  TRI_vocbase_t& vocbase,
+                                  arangodb::LogicalCollection const* collection,
+                                  std::string const& oldName
+                                  ) {
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 void ClusterEngine::createIndex(
@@ -554,6 +586,10 @@ void ClusterEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
 Result ClusterEngine::flushWal(bool waitForSync, bool waitForCollector,
                                bool /*writeShutdownFile*/) {
   return TRI_ERROR_NO_ERROR;
+}
+  
+void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
+  // noop
 }
 
 /// @brief open an existing database. internal function

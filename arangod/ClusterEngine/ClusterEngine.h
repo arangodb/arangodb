@@ -53,6 +53,12 @@ class ClusterEngine final : public StorageEngine {
   ~ClusterEngine();
   
 public:
+  
+  void setEngineType(std::string const& engine);
+  bool isRocksDB() const;
+  bool isMMFiles() const;
+  
+public:
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -305,6 +311,7 @@ public:
  private:
   /// path to arangodb data dir
   std::string _basePath;
+  std::string _currentEngine;
 };
 }  // namespace arangodb
 #endif

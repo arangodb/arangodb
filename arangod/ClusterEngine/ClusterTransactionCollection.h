@@ -90,7 +90,6 @@ class ClusterTransactionCollection final : public TransactionCollection {
   AccessMode::Type _lockType;  // collection lock type, used for exclusive locks
   int _nestingLevel;  // the transaction level that added this collection
   bool _usageLocked;
-
 };
 }
 

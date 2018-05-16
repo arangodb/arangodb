@@ -62,11 +62,10 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const& info, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) override;
   virtual bool dropIndex(TRI_idx_iid_t iid) override;
-  virtual void figures(std::shared_ptr<arangodb::velocypack::Builder>&) const override;
+  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(arangodb::transaction::Methods* trx) const override;
   virtual void getPropertiesVPack(arangodb::velocypack::Builder&) const override;
-  virtual void getPropertiesVPackCoordinator(arangodb::velocypack::Builder&) const override;
   virtual arangodb::Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId) override;
   virtual void invokeOnAllElements(arangodb::transaction::Methods* trx, std::function<bool(arangodb::LocalDocumentId const&)> callback) override;
   virtual std::shared_ptr<arangodb::Index> lookupIndex(arangodb::velocypack::Slice const&) const override;

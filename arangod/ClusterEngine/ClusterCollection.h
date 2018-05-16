@@ -68,10 +68,9 @@ class ClusterCollection final : public PhysicalCollection {
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-  /// @brief used for updating properties
-  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
   
-  void figures(std::shared_ptr<arangodb::velocypack::Builder>&) const override;
+  /// @brief return the figures for a collection
+  std::shared_ptr<velocypack::Builder> figures() override;
 
   /// @brief closes an open collection
   int close() override;
@@ -167,6 +166,11 @@ class ClusterCollection final : public PhysicalCollection {
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
+  
+protected:
+  
+  /// @brief Inject figures that are specific to StorageEngine
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
   
 private:
   

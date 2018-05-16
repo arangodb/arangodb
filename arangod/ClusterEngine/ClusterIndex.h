@@ -84,8 +84,7 @@ class ClusterIndex : public Index {
 
   void load() override {}
   void unload() override {}
-
-  size_t memory() const override;
+  size_t memory() const override { return 0; }
 
 
   /// @brief provides a size hint for the index

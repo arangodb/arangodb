@@ -201,13 +201,13 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief used for updating properties
-void RocksDBCollection::getPropertiesVPackCoordinator(
+/*void RocksDBCollection::getPropertiesVPackCoordinator(
     velocypack::Builder& result) const {
   // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
   result.add("cacheEnabled", VPackValue(_cacheEnabled));
   TRI_ASSERT(result.isOpenObject());
-}
+}*/
 
 /// @brief closes an open collection
 int RocksDBCollection::close() {
@@ -1240,7 +1240,7 @@ void RocksDBCollection::deferDropCollection(
 }
 
 /// @brief return engine-specific figures
-void RocksDBCollection::figures(
+void RocksDBCollection::figuresSpecific(
     std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);

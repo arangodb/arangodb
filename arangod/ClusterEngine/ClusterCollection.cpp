@@ -33,8 +33,11 @@
 #include "Cache/Manager.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/CollectionLockState.h"
+#include "ClusterEngine/ClusterIndex.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -51,20 +54,19 @@
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
-#include <rocksdb/utilities/transaction.h>
-#include <rocksdb/utilities/transaction_db.h>
-#include <rocksdb/utilities/write_batch_with_index.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using Helper = arangodb::basics::VelocyPackHelper;
 
 ClusterCollection::ClusterCollection(LogicalCollection* collection,
                                      VPackSlice const& info)
     : PhysicalCollection(collection, info), _info(info)
 
       /*_cacheEnabled(!collection->system() &&
-                    basics::VelocyPackHelper::readBooleanValue(
+                    basics::Helper::readBooleanValue(
                         info, "cacheEnabled", false))*/ {
   /*VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
@@ -92,23 +94,34 @@ void ClusterCollection::setPath(std::string const&) {
   // we do not have any path
 }
 
+
 Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync) {
-#warning TODO
-  /*auto isSys = _logicalCollection != nullptr && _logicalCollection->system();
+  
+  VPackBuilder merge;
+  merge.openObject();
 
-  _cacheEnabled = !isSys && basics::VelocyPackHelper::readBooleanValue(
-                                slice, "cacheEnabled", _cacheEnabled);
-  primaryIndex()->setCacheEnabled(_cacheEnabled);
-
-  if (_cacheEnabled) {
-    createCache();
-    primaryIndex()->createCache();
+  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  if (ce->isMMFiles()) {
+    
+    merge.add("doCompact", VPackValue(Helper::readBooleanValue(slice, "doCompact", true)));
+    merge.add("indexBuckets", VPackValue(Helper::readNumericValue(slice, "indexBuckets", MMFilesCollection::defaultIndexBuckets)));
+    merge.add("journalSize", VPackValue(Helper::readNumericValue(slice, "journalSize", TRI_JOURNAL_DEFAULT_SIZE)));
+    
+  } else if (ce->isRocksDB()) {
+    
+    merge.add("cacheEnabled", VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", false)));
+    
   } else {
-    // will do nothing if cache is not present
-    destroyCache();
-    primaryIndex()->destroyCache();
-    TRI_ASSERT(_cache.get() == nullptr);
-  }*/
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+  merge.close();
+  _info = VPackCollection::merge(_info.slice(), merge.slice(), true);
+
+  READ_LOCKER(guard, _indexesLock);
+  for (std::shared_ptr<Index>& idx : _indexes) {
+    static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
+  }
 
   // nothing else to do
   return TRI_ERROR_NO_ERROR;
@@ -124,32 +137,46 @@ PhysicalCollection* ClusterCollection::clone(LogicalCollection* logical) const {
   return new ClusterCollection(logical, this);
 }
 
-/// @brief export properties
-void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
-  TRI_ASSERT(result.isOpenObject());
-  /*result.add("objectId", VPackValue(std::to_string(_objectId)));
-  result.add("cacheEnabled", VPackValue(_cacheEnabled));
-  TRI_ASSERT(result.isOpenObject());*/
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 /// @brief used for updating properties
-void ClusterCollection::getPropertiesVPackCoordinator(
+void ClusterCollection::getPropertiesVPack(
     velocypack::Builder& result) const {
   // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
-  //result.add("cacheEnabled", VPackValue(_cacheEnabled));
-  TRI_ASSERT(result.isOpenObject());
+
+  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  if (ce->isMMFiles()) {
+    
+    result.add("doCompact", VPackValue(Helper::readBooleanValue(_info.slice(), "doCompact", true)));
+    result.add("indexBuckets", VPackValue(Helper::readNumericValue(_info.slice(), "indexBuckets", MMFilesCollection::defaultIndexBuckets)));
+    result.add("journalSize", VPackValue(Helper::readNumericValue(_info.slice(), "journalSize", TRI_JOURNAL_DEFAULT_SIZE)));
+    
+  } else if (ce->isRocksDB()) {
+    
+    result.add("cacheEnabled", VPackValue(Helper::readBooleanValue(_info.slice(), "cacheEnabled", false)));
+    
+  } else {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
+}
+
+/// @brief return the figures for a collection
+std::shared_ptr<VPackBuilder> ClusterCollection::figures() {
+  auto builder = std::make_shared<VPackBuilder>();
+  builder->openObject();
+  builder->close();
   
-#error MMFiles ??
+  int res = figuresOnCoordinator(_logicalCollection->vocbase().name(),
+                                 std::to_string(_logicalCollection->id()), builder);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  return builder;
 }
 
-/// @brief return engine-specific figures
-void ClusterCollection::figures(
-                                std::shared_ptr<arangodb::velocypack::Builder>& builder) const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+void ClusterCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED); // not used here
 }
-
 
 /// @brief closes an open collection
 int ClusterCollection::close() {
@@ -203,8 +230,7 @@ void ClusterCollection::prepareIndexes(
   TRI_idx_iid_t last = 0;
 
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
-                                                            false)) {
+    if (Helper::getBooleanValue(v, "error", false)) {
       // We have an error here.
       // Do not add index.
       // TODO Handle Properly
@@ -358,11 +384,9 @@ std::shared_ptr<Index> ClusterCollection::lookupIndex(
 std::shared_ptr<Index> ClusterCollection::createIndex(
     transaction::Methods* trx, arangodb::velocypack::Slice const& info,
     bool& created) {
-#warning Can this ever be called ?
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // prevent concurrent dropping
-  bool isLocked =
-      trx->isLocked(_logicalCollection, AccessMode::Type::EXCLUSIVE);
+  bool isLocked = trx->isLocked(_logicalCollection, AccessMode::Type::EXCLUSIVE);
   CONDITIONAL_WRITE_LOCKER(guard, _exclusiveLock, !isLocked);
   std::shared_ptr<Index> idx;
   {

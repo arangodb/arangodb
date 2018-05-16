@@ -628,7 +628,7 @@ bool PhysicalCollectionMock::dropIndex(TRI_idx_iid_t iid) {
   return false;
 }
 
-void PhysicalCollectionMock::figures(std::shared_ptr<arangodb::velocypack::Builder>&) {
+void PhysicalCollectionMock::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) {
   before();
   TRI_ASSERT(false);
 }
@@ -646,11 +646,6 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(
 
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
   before();
-}
-
-void PhysicalCollectionMock::getPropertiesVPackCoordinator(arangodb::velocypack::Builder&) const {
-  before();
-  TRI_ASSERT(false);
 }
 
 arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& revisionId) {

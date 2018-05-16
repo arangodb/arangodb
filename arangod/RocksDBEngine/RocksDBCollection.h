@@ -72,8 +72,6 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-  /// @brief used for updating properties
-  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
   int close() override;
@@ -204,8 +202,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
 
   /// @brief return engine-specific figures
-  void figures(
-      std::shared_ptr<arangodb::velocypack::Builder>&) const override;
+  void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
   /// @brief creates the initial indexes for the collection
   void createInitialIndexes();
   void addIndex(std::shared_ptr<arangodb::Index> idx);
