@@ -649,6 +649,16 @@ if (VERBOSE)
   message(STATUS)
 endif ()
 
+option(USE_WINDOWS_Z7_DEBUGGING
+  "Whether to use /Z7 degugging symbols rather than /Zi on Windows"
+  OFF
+)
+
+if(USE_WINDOWS_Z7_DEBUGGING)
+  SET(WINDOWS_DEBUGGING_FLAGS "/Z7")
+else
+  SET(WINDOWS_DEBUGGING_FLAGS "/Zi")
+endif ()
 
 # compiler options
 if (CMAKE_COMPILER_IS_GNUCC)
@@ -695,16 +705,16 @@ elseif (MSVC)
   endif ()
 
   set(CMAKE_C_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd ${WINDOWS_DEBUGGING_FLAGS} /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT ${WINDOWS_DEBUGGING_FLAGS} /O2 /Ob1" CACHE INTERNAL "C++ release with debug info flags")
 
   set(CMAKE_CXX_FLAGS                "/MTd"                              CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd ${WINDOWS_DEBUGGING_FLAGS} /Ob0 /Od /RTC1" CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT ${WINDOWS_DEBUGGING_FLAGS} /O2 /Ob1" CACHE INTERNAL "C++ release with debug info flags")
 
 else ()
   # unknown compiler
