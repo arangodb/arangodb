@@ -222,7 +222,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -246,7 +246,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -264,7 +264,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -296,7 +296,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -323,7 +323,7 @@ function optimizerCountTestSuite () {
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       if (isCluster) {
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
@@ -339,7 +339,7 @@ function optimizerCountTestSuite () {
       assertEqual(1000, results.json.length);
       if (isCluster) {
         var plan = AQL_EXPLAIN(query).plan;
-        assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+        assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     }
 

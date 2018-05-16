@@ -32,6 +32,7 @@
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -582,10 +583,50 @@ bool MMFilesSkiplistIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     }
     TRI_ASSERT(tmp != nullptr);
     TRI_ASSERT(tmp->document() != nullptr);
+      
     cb(tmp->document()->localDocumentId());
     limit--;
   }
   return true;
+}
+
+bool MMFilesSkiplistIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
+
+  bool done = false;
+  while (limit > 0) {
+    if (_cursor == nullptr) {
+      // We are exhausted already, sorry
+      done = true;
+      break;
+    }
+    TRI_ASSERT(_currentInterval < _intervals.size());
+    auto const& interval = _intervals[_currentInterval];
+    Node* tmp = _cursor;
+    if (_reverse) {
+      if (_cursor == interval.first) {
+        forwardCursor();
+      } else {
+        _cursor = _cursor->prevNode();
+      }
+    } else {
+      if (_cursor == interval.second) {
+        forwardCursor();
+      } else {
+        _cursor = _cursor->nextNode();
+      }
+    }
+    TRI_ASSERT(tmp != nullptr);
+    TRI_ASSERT(tmp->document() != nullptr);
+      
+    _documentIds.emplace_back(std::make_pair(tmp->document()->localDocumentId(), nullptr));
+    limit--;
+  }
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
 }
 
 void MMFilesSkiplistIterator::forwardCursor() {

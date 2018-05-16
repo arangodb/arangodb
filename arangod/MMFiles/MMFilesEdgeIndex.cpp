@@ -117,6 +117,57 @@ bool MMFilesEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
   return true;
 }
 
+bool MMFilesEdgeIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
+
+  if (limit == 0 || (_buffer.empty() && !_iterator.valid())) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+
+  bool done = false;
+  while (limit > 0) {
+    if (_buffer.empty()) {
+      // We start a new lookup
+      _posInBuffer = 0;
+
+      VPackSlice tmp = _iterator.value();
+      if (tmp.isObject()) {
+        tmp = tmp.get(StaticStrings::IndexEq);
+      }
+      _index->lookupByKey(&_context, &tmp, _buffer, _batchSize);
+    } else if (_posInBuffer >= _buffer.size()) {
+      // We have to refill the buffer
+      _buffer.clear();
+
+      _posInBuffer = 0;
+      _index->lookupByKeyContinue(&_context, _lastElement, _buffer, _batchSize);
+    }
+
+    if (_buffer.empty()) {
+      _iterator.next();
+      _lastElement = MMFilesSimpleIndexElement();
+      if (!_iterator.valid()) {
+        done = true;
+        break;
+      }
+    } else {
+      _lastElement = _buffer.back();
+      // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
+      _documentIds.emplace_back(std::make_pair(_buffer[_posInBuffer++].localDocumentId(), nullptr));
+      limit--;
+    }
+  }
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
+}
+
 void MMFilesEdgeIndexIterator::reset() {
   _posInBuffer = 0;
   _buffer.clear();

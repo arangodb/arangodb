@@ -4513,7 +4513,10 @@ function AQL_ZIP (keys, values) {
   var result = { }, i, n = keys.length;
 
   for (i = 0; i < n; ++i) {
-    result[AQL_TO_STRING(keys[i])] = values[i];
+    let k = AQL_TO_STRING(keys[i]);
+    if (!result.hasOwnProperty(k)) {
+      result[k] = values[i];
+    }
   }
 
   return result;

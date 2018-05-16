@@ -101,7 +101,7 @@ class SortNode : public ExecutionNode {
   }
 
   /// @brief get Variables Used Here including ASC/DESC
-  SortElementVector const& getElements() const { return _elements; }
+  SortElementVector const& elements() const { return _elements; }
 
   /// @brief returns all sort information
   SortInformation getSortInformation(ExecutionPlan*,
