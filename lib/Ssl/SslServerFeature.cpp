@@ -93,6 +93,14 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new StringParameter(&_ecdhCurve));
 }
 
+void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // check for SSLv2
+  if (_sslProtocol == 1) {
+    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "SSLv2 is not supported any longer because of security vulnerabilities in this protocol";
+    FATAL_ERROR_EXIT();
+  }
+}
+
 void SslServerFeature::prepare() {
   LOG_TOPIC(INFO, arangodb::Logger::SSL) << "using SSL options: "
                                          << stringifySslOptions(_sslOptions);

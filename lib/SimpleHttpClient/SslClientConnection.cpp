@@ -213,12 +213,6 @@ void SslClientConnection::init(uint64_t sslProtocol) {
   SSL_METHOD SSL_CONST* meth = nullptr;
 
   switch (SslProtocol(sslProtocol)) {
-#ifndef OPENSSL_NO_SSL2
-    case SSL_V2:
-      meth = SSLv2_method();
-      break;
-#endif
-
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
       meth = SSLv3_method();
@@ -235,7 +229,7 @@ void SslClientConnection::init(uint64_t sslProtocol) {
     case TLS_V12:
     case SSL_UNKNOWN:
     default:
-      // default is to use TLSv13
+      // default is to use TLSv12
       meth = TLS_method();
       break;
 #else
