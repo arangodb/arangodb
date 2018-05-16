@@ -1,5 +1,6 @@
 v3.3.9 (xxxx-xx-xx)
 -------------------
+
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header
 
@@ -25,11 +26,11 @@ v3.3.9 (xxxx-xx-xx)
 * self heal during a Foxx service install, upgrade or replace no longer breaks
   the respective operation
 
-* make /_api/index, /_api/database and /_api/user REST handlers use the scheduler's internal
-  queue, so they do not run in an I/O handling thread
+* make /_api/index, /_api/database and /_api/user REST handlers use the scheduler's 
+  internal queue, so they do not run in an I/O handling thread
 
-* fixed issue #4919: C++ implementation of LIKE function now matches the old and correct
-  behaviour of the javascript implementation.
+* fixed issue #4919: C++ implementation of LIKE function now matches the old and 
+  correct behavior of the JavaScript implementation.
 
 * added REST API endpoint /_admin/server/availability for monitoring purposes
 
@@ -38,9 +39,11 @@ v3.3.9 (xxxx-xx-xx)
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
 
-* fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
+* fixed internal issue #2149: number of documents in the UI is not adjusted after 
+  moving them
 
-* fixed internal issue #2150: UI - loading a saved query does not update the list of bind parameters
+* fixed internal issue #2150: UI - loading a saved query does not update the list 
+  of bind parameters
 
 * fixed internal issue #2147 - fixed database filter in UI
 
