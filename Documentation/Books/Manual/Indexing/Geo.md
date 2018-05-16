@@ -1,7 +1,7 @@
 Geo-Spatial Indexes
 ===========
 
-This is an introduction to ArangoDB's geo-spatial indexes.
+This is an introduction to ArangoDB's geospatial indexes.
 
 ArangoDB features an [Google S2](http://s2geometry.io/) based geospatial index.
 We support indexing on a subset of the **GeoJSON** standard (as well as simple
@@ -15,15 +15,14 @@ Constructors](../../AQL/Functions/GeoConstructors.html).
 
 ### Using a Geo-Spatial Index
 
-The geo-spatial index supports containment and intersection
+The geospatial index supports containment and intersection
 queries on a various geometric 2D shapes. You should be mainly using AQL queries
 to perform these types of operations. The index can operate in **two different
-modi**, depending on if you want to use the GeoJSON  data-format or not. The modi
+modes**, depending on if you want to use the GeoJSON data-format or not. The modes
 are mainly toggled by using the `geoJson` field when creating the index.
 
-This index assumes about coordinates that the latitude is between -90 and 90 degree 
-and the longitude is between -180 and 180 degree. A geo index will ignore all 
-documents which do not fulfill these requirements.
+This index assumes coordinates that the latitude is between -90 and 90 degree and the longitude is between -180 and 180 degree. A geo index will ignore all 
+documents which do not fulfil these requirements.
 
 #### GeoJSON Mode
 
@@ -41,8 +40,8 @@ value) and the latitude (second value). This  corresponds to the format
 described in [RFC 7946
 Position](https://tools.ietf.org/html/rfc7946#section-3.1.1)
 
-All documents, which do not have the attribute path or have a non-conforming
-value in it are excluded from the index.
+All documents, which do not have the attribute path or have a non-conform
+value in it, are excluded from the index.
 
 A geo index is implicitly sparse, and there is no way to control its sparsity.
 In case that the index was successfully created, an object with the index
@@ -51,8 +50,8 @@ details, including the index-identifier, is returned.
 
 #### Non-GeoJSON mode
 
-This index mode exlusively supports indexing on coordinate arrays. Values that
-contain GeoJSON or other types of data will be ignores. In non-GeoJSON mode
+This index mode exclusively supports indexing on coordinate arrays. Values that
+contain GeoJSON or other types of data will be ignored. In the non-GeoJSON mode
 the index can be created on one or two fields.
 
 The following examples will work in the _arangosh_ command shell.
@@ -70,13 +69,13 @@ Alternatively you can specify only one field:
 
 `collection.ensureIndex({ type: "geo", fields: [ "location" ], geoJson:false })`
 
-Creates a geo-spatial index on all documents using *location* as path to the
+Creates a geospatial index on all documents using *location* as the path to the
 coordinates. The value of the attribute has to be an array with at least two
 numeric values. The array must contain the latitude (first value) and the
 longitude (second value).
 
 All documents, which do not have the attribute path(s) or have a non-conforming
-value in it are excluded from the index.
+value in it, are excluded from the index.
 
 A geo index is implicitly sparse, and there is no way to control its sparsity.
 In case that the index was successfully created, an object with the index
@@ -87,14 +86,14 @@ details, including the index-identifier, is returned.
 
 ### Indexed GeoSpatial Queries
 
-The geo-spatial index supports a varity of AQL queries, which can build with the help
+The geospatial index supports a variety of AQL queries, which can build with the help
 of the [geo utility functions](../../AQL/Functions/Geo.html). There are three specific
-geo functions that can be otpimized, provided that they are used correctly:
-`GEO_DISTANCE, GEO_CONTAINS, GEO_INTERSECTS`. Additionally there is support to optimize
+geo functions that can be optimized, provided that they are used correctly:
+`GEO_DISTANCE, GEO_CONTAINS, GEO_INTERSECTS`. Additionally, there is a built-in support to optimize
 the older geo functions `DISTANCE`, `NEAR` and `WITHIN` (the last two only if they are
 used in their 4 argument version, without *distanceName*).
 
-When in doubt whether your query is beeing properly optimized, 
+When in doubt whether your query is being properly optimized, 
 check the [AQL explain](../../AQL/ExecutionAndPerformance/ExplainingQueries.html) output to check for index usage.
 
 #### Query for Results near Origin (NEAR type query)
@@ -114,7 +113,7 @@ up until _100km_.
 
 #### Query for Sorted Results near Origin (NEAR type query)
 
-A basic example of a query for results near an origin point, sorted ascending:
+A basic example of a query for results near an origin point with ascending sorting:
 
 ```
 FOR x IN geo_collection
@@ -142,7 +141,7 @@ This will return the documents with a GeoJSON value that is located in the speci
 ```
 FOR x IN geo_collection
   FILTER GEO_DISTANCE([@lng, @lat], x.geometry) <= 100000
-  FILTER GEO_DISTANCE([@lng, @lat], x.geometry) <= 1000
+  FILTER GEO_DISTANCE([@lng, @lat], x.geometry) >= 1000
   RETURN x
 ```
 
@@ -252,12 +251,12 @@ MultiLineString](https://tools.ietf.org/html/rfc7946#section-3.1.5): The
 
 [GeoJSON polygons](https://tools.ietf.org/html/rfc7946#section-3.1.6) consists
 of a series of closed `LineString` objects (ring-like). These *LineRing* objects
-consists of four or more vertices with the first and last coordinate pairs
-beeing equal. Coordinates of a Polygon are an array of linear ring coordinate
+consist of four or more vertices with the first and last coordinate pairs
+being equal. Coordinates of a Polygon are an array of linear ring coordinate
 arrays.  The first element in the array represents the exterior ring.  Any
 subsequent elements represent interior rings (or holes).
 
-No holes:
+No Holes:
 ```
 {
   "type": "Polygon",
@@ -273,7 +272,7 @@ No holes:
 }
 ```
 
-With holes:
+With Holes:
 - The exterior ring should not self-intersect.
 - The interior rings must be contained in the outer ring
 - Interior rings cannot overlap (or touch) with each other
@@ -341,13 +340,13 @@ MultiPolygon](https://tools.ietf.org/html/rfc7946#section-3.1.7): The
 ensures that a geo index exists
 `collection.ensureIndex({ type: "geo", fields: [ "location" ] })`
 
-Creates a geo-spatial index on all documents using *location* as path to the
+Creates a geospatial index on all documents using *location* as the path to the
 coordinates. The value of the attribute has to be an array with at least two
 numeric values. The array must contain the latitude (first value) and the
 longitude (second value).
 
 All documents, which do not have the attribute path or have a non-conforming
-value in it are excluded from the index.
+value in it, are excluded from the index.
 
 A geo index is implicitly sparse, and there is no way to control its sparsity.
 
@@ -457,7 +456,7 @@ ensures that a geo index exists
 
 Since ArangoDB 2.5, this method is an alias for *ensureGeoIndex* since
 geo indexes are always sparse, meaning that documents that do not contain
-the index attributes or have non-numeric values in the index attributes
+the index attributes or has non-numeric values in the index attributes
 will not be indexed. *ensureGeoConstraint* is deprecated and *ensureGeoIndex*
 should be used instead.
 
