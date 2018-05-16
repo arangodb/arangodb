@@ -357,65 +357,66 @@ VPackBuilder auth::User::toVPackBuilder() const {
   TRI_ASSERT(!_username.empty());
 
   VPackBuilder builder;
-  VPackObjectBuilder o(&builder, true);
-
-  if (!_key.empty()) {
-    builder.add(StaticStrings::KeyString, VPackValue(_key));
-  }
-  if (_rev > 0) {
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(_rev)));
-  }
-
-  builder.add("user", VPackValue(_username));
-  AddSource(builder, _source);
-
-  // authData sub-object
   {
-    VPackObjectBuilder o2(&builder, "authData", true);
-    builder.add("active", VPackValue(_active));
-    if (_source == auth::Source::LOCAL) {
-      VPackObjectBuilder o3(&builder, "simple", true);
-      builder.add("hash", VPackValue(_passwordHash));
-      builder.add("salt", VPackValue(_passwordSalt));
-      builder.add("method", VPackValue(_passwordMethod));
+    VPackObjectBuilder o(&builder, true);
+
+    if (!_key.empty()) {
+      builder.add(StaticStrings::KeyString, VPackValue(_key));
     }
-  }
+    if (_rev > 0) {
+      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(_rev)));
+    }
 
-  {  // databases sub-object
-    VPackObjectBuilder o2(&builder, "databases", true);
-    for (auto const& dbCtxPair : _dbAccess) {
-      VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
+    builder.add("user", VPackValue(_username));
+    AddSource(builder, _source);
 
-      // permissions
-      {
-        VPackObjectBuilder o4(&builder, "permissions", true);
-        auth::Level lvl = dbCtxPair.second._databaseAuthLevel;
-        AddAuthLevel(builder, lvl);
+    // authData sub-object
+    {
+      VPackObjectBuilder o2(&builder, "authData", true);
+      builder.add("active", VPackValue(_active));
+      if (_source == auth::Source::LOCAL) {
+        VPackObjectBuilder o3(&builder, "simple", true);
+        builder.add("hash", VPackValue(_passwordHash));
+        builder.add("salt", VPackValue(_passwordSalt));
+        builder.add("method", VPackValue(_passwordMethod));
       }
+    }
 
-      // collections
-      {
-        VPackObjectBuilder o4(&builder, "collections", true);
+    {  // databases sub-object
+      VPackObjectBuilder o2(&builder, "databases", true);
+      for (auto const& dbCtxPair : _dbAccess) {
+        VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
 
-        for (auto const& colAccessPair : dbCtxPair.second._collectionAccess) {
-          VPackObjectBuilder o4(&builder, colAccessPair.first, true);
-          VPackObjectBuilder o5(&builder, "permissions", true);
-          AddAuthLevel(builder, colAccessPair.second);
+        // permissions
+        {
+          VPackObjectBuilder o4(&builder, "permissions", true);
+          auth::Level lvl = dbCtxPair.second._databaseAuthLevel;
+          AddAuthLevel(builder, lvl);
+        }
+
+        // collections
+        {
+          VPackObjectBuilder o4(&builder, "collections", true);
+
+          for (auto const& colAccessPair : dbCtxPair.second._collectionAccess) {
+            VPackObjectBuilder o4(&builder, colAccessPair.first, true);
+            VPackObjectBuilder o5(&builder, "permissions", true);
+            AddAuthLevel(builder, colAccessPair.second);
+          }
         }
       }
     }
-  }
 
-  if (!_userData.isEmpty() && _userData.isClosed() &&
-      _userData.slice().isObject()) {
-    builder.add("userData", _userData.slice());
-  }
+    if (!_userData.isEmpty() && _userData.isClosed() &&
+        _userData.slice().isObject()) {
+      builder.add("userData", _userData.slice());
+    }
 
-  if (!_configData.isEmpty() && _configData.isClosed() &&
-      _configData.slice().isObject()) {
-    builder.add("configData", _configData.slice());
+    if (!_configData.isEmpty() && _configData.isClosed() &&
+        _configData.slice().isObject()) {
+      builder.add("configData", _configData.slice());
+    }
   }
-
   return builder;
 }
 

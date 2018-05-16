@@ -3610,6 +3610,9 @@ function ahuacatlFunctionsTestSuite () {
     testZip : function () {
       var values = [
         [ { }, [ ], [ ] ], 
+        // duplicate keys
+        [ { "" : 1, " " : 3 }, [ "", "", " ", " " ], [ 1, 2, 3, 4 ] ], 
+        [ { "a" : 1 }, [ "a", "a", "a", "a" ], [ 1, 2, 3, 4 ] ], 
         [ { "" : true }, [ "" ], [ true ] ], 
         [ { " " : null }, [ " " ], [ null ] ], 
         [ { "MÖTÖR" : { } }, [ "MÖTÖR" ], [ { } ] ], 
