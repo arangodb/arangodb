@@ -161,6 +161,7 @@ class GeneralRequest {
   std::vector<std::string> decodedSuffixes() const;
 
   void addSuffix(std::string&& part);
+  void prependSuffix(std::string&& part);
 
   // VIRTUAL //////////////////////////////////////////////
   // return 0 for protocols that

@@ -36,7 +36,7 @@ namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
   
-enum class RestStatus { DONE, FAIL};
+enum class RestStatus { DONE, FAIL };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {

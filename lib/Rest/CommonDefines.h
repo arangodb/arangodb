@@ -49,6 +49,38 @@ enum class RequestType {
   ILLEGAL  // must be last
 };
 
+inline const char* requestToString(RequestType requestType) {
+  switch (requestType) {
+    case RequestType::DELETE_REQ:
+      return "DELETE";
+    case RequestType::GET:
+      return "GET";
+    case RequestType::POST:
+      return "POST";
+    case RequestType::PUT:
+      return "PUT";
+    case RequestType::HEAD:
+      return "HEAD";
+    case RequestType::PATCH:
+      return "PATCH";
+    case RequestType::OPTIONS:
+      return "OPTIONS";
+    case RequestType::VSTREAM_CRED:
+      return "VSTREAM_CRED";
+    case RequestType::VSTREAM_REGISTER:
+      return "VSTREAM_REGISTER";
+    case RequestType::VSTREAM_STATUS:
+      return "VSTREAM_STATUS";
+    case RequestType::ILLEGAL:
+    default:
+      return "ILLEGAL";
+  }
+}
+
+inline std::ostream& operator<<(std::ostream& ostream, RequestType requestType) {
+  return ostream << requestToString(requestType);
+}
+
 enum class ContentType {
   CUSTOM,  // use Content-Type from _headers
   JSON,    // application/json
