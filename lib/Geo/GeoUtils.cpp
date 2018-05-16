@@ -45,7 +45,7 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
 
   VPackSlice lat = data.at(isGeoJson ? 1 : 0);
   VPackSlice lon = data.at(isGeoJson ? 0 : 1);
-  if (!lat.isNumber() || !lat.isNumber()) {
+  if (!lat.isNumber() || !lon.isNumber()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
   S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),

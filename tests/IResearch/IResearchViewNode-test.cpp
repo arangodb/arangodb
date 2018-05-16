@@ -70,13 +70,13 @@
 
 namespace {
 
-struct IResearchQuerySetup {
+struct IResearchViewNodeSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchQuerySetup(): server(nullptr, nullptr) {
+  IResearchViewNodeSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
@@ -124,7 +124,7 @@ struct IResearchQuerySetup {
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
-  ~IResearchQuerySetup() {
+  ~IResearchViewNodeSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
@@ -145,12 +145,12 @@ struct IResearchQuerySetup {
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
-}; // IResearchQuerySetup
+}; // IResearchViewNodeSetup
 
 }
 
 TEST_CASE("IResearchViewNodeTest", "[iresearch][iresearch-view-node]") {
-  IResearchQuerySetup s;
+  IResearchViewNodeSetup s;
   UNUSED(s);
 
 SECTION("construct") {
@@ -422,7 +422,7 @@ SECTION("searialize") {
 }
 
 TEST_CASE("IResearchViewScatterNodeTest", "[iresearch][iresearch-view-node]") {
-  IResearchQuerySetup s;
+  IResearchViewNodeSetup s;
   UNUSED(s);
 
 SECTION("construct") {

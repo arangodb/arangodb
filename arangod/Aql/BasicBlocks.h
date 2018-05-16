@@ -170,7 +170,7 @@ class ReturnBlock final : public ExecutionBlock {
 
 class NoResultsBlock final : public ExecutionBlock {
  public:
-  NoResultsBlock(ExecutionEngine* engine, NoResultsNode const* ep)
+  NoResultsBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       : ExecutionBlock(engine, ep) {}
 
   ~NoResultsBlock() {}

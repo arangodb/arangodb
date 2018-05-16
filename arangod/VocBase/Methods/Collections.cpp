@@ -159,10 +159,18 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
   TRI_ASSERT(properties.isObject());
 
   VPackBuilder builder;
+
   builder.openObject();
-  builder.add("type", VPackValue(static_cast<int>(collectionType)));
-  builder.add("name", VPackValue(name));
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(static_cast<int>(collectionType))
+  );
+  builder.add(
+    arangodb::StaticStrings::DataSourceName,
+    arangodb::velocypack::Value(name)
+  );
   builder.close();
+
   VPackBuilder info =
       VPackCollection::merge(properties, builder.slice(), false);
   VPackSlice const infoSlice = info.slice();
@@ -225,7 +233,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
   return TRI_ERROR_NO_ERROR;
 }
 
-Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
+Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
   TRI_ASSERT(coll != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
@@ -250,9 +258,11 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
 
   Result res = trx.begin();
+
   if (res.fail()) {
     return res;
   }
+
   return trx.finish(res);
 }
 
@@ -297,7 +307,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
                        "replicationFactor", "shardKeys"});
 
     auto ctx =
-      transaction::V8Context::CreateWhenRequired(&(coll->vocbase()), true);
+      transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
 
     // populate the transaction object (which is used outside this if too)
     trx.reset(new SingleCollectionTransaction(
@@ -348,7 +358,7 @@ Result Collections::updateProperties(LogicalCollection* coll,
     return info->updateProperties(props, false);
   } else {
     auto ctx =
-      transaction::V8Context::CreateWhenRequired(&(coll->vocbase()), false);
+      transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
     SingleCollectionTransaction trx(
       ctx, coll->id(), AccessMode::Type::EXCLUSIVE
     );
@@ -511,15 +521,18 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   return res;
 }
 
-Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
+Result Collections::warmup(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
   ExecContext const* exec = ExecContext::CURRENT; // disallow expensive ops
+
   if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                    "server is in read-only mode");
   }
+
   if (ServerState::instance()->isCoordinator()) {
     auto cid = std::to_string(coll->id());
-    return warmupOnCoordinator(vocbase->name(), cid);
+
+    return warmupOnCoordinator(vocbase.name(), cid);
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
@@ -534,12 +547,15 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   auto poster = [](std::function<void()> fn) -> void {
     SchedulerFeature::SCHEDULER->post(fn);
   };
+
   auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
+
   for (auto& idx : idxs) {
     idx->warmup(&trx, queue);
   }
 
   queue->dispatchAndWait();
+
   if (queue->status() == TRI_ERROR_NO_ERROR) {
     res = trx.commit();
   } else {
@@ -549,9 +565,11 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   return res;
 }
 
-Result Collections::revisionId(TRI_vocbase_t* vocbase,
-                               LogicalCollection* coll,
-                               TRI_voc_rid_t& rid) {
+Result Collections::revisionId(
+    TRI_vocbase_t& vocbase,
+    LogicalCollection* coll,
+    TRI_voc_rid_t& rid
+) {
   TRI_ASSERT(coll != nullptr);
   auto& databaseName = coll->vocbase().name();
   auto cid = std::to_string(coll->id());
@@ -569,6 +587,7 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
   }
 
   rid = coll->revision(&trx);
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -600,7 +619,7 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
     }
     return res;
   } else {
-    auto ctx = transaction::V8Context::CreateWhenRequired(&vocbase, true);
+    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
     SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
     Result res = trx.begin();
 

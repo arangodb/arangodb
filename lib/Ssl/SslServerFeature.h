@@ -42,6 +42,7 @@ class SslServerFeature : public application_features::ApplicationFeature {
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
 

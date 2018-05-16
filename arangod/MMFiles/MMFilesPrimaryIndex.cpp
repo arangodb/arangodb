@@ -229,8 +229,14 @@ void MMFilesPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   {
     Index::toVelocyPack(builder, withFigures, forPersistence);
     // hard-coded
-    builder.add("unique", VPackValue(true));
-    builder.add("sparse", VPackValue(false));
+    builder.add(
+      arangodb::StaticStrings::IndexUnique,
+      arangodb::velocypack::Value(true)
+    );
+    builder.add(
+      arangodb::StaticStrings::IndexSparse,
+      arangodb::velocypack::Value(false)
+    );
   }
   builder.close();
 }

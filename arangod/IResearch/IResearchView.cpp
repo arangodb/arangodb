@@ -927,7 +927,7 @@ IResearchView::IResearchView(
   // initialize transaction read callback
   _trxReadCallback = [viewPtr](arangodb::TransactionState& state)->void {
     switch(state.status()) {
-     case transaction::Status::RUNNING:
+     case arangodb::transaction::Status::RUNNING:
       viewPtr->snapshot(state, true);
       return;
      default:
@@ -938,7 +938,7 @@ IResearchView::IResearchView(
   // initialize transaction write callback
   _trxWriteCallback = [viewPtr](arangodb::TransactionState& state)->void {
     switch (state.status()) {
-     case transaction::Status::ABORTED: {
+     case arangodb::transaction::Status::ABORTED: {
       auto res = viewPtr->finish(state.id(), false);
 
       if (TRI_ERROR_NO_ERROR != res) {
@@ -948,7 +948,7 @@ IResearchView::IResearchView(
 
       return;
      }
-     case transaction::Status::COMMITTED: {
+     case arangodb::transaction::Status::COMMITTED: {
       auto res = viewPtr->finish(state.id(), true);
 
       if (TRI_ERROR_NO_ERROR != res) {
@@ -1724,7 +1724,7 @@ int IResearchView::insert(
   PTR_NAMED(IResearchView, view, vocbase, info, *feature, planVersion);
   auto& impl = reinterpret_cast<IResearchView&>(*view);
   auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
-  auto props = json.get("properties");
+  auto props = json.get(StaticStrings::PropertiesField);
   auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 

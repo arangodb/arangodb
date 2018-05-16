@@ -71,7 +71,7 @@ void VstResponse::addPayload(VPackSlice const& slice,
       tmpBuffer.reserve(slice.byteSize()); // reserve space already
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
-                                               builder, options, true, true);
+                                               builder, options, true, true, true);
       _vpackPayloads.push_back(std::move(tmpBuffer));
       return;
     }
@@ -99,9 +99,9 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       tmpBuffer.reserve(buffer.length()); // reserve space already
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
-                                               builder, options, true, true);
+                                               builder, options, true, true, true);
       _vpackPayloads.push_back(std::move(tmpBuffer));
-      return;
+      return; // done
     }
   }
   _vpackPayloads.push_back(std::move(buffer));

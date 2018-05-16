@@ -132,6 +132,7 @@ static_assert(DateSelectionModifier::MONTH < DateSelectionModifier::YEAR,
   - ExtractKeys() if its an object and you need the keys
   - ExtractCollectionName() if you expect a collection
   - ListContainsElement() search for a member
+  - ParameterToTimePoint / DateFromParameters get a time string as date.
 - check the values whether they match your expectations i.e. using:
   - param.isNumber() then extract it using: param.toInt64(trx)
 - Available helper functions for working with pamaterers:
@@ -2453,12 +2454,12 @@ AqlValue Functions::DateNow(arangodb::aql::Query*, transaction::Methods*,
 bool Functions::ParameterToTimePoint(Query* query, transaction::Methods* trx,
                                      VPackFunctionParameters const& parameters,
                                      tp_sys_clock_ms& tp,
-                                     std::string const& functionName,
+                                     char const* AFN,
                                      size_t parameterIndex) {
   AqlValue value = ExtractFunctionParameterValue(parameters, parameterIndex);
 
   if (!value.isString() && !value.isNumber()) {
-    RegisterInvalidArgumentWarning(query, functionName.c_str());
+    RegisterInvalidArgumentWarning(query, AFN);
     return false;
   }
 
@@ -2467,8 +2468,7 @@ bool Functions::ParameterToTimePoint(Query* query, transaction::Methods* trx,
   } else {
     std::string const dateVal = value.slice().copyString();
     if (!basics::parse_dateTime(dateVal, tp)) {
-      RegisterWarning(query, functionName.c_str(),
-                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      RegisterWarning(query, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }
   }
@@ -2490,26 +2490,21 @@ bool Functions::ParameterToTimePoint(Query* query, transaction::Methods* trx,
  */
 AqlValue Functions::DateFromParameters(
     arangodb::aql::Query* query, transaction::Methods* trx,
-    VPackFunctionParameters const& parameters, bool asTimestamp) {
-  std::string funcName;
-  if (asTimestamp) {
-    funcName = "DATE_TIMESTAMP";
-  } else {
-    funcName = "DATE_ISO8601";
-  }
+    VPackFunctionParameters const& parameters,
+    char const* AFN,
+    bool asTimestamp) {
   tp_sys_clock_ms tp;
   duration<int64_t, std::milli> time;
 
   if (parameters.size() == 1) {
-    if (!ParameterToTimePoint(query, trx, parameters, tp, funcName.c_str(),
-                              0)) {
+    if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
       return AqlValue(AqlValueHintNull());
     }
     time = tp.time_since_epoch();
   } else {
     if (parameters.size() < 3 || parameters.size() > 7) {
       // YMD is a must
-      RegisterInvalidArgumentWarning(query, funcName.c_str());
+      RegisterInvalidArgumentWarning(query, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2518,81 +2513,48 @@ AqlValue Functions::DateFromParameters(
 
       // All Parameters have to be a number or a string
       if (!value.isNumber() && !value.isString()) {
-        RegisterInvalidArgumentWarning(query, funcName.c_str());
+        RegisterInvalidArgumentWarning(query, AFN);
         return AqlValue(AqlValueHintNull());
       }
     }
 
-    // Parse the Year
     years y{ExtractFunctionParameterValue(parameters, 0).toInt64(trx)};
-    if (y < years{0}) {
-      RegisterWarning(query, funcName.c_str(),
-                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    // Parse the Month
     months m{ExtractFunctionParameterValue(parameters, 1).toInt64(trx)};
-    if (m < months{0}) {
-      RegisterWarning(query, funcName.c_str(),
-                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    // Parse the Day
     days d{ExtractFunctionParameterValue(parameters, 2).toInt64(trx)};
-    if (d < days{0}) {
-      RegisterWarning(query, funcName.c_str(),
-                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+
+    if ( (y < years{0}) || (m < months{0}) || (d < days {0}) ) {
+      RegisterWarning(query, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
-
     year_month_day ymd = year{y.count()} / m.count() / d.count();
 
-    // Parse the Hour
+    // Parse the time
     hours h(0);
+    minutes min(0);
+    seconds s(0);
+    milliseconds ms(0);
+
     if (parameters.size() >= 4) {
       h = hours((ExtractFunctionParameterValue(parameters, 3).toInt64(trx)));
-      if (h < hours{0}) {
-        RegisterWarning(query, funcName.c_str(),
-                        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
     }
-
-    // Parse the Minutes
-    minutes min(0);
     if (parameters.size() >= 5) {
-      min =
-          minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
-      if (min < minutes{0}) {
-        RegisterWarning(query, funcName.c_str(),
-                        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
+      min = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx))); 
     }
-
-    // Parse the Seconds
-    seconds s(0);
     if (parameters.size() >= 6) {
       s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
-      if (s < seconds{0}) {
-        RegisterWarning(query, funcName.c_str(),
-                        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
     }
-
-    // Parse the Millis
-    milliseconds ms(0);
     if (parameters.size() == 7) {
       ms = milliseconds(
           (ExtractFunctionParameterValue(parameters, 6).toInt64(trx)));
-      if (ms < milliseconds{0}) {
-        RegisterWarning(query, funcName.c_str(),
-                        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
+    }
+
+    if ((h < hours{0}) ||
+        (min < minutes{0}) ||
+        (s < seconds{0}) ||
+        (ms < milliseconds{0})) {
+      RegisterWarning(query, AFN,
+                      TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
     }
 
     time = sys_days(ymd).time_since_epoch();
@@ -2614,14 +2576,16 @@ AqlValue Functions::DateFromParameters(
 AqlValue Functions::DateIso8601(arangodb::aql::Query* query,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  return DateFromParameters(query, trx, parameters, false);
+  static char const* AFN = "DATE_ISO8601";
+  return DateFromParameters(query, trx, parameters, AFN, false);
 }
 
 /// @brief function DATE_TIMESTAMP
 AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
-  return DateFromParameters(query, trx, parameters, true);
+  static char const* AFN = "DATE_TIMESTAMP";
+  return DateFromParameters(query, trx, parameters, AFN, true);
 }
 
 /// @brief function IS_DATESTRING
@@ -2643,8 +2607,9 @@ AqlValue Functions::IsDatestring(arangodb::aql::Query*, transaction::Methods*,
 AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_DAYOFWEEK";
   tp_sys_clock_ms tp;
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYOFWEEK", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
   weekday wd{floor<days>(tp)};
@@ -2657,9 +2622,10 @@ AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
 AqlValue Functions::DateYear(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_YEAR";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_YEAR", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
   auto ymd = year_month_day(floor<days>(tp));
@@ -2672,9 +2638,10 @@ AqlValue Functions::DateYear(arangodb::aql::Query* query,
 AqlValue Functions::DateMonth(arangodb::aql::Query* query,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_MONTH";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MONTH", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
   auto ymd = year_month_day(floor<days>(tp));
@@ -2687,9 +2654,10 @@ AqlValue Functions::DateMonth(arangodb::aql::Query* query,
 AqlValue Functions::DateDay(arangodb::aql::Query* query,
                             transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_DAY";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAY", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2703,9 +2671,10 @@ AqlValue Functions::DateDay(arangodb::aql::Query* query,
 AqlValue Functions::DateHour(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_HOUR";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_HOUR", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2718,9 +2687,10 @@ AqlValue Functions::DateHour(arangodb::aql::Query* query,
 AqlValue Functions::DateMinute(arangodb::aql::Query* query,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_MINUTE";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MINUTE", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2733,9 +2703,10 @@ AqlValue Functions::DateMinute(arangodb::aql::Query* query,
 AqlValue Functions::DateSecond(arangodb::aql::Query* query,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_SECOND";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_SECOND", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2748,10 +2719,10 @@ AqlValue Functions::DateSecond(arangodb::aql::Query* query,
 AqlValue Functions::DateMillisecond(arangodb::aql::Query* query,
                                     transaction::Methods* trx,
                                     VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_MILLISECOND";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MILLISECOND",
-                            0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
   auto day_time = make_time(tp - floor<days>(tp));
@@ -2763,15 +2734,17 @@ AqlValue Functions::DateMillisecond(arangodb::aql::Query* query,
 AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_DAYOFYEAR";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYOFYEAR", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
   auto ymd = year_month_day(floor<days>(tp));
   auto yyyy = year{ymd.year()};
-  auto firstDayInYear = yyyy / 1 / 0;
+  // we construct the date with the first day in the year:
+  auto firstDayInYear = yyyy / jan / day{0};
   uint64_t daysSinceFirst =
       duration_cast<days>(tp - sys_days(firstDayInYear)).count();
 
@@ -2782,9 +2755,10 @@ AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
 AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_ISOWEEK";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ISOWEEK", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2798,9 +2772,10 @@ AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
 AqlValue Functions::DateLeapYear(arangodb::aql::Query* query,
                                  transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_LEAPYEAR";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_LEAPYEAR", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2813,9 +2788,10 @@ AqlValue Functions::DateLeapYear(arangodb::aql::Query* query,
 AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_QUARTER";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_QUARTER", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2833,10 +2809,10 @@ AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
 AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
                                     transaction::Methods* trx,
                                     VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_DAYS_IN_MONTH";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYS_IN_MONTH",
-                            0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2902,9 +2878,10 @@ AqlValue Functions::DateTrunc(arangodb::aql::Query* query,
 AqlValue Functions::DateAdd(arangodb::aql::Query* query,
                             transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_ADD";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ADD", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2914,13 +2891,13 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
   if (parameters.size() == 3) {
     AqlValue durationUnit = ExtractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number
-      RegisterInvalidArgumentWarning(query, "DATE_ADD");
+      RegisterInvalidArgumentWarning(query, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
     AqlValue durationType = ExtractFunctionParameterValue(parameters, 2);
     if (!durationType.isString()) {  // unit type must be string
-      RegisterInvalidArgumentWarning(query, "DATE_ADD");
+      RegisterInvalidArgumentWarning(query, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2930,7 +2907,7 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
   } else {  // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
-      RegisterInvalidArgumentWarning(query, "DATE_ADD");
+      RegisterInvalidArgumentWarning(query, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2943,9 +2920,10 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
 AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
                                  transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_SUBTRACT";
   tp_sys_clock_ms tp;
 
-  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_SUBTRACT", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -2956,13 +2934,13 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
   if (parameters.size() == 3) {
     AqlValue durationUnit = ExtractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number
-      RegisterInvalidArgumentWarning(query, "DATE_SUBTRACT");
+      RegisterInvalidArgumentWarning(query, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
     AqlValue durationType = ExtractFunctionParameterValue(parameters, 2);
     if (!durationType.isString()) {  // unit type must be string
-      RegisterInvalidArgumentWarning(query, "DATE_SUBTRACT");
+      RegisterInvalidArgumentWarning(query, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2972,7 +2950,7 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
   } else {  // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
-      RegisterInvalidArgumentWarning(query, "DATE_SUBTRACT");
+      RegisterInvalidArgumentWarning(query, AFN);
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2985,15 +2963,16 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
 AqlValue Functions::DateDiff(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_DIFF";
   // Extract first date
   tp_sys_clock_ms tp1;
-  if (!ParameterToTimePoint(query, trx, parameters, tp1, "DATE_DIFF", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp1, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
   // Extract second date
   tp_sys_clock_ms tp2;
-  if (!ParameterToTimePoint(query, trx, parameters, tp2, "DATE_DIFF", 1)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp2, AFN, 1)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3003,7 +2982,7 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
 
   AqlValue unitValue = ExtractFunctionParameterValue(parameters, 2);
   if (!unitValue.isString()) {
-    RegisterInvalidArgumentWarning(query, "DATE_DIFF");
+    RegisterInvalidArgumentWarning(query, AFN);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3012,7 +2991,7 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
   if (parameters.size() == 4) {
     AqlValue asFloatValue = ExtractFunctionParameterValue(parameters, 3);
     if (!asFloatValue.isBoolean()) {
-      RegisterInvalidArgumentWarning(query, "DATE_DIFF");
+      RegisterInvalidArgumentWarning(query, AFN);
       return AqlValue(AqlValueHintNull());
     }
     asFloat = asFloatValue.toBoolean();
@@ -3060,7 +3039,7 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
       diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
       break;
     case INVALID:
-      RegisterWarning(query, "DATE_DIFF", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      RegisterWarning(query, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
   }
 
@@ -3075,13 +3054,14 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
 AqlValue Functions::DateCompare(arangodb::aql::Query* query,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
+  static char const* AFN = "DATE_COMPARE";
   tp_sys_clock_ms tp1;
-  if (!ParameterToTimePoint(query, trx, parameters, tp1, "DATE_COMPARE", 0)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp1, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
   tp_sys_clock_ms tp2;
-  if (!ParameterToTimePoint(query, trx, parameters, tp2, "DATE_COMPARE", 1)) {
+  if (!ParameterToTimePoint(query, trx, parameters, tp2, AFN, 1)) {
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3091,8 +3071,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
       ParseDateModifierFlag(rangeStartValue.slice());
 
   if (rangeStart == INVALID) {
-    RegisterWarning(query, "DATE_COMPARE",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    RegisterWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
@@ -3102,8 +3081,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
     rangeEnd = ParseDateModifierFlag(rangeEndValue.slice());
 
     if (rangeEnd == INVALID) {
-      RegisterWarning(query, "DATE_COMPARE",
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      RegisterWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
   }
@@ -3188,6 +3166,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
   // Name these two dates as equal
   return AqlValue(AqlValueHintBool(true));
 }
+
 
 /// @brief function PASSTHRU
 AqlValue Functions::Passthru(arangodb::aql::Query* query,
@@ -4854,8 +4833,6 @@ AqlValue Functions::Zip(arangodb::aql::Query* query, transaction::Methods* trx,
     return AqlValue(AqlValueHintNull());
   }
 
-  VPackValueLength n = keys.length();
-
   AqlValueMaterializer keyMaterializer(trx);
   VPackSlice keysSlice = keyMaterializer.slice(keys, false);
 
@@ -4866,14 +4843,33 @@ AqlValue Functions::Zip(arangodb::aql::Query* query, transaction::Methods* trx,
   builder->openObject();
 
   // Buffer will temporarily hold the keys
+  std::unordered_set<std::string> keysSeen;
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-  for (VPackValueLength i = 0; i < n; ++i) {
+ 
+  VPackArrayIterator keysIt(keysSlice);
+  VPackArrayIterator valuesIt(valuesSlice);
+
+  TRI_ASSERT(keysIt.size() == valuesIt.size());
+
+  while (keysIt.valid()) {
+    TRI_ASSERT(valuesIt.valid());
+
+    // stringify key
     buffer->reset();
-    Stringify(trx, adapter, keysSlice.at(i));
-    builder->add(buffer->c_str(), buffer->length(), valuesSlice.at(i));
+    Stringify(trx, adapter, keysIt.value());
+
+    if (keysSeen.emplace(buffer->c_str(), buffer->length()).second) {
+      // non-duplicate key
+      builder->add(buffer->c_str(), buffer->length(), valuesIt.value());
+    }
+
+    keysIt.next();
+    valuesIt.next();
   }
+
   builder->close();
+
   return AqlValue(builder.get());
 }
 
@@ -6557,4 +6553,486 @@ AqlValue Functions::Fail(arangodb::aql::Query* query, transaction::Methods* trx,
   AqlValueMaterializer materializer(trx);
   VPackSlice str = materializer.slice(value, false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FAIL_CALLED, str.copyString());
+}
+
+
+typedef void(*format_func_t)(std::string& wrk, tp_sys_clock_ms const&);
+typedef std::unordered_map<std::string,format_func_t> dateMapType;
+std::unordered_map<std::string,format_func_t> dateMap;
+
+auto unix_epoch = date::sys_seconds{seconds{0}};
+
+std::string tail(std::string const& source, size_t const length) {
+  if (length >= source.size()) { return source; }
+  return source.substr(source.size() - length);
+} // tail
+
+std::vector<std::string> const monthNames = {
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December"
+};
+
+std::vector<std::string> const monthNamesShort = {
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec"
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief English weekday names
+// //////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::string> const weekDayNames = {
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday"
+};
+
+std::vector<std::string> const weekDayNamesShort = {
+  "Sun",
+  "Mon",
+  "Tue",
+  "Wed",
+  "Thu",
+  "Fri",
+  "Sat"
+};
+
+std::vector<std::pair<std::string,format_func_t>> const sortedDateMap = {
+  {"%&", [](std::string& wrk, tp_sys_clock_ms const& tp) { }}, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
+  // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
+  {"%yyyyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yearnum = static_cast<int>(ymd.year());
+      if (yearnum < 0) {
+        if (yearnum > -10) {
+          wrk.append("-00000");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
+        }
+        if (yearnum > -100) {
+          wrk.append("-0000");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
+        }
+        if (yearnum > -1000) {
+          wrk.append("-000");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
+        }
+        if (yearnum > -10000) {
+          wrk.append("-00");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
+        }
+        if (yearnum > -100000) {
+          wrk.append("-0");
+          wrk.append(std::to_string(abs(yearnum)));
+          return;
+        }
+        wrk.append("-");
+        wrk.append(std::to_string(abs(yearnum)));
+        return;
+      }
+      if (yearnum > 99999) {
+        wrk.append(std::to_string(yearnum));
+        return;
+      }
+      if (yearnum > 9999) {
+        wrk.append("+0");
+        wrk.append(std::to_string(yearnum));
+        return;
+      }
+      if (yearnum > 999) {
+        wrk.append("+00");
+        wrk.append(std::to_string(yearnum));
+        return;
+      }
+      if (yearnum > 99) {
+        wrk.append("+000");
+        wrk.append(std::to_string(yearnum));
+        return;
+      }
+      if (yearnum > 9) {
+        wrk.append("+0000");
+        wrk.append(std::to_string(yearnum));
+        return;
+      }
+      if (yearnum >= 0) {
+        wrk.append("+00000");
+        wrk.append(std::to_string(yearnum));
+        return;
+      }
+      wrk.append("+");
+      wrk.append(std::to_string(yearnum));
+      return;
+    }},
+  {"%mmmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      wrk.append(monthNames[static_cast<unsigned>(ymd.month()) - 1]);
+    }},
+  {"%yyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yearnum = static_cast<int>(ymd.year());
+      if (yearnum < 0) {
+        if (yearnum > -10) {
+          wrk.append("-000");
+          wrk.append(std::to_string(abs(yearnum)));
+        }
+        else if (yearnum > -100) {
+          wrk.append("-00");
+          wrk.append(std::to_string(abs(yearnum)));
+        }
+        else if (yearnum > -1000) {
+          wrk.append("-0");
+          wrk.append(std::to_string(abs(yearnum)));
+        }
+        else {
+          wrk.append("-");
+          wrk.append(std::to_string(abs(yearnum)));
+        }
+      }
+      else {
+        if (yearnum < 0) {
+          wrk.append("0000");
+          wrk.append(std::to_string(yearnum));
+        }
+        else if (yearnum < 9) {
+          wrk.append("000");
+          wrk.append(std::to_string(yearnum));
+        }
+        else if (yearnum < 99) {
+          wrk.append("00");
+          wrk.append(std::to_string(yearnum));
+        }
+        else if (yearnum < 999) {
+          wrk.append("0");
+          wrk.append(std::to_string(yearnum));
+        }
+        else {
+          std::string yearstr(std::to_string(yearnum));
+          wrk.append(tail(yearstr, 4));
+        }
+      }
+    }},
+
+  {"%wwww", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      weekday wd{floor<days>(tp)};
+      wrk.append(weekDayNames[static_cast<unsigned>(wd)]);
+    }},
+
+  {"%mmm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      wrk.append(monthNamesShort[static_cast<unsigned>(ymd.month()) - 1]);
+    }},
+  {"%www", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      weekday wd{floor<days>(tp)};
+      wrk.append(weekDayNamesShort[static_cast<unsigned>(wd)]);
+    }},
+  {"%fff", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t millis = day_time.subseconds().count();
+      if (millis < 10) {
+        wrk.append("00");
+        wrk.append(std::to_string(millis));
+      }
+      else if (millis < 100) {
+        wrk.append("0");
+        wrk.append(std::to_string(millis));
+      }
+      else {
+        wrk.append(std::to_string(millis));
+      }
+    }},
+  {"%xxx", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yyyy = year{ymd.year()};
+      // we construct the date with the first day in the year:
+      auto firstDayInYear = yyyy / jan / day{0};
+      uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
+      if (daysSinceFirst < 10) {
+        wrk.append("00");
+        wrk.append(std::to_string(daysSinceFirst));
+      }
+      else if (daysSinceFirst < 100) {
+        wrk.append("0");
+        wrk.append(std::to_string(daysSinceFirst));
+      }
+      else {
+        wrk.append(std::to_string(daysSinceFirst));
+      }
+    }},
+  
+  // there"s no really sensible way to handle negative years, but better not drop the sign
+  {"%yy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yearnum = static_cast<int>(ymd.year());
+      if (yearnum < 10 && yearnum > -10) {
+        wrk.append("0");
+        wrk.append(std::to_string(abs(yearnum)));
+      }
+      else {
+        std::string yearstr(std::to_string(abs(yearnum)));
+        wrk.append(tail(yearstr, 2));
+      }
+    }},
+  {"%mm", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto month = (unsigned)ymd.month();
+      if (month < 10) {
+        wrk.append("0");
+        wrk.append(std::to_string(month));
+      }
+      else {
+        wrk.append(std::to_string(static_cast<uint64_t>(month)));
+      }
+    }},
+  {"%dd", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto day = (unsigned)ymd.day();
+      if (day < 10) {
+        wrk.append("0");
+        wrk.append(std::to_string(day));
+      }
+      else {
+        wrk.append(std::to_string(static_cast<uint64_t>(day)));
+      }
+    }},
+  {"%hh", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t hours = day_time.hours().count();
+      if (hours < 10) {
+        wrk.append("0");
+        wrk.append(std::to_string(hours));
+      }
+      else {
+        wrk.append(std::to_string(hours));
+      }
+    }},
+  {"%ii", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t minutes = day_time.minutes().count();
+      if (minutes < 10) {
+        wrk.append("0");
+        wrk.append(std::to_string(minutes));
+      }
+      else {
+        wrk.append(std::to_string(minutes));
+      }
+    }},
+  {"%ss", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t seconds = day_time.seconds().count();
+      if (seconds < 10) {
+        wrk.append("0");
+        wrk.append(std::to_string(seconds));
+      }
+      else {
+        wrk.append(std::to_string(seconds));
+      }
+    }},
+  {"%kk", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      iso_week::year_weeknum_weekday yww{floor<days>(tp)};
+      uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
+      if (isoWeek < 10) {
+        wrk.append("0");
+        wrk.append(std::to_string(isoWeek));
+      }
+      else {
+        wrk.append(std::to_string(isoWeek));
+      }
+    }},
+  
+  {"%t", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto diffDuration = tp - unix_epoch;
+      auto diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
+      wrk.append(std::to_string(static_cast<int64_t>(std::round(diff))));
+    }},
+  {"%z", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      std::string formatted = format("%FT%TZ", floor<milliseconds>(tp));
+      wrk.append(formatted);
+    }},
+  {"%w", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      weekday wd{floor<days>(tp)};
+      wrk.append(std::to_string(static_cast<unsigned>(wd)));
+    }},
+  {"%y", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      wrk.append(std::to_string(static_cast<int>(ymd.year())));
+    }},
+  {"%m", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      wrk.append(std::to_string(static_cast<unsigned>(ymd.month())));
+    }},
+  {"%d", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      wrk.append(std::to_string(static_cast<unsigned>(ymd.day())));
+    }},
+  {"%h", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t hours = day_time.hours().count();
+      wrk.append(std::to_string(hours));
+    }},
+  {"%i", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t minutes = day_time.minutes().count();
+      wrk.append(std::to_string(minutes));
+    }},
+  {"%s", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t seconds = day_time.seconds().count();
+      wrk.append(std::to_string(seconds));
+    }},
+  {"%f", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto day_time = make_time(tp - floor<days>(tp));
+      uint64_t millis = day_time.subseconds().count();
+      wrk.append(std::to_string(millis));
+    }},
+  {"%x", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day(floor<days>(tp));
+      auto yyyy = year{ymd.year()};
+      // We construct the date with the first day in the year:
+      auto firstDayInYear = yyyy / jan / day{0};
+      uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
+      wrk.append(std::to_string(daysSinceFirst));
+    }},
+  {"%k", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      iso_week::year_weeknum_weekday yww{floor<days>(tp)};
+      uint64_t isoWeek = static_cast<unsigned>(yww.weeknum());
+      wrk.append(std::to_string(isoWeek));
+    }},
+  {"%l", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      year_month_day ymd{floor<days>(tp)};
+      if (ymd.year().is_leap()) {
+        wrk.append("1");
+      }
+      else {
+        wrk.append("0");
+      }
+  }},
+  {"%q", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      year_month_day ymd{floor<days>(tp)};
+      month m = ymd.month();
+      uint64_t part = static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
+      TRI_ASSERT(part <= 4);
+      wrk.append(std::to_string(part));
+    }},
+  {"%a", [](std::string& wrk, tp_sys_clock_ms const& tp) {
+      auto ymd = year_month_day{floor<days>(tp)};
+      auto lastMonthDay = ymd.year() / ymd.month() / last;
+      wrk.append(std::to_string(static_cast<unsigned>(lastMonthDay.day())));
+    }},
+  {"%%", [](std::string& wrk, tp_sys_clock_ms const& tp) { wrk.append("%"); }},
+  {"%", [](std::string& wrk, tp_sys_clock_ms const& tp) { }}
+};
+
+std::string regex_replace(std::string const& search,
+                          const std::regex& re,
+                          dateMapType const& dateMap,
+                          tp_sys_clock_ms const& tp)
+{
+  std::string s;
+
+  auto first = search.begin();
+  auto last = search.end();
+  typename std::smatch::difference_type
+    positionOfLastMatch = 0;
+  auto endOfLastMatch = first;
+
+  auto callback = [&tp, &endOfLastMatch, &positionOfLastMatch, &s, &dateMap](const std::smatch& match)
+    {
+      auto positionOfThisMatch = match.position(0);
+      auto diff = positionOfThisMatch - positionOfLastMatch;
+
+      auto startOfThisMatch = endOfLastMatch;
+      std::advance(startOfThisMatch, diff);
+
+      s.append(endOfLastMatch, startOfThisMatch);
+      auto got = dateMap.find(match.str(0));
+      if (got != dateMap.end()) {
+        got->second(s, tp);
+      }
+      auto lengthOfMatch = match.length(0);
+
+      positionOfLastMatch = positionOfThisMatch + lengthOfMatch;
+
+      endOfLastMatch = startOfThisMatch;
+      std::advance(endOfLastMatch, lengthOfMatch);
+    };
+
+  std::regex_iterator<std::string::const_iterator> end;
+  std::regex_iterator<std::string::const_iterator> begin(first, last, re);
+  std::for_each(begin, end, callback);
+
+  s.append(endOfLastMatch, last);
+
+  return s;
+}
+std::regex theDateFormatRegex;
+
+static std::string dateFormatRegex(const std::string& s, tp_sys_clock_ms& tp)
+{
+  return regex_replace(s, theDateFormatRegex, dateMap, tp);
+}
+
+void Functions::init() {
+  std::string myregex;
+
+  dateMap.reserve(sortedDateMap.size());
+  std::for_each(sortedDateMap.begin(), sortedDateMap.end(), [&myregex](std::pair<std::string const&, format_func_t> const& p) {
+      (myregex.length() > 0) ? myregex += "|" + p.first : myregex = p.first;
+      dateMap.insert(std::make_pair(p.first, p.second));
+    });
+  theDateFormatRegex = std::regex(myregex);
+}
+  
+
+
+/// @brief function DATE_FORMAT
+AqlValue Functions::DateFormat(arangodb::aql::Query* query,
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& params)
+{
+  static char const* AFN = "DATE_FORMAT";
+  tp_sys_clock_ms tp;
+  ValidateParameters(params, AFN, 2, 2);
+
+  if (!ParameterToTimePoint(query, trx, params, tp, AFN, 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValue aqlFormatString = ExtractFunctionParameterValue(params, 1);
+  if (!aqlFormatString.isString()) {
+    RegisterInvalidArgumentWarning(query, AFN);
+    return AqlValue(AqlValueHintNull());
+  }      
+
+  std::string formatString = aqlFormatString.slice().copyString();
+
+  std::string value = dateFormatRegex(formatString, tp);
+
+  return AqlValue(value);
 }

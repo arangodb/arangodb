@@ -329,6 +329,9 @@ class ExecutionPlan {
   bool _varUsageComputed;
 
   bool _isResponsibleForInitialize;
+   
+  /// @brief current nesting level while building the plan
+  int _nestingLevel;
 
   /// @brief auto-increment sequence for node ids
   size_t _nextId;
@@ -336,8 +339,7 @@ class ExecutionPlan {
   /// @brief the ast
   Ast* _ast;
 
-  /// @brief whether or not the next LIMIT node will get its fullCount attribute
-  /// set
+  /// @brief which top-level LIMIT node will get its fullCount attribute set
   ExecutionNode* _lastLimitNode;
 
   /// @brief a lookup map for all subqueries created
@@ -347,7 +349,7 @@ class ExecutionPlan {
   std::unordered_set<ExecutionNode const*> _excludeFromScatterGather;
 
   /// @brief number of nodes used in the plan, by type
-  std::array<uint32_t, ExecutionNode::MaxNodeTypeValue + 1> _typeCounts;
+  std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
 };
 }
 }
