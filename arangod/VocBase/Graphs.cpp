@@ -39,9 +39,11 @@ std::string const GRAPHS = "_graphs";
 /// @brief Load a graph from the _graphs collection; local and coordinator way
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::Context> transactionContext,
-                                                  std::string const& name) {
-  SingleCollectionTransaction trx(transactionContext, GRAPHS, AccessMode::Type::READ);
+arangodb::graph::Graph* arangodb::lookupGraphByName(
+    std::shared_ptr<transaction::Context> transactionContext,
+    std::string const& name) {
+  SingleCollectionTransaction trx(transactionContext, GRAPHS,
+                                  AccessMode::Type::READ);
 
   Result res = trx.begin();
 
@@ -66,8 +68,8 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::C
   res = trx.finish(result.result);
 
   if (result.fail()) {
-    THROW_ARANGO_EXCEPTION_FORMAT(result.errorNumber(), "while looking up graph '%s'",
-                                  name.c_str());
+    THROW_ARANGO_EXCEPTION_FORMAT(result.errorNumber(),
+                                  "while looking up graph '%s'", name.c_str());
   }
   if (res.fail()) {
     std::stringstream ss;
@@ -81,6 +83,6 @@ arangodb::aql::Graph* arangodb::lookupGraphByName(std::shared_ptr<transaction::C
     info = info.resolveExternal();
   }
 
-  return new arangodb::aql::Graph(info);
+  return new arangodb::graph::Graph(info);
 }
 #endif

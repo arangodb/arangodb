@@ -25,9 +25,10 @@
 #define ARANGOD_VOCBASE_GRAPHS_H 1
 
 #include "VocBase/vocbase.h"
+#include "Graph/Graph.h"
 
 namespace arangodb {
-namespace aql {
+namespace graph {
 class Graph;
 }
 
@@ -41,7 +42,7 @@ class Context;
 ///  The caller has to take care for the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-arangodb::aql::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
+::arangodb::graph::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
 
 }  // namespace arangodb
 

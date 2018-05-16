@@ -39,6 +39,7 @@
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/Graph.h"
 #include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -52,9 +53,7 @@
 #include "VocBase/Graphs.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #ifndef USE_PLAN_CACHE
 #undef USE_PLAN_CACHE
@@ -1283,14 +1282,14 @@ std::shared_ptr<transaction::Context> Query::createTransactionContext() {
 
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
-Graph const* Query::lookupGraphByName(std::string const& name) {
+graph::Graph const* Query::lookupGraphByName(std::string const& name) {
   auto it = _graphs.find(name);
 
   if (it != _graphs.end()) {
     return it->second;
   }
 
-  std::unique_ptr<arangodb::aql::Graph> g(
+  std::unique_ptr<::arangodb::graph::Graph> g(
       arangodb::lookupGraphByName(createTransactionContext(), name));
 
   if (g == nullptr) {

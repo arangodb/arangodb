@@ -27,7 +27,8 @@
 #define S2(x) S1(x)
 #define LOGPREFIX(func) "[" \
   << (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__) \
-  << (":" S2(__LINE__) "@" func "] ")
+  << ":" S2(__LINE__) \
+  << "@" << func << "] "
 
 using namespace arangodb;
 
@@ -37,8 +38,8 @@ RestGraphHandler::RestGraphHandler(GeneralRequest* request,
 
 RestStatus RestGraphHandler::execute() {
   LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__) << request()->requestType()
-                                  << request()->requestPath()
-                                  << request()->suffixes();
+                                  << " " << request()->requestPath()
+                                  << " " << request()->suffixes();
 
   boost::optional<RestStatus> maybeResult = executeGharial();
 
@@ -177,6 +178,19 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
       << LOGPREFIX(__func__) << "graphName = " << graphName << ", "
       << "vertexCollectionName = " << vertexCollectionName << ", "
       << "vertexKey = " << vertexKey;
+
+  switch (request()->requestType()) {
+    case RequestType::DELETE_REQ:
+      break;
+    case RequestType::GET:
+      break;
+    case RequestType::PATCH:
+      break;
+    case RequestType::PUT:
+      break;
+    default:
+      ;
+  }
   return boost::none;
 }
 
