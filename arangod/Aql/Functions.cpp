@@ -2744,7 +2744,7 @@ AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
   auto ymd = year_month_day(floor<days>(tp));
   auto yyyy = year{ymd.year()};
   // we construct the date with the first day in the year:
-  auto firstDayInYear = yyyy / 1 / 0;
+  auto firstDayInYear = yyyy / jan / day{0};
   uint64_t daysSinceFirst =
       duration_cast<days>(tp - sys_days(firstDayInYear)).count();
 
@@ -6720,7 +6720,7 @@ std::vector<std::pair<std::string,format_func_t>> const sortedDateMap = {
       auto ymd = year_month_day(floor<days>(tp));
       auto yyyy = year{ymd.year()};
       // we construct the date with the first day in the year:
-      auto firstDayInYear = yyyy / 1 / 0;
+      auto firstDayInYear = yyyy / jan / day{0};
       uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
       if (daysSinceFirst < 10) {
         wrk.append("00");
@@ -6864,7 +6864,7 @@ std::vector<std::pair<std::string,format_func_t>> const sortedDateMap = {
       auto ymd = year_month_day(floor<days>(tp));
       auto yyyy = year{ymd.year()};
       // We construct the date with the first day in the year:
-      auto firstDayInYear = yyyy / 1 / 0;
+      auto firstDayInYear = yyyy / jan / day{0};
       uint64_t daysSinceFirst = duration_cast<days>(tp - sys_days(firstDayInYear)).count();
       wrk.append(std::to_string(daysSinceFirst));
     }},
