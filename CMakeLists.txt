@@ -839,6 +839,18 @@ include_directories(SYSTEM ${ICU_INCLUDE_DIR})
 ## OPENSSL
 ################################################################################
 
+# Some special stuff for Mac OSX and homebrew as a preparation for the 
+# generic FindOpenSSL script:
+if (APPLE AND BREW AND NOT OPENSSL_ROOT_DIR)
+  message("searching openssl with brew (${BREW})")
+  # if we have a brew openssl, prefer it over the elderly system one.
+  execute_process(OUTPUT_VARIABLE BREW_ROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    COMMAND ${BREW} --prefix)
+  set(OPENSSL_ROOT_DIR "${BREW_ROOT}/opt/openssl")
+  message("auto-set OPENSSL_ROOT_DIR to: ${OPENSSL_ROOT_DIR}")
+endif ()
+
 find_package(OpenSSL REQUIRED)
 
 include_directories(${OPENSSL_INCLUDE_DIR})
