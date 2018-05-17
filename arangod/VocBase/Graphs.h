@@ -25,7 +25,6 @@
 #define ARANGOD_VOCBASE_GRAPHS_H 1
 
 #include "VocBase/vocbase.h"
-#include "Graph/Graph.h"
 
 namespace arangodb {
 namespace graph {

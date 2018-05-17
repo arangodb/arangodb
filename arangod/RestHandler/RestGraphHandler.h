@@ -29,7 +29,11 @@
 
 namespace arangodb {
 
-class RestGraphHandler : public arangodb::RestBaseHandler {
+namespace graph {
+class Graph;
+}
+
+class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestGraphHandler(GeneralRequest* request, GeneralResponse* response);
 
@@ -49,31 +53,36 @@ class RestGraphHandler : public arangodb::RestBaseHandler {
   boost::optional<RestStatus> graphsAction();
 
   // /_api/gharial/{graph-name}
-  boost::optional<RestStatus> graphAction(const std::string& graphName);
+  boost::optional<RestStatus> graphAction(
+      std::unique_ptr<const graph::Graph> graph);
 
   // /_api/gharial/{graph-name}/vertex
-  boost::optional<RestStatus> vertexSetsAction(const std::string& graphName);
+  boost::optional<RestStatus> vertexSetsAction(
+      std::unique_ptr<const graph::Graph> graph);
 
   // /_api/gharial/{graph-name}/edge
-  boost::optional<RestStatus> edgeSetsAction(const std::string& graphName);
+  boost::optional<RestStatus> edgeSetsAction(
+      std::unique_ptr<const graph::Graph> graph);
 
   // /_api/gharial/{graph-name}/vertex/{collection-name}
   boost::optional<RestStatus> vertexSetAction(
-      const std::string& graphName, const std::string& vertexCollectionName);
+      std::unique_ptr<const graph::Graph> graph,
+      const std::string& vertexCollectionName);
 
   // /_api/gharial/{graph-name}/edge/{definition-name}
   boost::optional<RestStatus> edgeSetAction(
-      const std::string& graphName, const std::string& edgeDefinitionName);
+      std::unique_ptr<const graph::Graph> graph,
+      const std::string& edgeDefinitionName);
 
   // /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
   boost::optional<RestStatus> vertexAction(
-      const std::string& graphName, const std::string& vertexCollectionName,
-      const std::string& vertexKey);
+      std::unique_ptr<const graph::Graph> graph,
+      const std::string& vertexCollectionName, const std::string& vertexKey);
 
   // /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-  boost::optional<RestStatus> edgeAction(const std::string& graphName,
-                                         const std::string& edgeDefinitionName,
-                                         const std::string& edgeKey);
+  boost::optional<RestStatus> edgeAction(
+      std::unique_ptr<const graph::Graph> graph,
+      const std::string& edgeDefinitionName, const std::string& edgeKey);
 };
 
 }  // namespace arangodb

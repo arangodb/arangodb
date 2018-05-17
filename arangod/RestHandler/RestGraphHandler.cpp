@@ -20,35 +20,41 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <boost/optional.hpp>
+
+#include "Graph/Graph.h"
 #include "RestGraphHandler.h"
-#include <3rdParty/boost/1.62.0/boost/optional.hpp>
+#include "Transaction/StandaloneContext.h"
+#include "VocBase/Graphs.h"
 
 #define S1(x) #x
 #define S2(x) S1(x)
-#define LOGPREFIX(func) "[" \
-  << (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__) \
-  << ":" S2(__LINE__) \
-  << "@" << func << "] "
+#define LOGPREFIX(func)                                                   \
+  "[" << (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__) \
+      << ":" S2(__LINE__) << "@" << func << "] "
 
 using namespace arangodb;
+using namespace arangodb::graph;
 
 RestGraphHandler::RestGraphHandler(GeneralRequest* request,
                                    GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestGraphHandler::execute() {
-  LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__) << request()->requestType()
-                                  << " " << request()->requestPath()
-                                  << " " << request()->suffixes();
+  LOG_TOPIC(INFO, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << request()->requestType() << " "
+      << request()->requestPath() << " " << request()->suffixes();
 
   boost::optional<RestStatus> maybeResult = executeGharial();
 
   if (maybeResult) {
-    LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__) << "Used C++ handler";
+    LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__)
+                                    << "Used C++ handler";
     return maybeResult.get();
   }
 
-  LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__) << "Using fallback JS handler";
+  LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__)
+                                  << "Using fallback JS handler";
 
   RestStatus restStatus = RestStatus::FAIL;
 
@@ -91,9 +97,13 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
 
   std::string const& graphName = getNextSuffix();
 
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+
+  std::unique_ptr<const Graph> graph{lookupGraphByName(ctx, graphName)};
+
   if (noMoreSuffixes()) {
     // /_api/gharial/{graph-name}
-    return graphAction(graphName);
+    return graphAction(std::move(graph));
   }
 
   std::string const& collType = getNextSuffix();
@@ -107,10 +117,10 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex
-      return vertexSetsAction(graphName);
+      return vertexSetsAction(std::move(graph));
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge
-      return edgeSetsAction(graphName);
+      return edgeSetsAction(std::move(graph));
     }
   }
 
@@ -119,10 +129,10 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex/{collection-name}
-      return vertexSetAction(graphName, setName);
+      return vertexSetAction(std::move(graph), setName);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge/{definition-name}
-      return edgeSetAction(graphName, setName);
+      return edgeSetAction(std::move(graph), setName);
     }
   }
 
@@ -131,10 +141,10 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-      return vertexAction(graphName, setName, elementKey);
+      return vertexAction(std::move(graph), setName, elementKey);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-      return edgeAction(graphName, setName, elementKey);
+      return edgeAction(std::move(graph), setName, elementKey);
     }
   }
 
@@ -147,35 +157,37 @@ boost::optional<RestStatus> RestGraphHandler::graphsAction() {
 }
 
 boost::optional<RestStatus> RestGraphHandler::graphAction(
-    const std::string& graphName) {
+    const std::unique_ptr<const Graph> graph) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::vertexSetsAction(
-    const std::string& graphName) {
+    const std::unique_ptr<const Graph> graph) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::edgeSetsAction(
-    const std::string& graphName) {
+    const std::unique_ptr<const Graph> graph) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
-    const std::string& graphName, const std::string& edgeDefinitionName) {
+    const std::unique_ptr<const Graph> graph,
+    const std::string& edgeDefinitionName) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
-    const std::string& graphName, const std::string& vertexCollectionName) {
+    const std::unique_ptr<const Graph> graph,
+    const std::string& vertexCollectionName) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::vertexAction(
-    const std::string& graphName, const std::string& vertexCollectionName,
-    const std::string& vertexKey) {
+    const std::unique_ptr<const Graph> graph,
+    const std::string& vertexCollectionName, const std::string& vertexKey) {
   LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "graphName = " << graphName << ", "
+      << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
       << "vertexCollectionName = " << vertexCollectionName << ", "
       << "vertexKey = " << vertexKey;
 
@@ -188,17 +200,16 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
       break;
     case RequestType::PUT:
       break;
-    default:
-      ;
+    default:;
   }
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::edgeAction(
-    const std::string& graphName, const std::string& edgeDefinitionName,
-    const std::string& edgeKey) {
+    const std::unique_ptr<const Graph> graph,
+    const std::string& edgeDefinitionName, const std::string& edgeKey) {
   LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "graphName = " << graphName << ", "
+      << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
       << "edgeDefinitionName = " << edgeDefinitionName << ", "
       << "edgeKey = " << edgeKey;
   return boost::none;

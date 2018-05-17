@@ -27,12 +27,12 @@
 #include "Aql/ExecutionNode.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/TraverserEngineRegistry.h"
-#include "Graph/Graph.h"
 
 namespace arangodb {
 
 namespace graph {
 struct BaseOptions;
+class Graph;
 }
 
 namespace aql {

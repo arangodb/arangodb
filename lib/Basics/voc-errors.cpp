@@ -284,6 +284,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS, "collection used in orphans");
   REG_ERROR(ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST, "edge collection does not exist or is not part of the graph");
   REG_ERROR(ERROR_GRAPH_EMPTY, "empty graph");
+  REG_ERROR(ERROR_GRAPH_INTERNAL_DATA_CORRUPT, "internal graph data corrupt");
+  REG_ERROR(ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET, "edge collection already set");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");

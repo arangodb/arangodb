@@ -40,7 +40,6 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Graph/Graph.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
 
@@ -55,6 +54,10 @@ class Methods;
 
 namespace velocypack {
 class Builder;
+}
+
+namespace graph {
+class Graph;
 }
 
 namespace aql {

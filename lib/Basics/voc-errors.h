@@ -1507,6 +1507,16 @@ constexpr int TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST                           
 /// The requested graph has no edge collections.
 constexpr int TRI_ERROR_GRAPH_EMPTY                                             = 1940;
 
+/// 1941: ERROR_GRAPH_INTERNAL_DATA_CORRUPT
+/// "internal graph data corrupt"
+/// The _graphs collection contains invalid data.
+constexpr int TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT                             = 1941;
+
+/// 1942: ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET
+/// "edge collection already set"
+/// Tried to add an edge collection which is already defined.
+constexpr int TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET              = 1942;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.
