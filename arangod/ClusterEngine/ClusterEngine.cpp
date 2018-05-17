@@ -170,9 +170,9 @@ transaction::ContextData* ClusterEngine::createTransactionContextData() {
   return new ClusterTransactionContextData();
 }
 
-TransactionState* ClusterEngine::createTransactionState(
-    TRI_vocbase_t* vocbase, transaction::Options const& options) {
-  return new ClusterTransactionState(vocbase, TRI_NewTickServer(), options);
+std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
+    TRI_vocbase_t& vocbase, transaction::Options const& options) {
+  return std::make_unique<ClusterTransactionState>(vocbase, TRI_NewTickServer(), options);
 }
 
 TransactionCollection* ClusterEngine::createTransactionCollection(
@@ -424,7 +424,7 @@ bool ClusterEngine::inRecovery() {
   return false;//RocksDBRecoveryManager::instance()->inRecovery();
 }
 
-void ClusterEngine::recoveryDone(TRI_vocbase_t* vocbase) {
+void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   // nothing to do here
 }
 

@@ -465,8 +465,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -544,8 +546,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -623,8 +627,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -718,8 +724,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -813,8 +821,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -908,8 +918,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -987,8 +999,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -1061,8 +1075,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -1192,8 +1208,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));
@@ -1318,8 +1336,10 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
       arangodb::transaction::Options()
     );
     std::unique_ptr<arangodb::aql::ExecutionPlan> plan(arangodb::aql::ExecutionPlan::instantiateFromAst(ast));

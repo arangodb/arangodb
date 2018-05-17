@@ -351,9 +351,10 @@ scriptsRouter.get((req, res) => {
 scriptsRouter.post('/:name', (req, res) => {
   const service = req.service;
   const scriptName = req.pathParams.name;
-  res.json(FoxxManager.runScript(scriptName, service.mount, [req.body]) || null);
+  const result = FoxxManager.runScript(scriptName, service.mount, req.body !== undefined ? [req.body] : undefined);
+  res.json(result !== undefined ? result : null);
 })
-.body(joi.any())
+.body(joi.any().optional())
 .pathParam('name', joi.string().required())
 .response(200, joi.any().default(null));
 

@@ -565,7 +565,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        res.context = transaction::StandaloneContext::Create(&_vocbase);
+        res.context = transaction::StandaloneContext::Create(_vocbase);
         res.extra = std::make_shared<VPackBuilder>();
         {
           VPackObjectBuilder guard(res.extra.get(), true);
@@ -694,7 +694,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
-        auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
         ExecContext const* exe = ExecContext::CURRENT;
 
         // got a result from the query cache
@@ -1275,10 +1275,10 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we must use v8
-    return transaction::V8Context::Create(&_vocbase, true);
+    return transaction::V8Context::Create(_vocbase, true);
   }
 
-  return transaction::StandaloneContext::Create(&_vocbase);
+  return transaction::StandaloneContext::Create(_vocbase);
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs

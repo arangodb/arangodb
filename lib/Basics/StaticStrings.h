@@ -87,6 +87,13 @@ class StaticStrings {
   static std::string const DataSourceSystem; // data-source system marker
   static std::string const DataSourceType; // data-source type
 
+  // Index definition fields
+  static std::string const IndexFields; // index fields
+  static std::string const IndexId; // index id
+  static std::string const IndexSparse; // index sparsness marker
+  static std::string const IndexType; // index type
+  static std::string const IndexUnique; // index uniqueness marker
+
   // HTTP headers
   static std::string const Accept;
   static std::string const AcceptEncoding;

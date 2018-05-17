@@ -52,10 +52,14 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 namespace transaction {
+
 class Methods;
 struct Options;
+
 }
+
 class ExecContext;
 class TransactionCollection;
 
@@ -75,8 +79,9 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t* vocbase, TRI_voc_tid_t,
-                   transaction::Options const&);
+  TransactionState(TRI_vocbase_t& vocbase,
+                   TRI_voc_tid_t,
+                   transaction::Options const& options);
   virtual ~TransactionState();
 
   /// @brief add a callback to be called for state change events
@@ -97,7 +102,7 @@ class TransactionState {
 
   transaction::Options& options() { return _options; }
   transaction::Options const& options() const { return _options; }
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TRI_vocbase_t& vocbase() const { return _vocbase; }
   TRI_voc_tid_t id() const { return _id; }
   transaction::Status status() const { return _status; }
   bool isRunning() const { return _status == transaction::Status::RUNNING; }
@@ -203,11 +208,8 @@ class TransactionState {
   /// the transaction
   void clearQueryCache();
 
-  /// @brief check the collection permissions
-
- protected:
   /// @brief vocbase
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
   /// @brief local trx id
   TRI_voc_tid_t const _id;
   /// @brief access type (read|write)
@@ -233,6 +235,7 @@ class TransactionState {
   std::map<void const*, Cookie::ptr> _cookies; // a collection of stored cookies
   std::vector<StatusChangeCallback const*> _statusChangeCallbacks; // functrs to call for status change (pointer to allow for use of std::vector)
 };
+
 }
 
 #endif

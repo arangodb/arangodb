@@ -360,7 +360,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
   // .............................................................................
@@ -565,7 +565,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
   // .............................................................................
@@ -573,10 +573,13 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   // .............................................................................
 
   Result res = trx.begin();
+
   if (res.fail()) {
     generateTransactionError(collectionName, res, "");
+
     return false;
   }
+
   bool const isEdgeCollection = trx.isEdgeCollection(collectionName);
 
   if (overwrite) {
@@ -746,7 +749,7 @@ bool RestImportHandler::createFromKeyValueList() {
   current = next + 1;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
   // .............................................................................

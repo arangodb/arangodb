@@ -41,7 +41,7 @@ struct Collections {
   typedef std::function<void(velocypack::Slice const&)> const& DocCallback;
 
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
-  
+
   /// @brief lookup a collection in vocbase or clusterinfo.
   static Result lookup(TRI_vocbase_t* vocbase, std::string const& collection,
                      FuncCallback);
@@ -52,26 +52,28 @@ struct Collections {
                        velocypack::Slice const& properties,
                        bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, FuncCallback);
-  
-  static Result load(TRI_vocbase_t* vocbase, LogicalCollection* coll);
+
+  static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
-  
+
   static Result properties(LogicalCollection* coll, velocypack::Builder&);
   static Result updateProperties(LogicalCollection* coll,
                                  velocypack::Slice const&);
-  
+
   static Result rename(LogicalCollection* coll, std::string const& newName,
                        bool doOverride);
-  
+
   static Result drop(TRI_vocbase_t*, LogicalCollection* coll,
                      bool allowDropSystem, double timeout);
-  
-  static Result warmup(TRI_vocbase_t* vocbase,
-                       LogicalCollection* coll);
-  
-  static Result revisionId(TRI_vocbase_t*, LogicalCollection* coll,
-                           TRI_voc_rid_t& rid);
-  
+
+  static Result warmup(TRI_vocbase_t& vocbase, LogicalCollection* coll);
+
+  static Result revisionId(
+    TRI_vocbase_t& vocbase,
+    LogicalCollection* coll,
+    TRI_voc_rid_t& rid
+  );
+
   /// @brief Helper implementation similar to ArangoCollection.all() in v8
   static arangodb::Result all(
     TRI_vocbase_t& vocbase,

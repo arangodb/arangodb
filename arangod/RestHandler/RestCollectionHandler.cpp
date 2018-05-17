@@ -163,13 +163,15 @@ void RestCollectionHandler::handleCommandGet() {
         } else if (sub == "revision") {
           // /_api/collection/<identifier>/revision
           TRI_voc_rid_t revisionId;
-          Result res =
-              methods::Collections::revisionId(&_vocbase, coll, revisionId);
+          auto res =
+            methods::Collections::revisionId(_vocbase, coll, revisionId);
 
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
           }
+
           VPackObjectBuilder obj(&builder, true);
+
           obj->add("revision", VPackValue(StringUtils::itoa(revisionId)));
           collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
@@ -310,7 +312,7 @@ void RestCollectionHandler::handleCommandPut() {
     name,
     [&](LogicalCollection* coll) {
         if (sub == "load") {
-          res = methods::Collections::load(&_vocbase, coll);
+          res = methods::Collections::load(_vocbase, coll);
 
           if (res.ok()) {
             bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
@@ -336,24 +338,29 @@ void RestCollectionHandler::handleCommandPut() {
           }
         } else if (sub == "truncate") {
           OperationOptions opts;
-          opts.waitForSync = _request->parsedValue("waitForSync", false);
+
+      opts.waitForSync = _request->parsedValue("waitForSync", false);
           opts.isSynchronousReplicationFrom =
               _request->value("isSynchronousReplication");
 
-          auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+          auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(
             ctx, coll->id(), AccessMode::Type::EXCLUSIVE
           );
 
           res = trx.begin();
-          if (res.ok()) {
+
+      if (res.ok()) {
             OperationResult result = trx.truncate(coll->name(), opts);
-            res = trx.finish(result.result);
+
+      res = trx.finish(result.result);
           }
-          if (res.ok()) {
+
+      if (res.ok()) {
             if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
               coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
             }
+
             collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
                                      /*aggregateCount*/ false);
@@ -387,12 +394,13 @@ void RestCollectionHandler::handleCommandPut() {
           }
 
         } else if (sub == "rotate") {
-          auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+          auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(
             ctx, coll->id(), AccessMode::Type::WRITE
           );
 
           res = trx.begin();
+
           if (res.ok()) {
             OperationResult result = trx.rotateActiveJournal(coll->name(), OperationOptions());
             res = trx.finish(result.result);
@@ -402,7 +410,8 @@ void RestCollectionHandler::handleCommandPut() {
           builder.add("result", VPackValue(true));
           builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
-          res = methods::Collections::warmup(&_vocbase, coll);
+          res = methods::Collections::warmup(_vocbase, coll);
+
           VPackObjectBuilder obj(&builder, true);
 
           obj->add("result", VPackValue(res.ok()));
@@ -510,7 +519,7 @@ void RestCollectionHandler::collectionRepresentation(
   }
 
   if (showCount) {
-    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
     Result res = trx.begin();
 

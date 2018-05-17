@@ -39,7 +39,7 @@ struct ClusterTransactionData final : public TransactionData {};
 
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(
-    TRI_vocbase_t* vocbase, TRI_voc_tid_t tid, transaction::Options const& options)
+    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options)
     : TransactionState(vocbase, tid, options) {}
 
 /// @brief free a transaction container

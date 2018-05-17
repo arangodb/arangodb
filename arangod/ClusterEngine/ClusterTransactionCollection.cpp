@@ -171,13 +171,13 @@ int ClusterTransactionCollection::use(int nestingLevel) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _collection = _transaction->vocbase()->useCollection(_cid, status);
+      _collection = _transaction->vocbase().useCollection(_cid, status);
       if (_collection != nullptr) {
         _usageLocked = true;
       }
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase()->lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -237,7 +237,7 @@ void ClusterTransactionCollection::release() {
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
     if (_usageLocked) {
-      _transaction->vocbase()->releaseCollection(_collection);
+      _transaction->vocbase().releaseCollection(_collection);
       _usageLocked = false;
     }
     _collection = nullptr;

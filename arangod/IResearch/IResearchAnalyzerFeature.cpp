@@ -559,7 +559,7 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
       }
 
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         ANALYZER_COLLECTION_NAME,
         arangodb::AccessMode::Type::WRITE
       );
@@ -765,7 +765,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
   }
 
   arangodb::SingleCollectionTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+    arangodb::transaction::StandaloneContext::Create(*vocbase),
     ANALYZER_COLLECTION_NAME,
     arangodb::AccessMode::Type::READ
   );
@@ -1102,7 +1102,7 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
 
   try {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+      arangodb::transaction::StandaloneContext::Create(*vocbase),
       ANALYZER_COLLECTION_NAME,
       arangodb::AccessMode::Type::WRITE
     );

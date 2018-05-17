@@ -1204,7 +1204,7 @@ VPackSlice LogicalCollection::keyOptions() const {
 }
 
 ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
-  auto ctx = transaction::StandaloneContext::Create(&vocbase());
+  auto ctx = transaction::StandaloneContext::Create(vocbase());
   SingleCollectionTransaction trx(ctx, id(), AccessMode::Type::READ);
   Result res = trx.begin();
 
@@ -1222,6 +1222,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   uint64_t hash = 0;
 
   ManagedDocumentResult mmdr;
+
   trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](LocalDocumentId const& token) {
     if (collection->readDocument(&trx, token, mmdr)) {
       VPackSlice const slice(mmdr.vpack());

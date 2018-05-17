@@ -186,7 +186,7 @@ void transaction::Methods::IndexHandle::toVelocyPack(
   _index->toVelocyPack(builder, withFigures, false);
 }
 
-TRI_vocbase_t* transaction::Methods::vocbase() const {
+TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
 
@@ -625,12 +625,11 @@ transaction::Methods::Methods(
     TRI_ASSERT(_state != nullptr);
     _state->increaseNesting();
   } else { // non-embedded
-    TRI_vocbase_t* vocbase = _transactionContextPtr->vocbase();
-    TRI_ASSERT(vocbase != nullptr);
+    TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
     
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    _state = engine->createTransactionState(vocbase, options);
+    _state = engine->createTransactionState(vocbase, options).release();
     TRI_ASSERT(_state != nullptr);
     
     // register the transaction in the context
@@ -2025,6 +2024,9 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
+  }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
   }
 
   return removeLocal(collectionName, value, optionsCopy);

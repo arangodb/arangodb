@@ -1299,7 +1299,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
       guard.block();
 
       std::string const url = std::string("/_db/") +
-      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase()->name()) +
+      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
       urlPart + _queryId;
       auto result =
           cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,

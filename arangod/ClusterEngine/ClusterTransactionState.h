@@ -45,7 +45,7 @@ class TransactionCollection;
 class ClusterTransactionState final : public TransactionState {
 
  public:
-  ClusterTransactionState(TRI_vocbase_t* vocbase, TRI_voc_tid_t,
+  ClusterTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t,
                           transaction::Options const&);
   ~ClusterTransactionState();
 

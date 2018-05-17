@@ -238,7 +238,8 @@ ExecutionPlan::~ExecutionPlan() {
       // and compare it to the number of nodes we have in our counters array
       size_t j = 0;
       for (auto const& it : _typeCounts) {
-        TRI_ASSERT(counter.counts[j++] == it);
+        TRI_ASSERT(counter.counts[j] == it);
+        ++j;
       }
     } catch (...) {
       // should not happen...

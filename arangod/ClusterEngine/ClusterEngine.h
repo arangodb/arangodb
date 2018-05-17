@@ -59,6 +59,8 @@ public:
   bool isRocksDB() const;
   bool isMMFiles() const;
   
+  char const* typeName() const override { return _actualEngine->typeName(); }
+
 public:
 
   // inherited from ApplicationFeature
@@ -85,8 +87,8 @@ public:
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(TRI_vocbase_t*,
-                    transaction::Options const&) override;
+  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t&,
+                                                           transaction::Options const&) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -179,7 +181,7 @@ public:
   // wal in recovery
   bool inRecovery() override;
   // start compactor thread and delete files form collections marked as deleted
-  void recoveryDone(TRI_vocbase_t* vocbase) override;
+  void recoveryDone(TRI_vocbase_t& vocbase) override;
 
  public:
   std::string createCollection(

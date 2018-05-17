@@ -534,7 +534,9 @@ void ClusterInfo::loadPlan() {
               VPackSlice isSmart = collectionSlice.get("isSmart");
 
               if (isSmart.isTrue()) {
-                VPackSlice type = collectionSlice.get("type");
+                auto type =
+                  collectionSlice.get(arangodb::StaticStrings::DataSourceType);
+
                 if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
                   newCollection = std::make_shared<VirtualSmartEdgeCollection>(
                     *vocbase, collectionSlice, newPlanVersion
@@ -1829,20 +1831,20 @@ int ClusterInfo::createViewCoordinator(
 ) {
   using arangodb::velocypack::Slice;
 
-  auto const typeSlice = json.get("type");
+  auto const typeSlice = json.get(arangodb::StaticStrings::DataSourceType);
 
   if (!typeSlice.isString()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  auto const nameSlice = json.get("name");
+  auto const nameSlice = json.get(arangodb::StaticStrings::DataSourceName);
 
   if (!nameSlice.isString()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
   auto const name = basics::VelocyPackHelper::getStringValue(
-    json, "name", StaticStrings::Empty
+    json, arangodb::StaticStrings::DataSourceName, StaticStrings::Empty
   );
 
   if (name.empty()) {
@@ -1868,7 +1870,7 @@ int ClusterInfo::createViewCoordinator(
   }
 
   viewID = basics::VelocyPackHelper::getStringValue(
-    json, "id", StaticStrings::Empty
+    json, arangodb::StaticStrings::DataSourceId, StaticStrings::Empty
   );
 
   if (viewID.empty()) {
@@ -1898,12 +1900,17 @@ int ClusterInfo::createViewCoordinator(
   // normalize definition
   VPackBuilder builder;
   builder.openObject();
-  builder.add("name", nameSlice);
-  builder.add("type", typeSlice);
-  builder.add("id", VPackValue(viewID));
+  builder.add(arangodb::StaticStrings::DataSourceName, nameSlice);
+  builder.add(arangodb::StaticStrings::DataSourceType, typeSlice);
+  builder.add(arangodb::StaticStrings::DataSourceId, VPackValue(viewID));
+
   if (!planId.empty()) {
-    builder.add("planId", VPackValue(planId));
+    builder.add(
+      arangodb::StaticStrings::DataSourcePlanId,
+      arangodb::velocypack::Value(planId)
+    );
   }
+
   builder.add(VPackValue("properties"));
   builder.add(VPackValue(VPackValueType::Object));
   if (propsSlice.isObject()) {
@@ -2302,15 +2309,16 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     VPackSlice const indexes = tmp->slice();
 
     if (indexes.isArray()) {
-      VPackSlice const type = slice.get("type");
+      auto type = slice.get(arangodb::StaticStrings::IndexType);
 
       if (!type.isString()) {
         return setErrormsg(TRI_ERROR_INTERNAL, errorMsg);
       }
 
       for (auto const& other : VPackArrayIterator(indexes)) {
-        if (arangodb::basics::VelocyPackHelper::compare(type, other.get("type"),
-                                                        false) != 0) {
+        if (arangodb::basics::VelocyPackHelper::compare(
+              type, other.get(arangodb::StaticStrings::IndexType), false
+            ) != 0) {
           // compare index types first. they must match
           continue;
         }
@@ -2689,8 +2697,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
     VPackArrayBuilder newIndexesArrayBuilder(&newIndexes);
     // mop: eh....do we need a flag to mark it invalid until cache is renewed?
     for (auto const& indexSlice : VPackArrayIterator(indexes)) {
-      VPackSlice id = indexSlice.get("id");
-      VPackSlice type = indexSlice.get("type");
+      auto id = indexSlice.get(arangodb::StaticStrings::DataSourceId);
+      auto type = indexSlice.get(arangodb::StaticStrings::DataSourceType);
 
       if (!id.isString() || !type.isString()) {
         continue;

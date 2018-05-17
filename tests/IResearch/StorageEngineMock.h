@@ -127,7 +127,7 @@ class TransactionStateMock: public arangodb::TransactionState {
   static size_t beginTransactionCount;
   static size_t commitTransactionCount;
 
-  TransactionStateMock(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options);
+  TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options);
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
@@ -158,7 +158,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual arangodb::TransactionCollection* createTransactionCollection(arangodb::TransactionState* state, TRI_voc_cid_t cid, arangodb::AccessMode::Type, int nestingLevel) override;
   virtual arangodb::transaction::ContextData* createTransactionContextData() override;
   virtual arangodb::TransactionManager* createTransactionManager() override;
-  virtual arangodb::TransactionState* createTransactionState(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options) override;
+  virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options) override;
   virtual void createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id, arangodb::LogicalView const& view) override;
   virtual void getViewProperties(TRI_vocbase_t& vocbase, arangodb::LogicalView const* view, VPackBuilder& builder) override;
   virtual TRI_voc_tick_t currentTick() const override;

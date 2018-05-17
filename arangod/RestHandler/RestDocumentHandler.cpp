@@ -120,7 +120,7 @@ bool RestDocumentHandler::createDocument() {
                          opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
 
@@ -223,11 +223,13 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
       builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(ifRid)));
     }
   }
+
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  auto ctx(transaction::StandaloneContext::Create(&_vocbase));
+  auto ctx(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
+
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // ...........................................................................
@@ -400,16 +402,19 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
                        VPackValue(TRI_RidToString(revision)));
         }
       }
+
       body = builder->slice();
     }
+
     if (revision != 0) {
       opOptions.ignoreRevs = false;
     }
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+
   if (!isArrayCase) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -503,7 +508,7 @@ bool RestDocumentHandler::deleteDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder builder;
   VPackSlice search;
   std::shared_ptr<VPackBuilder> builderPtr;
@@ -511,13 +516,16 @@ bool RestDocumentHandler::deleteDocument() {
   if (suffixes.size() == 2) {
     {
       VPackObjectBuilder guard(&builder);
+
       builder.add(StaticStrings::KeyString, VPackValue(key));
+
       if (revision != 0) {
         opOptions.ignoreRevs = false;
         builder.add(StaticStrings::RevString,
                     VPackValue(TRI_RidToString(revision)));
       }
     }
+
     search = builder.slice();
   } else {
     try {
@@ -590,7 +598,7 @@ bool RestDocumentHandler::readManyDocuments() {
   OperationOptions opOptions;
   opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName,
                                   AccessMode::Type::READ);
 

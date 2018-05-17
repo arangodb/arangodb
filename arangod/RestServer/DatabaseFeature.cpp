@@ -469,7 +469,7 @@ void DatabaseFeature::recoveryDone() {
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
     // execute the engine-specific callbacks on successful recovery
-    engine->recoveryDone(vocbase);
+    engine->recoveryDone(*vocbase);
 
     if (vocbase->replicationApplier()) {
       ReplicationFeature* replicationFeature =
@@ -633,8 +633,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
     if (! engine->inRecovery()) {
       // starts compactor etc.
-      engine->recoveryDone(vocbase.get());
-    
+      engine->recoveryDone(*vocbase);
+
       ReplicationFeature* replicationFeature =
         static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
 
@@ -1163,7 +1163,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
 
 void DatabaseFeature::updateContexts() {
   TRI_ASSERT(_vocbase != nullptr);
-  
+
   V8DealerFeature* dealer =
   ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
   if (!dealer->isEnabled()) {
@@ -1180,7 +1180,7 @@ void DatabaseFeature::updateContexts() {
   dealer->defineContextUpdate(
       [queryRegistry, vocbase](v8::Isolate* isolate,
                                v8::Handle<v8::Context> context, size_t i) {
-        TRI_InitV8VocBridge(isolate, context, queryRegistry, vocbase, i);
+        TRI_InitV8VocBridge(isolate, context, queryRegistry, *vocbase, i);
         TRI_InitV8Queries(isolate, context);
         TRI_InitV8Cluster(isolate, context);
         TRI_InitV8Agency(isolate, context);

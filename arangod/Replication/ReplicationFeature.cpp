@@ -195,7 +195,7 @@ static void writeError(int code, GeneralResponse* response) {
 
 /// @brief set the x-arango-endpoint header
 void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
-                                           ServerState::Mode mode) {
+                                           arangodb::ServerState::Mode mode) {
   std::string endpoint;
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
   if (replication != nullptr && replication->isActiveFailoverEnabled()) {
@@ -211,7 +211,7 @@ void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
 
 /// @brief fill a response object with correct response for a follower
 void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
-                                                 ServerState::Mode mode) {
+                                                 arangodb::ServerState::Mode mode) {
   switch (mode) {
     case ServerState::Mode::REDIRECT: {
       setEndpointHeader(response, mode);

@@ -1726,7 +1726,7 @@ bool MMFilesLogfileManager::executeWhileNothingQueued(std::function<void()> cons
 
 // wait until a specific logfile has been collected
 int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
-                                     double maxWaitTime) {
+                                            double maxWaitTime) {
   if (maxWaitTime <= 0.0) {
     maxWaitTime = 24.0 * 3600.0; // wait "forever"
   }
@@ -1770,6 +1770,10 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "going into lock timeout. having waited for logfile: " << logfileId << ", maxWaitTime: " << maxWaitTime;
   logStatus();
+
+  if (application_features::ApplicationServer::isStopping()) {
+    return TRI_ERROR_SHUTTING_DOWN;
+  }
 
   // waited for too long
   return TRI_ERROR_LOCK_TIMEOUT;
