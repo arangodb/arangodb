@@ -183,7 +183,6 @@ case "$1" in
         CFLAGS="${CFLAGS} -O0"
         CXXFLAGS="${CXXFLAGS} -O0"
         CONFIGURE_OPTIONS+=(
-            '-DV8_TARGET_ARCHS=Debug'
             '-DUSE_MAINTAINER_MODE=On'
             '-DUSE_FAILURE_TESTS=On'
             '-DOPTDBG=On'
@@ -276,7 +275,6 @@ while [ $# -gt 0 ];  do
              CONFIGURE_OPTIONS+=("v140,host=x64")
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
-             CONFIGURE_OPTIONS+=(-DV8_TARGET_ARCHS=Release)
              export _IsNativeEnvironment=true
              ;;
 
