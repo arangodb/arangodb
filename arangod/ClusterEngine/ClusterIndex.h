@@ -64,16 +64,16 @@ class ClusterIndex : public Index {
   bool canBeDropped() const override { return _type != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
                                               _type != Index::TRI_IDX_TYPE_EDGE_INDEX; }
   
-  bool hasCoveringIterator() const override { return true; }
-  
-  bool isSorted() const override { return false; }
-  
   bool hasSelectivityEstimate() const override { return true; }
   
   double selectivityEstimateLocal(arangodb::StringRef const* = nullptr) const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     return 0;
   }
+  
+  void load() override {}
+  void unload() override {}
+  size_t memory() const override { return 0; }
 
   int drop() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
@@ -81,11 +81,21 @@ class ClusterIndex : public Index {
   int afterTruncate() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-
-  void load() override {}
-  void unload() override {}
-  size_t memory() const override { return 0; }
-
+  
+  bool hasCoveringIterator() const override;
+  
+  /// @brief Checks if this index is identical to the given definition
+  bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
+  
+  bool isSorted() const override;
+  
+  bool supportsFilterCondition(arangodb::aql::AstNode const*,
+                               arangodb::aql::Variable const*, size_t,
+                               size_t&, double&) const override;
+  
+  bool supportsSortCondition(arangodb::aql::SortCondition const*,
+                             arangodb::aql::Variable const*, size_t,
+                             double&, size_t&) const override;
 
   /// @brief provides a size hint for the index
   int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {

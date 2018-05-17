@@ -507,12 +507,12 @@ void TraversalNode::prepareOptions() {
       case TRI_EDGE_IN:
         _options->addLookupInfo(
             _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
-            globalEdgeConditionBuilder.getInboundCondition()->clone(ast));
+            globalEdgeConditionBuilder.getInboundCondition());
         break;
       case TRI_EDGE_OUT:
         _options->addLookupInfo(
             _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
-            globalEdgeConditionBuilder.getOutboundCondition()->clone(ast));
+            globalEdgeConditionBuilder.getOutboundCondition());
         break;
       case TRI_EDGE_ANY:
         TRI_ASSERT(false);

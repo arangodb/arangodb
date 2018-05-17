@@ -148,9 +148,10 @@ void ClusterIndexFactory::fillSystemIndexes(
   if (col->type() == TRI_COL_TYPE_EDGE) {
     ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
 
+    // first edge index
     input.clear();
     input.openObject();
-    input.add("type", VPackValue("edge"));
+    input.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
     input.add("id", VPackValue("1"));
     input.add("fields", VPackValue(VPackValueType::Array));
     input.add(VPackValue(StaticStrings::FromString));
@@ -159,13 +160,14 @@ void ClusterIndexFactory::fillSystemIndexes(
     }
     input.close();
     input.close();
-
     systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
         1, col, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
+    
+    // second edge index
     if (ce->isRocksDB()) {
       input.clear();
       input.openObject();
-      input.add("type", VPackValue("edge"));
+      input.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
       input.add("id", VPackValue("2"));
       input.add("fields", VPackValue(VPackValueType::Array));
       input.add(VPackValue(StaticStrings::ToString));
