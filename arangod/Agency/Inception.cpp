@@ -298,13 +298,13 @@ bool Inception::restartingActiveAgent() {
                 }
               }
               
-              auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+              auto const  theirConfigL = comres->result->getBodyVelocyPack();
               auto const& lcc           =
-                theirConfigVP->slice().get("configuration");
+                theirConfigL->slice().get("configuration");
               
               auto agency = std::make_shared<Builder>();
-              { VPackObjectBuilder b(agency.get()); 
-                agency->add("term", theirConfig.get("term"));
+              { VPackObjectBuilder b(agency.get());
+                agency->add("term", theirConfigL->slice().get("term"));
                 agency->add("id", VPackValue(theirLeaderId));
                 agency->add("active",      lcc.get("active"));
                 agency->add("pool",        lcc.get("pool"));
