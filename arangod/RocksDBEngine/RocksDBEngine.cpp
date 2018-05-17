@@ -651,9 +651,13 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
   return new RocksDBTransactionContextData();
 }
 
-TransactionState* RocksDBEngine::createTransactionState(
-    TRI_vocbase_t* vocbase, transaction::Options const& options) {
-  return new RocksDBTransactionState(vocbase, options);
+std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+) {
+  return std::unique_ptr<TransactionState>(
+    new RocksDBTransactionState(vocbase, options)
+  );
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -1043,7 +1047,7 @@ bool RocksDBEngine::inRecovery() {
   return RocksDBRecoveryManager::instance()->inRecovery();
 }
 
-void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
+void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   // nothing to do here
 }
 

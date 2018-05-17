@@ -225,7 +225,7 @@ namespace iresearch {
 
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY, // readCollections
       EMPTY, // writeCollections
       collectionsToLock, // exclusiveCollections
@@ -237,15 +237,6 @@ namespace iresearch {
       return res;
     }
 
-    auto* vocbase = trx.vocbase();
-
-    if (!vocbase) {
-      return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to get vocbase from transaction while updating while IResearch view '") + std::to_string(view.id()) + "'"
-      );
-    }
-
     {
       std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
       std::unordered_set<TRI_voc_cid_t> collectionsToUpdate; // track reindex requests
@@ -255,7 +246,7 @@ namespace iresearch {
         auto& state = *itr;
         auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
 
-        state._collection = vocbase->lookupCollection(collectionName);
+        state._collection = vocbase.lookupCollection(collectionName);
 
         if (!state._collection) {
           // remove modification state if removal of non-existant link on non-existant collection

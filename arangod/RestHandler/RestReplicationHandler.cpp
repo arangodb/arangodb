@@ -915,7 +915,7 @@ Result RestReplicationHandler::processRestoreCollection(
         // some collections must not be dropped
 
         // instead, truncate them
-        auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(
           ctx, col->id(), AccessMode::Type::EXCLUSIVE
         );
@@ -923,6 +923,7 @@ Result RestReplicationHandler::processRestoreCollection(
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
         res = trx.begin();
+
         if (!res.ok()) {
           return res;
         }
@@ -1171,8 +1172,10 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName);
   }
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
+
   trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
   Result res = trx.begin();
@@ -1593,7 +1596,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
   // look up the collection
   try {
-    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
@@ -2025,7 +2028,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   if (readLockId.isNone()) {
     // Short cut for the case that the collection is empty
-    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(
       ctx, col->id(), AccessMode::Type::EXCLUSIVE
     );
@@ -2033,9 +2036,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
     if (res.ok()) {
       auto countRes = trx.count(col->name(), false);
+
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
+
         if (nr == 0) {
           col->followers()->add(followerId.copyString());
 
@@ -2235,12 +2240,14 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     access = AccessMode::Type::EXCLUSIVE;
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   auto trx =
       std::make_shared<SingleCollectionTransaction>(ctx, col->id(), access);
 
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+
   Result res = trx->begin();
+
   if (!res.ok()) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_TRANSACTION_INTERNAL,

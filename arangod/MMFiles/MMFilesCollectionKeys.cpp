@@ -95,7 +95,7 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   // copy all document tokens into the result under the read-lock
   {
-    auto ctx = transaction::StandaloneContext::Create(&(_collection->vocbase()));
+    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
     SingleCollectionTransaction trx(
       ctx, _collection->id(), AccessMode::Type::READ
     );
@@ -104,12 +104,14 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
     Result res = trx.begin();
+
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
     ManagedDocumentResult mmdr;
     MMFilesCollection *mmColl = MMFilesCollection::toMMFilesCollection(_collection);
+
     trx.invokeOnAllElements(
         _collection->name(), [this, &trx, &maxTick, &mmdr, &mmColl](LocalDocumentId const& token) {
           if (mmColl->readDocumentConditional(&trx, token, maxTick, mmdr)) {

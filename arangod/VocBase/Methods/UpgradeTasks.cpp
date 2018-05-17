@@ -135,10 +135,12 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   }
 
   bool created = false;
-  auto ctx = arangodb::transaction::StandaloneContext::Create(&vocbase);
+  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
   arangodb::SingleCollectionTransaction trx(ctx, collection.name(),
                                             arangodb::AccessMode::Type::EXCLUSIVE);
+
   res = trx.begin();
+
   if (res.fail()) {
     return res;
   }
@@ -321,7 +323,7 @@ bool UpgradeTasks::insertRedirections(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&vocbase);
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, "_routing", AccessMode::Type::WRITE);
 
   res = trx.begin();
