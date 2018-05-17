@@ -30,8 +30,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
 namespace options {
+
 class ProgramOptions;
+
 }
 
 namespace application_features {
@@ -226,9 +229,20 @@ class ApplicationServer {
 
   // look up a feature and return a pointer to it. may be nullptr
   static ApplicationFeature* lookupFeature(std::string const&);
-  
+
+  template<typename T>
+  static T* lookupFeature(std::string const& name) {
+    typedef typename std::enable_if<std::is_base_of<ApplicationFeature, T>::value, T>::type type;
+    return dynamic_cast<type*>(lookupFeature(name));
+  }
+
+  template<typename T>
+  static T* lookupFeature() {
+    return lookupFeature<T>(T::name());
+  }
+
   char const* getBinaryPath() { return _binaryPath;}
-  
+
   void registerStartupCallback(std::function<void()> const& callback) {
     _startupCallbacks.emplace_back(callback);
   }
@@ -317,7 +331,7 @@ class ApplicationServer {
 
   // whether or not to dump dependencies
   bool _dumpDependencies = false;
-  
+
   // whether or not to dump configuration options
   bool _dumpOptions = false;
 
@@ -336,6 +350,7 @@ class ApplicationServer {
   // fail callback
   std::function<void(std::string const&)> fail;
 };
+
 }
 }
 
