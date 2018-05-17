@@ -168,7 +168,11 @@ void assertExpressionFilter(
   // iteratorForCondition
   {
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
@@ -251,7 +255,11 @@ void assertFilter(
   // execution time
   {
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");

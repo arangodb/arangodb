@@ -48,7 +48,7 @@ class RocksDBReplicationContext {
       LocalDocumentIdCallback;
 
   struct CollectionIterator {
-    CollectionIterator(LogicalCollection&, transaction::Methods&, bool) noexcept;
+    CollectionIterator(LogicalCollection&, transaction::Methods&, bool);
     LogicalCollection& logical;
 
     /// Iterator over primary index or documents

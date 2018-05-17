@@ -143,7 +143,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, TRI_voc_rid_t revision);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data);
-  RocksDBValue(S2Point const&);
+  explicit RocksDBValue(S2Point const&);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);

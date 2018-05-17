@@ -1093,7 +1093,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   // get the previous revision
-  Result res = lookupDocument(trx, key, previous).errorNumber();
+  Result res = lookupDocument(trx, key, previous);
 
   if (res.fail()) {
     return res;
@@ -1841,7 +1841,7 @@ int RocksDBCollection::unlockRead() {
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
   auto ctx =
-    transaction::StandaloneContext::Create(&(_logicalCollection->vocbase()));
+    transaction::StandaloneContext::Create(_logicalCollection->vocbase());
   SingleCollectionTransaction trx(
     ctx, _logicalCollection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -1976,7 +1976,7 @@ void RocksDBCollection::recalculateIndexEstimates(
 
   // start transaction to get a collection lock
   auto ctx =
-    transaction::StandaloneContext::Create(&(_logicalCollection->vocbase()));
+    transaction::StandaloneContext::Create(_logicalCollection->vocbase());
   arangodb::SingleCollectionTransaction trx(
     ctx, _logicalCollection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -1988,9 +1988,11 @@ void RocksDBCollection::recalculateIndexEstimates(
 
   for (auto const& it : indexes) {
     auto idx = static_cast<RocksDBIndex*>(it.get());
+
     TRI_ASSERT(idx != nullptr);
     idx->recalculateEstimates();
   }
+
   trx.commit();
 }
 

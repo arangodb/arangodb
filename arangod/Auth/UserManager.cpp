@@ -239,6 +239,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   TRI_ASSERT((replace && hasKey && hasRev) || (!replace && !hasKey && !hasRev));
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");
   }
@@ -246,21 +247,27 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextScope scope(ExecContext::superuser());
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
+
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
+
   if (res.ok()) {
     OperationOptions opts;
+
     opts.returnNew = true;
     opts.ignoreRevs = false;
     opts.mergeObjects = false;
+
     OperationResult opres =
         replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), opts)
                 : trx.insert(TRI_COL_NAME_USERS, data.slice(), opts);
+
     res = trx.finish(opres.result);
+
     if (res.ok()) {
       VPackSlice userDoc = opres.slice();
       TRI_ASSERT(userDoc.isObject() && userDoc.hasKey("new"));
@@ -556,7 +563,7 @@ static Result RemoveUserInternal(auth::User const& entry) {
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextScope scope(ExecContext::superuser());
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
 

@@ -397,12 +397,6 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
           )
         );
 
-        if (isCreation && !ServerState::instance()->isCoordinator() &&
-            !definition.hasKey("objectId")) {
-          normalized.add("objectId", velocypack::Value(
-                                         std::to_string(TRI_NewTickServer())));
-        }
-
         return TRI_ERROR_INTERNAL;
       });
 
@@ -522,12 +516,6 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
             Index::oldtypeName(Index::TRI_IDX_TYPE_PRIMARY_INDEX)
           )
         );
-
-        if (isCreation && !ServerState::instance()->isCoordinator() &&
-            !definition.hasKey("objectId")) {
-          normalized.add("objectId", velocypack::Value(
-                                         std::to_string(TRI_NewTickServer())));
-        }
 
         return TRI_ERROR_INTERNAL;
       });

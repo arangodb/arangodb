@@ -80,8 +80,9 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
       _probe(false) {
   TRI_idx_iid_t const id = index->id();
   std::string const prefix = MMFilesPersistentIndex::buildPrefix(
-      trx->vocbase()->id(), _primaryIndex->collection()->id(), id
+    trx->vocbase().id(), _primaryIndex->collection()->id(), id
   );
+
   TRI_ASSERT(prefix.size() == MMFilesPersistentIndex::keyPrefixSize());
 
   _leftEndpoint.reset(new arangodb::velocypack::Buffer<char>());
@@ -339,15 +340,15 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
-  std::string const prefix =
-    buildPrefix(trx->vocbase()->id(), _collection->id(), _iid);
-
+  auto prefix = buildPrefix(trx->vocbase().id(), _collection->id(), _iid);
   VPackBuilder builder;
   std::vector<std::string> values;
+
   values.reserve(elements.size());
 
   // lower and upper bounds, only required if the index is unique
   std::vector<std::pair<std::string, std::string>> bounds;
+
   if (_unique) {
     bounds.reserve(elements.size());
   }
@@ -355,9 +356,11 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   for (auto const& it : elements) {
     builder.clear();
     builder.openArray();
+
     for (size_t i = 0; i < _fields.size(); ++i) {
       builder.add(it->slice(&context, i));
     }
+
     builder.add(key);  // always append _key value to the end of the array
     builder.close();
 
@@ -517,22 +520,25 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
-
   VPackBuilder builder;
   std::vector<std::string> values;
+
   for (auto const& it : elements) {
     builder.clear();
     builder.openArray();
+
     for (size_t i = 0; i < _fields.size(); ++i) {
       builder.add(it->slice(&context, i));
     }
+
     builder.add(key);  // always append _key value to the end of the array
     builder.close();
 
     VPackSlice const s = builder.slice();
     std::string value;
+
     value.reserve(keyPrefixSize() + s.byteSize());
-    value.append(buildPrefix(trx->vocbase()->id(), _collection->id(), _iid));
+    value.append(buildPrefix(trx->vocbase().id(), _collection->id(), _iid));
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }

@@ -186,7 +186,7 @@ void transaction::Methods::IndexHandle::toVelocyPack(
   _index->toVelocyPack(builder, withFigures, false);
 }
 
-TRI_vocbase_t* transaction::Methods::vocbase() const {
+TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
 
@@ -608,7 +608,7 @@ transaction::Methods::Methods(
       _transactionContextPtr(transactionContext.get()) {
   TRI_ASSERT(_transactionContextPtr != nullptr);
 
-  TRI_vocbase_t* vocbase = _transactionContextPtr->vocbase();
+  auto& vocbase = _transactionContextPtr->vocbase();
 
   // brief initialize the transaction
   // this will first check if the transaction is embedded in a parent
@@ -618,7 +618,7 @@ transaction::Methods::Methods(
 
   if (parent != nullptr) {
     // yes, we are embedded
-    setupEmbedded(vocbase);
+    setupEmbedded(&vocbase);
   } else {
     // non-embedded
     setupToplevel(vocbase, options);
@@ -2013,6 +2013,9 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
+  }
 
   return removeLocal(collectionName, value, optionsCopy);
 }
@@ -3178,11 +3181,14 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
 }
 
 /// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase,
-                                         transaction::Options const& options) {
+void transaction::Methods::setupToplevel(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+) {
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  _state = engine->createTransactionState(vocbase, options);
+
+  _state = engine->createTransactionState(vocbase, options).release();
 
   TRI_ASSERT(_state != nullptr);
 

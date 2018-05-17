@@ -141,7 +141,11 @@ void assertOrder(
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     arangodb::iresearch::QueryContext const ctx{

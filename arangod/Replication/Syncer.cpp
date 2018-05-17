@@ -585,7 +585,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
     if (col->system()) {
       TRI_ASSERT(!simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(vocbase),
+        transaction::StandaloneContext::Create(*vocbase),
         col->id(),
         AccessMode::Type::WRITE
       );
@@ -702,11 +702,10 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
   try {
     SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase),
+      transaction::StandaloneContext::Create(*vocbase),
       col->id(),
       AccessMode::Type::WRITE
     );
-
     Result res = trx.begin();
 
     if (!res.ok()) {
