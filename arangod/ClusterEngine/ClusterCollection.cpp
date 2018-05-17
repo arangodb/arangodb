@@ -63,18 +63,43 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 ClusterCollection::ClusterCollection(LogicalCollection* collection,
                                      VPackSlice const& info)
-    : PhysicalCollection(collection, info), _info(info)
-
-      /*_cacheEnabled(!collection->system() &&
-                    basics::Helper::readBooleanValue(
-                        info, "cacheEnabled", false))*/ {
-  /*VPackSlice s = info.get("isVolatile");
-  if (s.isBoolean() && s.getBoolean()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "volatile collections are unsupported in the RocksDB engine");
-  }*/
-
+    : PhysicalCollection(collection, info), _info(info) {
+  
+  // duplicate all the error handling
+  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  if (ce->isMMFiles()) {
+    
+    bool isVolatile = Helper::readBooleanValue(_info.slice(), "isVolatile", false);
+    if (isVolatile && _logicalCollection->waitForSync()) {
+      // Illegal collection configuration
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "volatile collections do not support the waitForSync option");
+    }
+    
+    VPackSlice journalSlice = _info.slice().get("journalSize");
+    if (journalSlice.isNone()) {
+      // In some APIs maximalSize is allowed instead
+      journalSlice = _info.slice().get("maximalSize");
+    }
+    if (journalSlice.isNumber()) {
+      if (journalSlice.getNumericValue<uint32_t>() < TRI_JOURNAL_MINIMAL_SIZE) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "<properties>.journalSize too small");
+      }
+    }
+    
+  } else if (ce->isRocksDB()) {
+    
+    VPackSlice s = info.get("isVolatile");
+    if (s.isBoolean() && s.getBoolean()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "volatile collections are unsupported in the RocksDB engine");
+    }
+    
+  } else {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 }
 
 ClusterCollection::ClusterCollection(LogicalCollection* collection,
@@ -94,22 +119,60 @@ void ClusterCollection::setPath(std::string const&) {
   // we do not have any path
 }
 
-
 Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   
   VPackBuilder merge;
   merge.openObject();
-
+  
+  // duplicate all the error handling
   ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  if (ce->isMMFiles()) {
+  if (ce->isMMFiles()) { // duplicate the error validation
+    
+    // validation
+    uint32_t tmp = Helper::getNumericValue<uint32_t>(slice, "indexBuckets",
+                                                     2 /*Just for validation, this default Value passes*/);
+    
+    if (tmp == 0 || tmp > 1024) {
+      return {TRI_ERROR_BAD_PARAMETER,
+        "indexBuckets must be a two-power between 1 and 1024"};
+    }
+    
+    bool isVolatile = Helper::readBooleanValue(_info.slice(), "isVolatile", false);
+    if (isVolatile &&
+        Helper::getBooleanValue(slice, "waitForSync", _logicalCollection->waitForSync())) {
+      // the combination of waitForSync and isVolatile makes no sense
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+                                     TRI_ERROR_BAD_PARAMETER,
+                                     "volatile collections do not support the waitForSync option");
+    }
+    
+    if (isVolatile != Helper::getBooleanValue(slice, "isVolatile", isVolatile)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "isVolatile option cannot be changed at runtime");
+    }
+    VPackSlice journalSlice = slice.get("journalSize");
+    if (journalSlice.isNone()) {
+      // In some APIs maximalSize is allowed instead
+      journalSlice = slice.get("maximalSize");
+    }
+    uint32_t journalSize = TRI_JOURNAL_DEFAULT_SIZE;
+    if (journalSlice.isNumber()) {
+      journalSize = journalSlice.getNumericValue<uint32_t>();
+      if (journalSize < TRI_JOURNAL_MINIMAL_SIZE) {
+        return {TRI_ERROR_BAD_PARAMETER, "<properties>.journalSize too small"};
+      }
+    }
     
     merge.add("doCompact", VPackValue(Helper::readBooleanValue(slice, "doCompact", true)));
     merge.add("indexBuckets", VPackValue(Helper::readNumericValue(slice, "indexBuckets", MMFilesCollection::defaultIndexBuckets)));
-    merge.add("journalSize", VPackValue(Helper::readNumericValue(slice, "journalSize", TRI_JOURNAL_DEFAULT_SIZE)));
+    merge.add("journalSize", VPackValue(journalSize));
     
   } else if (ce->isRocksDB()) {
     
-    merge.add("cacheEnabled", VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", false)));
+    LOG_DEVEL << "updateProperties rocksdb";
+
+    bool def = Helper::readBooleanValue(_info.slice(), "cacheEnabled", false);
+    merge.add("cacheEnabled", VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", def)));
     
   } else {
     TRI_ASSERT(false);
@@ -148,6 +211,7 @@ void ClusterCollection::getPropertiesVPack(
     
     result.add("doCompact", VPackValue(Helper::readBooleanValue(_info.slice(), "doCompact", true)));
     result.add("indexBuckets", VPackValue(Helper::readNumericValue(_info.slice(), "indexBuckets", MMFilesCollection::defaultIndexBuckets)));
+    result.add("isVolatile", VPackValue(Helper::readBooleanValue(_info.slice(), "isVolatile", false)));
     result.add("journalSize", VPackValue(Helper::readNumericValue(_info.slice(), "journalSize", TRI_JOURNAL_DEFAULT_SIZE)));
     
   } else if (ce->isRocksDB()) {

@@ -107,13 +107,14 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cacheEnabled(!collection->system() &&
                     basics::VelocyPackHelper::readBooleanValue(
                         info, "cacheEnabled", false)) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "volatile collections are unsupported in the RocksDB engine");
   }
-
+  
   rocksutils::globalRocksEngine()->addCollectionMapping(
     _objectId, _logicalCollection->vocbase().id(), _logicalCollection->id()
   );
@@ -134,6 +135,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cachePresent(false),
       _cacheEnabled(
           static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   rocksutils::globalRocksEngine()->addCollectionMapping(
     _objectId, _logicalCollection->vocbase().id(), _logicalCollection->id()
   );

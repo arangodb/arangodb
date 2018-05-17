@@ -497,6 +497,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_isVolatile && _logicalCollection->waitForSync()) {
     // Illegal collection configuration
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -543,6 +544,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
     _indexes.emplace_back(idx);
   }
 */
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   setCompactionStatus("compaction not yet started");
   //  not copied
   //  _datafiles;   // all datafiles
