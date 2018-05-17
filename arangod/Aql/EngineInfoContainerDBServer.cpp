@@ -184,19 +184,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 #ifdef USE_IRESEARCH
     if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
       auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(clone);
-      auto& collections = const_cast<std::vector<Collection>&>(viewNode->collections());
-
-      auto collection = collections.begin();
-      for (auto& shard : shards) {
-        collection->setCurrentShard(shard);
-        ++collection;
-      }
-
-      // can't use resize/erase because 'aql::Collection'
-      // doesn't have default constructor/assignment
-      for (auto tail = std::distance(collection, collections.end()); tail--;) {
-        collections.pop_back();
-      }
+      viewNode->shards() = shards;
     } else
 #endif
     if (ExecutionNode::REMOTE == nodeType) {
@@ -356,7 +344,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
       TRI_ASSERT(viewNode);
 
-      for (auto const& col : viewNode->collections()) {
+      for (aql::Collection const& col : viewNode->collections()) {
         auto& info = handleCollection(&col, AccessMode::Type::READ);
         info.views.push_back(&viewNode->view());
       }
@@ -494,9 +482,6 @@ void EngineInfoContainerDBServer::updateCollection(Collection const* col) {
   e->collection(const_cast<Collection*>(col));
 }
 #endif
-
-EngineInfoContainerDBServer::DBServerInfo::DBServerInfo() {}
-EngineInfoContainerDBServer::DBServerInfo::~DBServerInfo() {}
 
 void EngineInfoContainerDBServer::DBServerInfo::addShardLock(
     AccessMode::Type const& lock, ShardID const& id) {
@@ -657,7 +642,11 @@ void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
 EngineInfoContainerDBServer::createDBServerMapping(
     std::unordered_set<ShardID>& lockedShards) const {
-  auto ci = ClusterInfo::instance();
+  auto* ci = ClusterInfo::instance();
+
+  if (!ci) {
+    return {};
+  }
 
   std::map<ServerID, DBServerInfo> dbServerMapping;
 
@@ -666,28 +655,38 @@ EngineInfoContainerDBServer::createDBServerMapping(
     // it.second.lockType => Lock Type
     // it.second.engines => All Engines using this collection
     // it.second.usedShards => All shards of this collection releveant for this query
-    std::vector<std::shared_ptr<EngineInfo>> const& engines = it.second.engines;
-    for (auto const& s : it.second.usedShards) {
+    auto const& colInfo = it.second;
+
+    for (auto const& s : colInfo.usedShards) {
       lockedShards.emplace(s);
+
       auto const servers = ci->getResponsibleServer(s);
-      if (servers == nullptr || servers->empty()) {
+
+      if (!servers || servers->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-            "Could not find responsible server for shard " + s);
+          TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+          "Could not find responsible server for shard " + s
+        );
       }
+
       auto& responsible = (*servers)[0];
       auto& mapping = dbServerMapping[responsible];
-      mapping.addShardLock(it.second.lockType, s);
-      for (auto& e : engines) {
+
+      mapping.addShardLock(colInfo.lockType, s);
+
+      for (auto& e : colInfo.engines) {
         mapping.addEngine(e, s);
       }
 
-      for (auto const* view : it.second.views) {
+      for (auto const* view : colInfo.views) {
         auto const viewInfo = _viewInfos.find(view);
 
         if (viewInfo == _viewInfos.end()) {
           continue;
         }
+
+        // we have to add view into a context of remote query on a db server
+        mapping.addShardLock(AccessMode::Type::READ, view->name());
 
         for (auto const& viewEngine : viewInfo->second) {
           mapping.addEngine(viewEngine, s);

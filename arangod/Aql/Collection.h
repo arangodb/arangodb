@@ -36,11 +36,10 @@ namespace aql {
 
 struct Collection {
   Collection() = delete;
-  Collection(Collection const&) = default;
+  Collection(Collection const&) = delete;
   Collection& operator=(Collection const&) = delete;
 
   Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
-  Collection(Collection&& rhs) noexcept;
 
   /// @brief set the current shard
   inline void setCurrentShard(std::string const& shard) {
