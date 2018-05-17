@@ -196,7 +196,7 @@ bool Inception::restartingActiveAgent() {
   auto        active    = myConfig.active();
   auto const& clientId  = myConfig.id();
   auto const& clientEp  = myConfig.endpoint();
-  auto const majority   = (myConfig.size()+1)/2;
+  auto const majority   = myConfig.size()/2+1;
 
   Builder greeting;
   {
