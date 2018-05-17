@@ -84,6 +84,42 @@ using namespace arangodb::aql;
 using namespace std::chrono;
 using namespace date;
 
+/*
+- always specify your user facing function name MYFUNC in error generators
+- errors are broadcasted like this:
+    - Wrong parameter types: ::registerInvalidArgumentWarning(query, "MYFUNC")
+    - Generic errors: ::registerWarning(query, "MYFUNC", TRI_ERROR_QUERY_INVALID_REGEX);
+    - ICU related errors: if (U_FAILURE(status)) { ::registerICUWarning(query, "MYFUNC", status); }
+    - close with: return AqlValue(AqlValueHintNull());
+- specify the number of parameters you expect at least and at max using:
+  ValidateParameters(parameters, "MYFUNC", 1, 3); (min: 1, max: 3); Max is optional.
+- if you support optional parameters, first check whether the count is sufficient
+  using parameters.size()
+- fetch the values using:
+  AqlValue value
+  - Anonymous  = ExtractFunctionParameterValue(parameters, 0);
+  - ::getBooleanParameter() if you expect a bool
+  - Stringify() if you need a string.
+  - ::extractKeys() if its an object and you need the keys
+  - ::extractCollectionName() if you expect a collection
+  - ::listContainsElement() search for a member
+  - ::parameterToTimePoint / DateFromParameters get a time string as date.
+- check the values whether they match your expectations i.e. using:
+  - param.isNumber() then extract it using: param.toInt64(trx)
+- Available helper functions for working with parameters:
+  - ::variance()
+  - ::sortNumberList()
+  - ::unsetOrKeep ()
+  - ::getDocumentByIdentifier ()
+  - ::mergeParameters()
+  - ::flattenList()
+
+- now do your work with the parameters
+- build up a result using a VPackbuilder like you would with regular velocpyack.
+- return it wrapping it into an AqlValue
+
+ */
+
 namespace {
 
 enum DateSelectionModifier {
@@ -115,16 +151,13 @@ static_assert(DateSelectionModifier::MONTH < DateSelectionModifier::YEAR,
               "incorrect date selection order");
 
 typedef void(*format_func_t)(std::string& wrk, tp_sys_clock_ms const&);
-typedef std::unordered_map<std::string,format_func_t> dateMapType;
-std::unordered_map<std::string,format_func_t> dateMap;
-auto unix_epoch = date::sys_seconds{seconds{0}};
+std::unordered_map<std::string, format_func_t> dateMap;
+auto const unixEpoch = date::sys_seconds{seconds{0}};
 
+// will be populated by Functions::Init()
 std::regex theDateFormatRegex;
 
-std::string regexReplace(std::string const& search,
-                         std::regex const& re,
-                         dateMapType const& dateMap,
-                         tp_sys_clock_ms const& tp) {
+std::string executeDateFormatRegex(std::string const& search, tp_sys_clock_ms const& tp) {
   std::string s;
 
   auto first = search.begin();
@@ -132,7 +165,7 @@ std::string regexReplace(std::string const& search,
   typename std::smatch::difference_type positionOfLastMatch = 0;
   auto endOfLastMatch = first;
 
-  auto callback = [&tp, &endOfLastMatch, &positionOfLastMatch, &s, &dateMap](std::smatch const& match) {
+  auto callback = [&tp, &endOfLastMatch, &positionOfLastMatch, &s](std::smatch const& match) {
     auto positionOfThisMatch = match.position(0);
     auto diff = positionOfThisMatch - positionOfLastMatch;
 
@@ -140,8 +173,8 @@ std::string regexReplace(std::string const& search,
     std::advance(startOfThisMatch, diff);
 
     s.append(endOfLastMatch, startOfThisMatch);
-    auto got = dateMap.find(match.str(0));
-    if (got != dateMap.end()) {
+    auto got = ::dateMap.find(match.str(0));
+    if (got != ::dateMap.end()) {
       got->second(s, tp);
     }
     auto lengthOfMatch = match.length(0);
@@ -153,16 +186,12 @@ std::string regexReplace(std::string const& search,
   };
 
   std::regex_iterator<std::string::const_iterator> end;
-  std::regex_iterator<std::string::const_iterator> begin(first, last, re);
+  std::regex_iterator<std::string::const_iterator> begin(first, last, ::theDateFormatRegex);
   std::for_each(begin, end, callback);
 
   s.append(endOfLastMatch, last);
 
   return s;
-}
-
-std::string dateFormatRegex(std::string const s, tp_sys_clock_ms const& tp) {
-  return ::regexReplace(s, ::theDateFormatRegex, dateMap, tp);
 }
 
 std::string tail(std::string const& source, size_t const length) {
@@ -222,7 +251,7 @@ std::vector<std::string> const weekDayNamesShort = {
   "Sat"
 };
 
-std::vector<std::pair<std::string,format_func_t>> const sortedDateMap = {
+std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
   {"%&", [](std::string& wrk, tp_sys_clock_ms const& tp) { }}, // Allow for literal "m" after "%m" ("%mm" -> %m%&m)
   // zero-pad 4 digit years to length of 6 and add "+" prefix, keep negative as-is
   {"%yyyyyy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
@@ -400,7 +429,7 @@ std::vector<std::pair<std::string,format_func_t>> const sortedDateMap = {
     }},
   
   {"%t", [](std::string& wrk, tp_sys_clock_ms const& tp) {
-      auto diffDuration = tp - unix_epoch;
+      auto diffDuration = tp - unixEpoch;
       auto diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
       wrk.append(std::to_string(static_cast<int64_t>(std::round(diff))));
     }},
@@ -1110,10 +1139,10 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 
 /// @brief Helper function to get a document by it's identifier
 ///        Lazy Locks the collection if necessary.
-static void GetDocumentByIdentifier(transaction::Methods* trx,
-                                    std::string& collectionName,
-                                    std::string const& identifier,
-                                    bool ignoreError, VPackBuilder& result) {
+void getDocumentByIdentifier(transaction::Methods* trx,
+                             std::string& collectionName,
+                             std::string const& identifier,
+                             bool ignoreError, VPackBuilder& result) {
   transaction::BuilderLeaser searchBuilder(trx);
 
   size_t pos = identifier.find('/');
@@ -1161,53 +1190,98 @@ static void GetDocumentByIdentifier(transaction::Methods* trx,
   }
 }
 
+/// @brief Helper function to merge given parameters
+///        Works for an array of objects as first parameter or arbitrary many
+///        object parameters
+AqlValue mergeParameters(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters,
+                         char const* funcName, bool recursive) {
+  size_t const n = parameters.size();
 
+  if (n == 0) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyObjectValue());
+  }
 
+  // use the first argument as the preliminary result
+  AqlValue initial = Functions::ExtractFunctionParameterValue(parameters, 0);
+  AqlValueMaterializer materializer(trx);
+  VPackSlice initialSlice = materializer.slice(initial, true);
 
+  VPackBuilder builder;
 
+  if (initial.isArray() && n == 1) {
+    // special case: a single array parameter
+    // Create an empty document as start point
+    builder.openObject();
+    builder.close();
+    // merge in all other arguments
+    for (auto const& it : VPackArrayIterator(initialSlice)) {
+      if (!it.isObject()) {
+        ::registerInvalidArgumentWarning(query, funcName);
+        return AqlValue(AqlValueHintNull());
+      }
+      builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it,
+                                                          false, recursive);
+    }
+    return AqlValue(builder);
+  }
 
+  if (!initial.isObject()) {
+    ::registerInvalidArgumentWarning(query, funcName);
+    return AqlValue(AqlValueHintNull());
+  }
 
+  // merge in all other arguments
+  for (size_t i = 1; i < n; ++i) {
+    AqlValue param = Functions::ExtractFunctionParameterValue(parameters, i);
 
+    if (!param.isObject()) {
+      ::registerInvalidArgumentWarning(query, funcName);
+      return AqlValue(AqlValueHintNull());
+    }
 
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(param, false);
 
+    builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice,
+                                                        false, recursive);
+    initialSlice = builder.slice();
+  }
+  if (n == 1) {
+    // only one parameter. now add original document
+    builder.add(initialSlice);
+  }
+  return AqlValue(builder);
+}
+
+/// @brief internal recursive flatten helper
+void flattenList(VPackSlice const& array, size_t maxDepth,
+                 size_t curDepth, VPackBuilder& result) {
+  TRI_ASSERT(result.isOpenArray());
+  for (auto const& tmp : VPackArrayIterator(array)) {
+    if (tmp.isArray() && curDepth < maxDepth) {
+      ::flattenList(tmp, maxDepth, curDepth + 1, result);
+    } else {
+      // Copy the content of tmp into the result
+      result.add(tmp);
+    }
+  }
+}
 
 } // namespace
 
-/*
-- always specify your user facing function name MYFUNC in error generators
-- errors are broadcasted like this:
-    - Wrong parameter types: RegisterInvalidArgumentWarning(query, "MYFUNC")
-    - Generic errors: RegisterWarning(query, "MYFUNC", TRI_ERROR_QUERY_INVALID_REGEX);
-    - ICU related errors: if (U_FAILURE(status)) { RegisterICUWarning(query, "MYFUNC", status); }
-    - close with: return AqlValue(AqlValueHintNull());
-- specify the number of parameters you expect at least and at max using:
-  ValidateParameters(parameters, "MYFUNC", 1, 3); (min: 1, max: 3); Max is optional.
-- if you support optional parameters, first check whether the count is sufficient
-  using parameters.size()
-- fetch the values using:
-  AqlValue value
-  - Anonymous  = ExtractFunctionParameterValue(parameters, 0);
-  - GetBooleanParameter() if you expect a bool
-  - Stringify() if you need a string.
-  - ExtractKeys() if its an object and you need the keys
-  - ExtractCollectionName() if you expect a collection
-  - ListContainsElement() search for a member
-  - ParameterToTimePoint / DateFromParameters get a time string as date.
-- check the values whether they match your expectations i.e. using:
-  - param.isNumber() then extract it using: param.toInt64(trx)
-- Available helper functions for working with pamaterers:
-  - Variance()
-  - SortNumberList()
-  - UnsetOrKeep ()
-  - GetDocumentByIdentifier ()
-  - MergeParameters()
-  - FlattenList()
+void Functions::init() {
+  std::string myregex;
 
-- now do your work with the parameters
-- build ub a result using a VPackbuilder like you would with regular velocpyack.
-- return it wrapping it into an AqlValue
+  dateMap.reserve(sortedDateMap.size());
+  std::for_each(sortedDateMap.begin(), sortedDateMap.end(), [&myregex](std::pair<std::string const&, format_func_t> const& p) {
+    (myregex.length() > 0) ? myregex += "|" + p.first : myregex = p.first;
+    dateMap.insert(std::make_pair(p.first, p.second));
+  });
+  ::theDateFormatRegex = std::regex(myregex);
+}
 
- */
 /// @brief validate the number of parameters
 void Functions::ValidateParameters(VPackFunctionParameters const& parameters,
                                    char const* function, int minParams,
@@ -1261,85 +1335,6 @@ void Functions::Stringify(transaction::Methods* trx,
   adjustedOptions.escapeForwardSlashes = false;
   VPackDumper dumper(&buffer, &adjustedOptions);
   dumper.dump(slice);
-}
-
-/// @brief Helper function to merge given parameters
-///        Works for an array of objects as first parameter or arbitrary many
-///        object parameters
-AqlValue Functions::MergeParameters(arangodb::aql::Query* query,
-                                    transaction::Methods* trx,
-                                    VPackFunctionParameters const& parameters,
-                                    char const* funcName, bool recursive) {
-  size_t const n = parameters.size();
-
-  if (n == 0) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyObjectValue());
-  }
-
-  // use the first argument as the preliminary result
-  AqlValue initial = ExtractFunctionParameterValue(parameters, 0);
-  AqlValueMaterializer materializer(trx);
-  VPackSlice initialSlice = materializer.slice(initial, true);
-
-  VPackBuilder builder;
-
-  if (initial.isArray() && n == 1) {
-    // special case: a single array parameter
-    // Create an empty document as start point
-    builder.openObject();
-    builder.close();
-    // merge in all other arguments
-    for (auto const& it : VPackArrayIterator(initialSlice)) {
-      if (!it.isObject()) {
-        ::registerInvalidArgumentWarning(query, funcName);
-        return AqlValue(AqlValueHintNull());
-      }
-      builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it,
-                                                          false, recursive);
-    }
-    return AqlValue(builder);
-  }
-
-  if (!initial.isObject()) {
-    ::registerInvalidArgumentWarning(query, funcName);
-    return AqlValue(AqlValueHintNull());
-  }
-
-  // merge in all other arguments
-  for (size_t i = 1; i < n; ++i) {
-    AqlValue param = ExtractFunctionParameterValue(parameters, i);
-
-    if (!param.isObject()) {
-      ::registerInvalidArgumentWarning(query, funcName);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(param, false);
-
-    builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice,
-                                                        false, recursive);
-    initialSlice = builder.slice();
-  }
-  if (n == 1) {
-    // only one parameter. now add original document
-    builder.add(initialSlice);
-  }
-  return AqlValue(builder);
-}
-
-/// @brief internal recursive flatten helper
-static void FlattenList(VPackSlice const& array, size_t maxDepth,
-                        size_t curDepth, VPackBuilder& result) {
-  TRI_ASSERT(result.isOpenArray());
-  for (auto const& tmp : VPackArrayIterator(array)) {
-    if (tmp.isArray() && curDepth < maxDepth) {
-      FlattenList(tmp, maxDepth, curDepth + 1, result);
-    } else {
-      // Copy the content of tmp into the result
-      result.add(tmp);
-    }
-  }
 }
 
 /// @brief function IS_NULL
@@ -3665,14 +3660,14 @@ AqlValue Functions::Translate(arangodb::aql::Query* query,
 AqlValue Functions::Merge(arangodb::aql::Query* query,
                           transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
-  return MergeParameters(query, trx, parameters, "MERGE", false);
+  return ::mergeParameters(query, trx, parameters, "MERGE", false);
 }
 
 /// @brief function MERGE_RECURSIVE
 AqlValue Functions::MergeRecursive(arangodb::aql::Query* query,
                                    transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters) {
-  return MergeParameters(query, trx, parameters, "MERGE_RECURSIVE", true);
+  return ::mergeParameters(query, trx, parameters, "MERGE_RECURSIVE", true);
 }
 
 /// @brief function HAS
@@ -5184,7 +5179,7 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
-  FlattenList(listSlice, maxDepth, 0, *builder.get());
+  ::flattenList(listSlice, maxDepth, 0, *builder.get());
   builder->close();
   return AqlValue(builder.get());
 }
@@ -5476,7 +5471,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
     if (id.isString()) {
       std::string identifier(id.slice().copyString());
       std::string colName;
-      GetDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
+      ::getDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
       if (builder->isEmpty()) {
         // not found
         return AqlValue(AqlValueHintNull());
@@ -5491,8 +5486,8 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
         if (next.isString()) {
           std::string identifier = next.copyString();
           std::string colName;
-          GetDocumentByIdentifier(trx, colName, identifier, true,
-                                  *builder.get());
+          ::getDocumentByIdentifier(trx, colName, identifier, true,
+                                    *builder.get());
         }
       }
       builder->close();
@@ -5512,8 +5507,8 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
   if (id.isString()) {
     transaction::BuilderLeaser builder(trx);
     std::string identifier(id.slice().copyString());
-    GetDocumentByIdentifier(trx, collectionName, identifier, true,
-                            *builder.get());
+    ::getDocumentByIdentifier(trx, collectionName, identifier, true,
+                              *builder.get());
     if (builder->isEmpty()) {
       return AqlValue(AqlValueHintNull());
     }
@@ -5529,8 +5524,8 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
     for (auto const& next : VPackArrayIterator(idSlice)) {
       if (next.isString()) {
         std::string identifier(next.copyString());
-        GetDocumentByIdentifier(trx, collectionName, identifier, true,
-                                *builder.get());
+        ::getDocumentByIdentifier(trx, collectionName, identifier, true,
+                                  *builder.get());
       }
     }
 
@@ -6927,22 +6922,10 @@ AqlValue Functions::Fail(arangodb::aql::Query* query, transaction::Methods* trx,
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FAIL_CALLED, str.copyString());
 }
 
-void Functions::init() {
-  std::string myregex;
-
-  dateMap.reserve(sortedDateMap.size());
-  std::for_each(sortedDateMap.begin(), sortedDateMap.end(), [&myregex](std::pair<std::string const&, format_func_t> const& p) {
-      (myregex.length() > 0) ? myregex += "|" + p.first : myregex = p.first;
-      dateMap.insert(std::make_pair(p.first, p.second));
-    });
-  ::theDateFormatRegex = std::regex(myregex);
-}
-  
 /// @brief function DATE_FORMAT
 AqlValue Functions::DateFormat(arangodb::aql::Query* query,
                                transaction::Methods* trx,
-                               VPackFunctionParameters const& params)
-{
+                               VPackFunctionParameters const& params) {
   static char const* AFN = "DATE_FORMAT";
   tp_sys_clock_ms tp;
   ValidateParameters(params, AFN, 2, 2);
@@ -6959,7 +6942,7 @@ AqlValue Functions::DateFormat(arangodb::aql::Query* query,
 
   std::string formatString = aqlFormatString.slice().copyString();
 
-  std::string value = ::dateFormatRegex(formatString, tp);
+  std::string value = ::executeDateFormatRegex(formatString, tp);
 
   return AqlValue(value);
 }

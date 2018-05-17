@@ -65,21 +65,6 @@ struct Functions {
    static AqlValue ExtractFunctionParameterValue(
        VPackFunctionParameters const& parameters, size_t position);
 
-   /// @brief extract attribute names from the arguments
-   static void ExtractKeys(std::unordered_set<std::string>& names,
-                           arangodb::aql::Query* query,
-                           transaction::Methods* trx,
-                           VPackFunctionParameters const& parameters,
-                           size_t startParameter, char const* functionName);
-
-   /// @brief Helper function to merge given parameters
-   ///        Works for an array of objects as first parameter or arbitrary many
-   ///        object parameters
-   static AqlValue MergeParameters(arangodb::aql::Query* query,
-                                   transaction::Methods* trx,
-                                   VPackFunctionParameters const& parameters,
-                                   char const* funcName, bool recursive);
-
   public:
    static void init();
    /// @brief helper function. not callable as a "normal" AQL function
