@@ -1,6 +1,10 @@
 v3.3.9 (2018-05-16)
 -------------------
 
+* added `/_admin/repair/distributeShardsLike` that repairs collections with
+  distributeShardsLike where the shards aren't actually distributed like in the
+  prototype collection, as could happen due to internal issue #1770
+
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header
 
