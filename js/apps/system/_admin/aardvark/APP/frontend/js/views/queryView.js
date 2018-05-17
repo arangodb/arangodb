@@ -1838,13 +1838,15 @@
       if (window.location.hash === '#queries') {
         var outputEditor = ace.edit('outputEditor' + counter);
 
+        var maxHeight = $('.centralRow').height() - 250;
         var success;
+        var invalidGeoJSON = 0;
 
         // handle explain query case
         if (!data.msg) {
           // handle usual query
           result = self.analyseQuery(data.result);
-          if (result.defaultType === 'table') {
+          if (result.defaultType === 'table' || result.defaultType === 'geotable') {
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
               '<div id="outputTable' + counter + '" class="outputTable"></div>'
             );
@@ -1852,7 +1854,6 @@
             self.renderOutputTable(result, counter);
 
             // apply max height for table output dynamically
-            var maxHeight = $('.centralRow').height() - 250;
             $('.outputEditorWrapper .tableWrapper').css('max-height', maxHeight);
 
             $('#outputEditor' + counter).hide();
@@ -1872,9 +1873,13 @@
             } else {
               $('#outputGraph' + counter).remove();
             }
-          } else if (result.defaultType === 'geo') {
+          }
+          if (result.defaultType === 'geo' || result.defaultType === 'geotable') {
+            var geoHeight = 500;
             $('#outputEditor' + counter).hide();
-            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after('<div id="outputGeo' + counter + '" style="height: 400px;"></div>');
+            $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
+              '<div class="geoContainer" id="outputGeo' + counter + '" style="height: ' + geoHeight + 'px; maxheight: ' + maxHeight + 'px;"></div>'
+            );
             self.maps[counter] = L.map('outputGeo' + counter).setView([51.505, -0.09], 13);
 
             L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1884,19 +1889,62 @@
             var position = 1;
             var geojson;
 
+            var geoStyle = {
+              color: '#3498db',
+              opacity: 1,
+              weight: 3
+            };
+
+            var geojsonMarkerOptions = {
+              radius: 8,
+              fillColor: '#2ecc71',
+              color: 'white',
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.64
+            };
+
+            var markers = [];
             _.each(data.result, function (geo) {
-              if (geo.type === 'Point') {
+              if (geo.type === 'Point' || geo.type === 'MultiPoint') {
                 // reverse neccessary if we are using GeoJSON order
                 // L.marker(geo.coordinates.reverse()).addTo(self.maps[counter]);
-                geojson = new L.GeoJSON(geo).addTo(self.maps[counter]);
-              } else if (geo.type === 'Polygon') {
-                console.log(geo);
-                geojson = new L.GeoJSON(geo).addTo(self.maps[counter]);
+                try {
+                  geojson = new L.GeoJSON(geo, {
+                    pointToLayer: function (feature, latlng) {
+                      var res = L.circleMarker(latlng, geojsonMarkerOptions);
+                      markers.push(res);
+                      return res;
+                    }
+                  }).addTo(self.maps[counter]);
+                } catch (ignore) {
+                  invalidGeoJSON++;
+                }
+              } else if (geo.type === 'Polygon' || geo.type === 'LineString' || geo.type === 'MultiLineString' || geo.type === 'MultiPolygon') {
+                try {
+                  geojson = new L.GeoJSON(geo, {
+                    style: geoStyle
+                  }).addTo(self.maps[counter]);
+                  markers.push(geojson);
+                } catch (ignore) {
+                  invalidGeoJSON++;
+                }
               }
 
               // positioning
               if (position === data.result.length) {
-                self.maps[counter].fitBounds(geojson.getBounds());
+                if (markers.length > 0) {
+                  try {
+                    var show = new L.featureGroup(markers);
+                    self.maps[counter].fitBounds(show.getBounds());
+                  } catch (ignore) {
+                  }
+                } else {
+                  try {
+                    self.maps[counter].fitBounds(geojson.getBounds());
+                  } catch (ignore) {
+                  }
+                }
               }
               position++;
             });
@@ -1904,7 +1952,27 @@
 
           // add active class to choosen display method
           if (success !== false) {
-            $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+            if (result.defaultType === 'geotable' || result.defaultType === 'geo') {
+              $('#outputTable' + counter).hide();
+              if (result.defaultType === 'geotable') {
+                $('#table-switch').css('display', 'inline');
+              }
+
+              if (data.result.length === invalidGeoJSON) {
+                $('#outputGeo' + counter).remove();
+                if (result.defaultType === 'geotable') {
+                  $('#outputTable' + counter).show();
+                  $('#table-switch').addClass('active').css('display', 'inline');
+                } else {
+                  $('#outputEditor' + counter).show();
+                  $('#json-switch').addClass('active').css('display', 'inline');
+                }
+              } else {
+                $('#geo-switch').addClass('active').css('display', 'inline');
+              }
+            } else {
+              $('#' + result.defaultType + '-switch').addClass('active').css('display', 'inline');
+            }
           } else {
             $('#json-switch').addClass('active').css('display', 'inline');
           }
@@ -2014,7 +2082,7 @@
           outputEditor.setValue(data.msg, 1);
         }
 
-        if (result.defaultType === 'table') {
+        if (result.defaultType === 'table' || result.defaultType === 'geotable') {
           // show csv download button
           self.checkCSV(counter);
         }
@@ -2409,12 +2477,12 @@
       }
 
       // check if result could be displayed as table
+      var geojson = 0;
       if (!found) {
         var check = true;
-        var geojson = 0;
         var attributes = {};
 
-        if (result.length <= 1) {
+        if (result.length < 1) {
           check = false;
         }
 
@@ -2459,7 +2527,7 @@
         if (check) {
           found = true;
           if (result.length === geojson) {
-            toReturn.defaultType = 'geo';
+            toReturn.defaultType = 'geotable';
           } else {
             toReturn.defaultType = 'table';
           }
@@ -2468,7 +2536,11 @@
 
       if (!found) {
       // if all check fails, then just display as json
-        toReturn.defaultType = 'json';
+        if (result.length === geojson) {
+          toReturn.defaultType = 'geo';
+        } else {
+          toReturn.defaultType = 'json';
+        }
       }
 
       return toReturn;
