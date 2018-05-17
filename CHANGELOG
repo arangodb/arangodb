@@ -1,6 +1,8 @@
 v3.2.16 (XXXX-XX-XX)
 --------------------
 
+* issue one HTTP call less per cluster AQL query
+
 * self heal during a Foxx service install, upgrade or replace no longer breaks 
   the respective operation
 

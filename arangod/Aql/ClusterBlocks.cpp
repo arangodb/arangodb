@@ -1237,6 +1237,7 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _server(server),
       _ownName(ownName),
       _queryId(queryId),
+      _mustInitialize(false),
       _isResponsibleForInitializeCursor(
           en->isResponsibleForInitializeCursor()) {
   TRI_ASSERT(!queryId.empty());
@@ -1245,8 +1246,6 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       (!arangodb::ServerState::instance()->isCoordinator() &&
        !ownName.empty()));
 }
-
-RemoteBlock::~RemoteBlock() {}
 
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
@@ -1296,22 +1295,8 @@ int RemoteBlock::initialize() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/initialize/", "{}");
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (slice.hasKey("code")) {
-    return slice.get("code").getNumericValue<int>();
-  }
-  return TRI_ERROR_INTERNAL;
+  _mustInitialize = true;
+  return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1333,6 +1318,10 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   VPackBuilder builder(&options);
   builder.openObject();
+
+  builder.add("initialize", VPackValue(_mustInitialize));
+  // only do this exactly once
+  _mustInitialize = false;
 
   if (items == nullptr) {
     // first call, items is still a nullptr
