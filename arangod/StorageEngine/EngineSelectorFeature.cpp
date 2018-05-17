@@ -96,6 +96,7 @@ void EngineSelectorFeature::prepare() {
       LOG_TOPIC(TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
       e->disable();
       if (engine.first == _engine) {
+        LOG_TOPIC(INFO, Logger::FIXME) << "using storage engine " << engine.first;
         ce->setActualEngine(e);
       }
     }
