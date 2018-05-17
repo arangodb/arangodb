@@ -298,16 +298,19 @@ bool Inception::restartingActiveAgent() {
                 }
               }
               
+              auto const  theirConfigVP = comres->result->getBodyVelocyPack();
+              auto const& lcc           =
+                theirConfigVP->slice().get("configuration");
+              
               auto agency = std::make_shared<Builder>();
-              agency->openObject();
-              agency->add("term", theirConfig.get("term"));
-              agency->add("id", VPackValue(theirLeaderId));
-              agency->add("active",      tcc.get("active"));
-              agency->add("pool",        tcc.get("pool"));
-              agency->add("min ping",    tcc.get("min ping"));
-              agency->add("max ping",    tcc.get("max ping"));
-              agency->add("timeoutMult", tcc.get("timeoutMult"));
-              agency->close();
+              { VPackObjectBuilder b(agency.get()); 
+                agency->add("term", theirConfig.get("term"));
+                agency->add("id", VPackValue(theirLeaderId));
+                agency->add("active",      lcc.get("active"));
+                agency->add("pool",        lcc.get("pool"));
+                agency->add("min ping",    lcc.get("min ping"));
+                agency->add("max ping",    lcc.get("max ping"));
+                agency->add("timeoutMult", lcc.get("timeoutMult")); }
               _agent->notify(agency);
               return true;
             }
