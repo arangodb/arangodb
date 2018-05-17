@@ -1,6 +1,8 @@
 devel
 -----
 
+* The AQL Editor in the Web UI now supports GeoJSON types and is able to render them.
+
 * abort startup when using SSLv2 for a server endpoint, or when connecting with
   a client tool via an SSLv2 connection.
   
