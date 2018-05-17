@@ -135,7 +135,7 @@ class ActionBase {
   void clearPreAction() {_preAction.reset();}
 
   /// @brief Retrieve pointer to action that should run before this one
-  std::shared_ptr<Action> getPreAction() {return _preAction;}
+  std::shared_ptr<Action> getPreAction();
 
   /// @brief Initiate a pre action
   void createPreAction(std::shared_ptr<ActionDescription> const& description);
@@ -144,10 +144,12 @@ class ActionBase {
   void createPostAction(std::shared_ptr<ActionDescription> const& description);
 
   /// @brief Retrieve pointer to action that should run directly after this one
-  std::shared_ptr<Action> getPostAction() {return _postAction;}
+  std::shared_ptr<Action> getPostAction();
 
   /// @brief Save pointer to successor action
-  void setPostAction(std::shared_ptr<Action> post) { _postAction=post; }
+  void setPostAction(std::shared_ptr<ActionDescription> post) {
+    _postAction=post;
+  }
 
   /// @brief hash value of ActionDescription
   /// @return uint64_t hash
@@ -182,8 +184,8 @@ protected:
   std::atomic<ActionState> _state;
 
   // NOTE: preAction should only be set within first() or post(), not construction
-  std::shared_ptr<Action> _preAction;
-  std::shared_ptr<Action> _postAction;
+  std::shared_ptr<ActionDescription> _preAction;
+  std::shared_ptr<ActionDescription> _postAction;
 
   // times for user reporting (and _actionDone used by done() to prevent
   //  race conditions of same task executing twice

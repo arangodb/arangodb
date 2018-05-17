@@ -77,8 +77,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
     bool executeNow=false);
 
 
-  /// @brief Internal API that allows existing actions to create pre and post actions
+  /// @brief Internal API that allows existing actions to create pre actions
   std::shared_ptr<maintenance::Action> preAction(
+    std::shared_ptr<maintenance::ActionDescription> const & description);
+  
+  /// @brief Internal API that allows existing actions to create post actions
+  std::shared_ptr<maintenance::Action> postAction(
     std::shared_ptr<maintenance::ActionDescription> const & description);
   
 protected:
@@ -108,6 +112,13 @@ public:
 
   /// @brief Return number of seconds to say "not done" to block retries too soon
   uint32_t getSecondsActionsBlock() const {return _secondsActionsBlock;};
+
+  /**
+   * @brief Find and return found action or nullptr
+   * @param desc Description of sought action
+   */
+  std::shared_ptr<maintenance::Action> findAction(
+    std::shared_ptr<maintenance::ActionDescription> const desc);
 
 protected:
   /// @brief common code used by multiple constructors

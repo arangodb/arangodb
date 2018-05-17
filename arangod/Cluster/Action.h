@@ -113,7 +113,7 @@ public:
   std::shared_ptr<Action> getPostAction() { return _action->getPostAction(); }
 
   /// @brief Save pointer to successor action
-  void setPostAction(std::shared_ptr<Action> post) {
+  void setPostAction(std::shared_ptr<ActionDescription> post) {
     _action->setPostAction(post);
   }
 

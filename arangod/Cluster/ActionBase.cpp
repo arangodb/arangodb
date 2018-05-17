@@ -84,7 +84,8 @@ VPackSlice const ActionBase::properties() const {
 /// @brief Initiate a new action that will start immediately, pausing this action
 void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & description) {
 
-  _preAction = _feature.preAction(description);
+  _preAction = description;
+  _feature.preAction(description);
 
   // shift from EXECUTING to WAITINGPRE ... EXECUTING is set to block other
   //  workers from picking it up
@@ -99,11 +100,24 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const & desc
 } // ActionBase::createPreAction
 
 
+/// @brief Retrieve pointer to action that should run before this one
+std::shared_ptr<Action> ActionBase::getPreAction() {
+  return (_preAction != nullptr) ? _feature.findAction(_preAction) : nullptr;
+}
+
+
+/// @brief Retrieve pointer to action that should run after this one
+std::shared_ptr<Action> ActionBase::getPostAction() {
+  return (_postAction != nullptr) ? _feature.findAction(_postAction) : nullptr;
+}
+
+
 /// @brief Create a new action that will start after this action successfully completes
 void ActionBase::createPostAction(std::shared_ptr<ActionDescription> const& description) {
 
   // preAction() sets up what we need
-  _postAction = _feature.preAction(description);
+  _postAction = description;
+  _feature.postAction(description);
   
   // shift from EXECUTING to WAITINGPOST ... EXECUTING is set to block other
   //  workers from picking it up

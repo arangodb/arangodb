@@ -86,14 +86,12 @@ TEST_CASE("MaintenanceRestHandler", "[cluster][maintenance][devel]") {
     TestHandler dummyHandler(dummyRequest,  dummyResponse);
 
     REQUIRE(true==dummyHandler.test_parsePutBody(body.slice()));
-    REQUIRE(dummyHandler.getActionDesc().end()!=dummyHandler.getActionDesc().find("name"));
-    REQUIRE(dummyHandler.getActionDesc().find("name")->second == "CreateCollection");
-    REQUIRE(dummyHandler.getActionDesc().end()!=dummyHandler.getActionDesc().find("collection"));
-    REQUIRE(dummyHandler.getActionDesc().find("collection")->second == "a");
-    REQUIRE(dummyHandler.getActionDesc().end()!=dummyHandler.getActionDesc().find("database"));
-    REQUIRE(dummyHandler.getActionDesc().find("database")->second == "test");
-
-    REQUIRE(dummyHandler.getActionDesc().end()==dummyHandler.getActionDesc().find("properties"));
+    REQUIRE(dummyHandler.getActionDesc().has("name"));
+    REQUIRE(dummyHandler.getActionDesc().get("name") == "CreateCollection");
+    REQUIRE(dummyHandler.getActionDesc().has("collection"));
+    REQUIRE(dummyHandler.getActionDesc().get("collection") == "a");
+    REQUIRE(dummyHandler.getActionDesc().has("database"));
+    REQUIRE(dummyHandler.getActionDesc().get("database") == "test");
 
     VPackObjectIterator it(dummyHandler.getActionProp().slice(), true);
     REQUIRE(it.key().copyString() == "journalSize");
@@ -101,9 +99,7 @@ TEST_CASE("MaintenanceRestHandler", "[cluster][maintenance][devel]") {
 
   }
 
-
   SECTION("Local databases one more empty database should be dropped") {
-
 
   }
 }

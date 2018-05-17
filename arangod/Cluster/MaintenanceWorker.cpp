@@ -113,7 +113,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
         _curAction->setState(maintenance::WAITING);
         tempPtr=_curAction;
         _curAction=_curAction->getPreAction();
-        _curAction->setPostAction(tempPtr);
+        _curAction->setPostAction(
+          std::make_shared<ActionDescription>(tempPtr->describe()));
         _loopState = eRUN_FIRST;
       } // if
     } else {

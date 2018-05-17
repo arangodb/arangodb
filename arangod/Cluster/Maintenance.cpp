@@ -282,7 +282,7 @@ arangodb::Result arangodb::maintenance::executePlan (
   std::string const& serverId) {
 
   arangodb::Result result;
-  ActionRegistry* registry = ActionRegistry::instance();
+  //ActionRegistry* registry = ActionRegistry::instance();
 
   // build difference between plan and local
   std::vector<ActionDescription> actions;

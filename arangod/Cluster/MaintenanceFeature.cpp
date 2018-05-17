@@ -224,6 +224,14 @@ std::shared_ptr<Action> MaintenanceFeature::preAction(
 } // MaintenanceFeature::preAction
 
 
+std::shared_ptr<Action> MaintenanceFeature::postAction(
+  std::shared_ptr<ActionDescription> const & description) {
+
+  return createAction(description, true);
+
+} // MaintenanceFeature::postAction
+
+
 std::shared_ptr<Action> MaintenanceFeature::createAction(
   std::shared_ptr<ActionDescription> const & description,
   bool executeNow) {
@@ -265,6 +273,11 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
 
 } // if
 
+
+std::shared_ptr<Action> MaintenanceFeature::findAction(
+  std::shared_ptr<ActionDescription> const description) {
+  return findActionHash(description->hash());
+}
 
 
 std::shared_ptr<Action> MaintenanceFeature::findActionHash(size_t hash) {
