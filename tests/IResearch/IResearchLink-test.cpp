@@ -37,7 +37,6 @@
 
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Basics/files.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -596,7 +595,9 @@ SECTION("test_write") {
   );
   REQUIRE((false == !view));
   view->open();
-  auto* flush = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+  auto* flush = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::FlushFeature
+  >("Flush");
   REQUIRE((flush));
 
   irs::fs_directory directory(dataPath);

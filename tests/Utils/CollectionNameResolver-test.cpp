@@ -24,7 +24,6 @@
 #include "catch.hpp"
 #include "../IResearch/common.h"
 #include "../IResearch/StorageEngineMock.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -113,7 +112,9 @@ struct CollectionNameResolverSetup {
     }
 
     // register view factory
-    arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>()->emplace(
+    arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::ViewTypesFeature
+    >()->emplace(
       arangodb::LogicalDataSource::Type::emplace(
         arangodb::velocypack::StringRef("testViewType")
       ),

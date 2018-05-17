@@ -183,8 +183,9 @@ void StatisticsFeature::start() {
     return;
   }
 
-  auto* databaseFeature =
-    arangodb::application_features::ApplicationServer::server->getFeature<arangodb::DatabaseFeature>("Database");
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
 
   if (!databaseFeature) {
     LOG_TOPIC(FATAL, arangodb::Logger::STATISTICS) << "could not find feature 'Database'";
