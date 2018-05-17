@@ -290,7 +290,7 @@ void HeartbeatThread::runDBServer() {
 
           VPackSlice agentPool = result.slice()[0].get(".agency");
           if (agentPool.isObject() && agentPool.hasKey("size") &&
-              agentPool.get("size").getUInt() > 1 &&
+              agentPool.get("size").getUInt() > 0 &&
               agentPool.get("pool").isObject()) {
             _agency.updateEndpoints(agentPool.get("pool"));
           } else {
@@ -453,7 +453,7 @@ void HeartbeatThread::runCoordinator() {
 
           VPackSlice agentPool = result.slice()[0].get(".agency");
           if (agentPool.isObject() && agentPool.hasKey("size") &&
-              agentPool.get("size").getUInt() > 1 &&
+              agentPool.get("size").getUInt() > 0 &&
               agentPool.get("pool").isObject()) {
             _agency.updateEndpoints(agentPool.get("pool"));
           } else {
