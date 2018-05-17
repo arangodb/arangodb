@@ -867,8 +867,9 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   VPackFunctionParameters parameters{arena};
  
   // same here
-  SmallVector<uint8_t>::allocator_type::arena_type arena2;
-  SmallVector<uint8_t> destroyParameters{arena2};
+  SmallVector<uint64_t>::allocator_type::arena_type arena2;
+  SmallVector<uint64_t> destroyParameters{arena2};
+
   parameters.reserve(n);
   destroyParameters.reserve(n);
 
