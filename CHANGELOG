@@ -1,4 +1,4 @@
-v3.3.9 (2018-05-16)
+v3.3.9 (2018-05-17)
 -------------------
 
 * added `/_admin/repair/distributeShardsLike` that repairs collections with
