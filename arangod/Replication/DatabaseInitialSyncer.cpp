@@ -553,8 +553,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 #endif
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(&vocbase()), coll->id(),
-        AccessMode::Type::EXCLUSIVE);
+      transaction::StandaloneContext::Create(vocbase()),
+      coll->id(),
+      AccessMode::Type::EXCLUSIVE
+    );
+
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
     // smaller batch sizes should work better here
@@ -757,9 +760,10 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(&vocbase()), coll->id(),
-        AccessMode::Type::EXCLUSIVE);
-
+      transaction::StandaloneContext::Create(vocbase()),
+      coll->id(),
+      AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -767,9 +771,11 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
     }
 
     OperationOptions options;
+
     if (!_leaderId.empty()) {
       options.isSynchronousReplicationFrom = _leaderId;
     }
+
     OperationResult opRes = trx.truncate(coll->name(), options);
 
     if (opRes.fail()) {
@@ -809,7 +815,8 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 /// @brief determine the number of documents in a collection
 int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
   SingleCollectionTransaction trx(
-    transaction::StandaloneContext::Create(&vocbase()), col->id(),
+    transaction::StandaloneContext::Create(vocbase()),
+    col->id(),
     AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -819,13 +826,17 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
   }
 
   OperationResult result = trx.count(col->name(), false);
+
   if (result.result.fail()) {
     return -1;
   }
+
   VPackSlice s = result.slice();
+
   if (!s.isNumber()) {
     return -1;
   }
+
   return s.getNumber<int64_t>();
 }
 
@@ -924,7 +935,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             setProgress("truncating " + collectionMsg);
 
             SingleCollectionTransaction trx(
-              transaction::StandaloneContext::Create(&vocbase()), col->id(),
+              transaction::StandaloneContext::Create(vocbase()),
+              col->id(),
               AccessMode::Type::EXCLUSIVE
             );
             Result res = trx.begin();
@@ -1045,7 +1057,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
       try {
         SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(&vocbase()), col->id(),
+          transaction::StandaloneContext::Create(vocbase()),
+          col->id(),
           AccessMode::Type::EXCLUSIVE
         );
 

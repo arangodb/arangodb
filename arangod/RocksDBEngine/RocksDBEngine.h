@@ -40,10 +40,13 @@
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
+
 class TransactionDB;
+
 }
 
 namespace arangodb {
+
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
@@ -59,12 +62,16 @@ class TransactionCollection;
 class TransactionState;
 
 namespace rest {
+
 class RestHandlerFactory;
+
 }
 
 namespace transaction {
+
 class ContextData;
 struct Options;
+
 }
 
 class RocksDBEngine final : public StorageEngine {
@@ -72,8 +79,6 @@ class RocksDBEngine final : public StorageEngine {
   // create the storage engine
   explicit RocksDBEngine(application_features::ApplicationServer*);
   ~RocksDBEngine();
-  
-public:
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -99,8 +104,10 @@ public:
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(TRI_vocbase_t*,
-                    transaction::Options const&) override;
+  std::unique_ptr<TransactionState> createTransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+  ) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -192,8 +199,9 @@ public:
 
   // wal in recovery
   bool inRecovery() override;
+
   // start compactor thread and delete files form collections marked as deleted
-  void recoveryDone(TRI_vocbase_t* vocbase) override;
+  void recoveryDone(TRI_vocbase_t& vocbase) override;
 
  public:
   std::string createCollection(
@@ -434,5 +442,7 @@ public:
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
 };
+
 }  // namespace arangodb
+
 #endif

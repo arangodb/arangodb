@@ -751,9 +751,9 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&(collection->vocbase())),
-      collection->id(),
-      AccessMode::Type::WRITE
+    arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
+    collection->id(),
+    AccessMode::Type::WRITE
   );
 
   trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above

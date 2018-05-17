@@ -552,7 +552,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -592,7 +592,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -613,7 +613,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -633,7 +633,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -720,7 +720,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );

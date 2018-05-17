@@ -267,7 +267,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     cid = c->id();
   }
 
-  auto trxContext = transaction::StandaloneContext::Create(&_vocbase);
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder builder(trxContext->getVPackOptions());
 
   builder.openArray();
@@ -621,13 +621,13 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
-  std::shared_ptr<transaction::Context> transactionContext =
-    transaction::StandaloneContext::Create(&_vocbase);
+  auto transactionContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, transactionContext->getVPackOptions());
 
   if (keys) {
     Result rv = ctx->dumpKeys(builder, chunk, static_cast<size_t>(chunkSize), lowKey);
+
     if (rv.fail()) {
       generateError(rv);
       return;
@@ -635,6 +635,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   } else {    
     bool success = false;
     VPackSlice const parsedIds = this->parseVPackBody(success);
+
     if (!success) {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
@@ -642,6 +643,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
 
     Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk,
                                    maxChunkSize, lowKey, parsedIds);
+
     if (rv.fail()) {
       generateError(rv);
       return;
