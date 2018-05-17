@@ -169,7 +169,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     arangodb::StaticStrings::DataSourceName,
     arangodb::velocypack::Value(name)
   );
-  builder.add("indexes", VPackSlice::nullSlice()); // should never appear in props
+  //builder.add("indexes", VPackSlice::nullSlice()); // should never appear in props
   builder.close();
 
   VPackBuilder info =

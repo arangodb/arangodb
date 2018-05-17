@@ -1260,7 +1260,7 @@ bool HeartbeatThread::sendServerState() {
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
   if (agentPool.isObject() && agentPool.get("pool").isObject() &&
-      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 1) {
+      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
     _agency.updateEndpoints(agentPool.get("pool"));
   } else {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Cannot find an agency persisted in RAFT 8|";
