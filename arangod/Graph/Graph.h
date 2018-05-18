@@ -24,8 +24,11 @@
 #define ARANGOD_GRAPH_GRAPH_H
 
 #include <utility>
+
 #include "Aql/VariableGenerator.h"
-#include "Basics/Result.h"
+#include "Cluster/ResultT.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/OperationResult.h"
 
 namespace arangodb {
 namespace graph {
@@ -73,10 +76,10 @@ class Graph {
   std::unordered_map<std::string, EdgeDefinition> _edgeDefs;
 
   /// @brief Graph collection edge definition attribute name
-  static char const *_attrEdgeDefs;
+  static char const* _attrEdgeDefs;
 
   /// @brief Graph collection orphan list arribute name
-  static char const *_attrOrphans;
+  static char const* _attrOrphans;
 
  public:
   /// @brief Graph collection name
@@ -84,43 +87,66 @@ class Graph {
 
  public:
   /// @brief get the cids of all vertexCollections
-  std::unordered_set<std::string> const &vertexCollections() const;
+  std::unordered_set<std::string> const& vertexCollections() const;
 
   /// @brief get the cids of all edgeCollections
-  std::unordered_set<std::string> const &edgeCollections() const;
+  std::unordered_set<std::string> const& edgeCollections() const;
 
-  std::string const& name() const {
-    return _graphName;
-  }
+  std::string const& name() const { return _graphName; }
 
   /// @brief return a VelocyPack representation of the graph
-  void toVelocyPack(velocypack::Builder &, bool) const;
+  void toVelocyPack(velocypack::Builder&, bool) const;
 
-  virtual void enhanceEngineInfo(velocypack::Builder &) const;
+  virtual void enhanceEngineInfo(velocypack::Builder&) const;
 
   /// @brief validate the structure of edgeDefinition, i.e.
   /// that it contains the correct attributes, and that they contain the correct
   /// types of values.
-  Result validateEdgeDefinition(const velocypack::Slice &edgeDefinition);
+  Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
   std::ostream& operator<<(std::ostream& ostream);
 
  private:
   /// @brief adds one edge definition. the edge definition must not have been
   /// added before.
-  Result addEdgeDefinition(velocypack::Slice const &edgeDefinition);
+  Result addEdgeDefinition(velocypack::Slice const& edgeDefinition);
 
   /// @brief Add an edge collection to this graphs definition
-  void addEdgeCollection(std::string const &);
+  void addEdgeCollection(std::string const&);
 
   /// @brief Add a vertex collection to this graphs definition
-  void addVertexCollection(std::string const &);
+  void addVertexCollection(std::string const&);
 
   /// @brief Add Collections to the object
-  void insertVertexCollections(velocypack::Slice &arr);
+  void insertVertexCollections(velocypack::Slice& arr);
 };
 
+class GraphOperations {
+ private:
+  Graph const& _graph;
+  std::shared_ptr<transaction::StandaloneContext> _ctx;
+
+  Graph const& graph() const { return _graph; };
+  std::shared_ptr<transaction::StandaloneContext>& ctx() { return _ctx; };
+
+ public:
+  GraphOperations() = delete;
+  GraphOperations(Graph const& graph_,
+                  std::shared_ptr<transaction::StandaloneContext> ctx_)
+      : _graph(graph_), _ctx(std::move(ctx_)) {}
+
+  /// @brief Get a single vertex document from collection, optionally check rev
+  /// The return value is as follows:
+  /// If trx.begin fails, the outer ResultT will contain this error Result.
+  /// Otherwise, the results of both (trx.document(), trx.finish()) are
+  /// returned as a pair.
+  /// This is because in case of a precondition error during trx.document(),
+  /// the OperationResult may still be needed.
+  ResultT<std::pair<OperationResult, Result>> getVertex(
+      std::string const& collectionName, std::string const& key,
+      boost::optional<TRI_voc_rid_t> rev);
+};
 }
 }
 
-#endif // ARANGOD_GRAPH_GRAPH_H
+#endif  // ARANGOD_GRAPH_GRAPH_H

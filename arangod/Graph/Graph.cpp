@@ -25,8 +25,12 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -242,4 +246,40 @@ std::ostream& Graph::operator<<(std::ostream& ostream) {
   ostream << "}";
 
   return ostream;
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::getVertex(
+    std::string const& collectionName, std::string const& key,
+    boost::optional<TRI_voc_rid_t> rev) {
+  OperationOptions options;
+  options.ignoreRevs = true;
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::KeyString, VPackValue(key));
+    if (rev) {
+      options.ignoreRevs = false;
+      builder.add(StaticStrings::RevString,
+                  VPackValue(TRI_RidToString(rev.get())));
+    }
+  }
+  VPackSlice search = builder.slice();
+
+  // find and load collection given by name or identifier
+  SingleCollectionTransaction trx(ctx(), collectionName,
+                                  AccessMode::Type::READ);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  OperationResult result = trx.document(collectionName, search, options);
+
+  res = trx.finish(result.result);
+
+  return std::make_pair(std::move(result), std::move(res));
 }

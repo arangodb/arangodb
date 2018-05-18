@@ -118,7 +118,7 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
 
   auto ctx = transaction::StandaloneContext::Create(&_vocbase);
 
-  // TODO cache graph
+  // TODO cache graph (then, don't pass a unique_ptr around anymore)
   std::unique_ptr<const Graph> graph;
 
   try {
@@ -163,6 +163,30 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   }
 
   std::string const& setName = getNextSuffix();
+
+  // TODO Add tests for this, especially with existing collections & vertices
+  // where the collection is only missing in the graph.
+  // TODO The existing tests seem to be inconsistent about this:
+  // e.g., deleting a non-existent vertex collection is expected to throw
+  // TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST but reading a vertex of a
+  // non-existent collection is expected to throw
+  // ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.
+  // This is commented out until the tests are changed.
+  /*
+    if (collType == vertex) {
+      if (graph->vertexCollections().find(setName) ==
+    graph->vertexCollections().end()) {
+        generateError(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST);
+        return RestStatus::DONE;
+      }
+    } else if (collType == edge) {
+      if (graph->edgeCollections().find(setName) ==
+    graph->edgeCollections().end()) {
+        generateError(TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST);
+        return RestStatus::DONE;
+      }
+    }
+  */
 
   if (noMoreSuffixes()) {
     if (collType == vertex) {
@@ -222,7 +246,7 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
 }
 
 boost::optional<RestStatus> RestGraphHandler::vertexAction(
-    const std::unique_ptr<const Graph> graph,
+    std::unique_ptr<const Graph> graph,
     const std::string& vertexCollectionName, const std::string& vertexKey) {
   LOG_TOPIC(WARN, Logger::GRAPHS)
       << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
@@ -231,7 +255,7 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
 
   switch (request()->requestType()) {
     case RequestType::GET:
-      vertexActionRead(vertexCollectionName, vertexKey);
+      vertexActionRead(std::move(graph), vertexCollectionName, vertexKey);
       return RestStatus::DONE;
     case RequestType::DELETE_REQ:
     case RequestType::PATCH:
@@ -251,59 +275,38 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
   return boost::none;
 }
 
-Result RestGraphHandler::vertexActionRead(const std::string& collectionName,
-                                          const std::string& key) {
+Result RestGraphHandler::vertexActionRead(
+    const std::unique_ptr<const Graph> graph, const std::string& collectionName,
+    const std::string& key) {
   LOG_TOPIC(WARN, Logger::GRAPHS)
       << LOGPREFIX(__func__) << "collectionName = " << collectionName << ", "
       << "key = " << key;
 
-  // check for an etag
-  bool isValidRevision;
-  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
-  if (!isValidRevision) {
-    ifNoneRid =
-        UINT64_MAX;  // an impossible rev, so precondition failed will happen
-  }
-
   OperationOptions options;
   options.ignoreRevs = true;
 
+  bool isValidRevision;
   TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
     ifRid =
         UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
 
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder guard(&builder);
-    builder.add(StaticStrings::KeyString, VPackValue(key));
-    if (ifRid != 0) {
-      options.ignoreRevs = false;
-      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(ifRid)));
-    }
-  }
-  VPackSlice search = builder.slice();
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(&_vocbase);
+  GraphOperations gops{*graph, ctx};
+  auto resultT = gops.getVertex(collectionName, key, boost::make_optional(ifRid != 0, ifRid));
 
-  // find and load collection given by name or identifier
-  auto ctx(transaction::StandaloneContext::Create(&_vocbase));
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-
-  // ...........................................................................
-  // inside read transaction
-  // ...........................................................................
-
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return res;
+  if (!resultT.ok()) {
+    generateTransactionError(collectionName, resultT, "");
+    // Note: copy result, do not slice TODO is this necessary?
+    return {resultT};
   }
 
-  OperationResult result = trx.document(collectionName, search, options);
 
-  res = trx.finish(result.result);
+  OperationResult& result = resultT.get().first;
+
+  Result res = resultT.get().second;
 
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -319,14 +322,6 @@ Result RestGraphHandler::vertexActionRead(const std::string& collectionName,
   if (!res.ok()) {
     generateTransactionError(collectionName, res, key);
     return res;
-  }
-
-  if (ifNoneRid != 0) {
-    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
-    if (ifNoneRid == rid) {
-      generateNotModified(rid);
-      return Result();
-    }
   }
 
   // use default options
