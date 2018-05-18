@@ -37,41 +37,42 @@ class Index;
 
 namespace SortedAttributeMatcher {
 
-  bool supportsFilterCondition(arangodb::Index const*,
-                                                       arangodb::aql::AstNode const* node,
-                                                       arangodb::aql::Variable const* reference, size_t itemsInIndex,
-                                                       size_t& estimatedItems, double& estimatedCost);
-  
-  bool supportsSortCondition(arangodb::Index const*,
-                                       arangodb::aql::SortCondition const* sortCondition,
-                                       arangodb::aql::Variable const* reference, size_t itemsInIndex,
-                                       double& estimatedCost, size_t& coveredAttributes);
+bool supportsFilterCondition(arangodb::Index const*,
+                             arangodb::aql::AstNode const* node,
+                             arangodb::aql::Variable const* reference,
+                             size_t itemsInIndex, size_t& estimatedItems,
+                             double& estimatedCost);
 
-  
-  /// @brief specializes the condition for use with the index
-  arangodb::aql::AstNode* specializeCondition(arangodb::Index const*,
-                                                                      arangodb::aql::AstNode* node,
-                                                                      arangodb::aql::Variable const* reference) ;
-  
-  void matchAttributes(arangodb::Index const*,
-                                          arangodb::aql::AstNode const* node,
-                                          arangodb::aql::Variable const* reference,
-                                          std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-                                          found,
-                                          size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-                       bool isExecution);
+bool supportsSortCondition(arangodb::Index const*,
+                           arangodb::aql::SortCondition const* sortCondition,
+                           arangodb::aql::Variable const* reference,
+                           size_t itemsInIndex, double& estimatedCost,
+                           size_t& coveredAttributes);
 
-  /// @brief whether or not the access fits
-  bool accessFitsIndex(arangodb::Index const* idx,
-                                               arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
-                                               arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-                                               std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-                                               found,
-                                               std::unordered_set<std::string>& nonNullAttributes,
-                       bool isExecution);
-  
-  bool isDuplicateOperator(arangodb::aql::AstNode const* node,
-                           std::unordered_set<int> const& operatorsFound);
+/// @brief specializes the condition for use with the index
+arangodb::aql::AstNode* specializeCondition(
+    arangodb::Index const*, arangodb::aql::AstNode* node,
+    arangodb::aql::Variable const* reference);
+
+void matchAttributes(
+    arangodb::Index const*, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference,
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
+        found,
+    size_t& values, std::unordered_set<std::string>& nonNullAttributes,
+    bool isExecution);
+
+/// @brief whether or not the access fits
+bool accessFitsIndex(
+    arangodb::Index const* idx, arangodb::aql::AstNode const* access,
+    arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
+    arangodb::aql::Variable const* reference,
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
+        found,
+    std::unordered_set<std::string>& nonNullAttributes, bool isExecution);
+
+bool isDuplicateOperator(arangodb::aql::AstNode const* node,
+                         std::unordered_set<int> const& operatorsFound);
 };
 }
 
