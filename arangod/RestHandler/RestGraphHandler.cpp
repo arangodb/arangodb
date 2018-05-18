@@ -82,6 +82,7 @@ RestGraphHandler::~RestGraphHandler() {}
 // Note: boost::none indicates "not (yet) implemented".
 // Error-handling for nonexistent routes is, for now, taken from the fallback.
 // TODO as soon as this implements everything, just return a RestStatus.
+// TODO get rid of RestStatus; it has no useful state.
 boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   auto suffix = request()->suffixes().begin();
   auto end = request()->suffixes().end();
@@ -99,7 +100,22 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
 
   auto ctx = transaction::StandaloneContext::Create(&_vocbase);
 
-  std::unique_ptr<const Graph> graph{lookupGraphByName(ctx, graphName)};
+  // TODO cache graph
+  std::unique_ptr<const Graph> graph;
+
+  try {
+    graph.reset(lookupGraphByName(ctx, graphName));
+  }
+  catch (arangodb::basics::Exception &exception) {
+    if (exception.code() == TRI_ERROR_GRAPH_NOT_FOUND) {
+      // reset error message
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+    }
+  };
+
+  if (graph == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+  }
 
   if (noMoreSuffixes()) {
     // /_api/gharial/{graph-name}

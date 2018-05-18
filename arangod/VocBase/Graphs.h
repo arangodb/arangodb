@@ -36,14 +36,14 @@ class Context;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get an instance of Graph by Name.
+/// @brief get an instance of Graph by name.
 ///  returns nullptr if graph is not existing
-///  The caller has to take care for the memory.
+///  The caller has to take care of the memory.
 ////////////////////////////////////////////////////////////////////////////////
 
-::arangodb::graph::Graph* lookupGraphByName(std::shared_ptr<transaction::Context>, std::string const& name);
+::arangodb::graph::Graph* lookupGraphByName(
+    std::shared_ptr<transaction::Context>, std::string const& name);
 
 }  // namespace arangodb
 
 #endif
-
