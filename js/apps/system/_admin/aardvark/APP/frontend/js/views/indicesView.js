@@ -76,7 +76,7 @@
     createIndex: function () {
       // e.preventDefault()
       var self = this;
-      var indexType = $('#newIndexType').val();
+      var indexType = arangoHelper.escapeHtml($('#newIndexType').val());
       var postParameter = {};
       var fields;
       var unique;
@@ -86,7 +86,7 @@
       switch (indexType) {
         case 'Geo':
           // HANDLE ARRAY building
-          fields = $('#newGeoFields').val();
+          fields = arangoHelper.escapeHtml($('#newGeoFields').val());
           var geoJson = self.checkboxToValue('#newGeoJson');
           postParameter = {
             type: 'geo',
@@ -95,7 +95,7 @@
           };
           break;
         case 'Persistent':
-          fields = $('#newPersistentFields').val();
+          fields = arangoHelper.escapeHtml($('#newPersistentFields').val());
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
@@ -108,7 +108,7 @@
           };
           break;
         case 'Hash':
-          fields = $('#newHashFields').val();
+          fields = arangoHelper.escapeHtml($('#newHashFields').val());
           unique = self.checkboxToValue('#newHashUnique');
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
@@ -121,8 +121,8 @@
           };
           break;
         case 'Fulltext':
-          fields = ($('#newFulltextFields').val());
-          var minLength = parseInt($('#newFulltextMinLength').val(), 10) || 0;
+          fields = arangoHelper.escapeHtml($('#newFulltextFields').val());
+          var minLength = parseInt(arangoHelper.escapeHtml($('#newFulltextMinLength').val()), 10) || 0;
           postParameter = {
             type: 'fulltext',
             fields: self.stringToArray(fields),
@@ -130,7 +130,7 @@
           };
           break;
         case 'Skiplist':
-          fields = $('#newSkiplistFields').val();
+          fields = arangoHelper.escapeHtml($('#newSkiplistFields').val());
           unique = self.checkboxToValue('#newSkiplistUnique');
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
@@ -349,13 +349,13 @@
 
           $('#collectionEditIndexTable').append(
             '<tr>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + deduplicate + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(indexId) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.type) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.unique) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(sparse) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(deduplicate) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(selectivity) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldString) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
             '</tr>'
           );
@@ -366,10 +366,10 @@
 
     selectIndexType: function () {
       $('.newIndexClass').hide();
-      var type = $('#newIndexType').val();
+      var type = arangoHelper.escapeHtml($('#newIndexType').val());
       if (type === null) {
         type = $('#newIndexType').children().first().attr('value');
-        $('#newIndexType').val(type);
+        arangoHelper.escapeHtml($('#newIndexType').val(type));
       }
       $('#newIndexType' + type).show();
     },
