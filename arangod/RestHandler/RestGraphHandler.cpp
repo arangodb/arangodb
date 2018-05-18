@@ -22,9 +22,12 @@
 
 #include <boost/optional.hpp>
 
+#include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
 #include "RestGraphHandler.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Graphs.h"
 
 #define S1(x) #x
@@ -45,7 +48,22 @@ RestStatus RestGraphHandler::execute() {
       << LOGPREFIX(__func__) << request()->requestType() << " "
       << request()->requestPath() << " " << request()->suffixes();
 
-  boost::optional<RestStatus> maybeResult = executeGharial();
+  boost::optional<RestStatus> maybeResult;
+  try {
+    maybeResult = executeGharial();
+  } catch (arangodb::basics::Exception& exception) {
+    // reset some error messages to match the tests.
+    // TODO it's possibly sane to change the tests to check for error codes
+    // only instead
+    switch (exception.code()) {
+      case TRI_ERROR_GRAPH_NOT_FOUND:
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      default:
+        throw exception;
+    }
+  };
 
   if (maybeResult) {
     LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__)
@@ -105,11 +123,15 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
 
   try {
     graph.reset(lookupGraphByName(ctx, graphName));
-  }
-  catch (arangodb::basics::Exception &exception) {
-    if (exception.code() == TRI_ERROR_GRAPH_NOT_FOUND) {
-      // reset error message
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+  } catch (arangodb::basics::Exception& exception) {
+    // reset some error messages to match the tests.
+    // TODO it's possibly sane to change the tests to check for error codes
+    // only instead
+    switch (exception.code()) {
+      case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+      default:
+        throw exception;
     }
   };
 
@@ -208,14 +230,12 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
       << "vertexKey = " << vertexKey;
 
   switch (request()->requestType()) {
-    case RequestType::DELETE_REQ:
-      break;
     case RequestType::GET:
-      break;
+      vertexActionRead(vertexCollectionName, vertexKey);
+      return RestStatus::DONE;
+    case RequestType::DELETE_REQ:
     case RequestType::PATCH:
-      break;
     case RequestType::PUT:
-      break;
     default:;
   }
   return boost::none;
@@ -229,4 +249,124 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
       << "edgeDefinitionName = " << edgeDefinitionName << ", "
       << "edgeKey = " << edgeKey;
   return boost::none;
+}
+
+Result RestGraphHandler::vertexActionRead(const std::string& collectionName,
+                                          const std::string& key) {
+  LOG_TOPIC(WARN, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << "collectionName = " << collectionName << ", "
+      << "key = " << key;
+
+  // check for an etag
+  bool isValidRevision;
+  TRI_voc_rid_t ifNoneRid = extractRevision("if-none-match", isValidRevision);
+  if (!isValidRevision) {
+    ifNoneRid =
+        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+  }
+
+  OperationOptions options;
+  options.ignoreRevs = true;
+
+  TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
+  if (!isValidRevision) {
+    ifRid =
+        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+  }
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::KeyString, VPackValue(key));
+    if (ifRid != 0) {
+      options.ignoreRevs = false;
+      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(ifRid)));
+    }
+  }
+  VPackSlice search = builder.slice();
+
+  // find and load collection given by name or identifier
+  auto ctx(transaction::StandaloneContext::Create(&_vocbase));
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  // ...........................................................................
+  // inside read transaction
+  // ...........................................................................
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    generateTransactionError(collectionName, res, "");
+    return res;
+  }
+
+  OperationResult result = trx.document(collectionName, search, options);
+
+  res = trx.finish(result.result);
+
+  if (!result.ok()) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      generateDocumentNotFound(collectionName, key);
+    } else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
+      generatePreconditionFailed(result.slice());
+    } else {
+      generateTransactionError(collectionName, res, key);
+    }
+    return result.result;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError(collectionName, res, key);
+    return res;
+  }
+
+  if (ifNoneRid != 0) {
+    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      return Result();
+    }
+  }
+
+  // use default options
+  generateVertex(result.slice(), *ctx->getVPackOptionsForDump());
+  return Result();
+}
+
+/// @brief generate response { error, code, vertex }
+void RestGraphHandler::generateVertex(VPackSlice vertex,
+                                      VPackOptions const& options) {
+  ResponseCode code = rest::ResponseCode::OK;
+  resetResponse(code);
+
+  vertex = vertex.resolveExternal();
+  std::string rev;
+  if (vertex.isObject()) {
+    rev = basics::VelocyPackHelper::getStringValue(
+        vertex, StaticStrings::RevString, "");
+  }
+
+  // set ETAG header
+  if (!rev.empty()) {
+    _response->setHeaderNC(StaticStrings::Etag, rev);
+  }
+
+  _response->setContentType(_request->contentTypeResponse());
+
+  try {
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder tmp(buffer);
+    tmp.add(VPackValue(VPackValueType::Object, true));
+    tmp.add(StaticStrings::Error, VPackValue(false));
+    tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    tmp.add("vertex", vertex);
+    tmp.close();
+
+    writeResult(std::move(buffer), options);
+  } catch (...) {
+    // Building the error response failed
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "cannot generate output");
+  }
 }

@@ -83,6 +83,13 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   boost::optional<RestStatus> edgeAction(
       std::unique_ptr<const graph::Graph> graph,
       const std::string& edgeDefinitionName, const std::string& edgeKey);
+
+  // GET /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
+  Result vertexActionRead(
+    const std::string &collectionName, const std::string &key
+  );
+
+  void generateVertex(VPackSlice vertex, VPackOptions const &options);
 };
 
 }  // namespace arangodb
