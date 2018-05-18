@@ -26,6 +26,7 @@
 #include <boost/optional.hpp>
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 
@@ -57,7 +58,13 @@ namespace arangodb {
 template <typename T>
 class ResultT : public arangodb::Result {
  public:
-  ResultT static success(T val) { return ResultT(val, TRI_ERROR_NO_ERROR); }
+  ResultT static success(T const& val) {
+    return ResultT({val}, TRI_ERROR_NO_ERROR);
+  }
+
+  ResultT static success(T&& val) {
+    return ResultT({std::forward<T>(val)}, TRI_ERROR_NO_ERROR);
+  }
 
   ResultT static error(int errorNumber) {
     return ResultT(boost::none, errorNumber);
@@ -87,7 +94,7 @@ class ResultT : public arangodb::Result {
   }
 
   ResultT& operator=(T&& val_) {
-    _val = std::move(val_);
+    _val = std::forward<T>(val_);
     return *this;
   }
 
@@ -139,11 +146,12 @@ class ResultT : public arangodb::Result {
   boost::optional<T> _val;
 
   ResultT(boost::optional<T>&& val_, int errorNumber)
-      : Result(errorNumber), _val(val_) {}
+      : Result(errorNumber), _val(std::forward<boost::optional<T>>(val_)) {}
 
   ResultT(boost::optional<T>&& val_, int errorNumber,
           std::string const& errorMessage)
-      : Result(errorNumber, errorMessage), _val(val_) {}
+      : Result(errorNumber, errorMessage),
+        _val(std::forward<boost::optional<T>>(val_)) {}
 };
 
 }  // namespace arangodb
