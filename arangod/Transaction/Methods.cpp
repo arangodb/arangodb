@@ -2932,9 +2932,9 @@ transaction::Methods::indexesForCollectionCoordinator(
   std::shared_ptr<LogicalCollection> collection = clusterInfo->getCollection(databaseName(), name);
   std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
 
-  collection->clusterIndexEstimates(); // update estiamtes in logical collection
+  collection->clusterIndexEstimates(); // update estimates in logical collection
   // push updated values into indexes
-  for(auto i : indexes){
+  for (auto i : indexes) {
     i->updateClusterEstimate();
   }
 

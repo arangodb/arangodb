@@ -624,16 +624,16 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
-std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate) {
   READ_LOCKER(readlock, _clusterEstimatesLock);
   if (doNotUpdate) {
     return _clusterEstimates;
   }
 
-  double ctime = TRI_microtime(); // in seconds
-  auto needEstimateUpdate = [this,ctime](){
-    if(_clusterEstimates.empty()) {
-      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not availabe";
+  double const ctime = TRI_microtime(); // in seconds
+  auto needEstimateUpdate = [this,ctime]() {
+    if (_clusterEstimates.empty()) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not available";
       return true;
     } else if (ctime - _clusterEstimateTTL > 60.0) {
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
@@ -642,10 +642,10 @@ std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates
     return false;
   };
 
-  if (needEstimateUpdate()){
+  if (needEstimateUpdate()) {
     readlock.unlock();
     WRITE_LOCKER(writelock, _clusterEstimatesLock);
-    if(needEstimateUpdate()){
+    if (needEstimateUpdate()) {
       selectivityEstimatesOnCoordinator(_vocbase->name(), name(), _clusterEstimates);
       _clusterEstimateTTL = TRI_microtime();
     }
@@ -654,7 +654,7 @@ std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates
   return _clusterEstimates;
 }
 
-void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates){
+void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
   WRITE_LOCKER(lock, _clusterEstimatesLock);
   _clusterEstimates = std::move(estimates);
 }
