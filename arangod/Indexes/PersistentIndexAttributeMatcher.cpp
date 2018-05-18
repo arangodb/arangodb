@@ -20,7 +20,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SortedIndexAttributeMatcher.h"
+#include "PersistentIndexAttributeMatcher.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -33,7 +33,7 @@
 
 using namespace arangodb;
 
-bool SortedIndexAttributeMatcher::accessFitsIndex(
+bool PersistentIndexAttributeMatcher::accessFitsIndex(
     arangodb::Index const* idx, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
     arangodb::aql::Variable const* reference,
@@ -139,7 +139,7 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
   return false;
 }
 
-void SortedIndexAttributeMatcher::matchAttributes(
+void PersistentIndexAttributeMatcher::matchAttributes(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
@@ -182,7 +182,7 @@ void SortedIndexAttributeMatcher::matchAttributes(
   }
 }
 
-bool SortedIndexAttributeMatcher::supportsFilterCondition(
+bool PersistentIndexAttributeMatcher::supportsFilterCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
@@ -316,7 +316,7 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
   return false;
 }
 
-bool SortedIndexAttributeMatcher::supportsSortCondition(
+bool PersistentIndexAttributeMatcher::supportsSortCondition(
     arangodb::Index const* idx,
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -365,7 +365,7 @@ bool SortedIndexAttributeMatcher::supportsSortCondition(
 }
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
+arangodb::aql::AstNode* PersistentIndexAttributeMatcher::specializeCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
   // mmfiles failure compat
@@ -442,7 +442,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   return node;
 }
 
-bool SortedIndexAttributeMatcher::isDuplicateOperator(
+bool PersistentIndexAttributeMatcher::isDuplicateOperator(
     arangodb::aql::AstNode const* node,
     std::unordered_set<int> const& operatorsFound) {
   auto type = node->type;

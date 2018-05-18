@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
-#include "Indexes/SortedIndexAttributeMatcher.h"
+#include "Indexes/PersistentIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -917,22 +917,22 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return SortedIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
-                                                              estimatedItems, estimatedCost);
+  return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+                                                                  estimatedItems, estimatedCost);
 }
 
 bool RocksDBVPackIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) const {
-  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                            itemsInIndex, estimatedCost, coveredAttributes);
+  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                                itemsInIndex, estimatedCost, coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(arangodb::aql::AstNode* node,
                                                                arangodb::aql::Variable const* reference) const {
-  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
@@ -968,8 +968,8 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
     
-    SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
-                                                 nonNullAttributes, true);
+    PersistentIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
+                                                     nonNullAttributes, true);
     
     //matchAttributes(node, reference, found, unused, nonNullAttributes, true);
 

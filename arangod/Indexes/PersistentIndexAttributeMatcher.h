@@ -35,7 +35,10 @@ struct Variable;
 
 class Index;
 
-namespace SortedIndexAttributeMatcher {
+/// Contains code for persistent sorted indexes such as the RocksDBVPackIndex
+/// and the MMFilesPersistentIndex. Weights used are mostly intended for
+/// rocksdb based storage
+namespace PersistentIndexAttributeMatcher {
 
 bool supportsFilterCondition(arangodb::Index const*,
                              arangodb::aql::AstNode const* node,

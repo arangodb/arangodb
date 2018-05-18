@@ -30,7 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
-#include "Indexes/SortedIndexAttributeMatcher.h"
+#include "Indexes/PersistentIndexAttributeMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
@@ -682,22 +682,22 @@ bool MMFilesPersistentIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return SortedIndexAttributeMatcher::supportsFilterCondition(this, node, reference,
-                                                      itemsInIndex, estimatedItems, estimatedCost);
+  return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference,
+                                                                  itemsInIndex, estimatedItems, estimatedCost);
 }
 
 bool MMFilesPersistentIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) const {
-  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex,
-                                                            estimatedCost, coveredAttributes);
+  return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex,
+                                                                estimatedCost, coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* MMFilesPersistentIndex::specializeCondition(arangodb::aql::AstNode* node,
                                                                     arangodb::aql::Variable const* reference) const {
-  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
+  return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
@@ -724,8 +724,8 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
         found;
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
-    SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
-                                                 nonNullAttributes, true);
+    PersistentIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
+                                                     nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().

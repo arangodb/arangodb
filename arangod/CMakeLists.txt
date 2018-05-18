@@ -340,8 +340,9 @@ SET(ARANGOD_SOURCES
   Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
   Indexes/IndexLookupContext.cpp
+  Indexes/PersistentIndexAttributeMatcher
   Indexes/SimpleAttributeEqualityMatcher.cpp
-  Indexes/SortedIndexAttributeMatcher.cpp
+  Indexes/SkiplistIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
