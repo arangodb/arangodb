@@ -189,14 +189,15 @@ class RocksDBVPackIndex : public RocksDBIndex {
                              arangodb::aql::Variable const*, size_t, double&,
                              size_t&) const override;
 
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
+  
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
   rocksdb::SequenceNumber serializeEstimate(
       std::string& output, rocksdb::SequenceNumber seq) const override;
@@ -223,7 +224,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
- private:
+ /*private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
                            std::unordered_set<int> const&) const;
 
@@ -237,7 +238,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
       arangodb::aql::AstNode const*, arangodb::aql::Variable const*,
       std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&,
       size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-      bool) const;
+      bool) const;*/
 
  private:
   /// @brief return the number of paths

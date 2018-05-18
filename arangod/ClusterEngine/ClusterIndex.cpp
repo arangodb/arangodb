@@ -221,6 +221,12 @@ bool ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sor
       break;
   }
   return false;
-  
-
 }
+
+/// @brief specializes the condition for use with the index
+aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
+                                                aql::Variable const* reference) const {
+  SimpleAttributeEqualityMatcher matcher(_fields);
+  return matcher.specializeAll(this, node, reference);
+}
+

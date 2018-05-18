@@ -465,11 +465,11 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 
   TRI_ASSERT(_tmpObjVarNode != nullptr);
   nodes.add(VPackValue("tmpObjVarNode"));
-  _tmpObjVarNode->toVelocyPack(nodes, flags);
+  _tmpObjVarNode->toVelocyPack(nodes, flags != 0);
 
   TRI_ASSERT(_tmpIdNode != nullptr);
   nodes.add(VPackValue("tmpIdNode"));
-  _tmpIdNode->toVelocyPack(nodes, flags);
+  _tmpIdNode->toVelocyPack(nodes, flags != 0);
 
   nodes.add(VPackValue("options"));
   _options->toVelocyPack(nodes);

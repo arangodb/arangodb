@@ -340,11 +340,11 @@ class ExecutionNode {
   bool walk(WalkerWorker<ExecutionNode>& worker);
   
   /// serialize parents of each node (used in the explainer)
-  static constexpr unsigned SERIALIZE_PARENTS    = 1<<0;
+  static constexpr unsigned SERIALIZE_PARENTS    = 1;
   /// include estimate cost  (used in the explainer)
-  static constexpr unsigned SERIALIZE_ESTIMATES  = 1<<1;
+  static constexpr unsigned SERIALIZE_ESTIMATES  = 1 << 1;
   /// Print all ExecutionNode information required in cluster snippets
-  static constexpr unsigned SERIALIZE_DETAILS    = 1<<2;
+  static constexpr unsigned SERIALIZE_DETAILS    = 1 << 2;
 
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags,

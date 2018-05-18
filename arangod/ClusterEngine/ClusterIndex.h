@@ -96,6 +96,10 @@ class ClusterIndex : public Index {
   bool supportsSortCondition(arangodb::aql::SortCondition const*,
                              arangodb::aql::Variable const*, size_t,
                              double&, size_t&) const override;
+  
+  /// @brief specializes the condition for use with the index
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                              arangodb::aql::Variable const*) const override;
 
   /// @brief provides a size hint for the index
   int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {

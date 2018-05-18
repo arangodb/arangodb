@@ -103,8 +103,7 @@ class Index {
   inline TRI_idx_iid_t id() const { return _iid; }
 
   /// @brief return the index fields
-  inline std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  fields() const {
+  inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
     return _fields;
   }
 
@@ -156,14 +155,7 @@ class Index {
 
   /// @brief whether or not any attribute is expanded
   inline bool hasExpansion() const {
-    for (auto const& it : _fields) {
-      for (auto const& it2 : it) {
-        if (it2.shouldExpand) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return _useExpansion;
   }
 
   /// @brief return the underlying collection
@@ -302,6 +294,9 @@ class Index {
   virtual bool supportsSortCondition(arangodb::aql::SortCondition const*,
                                      arangodb::aql::Variable const*, size_t,
                                      double&, size_t&) const;
+  
+  virtual arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                                      arangodb::aql::Variable const*) const;
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods*,
                                               ManagedDocumentResult*,
@@ -310,9 +305,6 @@ class Index {
                                               IndexIteratorOptions const&) {
     return nullptr; // IResearch will never use this
   };
-
-  virtual arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,
@@ -334,24 +326,17 @@ class Index {
   // unfortunatly access the logical collection on the coordinator is not always safe!
   std::pair<bool,double> updateClusterEstimate(double defaultValue = 0.1);
 
- protected:
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
   //returns estimate for index in cluster - the bool is true if the index was found
 
- private:
-  /// @brief set fields from slice
-  void setFields(velocypack::Slice const& slice, bool allowExpansion);
-
  protected:
   TRI_idx_iid_t const _iid;
-
   LogicalCollection* _collection;
-
-  std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
+  bool const _useExpansion;
 
   mutable bool _unique;
-
   mutable bool _sparse;
 
   double _clusterSelectivity;
