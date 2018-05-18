@@ -299,8 +299,6 @@ class RemoteBlock : public ExecutionBlock {
               std::string const& server, std::string const& ownName,
               std::string const& queryId);
 
-  ~RemoteBlock();
-
   /// @brief timeout
   static double const defaultTimeOut;
 
@@ -343,6 +341,10 @@ class RemoteBlock : public ExecutionBlock {
 
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
+  
+  /// @brief whether or not this block has buffered a call to /_api/aql/initialize
+  /// that it will send with its follow-up request
+  bool _mustInitialize;
 
   /// @brief whether or not this block will forward initialize, 
   /// initializeCursor or shutDown requests
