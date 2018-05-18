@@ -397,8 +397,9 @@ void RocksDBCollection::prepareIndexes(
         << "got invalid indexes for collection '" << _logicalCollection->name()
         << "'";
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it->context();
     }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("got invalid indexes for collection '") + _logicalCollection->name() + "'");
   }
 #endif
 }
