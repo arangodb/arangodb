@@ -685,9 +685,6 @@ EngineInfoContainerDBServer::createDBServerMapping(
           continue;
         }
 
-        // we have to add view into a context of remote query on a db server
-        mapping.addShardLock(AccessMode::Type::READ, view->name());
-
         for (auto const& viewEngine : viewInfo->second) {
           mapping.addEngine(viewEngine, s);
         }

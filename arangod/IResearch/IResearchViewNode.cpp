@@ -381,8 +381,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // coordinator in a cluster: empty view case
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto& view = LogicalView::cast<IResearchViewCoordinator>(this->view());
-    TRI_ASSERT(view.visitCollections([](TRI_voc_cid_t){ return false; }));
+    TRI_ASSERT(this->empty());
 #endif
 
     return std::make_unique<aql::NoResultsBlock>(&engine, this);
@@ -405,7 +404,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   if (ServerState::instance()->isDBServer()) {
     // FIXME pass list of the shards involved
-    reader = LogicalView::cast<IResearchViewDBServer>(this->view()).snapshot(state);
+    // FIXME cache snapshot in transaction state when transaction starts
+    reader = LogicalView::cast<IResearchViewDBServer>(this->view()).snapshot(state, true);
   } else {
     reader = LogicalView::cast<IResearchView>(this->view()).snapshot(state);
   }

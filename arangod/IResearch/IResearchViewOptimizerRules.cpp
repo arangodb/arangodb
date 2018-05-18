@@ -99,12 +99,6 @@ bool addView(
     return false;
   }
 
-  // view itself
-  collections->add(
-    arangodb::basics::StringUtils::itoa(view.id()),
-    arangodb::AccessMode::Type::READ
-  );
-
   // linked collections
   auto visitor = [collections](TRI_voc_cid_t cid) {
     collections->add(
@@ -205,7 +199,12 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
 
       // add view and linked collections to the query
       TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
-      addView(node->view(), *_plan->getAst()->query());
+      if (!addView(node->view(), *_plan->getAst()->query())) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          "failed to process all collections linked with the view '" + node->view().name() + "'"
+        );
+      }
 
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
