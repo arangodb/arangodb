@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertUndefined, fail */
+/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertFalse, assertNull, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -236,6 +236,34 @@ function CollectionSuiteErrorHandling () {
 
 function CollectionSuite () {
   return {
+
+    testCreateWithInvalidIndexes1 : function () {
+      let cn = "example";
+
+      db._drop(cn);
+      try {
+        db._create(cn, { indexes: [{ id: "1", type: "edge", fields: ["_from"] }] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+
+      assertNull(db._collection(cn));
+    },
+    
+    testCreateWithInvalidIndexes2 : function () {
+      let cn = "example";
+
+      db._drop(cn);
+      try {
+        db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+
+      assertNull(db._collection(cn));
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create with id
