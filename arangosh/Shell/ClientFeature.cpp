@@ -129,6 +129,11 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_sslProtocol == 1) {
+    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "SSLv2 is not supported any longer because of security vulnerabilities in this protocol";
+    FATAL_ERROR_EXIT();
+  }
+
   // if a username is specified explicitly, assume authentication is desired
   if (options->processingResult().touched("server.username")) {
     _authentication = true;

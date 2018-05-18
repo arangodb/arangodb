@@ -65,16 +65,31 @@ arangodb::Result createLink(
 ) {
   TRI_ASSERT(builder.isEmpty());
 
+  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+      irs::string_ref const& key
+  )->bool {
+    // ignored fields
+    return key != arangodb::StaticStrings::IndexType
+      && key != StaticStrings::ViewIdField;
+  };
+
   builder.openObject();
-  if (!mergeSlice(builder, link)
-      || !IResearchLinkHelper::setType(builder)
-      || !IResearchLinkHelper::setView(builder, view.id())) {
+  builder.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(IResearchLinkHelper::type())
+  );
+  builder.add(
+    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.id())
+  );
+
+  if (!mergeSliceSkipKeys(builder, link, acceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failed to update link definition with the view name while updating IResearch view '")
       + std::to_string(view.id()) + "' collection '" + collection.name() + "'"
     );
   }
+
   builder.close();
 
   VPackBuilder tmp;
@@ -239,6 +254,44 @@ using namespace basics;
 
 namespace iresearch {
 
+arangodb::Result IResearchViewCoordinator::appendVelocyPack(
+  arangodb::velocypack::Builder& builder,
+  bool detailed,
+  bool //forPersistence
+) const {
+  if (!builder.isOpenObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid builder provided for IResearchViewCoordinator definition")
+    );
+  }
+
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(type().name())
+  );
+
+  if (!detailed) {
+    return arangodb::Result();
+  }
+
+  builder.add(
+    StaticStrings::PropertiesField,
+    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+  );
+  _meta.json(builder); // regular properites
+
+  auto links = _links.slice();
+
+  if (links.isObject() && links.length()) {
+    builder.add(StaticStrings::LinksField, links);
+  }
+
+  builder.close(); // close PROPERTIES_FIELD
+
+  return arangodb::Result();
+}
+
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& info,
@@ -328,42 +381,6 @@ bool IResearchViewCoordinator::visitCollections(
   }
 
   return true;
-}
-
-void IResearchViewCoordinator::toVelocyPack(
-    velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-) const {
-  // We write into an open object
-  TRI_ASSERT(result.isOpenObject());
-
-  // Meta Information
-  result.add("id", VPackValue(StringUtils::itoa(id())));
-  result.add("name", VPackValue(name()));
-  result.add("type", VPackValue(type().name()));
-
-  if (includeSystem) {
-    result.add("deleted", VPackValue(deleted()));
-    result.add("planId", VPackValue(std::to_string(planId())));
-  }
-
-  if (includeProperties) {
-    VPackObjectBuilder guard(&result, StaticStrings::PropertiesField);
-
-    // regular properites
-    _meta.json(result);
-
-    // view links
-    auto const links = _links.slice();
-
-    if (links.isObject() && links.length()) {
-      VPackObjectBuilder guard(&result, StaticStrings::LinksField);
-      mergeSlice(result, links);
-    }
-  }
-
-  TRI_ASSERT(result.isOpenObject()); // We leave the object open
 }
 
 arangodb::Result IResearchViewCoordinator::updateProperties(

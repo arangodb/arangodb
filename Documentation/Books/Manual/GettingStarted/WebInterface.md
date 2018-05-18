@@ -3,7 +3,7 @@ Web Interface
 
 The server itself (_arangod_) speaks HTTP / REST, but you can use the
 graphical web interface to keep it simple. There is also
-[arangosh](../Administration/Arangosh/README.md), a synchronous shell
+[arangosh](../Programs/Arangosh/README.md), a synchronous shell
 for interaction with the server. If you are a developer, you might
 prefer the shell over the GUI. It does not provide features like
 syntax highlighting however.
@@ -26,16 +26,16 @@ Depending on the installation method used, the installation process either
 prompted for the root password or the default root password is empty
 (see [Securing the installation](Installation.md#securing-the-installation)).
 
-![Aardvark Login Form](../Administration/WebInterface/images/loginView.png)
+![Aardvark Login Form](../Programs/WebInterface/images/loginView.png)
 
 Next you will be asked which database to use. Every server instance comes with
 a `_system` database. Select this database to continue.
 
-![select database](../Administration/WebInterface/images/selectDBView.png)
+![select database](../Programs/WebInterface/images/selectDBView.png)
 
 You should then be presented the dashboard with server statistics like this:
 
-![Aardvark Dashboard Request Statistics](../Administration/WebInterface/images/dashboardView.png)
+![Aardvark Dashboard Request Statistics](../Programs/WebInterface/images/dashboardView.png)
 
-For a more detailed description of the interface, see [Web Interface](../Administration/WebInterface/README.md).
+For a more detailed description of the interface, see [Web Interface](../Programs/WebInterface/README.md).
 

@@ -27,7 +27,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/WorkMonitor.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -489,18 +488,6 @@ void Scheduler::shutdown() {
     // bit longer
     std::this_thread::sleep_for(std::chrono::microseconds(20000)); 
   }
-
-  // remove all queued work descriptions in the work monitor first
-  // before freeing the io service a few lines later
-  // this is required because the work descriptions may have captured
-  // HttpCommTasks etc. which have references to the io service and
-  // access it in their destructors
-  // so the proper shutdown order is:
-  // - stop accepting further requests (already done by GeneralServerFeature::stop)
-  // - cancel all running scheduler tasks
-  // - free all work descriptions in work monitor
-  // - delete io service
-  WorkMonitor::clearWorkDescriptions();
 
   _managerService.reset();
   _ioContext.reset();

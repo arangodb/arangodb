@@ -232,10 +232,8 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
     // we do have a LocalDocumentId stored at the end of the marker
     uint8_t const* ptr = vpack + slice.byteSize();
     localDocumentId = LocalDocumentId(encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
-    //LOG_TOPIC(ERR, Logger::FIXME) << "OPEN: FOUND LOCALDOCUMENTID: " << localDocumentId.id();
   } else {
     localDocumentId = LocalDocumentId::create();
-    //LOG_TOPIC(ERR, Logger::FIXME) << "OPEN: FOUND NO LOCALDOCUMENTID: " << localDocumentId.id();
   }
 
   VPackSlice keySlice;
@@ -1777,8 +1775,11 @@ void MMFilesCollection::open(bool ignoreErrors) {
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), cid,
-      AccessMode::Type::READ);
+    arangodb::transaction::StandaloneContext::Create(vocbase),
+    cid,
+    AccessMode::Type::READ
+  );
+
   // the underlying collections must not be locked here because the "load"
   // routine can be invoked from any other place, e.g. from an AQL query
   trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
@@ -2026,9 +2027,11 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   bool foundEdge = false;
 
   for (auto const& it : VPackArrayIterator(indexesSlice)) {
-    auto const& s = it.get("type");
+    auto const& s = it.get(arangodb::StaticStrings::IndexType);
+
     if (s.isString()) {
       std::string const type = s.copyString();
+
       if (type == "primary") {
         foundPrimary = true;
       } else if (type == "edge") {
@@ -2036,6 +2039,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
       }
     }
   }
+
   for (auto const& idx : _indexes) {
     if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
       foundPrimary = true;
@@ -2136,7 +2140,7 @@ std::shared_ptr<Index> MMFilesCollection::lookupIndex(
   TRI_ASSERT(info.isObject());
 
   // extract type
-  VPackSlice value = info.get("type");
+  auto value = info.get(arangodb::StaticStrings::IndexType);
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
@@ -3286,7 +3290,6 @@ Result MMFilesCollection::update(
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
     ManagedDocumentResult& previous, VPackSlice const key) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
-  //LOG_TOPIC(ERR, Logger::FIXME) << "UPDATE. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
 
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
@@ -3426,7 +3429,6 @@ Result MMFilesCollection::replace(
     ManagedDocumentResult& previous,
     VPackSlice const fromSlice, VPackSlice const toSlice) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
-  //LOG_TOPIC(ERR, Logger::FIXME) << "REPLACE. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
 
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);

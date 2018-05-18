@@ -30,7 +30,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/WorkMonitor.h"
 #include "Logger/Logger.h"
 #include "Logger/LogAppender.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -58,7 +57,6 @@ SchedulerFeature::SchedulerFeature(
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("Random");
-  startsAfter("WorkMonitor");
 }
 
 SchedulerFeature::~SchedulerFeature() {}
@@ -168,9 +166,6 @@ void SchedulerFeature::stop() {
     _hangupSignals.reset();
   }
 #endif
-
-  // clear the handlers stuck in the WorkMonitor
-  WorkMonitor::clearHandlers();
 
   // shut-down scheduler
   _scheduler->beginShutdown();

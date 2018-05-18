@@ -722,15 +722,20 @@ bool ImportHelper::checkCreateCollection() {
   }
 
   std::string const url("/_api/collection");
-
   VPackBuilder builder;
+
   builder.openObject();
-  builder.add("name", VPackValue(_collectionName));
-  builder.add("type", VPackValue(_createCollectionType == "edge" ? 3 : 2));
+  builder.add(
+    arangodb::StaticStrings::DataSourceName,
+    arangodb::velocypack::Value(_collectionName)
+  );
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    arangodb::velocypack::Value(_createCollectionType == "edge" ? 3 : 2)
+  );
   builder.close();
 
   std::string data = builder.slice().toJson();
-
   std::unique_ptr<SimpleHttpResult> result(_httpClient->request(
       rest::RequestType::POST, url, data.c_str(), data.size()));
 

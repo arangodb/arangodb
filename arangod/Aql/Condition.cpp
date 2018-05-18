@@ -1148,7 +1148,7 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
           plan->getVarSetBy(static_cast<Variable const*>(node->getData())->id);
       if (setter != nullptr &&
           setter->getType() == ExecutionNode::CALCULATION) {
-        auto cn = static_cast<CalculationNode const*>(setter);
+        auto cn = ExecutionNode::castTo<CalculationNode const*>(setter);
         // use expression node instead
         node = cn->expression()->node();
       }

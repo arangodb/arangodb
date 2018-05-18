@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -81,8 +82,14 @@ void MMFilesPathBasedIndex::toVelocyPack(VPackBuilder& builder,
                                          bool forPersistence) const {
   builder.openObject();
   Index::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(_unique));
-  builder.add("sparse", VPackValue(_sparse));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(_unique)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(_sparse)
+  );
   builder.add("deduplicate", VPackValue(_deduplicate));
   builder.close();
 }

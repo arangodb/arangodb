@@ -310,16 +310,20 @@ void RocksDBCollection::prepareIndexes(
 
     bool alreadyHandled = false;
     // check for combined edge index from MMFiles; must split!
-    auto value = v.get("type");
+    auto value = v.get(arangodb::StaticStrings::IndexType);
+
     if (value.isString()) {
       std::string tmp = value.copyString();
       arangodb::Index::IndexType const type =
           arangodb::Index::type(tmp.c_str());
+
       if (type == Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX) {
-        VPackSlice fields = v.get("fields");
+        auto fields = v.get(arangodb::StaticStrings::IndexFields);
+
         if (fields.isArray() && fields.length() == 2) {
           VPackBuilder from;
           from.openObject();
+
           for (auto const& f : VPackObjectIterator(v)) {
             if (arangodb::StringRef(f.key) == "fields") {
               from.add(VPackValue("fields"));
@@ -331,6 +335,7 @@ void RocksDBCollection::prepareIndexes(
               from.add(f.value);
             }
           }
+
           from.close();
 
           VPackBuilder to;
@@ -437,8 +442,7 @@ static std::shared_ptr<Index> findIndex(
     std::vector<std::shared_ptr<Index>> const& indexes) {
   TRI_ASSERT(info.isObject());
 
-  // extract type
-  VPackSlice value = info.get("type");
+  auto value = info.get(arangodb::StaticStrings::IndexType); // extract type
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
@@ -1089,7 +1093,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   }
 
   // get the previous revision
-  Result res = lookupDocument(trx, key, previous).errorNumber();
+  Result res = lookupDocument(trx, key, previous);
 
   if (res.fail()) {
     return res;
@@ -1837,7 +1841,7 @@ int RocksDBCollection::unlockRead() {
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
   auto ctx =
-    transaction::StandaloneContext::Create(&(_logicalCollection->vocbase()));
+    transaction::StandaloneContext::Create(_logicalCollection->vocbase());
   SingleCollectionTransaction trx(
     ctx, _logicalCollection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -1972,7 +1976,7 @@ void RocksDBCollection::recalculateIndexEstimates(
 
   // start transaction to get a collection lock
   auto ctx =
-    transaction::StandaloneContext::Create(&(_logicalCollection->vocbase()));
+    transaction::StandaloneContext::Create(_logicalCollection->vocbase());
   arangodb::SingleCollectionTransaction trx(
     ctx, _logicalCollection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -1984,9 +1988,11 @@ void RocksDBCollection::recalculateIndexEstimates(
 
   for (auto const& it : indexes) {
     auto idx = static_cast<RocksDBIndex*>(it.get());
+
     TRI_ASSERT(idx != nullptr);
     idx->recalculateEstimates();
   }
+
   trx.commit();
 }
 

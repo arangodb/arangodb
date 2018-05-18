@@ -126,8 +126,7 @@ struct TRI_vocbase_t {
   enum class State {
     NORMAL = 0,
     SHUTDOWN_COMPACTOR = 1,
-    SHUTDOWN_CLEANUP = 2,
-    FAILED_VERSION = 3
+    SHUTDOWN_CLEANUP = 2
   };
 
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
@@ -317,12 +316,12 @@ struct TRI_vocbase_t {
   /// @brief looks up a view by identifier
   std::shared_ptr<arangodb::LogicalView> lookupView(
     TRI_voc_cid_t id
-  ) const noexcept;
+  ) const;
 
   /// @brief looks up a view by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalView> lookupView(
     std::string const& nameOrId
-  ) const noexcept;
+  ) const;
 
   /// @brief renames a collection
   int renameCollection(

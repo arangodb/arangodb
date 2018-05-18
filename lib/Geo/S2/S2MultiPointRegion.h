@@ -53,7 +53,7 @@ class S2MultiPointRegion final : public S2Region {
  private:
   
   // private constructor for clone
-  S2MultiPointRegion(S2MultiPointRegion const*);
+  explicit S2MultiPointRegion(S2MultiPointRegion const*);
   
   int num_points_;
   S2Point* points_;

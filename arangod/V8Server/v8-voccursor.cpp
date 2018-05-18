@@ -40,12 +40,7 @@ using namespace arangodb::basics;
 static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("CREATE_CURSOR(<data>, <batchSize>, <ttl>)");
@@ -83,10 +78,9 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ttl = 30.0;  // default ttl
   }
 
-  // create a cursor
-  CursorRepository* cursors = vocbase->cursorRepository();
-
+  auto* cursors = vocbase.cursorRepository(); // create a cursor
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
+
   result.result = builder;
   result.cached = false;
   result.context = transaction::V8Context::Create(vocbase, false);
@@ -117,12 +111,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("JSON_CURSOR(<id>)");
@@ -133,7 +122,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
       arangodb::basics::StringUtils::uint64(id));
 
   // find the cursor
-  auto cursors = vocbase->cursorRepository();
+  auto cursors = vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   bool busy;
@@ -147,7 +136,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CURSOR_NOT_FOUND);
   }
-  
+
   auto cth = cursor->context()->orderCustomTypeHandler();
   VPackOptions opts = VPackOptions::Defaults;
   opts.customTypeHandler = cth.get();
@@ -159,7 +148,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MEMORY(); // for compatibility
   }
   builder.close();
-  
+
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

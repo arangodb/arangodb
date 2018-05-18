@@ -50,8 +50,10 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 }
 
 /// @brief transaction type
-MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase,
-                                                 transaction::Options const& options)
+MMFilesTransactionState::MMFilesTransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+)
     : TransactionState(vocbase, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
@@ -269,26 +271,29 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     bool const waitForTick = false;
 
     // we should wake up the synchronizer in case this is a single operation
-    //
     bool const wakeUpSynchronizer = isSingleOperationTransaction;
 
-    MMFilesWalSlotInfoCopy slotInfo =
-        MMFilesLogfileManager::instance()->allocateAndWrite(
-            _vocbase->id(),
-            collection->id(),
-            marker, wakeUpSynchronizer,
-            localWaitForSync, waitForTick);
+    auto slotInfo = MMFilesLogfileManager::instance()->allocateAndWrite(
+      _vocbase.id(),
+      collection->id(),
+      marker,
+      wakeUpSynchronizer,
+      localWaitForSync,
+      waitForTick
+    );
 
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
       return slotInfo.errorCode;
     }
+
     if (localWaitForSync) {
       // also sync RocksDB WAL
       if (collection->getPhysical()->hasIndexOfType(arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX)) {
         MMFilesPersistentIndexFeature::syncWal();
       }
     }
+
     operation.setTick(slotInfo.tick);
     fid = slotInfo.logfileId;
     position = slotInfo.mem;
@@ -324,10 +329,12 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
         // TODO: what to do here?
       }
     }
+
     operation.handled();
 
     arangodb::aql::QueryCache::instance()->invalidate(
-        _vocbase, collection->name());
+      &_vocbase, collection->name()
+    );
 
     physical->increaseUncollectedLogfileEntries(1);
   } else {
@@ -353,7 +360,8 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     _hasOperations = true;
 
     arangodb::aql::QueryCache::instance()->invalidate(
-        _vocbase, collection->name());
+      &_vocbase, collection->name()
+    );
   }
 
   physical->setRevision(revisionId, false);
@@ -391,9 +399,12 @@ int MMFilesTransactionState::writeBeginMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, _vocbase->id(), _id);
+    MMFilesTransactionMarker marker(
+      TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, _vocbase.id(), _id
+    );
+
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    
+
     TRI_IF_FAILURE("TransactionWriteBeginMarkerThrow") { 
       throw std::bad_alloc();
     }
@@ -434,13 +445,16 @@ int MMFilesTransactionState::writeAbortMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, _vocbase->id(), _id);
+    MMFilesTransactionMarker marker(
+      TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, _vocbase.id(), _id
+    );
+
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
-    
+
     TRI_IF_FAILURE("TransactionWriteAbortMarkerThrow") { 
       throw std::bad_alloc();
     }
-  
+
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -471,9 +485,12 @@ int MMFilesTransactionState::writeCommitMarker() {
   int res;
 
   try {
-    MMFilesTransactionMarker marker(TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, _vocbase->id(), _id);
+    MMFilesTransactionMarker marker(
+      TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, _vocbase.id(), _id
+    );
+
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, _options.waitForSync).errorCode;
-    
+
     TRI_IF_FAILURE("TransactionWriteCommitMarkerSegfault") { 
       TRI_SegfaultDebugging("crashing on commit");
     }
@@ -483,8 +500,10 @@ int MMFilesTransactionState::writeCommitMarker() {
     if (_options.waitForSync) {
       // also sync RocksDB WAL if required
       bool hasPersistentIndex = false;
+
       allCollections([&hasPersistentIndex](TransactionCollection* collection) {
         auto c = static_cast<MMFilesTransactionCollection*>(collection);
+
         if (c->canAccess(AccessMode::Type::WRITE) && 
             c->collection()->getPhysical()->hasIndexOfType(arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX)) {
           hasPersistentIndex = true;

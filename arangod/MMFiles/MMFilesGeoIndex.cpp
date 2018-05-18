@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoUtils.h"
@@ -233,9 +234,15 @@ void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
-  builder.add("unique", VPackValue(false));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(false)
+  );
   // geo indexes are always sparse.
-  builder.add("sparse", VPackValue(true));
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(true)
+  );
   builder.close();
 }
 
@@ -244,12 +251,13 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
@@ -261,16 +269,22 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
     return idRef == std::to_string(_iid);
   }
 
-  if (_unique !=
-      basics::VelocyPackHelper::getBooleanValue(info, "unique", false)) {
-    return false;
-  }
-  if (_sparse !=
-      basics::VelocyPackHelper::getBooleanValue(info, "sparse", true)) {
+  if (_unique != basics::VelocyPackHelper::getBooleanValue(
+                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                 )
+     ) {
     return false;
   }
 
-  value = info.get("fields");
+  if (_sparse != basics::VelocyPackHelper::getBooleanValue(
+                   info, arangodb::StaticStrings::IndexSparse.c_str(), true
+                 )
+     ) {
+    return false;
+  }
+
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }

@@ -64,7 +64,7 @@ namespace {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
 struct NodeCounter final : public WalkerWorker<ExecutionNode> {
-  std::array<uint32_t, ExecutionNode::MaxNodeTypeValue + 1> counts;
+  std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> counts;
 
   NodeCounter() : counts{} {}
 
@@ -218,6 +218,7 @@ ExecutionPlan::ExecutionPlan(Ast* ast)
       _root(nullptr),
       _varUsageComputed(false),
       _isResponsibleForInitialize(true),
+      _nestingLevel(0),
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
@@ -237,7 +238,8 @@ ExecutionPlan::~ExecutionPlan() {
       // and compare it to the number of nodes we have in our counters array
       size_t j = 0;
       for (auto const& it : _typeCounts) {
-        TRI_ASSERT(counter.counts[j++] == it);
+        TRI_ASSERT(counter.counts[j] == it);
+        ++j;
       }
     } catch (...) {
       // should not happen...
@@ -262,10 +264,15 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   plan->_root = plan->fromNode(root);
 
-  // insert fullCount flag
+  // sett fullCount flag for last LIMIT node on main level
   if (plan->_lastLimitNode != nullptr &&
       ast->query()->queryOptions().fullCount) {
-    static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
+    ExecutionNode::castTo<LimitNode*>(plan->_lastLimitNode)->setFullCount();
+  }
+  
+  // set count flag for final RETURN node
+  if (plan->_root->getType() == ExecutionNode::RETURN) {
+    static_cast<ReturnNode*>(plan->_root)->setCount();
   }
 
   plan->findVarUsage();
@@ -327,6 +334,7 @@ ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
   plan->_nextId = _nextId;
   plan->_appliedRules = _appliedRules;
   plan->_isResponsibleForInitialize = _isResponsibleForInitialize;
+  plan->_nestingLevel = _nestingLevel;
 
   return plan.release();
 }
@@ -574,14 +582,14 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
     return nullptr;
   }
 
-  return static_cast<SubqueryNode*>((*it).second);
+  return ExecutionNode::castTo<SubqueryNode*>((*it).second);
 }
 
 /// @brief get the output variable from a node
 Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   if (node->getType() == ExecutionNode::CALCULATION) {
     // CalculationNode has an outVariale() method
-    return static_cast<CalculationNode const*>(node)->outVariable();
+    return ExecutionNode::castTo<CalculationNode const*>(node)->outVariable();
   }
 
   if (node->getType() == ExecutionNode::COLLECT) {
@@ -591,7 +599,7 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
     // so this will return the first result variable of the COLLECT
     // this part of the code should only be called for anonymous COLLECT nodes,
     // which only have one result variable
-    auto en = static_cast<CollectNode const*>(node);
+    auto en = ExecutionNode::castTo<CollectNode const*>(node);
     auto const& vars = en->groupVariables();
 
     TRI_ASSERT(vars.size() == 1);
@@ -753,7 +761,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
 }
 
 SubqueryNode* ExecutionPlan::registerSubquery(SubqueryNode* node) {
-  node = static_cast<SubqueryNode*>(registerNode(node));
+  node = ExecutionNode::castTo<SubqueryNode*>(registerNode(node));
   _subqueries[node->outVariable()->id] = node;
   return node;
 }
@@ -1041,14 +1049,16 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
 
   if (expression->type == NODE_TYPE_SUBQUERY) {
     // operand is a subquery...
+    ++_nestingLevel;
     auto subquery = fromNode(expression);
+    --_nestingLevel;
 
     if (subquery == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
     en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
-    _subqueries[static_cast<SubqueryNode*>(en)->outVariable()->id] = en;
+    _subqueries[ExecutionNode::castTo<SubqueryNode*>(en)->outVariable()->id] = en;
   } else {
     // check if the LET is a reference to a subquery
     auto subquery = getSubqueryFromExpression(expression);
@@ -1423,7 +1433,9 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
                                        static_cast<size_t>(offsetValue),
                                        static_cast<size_t>(countValue)));
 
-  _lastLimitNode = en;
+  if (_nestingLevel == 0) {
+    _lastLimitNode = en;
+  }
 
   return addDependency(previous, en);
 }
@@ -2097,7 +2109,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
       auto subqueryNode = fromSlice(subquery);
 
       // register the just created subquery
-      static_cast<SubqueryNode*>(ret)->setSubquery(subqueryNode, false);
+      ExecutionNode::castTo<SubqueryNode*>(ret)->setSubquery(subqueryNode, false);
     }
   }
 

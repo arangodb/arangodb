@@ -79,7 +79,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::SORT: {
       // register which variables are used in a SORT
       if (_sorts.empty()) {
-        for (auto& it : static_cast<SortNode const*>(en)->elements()) {
+        for (auto& it : ExecutionNode::castTo<SortNode const*>(en)->elements()) {
           _sorts.emplace_back(it.var, it.ascending);
           TRI_IF_FAILURE("ConditionFinder::sortNode") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -95,7 +95,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
       _variableDefinitions.emplace(
           outvars[0]->id,
-          static_cast<CalculationNode const*>(en)->expression()->node());
+          ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
@@ -103,7 +103,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::ENUMERATE_COLLECTION: {
-      auto node = static_cast<EnumerateCollectionNode const*>(en);
+      auto node = ExecutionNode::castTo<EnumerateCollectionNode const*>(en);
       if (_changes->find(node->id()) != _changes->end()) {
         // already optimized this node
         break;
@@ -162,6 +162,11 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
       break;
     }
+
+    default: {
+      // should not reach this point
+      TRI_ASSERT(false);
+    }
   }
 
   return false;
@@ -191,7 +196,7 @@ bool ConditionFinder::handleFilterCondition(
               auto setter = _plan->getVarSetBy(variable->id);
 
               if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-                auto s = static_cast<CalculationNode*>(setter);
+                auto s = ExecutionNode::castTo<CalculationNode*>(setter);
                 auto filterExpression = s->expression();
                 AstNode* inNode = filterExpression->nodeForModification();
                 if (!inNode->canThrow() && inNode->isDeterministic() &&

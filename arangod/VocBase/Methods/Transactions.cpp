@@ -110,11 +110,7 @@ Result executeTransactionJS(
     v8::Handle<v8::Value>& result,
     v8::TryCatch& tryCatch) {
   Result rv;
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-  if (vocbase == nullptr) {
-    rv.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return rv;
-  }
+  auto& vocbase = GetContextVocBase(isolate);
 
   // treat the value as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(arg);
@@ -322,24 +318,29 @@ Result executeTransactionJS(
   }
 
   auto transactionContext =
-      std::make_shared<transaction::V8Context>(vocbase, embed);
+    std::make_shared<transaction::V8Context>(vocbase, embed);
+
   // start actual transaction
   std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(transactionContext, readCollections,
                                             writeCollections, exclusiveCollections,
                                             trxOptions));
-    
+
   rv = trx->begin();
-  
+
   if (rv.fail()) {
     return rv;
   }
-  
+
   try {
     v8::Handle<v8::Value> arguments = params;
+
     result = action->Call(current, 1, &arguments);
+
     if (tryCatch.HasCaught()) {
       trx->abort();
+
       std::tuple<bool, bool, Result> rvTuple = extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);
+
       if (std::get<1>(rvTuple)) {
         rv = std::get<2>(rvTuple);
       } else {

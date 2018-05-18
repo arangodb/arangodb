@@ -33,8 +33,8 @@
 #include "Logger/Logger.h"
 
 #include "zlib.h"
-#include "zconf.h"  
-
+#include "zconf.h" 
+ 
 // -----------------------------------------------------------------------------
 // helper functions
 // -----------------------------------------------------------------------------
@@ -2265,26 +2265,75 @@ size_t numEntries(std::string const& sourceStr, std::string const& delimiter) {
   return k;
 }
 
-std::string encodeHex(std::string const& str) {
-  size_t len;
-  char* tmp = TRI_EncodeHexString(str.c_str(), str.length(), &len);
+std::string encodeHex(char const* value, size_t length) {
+  static char const* hexValues = "0123456789abcdef";
+
+  std::string result;
+  result.reserve(length * 2);
   
-  if (tmp != nullptr) {
-    TRI_DEFER(TRI_FreeString(tmp));
-    return std::string(tmp, len);
+  char const* p = value; 
+  char const* e = p + length;
+  while (p < e) {
+    auto c = static_cast<unsigned char>(*p++);
+    result.push_back(hexValues[c >> 4]);
+    result.push_back(hexValues[c % 16]);
   }
-  return std::string();
+
+  return result;
 }
 
-std::string decodeHex(std::string const& str) {
-  size_t len;
-  char* tmp = TRI_DecodeHexString(str.c_str(), str.length(), &len);
-  
-  if (tmp != nullptr) {
-    TRI_DEFER(TRI_FreeString(tmp));
-    return std::string(tmp, len);
+std::string encodeHex(std::string const& value) {
+  return encodeHex(value.data(), value.size());
+}
+
+std::string decodeHex(char const* value, size_t length) {
+  std::string result;
+  // input string length should be divisable by 2
+  // but we do not assert for this here, because it might
+  // be an end user error 
+  if ((length & 1) != 0 || length == 0) {
+    // invalid or empty
+    return std::string();
   }
-  return std::string();
+
+  result.reserve(length / 2);
+
+  unsigned char const* p = reinterpret_cast<unsigned char const*>(value);
+  unsigned char const* e = p + length;
+  while (p + 2 <= e) {
+    unsigned char c = *p++;
+    unsigned char v = 0;
+    if (c >= '0' && c <= '9') {
+      v = (c - '0') << 4;
+    } else if (c >= 'a' && c <= 'f') {
+      v = (c - 'a' + 10) << 4;
+    } else if (c >= 'A' && c <= 'F') {
+      v = (c - 'A' + 10) << 4;
+    } else {
+      // invalid input character
+      return std::string();
+    }
+
+    c = *p++;
+    if (c >= '0' && c <= '9') {
+      v += (c - '0');
+    } else if (c >= 'a' && c <= 'f') {
+      v += (c - 'a' + 10);
+    } else if (c >= 'A' && c <= 'F') {
+      v += (c - 'A' + 10);
+    } else {
+      // invalid input character
+      return std::string();
+    }
+
+    result.push_back(v);
+  }
+
+  return result;
+}
+
+std::string decodeHex(std::string const& value) {
+  return decodeHex(value.data(), value.size());
 }
 
 bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed) {

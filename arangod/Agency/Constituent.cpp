@@ -125,19 +125,21 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
       body.add("voted_for", Value(_votedFor)); }
 
     TRI_ASSERT(_vocbase != nullptr);
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(*_vocbase);
     SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
-    
     Result res = trx.begin();
+
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    
+
     OperationOptions options;
+
     options.waitForSync = _agent->config().waitForSync();
     options.silent = true;
-    
+
     OperationResult result;
+
     if (tmp != t) {
       try {
         result = trx.insert("election", body.slice(), options);

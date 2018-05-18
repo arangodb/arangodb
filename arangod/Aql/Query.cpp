@@ -36,7 +36,6 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WorkMonitor.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -540,8 +539,6 @@ QueryResult Query::execute(QueryRegistry* registry) {
                                     << " this: " << (uintptr_t) this;
   TRI_ASSERT(registry != nullptr);
 
-  std::unique_ptr<AqlWorkStack> work;
-
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryHash = hash();
@@ -568,7 +565,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        res.context = transaction::StandaloneContext::Create(&_vocbase);
+        res.context = transaction::StandaloneContext::Create(_vocbase);
         res.extra = std::make_shared<VPackBuilder>();
         {
           VPackObjectBuilder guard(res.extra.get(), true);
@@ -584,16 +581,6 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     // will throw if it fails
     prepare(registry, queryHash);
-
-    if (_queryString.empty()) {
-      // we don't have query string... now pass query id to WorkMonitor
-      work.reset(new AqlWorkStack(&_vocbase, _id));
-    } else {
-      // we do have a query string... pass query to WorkMonitor
-      work.reset(new AqlWorkStack(
-        &_vocbase, _id, _queryString.data(), _queryString.size()
-      ));
-    }
 
     log();
     TRI_ASSERT(_trx != nullptr);
@@ -695,8 +682,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
                                     << " this: " << (uintptr_t) this;
   TRI_ASSERT(registry != nullptr);
 
-  std::unique_ptr<AqlWorkStack> work;
-
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryHash = hash();
@@ -709,7 +694,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
-        auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
         ExecContext const* exe = ExecContext::CURRENT;
 
         // got a result from the query cache
@@ -737,16 +722,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     // will throw if it fails
     prepare(registry, queryHash);
-
-    if (_queryString.empty()) {
-      // we don't have query string... now pass query id to WorkMonitor
-      work.reset(new AqlWorkStack(&_vocbase, _id));
-    } else {
-      // we do have a query string... pass query to WorkMonitor
-      work.reset(new AqlWorkStack(
-        &_vocbase, _id, _queryString.data(), _queryString.size()
-      ));
-    }
 
     log();
 
@@ -1132,7 +1107,7 @@ void Query::exitContext() {
 void Query::getStats(VPackBuilder& builder) {
   if (_engine != nullptr) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    _engine->_stats.toVelocyPack(builder, _queryOptions.fullCount);
+    _engine->_stats.toVelocyPack(builder);
   } else {
     ExecutionStats::toVelocyPackStatic(builder);
   }
@@ -1278,7 +1253,7 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
       if (statsBuilder != nullptr) {
         TRI_ASSERT(statsBuilder->isOpenObject());
         statsBuilder->add(VPackValue("stats"));
-        _engine->_stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
+        _engine->_stats.toVelocyPack(*statsBuilder);
       }
     } catch (...) {
       // shutdown may fail but we must not throw here
@@ -1300,10 +1275,10 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return transaction::V8Context::Create(&_vocbase, true);
+    return transaction::V8Context::Create(_vocbase, true);
   }
 
-  return transaction::StandaloneContext::Create(&_vocbase);
+  return transaction::StandaloneContext::Create(_vocbase);
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs

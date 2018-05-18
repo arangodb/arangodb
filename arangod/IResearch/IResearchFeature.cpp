@@ -158,7 +158,9 @@ void registerIndexFactory() {
 
   // register 'arangosearch' link
   for (auto& entry: factories) {
-    auto* engine = arangodb::iresearch::getFeature<arangodb::StorageEngine>(entry.first);
+    auto* engine = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::StorageEngine
+    >(entry.first);
 
     // valid situation if not running with the specified storage engine
     if (!engine) {
@@ -229,7 +231,9 @@ void registerRecoveryHelper() {
 
 void registerViewFactory() {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
-  auto* viewTypes = arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>();
+  auto* viewTypes = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::ViewTypesFeature
+  >();
 
   if (!viewTypes) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -257,6 +261,7 @@ void registerViewFactory() {
   }
 }
 
+template<typename Impl>
 arangodb::Result transactionStateRegistrationCallback(
     arangodb::LogicalDataSource& dataSource,
     arangodb::TransactionState& state
@@ -281,9 +286,9 @@ arangodb::Result transactionStateRegistrationCallback(
 
   // TODO FIXME find a better way to look up an IResearch View
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
+    auto* impl = dynamic_cast<Impl*>(view);
   #else
-    auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view);
+    auto* impl = static_cast<Impl*>(view);
   #endif
 
   if (!impl) {
@@ -296,6 +301,20 @@ arangodb::Result transactionStateRegistrationCallback(
   impl->apply(state);
 
   return arangodb::Result();
+}
+
+void registerTransactionStateCallback() {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    // NOOP
+  } else if(arangodb::ServerState::instance()->isDBServer()) {
+    arangodb::transaction::Methods::addStateRegistrationCallback(
+      transactionStateRegistrationCallback<arangodb::iresearch::IResearchViewDBServer>
+    );
+  } else {
+    arangodb::transaction::Methods::addStateRegistrationCallback(
+      transactionStateRegistrationCallback<arangodb::iresearch::IResearchView>
+    );
+  }
 }
 
 std::string const FEATURE_NAME("ArangoSearch");
@@ -358,9 +377,7 @@ void IResearchFeature::prepare() {
   registerViewFactory();
 
   // register 'arangosearch' TransactionState state-change callback factory
-  arangodb::transaction::Methods::addStateRegistrationCallback(
-    transactionStateRegistrationCallback
-  );
+  registerTransactionStateCallback();
 
   registerRecoveryHelper();
 }
@@ -369,8 +386,10 @@ void IResearchFeature::start() {
   ApplicationFeature::start();
 
   // register IResearchView filters
- {
-    auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+  {
+    auto* functions = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::aql::AqlFunctionFeature
+    >("AQLFunctions");
 
     if (functions) {
       registerFilters(*functions);

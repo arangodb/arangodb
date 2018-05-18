@@ -73,6 +73,22 @@ std::string const StaticStrings::ReplicationHeaderActive("x-arango-replication-a
 // database and collection names
 std::string const StaticStrings::SystemDatabase("_system");
 
+// LogicalDataSource definition fields
+std::string const StaticStrings::DataSourceDeleted("deleted");
+std::string const StaticStrings::DataSourceGuid("globallyUniqueId");
+std::string const StaticStrings::DataSourceId("id");
+std::string const StaticStrings::DataSourceName("name");
+std::string const StaticStrings::DataSourcePlanId("planId");
+std::string const StaticStrings::DataSourceSystem("isSystem");
+std::string const StaticStrings::DataSourceType("type");
+
+// Index definition fields
+std::string const StaticStrings::IndexFields("fields");
+std::string const StaticStrings::IndexId("id");
+std::string const StaticStrings::IndexSparse("sparse");
+std::string const StaticStrings::IndexType("type");
+std::string const StaticStrings::IndexUnique("unique");
+
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
 std::string const StaticStrings::AcceptEncoding("accept-encoding");

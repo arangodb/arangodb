@@ -34,12 +34,12 @@ double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
 VocbaseContext::VocbaseContext(
-    GeneralRequest* req,
+    GeneralRequest& req,
     TRI_vocbase_t& vocbase,
     bool isInternal,
     auth::Level systemLevel,
     auth::Level dbLevel
-): ExecContext(isInternal, req->user(), req->databaseName(), systemLevel, dbLevel),
+): ExecContext(isInternal, req.user(), req.databaseName(), systemLevel, dbLevel),
    _vocbase(vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!_vocbase.isDangling());
@@ -50,7 +50,7 @@ VocbaseContext::~VocbaseContext() {
   _vocbase.release();
 }
 
-VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t& vocbase) {
+VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocbase) {
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase.isDangling());
 
@@ -64,7 +64,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t& vocba
                               /*dbLevel*/ auth::Level::RW);
   }
 
-  if (!req->authenticated()) {
+  if (!req.authenticated()) {
     return new VocbaseContext(req, vocbase, /*isInternal*/ false,
                               /*sysLevel*/ auth::Level::NONE,
                               /*dbLevel*/ auth::Level::NONE);
@@ -72,8 +72,8 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t& vocba
   
   // superusers will have an empty username. This MUST be invalid
   // for users authenticating with name / password
-  if (req->user().empty()) {
-    if (req->authenticationMethod() != AuthenticationMethod::JWT) {
+  if (req.user().empty()) {
+    if (req.authenticationMethod() != AuthenticationMethod::JWT) {
       std::string msg = "only jwt can be used to authenticate as superuser";
       LOG_TOPIC(WARN, Logger::AUTHENTICATION) << msg;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
@@ -89,10 +89,10 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req, TRI_vocbase_t& vocba
     return nullptr;
   }
   
-  auth::Level dbLvl = um->databaseAuthLevel(req->user(), req->databaseName());
+  auth::Level dbLvl = um->databaseAuthLevel(req.user(), req.databaseName());
   auth::Level sysLvl = dbLvl;
-  if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
-    sysLvl = um->databaseAuthLevel(req->user(), TRI_VOC_SYSTEM_DATABASE);
+  if (req.databaseName() != TRI_VOC_SYSTEM_DATABASE) {
+    sysLvl = um->databaseAuthLevel(req.user(), TRI_VOC_SYSTEM_DATABASE);
   }
 
   return new VocbaseContext(req, vocbase, /*isInternal*/ false,

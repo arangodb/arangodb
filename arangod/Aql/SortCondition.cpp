@@ -126,7 +126,7 @@ SortCondition::SortCondition(
     } else if (_plan != nullptr) {
       ExecutionNode const* n = _plan->getVarSetBy(variableId);
       if (n != nullptr && n->getType() == ExecutionNode::CALCULATION) {
-        Expression const* exp = static_cast<CalculationNode const*>(n)->expression();
+        Expression const* exp = ExecutionNode::castTo<CalculationNode const*>(n)->expression();
         if (exp != nullptr) {
           rootNode = exp->node();
         }
