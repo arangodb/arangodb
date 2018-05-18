@@ -444,33 +444,6 @@ EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handle
   info.mergeShards(shards);
 
   return info;
-
-//  // Call without restriction instead
-//  auto const it = _collectionInfos.find(col);
-//
-//  if (it == _collectionInfos.end()) {
-//    if (restrictedShards.empty()) {
-//      std::unordered_set<std::string> const& restrictToShards =
-//          _query->queryOptions().shardIds;
-//      _collectionInfos.emplace(col, CollectionInfo{accessType, col->shardIds(restrictToShards)});
-//    } else {
-//      _collectionInfos.emplace(col, CollectionInfo{accessType, col->shardIds(restrictedShards)});
-//    }
-//  } else {
-//    auto& info = it->second;
-//
-//    if (info.lockType < accessType) {
-//      // We need to upgrade the lock
-//      info.lockType = accessType;
-//    }
-//
-//    if (restrictedShards.empty()) {
-//      auto const& restrictToShards = _query->queryOptions().shardIds;
-//      info.mergeShards(col->shardIds(restrictToShards));
-//    } else {
-//      info.mergeShards(col->shardIds(restrictedShards));
-//    }
-//  }
 }
 
 // Then we update the collection pointer of the last engine.
