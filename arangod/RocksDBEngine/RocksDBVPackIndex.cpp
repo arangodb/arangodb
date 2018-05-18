@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -42,8 +43,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "VPackIndexMatcher.h"
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
@@ -918,22 +917,22 @@ bool RocksDBVPackIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-  return SortedAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
-                                                         estimatedItems, estimatedCost);
+  return SortedIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+                                                              estimatedItems, estimatedCost);
 }
 
 bool RocksDBVPackIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) const {
-  return SortedAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                       itemsInIndex, estimatedCost, coveredAttributes);
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                            itemsInIndex, estimatedCost, coveredAttributes);
 }
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(arangodb::aql::AstNode* node,
                                                                arangodb::aql::Variable const* reference) const {
-  return SortedAttributeMatcher::specializeCondition(this, node, reference);
+  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
@@ -969,8 +968,8 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
     
-    SortedAttributeMatcher::matchAttributes(this, node, reference, found, unused,
-                                            nonNullAttributes, true);
+    SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
+                                                 nonNullAttributes, true);
     
     //matchAttributes(node, reference, found, unused, nonNullAttributes, true);
 

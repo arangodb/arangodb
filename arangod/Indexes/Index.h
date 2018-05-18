@@ -316,8 +316,8 @@ class Index {
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
   ///        entries.
-  virtual void expandInSearchValues(arangodb::velocypack::Slice const,
-                                    arangodb::velocypack::Builder&) const;
+  void expandInSearchValues(arangodb::velocypack::Slice const,
+                            arangodb::velocypack::Builder&) const;
 
   virtual void warmup(arangodb::transaction::Methods* trx,
                       std::shared_ptr<basics::LocalTaskQueue> queue);

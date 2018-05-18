@@ -463,41 +463,6 @@ arangodb::aql::AstNode* MMFilesEdgeIndex::specializeCondition(
   return matcher.specializeOne(this, node, reference);
 }
 
-/// @brief Transform the list of search slices to search values.
-///        This will multiply all IN entries and simply return all other
-///        entries.
-void MMFilesEdgeIndex::expandInSearchValues(VPackSlice const slice,
-                                            VPackBuilder& builder) const {
-  TRI_ASSERT(slice.isArray());
-  builder.openArray();
-  for (auto const& side : VPackArrayIterator(slice)) {
-    if (side.isNull()) {
-      builder.add(side);
-    } else {
-      TRI_ASSERT(side.isArray());
-      builder.openArray();
-      for (auto const& item : VPackArrayIterator(side)) {
-        TRI_ASSERT(item.isObject());
-        if (item.hasKey(StaticStrings::IndexEq)) {
-          TRI_ASSERT(!item.hasKey(StaticStrings::IndexIn));
-          builder.add(item);
-        } else {
-          TRI_ASSERT(item.hasKey(StaticStrings::IndexIn));
-          VPackSlice list = item.get(StaticStrings::IndexIn);
-          TRI_ASSERT(list.isArray());
-          for (auto const& it : VPackArrayIterator(list)) {
-            builder.openObject();
-            builder.add(StaticStrings::IndexEq, it);
-            builder.close();
-          }
-        }
-      }
-      builder.close();
-    }
-  }
-  builder.close();
-}
-
 /// @brief create the iterator
 IndexIterator* MMFilesEdgeIndex::createEqIterator(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,

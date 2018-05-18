@@ -20,7 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VPackIndexMatcher.h"
+#include "SortedIndexAttributeMatcher.h"
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -32,7 +33,7 @@
 
 using namespace arangodb;
 
-bool SortedAttributeMatcher::accessFitsIndex(
+bool SortedIndexAttributeMatcher::accessFitsIndex(
     arangodb::Index const* idx, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
     arangodb::aql::Variable const* reference,
@@ -138,7 +139,7 @@ bool SortedAttributeMatcher::accessFitsIndex(
   return false;
 }
 
-void SortedAttributeMatcher::matchAttributes(
+void SortedIndexAttributeMatcher::matchAttributes(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
@@ -181,7 +182,7 @@ void SortedAttributeMatcher::matchAttributes(
   }
 }
 
-bool SortedAttributeMatcher::supportsFilterCondition(
+bool SortedIndexAttributeMatcher::supportsFilterCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
@@ -284,7 +285,8 @@ bool SortedAttributeMatcher::supportsFilterCondition(
         static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
 
     // check if the index has a selectivity estimate ready
-    if (attributesCoveredByEquality == idx->fields().size()) {
+    if (idx->hasSelectivityEstimate() &&
+        attributesCoveredByEquality == idx->fields().size()) {
       StringRef ignore;
       double estimate = idx->selectivityEstimate(&ignore);
       if (estimate > 0.0) {
@@ -294,6 +296,7 @@ bool SortedAttributeMatcher::supportsFilterCondition(
     if (itemsInIndex == 0) {
       estimatedCost = 0.0;
     } else {
+      // simon: neither RocksDBVPackIndex nor MMFilesPersistentIndex have caches
       /*if (useCache()) {
        estimatedCost = static_cast<double>(estimatedItems * values) -
        (_fields.size() - 1) * 0.01;
@@ -313,7 +316,7 @@ bool SortedAttributeMatcher::supportsFilterCondition(
   return false;
 }
 
-bool SortedAttributeMatcher::supportsSortCondition(
+bool SortedIndexAttributeMatcher::supportsSortCondition(
     arangodb::Index const* idx,
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
@@ -362,7 +365,7 @@ bool SortedAttributeMatcher::supportsSortCondition(
 }
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* SortedAttributeMatcher::specializeCondition(
+arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
   // mmfiles failure compat
@@ -439,7 +442,7 @@ arangodb::aql::AstNode* SortedAttributeMatcher::specializeCondition(
   return node;
 }
 
-bool SortedAttributeMatcher::isDuplicateOperator(
+bool SortedIndexAttributeMatcher::isDuplicateOperator(
     arangodb::aql::AstNode const* node,
     std::unordered_set<int> const& operatorsFound) {
   auto type = node->type;

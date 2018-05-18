@@ -35,7 +35,7 @@ struct Variable;
 
 class Index;
 
-namespace SortedAttributeMatcher {
+namespace SortedIndexAttributeMatcher {
 
 bool supportsFilterCondition(arangodb::Index const*,
                              arangodb::aql::AstNode const* node,
