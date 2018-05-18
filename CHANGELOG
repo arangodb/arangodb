@@ -1,7 +1,7 @@
 v3.3.10 (2018-XX-XX)
 -------------------
 
-* fixed a vulnerability issue within the web ui's index view
+* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 
 v3.3.9 (2018-05-17)
