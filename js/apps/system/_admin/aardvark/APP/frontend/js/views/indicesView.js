@@ -86,7 +86,7 @@
       switch (indexType) {
         case 'Geo':
           // HANDLE ARRAY building
-          fields = arangoHelper.escapeHtml($('#newGeoFields').val());
+          fields = $('#newGeoFields').val();
           var geoJson = self.checkboxToValue('#newGeoJson');
           postParameter = {
             type: 'geo',
