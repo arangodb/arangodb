@@ -200,7 +200,6 @@ or the GeometryCollection type. Supported geometry object types are:
 - LineString
 - MultiLineString
 - Polygon
-- MultiPolygon
 
 ### Point
 
@@ -317,40 +316,6 @@ With Holes:
       [100.2, 0.8],
       [100.8, 0.8]
     ]
-  ]
-}
-```
-
-### MultiPolygon
-
-The following section of the RFC specifies a [GeoJSON
-MultiPolygon](https://tools.ietf.org/html/rfc7946#section-3.1.7).
-The "coordinates" member is an array of Polygon coordinate arrays:
-
-```json
-{
-  "type": "MultiPolygon",
-  "coordinates": [
-    [[
-      [102.0, 2.0],
-      [103.0, 2.0],
-      [103.0, 3.0],
-      [102.0, 3.0],
-      [102.0, 2.0]
-    ]],
-    [[
-      [100.0, 0.0],
-      [101.0, 0.0],
-      [101.0, 1.0],
-      [100.0, 1.0],
-      [100.0, 0.0]
-    ], [
-      [100.2, 0.2],
-      [100.2, 0.8],
-      [100.8, 0.8],
-      [100.8, 0.2],
-      [100.2, 0.2]
-    ]]
   ]
 }
 ```
