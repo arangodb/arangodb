@@ -99,6 +99,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ClusterFeature* cluster =
       ApplicationServer::getFeature<ClusterFeature>("Cluster");
   cluster->forceDisable();
+  ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 }
 
 void UpgradeFeature::prepare() {

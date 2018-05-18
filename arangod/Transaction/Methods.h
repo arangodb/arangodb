@@ -154,8 +154,8 @@ class Methods {
   };
 
   /// @brief return database of transaction
-  TRI_vocbase_t* vocbase() const;
-  inline std::string const& databaseName() const { return vocbase()->name(); }
+  TRI_vocbase_t& vocbase() const;
+  inline std::string const& databaseName() const { return vocbase().name(); }
 
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
@@ -576,7 +576,10 @@ class Methods {
   void setupEmbedded(TRI_vocbase_t*);
 
   /// @brief set up a top-level transaction
-  void setupToplevel(TRI_vocbase_t*, transaction::Options const&);
+  void setupToplevel(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+  );
 
  protected:
   /// @brief the state

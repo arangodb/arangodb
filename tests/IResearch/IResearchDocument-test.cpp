@@ -33,7 +33,6 @@
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
@@ -191,7 +190,9 @@ struct IResearchDocumentSetup {
       }
     }
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
@@ -384,7 +385,9 @@ SECTION("FieldIterator_traverse_complex_object_custom_nested_delimiter") {
 
   // default analyzer
   auto const expected_analyzer =  irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-  auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
+  >();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
 
@@ -453,7 +456,9 @@ SECTION("FieldIterator_traverse_complex_object_all_fields") {
 
   // default analyzer
   auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-  auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
+  >();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
 
@@ -536,7 +541,9 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields") {
 
   // default analyzer
   auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-  auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
+  >();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
 
@@ -592,7 +599,9 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   auto& value = *it;
   CHECK(mangleStringIdentity("boost") == value.name());
   const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-  auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
+  >();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
   auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -661,7 +670,9 @@ SECTION("FieldIterator_traverse_complex_object_ordered_empty_analyzers") {
 }
 
 SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
-  auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
+  >();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"mustBeSkipped\" : {}, \
     \"stringValue\": \"string\", \
@@ -691,7 +702,9 @@ SECTION("FieldIterator_traverse_complex_object_ordered_check_value_types") {
     auto& field = *it;
     CHECK(mangleStringIdentity("stringValue") == field.name());
     auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());
@@ -858,7 +871,9 @@ SECTION("FieldIterator_reset") {
     auto& value = *it;
     CHECK(mangleStringIdentity("boost") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -874,7 +889,9 @@ SECTION("FieldIterator_reset") {
     auto& value = *it;
     CHECK(mangleStringIdentity("depth") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -892,7 +909,9 @@ SECTION("FieldIterator_reset") {
     auto& value = *it;
     CHECK(mangleStringIdentity("name") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -964,7 +983,9 @@ SECTION("FieldIterator_traverse_complex_object_ordered_all_fields_custom_list_of
 
   // default analyzer
   auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-  auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
+  >();
   CHECK(nullptr != analyzers);
   auto const expected_features = analyzers->get("identity")->features();
 
@@ -1032,7 +1053,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     CHECK(mangleStringIdentity("nested.foo") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     CHECK(expected_features == value.features());
@@ -1060,7 +1083,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     auto& value = *it;
     CHECK(mangleStringIdentity("keys") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1077,7 +1102,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     auto& value = *it;
     CHECK(mangleStringIdentity("boost") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1106,7 +1133,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     auto& value = *it;
     CHECK(mangleStringIdentity("fields.fieldA.name") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1135,7 +1164,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     auto& value = *it;
     CHECK(mangleStringIdentity("listValuation") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1191,7 +1222,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[0].subarr") == value.name());
       const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-      auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::iresearch::IResearchAnalyzerFeature
+      >();
       CHECK(nullptr != analyzers);
       auto const expected_features = analyzers->get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1223,7 +1256,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[1].subarr") == value.name());
       const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-      auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::iresearch::IResearchAnalyzerFeature
+      >();
       CHECK(nullptr != analyzers);
       auto const expected_features = analyzers->get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1253,7 +1288,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
     auto& value = *it;
     CHECK(mangleStringIdentity("array[1].id") == value.name());
     const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-    auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
     CHECK(nullptr != analyzers);
     auto const expected_features = analyzers->get("identity")->features();
     auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1296,7 +1333,9 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
       auto& value = *it;
       CHECK(mangleStringIdentity("array[2].subarr") == value.name());
       const auto expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-      auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::iresearch::IResearchAnalyzerFeature
+      >();
       CHECK(nullptr != analyzers);
       auto const expected_features = analyzers->get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(value.get_tokens());
@@ -1364,7 +1403,9 @@ SECTION("FieldIterator_nullptr_analyzer") {
       auto& field = *it;
       CHECK(mangleStringIdentity("stringValue") == field.name());
       auto const expected_analyzer = irs::analysis::analyzers::get("identity", irs::text_format::json, "");
-      auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::iresearch::IResearchAnalyzerFeature
+      >();
       CHECK(nullptr != analyzers);
       auto const expected_features = analyzers->get("identity")->features();
       auto& analyzer = dynamic_cast<irs::analysis::analyzer&>(field.get_tokens());

@@ -34,7 +34,7 @@ using namespace arangodb;
 
 /// @brief create the context
 transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
-  : Context(&vocbase),
+  : Context(vocbase),
       _sharedTransactionContext(nullptr),
       _mainScope(nullptr),
       _currentTransaction(nullptr),
@@ -53,9 +53,11 @@ transaction::V8Context::orderCustomTypeHandler() {
     if (main != nullptr && main != this && !main->isGlobal()) {
       _customTypeHandler = main->orderCustomTypeHandler();
     } else {
-      _customTypeHandler.reset(
-          transaction::Context::createCustomTypeHandler(_vocbase, getResolver()));
+      _customTypeHandler.reset(transaction::Context::createCustomTypeHandler(
+        &_vocbase, getResolver()
+      ));
     }
+
     _options.customTypeHandler = _customTypeHandler.get();
     _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
@@ -63,6 +65,7 @@ transaction::V8Context::orderCustomTypeHandler() {
   TRI_ASSERT(_customTypeHandler != nullptr);
   TRI_ASSERT(_options.customTypeHandler != nullptr);
   TRI_ASSERT(_dumpOptions.customTypeHandler != nullptr);
+
   return _customTypeHandler;
 }
 
@@ -152,5 +155,5 @@ std::shared_ptr<transaction::Context> transaction::V8Context::CreateWhenRequired
     return Create(vocbase, embeddable);
   }
 
-  return transaction::StandaloneContext::Create(&vocbase);
+  return transaction::StandaloneContext::Create(vocbase);
 }
