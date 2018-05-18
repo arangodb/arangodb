@@ -132,6 +132,8 @@ struct OptimizerRule {
 
     // remove unused out variables for data-modification queries
     removeDataModificationOutVariablesRule_pass5,
+    
+    limitSubqueriesRule_pass5,
 
     /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
     // ======================================================

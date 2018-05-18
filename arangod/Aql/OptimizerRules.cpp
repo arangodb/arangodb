@@ -6452,3 +6452,157 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+
+void arangodb::aql::limitSubqueriesRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const* rule) {
+  bool modified = false;
+  
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::CALCULATION, true);
+    
+  std::unordered_map<ExecutionNode*, std::pair<int64_t, std::unordered_set<ExecutionNode const*>>> maxValues;
+
+  for (auto const& n : nodes) {
+    auto cn = ExecutionNode::castTo<CalculationNode*>(n);
+    auto expr = cn->expression();
+    if (expr == nullptr) {
+      continue;
+    }
+   
+    AstNode const* root = expr->node();
+    if (root == nullptr) {
+      continue;
+    }
+
+    auto visitor = [&maxValues, &plan, n](AstNode const* node) -> bool {
+      std::pair<ExecutionNode*, int64_t> found{ nullptr, 0 };
+        
+      if (node->type == NODE_TYPE_REFERENCE) {
+        Variable const* v = static_cast<Variable const*>(node->getData());
+        auto setter = plan->getVarSetBy(v->id);
+        if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
+          // we found a subquery result being used somehow in some
+          // way that will make the optimization produce wrong results
+          found.first = setter;
+          found.second = -1; // negative values will disable the optimization
+        }
+      } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+        auto sub = node->getMemberUnchecked(0);
+        if (sub->type == NODE_TYPE_REFERENCE) {
+          Variable const* v = static_cast<Variable const*>(sub->getData());
+          auto setter = plan->getVarSetBy(v->id);
+          auto index = node->getMemberUnchecked(1);
+          if (index->type == NODE_TYPE_VALUE && index->isNumericValue() &&
+              setter != nullptr && setter->getType() == EN::SUBQUERY) {
+            found.first = setter;
+            found.second = index->getIntValue() + 1; // x[0] => LIMIT 1
+            if (found.second <= 0) {
+              // turn optimization off
+              found.second = -1;
+            }
+          }
+        }
+      } else if (node->type == NODE_TYPE_FCALL) {
+        auto func = static_cast<Function const*>(node->getData());
+        if (func->name == "FIRST") {
+          auto args = node->getMember(0);
+          if (args->numMembers() > 0 && args->getMember(0)->type == NODE_TYPE_REFERENCE) {
+            Variable const* v = static_cast<Variable const*>(args->getMember(0)->getData());
+            auto setter = plan->getVarSetBy(v->id);
+            if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
+              found.first = setter;
+              found.second = 1; // FIRST(x) => LIMIT 1
+            }
+          }
+        }
+      }
+
+      if (found.first != nullptr) {
+        auto it = maxValues.find(found.first);
+        if (it == maxValues.end()) {
+          maxValues.emplace(found.first, std::make_pair(found.second, std::unordered_set<ExecutionNode const*>{n}));
+        } else {
+          if (found.second < 0 || (*it).second.first) {
+            // negative value will turn off the optimization
+            (*it).second.first = -1;
+            (*it).second.second.clear();
+          } else {
+            // otherwise, use the maximum of the limits needed, and insert
+            // current node into our "safe" list
+            (*it).second.first = std::max((*it).second.first, found.second);
+            (*it).second.second.emplace(n);
+          }
+        }
+        // don't descend further
+        return false;
+      }
+ 
+      // descend further
+      return true;
+    };
+
+    Ast::traverseReadOnly(root, visitor, [](AstNode const*) {});
+  }
+
+  for (auto const& it : maxValues) {
+    ExecutionNode* node = it.first;
+    TRI_ASSERT(node->getType() == EN::SUBQUERY);
+    auto sn = ExecutionNode::castTo<SubqueryNode const*>(node);
+
+    if (sn->isModificationSubquery()) {
+      // cannot push a LIMIT into data-modification subqueries
+      continue;
+    }
+
+    if (it.second.first <= 0) {
+      // optimization turned off
+      continue;
+    }
+
+    // scan from the subquery node to the bottom of the ExecutionPlan to check
+    // if any of the following nodes also use the subquery result
+    auto out = sn->outVariable();
+    std::unordered_set<Variable const*> used;
+    bool invalid = false;
+
+    auto current = node->getFirstParent();
+    while (current != nullptr) {
+      if (it.second.second.find(current) == it.second.second.end()) {
+        // node not found in "safe" list
+        // now check if it uses the subquery's out variable
+        used.clear();
+        current->getVariablesUsedHere(used);
+        if (used.find(out) != used.end()) {
+          invalid = true;
+          break;
+        }
+      }
+      // continue iteration
+      current = current->getFirstParent();
+    }
+
+    if (invalid) {
+      continue;
+    }
+    
+    auto root = sn->getSubquery();
+    if (root != nullptr && root->getType() == EN::RETURN) {
+      // now inject a limit
+      auto f = root->getFirstDependency();
+      TRI_ASSERT(f != nullptr);
+
+      if (f->getType() == EN::LIMIT) {
+        // subquery already has a LIMIT node at its end
+        // no need to do anything
+        continue;
+      }
+    
+      auto limitNode = new LimitNode(plan.get(), plan->nextId(), 0, it.second.first);
+      plan->registerNode(limitNode);
+      plan->insertAfter(f, limitNode);
+      modified = true;
+    }
+  }
+   
+  opt->addPlan(std::move(plan), rule, modified);
+}

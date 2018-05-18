@@ -205,6 +205,10 @@ void OptimizerRulesFeature::addRules() {
   // propagate constant attributes in FILTERs
   registerRule("propagate-constant-attributes", propagateConstantAttributesRule,
                OptimizerRule::propagateConstantAttributesRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // push limits into subqueries
+  registerRule("limit-subqueries", limitSubqueriesRule,
+               OptimizerRule::limitSubqueriesRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   // try to replace simple OR conditions with IN
@@ -214,7 +218,7 @@ void OptimizerRulesFeature::addRules() {
   // try to remove redundant OR conditions
   registerRule("remove-redundant-or", removeRedundantOrRule,
                OptimizerRule::removeRedundantOrRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-
+  
   // try to find a filter after an enumerate collection and find indexes
   registerRule("use-indexes", useIndexesRule, OptimizerRule::useIndexesRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
