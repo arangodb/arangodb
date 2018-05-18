@@ -1836,7 +1836,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         continue;
       }
 
-      if (nn->isModificationQuery()) {
+      if (nn->isModificationSubquery()) {
         // subqueries that modify data must not be optimized away
         continue;
       }
@@ -3612,7 +3612,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         }
 
         case EN::COLLECT:
-        case EN::SUBQUERY:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::SCATTER:
@@ -3625,6 +3624,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::ENUMERATE_COLLECTION:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
+        case EN::SUBQUERY:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::SCATTER_IRESEARCH_VIEW:
@@ -3634,14 +3634,35 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
           break;
 
         case EN::CALCULATION:
-          // check if the expression can be executed on a DB server safely
-          if (!ExecutionNode::castTo<CalculationNode const*>(inspectNode)->expression()->canRunOnDBServer()) {
-            stopSearching = true;
-            break;
-          }
-          // intentionally falls through
-
         case EN::FILTER:
+          if (inspectNode->getType() == EN::CALCULATION) {
+            // check if the expression can be executed on a DB server safely
+            if (!ExecutionNode::castTo<CalculationNode const*>(inspectNode)->expression()->canRunOnDBServer()) {
+              stopSearching = true;
+              break;
+            }
+            // intentionally falls through
+          }
+#if 0
+          // TODO: this is already prepared to push subqueries on the DB servers.
+          // However, the ExecutionEngine's instanciator cannot yet handle subqueries
+          // on DB servers. Once it can do this, this part can be finished
+          else if (inspectNode->getType() == EN::SUBQUERY) {
+            // check if the subquery can be executed on a DB server safely
+            SubqueryNode* s = ExecutionNode::castTo<SubqueryNode*>(inspectNode);
+            if (!s->isDeterministic() || s->mayAccessCollections()) {
+              stopSearching = true;
+              break;
+            }
+            // intentionally falls through
+          }
+#endif
+          // no special handling for filters here
+
+          TRI_ASSERT(inspectNode->getType() == EN::SUBQUERY || 
+                     inspectNode->getType() == EN::CALCULATION || 
+                     inspectNode->getType() == EN::FILTER);
+
           for (auto& v : inspectNode->getVariablesUsedHere()) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
               // do not move over the definition of variables that we need
@@ -5208,7 +5229,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   for (auto const& n : nodes) {
     auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(n);
 
-    if (subqueryNode->isModificationQuery()) {
+    if (subqueryNode->isModificationSubquery()) {
       // can't modify modifying subqueries
       continue;
     }
@@ -6271,12 +6292,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         case EN::COLLECT:
           info.invalidate(); // TODO reset info to original state instead
           break;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
         case EN::ENUMERATE_LIST:
           checkEnumerateListNode(plan.get(), ExecutionNode::castTo<EnumerateListNode*>(current), info);
-          // intentional fallthrough
-#pragma GCC diagnostic pop
+          // intentionally falls through
         case EN::ENUMERATE_COLLECTION: {
           if (info && info.collectionNodeToReplace == current) {
             mod = mod || applyGeoOptimization(plan.get(), limit, info);

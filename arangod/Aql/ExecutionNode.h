@@ -1045,7 +1045,7 @@ class SubqueryNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   /// @brief whether or not the subquery is a data-modification operation
-  bool isModificationQuery() const;
+  bool isModificationSubquery() const;
 
   /// @brief getter for subquery
   ExecutionNode* getSubquery() const { return _subquery; }
@@ -1084,6 +1084,7 @@ class SubqueryNode : public ExecutionNode {
   bool isDeterministic() override final;
 
   bool isConst();
+  bool mayAccessCollections();
 
  private:
   /// @brief we need to have an expression and where to write the result

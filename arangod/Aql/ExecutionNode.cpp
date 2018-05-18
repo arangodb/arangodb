@@ -35,6 +35,7 @@
 #include "Aql/EnumerateListBlock.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -428,7 +429,7 @@ void ExecutionNode::toVelocyPack(VPackBuilder& builder,
   }
 }
 
-/// @brief execution Node clone utility to be called by derives
+/// @brief execution Node clone utility to be called by derived classes
 void ExecutionNode::cloneHelper(ExecutionNode* other,
                                 bool withDependencies,
                                 bool withProperties) const {
@@ -436,8 +437,8 @@ void ExecutionNode::cloneHelper(ExecutionNode* other,
 
   if (plan == _plan) {
     // same execution plan for source and target
-    // now assign a new id to the cloned node, otherwise it will leak
-    // upon node registration and its meaning is ambiguous
+    // now assign a new id to the cloned node, otherwise it will fail
+    // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
   }
 
@@ -1628,7 +1629,14 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 }
 
 bool SubqueryNode::isConst() {
-  if (isModificationQuery() || !isDeterministic()) {
+  if (isModificationSubquery() || !isDeterministic()) {
+    return false;
+  }
+
+  if (mayAccessCollections() && _plan->getAst()->query()->isModificationQuery()) {
+    // a subquery that accesses data from a collection may not be const,
+    // even if itself does not modify any data. it is possible that the
+    // subquery is embedded into some outer loop that is modifying data
     return false;
   }
 
@@ -1650,6 +1658,45 @@ bool SubqueryNode::isConst() {
   }
 
   return true;
+}
+
+bool SubqueryNode::mayAccessCollections() {
+  if (_plan->getAst()->functionsMayAccessDocuments()) {
+    // if the query contains any calls to functions that MAY access any
+    // document, then we count this as a "yes"
+    return true;
+  }
+  
+  TRI_ASSERT(_subquery != nullptr);
+
+  // if the subquery contains any of these nodes, it may access data from
+  // a collection
+  std::vector<ExecutionNode::NodeType> const types = {
+#ifdef USE_IRESEARCH
+      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+#endif
+      ExecutionNode::ENUMERATE_COLLECTION,
+      ExecutionNode::INDEX,
+      ExecutionNode::INSERT,
+      ExecutionNode::UPDATE,
+      ExecutionNode::REPLACE,
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT,
+      ExecutionNode::TRAVERSAL,
+      ExecutionNode::SHORTEST_PATH
+  };
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+     
+  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
+  _subquery->walk(finder);
+  
+  if (!nodes.empty()) {
+    return true;
+  }
+
+  return false;
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1680,7 +1727,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief whether or not the subquery is a data-modification operation
-bool SubqueryNode::isModificationQuery() const {
+bool SubqueryNode::isModificationSubquery() const {
   std::vector<ExecutionNode*> stack({_subquery});
 
   while (!stack.empty()) {

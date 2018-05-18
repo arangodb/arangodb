@@ -144,10 +144,9 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   if (!_restrictedShard.empty()) {
     if (id != _restrictedShard) {
       return;
-    } else {
-      // We only have one shard it has to be responsible!
-      isResponsibleForInit = true;
     }
+    // We only have one shard it has to be responsible!
+    isResponsibleForInit = true;
   }
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(
@@ -197,7 +196,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     previous = clone;
   }
   TRI_ASSERT(previous != nullptr);
-
+    
   plan.root(previous);
   plan.setVarUsageComputed();
   // Always Verbose
@@ -770,7 +769,7 @@ Result EngineInfoContainerDBServer::buildEngines(
                                headers, SETUP_TIMEOUT);
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, Logger::AQL) << it.first << " respended with "
+      LOG_TOPIC(DEBUG, Logger::AQL) << it.first << " responded with "
                                     << res->getErrorCode() << " -> "
                                     << res->stringifyErrorMessage();
       LOG_TOPIC(TRACE, Logger::AQL) << infoBuilder.toJson();
@@ -781,7 +780,7 @@ Result EngineInfoContainerDBServer::buildEngines(
     VPackSlice response = builder->slice();
 
     if (!response.isObject() || !response.get("result").isObject()) {
-      LOG_TOPIC(ERR, Logger::AQL) << "Recieved error information from "
+      LOG_TOPIC(ERR, Logger::AQL) << "Received error information from "
                                   << it.first << " : " << response.toJson();
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query on all required "
