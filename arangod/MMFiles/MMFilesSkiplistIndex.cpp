@@ -997,30 +997,7 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
   return 0;
 }
 
-/*
-bool MMFilesSkiplistIndex::accessFitsIndex(
-    arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
-    arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    std::unordered_set<std::string>& nonNullAttributes,
-    bool isExecution) const {
-  
-}*/
-/*
-void MMFilesSkiplistIndex::matchAttributes(
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
-    size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-    bool isExecution) const {
-  
-}*/
-
-
-bool MMFilesSkiplistIndex::accessFitsIndex(
-                                           arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
+bool MMFilesSkiplistIndex::accessFitsIndex(arangodb::aql::AstNode const* access, arangodb::aql::AstNode const* other,
                                            arangodb::aql::AstNode const* op, arangodb::aql::Variable const* reference,
                                            std::vector<std::vector<arangodb::aql::AstNode const*>>& found,
                                            std::unordered_set<std::string>& nonNullAttributes) const {
@@ -1131,7 +1108,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE: {
         TRI_ASSERT(op->numMembers() == 2);
         accessFitsIndex(op->getMember(0), op->getMember(1),
-                                                       op, reference, mapping, nonNullAttributes);
+                        op, reference, mapping, nonNullAttributes);
         accessFitsIndex(op->getMember(1), op->getMember(0),
                         op, reference, mapping, nonNullAttributes);
         break;
@@ -1240,7 +1217,8 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
-
+  return SkiplistIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
+                                                                estimatedItems, estimatedCost);
 }
 
 
@@ -1248,7 +1226,8 @@ bool MMFilesSkiplistIndex::supportsSortCondition(
     arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     double& estimatedCost, size_t& coveredAttributes) const {
-  
+  return SkiplistIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
+                                                        itemsInIndex, estimatedCost, coveredAttributes);
 }
 
 
@@ -1256,11 +1235,5 @@ bool MMFilesSkiplistIndex::supportsSortCondition(
 arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
     arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) const {
-  
+  return SkiplistIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
-/*
-bool MMFilesSkiplistIndex::isDuplicateOperator(
-    arangodb::aql::AstNode const* node,
-    std::unordered_set<int> const& operatorsFound) const {
-  
-}*/

@@ -37,8 +37,7 @@ bool SkiplistIndexAttributeMatcher::accessFitsIndex(
     arangodb::Index const* idx, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
     arangodb::aql::Variable const* reference,
-    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>&
-        found,
+    std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
   if (!idx->canUseConditionPart(access, other, op, reference,
                                  nonNullAttributes, isExecution)) {
