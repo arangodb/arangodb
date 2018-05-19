@@ -76,8 +76,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
 
   // both engines support all types right now
   std::vector<std::string> supported = {"primary", "edge", "hash", "skiplist",
-                                        "persistent", "geo", "geo1",
-                                        "geo2" "fulltext"};
+                                        "persistent", "geo", "geo1", "geo2", "fulltext"};
   for (std::string const& typeStr : supported) {
     Index::IndexType type = Index::type(typeStr);
     emplaceFactory(typeStr, [type](LogicalCollection* collection,
@@ -91,6 +90,7 @@ ClusterIndexFactory::ClusterIndexFactory() {
   }
 }
 
+// overwrite to actually call the underlying storage engine
 Result ClusterIndexFactory::enhanceIndexDefinition(
     velocypack::Slice const definition, velocypack::Builder& normalized,
     bool isCreation, bool isCoordinator) const {
@@ -176,11 +176,6 @@ void ClusterIndexFactory::prepareIndexes(
     }
     indexes.emplace_back(std::move(idx));
   }
-}
-
-std::vector<std::string> ClusterIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
-                                  "persistent", "geo",  "fulltext"};
 }
 
 // -----------------------------------------------------------------------------

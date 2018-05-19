@@ -45,8 +45,6 @@ class ClusterIndexFactory final : public IndexFactory {
   void prepareIndexes(
       LogicalCollection* col, velocypack::Slice const&,
       std::vector<std::shared_ptr<arangodb::Index>>&) const override;
-
-  std::vector<std::string> supportedIndexes() const override;
 };
 }
 

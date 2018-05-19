@@ -100,6 +100,9 @@ class IndexFactory {
     bool isClusterConstructor
   ) const;
   
+  /// @brief used to display storage engine capabilities
+  virtual std::vector<std::string> supportedIndexes() const;
+  
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(arangodb::LogicalCollection*,
                                  std::vector<std::shared_ptr<arangodb::Index>>&) const = 0;
@@ -107,8 +110,6 @@ class IndexFactory {
   /// @brief create indexes from a list of index definitions
   virtual void prepareIndexes(LogicalCollection* col, velocypack::Slice const&,
                               std::vector<std::shared_ptr<arangodb::Index>>&) const = 0;
-
-  virtual std::vector<std::string> supportedIndexes() const = 0;
   
  protected:
 

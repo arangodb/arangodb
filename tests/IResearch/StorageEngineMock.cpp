@@ -517,10 +517,6 @@ struct IndexFactoryMock : arangodb::IndexFactory {
                               std::vector<std::shared_ptr<arangodb::Index>>&) const override {
     // NOOP
   }
-
-  virtual std::vector<std::string> supportedIndexes() const override {
-    return {};
-  }
 };
 
 }

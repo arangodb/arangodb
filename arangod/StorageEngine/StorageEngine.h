@@ -462,7 +462,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     for (auto& it: indexFactory().supportedIndexes()) {
       builder.add(velocypack::Value(it));
     }
-
+    
     builder.close(); // indexes
     builder.close(); // supports
     builder.close(); // object

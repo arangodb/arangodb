@@ -700,12 +700,6 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
   
 }
 
-
-std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
-                                  "persistent", "geo",  "fulltext"};
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
