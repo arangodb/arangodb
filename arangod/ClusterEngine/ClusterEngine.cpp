@@ -209,7 +209,7 @@ void ClusterEngine::addParametersForNewIndex(VPackBuilder& builder,
 // create storage-engine specific collection
 PhysicalCollection* ClusterEngine::createPhysicalCollection(
     LogicalCollection* collection, VPackSlice const& info) {
-  return new ClusterCollection(collection, info);
+  return new ClusterCollection(collection, engineType(), info);
 }
   
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
