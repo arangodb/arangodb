@@ -49,7 +49,6 @@ using namespace arangodb;
 
 namespace {
   bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
-    TRI_ASSERT(!fields.empty());
     for (auto const& it : fields) {
       if (TRI_AttributeNamesHaveExpansion(it)) {
         return true;
