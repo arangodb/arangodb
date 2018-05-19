@@ -32,7 +32,6 @@
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
 
-#include "ApplicationServerHelper.h"
 #include "IResearchAttributes.h"
 #include "IResearchCommon.h"
 #include "IResearchDocument.h"
@@ -228,7 +227,9 @@ std::string toString(arangodb::iresearch::IResearchView const& view) {
 /// @returns 'Flush' feature from AppicationServer
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::FlushFeature* getFlushFeature() noexcept {
-  return arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+  return arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::FlushFeature
+  >("Flush");
 }
 
 // @brief approximate iResearch directory instance size
@@ -348,8 +349,9 @@ arangodb::Result persistProperties(
     return arangodb::Result();
   }
 
-  auto* feature =
-    arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
 
   if (!feature) {
     return arangodb::Result(
@@ -596,7 +598,9 @@ IResearchView::IResearchView(
    _threadPool(0, 0), // 0 == create pool with no threads, i.e. not running anything
    _inRecovery(false) {
   // set up in-recovery insertion hooks
-  auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabaseFeature
+  >("Database");
 
   if (feature) {
     auto view = _asyncSelf; // create copy for lambda
@@ -1434,8 +1438,9 @@ int IResearchView::insert(
     uint64_t planVersion,
     LogicalView::PreCommitCallback const& preCommit /*= {}*/
 ) {
-  auto* feature =
-    arangodb::iresearch::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::DatabasePathFeature
+  >("DatabasePath");
 
   if (!feature) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)

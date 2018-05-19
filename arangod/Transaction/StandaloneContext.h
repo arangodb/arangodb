@@ -26,6 +26,7 @@
 
 #include "Context.h"
 #include "Basics/Common.h"
+#include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
 

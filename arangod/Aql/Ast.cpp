@@ -1459,8 +1459,8 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           }
 
           if (!dataSource) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+            THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "%s",
               value.copyString().c_str()
             );
           }
