@@ -534,7 +534,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
         RocksDBIndex::ESTIMATOR_SIZE);
     TRI_ASSERT(_estimator != nullptr);
   }
-  TRI_ASSERT(iid != 0);
+  TRI_ASSERT(iid == 1 || iid == 2);
   TRI_ASSERT(_objectId != 0);
 }
 

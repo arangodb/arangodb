@@ -80,6 +80,16 @@ bool ClusterEngine::isMMFiles() const {
   return _actualEngine->name() == MMFilesEngine::FeatureName;
 }
   
+ClusterEngineType ClusterEngine::engineType() const {
+  if (_actualEngine->name() == MMFilesEngine::FeatureName) {
+    return ClusterEngineType::MMFilesEngine;
+  } else if (_actualEngine->name() == RocksDBEngine::FeatureName) {
+    return ClusterEngineType::RocksDBEngine;
+  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
 // inherited from ApplicationFeature
 // ---------------------------------
 

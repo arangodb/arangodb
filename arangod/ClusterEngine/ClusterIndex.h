@@ -23,83 +23,76 @@
 #ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
 
-#include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
 #include "ClusterEngine/ClusterTransactionState.h"
+#include "ClusterEngine/Common.h"
+#include "Indexes/Index.h"
 
 namespace arangodb {
 class LogicalCollection;
 
 class ClusterIndex : public Index {
+ public:
+  ClusterIndex(TRI_idx_iid_t, LogicalCollection*, ClusterEngineType engineType,
+               Index::IndexType type, arangodb::velocypack::Slice const&);
 
  public:
-  /*ClusterIndex(TRI_idx_iid_t, LogicalCollection*,
-               Index::IndexType type,
-               std::vector<std::vector<arangodb::basics::AttributeName>> const&
-                   attributes, bool unique, bool sparse);*/
-
-  ClusterIndex(TRI_idx_iid_t, LogicalCollection*,
-               Index::IndexType type,
-               arangodb::velocypack::Slice const&);
-
- public:
-  
   ~ClusterIndex();
-  
-  void toVelocyPackFigures(VPackBuilder& builder) const override;
+
+  void toVelocyPackFigures(velocypack::Builder& builder) const override;
 
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder, bool withFigures,
                     bool forPersistence) const override;
-  
-  IndexType type() const override { return _type; }
-  
-  char const* typeName() const override { return Index::oldtypeName(_type); }
-  
+
+  IndexType type() const override { return _indexType; }
+
+  char const* typeName() const override {
+    return Index::oldtypeName(_indexType);
+  }
+
   bool allowExpansion() const override { return false; }
-  
+
   bool isPersistent() const override final { return true; }
-  
-  bool canBeDropped() const override { return _type != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                                              _type != Index::TRI_IDX_TYPE_EDGE_INDEX; }
-  
+
+  bool canBeDropped() const override {
+    return _indexType != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
+           _indexType != Index::TRI_IDX_TYPE_EDGE_INDEX;
+  }
+
   bool hasSelectivityEstimate() const override { return true; }
-  
-  double selectivityEstimateLocal(arangodb::StringRef const* = nullptr) const override {
+
+  double selectivityEstimateLocal(
+      arangodb::StringRef const* = nullptr) const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
     return 0;
   }
-  
+
   void load() override {}
   void unload() override {}
   size_t memory() const override { return 0; }
 
-  int drop() override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  int afterTruncate() override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
-  }
-  
+  int drop() override { return TRI_ERROR_NOT_IMPLEMENTED; }
+  int afterTruncate() override { return TRI_ERROR_NOT_IMPLEMENTED; }
+
   bool hasCoveringIterator() const override;
-  
+
   /// @brief Checks if this index is identical to the given definition
   bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
-  
+
   bool isSorted() const override;
-  
+
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t,
-                               size_t&, double&) const override;
-  
+                               arangodb::aql::Variable const*, size_t, size_t&,
+                               double&) const override;
+
   bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t,
-                             double&, size_t&) const override;
-  
+                             arangodb::aql::Variable const*, size_t, double&,
+                             size_t&) const override;
+
   /// @brief specializes the condition for use with the index
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
   /// @brief provides a size hint for the index
   int sizeHint(transaction::Methods* /*trx*/, size_t /*size*/) override final {
@@ -117,11 +110,12 @@ class ClusterIndex : public Index {
                 OperationMode mode) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  
+
   void updateProperties(velocypack::Slice const&);
 
-protected:
-  Index::IndexType _type;
+ protected:
+  ClusterEngineType _engineType;
+  Index::IndexType _indexType;
   velocypack::Builder _info;
 };
 }  // namespace arangodb

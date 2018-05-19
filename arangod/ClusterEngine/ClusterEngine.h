@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 
@@ -58,6 +59,10 @@ public:
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
+  ClusterEngineType engineType() const;
+  
+  // storage engine overrides
+  // ------------------------
   
   char const* typeName() const override { return _actualEngine->typeName(); }
 
@@ -101,7 +106,7 @@ public:
 
   // inventory functionality
   // -----------------------
-
+  
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
   void getCollectionInfo(

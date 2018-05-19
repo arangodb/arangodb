@@ -41,92 +41,63 @@
 using namespace arangodb;
 
 ClusterIndexFactory::ClusterIndexFactory() {
-  emplaceFactory("edge",
-                 [](LogicalCollection* collection,
+  emplaceFactory(
+      "edge", [](LogicalCollection* collection,
+                 velocypack::Slice const& definition, TRI_idx_iid_t id,
+                 bool isClusterConstructor) -> std::shared_ptr<Index> {
+        if (!isClusterConstructor) {
+          // this indexes cannot be created directly
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "cannot create edge index");
+        }
+
+        ClusterEngine* ce =
+            static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+        ClusterEngineType ct = ce->engineType();
+        return std::make_shared<ClusterIndex>(
+            id, collection, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, definition);
+      });
+
+  emplaceFactory(
+      "primary", [](LogicalCollection* collection,
                     velocypack::Slice const& definition, TRI_idx_iid_t id,
                     bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   if (!isClusterConstructor) {
-                     // this indexes cannot be created directly
-                     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                                    "cannot create edge index");
-                   }
+        if (!isClusterConstructor) {
+          // this indexes cannot be created directly
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "cannot create primary index");
+        }
+        ClusterEngine* ce =
+            static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+        ClusterEngineType ct = ce->engineType();
+        return std::make_shared<ClusterIndex>(
+            0, collection, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, definition);
+      });
 
-                   return std::make_shared<ClusterIndex>(
-                    id, collection, Index::TRI_IDX_TYPE_EDGE_INDEX, definition);
-                 });
-
-  emplaceFactory("fulltext",
-                 [](LogicalCollection* collection,
-                    velocypack::Slice const& definition, TRI_idx_iid_t id,
-                    bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   return std::make_shared<ClusterIndex>(id, collection, Index::TRI_IDX_TYPE_FULLTEXT_INDEX, definition);
-                 });
-
-  emplaceFactory("geo1",
-                 [](LogicalCollection* collection,
-                    velocypack::Slice const& definition, TRI_idx_iid_t id,
-                    bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   return std::make_shared<ClusterIndex>(id, collection, Index::TRI_IDX_TYPE_GEO1_INDEX, definition);
-                 });
-
-  emplaceFactory("geo2",
-                 [](LogicalCollection* collection,
-                    velocypack::Slice const& definition, TRI_idx_iid_t id,
-                    bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   return std::make_shared<ClusterIndex>(id, collection, Index::TRI_IDX_TYPE_GEO2_INDEX, definition);
-                 });
-
-  emplaceFactory("geo",
-                 [](LogicalCollection* collection,
-                    velocypack::Slice const& definition, TRI_idx_iid_t id,
-                    bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   return std::make_shared<ClusterIndex>(id, collection, Index::TRI_IDX_TYPE_GEO_INDEX, definition);
-                 });
-
-  emplaceFactory("hash",
-                 [](LogicalCollection* collection,
-                    velocypack::Slice const& definition, TRI_idx_iid_t id,
-                    bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   return std::make_shared<ClusterIndex>(id, collection, Index::TRI_IDX_TYPE_HASH_INDEX, definition);
-                 });
-
-  emplaceFactory("persistent",
-                 [](LogicalCollection* collection,
-                    velocypack::Slice const& definition, TRI_idx_iid_t id,
-                    bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   return std::make_shared<ClusterIndex>(
-                       id, collection, Index::TRI_IDX_TYPE_PERSISTENT_INDEX, definition);
-                 });
-
-  emplaceFactory("primary",
-                 [](LogicalCollection* collection,
-                    velocypack::Slice const& definition, TRI_idx_iid_t id,
-                    bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   if (!isClusterConstructor) {
-                     // this indexes cannot be created directly
-                     THROW_ARANGO_EXCEPTION_MESSAGE(
-                         TRI_ERROR_INTERNAL, "cannot create primary index");
-                   }
-
-                   return std::make_shared<ClusterIndex>(0, collection, Index::TRI_IDX_TYPE_PRIMARY_INDEX, definition);
-                 });
-
-  emplaceFactory("skiplist",
-                 [](LogicalCollection* collection,
-                    velocypack::Slice const& definition, TRI_idx_iid_t id,
-                    bool isClusterConstructor) -> std::shared_ptr<Index> {
-                   return std::make_shared<ClusterIndex>(id, collection, Index::TRI_IDX_TYPE_SKIPLIST_INDEX, definition);
-                 });
+  // both engines support all types right now
+  std::vector<std::string> supported = {"primary", "edge", "hash", "skiplist",
+                                        "persistent", "geo", "geo1",
+                                        "geo2" "fulltext"};
+  for (std::string const& typeStr : supported) {
+    Index::IndexType type = Index::type(typeStr);
+    emplaceFactory(typeStr, [type](LogicalCollection* collection,
+                                   velocypack::Slice const& definition, TRI_idx_iid_t id,
+                                   bool isClusterConstructor) -> std::shared_ptr<Index> {
+          ClusterEngine* ce =
+              static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+          ClusterEngineType ct = ce->engineType();
+          return std::make_shared<ClusterIndex>(id, collection, ct, type, definition);
+        });
+  }
 }
 
 Result ClusterIndexFactory::enhanceIndexDefinition(
-        velocypack::Slice const definition,
-        velocypack::Builder& normalized,
-        bool isCreation,
-        bool isCoordinator
-      ) const {
-  ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  return ce->actualEngine()->indexFactory().enhanceIndexDefinition(definition, normalized, isCreation, isCoordinator);
+    velocypack::Slice const definition, velocypack::Builder& normalized,
+    bool isCreation, bool isCoordinator) const {
+  ClusterEngine* ce =
+      static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  return ce->actualEngine()->indexFactory().enhanceIndexDefinition(
+      definition, normalized, isCreation, isCoordinator);
 }
 
 void ClusterIndexFactory::fillSystemIndexes(
@@ -142,59 +113,65 @@ void ClusterIndexFactory::fillSystemIndexes(
   input.close();
   input.close();
 
-  systemIndexes.emplace_back(
-      std::make_shared<arangodb::ClusterIndex>(0, col, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));
+  // get the storage engine type
+  ClusterEngine* ce =
+      static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+  ClusterEngineType ct = ce->engineType();
+
+  systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
+      0, col, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, input.slice()));
   // create edges indexes
   if (col->type() == TRI_COL_TYPE_EDGE) {
-    ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-
     // first edge index
     input.clear();
     input.openObject();
-    input.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
+    input.add("type",
+              VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
     input.add("id", VPackValue("1"));
     input.add("fields", VPackValue(VPackValueType::Array));
     input.add(VPackValue(StaticStrings::FromString));
-    if (ce->isMMFiles()) {
+    if (ct == ClusterEngineType::MMFilesEngine) {
       input.add(VPackValue(StaticStrings::ToString));
     }
     input.close();
     input.close();
     systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
-        1, col, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
-    
+        1, col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
+
     // second edge index
-    if (ce->isRocksDB()) {
+    if (ct == ClusterEngineType::RocksDBEngine) {
       input.clear();
       input.openObject();
-      input.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
+      input.add("type",
+                VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
       input.add("id", VPackValue("2"));
       input.add("fields", VPackValue(VPackValueType::Array));
       input.add(VPackValue(StaticStrings::ToString));
       input.close();
       input.close();
       systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
-        2, col, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
+          2, col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
     }
   }
 }
 
-void ClusterIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice const& indexesSlice,
-                                         std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+void ClusterIndexFactory::prepareIndexes(
+    LogicalCollection* col, VPackSlice const& indexesSlice,
+    std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
   TRI_ASSERT(indexesSlice.isArray());
-  
+
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
       // We have an error here.
       // Do not add index.
       continue;
     }
-    
+
     auto idx = prepareIndexFromSlice(v, false, col, true);
     if (!idx) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-      << "error creating index from definition '"
-      << indexesSlice.toString() << "'";
+          << "error creating index from definition '" << indexesSlice.toString()
+          << "'";
       continue;
     }
     indexes.emplace_back(std::move(idx));
