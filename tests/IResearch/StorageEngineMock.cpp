@@ -1483,11 +1483,9 @@ size_t TransactionStateMock::abortTransactionCount;
 size_t TransactionStateMock::beginTransactionCount;
 size_t TransactionStateMock::commitTransactionCount;
 
-static std::atomic<TRI_voc_tid_t> lastId(0);
-
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options)
-  : TransactionState(vocbase, ++lastId, options) {
+  : TransactionState(vocbase, 0, options) {
 }
 
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
