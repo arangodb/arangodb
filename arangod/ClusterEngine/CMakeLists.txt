@@ -11,6 +11,7 @@ set(CLUSTER_ENGINE_SOURCES
   ClusterEngine/ClusterIndexFactory.cpp
   ClusterEngine/ClusterRestHandlers.cpp
   ClusterEngine/ClusterRestReplicationHandler.cpp
+  ClusterEngine/ClusterRestWalHandler.cpp
   ClusterEngine/ClusterTransactionCollection.cpp
   ClusterEngine/ClusterTransactionContextData.h
   ClusterEngine/ClusterTransactionState.cpp

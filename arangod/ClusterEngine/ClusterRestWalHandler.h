@@ -20,20 +20,32 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterRestHandlers.h"
-#include "GeneralServer/RestHandlerFactory.h"
-#include "RestHandler/RestHandlerCreator.h"
-#include "ClusterEngine/ClusterRestReplicationHandler.h"
-#include "ClusterEngine/ClusterRestWalHandler.h"
+#ifndef ARANGOD_CLUSTER_CLUSTER_REST_WAL_HANDLER_H
+#define ARANGOD_CLUSTER_CLUSTER_REST_WAL_HANDLER_H 1
 
-using namespace arangodb;
+#include "Basics/Common.h"
+#include "RestHandler/RestBaseHandler.h"
 
-void ClusterRestHandlers::registerResources(
-    rest::RestHandlerFactory* handlerFactory) {
+namespace arangodb {
 
-  handlerFactory->addPrefixHandler(
-      "/_api/replication",
-      RestHandlerCreator<ClusterRestReplicationHandler>::createNoData);
+class ClusterRestWalHandler : public RestBaseHandler {
+ public:
+  ClusterRestWalHandler(GeneralRequest*, GeneralResponse*);
+
+ public:
   
-  handlerFactory->addPrefixHandler("/_admin/wal", RestHandlerCreator<ClusterRestWalHandler>::createNoData);
+  bool isDirect() const override {
+    return false;
+  }
+  
+  RestStatus execute() override final;
+  char const* name() const override final { return "ClusterRestWalHandler"; }
+
+ private:
+  void flush();
+  void transactions();
+  void properties();
+};
 }
+
+#endif

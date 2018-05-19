@@ -24,6 +24,7 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -47,38 +48,50 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool waitForSync = false;
   bool waitForCollector = false;
   bool writeShutdownFile = false;
+  double maxWaitTime = -1.0;
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
       v8::Handle<v8::Object> obj = args[0]->ToObject();
       if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForSync"))) {
         waitForSync =
-            TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+        TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
       if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForCollector"))) {
         waitForCollector = TRI_ObjectToBoolean(
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
+                                               obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
       if (obj->Has(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile"))) {
         writeShutdownFile = TRI_ObjectToBoolean(
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
+                                                obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
+      }
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxWaitTime"))) {
+        maxWaitTime = TRI_ObjectToDouble(
+                                         obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(args[0]);
-
+      
       if (args.Length() > 1) {
         waitForCollector = TRI_ObjectToBoolean(args[1]);
-
+        
         if (args.Length() > 2) {
           writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+          
+          if (args.Length() > 3) {
+            maxWaitTime = TRI_ObjectToDouble(args[3]);
+          }
         }
       }
     }
   }
-
-  EngineSelectorFeature::ENGINE->flushWal(waitForSync, waitForCollector,
-                                          writeShutdownFile);
+  
+  int res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
   TRI_V8_RETURN_TRUE();
+
   TRI_V8_TRY_CATCH_END
 }
 
