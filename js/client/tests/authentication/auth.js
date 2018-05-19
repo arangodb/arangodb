@@ -92,11 +92,10 @@ function AuthSuite() {
 
       // this will issue a request using the new user
       assertTrue(db._collections().length > 0);
-      assertTrue((db._query(`RETURN CURRENT_USER()`).toArray()[0] === expectUser))
+      assertTrue(db._query(`RETURN CURRENT_USER()`).toArray()[0] === expectUser);
 
       // double check with wrong passwords
-      let isBroken;
-      isBroken = true;
+      let isBroken = true;
       try {
         arango.reconnect(arango.getEndpoint(), db._name(), user, "foobar2");
       }
