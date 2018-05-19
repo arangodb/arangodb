@@ -121,7 +121,6 @@ void EngineSelectorFeature::prepare() {
         e->disable();
       }
     }
-    
   }
 
   if (ENGINE == nullptr) {

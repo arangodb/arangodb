@@ -106,11 +106,13 @@ void ClusterIndexFactory::fillSystemIndexes(
   // create primary index
   VPackBuilder input;
   input.openObject();
-  input.add("type", VPackValue("primary"));
-  input.add("id", VPackValue("0"));
-  input.add("fields", VPackValue(VPackValueType::Array));
+  input.add(StaticStrings::IndexType, VPackValue("primary"));
+  input.add(StaticStrings::IndexId, VPackValue("0"));
+  input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
   input.add(VPackValue(StaticStrings::KeyString));
   input.close();
+  input.add(StaticStrings::IndexUnique, VPackValue(true));
+  input.add(StaticStrings::IndexSparse, VPackValue(false));
   input.close();
 
   // get the storage engine type
@@ -125,15 +127,17 @@ void ClusterIndexFactory::fillSystemIndexes(
     // first edge index
     input.clear();
     input.openObject();
-    input.add("type",
+    input.add(StaticStrings::IndexType,
               VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
-    input.add("id", VPackValue("1"));
-    input.add("fields", VPackValue(VPackValueType::Array));
+    input.add(StaticStrings::IndexId, VPackValue("1"));
+    input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
     input.add(VPackValue(StaticStrings::FromString));
     if (ct == ClusterEngineType::MMFilesEngine) {
       input.add(VPackValue(StaticStrings::ToString));
     }
     input.close();
+    input.add(StaticStrings::IndexUnique, VPackValue(false));
+    input.add(StaticStrings::IndexSparse, VPackValue(false));
     input.close();
     systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
         1, col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));
@@ -142,12 +146,14 @@ void ClusterIndexFactory::fillSystemIndexes(
     if (ct == ClusterEngineType::RocksDBEngine) {
       input.clear();
       input.openObject();
-      input.add("type",
+      input.add(StaticStrings::IndexType,
                 VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
-      input.add("id", VPackValue("2"));
-      input.add("fields", VPackValue(VPackValueType::Array));
+      input.add(StaticStrings::IndexId, VPackValue("2"));
+      input.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
       input.add(VPackValue(StaticStrings::ToString));
       input.close();
+      input.add(StaticStrings::IndexUnique, VPackValue(false));
+      input.add(StaticStrings::IndexSparse, VPackValue(false));
       input.close();
       systemIndexes.emplace_back(std::make_shared<arangodb::ClusterIndex>(
           2, col, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, input.slice()));

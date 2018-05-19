@@ -297,16 +297,6 @@ SET(ARANGOD_SOURCES
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/v8-cluster.cpp
-  ClusterEngine/ClusterAqlFunctions.cpp
-  ClusterEngine/ClusterCollection.cpp
-  ClusterEngine/ClusterEngine.cpp
-  ClusterEngine/ClusterIndex.cpp
-  ClusterEngine/ClusterIndexFactory.cpp
-  ClusterEngine/ClusterRestHandlers.cpp
-  ClusterEngine/ClusterRestReplicationHandler.cpp
-  ClusterEngine/ClusterTransactionCollection.cpp
-  ClusterEngine/ClusterTransactionContextData.h
-  ClusterEngine/ClusterTransactionState.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralCommTask.cpp
@@ -525,10 +515,11 @@ if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
 endif()
 
+include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
+add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}

@@ -40,6 +40,7 @@
 #include "ClusterEngine/ClusterTransactionContextData.h"
 #include "ClusterEngine/ClusterTransactionManager.h"
 #include "ClusterEngine/ClusterTransactionState.h"
+#include "ClusterEngine/ClusterV8Functions.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
@@ -68,6 +69,7 @@ namespace arangodb {
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, "Cluster", "ClusterEngine", new ClusterIndexFactory()) {
+  setOptional(true);
 }
 
 ClusterEngine::~ClusterEngine() { }
@@ -131,7 +133,9 @@ void ClusterEngine::prepare() {
   _basePath = databasePathFeature->directory();
 
   TRI_ASSERT(!_basePath.empty());
-
+  if (!ServerState::instance()->isCoordinator()) {
+    setEnabled(false);
+  }
 }
 
 void ClusterEngine::start() {
@@ -139,6 +143,7 @@ void ClusterEngine::start() {
   if (!isEnabled()) {
     return;
   }
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
   
   // set the database sub-directory for RocksDB
   /*auto* databasePathFeature =
@@ -579,8 +584,7 @@ void ClusterEngine::addOptimizerRules() {
 
 /// @brief Add engine-specific V8 functions
 void ClusterEngine::addV8Functions() {
-  // there are no specific V8 functions here
-  //RocksDBV8Functions::registerResources();
+  ClusterV8Functions::registerResources();
 }
 
 /// @brief Add engine-specific REST handlers

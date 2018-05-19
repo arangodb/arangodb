@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterIndex.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Indexes/PersistentIndexAttributeMatcher.h"
@@ -62,8 +63,8 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                 bool forPersistence) const {
   builder.openObject();
   Index::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(_unique));
-  builder.add("sparse", VPackValue(_sparse));
+  builder.add(StaticStrings::IndexUnique, VPackValue(_unique));
+  builder.add(StaticStrings::IndexSparse, VPackValue(_sparse));
 
   // static std::vector forbidden = {};
   for (auto pair : VPackObjectIterator(_info.slice())) {
