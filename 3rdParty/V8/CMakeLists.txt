@@ -425,8 +425,8 @@ elseif (WIN32)
     )
   endforeach ()
 
-  set(ICU_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}}/../build/Debug")
-  set(ICU_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}}/../build/Release")
+  set(ICU_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/../build/Debug")
+  set(ICU_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/../build/Release")
 
   set(ICU_LIBS
     debug "${ICU_LIBRARY_DEBUG}/lib/icui18n.lib"
