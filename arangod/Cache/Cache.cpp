@@ -74,7 +74,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata&& 
   if (_enableWindowedStats) {
     try {
       _findStats.reset(new StatBuffer(_findStatsCapacity));
-    } catch (std::bad_alloc) {
+    } catch (std::bad_alloc const&) {
       _findStats.reset(nullptr);
       _enableWindowedStats = false;
     }
