@@ -332,7 +332,7 @@ SECTION("clone") {
   }
 }
 
-SECTION("searialize") {
+SECTION("serialize") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -362,7 +362,8 @@ SECTION("searialize") {
     );
 
     arangodb::velocypack::Builder builder;
-    node.toVelocyPack(builder, 0, false); // object with array of objects
+    unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
+    node.toVelocyPack(builder, flags, false); // object with array of objects
 
     auto const slice = builder.slice();
     CHECK(slice.isObject());
@@ -424,7 +425,7 @@ SECTION("searialize") {
 TEST_CASE("IResearchViewScatterNodeTest", "[iresearch][iresearch-view-node]") {
   IResearchViewNodeSetup s;
   UNUSED(s);
-
+  
 SECTION("construct") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
@@ -568,7 +569,10 @@ SECTION("clone") {
   }
 }
 
-SECTION("searialize") {
+SECTION("serialize") {
+#warning REMOVE
+  std::this_thread::sleep_for(std::chrono::seconds(10));
+  
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
@@ -595,7 +599,8 @@ SECTION("searialize") {
     );
 
     arangodb::velocypack::Builder builder;
-    node.toVelocyPack(builder, 0, false); // object with array of objects
+    unsigned flags = arangodb::aql::ExecutionNode::SERIALIZE_DETAILS;
+    node.toVelocyPack(builder, flags, false); // object with array of objects
 
     auto const slice = builder.slice();
     CHECK(slice.isObject());
@@ -605,7 +610,7 @@ SECTION("searialize") {
     CHECK(1 == it.size());
     auto nodeSlice = it.value();
 
-    // conststuctor
+    // constructor
     {
       arangodb::iresearch::IResearchViewScatterNode const deserialized(
         *query.plan(), nodeSlice
