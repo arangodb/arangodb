@@ -59,7 +59,7 @@ namespace {
   
   /// @brief set fields from slice
   std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice const& fields,
-                                                                      bool allowExpansion) {
+                                                                        bool allowExpansion) {
     std::vector<std::vector<arangodb::basics::AttributeName>> result;
     if (!fields.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
@@ -106,7 +106,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     : _iid(iid),
       _collection(collection),
       _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
-                            Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString()))),
+                            Index::allowExpansion(Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString())))),
       _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique.c_str(), false
