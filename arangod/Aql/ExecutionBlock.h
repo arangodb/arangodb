@@ -189,10 +189,6 @@ class ExecutionBlock {
 
   virtual bool hasMore();
 
-  virtual int64_t count() const { return _dependencies[0]->count(); }
-
-  virtual int64_t remaining();
-
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
   transaction::Methods* transaction() const { return _trx; }
