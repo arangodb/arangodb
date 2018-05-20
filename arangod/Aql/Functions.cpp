@@ -1561,7 +1561,7 @@ AqlValue Functions::FindFirst(arangodb::aql::Query* query,
 
   auto locale = LanguageFeature::instance()->getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  StringSearch search(uSearchBuf, uBuf, locale, NULL, status);
+  StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   for(int pos = search.first(status);
       U_SUCCESS(status) && pos != USEARCH_DONE;
@@ -1632,7 +1632,7 @@ AqlValue Functions::FindLast(arangodb::aql::Query* query,
 
   auto locale = LanguageFeature::instance()->getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  StringSearch search(uSearchBuf, uBuf, locale, NULL, status);
+  StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   int foundPos = -1;
   for(int pos = search.first(status);

@@ -1014,7 +1014,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the action name
   TRI_Utf8ValueNFC utf8name(args[0]);
 
-  if (*utf8name == 0) {
+  if (*utf8name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<name> must be an UTF-8 string");
   }
 
