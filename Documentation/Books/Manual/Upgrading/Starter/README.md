@@ -6,9 +6,9 @@ supports a new, automated, procedure to perform upgrades, including rolling upgr
 of a [Cluster](../../Scalability/Cluster/README.md) setup.
 
 The upgrade procedure of the _Starter_ described in this _Section_ can be used to
-upgrade to a new hotfix, or to perform an upgrade of a new minor version of ArangoDB.
+upgrade to a new hotfix, or to perform an upgrade to a new minor version of ArangoDB.
 
-**Important:** rolling upgrades of the Cluster from 3.2 to 3.3 are only supported
+**Important:** rolling upgrades of Cluster setups from 3.2 to 3.3 are only supported
 from versions 3.2.15 and 3.3.9. 
 
 Upgrade Procedure
