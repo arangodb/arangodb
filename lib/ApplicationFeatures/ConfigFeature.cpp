@@ -178,7 +178,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
       filename = name;
       break;
     } else if (checkArangoImp) {
-      name = FileUtils::buildFilename(location, "arangoimp");
+      name = FileUtils::buildFilename(location, "arangoimp.conf");
       LOG_TOPIC(TRACE, Logger::CONFIG) << "checking config file'" << name << "'";
       if (FileUtils::exists(name)) {
         LOG_TOPIC(DEBUG, Logger::CONFIG) << "found config file '" << name << "'";
