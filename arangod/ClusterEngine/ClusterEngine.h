@@ -71,11 +71,6 @@ public:
   // inherited from ApplicationFeature
   // ---------------------------------
 
-  // add the storage engine's specifc options to the global list of options
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  // validate the storage engine's specific options
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
