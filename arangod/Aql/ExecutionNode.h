@@ -348,7 +348,7 @@ class ExecutionNode {
 
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags,
-                    bool keepTopLevel) const;
+                    bool keepTopLevelOpen) const;
 
   /// @brief toVelocyPack
   virtual void toVelocyPackHelper(arangodb::velocypack::Builder&,

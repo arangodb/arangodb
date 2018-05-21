@@ -80,9 +80,6 @@ public:
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
-  void beginShutdown() override;
-  void stop() override;
-  void unprepare() override;
 
   // minimum timeout for the synchronous replication
   double minimumSyncReplicationTimeout() const override { return 1.0; }

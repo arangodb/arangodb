@@ -1492,8 +1492,6 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-
   return arangodb::Result();
 }
 
@@ -1509,8 +1507,6 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
-  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-
   return arangodb::Result();
 }
 

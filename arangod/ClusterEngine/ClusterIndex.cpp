@@ -68,12 +68,13 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
   // static std::vector forbidden = {};
   for (auto pair : VPackObjectIterator(_info.slice())) {
-    if (!pair.key.isEqualString("id") && !pair.key.isEqualString("type") &&
-        !pair.key.isEqualString("fields") &&
+    if (!pair.key.isEqualString(StaticStrings::IndexId) &&
+        !pair.key.isEqualString(StaticStrings::IndexType) &&
+        !pair.key.isEqualString(StaticStrings::IndexFields) &&
         !pair.key.isEqualString("selectivityEstimate") &&
         !pair.key.isEqualString("figures") &&
-        !pair.key.isEqualString("unique") &&
-        !pair.key.isEqualString("sparse")) {
+        !pair.key.isEqualString(StaticStrings::IndexUnique) &&
+        !pair.key.isEqualString(StaticStrings::IndexSparse)) {
       builder.add(pair.key);
       builder.add(pair.value);
     }
@@ -288,13 +289,17 @@ aql::AstNode* ClusterIndex::specializeCondition(
     aql::AstNode* node, aql::Variable const* reference) const {
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX: {
+      SimpleAttributeEqualityMatcher matcher(PrimaryIndexAttributes);
+      return matcher.specializeOne(this, node, reference);
     }
     // should not be called for these
     case TRI_IDX_TYPE_GEO_INDEX:
     case TRI_IDX_TYPE_GEO1_INDEX:
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
+#ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
+#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::specializeCondition(node, reference); // unsupported
     }

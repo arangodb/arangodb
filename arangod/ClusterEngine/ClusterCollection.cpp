@@ -152,7 +152,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
       // In some APIs maximalSize is allowed instead
       journalSlice = slice.get("maximalSize");
     }
-    uint32_t journalSize = TRI_JOURNAL_DEFAULT_SIZE;
+    uint32_t journalSize = Helper::getNumericValue<uint32_t>(_info.slice(), "journalSize", TRI_JOURNAL_DEFAULT_SIZE);
     if (journalSlice.isNumber()) {
       journalSize = journalSlice.getNumericValue<uint32_t>();
       if (journalSize < TRI_JOURNAL_MINIMAL_SIZE) {
@@ -287,6 +287,7 @@ void ClusterCollection::prepareIndexes(
   TRI_ASSERT(indexesSlice.isArray());
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
   std::vector<std::shared_ptr<Index>> indexes;
   if (indexesSlice.length() == 0 && _indexes.empty()) {
     engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
@@ -374,6 +375,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock.

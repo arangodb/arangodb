@@ -970,8 +970,6 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     
     PersistentIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
                                                      nonNullAttributes, true);
-    
-    //matchAttributes(node, reference, found, unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().
@@ -1158,13 +1156,6 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
   searchSlice = searchSlice.at(0);
   return lookup(trx, searchSlice, !opts.ascending);
 }
-
-/*
-bool RocksDBVPackIndex::isDuplicateOperator(
-    arangodb::aql::AstNode const* node,
-    std::unordered_set<int> const& operatorsFound) const {
-
-}*/
 
 rocksdb::SequenceNumber RocksDBVPackIndex::serializeEstimate(
     std::string& output, rocksdb::SequenceNumber seq) const {

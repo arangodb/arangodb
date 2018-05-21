@@ -534,6 +534,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid,
         RocksDBIndex::ESTIMATOR_SIZE);
     TRI_ASSERT(_estimator != nullptr);
   }
+  // edge indexes are always created with ID 1 or 2
   TRI_ASSERT(iid == 1 || iid == 2);
   TRI_ASSERT(_objectId != 0);
 }

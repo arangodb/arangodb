@@ -95,34 +95,6 @@ ClusterEngineType ClusterEngine::engineType() const {
 // inherited from ApplicationFeature
 // ---------------------------------
 
-// add the storage engine's specifc options to the global list of options
-void ClusterEngine::collectOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-  /*options->addSection("rocksdb", "RocksDB engine specific configuration");
-
-  // control transaction size for RocksDB engine
-  options->addOption("--rocksdb.max-transaction-size",
-                     "transaction size limit (in bytes)",
-                     new UInt64Parameter(&_maxTransactionSize));
-
-  options->addOption("--rocksdb.intermediate-commit-size",
-                     "an intermediate commit will be performed automatically "
-                     "when a transaction "
-                     "has accumulated operations of this size (in bytes)",
-                     new UInt64Parameter(&_intermediateCommitSize));
-
-  options->addOption("--rocksdb.intermediate-commit-count",
-                     "an intermediate commit will be performed automatically "
-                     "when this number of "
-                     "operations is reached in a transaction",
-                     new UInt64Parameter(&_intermediateCommitCount));*/
-}
-
-// validate the storage engine's specific options
-void ClusterEngine::validateOptions(
-    std::shared_ptr<options::ProgramOptions> options) {
-}
-
 // preparation phase for storage engine. can be used for internal setup.
 // the storage engine must not start any threads here or write any files
 void ClusterEngine::prepare() {
@@ -139,42 +111,7 @@ void ClusterEngine::prepare() {
 }
 
 void ClusterEngine::start() {
-  // it is already decided that rocksdb is used
-  if (!isEnabled()) {
-    return;
-  }
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-  
-  // set the database sub-directory for RocksDB
-  /*auto* databasePathFeature =
-      ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _path = databasePathFeature->subdirectoryName("engine-rocksdb");
-
-  if (!basics::FileUtils::isDirectory(_path)) {
-    std::string systemErrorStr;
-    long errorNo;
-
-    int res = TRI_CreateRecursiveDirectory(_path.c_str(), errorNo,
-                                           systemErrorStr);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "created RocksDB data directory '" << _path << "'";
-    } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::ENGINES) << "unable to create RocksDB data directory '" << _path << "': " << systemErrorStr;
-      FATAL_ERROR_EXIT();
-    }
-  }*/
-}
-
-void ClusterEngine::beginShutdown() {
-}
-
-void ClusterEngine::stop() {
-
-}
-
-void ClusterEngine::unprepare() {
-
 }
 
 TransactionManager* ClusterEngine::createTransactionManager() {
@@ -243,47 +180,6 @@ void ClusterEngine::getCollectionInfo(
     TRI_voc_tick_t maxTick
 ) {
   
-  /*builder.openObject();
-
-  // read collection info from database
-  RocksDBKey key;
-
-  key.constructCollection(vocbase.id(), cid);
-
-  rocksdb::PinnableSlice value;
-  rocksdb::ReadOptions options;
-  rocksdb::Status res = _db->Get(options, RocksDBColumnFamily::definitions(),
-                                 key.string(), &value);
-  auto result = rocksutils::convertStatus(res);
-
-  if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(result);
-  }
-
-  VPackSlice fullParameters = RocksDBValue::data(value);
-
-  builder.add("parameters", fullParameters);
-
-  if (includeIndexes) {
-    // dump index information
-    VPackSlice indexes = fullParameters.get("indexes");
-    builder.add(VPackValue("indexes"));
-    builder.openArray();
-    if (indexes.isArray()) {
-      for (auto const idx : VPackArrayIterator(indexes)) {
-        // This is only allowed to contain user-defined indexes.
-        // So we have to exclude Primary + Edge Types
-        VPackSlice type = idx.get("type");
-        TRI_ASSERT(type.isString());
-        if (!type.isEqualString("primary") && !type.isEqualString("edge")) {
-          builder.add(idx);
-        }
-      }
-    }
-    builder.close();
-  }
-
-  builder.close();*/
 }
 
 int ClusterEngine::getCollectionsAndIndexes(
@@ -292,30 +188,6 @@ int ClusterEngine::getCollectionsAndIndexes(
     bool wasCleanShutdown,
     bool isUpgrade
 ) {
-  /*rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
-
-  result.openArray();
-
-  auto rSlice = rocksDBSlice(RocksDBEntryType::Collection);
-
-  for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice);
-       iter->Next()) {
-    if (vocbase.id() != RocksDBKey::databaseId(iter->key())) {
-      continue;
-    }
-
-    auto slice = VPackSlice(iter->value().data());
-
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted",
-                                                             false)) {
-      continue;
-    }
-    result.add(slice);
-  }
-
-  result.close();*/
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -323,29 +195,6 @@ int ClusterEngine::getCollectionsAndIndexes(
 int ClusterEngine::getViews(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result
 ) {
-  /*rocksdb::ReadOptions readOptions;
-  std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
-
-  result.openArray();
-
-  auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
-
-  for (iter->Seek(bounds.start());
-       iter->Valid() && iter->key().compare(bounds.end()) < 0; iter->Next()) {
-    auto slice = VPackSlice(iter->value().data());
-
-    LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << slice.toJson();
-
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted",
-                                                             false)) {
-      continue;
-    }
-
-    result.add(slice);
-  }
-
-  result.close();*/
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -606,91 +455,10 @@ TRI_vocbase_t* ClusterEngine::openExistingDatabase(TRI_voc_tick_t id,
                                                    std::string const& name,
                                                    bool wasCleanShutdown,
                                                    bool isUpgrade) {
+  // TODO make this a coordinator type vocbase
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
-  
   return vocbase.release();
-
-  // scan the database path for views
-  /*try {
-    VPackBuilder builder;
-    int res = getViews(*vocbase, builder);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    VPackSlice const slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (auto const& it : VPackArrayIterator(slice)) {
-      // we found a view that is still active
-
-      TRI_ASSERT(!it.get("id").isNone());
-
-      auto const view = LogicalView::create(*vocbase, it, false);
-
-      if (!view) {
-        auto const message = "failed to instantiate view '" + name + "'";
-
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
-      }
-
-      StorageEngine::registerView(*vocbase, view);
-
-      view->open();
-    }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
-                                            << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error while opening database: unknown exception";
-    throw;
-  }
-
-  // scan the database path for collections
-  try {
-    VPackBuilder builder;
-    int res =
-      getCollectionsAndIndexes(*vocbase, builder, wasCleanShutdown, isUpgrade);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    VPackSlice slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (VPackSlice it : VPackArrayIterator(slice)) {
-      // we found a collection that is still active
-      TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      auto uniqCol =
-        std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
-      auto collection = uniqCol.get();
-      TRI_ASSERT(collection != nullptr);
-      StorageEngine::registerCollection(*vocbase, uniqCol);
-      auto physical =
-          static_cast<RocksDBCollection*>(collection->getPhysical());
-      TRI_ASSERT(physical != nullptr);
-
-      physical->deserializeIndexEstimates(settingsManager());
-      physical->deserializeKeyGenerator(settingsManager());
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "added document collection '"
-                                                << collection->name() << "'";
-    }
-
-    return vocbase.release();
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
-                                            << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "error while opening database: unknown exception";
-    throw;
-  }*/
 }
   
 Result ClusterEngine::createLoggerState(TRI_vocbase_t* vocbase,

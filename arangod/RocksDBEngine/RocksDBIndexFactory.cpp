@@ -599,7 +599,6 @@ void RocksDBIndexFactory::fillSystemIndexes(arangodb::LogicalCollection* col,
     indexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, builder.slice(), StaticStrings::FromString));
     indexes.emplace_back(std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, builder.slice(), StaticStrings::ToString));
   }
-  return;
 }
 
 /// @brief create indexes from a list of index definitions
