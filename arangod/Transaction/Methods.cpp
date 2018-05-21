@@ -1258,18 +1258,27 @@ OperationResult transaction::Methods::documentCoordinator(
 
   if (!value.isArray()) {
     StringRef key(transaction::helpers::extractKeyPart(value));
+
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
   }
 
   int res = arangodb::getDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, std::move(headers), responseCode,
-      errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    value,
+    options,
+    std::move(headers),
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultDocument(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -1389,17 +1398,22 @@ OperationResult transaction::Methods::insertCoordinator(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options) {
   rest::ResponseCode responseCode;
-
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-
   int res = arangodb::createDocumentOnCoordinator(
-      databaseName(), collectionName, options, value, responseCode,
-      errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    options,
+    value,
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultInsert(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -1531,7 +1545,8 @@ OperationResult transaction::Methods::insertLocal(
 
       // Now replicate the good operations on all followers:
       std::string path =
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
+        "/_db/" +
+        arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
         "/_api/document/" +
         arangodb::basics::StringUtils::urlEncode(collection->name()) +
         "?isRestore=true&isSynchronousReplication=" +
@@ -1677,14 +1692,22 @@ OperationResult transaction::Methods::updateCoordinator(
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-
   int res = arangodb::modifyDocumentOnCoordinator(
-      databaseName(), collectionName, newValue, options, true /* isPatch */,
-      headers, responseCode, errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    newValue,
+    options,
+    true /* isPatch */,
+    headers,
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -1730,14 +1753,22 @@ OperationResult transaction::Methods::replaceCoordinator(
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-
   int res = arangodb::modifyDocumentOnCoordinator(
-      databaseName(), collectionName, newValue, options, false /* isPatch */,
-      headers, responseCode, errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    newValue,
+    options,
+    false /* isPatch */,
+    headers,
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -1886,7 +1917,8 @@ OperationResult transaction::Methods::modifyLocal(
       if (cc != nullptr) {
         // nullptr only happens on controlled shutdown
         std::string path =
-          "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
+          "/_db/" +
+          arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
           "?isRestore=true&isSynchronousReplication=" +
@@ -2030,14 +2062,20 @@ OperationResult transaction::Methods::removeCoordinator(
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-
   int res = arangodb::deleteDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, responseCode,
-      errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    value,
+    options,
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultRemove(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -2170,7 +2208,8 @@ OperationResult transaction::Methods::removeLocal(
         // nullptr only happens on controled shutdown
 
         std::string path =
-          "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
+          "/_db/" +
+          arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
           "?isRestore=true&isSynchronousReplication=" +
@@ -2360,7 +2399,8 @@ OperationResult transaction::Methods::truncate(
 OperationResult transaction::Methods::truncateCoordinator(
     std::string const& collectionName, OperationOptions& options) {
   return OperationResult(arangodb::truncateCollectionOnCoordinator(
-      databaseName(), collectionName));
+    vocbase().name(), collectionName)
+  );
 }
 #endif
 
@@ -2419,26 +2459,30 @@ OperationResult transaction::Methods::truncateLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
+
     if (!isFollower && followers->size() > 0) {
       // Now replicate the good operations on all followers:
       auto cc = arangodb::ClusterComm::instance();
+
       if (cc != nullptr) {
         // nullptr only happens on controlled shutdown
         std::string path =
-            "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
+            "/_db/" +
+            arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
             "/_api/collection/" +
             arangodb::basics::StringUtils::urlEncode(collectionName) +
             "/truncate?isSynchronousReplication=" +
             ServerState::instance()->getId();
-
         auto body = std::make_shared<std::string>();
 
         // Now prepare the requests:
         std::vector<ClusterCommRequest> requests;
+
         for (auto const& f : *followers) {
           requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT,
                                 path, body);
         }
+
         size_t nrDone = 0;
         // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
         // can be a much more expensive operation than a single document
@@ -2508,8 +2552,9 @@ OperationResult transaction::Methods::rotateActiveJournal(
 /// @brief rotate the journal of a collection
 OperationResult transaction::Methods::rotateActiveJournalCoordinator(
     std::string const& collectionName, OperationOptions const& options) {
-
-  return OperationResult(rotateActiveJournalOnAllDBServers(databaseName(), collectionName));
+  return OperationResult(
+    rotateActiveJournalOnAllDBServers(vocbase().name(), collectionName)
+  );
 }
 
 /// @brief rotate the journal of a collection
@@ -2548,8 +2593,9 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 OperationResult transaction::Methods::countCoordinator(
     std::string const& collectionName, bool aggregate, bool sendNoLockHeader) {
   std::vector<std::pair<std::string, uint64_t>> count;
-  int res = arangodb::countOnCoordinator(databaseName(), collectionName, count,
-                                         sendNoLockHeader);
+  auto res = arangodb::countOnCoordinator(
+    vocbase().name(), collectionName, count, sendNoLockHeader
+  );
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -3028,15 +3074,16 @@ transaction::Methods* transaction::Methods::clone(transaction::Options const&) c
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(databaseName(), name);
-
+  auto collectionInfo = clusterInfo->getCollection(vocbase().name(), name);
   auto idxs = collectionInfo->getIndexes();
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
+
   for (auto const& it : idxs) {
     if (it->id() == iid) {
       return it;
     }
   }
+
   return nullptr;
 }
 
@@ -3044,13 +3091,12 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
 std::vector<std::shared_ptr<Index>>
 transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
-
-  auto dbname = databaseName();
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> collection = clusterInfo->getCollection(databaseName(), name);
+  auto collection = clusterInfo->getCollection(vocbase().name(), name);
   std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
 
   collection->clusterIndexEstimates(); // update estiamtes in logical collection
+
   // push updated values into indexes
   for(auto i : indexes){
     i->updateClusterEstimate();

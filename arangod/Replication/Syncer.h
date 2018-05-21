@@ -33,26 +33,32 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class Endpoint;
 class LogicalCollection;
 
 namespace httpclient {
+
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
+
 }
 
 namespace transaction {
+
 class Methods;
+
 }
 
 namespace velocypack {
+
 class Slice;
+
 }
 
 class Syncer {
  public:
-  
   struct MasterInfo {
     std::string _endpoint;
     TRI_server_id_t _serverId;
@@ -68,7 +74,7 @@ class Syncer {
           _lastLogTick(0), 
           _active(false) {}
   };
-  
+
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
@@ -81,22 +87,22 @@ class Syncer {
 
 /// @brief steal the barrier id from the syncer
   TRI_voc_tick_t stealBarrier();
- 
+
   void setLeaderId(std::string const& leaderId) {
     _leaderId = leaderId;
   }
-  
+
   /// @brief send a "remove barrier" command
   Result sendRemoveBarrier();
-  
+
   void setAborted(bool value);
-  
+
   virtual bool isAborted() const;
 
  protected:
   /// @brief reload all users
   void reloadUsers();
-  
+
   /// @brief parse a velocypack response
   Result parseResponse(arangodb::velocypack::Builder&,
                        arangodb::httpclient::SimpleHttpResult const*) const;
@@ -114,9 +120,11 @@ class Syncer {
                                    arangodb::velocypack::Slice const&);
 
   /// @brief creates a collection, based on the VelocyPack provided
-  Result createCollection(TRI_vocbase_t* vocbase,
-                          arangodb::velocypack::Slice const&,
-                          arangodb::LogicalCollection**);
+  Result createCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice,
+    arangodb::LogicalCollection** dst
+  );
 
   /// @brief drops a collection, based on the VelocyPack provided
   Result dropCollection(arangodb::velocypack::Slice const&, bool reportError);
@@ -136,7 +144,8 @@ class Syncer {
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
 
   std::shared_ptr<LogicalCollection> resolveCollection(
-    TRI_vocbase_t* vocbase, arangodb::velocypack::Slice const& slice
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
   );
 
   std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {
@@ -156,7 +165,9 @@ class Syncer {
 
   /// @brief extract the collection by either id or name, may return nullptr!
   std::shared_ptr<LogicalCollection> getCollectionByIdOrName(
-    TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, std::string const& name
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t cid,
+    std::string const& name
   );
 
   /// @brief apply a single marker from the collection dump
@@ -164,21 +175,21 @@ class Syncer {
                                            LogicalCollection* coll,
                                            TRI_replication_operation_e,
                                            arangodb::velocypack::Slice const&); 
-  
+
   /// @brief extract the collection id from VelocyPack
   TRI_voc_cid_t getCid(velocypack::Slice const&) const;
-  
+
   /// @brief extract the collection name from VelocyPack
   std::string getCName(arangodb::velocypack::Slice const&) const;
 
  protected:
-  
+
   /// @brief lazy loaded list of vocbases
   std::unordered_map<std::string, DatabaseGuard> _vocbases;
-  
+
   /// @brief configuration
   ReplicationApplierConfiguration _configuration;
-  
+
   /// @brief information about the master state
   MasterInfo _masterInfo;
 
@@ -187,7 +198,7 @@ class Syncer {
 
   /// @brief the connection to the master
   httpclient::GeneralClientConnection* _connection;
-  
+
   /// @brief a mutex for assigning and freeing the _client object
   mutable Mutex _clientMutex;
 
@@ -202,16 +213,16 @@ class Syncer {
 
   /// @brief local server id
   TRI_server_id_t _localServerId;
-  
+
   /// @brief WAL barrier id
   uint64_t _barrierId;
 
   /// @brief ttl for WAL barrier
   int _barrierTtl;
-  
+
   /// @brief WAL barrier last update time
   double _barrierUpdateTime;
-  
+
   /// Is this syncer allowed to handle its own batch
   bool _isChildSyncer;
 
@@ -225,6 +236,7 @@ class Syncer {
   /// @brief base url of the replication API
   static std::string const ReplicationUrl;
 };
+
 }
 
 #endif
