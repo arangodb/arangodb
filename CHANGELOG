@@ -6,6 +6,7 @@ v3.2.16 (XXXX-XX-XX)
 * self heal during a Foxx service install, upgrade or replace no longer breaks 
   the respective operation
 
+* inception was ignoring leader's configuration
 
 v3.2.15 (2018-05-13)
 --------------------
