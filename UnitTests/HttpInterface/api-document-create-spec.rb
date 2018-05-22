@@ -967,13 +967,6 @@ describe ArangoDB do
         newold = newdoc.parsed_response['old']
         newold["_key"].should eq(key)
         newold["_rev"].should eq(newoldrev)
-
-        print "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-        print body
-        print "\n####\n"
-        print newdoc.parsed_response
-        print "\n####\n"
-        print "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
         newdoc.code.should eq(201)
 
         ArangoDB.delete(location)
@@ -1011,36 +1004,38 @@ describe ArangoDB do
         location.should eq("/_db/_system/_api/document/#{did}")
 
         cmd = "/_api/document?collection=#{@cn}&overwrite=true&returnNew=true&returnOld=true&waitForSync=true"
-        body = "{ \"_key\" : \"#{key}\",  \"Hallo\" : \"ULF\" }"
+        body = "[{ \"_key\" : \"#{key}\",  \"Hallo\" : \"ULF\" }, { \"_key\" : \"#{key}\",  \"Hallo\" : \"ULFINE\" }]"
         newdoc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
 
-        newrev = newdoc.parsed_response['_rev']
+        newrev = newdoc.parsed_response[0]['_rev']
         newrev.should be_kind_of(String)
         newrev.should !eq(rev)
 
-        newoldrev = newdoc.parsed_response['_oldRev']
+        newoldrev = newdoc.parsed_response[0]['_oldRev']
         newoldrev.should be_kind_of(String)
         newoldrev.should eq(rev)
 
-        newkey = newdoc.parsed_response['_key']
+        newkey = newdoc.parsed_response[0]['_key']
         newkey.should be_kind_of(String)
         newkey.should eq(key)
 
-        newnew = newdoc.parsed_response['new']
+        newnew = newdoc.parsed_response[0]['new']
         newnew["_key"].should be_kind_of(String)
         newnew["_key"].should eq(key)
         newnew["_rev"].should eq(newrev)
 
-        newold = newdoc.parsed_response['old']
+        newold = newdoc.parsed_response[0]['old']
         newold["_key"].should eq(key)
         newold["_rev"].should eq(newoldrev)
 
-        print "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
-        print body
-        print "\n####\n"
-        print newdoc.parsed_response
-        print "\n####\n"
-        print "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n"
+        newrev = newdoc.parsed_response[1]['_rev']
+        newrev.should be_kind_of(String)
+        newrev.should !eq(rev)
+
+        newrev = newdoc.parsed_response[1]['new']['Hallo']
+        newrev.should be_kind_of(String)
+        newrev.should !eq("ULFINE")
+
         newdoc.code.should eq(201)
 
         ArangoDB.delete(location)
