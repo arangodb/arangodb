@@ -369,7 +369,7 @@
       var type = $('#newIndexType').val();
       if (type === null) {
         type = $('#newIndexType').children().first().attr('value');
-        arangoHelper.escapeHtml($('#newIndexType').val(type));
+        $('#newIndexType').val(type);
       }
       $('#newIndexType' + type).show();
     },
