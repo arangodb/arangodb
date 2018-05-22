@@ -253,8 +253,12 @@ struct Functions {
                           VPackFunctionParameters const&);
     static AqlValue UnsetRecursive(arangodb::aql::Query*, transaction::Methods*,
                                    VPackFunctionParameters const&);
+    static AqlValue UnsetRegex(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
     static AqlValue Keep(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
+    static AqlValue KeepRegex(arangodb::aql::Query*, transaction::Methods*,
+                              VPackFunctionParameters const&);
     static AqlValue Translate(arangodb::aql::Query*, transaction::Methods*,
                               VPackFunctionParameters const&);
     static AqlValue Merge(arangodb::aql::Query*, transaction::Methods*,
@@ -265,6 +269,8 @@ struct Functions {
                         VPackFunctionParameters const&);
     static AqlValue Attributes(arangodb::aql::Query*, transaction::Methods*,
                                VPackFunctionParameters const&);
+    static AqlValue AttributesRegex(arangodb::aql::Query*, transaction::Methods*,
+                                    VPackFunctionParameters const&);
     static AqlValue Values(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
     static AqlValue Min(arangodb::aql::Query*, transaction::Methods*,
@@ -281,6 +287,12 @@ struct Functions {
                                 VPackFunctionParameters const&);
     static AqlValue RandomToken(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+    static AqlValue ToHex(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+    static AqlValue ToBase64(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
+    static AqlValue EncodeUriComponent(arangodb::aql::Query*, transaction::Methods*,
+                                       VPackFunctionParameters const&);
     static AqlValue Md5(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
     static AqlValue Sha1(arangodb::aql::Query*, transaction::Methods*,
@@ -338,6 +350,8 @@ struct Functions {
     static AqlValue ParseIdentifier(arangodb::aql::Query*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+    static AqlValue Uuid(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
     static AqlValue Slice(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
     static AqlValue Minus(arangodb::aql::Query*, transaction::Methods*,
@@ -386,6 +400,8 @@ struct Functions {
                             VPackFunctionParameters const&);
     static AqlValue Degrees(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
+    static AqlValue Sign(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
     static AqlValue Pi(arangodb::aql::Query*, transaction::Methods*,
                        VPackFunctionParameters const&);
     static AqlValue Rand(arangodb::aql::Query*, transaction::Methods*,

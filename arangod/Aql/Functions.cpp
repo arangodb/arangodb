@@ -32,6 +32,8 @@
 #include "Aql/RegexCache.h"
 #include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FloatingPoint.h"
+#include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -65,6 +67,10 @@
 #include <s2/s2loop.h>
 #include <date/date.h>
 #include <date/iso_week.h>
+  
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/uuid/random_generator.hpp>
 
 #include <unicode/stsearch.h>
 #include <unicode/uchar.h>
@@ -121,6 +127,11 @@ using namespace date;
  */
 
 namespace {
+  
+static boost::uuids::random_generator randomGenerator;
+static Mutex randomGeneratorMutex;
+
+static char const hexTable[]= "0123456789abcdef";
 
 enum DateSelectionModifier {
   INVALID = 0,
@@ -1137,6 +1148,45 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
   }
 }
 
+/// @brief Helper function to unset or keep all given names in the value, using a regex
+///        Recursively iterates over sub-object and unsets or keeps their values
+///        as well
+void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
+                 ::RegexMatcher* matcher,
+                 bool unset,  // true means unset, false means keep
+                 bool recursive, VPackBuilder& result) {
+  TRI_ASSERT(value.isObject());
+  VPackObjectBuilder b(&result);  // Close the object after this function
+  for (auto const& entry : VPackObjectIterator(value, false)) {
+    TRI_ASSERT(entry.key.isString());
+
+    bool error = false;
+    VPackValueLength l;
+    char const* p = entry.key.getString(l);
+    bool const matches = arangodb::basics::Utf8Helper::DefaultUtf8Helper.matches(matcher, p, l, true, error);
+
+    if (error) {
+      // executing regular expression failed
+      return;
+    }
+
+    if (matches != unset) {
+      // not found and unset or found and keep
+      if (recursive && entry.value.isObject()) {
+        result.add(entry.key);  // Add the key
+        ::unsetOrKeep(trx, entry.value, matcher, unset, recursive,
+                      result);  // Adds the object
+      } else {
+        if (entry.value.isCustom()) {
+          result.add(p, l, VPackValue(trx->extractIdString(value)));
+        } else {
+          result.add(p, l, entry.value);
+        }
+      }
+    }
+  }
+}
+
 /// @brief Helper function to get a document by it's identifier
 ///        Lazy Locks the collection if necessary.
 void getDocumentByIdentifier(transaction::Methods* trx,
@@ -1267,6 +1317,11 @@ void flattenList(VPackSlice const& array, size_t maxDepth,
       result.add(tmp);
     }
   }
+}
+
+boost::uuids::uuid generateUuid() {
+  MUTEX_LOCKER(locker, randomGeneratorMutex);
+  return randomGenerator();
 }
 
 } // namespace
@@ -3593,6 +3648,46 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
+/// @brief function UNSET_REGEX
+AqlValue Functions::UnsetRegex(arangodb::aql::Query* query,
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& parameters) {
+  static char const* AFN = "UNSET_REGEX";
+  ValidateParameters(parameters, AFN, 2, 4);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!value.isObject()) {
+    ::registerInvalidArgumentWarning(query, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
+  bool const recursive = ::getBooleanParameter(trx, parameters, 3, false);
+  
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  // build pattern from parameter #1
+  AqlValue regex = ExtractFunctionParameterValue(parameters, 1);
+  ::appendAsString(trx, adapter, regex);
+  
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(
+      buffer->c_str(), buffer->length(), caseInsensitive);
+
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  ::unsetOrKeep(trx, slice, matcher, true, recursive, *builder.get());
+  return AqlValue(builder.get());
+}
+
 /// @brief function KEEP
 AqlValue Functions::Keep(arangodb::aql::Query* query, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters) {
@@ -3612,6 +3707,45 @@ AqlValue Functions::Keep(arangodb::aql::Query* query, transaction::Methods* trx,
   VPackSlice slice = materializer.slice(value, false);
   transaction::BuilderLeaser builder(trx);
   ::unsetOrKeep(trx, slice, names, false, false, *builder.get());
+  return AqlValue(builder.get());
+}
+
+/// @brief function KEEP_REGEX
+AqlValue Functions::KeepRegex(arangodb::aql::Query* query, transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
+  static char const* AFN = "KEEP_REGEX";
+  ValidateParameters(parameters, AFN, 2, 4);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!value.isObject()) {
+    ::registerInvalidArgumentWarning(query, AFN);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
+  bool const recursive = ::getBooleanParameter(trx, parameters, 3, false);
+  
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  // build pattern from parameter #1
+  AqlValue regex = ExtractFunctionParameterValue(parameters, 1);
+  ::appendAsString(trx, adapter, regex);
+  
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(
+      buffer->c_str(), buffer->length(), caseInsensitive);
+
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  ::unsetOrKeep(trx, slice, matcher, false, recursive, *builder.get());
   return AqlValue(builder.get());
 }
 
@@ -3715,20 +3849,23 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
   if (!value.isObject()) {
     // not an object
     ::registerWarning(query, "ATTRIBUTES",
-                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
-
-  bool const removeInternal = ::getBooleanParameter(trx, parameters, 1, false);
-  bool const doSort = ::getBooleanParameter(trx, parameters, 2, false);
 
   TRI_ASSERT(value.isObject());
   if (value.length() == 0) {
     return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
+  
+  bool const removeInternal = ::getBooleanParameter(trx, parameters, 1, false);
+  bool const doSort = ::getBooleanParameter(trx, parameters, 2, false);
 
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(value, false);
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
 
   if (doSort) {
     std::set<std::string,
@@ -3736,33 +3873,87 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
         keys;
 
     VPackCollection::keys(slice, keys);
-    VPackBuilder result;
-    result.openArray();
     for (auto const& it : keys) {
       TRI_ASSERT(!it.empty());
       if (removeInternal && !it.empty() && it.at(0) == '_') {
         continue;
       }
-      result.add(VPackValue(it));
+      builder->add(VPackValue(it));
     }
-    result.close();
+  } else {
+    std::unordered_set<std::string> keys;
+    VPackCollection::keys(slice, keys);
 
-    return AqlValue(result);
+    for (auto const& it : keys) {
+      if (removeInternal && !it.empty() && it.at(0) == '_') {
+        continue;
+      }
+      builder->add(VPackValue(it));
+    }
   }
 
-  std::unordered_set<std::string> keys;
-  VPackCollection::keys(slice, keys);
+  builder->close();
+  return AqlValue(*builder.get());
+}
 
-  VPackBuilder result;
-  result.openArray();
-  for (auto const& it : keys) {
-    if (removeInternal && !it.empty() && it.at(0) == '_') {
-      continue;
-    }
-    result.add(VPackValue(it));
+/// @brief function ATTRIBUTES_REGEX
+AqlValue Functions::AttributesRegex(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  static char const* AFN = "ATTRIBUTES_REGEX";
+  ValidateParameters(parameters, AFN, 2, 4);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  
+  if (!value.isObject()) {
+    ::registerInvalidArgumentWarning(query, AFN);
+    return AqlValue(AqlValueHintNull());
   }
-  result.close();
-  return AqlValue(result);
+
+  if (value.length() == 0) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+  
+  bool const caseInsensitive = ::getBooleanParameter(trx, parameters, 2, false);
+  bool const recursive = ::getBooleanParameter(trx, parameters, 3, false);
+  
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  // build pattern from parameter #1
+  AqlValue regex = ExtractFunctionParameterValue(parameters, 1);
+  ::appendAsString(trx, adapter, regex);
+
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(
+      buffer->c_str(), buffer->length(), caseInsensitive);
+
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    ::registerWarning(query, AFN, TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+
+  builder->openArray();
+  
+  if (recursive) {
+    VPackCollection::visitRecursive(slice, VPackCollection::PreOrder, [&builder](VPackSlice const& key, VPackSlice const& value) -> bool {
+      builder->add(key);
+      return true;
+    });
+  } else {
+    std::unordered_set<std::string> keys;
+    VPackCollection::keys(slice, keys);
+    for (auto const& it : keys) {
+      builder->add(VPackValue(it));
+    }
+  }
+  
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function VALUES
@@ -4054,6 +4245,59 @@ AqlValue Functions::RandomToken(arangodb::aql::Query* query,
   UniformCharacter JSNumGenerator(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
   return AqlValue(JSNumGenerator.random(static_cast<size_t>(length)));
+}
+
+/// @brief function TO_HEX
+AqlValue Functions::ToHex(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  ::appendAsString(trx, adapter, value);
+
+  return AqlValue(arangodb::basics::StringUtils::encodeHex(buffer->c_str(), buffer->length()));
+}
+
+/// @brief function TO_BASE64
+AqlValue Functions::ToBase64(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  ::appendAsString(trx, adapter, value);
+
+  return AqlValue(arangodb::basics::StringUtils::encodeBase64(std::string(buffer->c_str(), buffer->length())));
+}
+
+AqlValue Functions::EncodeUriComponent(arangodb::aql::Query* query, transaction::Methods* trx,
+                                       VPackFunctionParameters const& parameters) {
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  ::appendAsString(trx, adapter, value);
+
+  transaction::StringBufferLeaser out(trx);
+  out->reserve(buffer->length());
+
+  for (auto const c : *buffer.get()) {
+    if ((c >= '0' && c <= '9') ||
+        (c >= 'A' && c <= 'Z') ||
+        (c >= 'a' && c <= 'z') ||
+        (c == '-' || c == '_' || c == '.' || c == '~')) {
+      out->appendChar(c);
+    } else {
+      out->appendChar('%');
+      out->appendChar(hexTable[(c & 0xf0) >> 4]);
+      out->appendChar(hexTable[c & 0xf]);
+    }
+  }
+  
+  return AqlValue(out->begin(), out->length());
 }
 
 /// @brief function MD5
@@ -5329,6 +5573,13 @@ AqlValue Functions::ParseIdentifier(arangodb::aql::Query* query,
   return AqlValue(builder.get());
 }
 
+/// @brief function UUID
+AqlValue Functions::Uuid(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  return AqlValue(boost::uuids::to_string(::generateUuid()));
+}
+
 /// @brief function Slice
 AqlValue Functions::Slice(arangodb::aql::Query* query,
                           transaction::Methods* trx,
@@ -5850,6 +6101,27 @@ AqlValue Functions::Degrees(arangodb::aql::Query* query,
   double radians = value.toDouble(trx);
   // acos(-1) == PI
   return ::numberValue(trx, radians * (180.0 / std::acos(-1.0)), true);
+}
+
+/// @brief function SIGN
+AqlValue Functions::Sign(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "SIGN", 1, 1);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  double const v = value.toDouble(trx);
+  if (arangodb::almostEquals(v, 0.0)) {
+    // handle floating point inaccuracy here
+    return ::numberValue(trx, 0);
+  } 
+
+  if (v < 0.0) {
+    return ::numberValue(trx, -1);
+  } 
+
+  return ::numberValue(trx, 1);
 }
 
 /// @brief function PI
