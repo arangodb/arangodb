@@ -168,9 +168,7 @@ class EngineInfoContainerDBServer {
   };
 
  public:
-  EngineInfoContainerDBServer(Query* query);
-
-  ~EngineInfoContainerDBServer();
+  explicit EngineInfoContainerDBServer(Query* query) noexcept;
 
   // Insert a new node into the last engine on the stack
   // If this Node contains Collections, they will be added into the map

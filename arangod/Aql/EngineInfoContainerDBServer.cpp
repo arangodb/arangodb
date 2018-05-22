@@ -289,26 +289,15 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   _collection->resetCurrentShard();
 }
 
-//EngineInfoContainerDBServer::CollectionInfo::CollectionInfo(
-//    AccessMode::Type lock, std::shared_ptr<std::vector<ShardID>> shards) : lockType(lock) {
-//  // What if we have an empty shard list here?
-//  if (shards->empty()) {
-//    // TODO FIXME
-//    LOG_TOPIC(WARN, arangodb::Logger::AQL) << "TEMPORARY: A collection access of a query has no result in any shard";
-//  }
-//  mergeShards(shards);
-//}
-
 void EngineInfoContainerDBServer::CollectionInfo::mergeShards(std::shared_ptr<std::vector<ShardID>> const& shards) {
   for (auto const& s : *shards) {
     usedShards.emplace(s);
   }
 }
 
-
-EngineInfoContainerDBServer::EngineInfoContainerDBServer(Query* query) : _query(query) {}
-
-EngineInfoContainerDBServer::~EngineInfoContainerDBServer() {}
+EngineInfoContainerDBServer::EngineInfoContainerDBServer(Query* query) noexcept
+  : _query(query) {
+}
 
 void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   TRI_ASSERT(!_engineStack.empty());
