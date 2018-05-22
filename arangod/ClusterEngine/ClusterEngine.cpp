@@ -44,6 +44,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "MMFiles/MMFilesOptimizerRules.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Rest/Version.h"
@@ -51,6 +52,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
 #include "VocBase/ticks.h"
@@ -428,7 +430,13 @@ void ClusterEngine::addAqlFunctions() {
 
 /// @brief Add engine-specific optimizer rules
 void ClusterEngine::addOptimizerRules() {
-  //RocksDBOptimizerRules::registerResources();
+  if (engineType() == ClusterEngineType::MMFilesEngine) {
+    MMFilesOptimizerRules::registerResources();
+  } else if (engineType() == ClusterEngineType::RocksDBEngine) {
+    RocksDBOptimizerRules::registerResources();
+  } else {
+    TRI_ASSERT(false);
+  }
 }
 
 /// @brief Add engine-specific V8 functions
