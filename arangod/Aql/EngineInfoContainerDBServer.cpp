@@ -608,6 +608,8 @@ EngineInfoContainerDBServer::createDBServerMapping(
   auto* ci = ClusterInfo::instance();
 
   if (!ci) {
+    // we should not reach this point
+    TRI_ASSERT(false);
     return {};
   }
 
