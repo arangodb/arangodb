@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -67,6 +68,13 @@ void FlushFeature::prepare() {
 }
 
 void FlushFeature::start() {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    // At least for now we need FlushThread for ArangoSearch views
+    // on a DB/Single server only, so we avoid starting FlushThread on
+    // a coordinator.
+    return;
+  }
+
   _flushThread.reset(new FlushThread(_flushInterval));
   DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
   dbFeature->registerPostRecoveryCallback(
