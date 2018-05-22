@@ -3,6 +3,8 @@ v3.3.10 (XXXX-XX-XX)
 
 * inception was ignoring leader's configuration
 
+* inception could get caught in a trap, where agent configuration
+  version and timeout multiplier lead to incapacitated agency
 
 v3.3.9 (2018-05-17)
 -------------------
