@@ -88,7 +88,6 @@ function ClusterCollectionSuite () {
         }
         internal.waitForEstimatorSync(); // make sure estimates are consistent
         indexes = c.getIndexes(true);
-        print(indexes);
         assertEqual(indexes[1].selectivityEstimate, 0.5);
 
         db._drop(cn);
