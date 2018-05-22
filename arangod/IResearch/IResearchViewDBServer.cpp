@@ -21,7 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationServerHelper.h"
 #include "IResearchCommon.h"
 #include "IResearchDocument.h"
 #include "IResearchLinkHelper.h"
@@ -481,8 +480,9 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       return vocbase.createView(builder.slice());
     }
 
-    auto* feature =
-      arangodb::iresearch::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabasePathFeature
+    >("DatabasePath");
 
     if (!feature) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)

@@ -39,7 +39,6 @@
 #include "search/column_existence_filter.hpp"
 #include "search/phrase_filter.hpp"
 
-#include "ApplicationServerHelper.h"
 #include "AqlHelper.h"
 #include "ExpressionFilter.h"
 #include "IResearchAnalyzerFeature.h"
@@ -1111,8 +1110,7 @@ bool fromFuncExists(
         }
 
         if (bAnalyzer) {
-
-          auto* analyzerFeature = arangodb::iresearch::getFeature<
+          auto* analyzerFeature = arangodb::application_features::ApplicationServer::lookupFeature<
             arangodb::iresearch::IResearchAnalyzerFeature
           >();
 
@@ -1221,7 +1219,7 @@ bool fromFuncPhrase(
 ) {
   TRI_ASSERT(args.isDeterministic());
 
-  auto* analyzerFeature = arangodb::iresearch::getFeature<
+  auto* analyzerFeature = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
