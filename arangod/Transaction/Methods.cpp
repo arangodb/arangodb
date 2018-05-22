@@ -1162,8 +1162,10 @@ OperationResult transaction::Methods::clusterResultInsert(
   switch (responseCode) {
     case rest::ResponseCode::ACCEPTED:
     case rest::ResponseCode::CREATED: {
-      TRI_ASSERT(options.waitForSync == (responseCode == rest::ResponseCode::CREATED));
-      return OperationResult(Result(), resultBody->steal(), nullptr, options, errorCounter);
+      OperationOptions copy = options;
+      copy.waitForSync = (responseCode == rest::ResponseCode::CREATED); // wait for sync is abused herea
+                                                                        // operationResult should get a return code.
+      return OperationResult(Result(), resultBody->steal(), nullptr, copy, errorCounter);
     }
     case rest::ResponseCode::PRECONDITION_FAILED:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_CONFLICT);
