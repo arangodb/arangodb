@@ -90,7 +90,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(
     arangodb::velocypack::Builder&,
-    bool
+    unsigned
   ) const override final;
 
   /// @brief clone ExecutionNode recursively
@@ -129,7 +129,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief return the database
   TRI_vocbase_t& vocbase() const noexcept {
-    return *_vocbase;
+    return _vocbase;
   }
 
   /// @brief return the view
@@ -184,7 +184,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
  private:
   /// @brief the database
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 
   /// @brief collection
   LogicalView const* _view;
@@ -225,7 +225,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(
     arangodb::velocypack::Builder&,
-    bool
+    unsigned
   ) const override final;
 
   /// @brief creates corresponding ExecutionBlock
@@ -242,7 +242,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
       bool withProperties
   ) const override final {
     auto node = std::make_unique<IResearchViewScatterNode>(
-      *plan, _id, *_vocbase, *_view
+      *plan, _id, _vocbase, *_view
     );
 
     cloneHelper(node.get(), withDependencies, withProperties);
@@ -255,7 +255,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
 
   /// @brief return the database
   TRI_vocbase_t& vocbase() const noexcept { 
-    return *_vocbase; 
+    return _vocbase;
   }
 
   LogicalView const& view() const noexcept {
@@ -264,7 +264,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
 
  private:
   /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 
   /// @brief the underlying view
   LogicalView const* _view;

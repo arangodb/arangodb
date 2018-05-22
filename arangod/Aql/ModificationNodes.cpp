@@ -36,7 +36,7 @@ static bool const Optional = true;
 ModificationNode::ModificationNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _options(base),
@@ -56,9 +56,10 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
 
 /// @brief toVelocyPack
 void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
-                                          bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(builder,
-                                           verbose);  // call base class method
+                                          unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  
   // Now put info about vocbase and cid in there
   builder.add("database", VPackValue(_vocbase->name()));
   builder.add("collection", VPackValue(_collection->getName()));
@@ -101,8 +102,8 @@ RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : ModificationNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
-void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes, verbose);
+void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags);
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 
@@ -149,9 +150,8 @@ InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack
-void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes,
-                                       verbose);  // call base class method
+void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags); // call base class method
 
   // Now put info about vocbase and cid in there
   nodes.add(VPackValue("inVariable"));
@@ -202,8 +202,8 @@ UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
           Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
 /// @brief toVelocyPack
-void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes, verbose);
+void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags);
   
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
@@ -270,8 +270,8 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "inKeyVariable", Optional)) {}
 
 /// @brief toVelocyPack
-void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes, verbose);
+void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags);
 
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
@@ -338,9 +338,8 @@ UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _isReplace(base.get("isReplace").getBoolean()) {}
 
 /// @brief toVelocyPack
-void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
-                              bool verbose) const {
-  ModificationNode::toVelocyPackHelper(nodes, verbose);
+void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ModificationNode::toVelocyPackHelper(nodes, flags);
 
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);

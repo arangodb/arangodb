@@ -27,9 +27,10 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/ClusterMethods.h"
+#include "Basics/StaticStrings.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>

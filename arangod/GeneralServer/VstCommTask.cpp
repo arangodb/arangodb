@@ -329,7 +329,6 @@ bool VstCommTask::processRead(double startTime) {
   auto chunkEnd = chunkBegin + chunkHeader._chunkLength;
   auto vpackBegin = chunkBegin + chunkHeader._headerLength;
   bool doExecute = false;
-  bool read_maybe_only_part_of_buffer = false;
   VstInputMessage message;  // filled in CASE 1 or CASE 2b
 
   if (chunkHeader._isFirst) {
@@ -351,7 +350,6 @@ bool VstCommTask::processRead(double startTime) {
     }
   }
 
-  read_maybe_only_part_of_buffer = true;
   prv._currentChunkLength = 0;  // we have read a complete chunk
   prv._readBufferOffset = std::distance(_readBuffer.begin(), chunkEnd);
 
@@ -414,13 +412,10 @@ bool VstCommTask::processRead(double startTime) {
     }
   }
 
-  if (read_maybe_only_part_of_buffer) {
-    if (prv._readBufferOffset == _readBuffer.length()) {
-      return false;
-    }
-    return true;
+  if (prv._readBufferOffset == _readBuffer.length()) {
+    return false;
   }
-  return doExecute;
+  return true;
 }
 
 void VstCommTask::closeTask(rest::ResponseCode code) {

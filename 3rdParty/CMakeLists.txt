@@ -82,6 +82,10 @@ if (USE_PRECOMPILED_V8)
     FORCE
   )
 else ()
+  if (MSVC AND USE_IRESEARCH)
+    set(V8_TARGET_ARCHS "Debug;Release") # need to build both ICU for IResearch otherwise no library to link with
+  endif ()
+
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
   set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)

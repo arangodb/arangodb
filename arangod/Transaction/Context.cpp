@@ -177,7 +177,7 @@ VPackOptions* transaction::Context::getVPackOptionsForDump() {
 /// @brief create a resolver
 CollectionNameResolver const* transaction::Context::createResolver() {
   TRI_ASSERT(_resolver == nullptr);
-  _resolver = new CollectionNameResolver(&_vocbase);
+  _resolver = new CollectionNameResolver(_vocbase);
   _ownsResolver = true;
 
   return _resolver;

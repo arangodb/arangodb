@@ -137,7 +137,7 @@ IResearchViewNode::IResearchViewNode(
     arangodb::aql::AstNode* filterCondition,
     std::vector<IResearchSort>&& sortCondition)
   : arangodb::aql::ExecutionNode(&plan, id),
-    _vocbase(&vocbase),
+    _vocbase(vocbase),
     _view(&view),
     _outVariable(&outVariable),
     // in case if filter is not specified
@@ -159,7 +159,7 @@ IResearchViewNode::IResearchViewNode(
     _filterCondition(&ALL),
     _sortCondition(fromVelocyPack(&plan, base.get("sortCondition"))) {
   // FIXME how to check properly
-  auto view = _vocbase->lookupView(
+  auto view = _vocbase.lookupView(
     basics::StringUtils::uint64(base.get("viewId").copyString())
   );
   TRI_ASSERT(view && iresearch::DATA_SOURCE_TYPE == view->type());
@@ -253,13 +253,13 @@ bool IResearchViewNode::volatile_sort() const {
 /// @brief toVelocyPack, for EnumerateViewNode
 void IResearchViewNode::toVelocyPackHelper(
     VPackBuilder& nodes,
-    bool verbose
+    unsigned flags
 ) const {
   // call base class method
-  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
+  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // system info
-  nodes.add("database", VPackValue(_vocbase->name()));
+  nodes.add("database", VPackValue(_vocbase.name()));
   nodes.add("view", VPackValue(_view->name()));
   nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 
@@ -270,7 +270,7 @@ void IResearchViewNode::toVelocyPackHelper(
   // filter condition
   nodes.add(VPackValue("condition"));
   if (!filterConditionIsEmpty(_filterCondition)) {
-    _filterCondition->toVelocyPack(nodes, verbose);
+    _filterCondition->toVelocyPack(nodes, flags != 0);
   } else {
     nodes.openObject();
     nodes.close();
@@ -278,7 +278,7 @@ void IResearchViewNode::toVelocyPackHelper(
 
   // sort condition
   nodes.add(VPackValue("sortCondition"));
-  ::toVelocyPack(nodes, _sortCondition, verbose);
+  ::toVelocyPack(nodes, _sortCondition, flags != 0);
 
   // shards
   {
@@ -334,7 +334,7 @@ aql::ExecutionNode* IResearchViewNode::clone(
   auto node = std::make_unique<IResearchViewNode>(
     *plan,
     _id,
-    *_vocbase,
+    _vocbase,
     *_view,
     *outVariable,
     const_cast<aql::AstNode*>(_filterCondition),
@@ -447,7 +447,7 @@ IResearchViewScatterNode::IResearchViewScatterNode(
     TRI_vocbase_t& vocbase,
     LogicalView const& view
 ) : ExecutionNode(&plan, id),
-    _vocbase(&vocbase),
+    _vocbase(vocbase),
     _view(&view) {
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
 }
@@ -459,7 +459,7 @@ IResearchViewScatterNode::IResearchViewScatterNode(
     _vocbase(plan.getAst()->query()->vocbase()),
     //_view(plan.getAst()->query()->collections()->get(base.get("view").copyString())) { // FIXME: where to find a view
     _view(nullptr) {
-  auto view = _vocbase->lookupView(
+  auto view = _vocbase.lookupView(
     basics::StringUtils::uint64(base.get("viewId").copyString())
   );
 
@@ -486,10 +486,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewScatterNode::createBlock(
 }
 
 /// @brief toVelocyPack, for ScatterNode
-void IResearchViewScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
+void IResearchViewScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
-  nodes.add("database", VPackValue(_vocbase->name()));
+  nodes.add("database", VPackValue(_vocbase.name()));
   nodes.add("view", VPackValue(_view->name()));
   nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 

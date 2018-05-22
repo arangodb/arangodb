@@ -88,7 +88,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     Result res;
     int deletedCount = 0;
-    bool deleteGroup = extractBooleanParameter(StaticStrings::Group, false);
+    bool deleteGroup = _request->parsedValue(StaticStrings::Group, false);
 
     if (deleteGroup) {
       res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);

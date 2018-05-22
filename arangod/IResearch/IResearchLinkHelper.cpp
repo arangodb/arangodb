@@ -129,7 +129,7 @@ namespace iresearch {
     if (!links.isObject()) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
-        std::string("error parsing link parameters from json for IResearch view '") + std::to_string(view.id()) + "'"
+        std::string("error parsing link parameters from json for IResearch view '") + view.name() + "'"
       );
     }
 
@@ -155,7 +155,7 @@ namespace iresearch {
       if (!collection.isString()) {
         return arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
-          std::string("error parsing link parameters from json for IResearch view '") + std::to_string(view.id()) + "' offset '" + arangodb::basics::StringUtils::itoa(linksItr.index()) + '"'
+          std::string("error parsing link parameters from json for IResearch view '") + view.name() + "' offset '" + arangodb::basics::StringUtils::itoa(linksItr.index()) + '"'
         );
       }
 
@@ -191,7 +191,7 @@ namespace iresearch {
       if (!mergeSliceSkipKeys(namedJson, link, acceptor)) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
-          std::string("failed to update link definition with the view name while updating IResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"
+          std::string("failed to update link definition with the view name while updating IResearch view '") + view.name() + "' collection '" + collectionName + "'"
         );
       }
 
@@ -203,7 +203,7 @@ namespace iresearch {
       if (!linkMeta.init(namedJson.slice(), error)) {
         return arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
-          std::string("error parsing link parameters from json for IResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "' error '" + error + "'"
+          std::string("error parsing link parameters from json for IResearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
         );
       }
 
@@ -258,7 +258,7 @@ namespace iresearch {
 
           return arangodb::Result(
             TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            std::string("failed to get collection while updating IResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"
+            std::string("failed to get collection while updating IResearch view '") + view.name() + "' collection '" + collectionName + "'"
           );
         }
 
@@ -315,7 +315,7 @@ namespace iresearch {
         // remove modification if came from the stale list and a separate reindex or removal request also present
         // otherwise consider 'stale list requests' as valid removal requests
         if (state._stale // originated from the stale list
-            && (collectionsToRemove.find(cid) != collectionsToUpdate.end() // also has a removal request (duplicate removal request)
+            && (collectionsToRemove.find(cid) != collectionsToRemove.end() // also has a removal request (duplicate removal request)
                 || collectionsToUpdate.find(cid) != collectionsToUpdate.end())) { // also has a reindex request
           itr = linkModifications.erase(itr);
 
@@ -386,23 +386,23 @@ namespace iresearch {
 
     return arangodb::Result(
       TRI_ERROR_ARANGO_ILLEGAL_STATE,
-      std::string("failed to update links while updating IResearch view '") + std::to_string(view.id()) + "', retry same request or examine errors for collections: " + error
+      std::string("failed to update links while updating IResearch view '") + view.name() + "', retry same request or examine errors for collections: " + error
     );
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while updating links for IResearch view '" << view.id() << "': " << e.what();
+      << "caught exception while updating links for IResearch view '" << view.name() << "': " << e.what();
     IR_LOG_EXCEPTION();
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating links for IResearch view '") + std::to_string(view.id()) + "'"
+      std::string("error updating links for IResearch view '") + view.name() + "'"
     );
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while updating links for IResearch view '" << view.id() << "'";
+      << "caught exception while updating links for IResearch view '" << view.name() << "'";
     IR_LOG_EXCEPTION();
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating links for IResearch view '") + std::to_string(view.id()) + "'"
+      std::string("error updating links for IResearch view '") + view.name() + "'"
     );
   }
 }

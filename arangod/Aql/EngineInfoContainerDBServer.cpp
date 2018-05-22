@@ -214,7 +214,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.root(previous);
   plan.setVarUsageComputed();
   // Always Verbose
-  plan.root()->toVelocyPack(infoBuilder, true);
+  const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
+  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/true);
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
@@ -283,8 +284,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 
   plan.root(previous);
   plan.setVarUsageComputed();
-  // Always Verbose
-  plan.root()->toVelocyPack(infoBuilder, true);
+  const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
+  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/false);
   _collection->resetCurrentShard();
 }
 
@@ -850,15 +851,17 @@ Result EngineInfoContainerDBServer::buildEngines(
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
-                                      _query->vocbase()->name()) +
-                        "/_api/aql/setup");
-
+  std::string const url(
+    "/_db/"
+    + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name())
+    + "/_api/aql/setup"
+  );
   bool needCleanup = true;
   auto cleanup = [&]() {
     if (needCleanup) {
-      cleanupEngines(cc, TRI_ERROR_INTERNAL, _query->vocbase()->name(),
-                     queryIds);
+      cleanupEngines(
+        cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds
+      );
     }
   };
   TRI_DEFER(cleanup());
@@ -866,8 +869,10 @@ Result EngineInfoContainerDBServer::buildEngines(
   std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
   VPackBuilder infoBuilder;
+
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
+
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for "
                                             << it.first;
     infoBuilder.clear();

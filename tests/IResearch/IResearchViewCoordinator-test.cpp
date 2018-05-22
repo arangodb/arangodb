@@ -932,7 +932,6 @@ SECTION("test_update_links_partial_remove") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -979,7 +978,6 @@ SECTION("test_update_links_partial_remove") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -1025,7 +1023,6 @@ SECTION("test_update_links_partial_remove") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -1158,7 +1155,6 @@ SECTION("test_update_links_partial_remove") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -1205,7 +1201,6 @@ SECTION("test_update_links_partial_remove") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -1477,7 +1472,6 @@ SECTION("test_update_links_partial_add") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -1523,7 +1517,6 @@ SECTION("test_update_links_partial_add") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -1671,7 +1664,6 @@ SECTION("test_update_links_partial_add") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -1718,7 +1710,6 @@ SECTION("test_update_links_partial_add") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -1765,7 +1756,6 @@ SECTION("test_update_links_partial_add") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -2048,7 +2038,6 @@ SECTION("test_update_links_replace") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -2094,7 +2083,6 @@ SECTION("test_update_links_replace") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -2224,7 +2212,6 @@ SECTION("test_update_links_replace") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -2346,7 +2333,6 @@ SECTION("test_update_links_replace") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -2635,7 +2621,6 @@ SECTION("test_update_links_clear") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -2682,7 +2667,6 @@ SECTION("test_update_links_clear") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -2728,7 +2712,6 @@ SECTION("test_update_links_clear") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -2989,7 +2972,6 @@ SECTION("test_drop_link") {
 
       auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
       REQUIRE((false == !index));
-      CHECK((true == index->allowExpansion()));
       CHECK((true == index->canBeDropped()));
       CHECK((updatedCollection.get() == index->collection()));
       CHECK((index->fieldNames().empty()));

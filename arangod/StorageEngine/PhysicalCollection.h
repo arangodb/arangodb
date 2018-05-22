@@ -68,13 +68,6 @@ class PhysicalCollection {
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
-  /// @brief used for updating properties
-  virtual void getPropertiesVPackCoordinator(velocypack::Builder&) const = 0;
-
-  /// @brief return the figures for a collection
-  std::shared_ptr<velocypack::Builder> figures();
-
-  void figures(std::shared_ptr<arangodb::velocypack::Builder>& builder);
 
   virtual int close() = 0;
   virtual void load() = 0;
@@ -113,6 +106,9 @@ class PhysicalCollection {
                        
   void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
                        std::function<bool(arangodb::Index const*)> const& filter) const;
+  
+  /// @brief return the figures for a collection
+  virtual std::shared_ptr<velocypack::Builder> figures();
 
   virtual std::shared_ptr<Index> createIndex(
       transaction::Methods* trx, arangodb::velocypack::Slice const& info,
@@ -207,9 +203,9 @@ class PhysicalCollection {
       std::function<bool(LogicalCollection*)> callback) = 0;
   
  protected:
+  
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
   // SECTION: Document pre commit preperation
 

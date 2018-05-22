@@ -1,8 +1,7 @@
 ArangoDB VERSION_NUMBER Drivers Documentation
 =============================================
 
-Official drivers
-----------------
+**Official drivers**
 
 Name | Language | Repository | &nbsp;
 -----|----------|------------|-------
@@ -13,8 +12,7 @@ ArangoDB-Java-Driver-Async | Java | https://github.com/arangodb/arangodb-java-dr
 [ArangoDB-PHP](PHP/README.md) | PHP | https://github.com/arangodb/arangodb-php | [Changelog](https://github.com/arangodb/arangodb-php/blob/devel/CHANGELOG.md#readme)
 [Go-Driver](GO/README.md) | Go | https://github.com/arangodb/go-driver |
 
-Community drivers
------------------
+**Community drivers**
 
 Please note that this list is not exhaustive.
 

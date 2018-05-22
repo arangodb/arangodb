@@ -51,11 +51,6 @@ PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
     _isDBServer(ServerState::instance()->isDBServer()),
     _indexes() {}
 
-void PhysicalCollection::figures(
-    std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-  this->figuresSpecific(builder);
-};
-
 void PhysicalCollection::drop() {
   {
     WRITE_LOCKER(guard, _indexesLock);
@@ -122,10 +117,12 @@ void PhysicalCollection::mergeObjectsForUpdate(
            key == StaticStrings::FromString ||
            key == StaticStrings::ToString)) {
         // note _from and _to and ignore _id, _key and _rev
-        if (key == StaticStrings::FromString) {
-          fromSlice = it.value();
-        } else if (key == StaticStrings::ToString) {
-          toSlice = it.value();
+        if (isEdgeCollection) {
+          if (key == StaticStrings::FromString) {
+            fromSlice = it.value();
+          } else if (key == StaticStrings::ToString) {
+            toSlice = it.value();
+          }
         }  // else do nothing
       } else {
         // regular attribute
@@ -199,7 +196,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
 
       if (found == newValues.end()) {
         // use old value
-        b.add(key.data(), key.size(), it.value());
+        b.addUnchecked(key.data(), key.size(), it.value());
       } else if (mergeObjects && it.value().isObject() &&
                  (*found).second.isObject()) {
         // merge both values
@@ -207,7 +204,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
         if (keepNull || (!value.isNone() && !value.isNull())) {
           VPackBuilder sub =
               VPackCollection::merge(it.value(), value, true, !keepNull);
-          b.add(key.data(), key.size(), sub.slice());
+          b.addUnchecked(key.data(), key.size(), sub.slice());
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -215,7 +212,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
         // use new value
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          b.add(key.data(), key.size(), value);
+          b.addUnchecked(key.data(), key.size(), value);
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -233,7 +230,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
     if (!keepNull && s.isNull()) {
       continue;
     }
-    b.add(it.first.data(), it.first.size(), s);
+    b.addUnchecked(it.first.data(), it.first.size(), s);
   }
 
   b.close();
@@ -460,7 +457,7 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   builder->close();  // indexes
 
   // add engine-specific figures
-  figures(builder);
+  figuresSpecific(builder);
   builder->close();
   return builder;
 }
