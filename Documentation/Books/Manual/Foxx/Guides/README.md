@@ -1,5 +1,5 @@
-Patterns
-========
+Guides
+======
 
 # Collections
 
