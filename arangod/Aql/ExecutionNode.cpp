@@ -1305,7 +1305,7 @@ EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _random(base.get("random").getBoolean()),
@@ -1313,6 +1313,7 @@ EnumerateCollectionNode::EnumerateCollectionNode(
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
   VPackSlice restrictedTo = base.get("restrictedTo");
+
   if (restrictedTo.isString()) {
     _restrictedTo = restrictedTo.copyString();
   }
@@ -1336,6 +1337,7 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("random", VPackValue(_random));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
+
   if (!_restrictedTo.empty()) {
     nodes.add("restrictedTo", VPackValue(_restrictedTo));
   }

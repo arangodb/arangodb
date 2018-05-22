@@ -36,7 +36,7 @@ static bool const Optional = true;
 ModificationNode::ModificationNode(ExecutionPlan* plan,
                                    arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _options(base),

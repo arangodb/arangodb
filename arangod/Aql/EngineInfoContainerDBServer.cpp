@@ -735,15 +735,17 @@ Result EngineInfoContainerDBServer::buildEngines(
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
-                                      _query->vocbase()->name()) +
-                        "/_api/aql/setup");
-
+  std::string const url(
+    "/_db/"
+    + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name())
+    + "/_api/aql/setup"
+  );
   bool needCleanup = true;
   auto cleanup = [&]() {
     if (needCleanup) {
-      cleanupEngines(cc, TRI_ERROR_INTERNAL, _query->vocbase()->name(),
-                     queryIds);
+      cleanupEngines(
+        cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds
+      );
     }
   };
   TRI_DEFER(cleanup());
@@ -751,8 +753,10 @@ Result EngineInfoContainerDBServer::buildEngines(
   std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
   VPackBuilder infoBuilder;
+
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
+
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for "
                                             << it.first;
     infoBuilder.clear();
