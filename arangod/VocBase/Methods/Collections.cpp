@@ -172,7 +172,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
   builder.close();
 
   VPackBuilder info =
-      VPackCollection::merge(properties, builder.slice(), false);
+      VPackCollection::merge(properties, builder.slice(), false, true);
   VPackSlice const infoSlice = info.slice();
 
   try {

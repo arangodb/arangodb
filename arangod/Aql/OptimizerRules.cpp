@@ -3348,7 +3348,6 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
     // found a node we need to replace in the plan
 
-    auto const& parents = node->getParents();
     auto const& deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 

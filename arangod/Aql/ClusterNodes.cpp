@@ -52,9 +52,9 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
 }
 
 /// @brief toVelocyPack, for RemoteNode
-void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
@@ -103,8 +103,9 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
 }
 
 /// @brief toVelocyPack, for ScatterNode
-void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
+void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
@@ -157,9 +158,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 
 /// @brief toVelocyPack, for DistributedNode
 void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                        bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+                                        unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
@@ -221,9 +222,9 @@ GatherNode::GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         {}
 
 /// @brief toVelocyPack, for GatherNode
-void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   if (_collection) {

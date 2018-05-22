@@ -51,11 +51,6 @@ PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
     _isDBServer(ServerState::instance()->isDBServer()),
     _indexes() {}
 
-void PhysicalCollection::figures(
-    std::shared_ptr<arangodb::velocypack::Builder>& builder) {
-  this->figuresSpecific(builder);
-};
-
 void PhysicalCollection::drop() {
   {
     WRITE_LOCKER(guard, _indexesLock);
@@ -462,7 +457,7 @@ std::shared_ptr<arangodb::velocypack::Builder> PhysicalCollection::figures() {
   builder->close();  // indexes
 
   // add engine-specific figures
-  figures(builder);
+  figuresSpecific(builder);
   builder->close();
   return builder;
 }

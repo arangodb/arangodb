@@ -71,8 +71,6 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }

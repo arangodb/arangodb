@@ -608,20 +608,32 @@ transaction::Methods::Methods(
       _transactionContextPtr(transactionContext.get()) {
   TRI_ASSERT(_transactionContextPtr != nullptr);
 
-  auto& vocbase = _transactionContextPtr->vocbase();
-
   // brief initialize the transaction
   // this will first check if the transaction is embedded in a parent
   // transaction. if not, it will create a transaction of its own
   // check in the context if we are running embedded
   TransactionState* parent = _transactionContextPtr->getParentTransaction();
 
-  if (parent != nullptr) {
-    // yes, we are embedded
-    setupEmbedded(&vocbase);
-  } else {
-    // non-embedded
-    setupToplevel(vocbase, options);
+  if (parent != nullptr) { // yes, we are embedded
+    if (!_transactionContextPtr->isEmbeddable()) {
+      // we are embedded but this is disallowed...
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
+    }
+    
+    _state = parent;
+    
+    TRI_ASSERT(_state != nullptr);
+    _state->increaseNesting();
+  } else { // non-embedded
+    TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
+    
+    // now start our own transaction
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    _state = engine->createTransactionState(vocbase, options).release();
+    TRI_ASSERT(_state != nullptr);
+    
+    // register the transaction in the context
+    _transactionContextPtr->registerTransaction(_state);
   }
 
   TRI_ASSERT(_state != nullptr);
@@ -3211,35 +3223,6 @@ Result transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid,
   }
 
   return res;
-}
-
-/// @brief set up an embedded transaction
-void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
-  if (!_transactionContextPtr->isEmbeddable()) {
-    // we are embedded but this is disallowed...
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
-  }
-
-  _state = _transactionContextPtr->getParentTransaction();
-
-  TRI_ASSERT(_state != nullptr);
-  _state->increaseNesting();
-}
-
-/// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(
-    TRI_vocbase_t& vocbase,
-    transaction::Options const& options
-) {
-  // we are not embedded. now start our own transaction
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  _state = engine->createTransactionState(vocbase, options).release();
-
-  TRI_ASSERT(_state != nullptr);
-
-  // register the transaction in the context
-  _transactionContextPtr->registerTransaction(_state);
 }
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,

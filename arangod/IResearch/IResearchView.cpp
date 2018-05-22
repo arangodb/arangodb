@@ -1920,7 +1920,7 @@ void IResearchView::verifyKnownCollections() {
     static const arangodb::transaction::Options defaults;
     struct State final: public arangodb::TransactionState {
       State(TRI_vocbase_t& vocbase)
-        : arangodb::TransactionState(vocbase, defaults) {}
+        : arangodb::TransactionState(vocbase, 0, defaults) {}
       virtual arangodb::Result abortTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }

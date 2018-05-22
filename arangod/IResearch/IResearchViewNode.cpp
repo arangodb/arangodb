@@ -234,11 +234,11 @@ bool IResearchViewNode::volatile_sort() const {
 /// @brief toVelocyPack, for EnumerateViewNode
 void IResearchViewNode::toVelocyPackHelper(
     VPackBuilder& nodes,
-    bool verbose
+    unsigned flags
 ) const {
 
   // call base class method
-  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
+  aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase.name()));
   nodes.add("view", VPackValue(_view->name()));
@@ -249,14 +249,14 @@ void IResearchViewNode::toVelocyPackHelper(
 
   nodes.add(VPackValue("condition"));
   if (!filterConditionIsEmpty(_filterCondition)) {
-    _filterCondition->toVelocyPack(nodes, verbose);
+    _filterCondition->toVelocyPack(nodes, flags != 0);
   } else {
     nodes.openObject();
     nodes.close();
   }
 
   nodes.add(VPackValue("sortCondition"));
-  ::toVelocyPack(nodes, _sortCondition, verbose);
+  ::toVelocyPack(nodes, _sortCondition, flags != 0);
 
   // And close it:
   nodes.close();
@@ -425,8 +425,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewScatterNode::createBlock(
 }
 
 /// @brief toVelocyPack, for ScatterNode
-void IResearchViewScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
+void IResearchViewScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase.name()));
   nodes.add("view", VPackValue(_view->name()));

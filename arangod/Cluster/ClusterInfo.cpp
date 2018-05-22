@@ -1794,7 +1794,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   temp.openObject();
   temp.add("waitForSync", VPackValue(info->waitForSync()));
   temp.add("replicationFactor", VPackValue(info->replicationFactor()));
-  info->getPhysical()->getPropertiesVPackCoordinator(temp);
+  info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
   VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);

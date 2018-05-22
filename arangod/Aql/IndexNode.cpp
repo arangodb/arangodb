@@ -185,9 +185,9 @@ void IndexNode::initIndexCoversProjections() {
 }
 
 /// @brief toVelocyPack, for IndexNode
-void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // Now put info about vocbase and cid in there
   nodes.add("database", VPackValue(_vocbase->name()));
@@ -210,7 +210,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
     }
   }
   nodes.add(VPackValue("condition"));
-  _condition->toVelocyPack(nodes, verbose);
+  _condition->toVelocyPack(nodes, flags);
   // IndexIteratorOptions
   nodes.add("sorted", VPackValue(_options.sorted));
   nodes.add("ascending", VPackValue(_options.ascending));
