@@ -79,8 +79,6 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   char const* typeName() const override { return "fulltext"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return true; }

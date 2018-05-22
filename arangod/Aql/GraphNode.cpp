@@ -31,7 +31,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/BaseOptions.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -405,9 +404,10 @@ GraphNode::GraphNode(
 
 GraphNode::~GraphNode() {}
 
-void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  
   // Vocbase
   nodes.add("database", VPackValue(_vocbase->name()));
 
@@ -418,7 +418,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   // Graph Definition
   if (_graphObj != nullptr) {
     nodes.add(VPackValue("graphDefinition"));
-    _graphObj->toVelocyPack(nodes, verbose);
+    _graphObj->toVelocyPack(nodes);
   }
 
   // Directions
@@ -464,11 +464,11 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   TRI_ASSERT(_tmpObjVarNode != nullptr);
   nodes.add(VPackValue("tmpObjVarNode"));
-  _tmpObjVarNode->toVelocyPack(nodes, verbose);
+  _tmpObjVarNode->toVelocyPack(nodes, flags != 0);
 
   TRI_ASSERT(_tmpIdNode != nullptr);
   nodes.add(VPackValue("tmpIdNode"));
-  _tmpIdNode->toVelocyPack(nodes, verbose);
+  _tmpIdNode->toVelocyPack(nodes, flags != 0);
 
   nodes.add(VPackValue("options"));
   _options->toVelocyPack(nodes);

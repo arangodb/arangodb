@@ -200,8 +200,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 
   plan.root(previous);
   plan.setVarUsageComputed();
-  // Always Verbose
-  plan.root()->toVelocyPack(infoBuilder, true);
+  const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
+  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/false);
   _collection->resetCurrentShard();
 }
 

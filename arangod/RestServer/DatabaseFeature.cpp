@@ -471,11 +471,13 @@ void DatabaseFeature::recoveryDone() {
     // execute the engine-specific callbacks on successful recovery
     engine->recoveryDone(*vocbase);
 
-    ReplicationFeature* replicationFeature =
-        static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
-
-    if (replicationFeature != nullptr) {
-      replicationFeature->startApplier(vocbase);
+    if (vocbase->replicationApplier()) {
+      ReplicationFeature* replicationFeature =
+      static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
+      
+      if (replicationFeature != nullptr) {
+        replicationFeature->startApplier(vocbase);
+      }
     }
   }
 }
@@ -523,12 +525,6 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
   // name not yet in use, release the read lock
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
-
-  try {
-    vocbase->addReplicationApplier();
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
 
   // increase reference counter
   vocbase->use();
@@ -1333,6 +1329,8 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
   auto oldLists = _databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
+  
+  ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
   try {
     for (auto const& it : VPackArrayIterator(databases)) {
@@ -1345,9 +1343,9 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
         // ignore deleted databases here
         continue;
       }
-
+      
       std::string const databaseName = it.get("name").copyString();
-
+      
       // create app directory for database if it does not exist
       res = createApplicationDirectory(databaseName, appPath);
 
@@ -1360,12 +1358,14 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // try to open this database
       TRI_vocbase_t* database = engine->openDatabase(it, _upgrade);
 
-      try {
-        database->addReplicationApplier();
-      } catch (std::exception const& ex) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
-                   << database->name() << "' failed: " << ex.what();
-        FATAL_ERROR_EXIT();
+      if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
+        try {
+          database->addReplicationApplier();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
+          << database->name() << "' failed: " << ex.what();
+          FATAL_ERROR_EXIT();
+        }
       }
 
       if (databaseName == TRI_VOC_SYSTEM_DATABASE) {

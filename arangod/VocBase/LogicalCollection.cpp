@@ -984,20 +984,6 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
 /// @brief return the figures for a collection
 std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() const {
-  if (ServerState::instance()->isCoordinator()) {
-    auto builder = std::make_shared<VPackBuilder>();
-
-    builder->openObject();
-    builder->close();
-
-    int res =
-      figuresOnCoordinator(vocbase().name(), std::to_string(id()), builder);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    return builder;
-  }
   return getPhysical()->figures();
 }
 

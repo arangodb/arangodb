@@ -168,8 +168,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   char const* typeName() const override { return "edge"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return false; }
 
   bool isSorted() const override { return false; }
@@ -414,7 +412,6 @@ class IndexMock final : public arangodb::Index {
     : arangodb::Index(0, nullptr, std::vector<std::vector<arangodb::basics::AttributeName>>(), false, false) {
   }
   virtual char const* typeName() const override { return "IndexMock"; }
-  virtual bool allowExpansion() const override { return false; }
   virtual IndexType type() const override { return TRI_IDX_TYPE_UNKNOWN; }
   virtual bool canBeDropped() const override { return true; }
   virtual bool isSorted() const override { return true; }
@@ -511,9 +508,11 @@ struct IndexFactoryMock : arangodb::IndexFactory {
   ) const override {
     // NOOP
   }
-
-  virtual std::vector<std::string> supportedIndexes() const override {
-    return {};
+  
+  /// @brief create indexes from a list of index definitions
+  virtual void prepareIndexes(arangodb::LogicalCollection*, arangodb::velocypack::Slice const&,
+                              std::vector<std::shared_ptr<arangodb::Index>>&) const override {
+    // NOOP
   }
 };
 
@@ -646,11 +645,6 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(
 
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
   before();
-}
-
-void PhysicalCollectionMock::getPropertiesVPackCoordinator(arangodb::velocypack::Builder&) const {
-  before();
-  TRI_ASSERT(false);
 }
 
 arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& revisionId) {
@@ -1486,26 +1480,21 @@ size_t TransactionStateMock::abortTransactionCount;
 size_t TransactionStateMock::beginTransactionCount;
 size_t TransactionStateMock::commitTransactionCount;
 
-TransactionStateMock::TransactionStateMock(
-    TRI_vocbase_t& vocbase,
-    arangodb::transaction::Options const& options
-): TransactionState(vocbase, options) {
+// ensure each transaction state has a unique ID
+TransactionStateMock::TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options)
+  : TransactionState(vocbase, 0, options) {
 }
 
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
-  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-
   return arangodb::Result();
 }
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
-  static std::atomic<TRI_voc_tid_t> lastId(0);
 
   ++beginTransactionCount;
-  _id = ++lastId; // ensure each transaction state has a unique ID
   useCollections(_nestingLevel);
   updateStatus(arangodb::transaction::Status::RUNNING);
   return arangodb::Result();
@@ -1515,8 +1504,6 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
-  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-
   return arangodb::Result();
 }
 

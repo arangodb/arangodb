@@ -295,10 +295,10 @@ bool RestImportHandler::createFromJson(std::string const& type) {
     return false;
   }
 
-  bool const complete = extractBooleanParameter("complete", false);
-  bool const overwrite = extractBooleanParameter("overwrite", false);
+  bool const complete = _request->parsedValue("complete", false);
+  bool const overwrite = _request->parsedValue("overwrite", false);
   OperationOptions opOptions;
-  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.waitForSync = _request->parsedValue("waitForSync", false);
 
   // extract the collection name
   bool found;
@@ -547,10 +547,10 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
     return false;
   }
 
-  bool const complete = extractBooleanParameter("complete", false);
-  bool const overwrite = extractBooleanParameter("overwrite", false);
+  bool const complete = _request->parsedValue("complete", false);
+  bool const overwrite = _request->parsedValue("overwrite", false);
   OperationOptions opOptions;
-  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.waitForSync = _request->parsedValue("waitForSync", false);
 
   // extract the collection name
   bool found;
@@ -658,11 +658,11 @@ bool RestImportHandler::createFromKeyValueList() {
     return false;
   }
 
-  bool const complete = extractBooleanParameter("complete", false);
-  bool const overwrite = extractBooleanParameter("overwrite", false);
-  _ignoreMissing = extractBooleanParameter("ignoreMissing", false);
+  bool const complete = _request->parsedValue("complete", false);
+  bool const overwrite = _request->parsedValue("overwrite", false);
+  _ignoreMissing = _request->parsedValue("ignoreMissing", false);
   OperationOptions opOptions;
-  opOptions.waitForSync = extractBooleanParameter("waitForSync", false);
+  opOptions.waitForSync = _request->parsedValue("waitForSync", false);
 
   // extract the collection name
   bool found;
