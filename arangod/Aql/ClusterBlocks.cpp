@@ -60,7 +60,7 @@ GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
       _isSimple(en->elements().empty()),
-      _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
+      _heap(en->_sortmode == GatherNode::SortMode::Heap ? new Heap : nullptr) {
 
   if (!_isSimple) {
     for (auto const& p : en->elements()) {

@@ -27,6 +27,10 @@
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Aql/IndexNode.h"
+#include "Aql/GraphNode.h"
+
+#include <type_traits>
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
@@ -203,42 +207,86 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-/// @brief construct a gather node
-GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-                       SortElementVector const& elements, std::size_t shardsRequiredForHeapMerge)
-    : ExecutionNode(plan, base),
-      _elements(elements),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
-      _sortmode( _collection ? ( _collection->numberOfShards() >= shardsRequiredForHeapMerge ? 'h' : 'm') : 'u')
-      {}
+/*static*/ GatherNode::SortMode GatherNode::getSortMode(
+    Collection const* collection,
+    std::size_t shardsRequiredForHeapMerge /*= 5*/
+) {
+  return collection
+    ? (collection->numberOfShards() >= shardsRequiredForHeapMerge
+       ? SortMode::Heap
+       : SortMode::MinElement)
+    : SortMode::Unset;
+}
 
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection const* collection, std::size_t shardsRequiredForHeapMerge)
-      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection),
-        _auxiliaryCollections(),
-        _sortmode( _collection ? ( _collection->numberOfShards() >= shardsRequiredForHeapMerge ? 'h' : 'm') : 'u')
-        {}
+/// @brief construct a gather node
+GatherNode::GatherNode(
+    ExecutionPlan* plan,
+    arangodb::velocypack::Slice const& base,
+    SortElementVector const& elements)
+  : ExecutionNode(plan, base),
+    _elements(elements),
+    _sortmode(SortMode::Unset) {
+  auto const sortModeSlice = base.get("sortmode");
+
+  if (!sortModeSlice.isNumber()) {
+    LOG_TOPIC(ERR, Logger::AQL)
+      << "invalid sort mode detected while creating 'GatherNode' from vpack, number expected";
+    return;
+  }
+
+  try {
+    _sortmode = static_cast<SortMode>(
+      sortModeSlice.getNumber<std::underlying_type<SortMode>::type>()
+    );
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, Logger::AQL)
+      << "invalid sort mode detected while creating 'GatherNode' from vpack, error '"
+      << ex.what()
+      << "'";
+  } catch (...) {
+    LOG_TOPIC(ERR, Logger::AQL)
+      << "invalid sort mode detected while creating 'GatherNode' from vpack";
+  }
+}
+
+GatherNode::GatherNode(
+    ExecutionPlan* plan,
+    size_t id,
+    SortMode sortMode) noexcept
+  : ExecutionNode(plan, id),
+    _sortmode(sortMode) {
+}
+
+Collection const* GatherNode::collection() const {
+  ExecutionNode const* node = getFirstDependency();
+
+  while (node) {
+    switch (node->getType()) {
+      case ENUMERATE_COLLECTION:
+        return castTo<EnumerateCollectionNode const*>(node)->collection();
+      case INDEX:
+        return castTo<IndexNode const*>(node)->collection();
+      case TRAVERSAL:
+      case SHORTEST_PATH:
+        return castTo<GraphNode const*>(node)->collection();
+      default:
+        node = node->getFirstDependency();
+        break;
+    }
+  }
+
+  return nullptr;
+}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
-  nodes.add("database", VPackValue(_vocbase->name()));
-  if (_collection) {
-    // FIXME why do we need collection
-    nodes.add("collection", VPackValue(_collection->getName()));
-  }
-
-  if(_sortmode == 'h'){
-    nodes.add("sortmode", VPackValue("heap"));
-  } else if (_sortmode == 'm') {
-    nodes.add("sortmode", VPackValue("minelement"));
-  } else {
-    nodes.add("sortmode", VPackValue("unset"));
-  }
+  nodes.add(
+    "sortmode",
+    VPackValue(static_cast<std::underlying_type<SortMode>::type>(_sortmode))
+  );
 
   nodes.add(VPackValue("elements"));
   {
