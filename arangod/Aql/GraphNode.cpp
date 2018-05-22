@@ -257,7 +257,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 GraphNode::GraphNode(ExecutionPlan* plan,
                      arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
       _graphObj(nullptr),
@@ -552,4 +552,4 @@ void GraphNode::addEdgeCollection(std::string const& n,
     _edgeColls.emplace_back(
         std::make_unique<aql::Collection>(n, _vocbase, AccessMode::Type::READ));
   }
-};
+}
