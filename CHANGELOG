@@ -3,6 +3,7 @@ v3.3.10 (XXXX-XX-XX)
 
 * inception was ignoring leader's configuration
 
+* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 v3.3.9 (2018-05-17)
 -------------------
