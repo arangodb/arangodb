@@ -568,8 +568,10 @@ used to specify the following options:
     a default *waitForSync* value of *true*.
   - *silent*: If this flag is set to *true*, the method does not return
     any output.
-  - *overwirte*: If this flag is set to *true*, data containing an existing
-    key will replace the matiching existing data.
+  - *overwirte*: If set to *true*, the insert becomes a replace-insert.
+    If a document with the same *_key* already exists the new document
+    is not rejected with unique constraint violated but will replace
+    the old document.
   - *returnNew*: If this flag is set to *true*, the complete new document
     is returned in the output under the attribute *new*.
   - *returnOld*: If this flag is set to *true*, the complete old document
