@@ -1460,7 +1460,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           char const* stringValue = value.getString(length);
 
           // FIXME use external resolver
-          arangodb::CollectionNameResolver resolver(&(_query->vocbase()));
+          arangodb::CollectionNameResolver resolver(_query->vocbase());
           std::shared_ptr<LogicalDataSource> dataSource;
 
           if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
@@ -1478,6 +1478,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
 
           // TODO: can we get away without registering the string value here?
           auto& dataSourceName = dataSource->name();
+
           name = _query->registerString(dataSourceName.c_str(), dataSourceName.size());
 
           if (LogicalCollection::category() == dataSource->category()) {

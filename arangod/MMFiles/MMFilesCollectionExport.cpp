@@ -39,9 +39,11 @@
 
 using namespace arangodb;
 
-MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
-                                   std::string const& name,
-                                   CollectionExport::Restrictions const& restrictions)
+MMFilesCollectionExport::MMFilesCollectionExport(
+    TRI_vocbase_t& vocbase,
+    std::string const& name,
+    CollectionExport::Restrictions const& restrictions
+)
     : _collection(nullptr),
       _ditch(nullptr),
       _name(name),
@@ -49,7 +51,7 @@ MMFilesCollectionExport::MMFilesCollectionExport(TRI_vocbase_t* vocbase,
       _restrictions(restrictions) {
   // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard.reset(new arangodb::CollectionGuard(vocbase, _name.c_str(), false));
+  _guard.reset(new arangodb::CollectionGuard(&vocbase, _name.c_str(), false));
 
   _collection = _guard->collection();
   TRI_ASSERT(_collection != nullptr);
