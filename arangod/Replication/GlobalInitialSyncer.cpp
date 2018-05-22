@@ -256,7 +256,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
         }
 
         VPackSlice const params = coll.get("parameters");
-        auto existingCollection = resolveCollection(vocbase, params);
+        auto existingCollection = resolveCollection(*vocbase, params);
 
         if (existingCollection != nullptr) {
           survivingCollections.emplace(existingCollection->guid());
@@ -349,4 +349,3 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   return Result();
 }
-

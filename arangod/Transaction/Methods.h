@@ -44,36 +44,47 @@
   #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
 
-
 namespace arangodb {
 
 namespace basics {
+
 struct AttributeName;
 class StringBuffer;
+
 }
 
 namespace velocypack {
+
 class Builder;
+
 }
 
 namespace aql {
+
 class Ast;
 struct AstNode;
 class SortCondition;
 struct Variable;
+
 }
 
 namespace rest {
+
 enum class ResponseCode;
+
 }
 
 namespace traverser {
+
 class BaseEngine;
+
 }
 
 namespace transaction {
+
 class Context;
 struct Options;
+
 }
 
 /// @brief forward declarations
@@ -136,8 +147,6 @@ class Methods {
   /// @brief destroy the transaction
   virtual ~Methods();
 
- public:
-
   typedef Result(*StateRegistrationCallback)(LogicalDataSource& dataSource, TransactionState& state);
 
   /// @brief add a callback to be called for state instance association events
@@ -156,7 +165,6 @@ class Methods {
 
   /// @brief return database of transaction
   TRI_vocbase_t& vocbase() const;
-  inline std::string const& databaseName() const { return vocbase().name(); }
 
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
