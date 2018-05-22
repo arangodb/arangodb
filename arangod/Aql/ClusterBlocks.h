@@ -64,7 +64,7 @@ class GatherBlock : public ExecutionBlock {
   ~GatherBlock();
 
   /// @brief initialize
-  int initialize() override;
+  int initialize() override final;
 
   /// @brief shutdown: need our own method since our _buffer is different
   int shutdown(int) override final;
@@ -296,8 +296,6 @@ class RemoteBlock final : public ExecutionBlock {
   RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
               std::string const& server, std::string const& ownName,
               std::string const& queryId);
-
-  ~RemoteBlock();
 
   /// @brief timeout
   static double const defaultTimeOut;

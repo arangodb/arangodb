@@ -64,7 +64,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   ~IndexBlock();
 
   /// @brief initialize, here we fetch all docs from the database
-  int initialize() override;
+  int initialize() override final;
 
   /// @brief initializeCursor, here we release our docs from this collection
   int initializeCursor(AqlItemBlock* items, size_t pos) override;

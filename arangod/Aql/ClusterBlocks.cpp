@@ -1209,8 +1209,6 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
        !ownName.empty()));
 }
 
-RemoteBlock::~RemoteBlock() {}
-
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
