@@ -41,3 +41,7 @@ ExecutionEngineResult::ExecutionEngineResult(ExecutionEngine* engine)
 ExecutionEngineResult::~ExecutionEngineResult() {}
 
 ExecutionEngine* ExecutionEngineResult::engine() const { return _engine; }
+
+ExecutionEngineResult::ExecutionEngineResult(const Result &result) : Result(result), _engine(nullptr) {
+
+}

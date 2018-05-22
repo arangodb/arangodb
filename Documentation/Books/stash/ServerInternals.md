@@ -1,7 +1,7 @@
 Server-side db-Object implementation
 ------------------------------------
 
-We [already talked about the arangosh db Object implementation](../GettingStarted/Arangosh.md), Now a little more about the server version, so the following examples won't work properly in arangosh.
+We [already talked about the arangosh db Object implementation](../Programs/Arangosh/README.md), Now a little more about the server version, so the following examples won't work properly in arangosh.
 
 Server-side methods of the *db object* will return an `[object ShapedJson]`. This datatype is a very lightweight JavaScript object that contains an internal pointer to where the document data are actually stored in memory or on disk. Especially this is not a fullblown copy of the document's complete data. 
 

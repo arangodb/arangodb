@@ -580,7 +580,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN,
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN,
                   "shutting down server");
     return;
   }
@@ -909,13 +909,13 @@ Result RestReplicationHandler::processRestoreCollection(
   // drop an existing collection if it exists
   if (col != nullptr) {
     if (dropExisting) {
-      Result res = _vocbase.dropCollection(col, true, -1.0);
+      auto res = _vocbase.dropCollection(col->id(), true, -1.0);
 
       if (res.errorNumber() == TRI_ERROR_FORBIDDEN) {
         // some collections must not be dropped
 
         // instead, truncate them
-        auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(
           ctx, col->id(), AccessMode::Type::EXCLUSIVE
         );
@@ -923,6 +923,7 @@ Result RestReplicationHandler::processRestoreCollection(
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
         res = trx.begin();
+
         if (!res.ok()) {
           return res;
         }
@@ -953,13 +954,14 @@ Result RestReplicationHandler::processRestoreCollection(
   ExecContext const* exe = ExecContext::CURRENT;
   if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-
-    af->userManager()->updateUser(exe->user(), [&](auth::User& entry) {
-      entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
-
-      return TRI_ERROR_NO_ERROR;
-    });
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    TRI_ASSERT(um != nullptr); // should not get here
+    if (um != nullptr) {
+      um->updateUser(exe->user(), [&](auth::User& entry) {
+        entry.grantCollection(_vocbase.name(), col->name(), auth::Level::RW);
+        return TRI_ERROR_NO_ERROR;
+      });
+    }
   }
 
   return Result();
@@ -1124,12 +1126,15 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
-      AuthenticationFeature* af = AuthenticationFeature::instance();
-      af->userManager()->updateUser(ExecContext::CURRENT->user(),
-                   [&](auth::User& entry) {
-                     entry.grantCollection(dbName, col->name(), auth::Level::RW);
-                     return TRI_ERROR_NO_ERROR;
-                   });
+      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+      TRI_ASSERT(um != nullptr); // should not get here
+      if (um != nullptr) {
+        um->updateUser(ExecContext::CURRENT->user(),
+                       [&](auth::User& entry) {
+                         entry.grantCollection(dbName, col->name(), auth::Level::RW);
+                         return TRI_ERROR_NO_ERROR;
+                       });
+      }
     }
   } catch (basics::Exception const& ex) {
     // Error, report it.
@@ -1167,8 +1172,10 @@ Result RestReplicationHandler::processRestoreData(std::string const& colName) {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName);
   }
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
+
   trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
   Result res = trx.begin();
@@ -1313,7 +1320,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   arangodb::aql::Query query(
     false,
-    &_vocbase,
+    _vocbase,
     arangodb::aql::QueryString(aql),
     bindVars,
     nullptr,
@@ -1324,8 +1331,12 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   auto queryResult = query.execute(queryRegistry);
 
+  // neither agency nor dbserver should get here
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  TRI_ASSERT(af->userManager() != nullptr);
+  if (af->userManager() != nullptr) {
+    af->userManager()->outdate();
+  }
   af->tokenCache()->invalidateBasicCache();
   
   return Result{queryResult.code};
@@ -1585,7 +1596,7 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
   // look up the collection
   try {
-    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
@@ -1688,7 +1699,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   }
 
   if (ignoreHiddenEnterpriseCollection(name, force)) {
-    return {TRI_ERROR_NO_ERROR};
+    return TRI_ERROR_NO_ERROR;
   }
 
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
@@ -2017,7 +2028,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   if (readLockId.isNone()) {
     // Short cut for the case that the collection is empty
-    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(
       ctx, col->id(), AccessMode::Type::EXCLUSIVE
     );
@@ -2025,9 +2036,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
     if (res.ok()) {
       auto countRes = trx.count(col->name(), false);
+
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
         uint64_t nr = nrSlice.getNumber<uint64_t>();
+
         if (nr == 0) {
           col->followers()->add(followerId.copyString());
 
@@ -2227,12 +2240,14 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     access = AccessMode::Type::EXCLUSIVE;
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   auto trx =
       std::make_shared<SingleCollectionTransaction>(ctx, col->id(), access);
 
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+
   Result res = trx->begin();
+
   if (!res.ok()) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_TRANSACTION_INTERNAL,
@@ -2280,7 +2295,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   if (stopping) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_SHUTTING_DOWN);
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return;
   }
 
@@ -2547,7 +2562,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   }
 
   /* Temporary ASSERTS to prove correctness of new constructor */
-  TRI_ASSERT(col->isSystem() == (name[0] == '_'));
+  TRI_ASSERT(col->system() == (name[0] == '_'));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_voc_cid_t planId = 0;
   VPackSlice const planIdSlice = slice.get("planId");

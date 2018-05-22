@@ -31,7 +31,6 @@
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -117,8 +116,11 @@ void assertExpressionFilter(
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    std::make_shared<arangodb::velocypack::Builder>(),
     arangodb::aql::PART_MAIN
   );
 
@@ -165,7 +167,11 @@ void assertExpressionFilter(
   // iteratorForCondition
   {
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
@@ -197,9 +203,12 @@ void assertFilter(
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, options,
-     arangodb::aql::PART_MAIN
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
@@ -245,7 +254,11 @@ void assertFilter(
   // execution time
   {
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
@@ -290,9 +303,12 @@ void assertFilterParseFail(
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, nullptr,
-     arangodb::aql::PART_MAIN
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    nullptr,
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
@@ -359,7 +375,6 @@ struct IResearchFilterSetup {
       false, // fake non-deterministic
       false, // fake can throw
       true,
-      false,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
@@ -372,13 +387,14 @@ struct IResearchFilterSetup {
       true, // fake deterministic
       false, // fake can throw
       true,
-      false,
       [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
         TRI_ASSERT(!params.empty());
         return params[0];
     }});
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("test_analyzer", "TestCharAnalyzer", "abc"); // cache analyzer
 

@@ -283,7 +283,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   return Result(TRI_ERROR_INTERNAL); // unreachable
 }
 
-/// @brief inserts a document, based on the VelocyPack provided
+/// @brief process a document operation, based on the VelocyPack provided
 Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                                       VPackSlice const& slice) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
@@ -297,48 +297,50 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  bool isSystem = coll->isSystem();
-  // extract "data"
-  VPackSlice const doc = slice.get("data");
+  bool isSystem = coll->system();
 
-  if (!doc.isObject()) {
+  // extract "data"
+  VPackSlice const data = slice.get("data");
+
+  if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document format");
   }
 
   // extract "key"
-  VPackSlice const key = doc.get(StaticStrings::KeyString);
+  VPackSlice const key = data.get(StaticStrings::KeyString);
 
   if (!key.isString()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document key format");
   }
 
   // extract "rev"
-  VPackSlice const rev = doc.get(StaticStrings::RevString);
+  VPackSlice const rev = data.get(StaticStrings::RevString);
 
   if (!rev.isNone() && !rev.isString()) {
     // _rev is an optional attribute
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document revision format");
   }
 
-  _documentBuilder.clear();
-  _documentBuilder.openObject();
-  _documentBuilder.add(StaticStrings::KeyString, key);
-  if (rev.isString()) {
-    // _rev is an optional attribute
-    _documentBuilder.add(StaticStrings::RevString, rev);
-  }
-  _documentBuilder.close();
-
-  VPackSlice const old = _documentBuilder.slice();
-
   // extract "tid"
-  std::string const transactionId =
-      VelocyPackHelper::getStringValue(slice, "tid", "");
+  std::string const transactionId = VelocyPackHelper::getStringValue(slice, "tid", "");
   TRI_voc_tid_t tid = 0;
-
   if (!transactionId.empty()) {
     // operation is part of a transaction
     tid = NumberUtils::atoi_zero<TRI_voc_tid_t>(transactionId.data(), transactionId.data() + transactionId.size());
+  }
+  
+  // in case this is a removal we need to build our marker
+  VPackSlice applySlice = data;
+  if (type == REPLICATION_MARKER_REMOVE) {
+    _documentBuilder.clear();
+    _documentBuilder.openObject();
+    _documentBuilder.add(StaticStrings::KeyString, key);
+    if (rev.isString()) {
+      // _rev is an optional attribute
+      _documentBuilder.add(StaticStrings::RevString, rev);
+    }
+    _documentBuilder.close();
+    applySlice = _documentBuilder.slice();
   }
 
   if (tid > 0) { // part of a transaction
@@ -355,7 +357,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     }
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
-    Result r = applyCollectionDumpMarker(*trx, coll, type, old, doc);
+    Result r = applyCollectionDumpMarker(*trx, coll, type, applySlice);
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
@@ -365,13 +367,13 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       _usersModified = true;
     }
 
-    return r;
+    return r; // done
   }
 
   // standalone operation
   // update the apply tick for all standalone operations
   SingleCollectionTransaction trx(
-    transaction::StandaloneContext::Create(vocbase),
+    transaction::StandaloneContext::Create(*vocbase),
     coll->id(),
     AccessMode::Type::EXCLUSIVE
   );
@@ -389,7 +391,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
   std::string collectionName = trx.name();
     
-  res = applyCollectionDumpMarker(trx, coll, type, old, doc);
+  res = applyCollectionDumpMarker(trx, coll, type, applySlice);
   if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
     // ignore unique constraint violations for system collections
     res.reset();
@@ -576,7 +578,7 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
     TRI_ASSERT(col == nullptr);
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unable to identify collection");
   }
-  if (col->isSystem()) {
+  if (col->system()) {
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
   }
   return Result(vocbase->renameCollection(col, name, true));

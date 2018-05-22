@@ -70,8 +70,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id,
                                    TRI_vocbase_t* vocbase, AstNode const* direction,
                                    AstNode const* start, AstNode const* target,
                                    AstNode const* graph,
-                                   std::unique_ptr<BaseOptions>& options)
-    : GraphNode(plan, id, vocbase, direction, graph, options),
+                                   std::unique_ptr<BaseOptions> options)
+    : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
@@ -116,8 +116,8 @@ ShortestPathNode::ShortestPathNode(
     std::vector<TRI_edge_direction_e> const& directions,
     Variable const* inStartVariable, std::string const& startVertexId,
     Variable const* inTargetVariable, std::string const& targetVertexId,
-    std::unique_ptr<BaseOptions>& options)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, options),
+    std::unique_ptr<BaseOptions> options)
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
       _inTargetVariable(inTargetVariable),
@@ -272,9 +272,9 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
+  auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                 _directions, _inStartVariable, _startVertexId,
-                                _inTargetVariable, _targetVertexId, tmp);
+                                _inTargetVariable, _targetVertexId, std::move(tmp));
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
@@ -304,9 +304,9 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   c->_fromCondition = _fromCondition->clone(_plan->getAst());
   c->_toCondition = _toCondition->clone(_plan->getAst());
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 double ShortestPathNode::estimateCost(size_t& nrItems) const {

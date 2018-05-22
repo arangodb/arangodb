@@ -46,8 +46,10 @@ RestUsersHandler::RestUsersHandler(GeneralRequest* request,
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af == nullptr) { // nullptr happens only during shutdown
-    return RestStatus::FAIL;
+  if (af == nullptr || af->userManager() == nullptr) {
+    // nullptr may happens during shutdown, or on Agency
+    generateError(ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED);
+    return RestStatus::DONE;
   }
 
   switch (type) {

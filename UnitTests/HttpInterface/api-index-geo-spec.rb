@@ -37,13 +37,12 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should match(@reFull)
-        doc.parsed_response['type'].should eq("geo1")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
 
         doc = ArangoDB.log_post("#{prefix}-create-old-geo", cmd, :body => body)
         
@@ -52,13 +51,12 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should match(@reFull)
-        doc.parsed_response['type'].should eq("geo1")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a" ])
         doc.parsed_response['isNewlyCreated'].should eq(false)
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
       end
 
       it "creating geo index with location" do
@@ -71,13 +69,12 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should match(@reFull)
-        doc.parsed_response['type'].should eq("geo1")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "b" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
       end
 
       it "creating geo index with location and geo-json = true" do
@@ -90,13 +87,12 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should match(@reFull)
-        doc.parsed_response['type'].should eq("geo1")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['geoJson'].should eq(true)
         doc.parsed_response['fields'].should eq([ "c" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
       end
 
       it "creating geo index with location and geo-json = false" do
@@ -109,13 +105,12 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should match(@reFull)
-        doc.parsed_response['type'].should eq("geo1")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "d" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
       end
 
       it "creating geo index with latitude and longitude" do
@@ -128,12 +123,11 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should match(@reFull)
-        doc.parsed_response['type'].should eq("geo2")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['fields'].should eq([ "e", "f" ])
         doc.parsed_response['isNewlyCreated'].should eq(true)
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
       end
 
       it "creating geo index with constraint" do
@@ -146,13 +140,12 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should match(@reFull)
-        doc.parsed_response['type'].should eq("geo1")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['geoJson'].should eq(true)
         doc.parsed_response['fields'].should eq([ "c" ])
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['isNewlyCreated'].should eq(true)
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
       end
       
       it "creating geo index with constraint" do
@@ -165,12 +158,11 @@ describe ArangoDB do
         doc.parsed_response['error'].should eq(false)
         doc.parsed_response['code'].should eq(201)
         doc.parsed_response['id'].should match(@reFull)
-        doc.parsed_response['type'].should eq("geo2")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['fields'].should eq([ "c", "d" ])
         doc.parsed_response['unique'].should eq(false)
         doc.parsed_response['isNewlyCreated'].should eq(true)
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
       end
     end
 
@@ -225,11 +217,10 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should match(@reFull)
         doc.parsed_response['id'].should eq(iid)
-        doc.parsed_response['type'].should eq("geo1")
+        doc.parsed_response['type'].should eq("geo")
         doc.parsed_response['geoJson'].should eq(false)
         doc.parsed_response['fields'].should eq([ "a" ])
         doc.parsed_response['sparse'].should eq(true)
-        doc.parsed_response['ignoreNull'].should eq(true)
       end
     end
 

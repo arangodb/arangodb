@@ -1206,7 +1206,6 @@ describe('Foxx service', () => {
     expect(db._collection(col)).to.be.an('object');
     const resp = request.post('/_api/foxx/scripts/teardown', {
       qs: {mount},
-      body: {},
       json: true
     });
     expect(resp.status).to.equal(200);
@@ -1218,7 +1217,6 @@ describe('Foxx service', () => {
     FoxxManager.install(scriptPath, mount);
     const resp = request.post('/_api/foxx/scripts/no', {
       qs: {mount},
-      body: {},
       json: true
     });
     expect(resp.status).to.equal(400);

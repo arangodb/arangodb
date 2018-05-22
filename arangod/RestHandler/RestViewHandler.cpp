@@ -108,9 +108,11 @@ void RestViewHandler::createView() {
     badParamError();
     return;
   }
-  VPackSlice const nameSlice = body.get("name");
-  VPackSlice const typeSlice = body.get("type");
+
+  auto nameSlice = body.get(StaticStrings::DataSourceName);
+  auto typeSlice = body.get(StaticStrings::DataSourceType);
   VPackSlice const propertiesSlice = body.get("properties");
+
   if (!nameSlice.isString() || !typeSlice.isString() ||
       !propertiesSlice.isObject()) {
     badParamError();
@@ -227,6 +229,7 @@ void RestViewHandler::deleteView() {
   }
 
   std::string const& name = suffixes[0];
+  auto allowDropSystem = _request->parsedValue("isSystem", false);
   auto view = _vocbase.lookupView(name);
 
   if (!view) {
@@ -238,7 +241,7 @@ void RestViewHandler::deleteView() {
     return;
   }
 
-  auto res = _vocbase.dropView(*view).errorNumber();
+  auto res = _vocbase.dropView(view->id(), allowDropSystem).errorNumber();
 
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());

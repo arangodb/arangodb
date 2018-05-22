@@ -349,7 +349,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION:
     case TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF:
     case TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED:
-    case TRI_ERROR_GRAPH_NOT_AN_ARANGO_COLLECTION:
     case TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING:
     case TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT:
     case TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS:
@@ -435,6 +434,5 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::C_NONE),
-      _options(velocypack::Options::Defaults),
       _generateBody(false),
       _contentTypeRequested(ContentType::UNSET) {}

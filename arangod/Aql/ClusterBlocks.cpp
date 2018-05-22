@@ -60,11 +60,11 @@ using StringBuffer = arangodb::basics::StringBuffer;
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
-      _isSimple(en->getElements().empty()),
+      _isSimple(en->elements().empty()),
       _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
 
   if (!_isSimple) {
-    for (auto const& p : en->getElements()) {
+    for (auto const& p : en->elements()) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_registerPlan is set up
       auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
@@ -171,40 +171,6 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     _done = false;
   }
   return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief count: the sum of the count() of the dependencies or -1 (if any
-/// dependency has count -1
-int64_t GatherBlock::count() const {
-  DEBUG_BEGIN_BLOCK();
-  int64_t sum = 0;
-  for (auto const& x : _dependencies) {
-    if (x->count() == -1) {
-      return -1;
-    }
-    sum += x->count();
-  }
-  return sum;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
-/// any dependency has remaining -1
-int64_t GatherBlock::remaining() {
-  DEBUG_BEGIN_BLOCK();
-  int64_t sum = 0;
-  for (auto const& x : _dependencies) {
-    if (x->remaining() == -1) {
-      return -1;
-    }
-    sum += x->remaining();
-  }
-  return sum;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -342,19 +308,25 @@ AqlItemBlock* GatherBlock::getSome(size_t atMost) {
       TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
       AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
       if (!x.isEmpty()) {
-        auto it = cache[val.first].find(x);
+        if (x.requiresDestruction()) {
+          // complex value, with ownership transfer
+          auto it = cache[val.first].find(x);
 
-        if (it == cache[val.first].end()) {
-          AqlValue y = x.clone();
-          try {
-            res->setValue(i, col, y);
-          } catch (...) {
-            y.destroy();
-            throw;
+          if (it == cache[val.first].end()) {
+            AqlValue y = x.clone();
+            try {
+              res->setValue(i, col, y);
+            } catch (...) {
+              y.destroy();
+              throw;
+            }
+            cache[val.first].emplace(x, y);
+          } else {
+            res->setValue(i, col, (*it).second);
           }
-          cache[val.first].emplace(x, y);
         } else {
-          res->setValue(i, col, (*it).second);
+          // simple value, no ownership transfer needed
+          res->setValue(i, col, x);
         }
       }
     }
@@ -736,37 +708,6 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief remainingForShard: remaining for shard, sum of the number of row left
-/// in the buffer and _dependencies[0]->remaining()
-int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
-  DEBUG_BEGIN_BLOCK();
-  
-  size_t clientId = getClientId(shardId);
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
-    return 0;
-  }
-
-  int64_t sum = _dependencies[0]->remaining();
-  if (sum == -1) {
-    return -1;
-  }
-
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
-
-  if (pos.first <= _buffer.size()) {
-    sum += _buffer.at(pos.first)->size() - pos.second;
-    for (auto i = pos.first + 1; i < _buffer.size(); i++) {
-      sum += _buffer.at(i)->size();
-    }
-  }
-
-  return sum;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 /// @brief getOrSkipSomeForShard
 int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
                                         bool skipping, AqlItemBlock*& result,
@@ -847,7 +788,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
       _alternativeRegId(ExecutionNode::MaxRegisterId),
       _allowSpecifiedKeys(false) {
   // get the variable to inspect . . .
-  VariableId varId = ep->_varId;
+  VariableId varId = ep->_variable->id;
 
   // get the register id of the variable to inspect . . .
   auto it = ep->getRegisterPlan()->varInfo.find(varId);
@@ -856,9 +797,9 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
 
   TRI_ASSERT(_regId < ExecutionNode::MaxRegisterId);
 
-  if (ep->_alternativeVarId != ep->_varId) {
+  if (ep->_alternativeVariable != ep->_variable) {
     // use second variable
-    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVarId);
+    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVariable->id);
     TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     _alternativeRegId = (*it).second.registerId;
 
@@ -1083,26 +1024,23 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   }
 
   VPackSlice value = input;
-
-  VPackBuilder builder;
-  VPackBuilder builder2;
-
   bool hasCreatedKeyAttribute = false;
 
   if (input.isString() &&
-      static_cast<DistributeNode const*>(_exeNode)
+      ExecutionNode::castTo<DistributeNode const*>(_exeNode)
           ->_allowKeyConversionToObject) {
-    builder.openObject();
-    builder.add(StaticStrings::KeyString, input);
-    builder.close();
+    _keyBuilder.clear();
+    _keyBuilder.openObject(true);
+    _keyBuilder.add(StaticStrings::KeyString, input);
+    _keyBuilder.close();
 
     // clear the previous value
     cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
-    cur->emplaceValue(_pos, _regId, builder);
+    cur->emplaceValue(_pos, _regId, _keyBuilder.slice());
 
-    value = builder.slice();
+    value = _keyBuilder.slice();
     hasCreatedKeyAttribute = true;
   } else if (!input.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1110,58 +1048,47 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   TRI_ASSERT(value.isObject());
 
-  if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
+  if (ExecutionNode::castTo<DistributeNode const*>(_exeNode)->_createKeys) {
+    bool buildNewObject = false;
     // we are responsible for creating keys if none present
 
     if (_usesDefaultSharding) {
       // the collection is sharded by _key...
-
       if (!hasCreatedKeyAttribute && !value.hasKey(StaticStrings::KeyString)) {
         // there is no _key attribute present, so we are responsible for
         // creating one
-        VPackBuilder temp;
-        temp.openObject();
-        temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
-        temp.close();
-
-        builder2 = VPackCollection::merge(input, temp.slice(), true);
-
-        // clear the previous value and overwrite with new value:
-        if (usedAlternativeRegId) {
-          cur->destroyValue(_pos, _alternativeRegId);
-          cur->emplaceValue(_pos, _alternativeRegId, builder2);
-        } else {
-          cur->destroyValue(_pos, _regId);
-          cur->emplaceValue(_pos, _regId, builder2);
-        }
-        value = builder2.slice();
+        buildNewObject = true;
       }
     } else {
       // the collection is not sharded by _key
-
       if (hasCreatedKeyAttribute || value.hasKey(StaticStrings::KeyString)) {
         // a _key was given, but user is not allowed to specify _key
         if (usedAlternativeRegId || !_allowSpecifiedKeys) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
         }
       } else {
-        VPackBuilder temp;
-        temp.openObject();
-        temp.add(StaticStrings::KeyString, VPackValue(createKey(value)));
-        temp.close();
-
-        builder2 = VPackCollection::merge(input, temp.slice(), true);
-
-        // clear the previous value and overwrite with new value:
-        if (usedAlternativeRegId) {
-          cur->destroyValue(_pos, _alternativeRegId);
-          cur->emplaceValue(_pos, _alternativeRegId, builder2.slice());
-        } else {
-          cur->destroyValue(_pos, _regId);
-          cur->emplaceValue(_pos, _regId, builder2.slice());
-        }
-        value = builder2.slice();
+        buildNewObject = true;
       }
+    }
+
+    if (buildNewObject) {
+      _keyBuilder.clear();
+      _keyBuilder.openObject(true);
+      _keyBuilder.add(StaticStrings::KeyString, VPackValue(createKey(value)));
+      _keyBuilder.close();
+
+      _objectBuilder.clear();
+      VPackCollection::merge(_objectBuilder, input, _keyBuilder.slice(), true);
+
+      // clear the previous value and overwrite with new value:
+      if (usedAlternativeRegId) {
+        cur->destroyValue(_pos, _alternativeRegId);
+        cur->emplaceValue(_pos, _alternativeRegId, _objectBuilder.slice());
+      } else {
+        cur->destroyValue(_pos, _regId);
+        cur->emplaceValue(_pos, _regId, _objectBuilder.slice());
+      }
+      value = _objectBuilder.slice();
     }
   }
 
@@ -1172,8 +1099,6 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 
   int res = clusterInfo->getResponsibleShard(collInfo.get(), value, true,
       shardId, usesDefaultShardingAttributes);
-
-  // std::cout << "SHARDID: " << shardId << "\n";
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1297,7 +1222,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     // nullptr only happens on controlled shutdown
 
     // Later, we probably want to set these sensibly:
-    ClientTransactionID const clientTransactionId = "AQL";
+    ClientTransactionID const clientTransactionId = std::string("AQL");
     CoordTransactionID const coordTransactionId = TRI_NewTickServer();
     std::unordered_map<std::string, std::string> headers;
     if (!_ownName.empty()) {
@@ -1309,14 +1234,13 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
       JobGuard guard(SchedulerFeature::SCHEDULER);
       guard.block();
 
+      std::string const url = std::string("/_db/") +
+      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
+      urlPart + _queryId;
       auto result =
           cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                          std::string("/_db/") +
-                              arangodb::basics::StringUtils::urlEncode(
-                                  _engine->getQuery()->trx()->vocbase()->name()) +
-                              urlPart + _queryId,
-                          body, headers, defaultTimeOut);
-
+                          std::move(url), body, headers, defaultTimeOut);
+      
       return result;
     }
   }
@@ -1569,64 +1493,6 @@ bool RemoteBlock::hasMore() {
     hasMore = slice.get("hasMore").getBoolean();
   }
   return hasMore;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief count
-int64_t RemoteBlock::count() const {
-  DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::GET, "/_api/aql/count/", std::string());
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-
-  int64_t count = 0;
-  if (slice.hasKey("count")) {
-    count = slice.get("count").getNumericValue<int64_t>();
-  }
-  return count;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief remaining
-int64_t RemoteBlock::remaining() {
-  DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::GET, "/_api/aql/remaining/", std::string());
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-
-  int64_t remaining = 0;
-  if (slice.hasKey("remaining")) {
-    remaining = slice.get("remaining").getNumericValue<int64_t>();
-  }
-  return remaining;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

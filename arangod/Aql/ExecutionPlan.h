@@ -31,9 +31,11 @@
 #include "Aql/types.h"
 #include "Basics/SmallVector.h"
 
+#include <array>
+
 namespace arangodb {
 namespace velocypack {
-  class Slice;
+class Slice;
 }
   
 namespace aql {
@@ -189,10 +191,15 @@ class ExecutionPlan {
   /// node and that one cannot remove the root node of the plan.
   void unlinkNode(ExecutionNode*, bool = false);
 
-  /// @brief add a node to the plan, will delete node if addition fails and
-  /// throw an exception, in addition, the pointer is set to nullptr such
-  /// that another delete does not hurt
+  /// @brief register a node with the plan
+  ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>);
+  
+  /// @brief add a node to the plan, will delete node if addition
+  /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
+
+  /// @brief add a subquery to the plan, will call registerNode internally
+  SubqueryNode* registerSubquery(SubqueryNode*);
 
   /// @brief replaceNode, note that <newNode> must be registered with the plan
   /// before this method is called, also this does not delete the old
@@ -205,13 +212,30 @@ class ExecutionPlan {
   /// <oldNode>).
   /// <newNode> must be registered with the plan before this method is called.
   void insertDependency(ExecutionNode* oldNode, ExecutionNode* newNode);
+  
+  /// @brief insert note directly after previous
+  /// will remove previous as a dependency from its parents and
+  /// add newNode as a dependency. <newNode> must be registered with the plan
+  void insertAfter(ExecutionNode* previous, ExecutionNode* newNode);
 
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
 
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
+  
+  /// @brief create an execution plan from an abstract syntax tree node
+  ExecutionNode* fromNode(AstNode const*);
+  
+  /// @brief create an execution plan from VPack
+  ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
+  /// @brief whether or not the plan contains at least one node of this type
+  bool contains(ExecutionNode::NodeType type) const;
+
+  /// @brief increase the node counter for the type
+  void increaseCounter(ExecutionNode::NodeType type) noexcept;
+  
  private:
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*,
@@ -285,12 +309,6 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
 
-  /// @brief create an execution plan from an abstract syntax tree node
-  ExecutionNode* fromNode(AstNode const*);
-
-  /// @brief create an execution plan from VPack
-  ExecutionNode* fromSlice(velocypack::Slice const& slice);
-
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
 
@@ -311,6 +329,9 @@ class ExecutionPlan {
   bool _varUsageComputed;
 
   bool _isResponsibleForInitialize;
+   
+  /// @brief current nesting level while building the plan
+  int _nestingLevel;
 
   /// @brief auto-increment sequence for node ids
   size_t _nextId;
@@ -318,8 +339,7 @@ class ExecutionPlan {
   /// @brief the ast
   Ast* _ast;
 
-  /// @brief whether or not the next LIMIT node will get its fullCount attribute
-  /// set
+  /// @brief which top-level LIMIT node will get its fullCount attribute set
   ExecutionNode* _lastLimitNode;
 
   /// @brief a lookup map for all subqueries created
@@ -327,6 +347,9 @@ class ExecutionPlan {
     
   /// @brief these nodes will be excluded from building scatter/gather "diamonds" later
   std::unordered_set<ExecutionNode const*> _excludeFromScatterGather;
+
+  /// @brief number of nodes used in the plan, by type
+  std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
 };
 }
 }

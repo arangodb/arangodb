@@ -74,7 +74,6 @@ class QueryResultCursor final : public arangodb::Cursor {
  private:
   DatabaseGuard _guard;
   aql::QueryResult _result;
-  std::shared_ptr<arangodb::velocypack::Builder> const _extra;
   arangodb::velocypack::ArrayIterator _iterator;
   bool _cached;
 };

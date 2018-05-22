@@ -32,6 +32,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
 namespace {
+
 arangodb::Result getHttpErrorMessage(
     arangodb::httpclient::SimpleHttpResult* result) {
   using arangodb::basics::VelocyPackHelper;
@@ -68,6 +69,7 @@ arangodb::Result getHttpErrorMessage(
   }
   return {code, std::move(message)};
 }
+
 }  // namespace
 
 namespace arangodb {
@@ -76,10 +78,9 @@ ClientManager::ClientManager(LogTopic& topic) : _topic{topic} {}
 
 ClientManager::~ClientManager() {}
 
-std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
-    bool force, bool verbose) {
-  std::unique_ptr<httpclient::SimpleHttpClient> httpClient(nullptr);
-
+Result ClientManager::getConnectedClient(
+    std::unique_ptr<httpclient::SimpleHttpClient>& httpClient, bool force,
+    bool logServerVersion, bool logDatabaseNotFound) {
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
           "Client");
@@ -89,7 +90,7 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
     httpClient = client->createHttpClient();
   } catch (...) {
     LOG_TOPIC(FATAL, _topic) << "cannot create server connection, giving up!";
-    FATAL_ERROR_EXIT();
+    return {TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
   // set client parameters
@@ -100,18 +101,23 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
                                            client->password());
 
   // now connect by retrieving version
-  std::string const versionString = httpClient->getServerVersion();
-  if (!httpClient->isConnected()) {
-    LOG_TOPIC(ERR, _topic) << "Could not connect to endpoint '"
-                           << client->endpoint() << "', database: '" << dbName
-                           << "', username: '" << client->username() << "'";
-    LOG_TOPIC(FATAL, _topic)
-        << "Error message: '" << httpClient->getErrorMessage() << "'";
+  int errorCode;
+  std::string const versionString = httpClient->getServerVersion(&errorCode);
+  if (TRI_ERROR_NO_ERROR != errorCode) {
+    if (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode || logDatabaseNotFound) {
+      // arangorestore does not log "database not found" errors in case
+      // it tries to create the database...
+      LOG_TOPIC(ERR, _topic) << "Could not connect to endpoint '"
+                             << client->endpoint() << "', database: '" << dbName
+                             << "', username: '" << client->username() << "'";
+      LOG_TOPIC(ERR, _topic)
+          << "Error message: '" << httpClient->getErrorMessage() << "'";
+    }
 
-    FATAL_ERROR_EXIT();
+    return {errorCode};
   }
 
-  if (verbose) {
+  if (logServerVersion) {
     // successfully connected
     LOG_TOPIC(INFO, _topic) << "Server version: " << versionString;
   }
@@ -125,8 +131,20 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
                            << versionString << "'";
 
     if (!force) {
-      FATAL_ERROR_EXIT();
+      return {TRI_ERROR_INCOMPATIBLE_VERSION};
     }
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
+std::unique_ptr<httpclient::SimpleHttpClient> ClientManager::getConnectedClient(
+    bool force, bool logServerVersion, bool logDatabaseNotFound) {
+  std::unique_ptr<httpclient::SimpleHttpClient> httpClient;
+
+  Result result = getConnectedClient(httpClient, force, logServerVersion, logDatabaseNotFound);
+  if (result.fail() && !(force && result.is(TRI_ERROR_INCOMPATIBLE_VERSION))) {
+    FATAL_ERROR_EXIT();
   }
 
   return httpClient;

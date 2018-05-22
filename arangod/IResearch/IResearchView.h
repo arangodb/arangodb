@@ -192,8 +192,9 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
+    bool isNew,
     uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit = LogicalView::PreCommitCallback()
+    LogicalView::PreCommitCallback const& preCommit = {}
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -229,7 +230,10 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  PrimaryKeyIndexReader* snapshot(TransactionState& state, bool force = false);
+  PrimaryKeyIndexReader* snapshot(
+    TransactionState& state,
+    bool force = false
+  ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores

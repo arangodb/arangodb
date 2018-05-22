@@ -63,21 +63,8 @@ class Methods;
 
 namespace aql {
 class AqlItemBlock;
-
-/// @brief sort element for block, consisting of register, sort direction, 
-/// and a possible attribute path to dig into the document
-
-struct SortElementBlock {
-  RegisterId reg;
-  bool ascending;
-  std::vector<std::string> attributePath;
-
-  SortElementBlock(RegisterId r, bool asc)
-    : reg(r), ascending(asc) {
-  }
-};
-
 class ExecutionEngine;
+struct QueryProfile;
 
 class ExecutionBlock {
  public:
@@ -155,7 +142,7 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   virtual AqlItemBlock* getSome(size_t atMost);
 
-  void traceGetSomeBegin(size_t atMost) const;
+  void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*) const;
 
  protected:
@@ -202,10 +189,6 @@ class ExecutionBlock {
 
   virtual bool hasMore();
 
-  virtual int64_t count() const { return _dependencies[0]->count(); }
-
-  virtual int64_t remaining();
-
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
   transaction::Methods* transaction() const { return _trx; }
@@ -244,8 +227,11 @@ class ExecutionBlock {
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 
-  /// A copy of the tracing value in the options:
-  int64_t _tracing;
+  /// @brief profiling level
+  uint32_t _profile;
+  
+  /// @brief getSome begin point in time
+  double _getSomeBegin;
 };
 
 }  // namespace arangodb::aql

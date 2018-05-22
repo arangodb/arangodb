@@ -118,13 +118,14 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
                            ManagedDocumentResult* mmdr,
                            arangodb::MMFilesEdgeIndex const* index,
                            TRI_MMFilesEdgeIndexHash_t const* indexImpl,
-                           std::unique_ptr<VPackBuilder>& keys);
+                           std::unique_ptr<VPackBuilder> keys);
 
   ~MMFilesEdgeIndexIterator();
 
   char const* typeName() const override { return "edge-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -138,6 +139,7 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   size_t _posInBuffer;
   size_t _batchSize;
   MMFilesSimpleIndexElement _lastElement;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 };
 
 class MMFilesEdgeIndex final : public MMFilesIndex {
@@ -197,7 +199,7 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

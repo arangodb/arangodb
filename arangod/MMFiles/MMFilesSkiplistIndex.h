@@ -187,6 +187,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   size_t _currentInterval;
 
   MMFilesBaseSkiplistLookupBuilder* _builder;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
 
   std::function<int(void*, MMFilesSkiplistIndexElement const*,
                     MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)>
@@ -214,6 +215,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
   /// @brief Get the next elements in the skiplist
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -310,7 +312,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
                                       ManagedDocumentResult*,
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
-                                      bool) override;
+                                      IndexIteratorOptions const&) override;
 
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;

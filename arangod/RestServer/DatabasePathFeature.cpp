@@ -23,7 +23,6 @@
 #include "DatabasePathFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -40,14 +39,12 @@ DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
     : ApplicationFeature(server, "DatabasePath"),
       _requiredDirectoryState("any") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("FileDescriptors");
   startsAfter("Language");
   startsAfter("Logger");
   startsAfter("PageSize");
   startsAfter("Random");
   startsAfter("Temp");
-  startsAfter("WorkMonitor");
 }
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -94,12 +91,6 @@ void DatabasePathFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   }
 
   ctx->normalizePath(_directory, "database.directory", false);
-
-  auto jemalloc = ApplicationServer::getFeature<JemallocFeature>("Jemalloc");
-
-  if (jemalloc != nullptr) {
-    jemalloc->setDefaultPath(_directory);
-  }
 }
 
 void DatabasePathFeature::prepare() {

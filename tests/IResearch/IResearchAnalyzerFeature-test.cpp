@@ -35,7 +35,6 @@
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/SystemDatabaseFeature.h"
@@ -527,7 +526,9 @@ SECTION("test_identity") {
 }
 
 SECTION("test_persistence") {
-  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+  auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::SystemDatabaseFeature
+  >();
   auto vocbase = database->use();
 
   // ensure there is an empty configuration collection
@@ -535,7 +536,7 @@ SECTION("test_persistence") {
     auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
     if (collection) {
-      vocbase->dropCollection(collection.get(), true, -1);
+      vocbase->dropCollection(collection->id(), true, -1);
     }
 
     collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -552,7 +553,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -592,7 +593,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -613,7 +614,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -633,7 +634,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -720,7 +721,7 @@ SECTION("test_persistence") {
       std::string collection("_iresearch_analyzers");
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         collection,
         arangodb::AccessMode::Type::WRITE
       );
@@ -826,7 +827,9 @@ SECTION("test_remove") {
 }
 
 SECTION("test_start") {
-  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+  auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::SystemDatabaseFeature
+  >();
   auto vocbase = database->use();
 
   // test feature start load configuration (inRecovery, no configuration collection)
@@ -836,7 +839,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -871,7 +874,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -909,7 +912,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -950,7 +953,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -993,7 +996,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1025,7 +1028,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1059,7 +1062,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1097,7 +1100,7 @@ SECTION("test_start") {
       auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection.get(), true, -1);
+        vocbase->dropCollection(collection->id(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1132,7 +1135,9 @@ SECTION("test_start") {
 }
 
 SECTION("test_tokens") {
-  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+  auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::SystemDatabaseFeature
+  >();
   auto vocbase = database->use();
 
   // create a new instance of an ApplicationServer and fill it with the required features
@@ -1158,7 +1163,7 @@ SECTION("test_tokens") {
     auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
     if (collection) {
-      vocbase->dropCollection(collection.get(), true, -1);
+      vocbase->dropCollection(collection->id(), true, -1);
     }
 
     collection = vocbase->lookupCollection("_iresearch_analyzers");

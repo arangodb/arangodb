@@ -135,8 +135,9 @@ There are further options that can be passed in the *options* attribute of the *
   the query result cache is disabled, and that they will be automatically inserted into
   the query result cache when it is active in non-demand mode.
 
-- *profile*: if set to *true*, returns extra timing information for the query. The timing
-  information is accessible via the *getExtra* method of the query result.
+- *profile*: if set to *true* or *1*, returns extra timing information for the query. The timing
+  information is accessible via the *getExtra* method of the query result. Set to *2* the query will include execution stats per query plan node in sub-attribute *stats.nodes* of the *extra* return attribute.
+  Additionally the query plan is returned in the sub-attribute *extra.plan*.
 
 - *maxWarningCount*: limits the number of warnings that are returned by the query if
   *failOnWarning* is not set to *true*. The default value is *10*.

@@ -40,6 +40,7 @@ using namespace arangodb::options;
 ScriptFeature::ScriptFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Script"),
       _result(result) {
+  setOptional(true);
   startsAfter("Database");
   startsAfter("Nonce");
   startsAfter("Server");

@@ -37,8 +37,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace {
+
 /// @brief lookup table for key checks
-static std::array<bool, 256> const lookupTable = { { 
+static std::array<bool, 256> const keyCharLookupTable = { { 
   /* 0x00 . */ false,    /* 0x01 . */ false,    /* 0x02 . */ false,    /* 0x03 . */ false,    
   /* 0x04 . */ false,    /* 0x05 . */ false,    /* 0x06 . */ false,    /* 0x07 . */ false,    
   /* 0x08 . */ false,    /* 0x09 . */ false,    /* 0x0a . */ false,    /* 0x0b . */ false,    
@@ -104,6 +106,8 @@ static std::array<bool, 256> const lookupTable = { {
   /* 0xf8 . */ false,    /* 0xf9 . */ false,    /* 0xfa . */ false,    /* 0xfb . */ false,    
   /* 0xfc . */ false,    /* 0xfd . */ false,    /* 0xfe . */ false,    /* 0xff . */ false
 } };
+
+}
 
 /// @brief create the key generator
 KeyGenerator::KeyGenerator(bool allowUserKeys)
@@ -259,7 +263,7 @@ bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
   unsigned char const* e = p + len;
   TRI_ASSERT(p != e);
   do {
-    if (!lookupTable[*p]) {
+    if (!::keyCharLookupTable[*p]) {
       return false;
     }
   } while (++p < e);

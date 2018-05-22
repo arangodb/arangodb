@@ -55,10 +55,6 @@ class SingletonBlock final : public ExecutionBlock {
 
   bool hasMore() override final { return !_done; }
 
-  int64_t count() const override final { return 1; }
-
-  int64_t remaining() override final { return _done ? 0 : 1; }
-
  private:
   void deleteInputVariables();
 
@@ -92,14 +88,6 @@ class FilterBlock final : public ExecutionBlock {
                     AqlItemBlock*& result, size_t& skipped) override;
 
   bool hasMore() override final;
-
-  int64_t count() const override final {
-    return -1;  // refuse to work
-  }
-
-  int64_t remaining() override final {
-    return -1;  // refuse to work
-  }
 
   /// @brief input register
  private:
@@ -170,7 +158,7 @@ class ReturnBlock final : public ExecutionBlock {
 
 class NoResultsBlock final : public ExecutionBlock {
  public:
-  NoResultsBlock(ExecutionEngine* engine, NoResultsNode const* ep)
+  NoResultsBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       : ExecutionBlock(engine, ep) {}
 
   ~NoResultsBlock() {}
@@ -180,10 +168,6 @@ class NoResultsBlock final : public ExecutionBlock {
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
   bool hasMore() override final { return false; }
-
-  int64_t count() const override final { return 0; }
-
-  int64_t remaining() override final { return 0; }
 
  private:
   int getOrSkipSome(size_t atMost, bool skipping,

@@ -27,38 +27,45 @@
 #include "utils/async_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/utf8_path.hpp"
-
+#include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
 NS_BEGIN(arangodb)
 
 class DatabasePathFeature; // forward declaration
+class TransactionState; // forward declaration
 
 NS_END // arangodb
 
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
+class PrimaryKeyIndexReader; // forward declaration
+
 class IResearchViewDBServer final: public arangodb::LogicalView {
  public:
+  virtual ~IResearchViewDBServer();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ensure there is a view instance for the specified 'cid'
-  /// @return an existing instance or create a new instance if none is registred
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalView> create(TRI_voc_cid_t cid);
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief apply any changes to 'state' required by this view
+  ///////////////////////////////////////////////////////////////////////////////
+  void apply(arangodb::TransactionState& state);
 
   virtual arangodb::Result drop() override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief register a view instance for the specified 'cid'
-  /// @return functer used for dropping the association or 'false' on error or
-  ///         duplicate definition
+  /// @brief drop the view association for the specified 'cid'
+  /// @return if an association was removed
   //////////////////////////////////////////////////////////////////////////////
-  std::function<void()> emplace(
-    TRI_voc_cid_t cid,
-    std::shared_ptr<arangodb::LogicalView> const& view
-  );
+  arangodb::Result drop(TRI_voc_cid_t cid);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ensure there is a view instance for the specified 'cid'
+  /// @return an existing instance or create a new instance if none is registred
+  ///         on ptr reset the view will be dropped if it has no collections
+  /// @note view created in vocbase() to match callflow during regular startup
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<arangodb::LogicalView> ensure(TRI_voc_cid_t cid);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
@@ -67,17 +74,25 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
+    bool isNew,
     uint64_t planVersion,
-    LogicalView::PreCommitCallback const& preCommit = LogicalView::PreCommitCallback()
+    LogicalView::PreCommitCallback const& preCommit = {}
   );
 
   virtual void open() override;
   virtual arangodb::Result rename(std::string&& newName, bool doSync) override;
-  virtual void toVelocyPack(
-    arangodb::velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const override;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @return pointer to an index reader containing the datastore record snapshot
+  ///         associated with 'state'
+  ///         (nullptr == no view snapshot associated with the specified state)
+  ///         if force == true && no snapshot -> associate current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  PrimaryKeyIndexReader* snapshot(
+    TransactionState& state,
+    bool force = false
+  ) const;
+
   virtual arangodb::Result updateProperties(
     arangodb::velocypack::Slice const& properties,
     bool partialUpdate,
@@ -87,6 +102,13 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
     CollectionVisitor const& visitor
   ) const override;
 
+ protected:
+  virtual arangodb::Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override;
+
  private:
   DECLARE_SPTR(LogicalView);
 
@@ -94,6 +116,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   arangodb::velocypack::Builder _meta; // the view definition
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
   irs::utf8_path const _persistedPath;
+  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,

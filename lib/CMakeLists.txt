@@ -117,7 +117,6 @@ add_library(${LIB_ARANGO} STATIC
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/EngineEqualityCheckFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
-  ApplicationFeatures/JemallocFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
@@ -155,7 +154,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Utf8Helper.cpp
   Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
-  Basics/WorkMonitor.cpp
   Basics/application-exit.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
@@ -233,6 +231,7 @@ add_library(${LIB_ARANGO} STATIC
 )
 
 target_link_libraries(${LIB_ARANGO}
+    s2
     boost_system
     boost_boost
 )
@@ -243,6 +242,35 @@ if (USE_ENTERPRISE)
   target_include_directories(${LIB_ARANGO} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+################################################################################
+## LIB_ARANGO_GEO
+################################################################################
+
+add_library(${LIB_ARANGO_GEO} STATIC
+  Geo/GeoJson.cpp
+  Geo/GeoParams.cpp
+  Geo/GeoUtils.cpp
+  Geo/ShapeContainer.cpp
+  Geo/Shapes.cpp
+  Geo/S2/S2MultiPointRegion.cpp
+  Geo/S2/S2MultiPolyline.cpp
+)
+
+target_link_libraries(${LIB_ARANGO_GEO}
+    ${LIB_ARANGO}
+    boost_system
+    boost_boost
+)
+
+if (WINDOWS)
+  target_compile_options(${LIB_ARANGO_GEO} PUBLIC "-J")
+endif()
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${LIB_ARANGO_GEO} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${LIB_ARANGO_GEO} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
 
 ################################################################################
 ## LIB_ARANGO_V8

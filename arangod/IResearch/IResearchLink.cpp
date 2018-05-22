@@ -26,6 +26,7 @@
 #include "IResearchViewDBServer.h"
 #include "VelocyPackHelper.h"
 #include "Basics/LocalTaskQueue.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -35,27 +36,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
+#include "IResearchLinkHelper.h"
 #include "IResearchLink.h"
 
 NS_LOCAL
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the string representing the link type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string& LINK_TYPE =
-  arangodb::iresearch::DATA_SOURCE_TYPE.name();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the iResearch Link definition denoting the
-///        iResearch Link type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string LINK_TYPE_FIELD("type");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the id of the field in the iResearch Link definition denoting the
-///        corresponding iResearch View
-////////////////////////////////////////////////////////////////////////////////
-static const std::string VIEW_ID_FIELD("view");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an IResearchView token not associated with any view
@@ -80,6 +64,7 @@ IResearchLink::IResearchLink(
    _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
 IResearchLink::~IResearchLink() {
@@ -90,23 +75,15 @@ IResearchLink::~IResearchLink() {
   unload(); // disassociate from view if it has not been done yet
 }
 
-bool IResearchLink::operator==(IResearchView const& view) const noexcept {
+bool IResearchLink::operator==(LogicalView const& view) const noexcept {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
   return _view && _view->id() == view.id();
 }
 
-bool IResearchLink::operator!=(IResearchView const& view) const noexcept {
-  return !(*this == view);
-}
-
 bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
-}
-
-bool IResearchLink::operator!=(IResearchLinkMeta const& meta) const noexcept {
-  return !(*this == meta);
 }
 
 bool IResearchLink::allowExpansion() const {
@@ -176,10 +153,6 @@ int IResearchLink::drop() {
 
   // if the collection is in the process of being removed then drop it from the view
   if (_collection->deleted()) {
-    if (_wiewDrop) {
-      _wiewDrop();
-    }
-
     auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
 
     if (!result.ok()) {
@@ -192,6 +165,16 @@ int IResearchLink::drop() {
   }
 
   _dropCollectionInDestructor = false; // will do drop now
+
+  if (arangodb::ServerState::instance()->isDBServer()) {
+    // TODO FIXME find a better way to look up an iResearch View
+    auto* view = LogicalView::cast<IResearchViewDBServer>(_wiew.get());
+
+    return view
+      ? view->drop(_collection->id()).errorNumber()
+      : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+      ;
+  }
 
   return _view->drop(_collection->id());
 }
@@ -225,14 +208,20 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false; // failed to parse metadata
   }
 
-  if (collection() && definition.hasKey(VIEW_ID_FIELD)) {
-    auto identifier = definition.get(VIEW_ID_FIELD);
+  if (!collection()
+      || !definition.isObject()
+      || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "error finding view for link '" << _id << "'";
+    TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
-    if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
-      auto viewId = identifier.getUInt();
+    return false;
+  }
 
-      // NOTE: this will cause a deadlock if registering a link while view is being created
-      auto logicalView = collection()->vocbase().lookupView(viewId);
+  auto identifier = definition.get(StaticStrings::ViewIdField);
+  auto viewId = identifier.getNumber<uint64_t>();
+      auto& vocbase = collection()->vocbase();
+      auto logicalView = vocbase.lookupView(viewId);
 
       if (!logicalView
           || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
@@ -241,27 +230,23 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false; // no such view
       }
 
-      IResearchViewDBServer* wiew = nullptr;
+      std::shared_ptr<arangodb::LogicalView> wiew;
 
       // create the IResearchView for the specific collection (on DBServer)
       if (arangodb::ServerState::instance()->isDBServer()) {
         // TODO FIXME find a better way to look up an iResearch View
-        #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          wiew = dynamic_cast<IResearchViewDBServer*>(logicalView.get());
-        #else
-          wiew = static_cast<IResearchViewDBServer*>(logicalView.get());
-        #endif
+        auto* view = LogicalView::cast<IResearchViewDBServer>(logicalView.get());
 
-        // repoint LogicalView at the collection-specific instance
-        logicalView = wiew ? wiew->create(id()) : nullptr;
+        if (view) {
+          wiew = logicalView; // remeber the DBServer view instance
+          logicalView = view->ensure(id()); // repoint LogicalView at the per-cid instance
+        } else {
+          logicalView = nullptr;
+        }
       }
 
       // TODO FIXME find a better way to look up an iResearch View
-      #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto* view = dynamic_cast<IResearchView*>(logicalView.get());
-      #else
-        auto* view = static_cast<IResearchView*>(logicalView.get());
-      #endif
+      auto* view = LogicalView::cast<IResearchView>(logicalView.get());
 
       if (!view) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -293,18 +278,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       _dropCollectionInDestructor = view->emplace(collection()->id()); // track if this is the instance that called emplace
       _meta = std::move(meta);
       _view = std::move(view);
-
-      // register the IResearchView for the specific collection (on DBServer)
-      if (wiew) {
-        _wiewDrop = wiew->emplace(_id, logicalView);
-
-        if (!_wiewDrop) {
-          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "error registering view: '" << viewId << "' for link '" << _id << "'";
-
-          return false;
-        }
-      }
+      _wiew = std::move(wiew);
 
       // FIXME TODO remove once View::updateProperties(...) will be fixed to write
       // the update delta into the WAL marker instead of the full persisted state
@@ -312,19 +286,11 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
         if (engine && engine->inRecovery()) {
-          _defaultId = view->id();
+          _defaultId = _wiew ? _wiew->id() : _view->id();
         }
       }
 
-      return true;
-    }
-  }
-
-  LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-    << "error finding view for link '" << _id << "'";
-  TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-
-  return false;
+    return true;
 }
 
 Result IResearchLink::insert(
@@ -377,16 +343,27 @@ bool IResearchLink::json(
   }
 
   builder.add("id", VPackValue(std::to_string(_id)));
-  builder.add(LINK_TYPE_FIELD, VPackValue(typeName()));
+  builder.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(IResearchLinkHelper::type())
+  );
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (_view) {
-    builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
+  if (_wiew) {
+    builder.add(
+      StaticStrings::ViewIdField, arangodb::velocypack::Value(_wiew->id())
+    );
+  } else if (_view) {
+    builder.add(
+      StaticStrings::ViewIdField, arangodb::velocypack::Value(_view->id())
+    );
   } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
   //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
-    builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
+    builder.add(
+      StaticStrings::ViewIdField, arangodb::velocypack::Value(_defaultId)
+    );
   }
 
   return true;
@@ -400,16 +377,17 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (slice.hasKey(VIEW_ID_FIELD)) {
+  if (slice.isObject() && slice.hasKey(StaticStrings::ViewIdField)) {
     if (!_view) {
       return false; // slice has identifier but the current object does not
     }
 
-    auto identifier = slice.get(VIEW_ID_FIELD);
+    auto identifier = slice.get(StaticStrings::ViewIdField);
+    auto viewId = _wiew ? _wiew->id() : _view->id();
 
     if (!identifier.isNumber()
         || uint64_t(identifier.getInt()) != identifier.getUInt()
-        || identifier.getUInt() != _view->id()) {
+        || identifier.getUInt() != viewId) {
       return false; // iResearch View names of current object and slice do not match
     }
   } else if (_view) {
@@ -445,44 +423,6 @@ size_t IResearchLink::memory() const {
   }
 
   return size;
-}
-
-/*static*/ arangodb::Result IResearchLink::normalize(
-  arangodb::velocypack::Builder& normalized,
-  velocypack::Slice definition,
-  bool // isCreation
-) {
-  if (!normalized.isOpenObject()) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("invalid output buffer provided for IResearch link normalized definition generation")
-    );
-  }
-
-  std::string error;
-  IResearchLinkMeta meta;
-
-  if (!meta.init(definition, error)) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("error parsing IResearch link parameters from json: ") + error
-    );
-  }
-
-  normalized.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
-
-  // copy over IResearch View identifier
-  if (definition.hasKey(VIEW_ID_FIELD)) {
-    normalized.add(VIEW_ID_FIELD, definition.get(VIEW_ID_FIELD));
-  }
-
-  return meta.json(normalized)
-    ? arangodb::Result()
-    : arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error generating IResearch link normalized definition")
-      )
-    ;
 }
 
 Result IResearchLink::remove(
@@ -534,36 +474,13 @@ Result IResearchLink::remove(
   return _view->remove(*trx, _collection->id(), documentId);
 }
 
-/*static*/ bool IResearchLink::setType(arangodb::velocypack::Builder& builder) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
-
-  return true;
-}
-
-/*static*/ bool IResearchLink::setView(
-  arangodb::velocypack::Builder& builder,
-  TRI_voc_cid_t value
-) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add(VIEW_ID_FIELD, arangodb::velocypack::Value(value));
-
-  return true;
-}
-
 Index::IndexType IResearchLink::type() const {
   // TODO: don't use enum
   return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
 }
 
 char const* IResearchLink::typeName() const {
-  return LINK_TYPE.c_str();
+  return IResearchLinkHelper::type().c_str();
 }
 
 int IResearchLink::unload() {
@@ -574,7 +491,7 @@ int IResearchLink::unload() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  _defaultId = _wiew ? _wiew->id() : _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
 
   auto* col = collection();
 
@@ -612,6 +529,27 @@ const IResearchView* IResearchLink::view() const {
   SCOPED_LOCK(mutex);
 
   return _view;
+}
+
+/*static*/ std::shared_ptr<IResearchLink> IResearchLink::find(
+    LogicalCollection const& collection,
+    LogicalView const& view
+) {
+  for (auto& index : collection.getIndexes()) {
+    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an iresearch Link
+    }
+
+    // TODO FIXME find a better way to retrieve an iResearch Link
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+
+    if (link && *link == view) {
+      return link; // found required link
+    }
+  }
+
+  return nullptr;
 }
 
 NS_END // iresearch

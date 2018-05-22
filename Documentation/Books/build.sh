@@ -149,7 +149,7 @@ function ppbook-check-html-link()
     echo "${ALLBOOKS}" | tr " " "\n" | sed -e 's;^;/;' -e 's;$;/;' > /tmp/books.regex
 
     set +e
-    egrep -r '\[.*\]\(.*\)' "ppbooks/${NAME}"| \
+    grep -r -E '\[.*\]\(.*\)' "ppbooks/${NAME}"| \
         grep '\.md:'| grep 'html'| \
         grep -v 'http://' | \
         grep -v 'https://' | \
@@ -172,7 +172,7 @@ function ppbook-check-directory-link()
     NAME="$1"
     echo "${STD_COLOR}##### checking for invalid md links in ${NAME}${RESET}"
     set +e
-    ERRORS=$(egrep -r '\[.*\]\(.*\)' "ppbooks/${NAME}" | \
+    ERRORS=$(grep -r -E '\[.*\]\(.*\)' "ppbooks/${NAME}" | \
                     grep '\.md:' | \
                     grep -v html | \
                     grep -v http://| \
@@ -286,7 +286,7 @@ function check-dangling-anchors()
 
     echo "${STD_COLOR}##### fetching anchors from generated http files${RESET}"
     grep -R "a href.*#" books/ | \
-        egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
+        grep -v -E "(styles/header\\.js|/app\\.js|class=\"navigation|https*://|href=\"#\")" | \
         sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
     echo "${STD_COLOR}##### cross checking anchors${RESET}"
@@ -330,6 +330,8 @@ function check-dangling-anchors()
     if test "${NO}" -gt 0; then
         echo "${ERR_COLOR}"
         echo "${NO} Dangling anchors found!"
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -435,7 +437,7 @@ function build-book()
         RELEASE_DIRECTORY=devel
     else
         VERSION="${newVersionNumber}"
-        RELEASE_DIRECTORY=$(sed "s;\.[0-9]*$;;" <<< "${newVersionNumber}")
+        RELEASE_DIRECTORY=$(sed "s;\\.[0-9]*$;;" <<< "${newVersionNumber}")
     fi
     export VERSION
 
@@ -554,6 +556,11 @@ function check-docublocks()
         grep -v '.*~:.*' |\
         grep -v '.*#.*:.*' \
              >> /tmp/rawinprog.txt
+
+    # These files are converted to docublocks on the fly and only live in memory. 
+    for file in ../Examples/*.json ; do
+        echo "$file" |sed -e "s;.*/;Generated: @startDocuBlock program_options_;" -e "s;.json;;" >> /tmp/rawinprog.txt
+    done
     set -e
     echo "Generated: startDocuBlockInline errorCodes">> /tmp/rawinprog.txt
 
@@ -564,6 +571,8 @@ function check-docublocks()
         echo "${ERR_COLOR}"
         echo "Duplicate entry found in the source trees:"
         comm -3 /tmp/inprog_raw.txt /tmp/inprog.txt
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -585,6 +594,8 @@ function check-docublocks()
                 grep "$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"
             done
         fi
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -627,8 +638,8 @@ function build-books()
         ppbook-check-html-link "${book}"
     done
 
-    check-docublocks
-    check-dangling-anchors
+    check-docublocks ""
+    check-dangling-anchors ""
     echo "${STD_COLOR}##### Generating redirect index.html${RESET}"; \
     echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
 }
@@ -725,7 +736,6 @@ while [ $# -gt 0 ];  do
     esac
 done
 
-
 case "$VERB" in
     build-books)
         build-books
@@ -737,6 +747,8 @@ case "$VERB" in
             exit 1
         fi
         build-book "$NAME"
+        check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+        check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
         ;;
     check-book)
 	check-summary "${NAME}"
@@ -761,6 +773,15 @@ case "$VERB" in
         clean "$@"
         ;;
     *)
+        if test -d "${VERB}"; then
+            guessBookName="${VERB/\/}"
+            if [[ $ALLBOOKS = *"${guessBookName}"* ]]; then
+                build-book "$guessBookName"
+                check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+                check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
+                exit 0
+            fi
+        fi
         printHelp
         exit 1
         ;;

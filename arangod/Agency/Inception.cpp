@@ -28,7 +28,6 @@
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
 #include <numeric>
@@ -104,13 +103,12 @@ void Inception::gossip() {
           }
         }
         std::string clientid = config.id() + std::to_string(j++);
-        auto hf =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
             << out->toJson() << " to peer " << clientid;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        std::unordered_map<std::string, std::string> hf;
         cc->asyncRequest(
           clientid, 1, p, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
@@ -130,13 +128,12 @@ void Inception::gossip() {
         }
         complete = false;
         auto const clientid = config.id() + std::to_string(j++);
-        auto hf =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
             << out->toJson() << " to pool member " << clientid;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
+        std::unordered_map<std::string, std::string> hf;
         cc->asyncRequest(
           clientid, 1, pair.second, rest::RequestType::POST, path,
           std::make_shared<std::string>(out->toJson()), hf,
@@ -199,7 +196,7 @@ bool Inception::restartingActiveAgent() {
   auto        active    = myConfig.active();
   auto const& clientId  = myConfig.id();
   auto const& clientEp  = myConfig.endpoint();
-  auto const majority   = (myConfig.size()+1)/2;
+  auto const majority   = myConfig.size()/2+1;
 
   Builder greeting;
   {
@@ -301,16 +298,19 @@ bool Inception::restartingActiveAgent() {
                 }
               }
               
+              auto const  theirConfigL = comres->result->getBodyVelocyPack();
+              auto const& lcc           =
+                theirConfigL->slice().get("configuration");
+              
               auto agency = std::make_shared<Builder>();
-              agency->openObject();
-              agency->add("term", theirConfig.get("term"));
-              agency->add("id", VPackValue(theirLeaderId));
-              agency->add("active",      tcc.get("active"));
-              agency->add("pool",        tcc.get("pool"));
-              agency->add("min ping",    tcc.get("min ping"));
-              agency->add("max ping",    tcc.get("max ping"));
-              agency->add("timeoutMult", tcc.get("timeoutMult"));
-              agency->close();
+              { VPackObjectBuilder b(agency.get());
+                agency->add("term", theirConfigL->slice().get("term"));
+                agency->add("id", VPackValue(theirLeaderId));
+                agency->add("active",      lcc.get("active"));
+                agency->add("pool",        lcc.get("pool"));
+                agency->add("min ping",    lcc.get("min ping"));
+                agency->add("max ping",    lcc.get("max ping"));
+                agency->add("timeoutMult", lcc.get("timeoutMult")); }
               _agent->notify(agency);
               return true;
             }

@@ -88,8 +88,8 @@ void TraversalNode::TraversalEdgeConditionBuilder::toVelocyPack(
 TraversalNode::TraversalNode(ExecutionPlan* plan, size_t id,
                              TRI_vocbase_t* vocbase, AstNode const* direction,
                              AstNode const* start, AstNode const* graph,
-                             std::unique_ptr<BaseOptions>& options)
-    : GraphNode(plan, id, vocbase, direction, graph, options),
+                             std::unique_ptr<BaseOptions> options)
+    : GraphNode(plan, id, vocbase, direction, graph, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),
       _condition(nullptr),
@@ -152,8 +152,8 @@ TraversalNode::TraversalNode(
     std::vector<std::unique_ptr<Collection>> const& vertexColls,
     Variable const* inVariable, std::string const& vertexId,
     std::vector<TRI_edge_direction_e> const& directions,
-    std::unique_ptr<BaseOptions>& options)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, options),
+    std::unique_ptr<BaseOptions> options)
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
       _pathOutVariable(nullptr),
       _inVariable(inVariable),
       _vertexId(vertexId),
@@ -400,8 +400,8 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto oldOpts = static_cast<TraverserOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<TraverserOptions>(*oldOpts);
-  auto c = new TraversalNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
-                             _inVariable, _vertexId, _directions, tmp);
+  auto c = std::make_unique<TraversalNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
+                             _inVariable, _vertexId, _directions, std::move(tmp));
 
   if (usesVertexOutVariable()) {
     auto vertexOutVariable = _vertexOutVariable;
@@ -472,9 +472,9 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief the cost of a traversal node

@@ -30,7 +30,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/WorkMonitor.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
@@ -82,37 +81,24 @@ void Thread::startThread(void* arg) {
   TRI_ASSERT(ptr != nullptr);
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
-  
+
   LOCAL_THREAD_NAME = ptr->name().c_str();
 
   if (0 <= ptr->_affinity) {
     TRI_SetProcessorAffinity(&ptr->_thread, ptr->_affinity);
   }
 
-  bool pushed = WorkMonitor::pushThread(ptr);
-
   try {
     ptr->runMe();
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
-    if (pushed) {
-      WorkMonitor::popThread(ptr);
-    }
-
+    ptr->crashNotification(ex);
     ptr->cleanupMe();
     throw;
   } catch (...) {
-    if (pushed) {
-      WorkMonitor::popThread(ptr);
-    }
-
     ptr->cleanupMe();
     throw;
-  }
-
-  if (pushed) {
-    WorkMonitor::popThread(ptr);
   }
 
   ptr->cleanupMe();
@@ -135,7 +121,7 @@ TRI_pid_t Thread::currentProcessId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 uint64_t Thread::currentThreadNumber() { return LOCAL_THREAD_NUMBER; }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the name of the current thread, if set
 /// note that this function may return a nullptr
@@ -187,8 +173,7 @@ Thread::Thread(std::string const& name, bool deleteOnExit)
       _threadId(),
       _finishedCondition(nullptr),
       _state(ThreadState::CREATED),
-      _affinity(-1),
-      _workDescription(nullptr) {
+      _affinity(-1) {
   TRI_InitThread(&_thread);
 }
 
@@ -222,7 +207,7 @@ Thread::~Thread() {
         << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
-  
+
   LOCAL_THREAD_NAME = nullptr;
 }
 
@@ -251,7 +236,7 @@ void Thread::beginShutdown() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief called from the destructor
+/// @brief derived class MUST call from its destructor
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::shutdown() {
@@ -362,22 +347,6 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::setProcessorAffinity(size_t c) { _affinity = (int)c; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the current work description
-////////////////////////////////////////////////////////////////////////////////
-
-void Thread::setWorkDescription(WorkDescription* desc) {
-  _workDescription.store(desc);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the previous work description
-////////////////////////////////////////////////////////////////////////////////
-
-WorkDescription* Thread::setPrevWorkDescription() {
-  return _workDescription.exchange(_workDescription.load()->_prev.load());
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets status

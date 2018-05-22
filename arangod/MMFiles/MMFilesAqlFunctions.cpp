@@ -30,9 +30,9 @@
 #include "MMFiles/MMFilesGeoIndex.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -48,90 +48,6 @@ static ExecutionCondition const NotInCoordinator = [] {
          !arangodb::ServerState::instance()->isCoordinator();
 };
 
-static AqlValue buildGeoResult(transaction::Methods* trx,
-                               LogicalCollection* collection,
-                               arangodb::aql::Query* query,
-                               GeoCoordinates* cors,
-                               TRI_voc_cid_t const& cid,
-                               std::string const& attributeName) {
-  if (cors == nullptr) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
-  }
-
-  size_t const nCoords = cors->length;
-  if (nCoords == 0) {
-    GeoIndex_CoordinatesFree(cors);
-    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
-  }
-
-  struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, LocalDocumentId token)
-        : _distance(distance), _token(token) {}
-
-    double _distance;
-    LocalDocumentId _token;
-  };
-
-  std::vector<geo_coordinate_distance_t> distances;
-
-  try {
-    distances.reserve(nCoords);
-
-    for (size_t i = 0; i < nCoords; ++i) {
-      distances.emplace_back(geo_coordinate_distance_t(
-          cors->distances[i],
-          arangodb::MMFilesGeoIndex::toLocalDocumentId(
-              cors->coordinates[i].data)));
-    }
-  } catch (...) {
-    GeoIndex_CoordinatesFree(cors);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  GeoIndex_CoordinatesFree(cors);
-
-  // sort result by distance
-  std::sort(distances.begin(), distances.end(),
-            [](geo_coordinate_distance_t const& left,
-               geo_coordinate_distance_t const& right) {
-              return left._distance < right._distance;
-            });
-
-  try {
-    ManagedDocumentResult mmdr;
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    if (!attributeName.empty()) {
-      // We have to copy the entire document
-      for (auto& it : distances) {
-        VPackObjectBuilder docGuard(builder.get());
-        builder->add(attributeName, VPackValue(it._distance));
-        if (collection->readDocument(trx, it._token, mmdr)) {
-          VPackSlice doc(mmdr.vpack());
-          for (auto const& entry : VPackObjectIterator(doc)) {
-            std::string key = entry.key.copyString();
-            if (key != attributeName) {
-              builder->add(key, entry.value);
-            }
-          }
-        }
-      }
-
-    } else {
-      for (auto& it : distances) {
-        if (collection->readDocument(trx, it._token, mmdr)) {
-          mmdr.addToBuilder(*builder.get(), true);
-        }
-      }
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-}
-
-
 /// @brief Load geoindex for collection name
 static arangodb::MMFilesGeoIndex* getGeoIndex(
     transaction::Methods* trx, TRI_voc_cid_t const& cid,
@@ -143,18 +59,10 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
   // It can only be used until trx is finished.
   trx->addCollectionAtRuntime(cid, collectionName);
 
-  auto document = trx->documentCollection(cid);
-
-  if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                  "'%s'", collectionName.c_str());
-  }
-
   arangodb::MMFilesGeoIndex* index = nullptr;
-
-  for (auto const& idx : document->getIndexes()) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+  auto indexes = trx->indexesForCollection(collectionName);
+  for (auto const& idx : indexes) {
+    if (arangodb::Index::isGeoIndex(idx->type())) {
       index = static_cast<arangodb::MMFilesGeoIndex*>(idx.get());
       break;
     }
@@ -178,19 +86,22 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const cname(collectionValue.slice().copyString());
 
   AqlValue attribute = ExtractFunctionParameterValue(parameters, 1);
   if (!attribute.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const attributeName(attribute.slice().copyString());
 
   AqlValue queryValue = ExtractFunctionParameterValue(parameters, 2);
   if (!queryValue.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    THROW_ARANGO_EXCEPTION_PARAMS(
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const queryString = queryValue.slice().copyString();
 
@@ -198,8 +109,9 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   if (parameters.size() >= 4) {
     AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-    } 
+      THROW_ARANGO_EXCEPTION_PARAMS(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+    }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
       if (value > 0) {
@@ -226,12 +138,11 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   for (auto const& it : basics::StringUtils::split(attributeName, '.')) {
     search.back().emplace_back(it, false);
   }
-  
+
   // NOTE: The shared_ptr is protected by trx lock.
   // It is safe to use the raw pointer directly.
   // We are NOT allowed to delete the index.
   arangodb::MMFilesFulltextIndex* fulltextIndex = nullptr;
-
 
   auto indexes = collection->getIndexes();
   for (auto const& idx : indexes) {
@@ -254,16 +165,16 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   trx->pinData(cid);
 
-  TRI_fulltext_query_t* ft =
-      TRI_CreateQueryMMFilesFulltextIndex(TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
+  TRI_fulltext_query_t* ft = TRI_CreateQueryMMFilesFulltextIndex(
+      TRI_FULLTEXT_SEARCH_MAX_WORDS, maxResults);
 
   if (ft == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   bool isSubstringQuery = false;
-  int res =
-      TRI_ParseQueryMMFilesFulltextIndex(ft, queryString.c_str(), &isSubstringQuery);
+  int res = TRI_ParseQueryMMFilesFulltextIndex(ft, queryString.c_str(),
+                                               &isSubstringQuery);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeQueryMMFilesFulltextIndex(ft);
@@ -271,7 +182,8 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   }
 
   // note: the following call will free "ft"!
-  std::set<TRI_voc_rid_t> queryResult = TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
+  std::set<TRI_voc_rid_t> queryResult =
+      TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
 
   TRI_ASSERT(trx->isPinned(cid));
 
@@ -345,10 +257,18 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  GeoCoordinates* cors = index->nearQuery(
-      trx, latitude.toDouble(trx), longitude.toDouble(trx), static_cast<size_t>(limitValue));
+  try {
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
+    index->nearQuery(trx, latitude.toDouble(trx), longitude.toDouble(trx),
+                     static_cast<size_t>(limitValue), attributeName,
+                     *builder.get());
+    builder->close();
 
-  return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
+    return AqlValue(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 /// @brief function WITHIN
@@ -370,7 +290,8 @@ AqlValue MMFilesAqlFunctions::Within(
   AqlValue longitudeValue = ExtractFunctionParameterValue(parameters, 2);
   AqlValue radiusValue = ExtractFunctionParameterValue(parameters, 3);
 
-  if (!latitudeValue.isNumber() || !longitudeValue.isNumber() || !radiusValue.isNumber()) {
+  if (!latitudeValue.isNumber() || !longitudeValue.isNumber() ||
+      !radiusValue.isNumber()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "WITHIN");
   }
@@ -396,22 +317,29 @@ AqlValue MMFilesAqlFunctions::Within(
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  GeoCoordinates* cors = index->withinQuery(
-      trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx), radiusValue.toDouble(trx));
+  try {
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
+    index->withinQuery(trx, latitudeValue.toDouble(trx),
+                       longitudeValue.toDouble(trx), radiusValue.toDouble(trx),
+                       attributeName, *builder.get());
+    builder->close();
 
-  return buildGeoResult(trx, index->collection(), query, cors, cid, attributeName);
+    return AqlValue(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 void MMFilesAqlFunctions::registerResources() {
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
   TRI_ASSERT(functions != nullptr);
 
-  // fulltext functions
   functions->add({"FULLTEXT", ".h,.,.|.", false, true,
-                 false, true, &MMFilesAqlFunctions::Fulltext,
+                 false, &MMFilesAqlFunctions::Fulltext,
                  NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
-                  true, &MMFilesAqlFunctions::Near, NotInCoordinator});
+                  &MMFilesAqlFunctions::Near, NotInCoordinator});
   functions->add({"WITHIN", ".h,.,.,.|.", false, true,
-                  false, true, &MMFilesAqlFunctions::Within, NotInCoordinator});
+                  false, &MMFilesAqlFunctions::Within, NotInCoordinator});
 }

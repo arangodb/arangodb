@@ -40,8 +40,6 @@ ViewTypesFeature::ViewTypesFeature(
   application_features::ApplicationServer* server
 ): application_features::ApplicationFeature(server, ViewTypesFeature::name()) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
-  startsAfter("WorkMonitor");
 }
 
 arangodb::Result ViewTypesFeature::emplace(

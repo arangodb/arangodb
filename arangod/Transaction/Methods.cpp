@@ -186,7 +186,7 @@ void transaction::Methods::IndexHandle::toVelocyPack(
   _index->toVelocyPack(builder, withFigures, false);
 }
 
-TRI_vocbase_t* transaction::Methods::vocbase() const {
+TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
 
@@ -509,15 +509,18 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       }
     }
 
-    // enable the following line to see index candidates considered with their
-    // abilities and scores
-    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
-
     if (!supportsFilter && !supportsSort) {
       continue;
     }
+    
+    double totalCost = filterCost;
+    if (!sortCondition->isEmpty()) {
+      // only take into account the costs for sorting if there is actually something to sort
+      totalCost += sortCost;
+    }
 
-    double const totalCost = filterCost + sortCost;
+    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << totalCost << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
+
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;
@@ -556,7 +559,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
 
     // enable the following line to see index candidates considered with their
     // abilities and scores
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
+    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
 
     if (!supportsFilter) {
       continue;
@@ -605,7 +608,7 @@ transaction::Methods::Methods(
       _transactionContextPtr(transactionContext.get()) {
   TRI_ASSERT(_transactionContextPtr != nullptr);
 
-  TRI_vocbase_t* vocbase = _transactionContextPtr->vocbase();
+  auto& vocbase = _transactionContextPtr->vocbase();
 
   // brief initialize the transaction
   // this will first check if the transaction is embedded in a parent
@@ -615,7 +618,7 @@ transaction::Methods::Methods(
 
   if (parent != nullptr) {
     // yes, we are embedded
-    setupEmbedded(vocbase);
+    setupEmbedded(&vocbase);
   } else {
     // non-embedded
     setupToplevel(vocbase, options);
@@ -879,7 +882,7 @@ OperationResult transaction::Methods::anyLocal(
   }
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ANY, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ANY);
 
   cursor->nextDocument([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
@@ -1261,7 +1264,7 @@ OperationResult transaction::Methods::documentCoordinator(
   }
 
   int res = arangodb::getDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, headers, responseCode,
+      databaseName(), collectionName, value, options, std::move(headers), responseCode,
       errorCounter, resultBody);
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -1335,7 +1338,7 @@ OperationResult transaction::Methods::documentLocal(
     res = workForOneDocument(value, false);
   } else {
     VPackArrayBuilder guard(&resultBuilder);
-    for (auto const& s : VPackArrayIterator(value)) {
+    for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
@@ -1973,9 +1976,6 @@ OperationResult transaction::Methods::modifyLocal(
                     << (*followers)[i] << " for shard " << collectionName;
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
                 }
-                LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "modifyLocal: dropping follower " << (*followers)[i]
-                  << " for shard " << collectionName;
               }
             }
           }
@@ -2012,6 +2012,9 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
+  }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
   }
 
   return removeLocal(collectionName, value, optionsCopy);
@@ -2310,7 +2313,7 @@ OperationResult transaction::Methods::allLocal(
   }
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ALL, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   if (cursor->fail()) {
     return OperationResult(cursor->code);
@@ -2761,7 +2764,7 @@ std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
 OperationCursor* transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, ManagedDocumentResult* mmdr,
-    bool reverse) {
+    IndexIteratorOptions const& opts) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2775,7 +2778,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   std::unique_ptr<IndexIterator> iterator(
-      idx->iteratorForCondition(this, mmdr, condition, var, reverse));
+      idx->iteratorForCondition(this, mmdr, condition, var, opts));
 
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself
@@ -2789,8 +2792,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
-    std::string const& collectionName, CursorType cursorType,
-    bool reverse) {
+    std::string const& collectionName, CursorType cursorType) {
   // For now we assume indexId is the iid part of the index.
 
   if (_state->isCoordinator()) {
@@ -2817,7 +2819,7 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
       break;
     }
     case CursorType::ALL: {
-      iterator = logical->getAllIterator(this, reverse);
+      iterator = logical->getAllIterator(this);
       break;
     }
   }
@@ -3179,11 +3181,14 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
 }
 
 /// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase,
-                                         transaction::Options const& options) {
+void transaction::Methods::setupToplevel(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+) {
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  _state = engine->createTransactionState(vocbase, options);
+
+  _state = engine->createTransactionState(vocbase, options).release();
 
   TRI_ASSERT(_state != nullptr);
 

@@ -48,11 +48,10 @@ class ExecutionEngine {
   static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*,
                                               ExecutionPlan*, bool);
 
-  TEST_VIRTUAL void createBlocks(
+  TEST_VIRTUAL Result createBlocks(
       std::vector<ExecutionNode*> const& nodes,
-      std::unordered_set<std::string> const& includedShards,
       std::unordered_set<std::string> const& restrictToShards,
-      std::unordered_map<std::string, std::string> const& queryIds);
+      MapRemoteToSnippet const& queryIds);
 
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const {
@@ -102,12 +101,6 @@ class ExecutionEngine {
 
   /// @brief hasMore
   inline bool hasMore() const { return _root->hasMore(); }
-
-  /// @brief count
-  inline int64_t count() const { return _root->count(); }
-
-  /// @brief remaining
-  inline int64_t remaining() const { return _root->remaining(); }
 
   /// @brief add a block to the engine
   TEST_VIRTUAL void addBlock(ExecutionBlock*);

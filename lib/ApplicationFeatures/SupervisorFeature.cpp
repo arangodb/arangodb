@@ -117,10 +117,8 @@ SupervisorFeature::SupervisorFeature(
     application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Supervisor"), _supervisor(false), _clientPid(0) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("Daemon");
   startsAfter("Logger");
-  startsAfter("WorkMonitor");
 }
 
 void SupervisorFeature::collectOptions(

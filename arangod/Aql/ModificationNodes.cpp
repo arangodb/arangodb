@@ -44,9 +44,14 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
           Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)), 
-      _countStats(base.get("countStats").getBool()) {
+      _countStats(base.get("countStats").getBool()),
+      _restrictedTo("") {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
+  VPackSlice restrictedTo = base.get("restrictedTo");
+  if (restrictedTo.isString()) {
+    _restrictedTo = restrictedTo.copyString();
+  }
 }
 
 /// @brief toVelocyPack
@@ -58,6 +63,9 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
   builder.add("database", VPackValue(_vocbase->name()));
   builder.add("collection", VPackValue(_collection->getName()));
   builder.add("countStats", VPackValue(_countStats));
+  if (!_restrictedTo.empty()) {
+    builder.add("restrictedTo", VPackValue(_restrictedTo));
+  }
 
   // add out variables
   if (_outVariableOld != nullptr) {
@@ -125,15 +133,15 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options,
+  auto c = std::make_unique<RemoveNode>(plan, _id, _vocbase, _collection, _options,
                           inVariable, outVariableOld);
   if (!_countStats) {
     c->disableStatistics();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -176,15 +184,15 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
-  auto c = new InsertNode(plan, _id, _vocbase, _collection, _options,
+  auto c = std::make_unique<InsertNode>(plan, _id, _vocbase, _collection, _options,
                           inVariable, outVariableNew);
   if (!_countStats) {
     c->disableStatistics();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -243,16 +251,15 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
-  auto c =
-      new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
+  auto c = std::make_unique<UpdateNode>(plan, _id, _vocbase, _collection, _options, inDocVariable,
                      inKeyVariable, outVariableOld, outVariableNew);
   if (!_countStats) {
     c->disableStatistics();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
@@ -312,16 +319,15 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
     inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
   }
 
-  auto c =
-      new ReplaceNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
+  auto c = std::make_unique<ReplaceNode>(plan, _id, _vocbase, _collection, _options, inDocVariable,
                       inKeyVariable, outVariableOld, outVariableNew);
   if (!_countStats) {
     c->disableStatistics();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -377,14 +383,14 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
         plan->getAst()->variables()->createVariable(updateVariable);
   }
 
-  auto c = new UpsertNode(plan, _id, _vocbase, _collection, _options,
+  auto c = std::make_unique<UpsertNode>(plan, _id, _vocbase, _collection, _options,
                           inDocVariable, insertVariable, updateVariable,
                           outVariableNew, _isReplace);
   if (!_countStats) {
     c->disableStatistics();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }

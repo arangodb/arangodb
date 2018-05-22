@@ -254,23 +254,25 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
           // somehow invalid
           continue; 
         }
+
         VPackSlice const params = coll.get("parameters");
         auto existingCollection = resolveCollection(vocbase, params);
+
         if (existingCollection != nullptr) {
-          survivingCollections.emplace(existingCollection->globallyUniqueId());
+          survivingCollections.emplace(existingCollection->guid());
         }
       }
-    
+
       std::vector<arangodb::LogicalCollection*> toDrop;
 
       // drop all collections that do not exist (anymore) on the master 
       vocbase->processCollections([&survivingCollections, &toDrop](arangodb::LogicalCollection* collection) {
-        if (survivingCollections.find(collection->globallyUniqueId()) != survivingCollections.end()) {
+        if (survivingCollections.find(collection->guid()) != survivingCollections.end()) {
           // collection should surive
           return;
         }
 
-        if (collection->isSystem()) {
+        if (collection->system()) {
           // we will not drop system collections here
           return;
         }
@@ -280,7 +282,9 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
       for (auto const& collection : toDrop) { 
         try {
-          int res = vocbase->dropCollection(collection, false, -1.0);
+          auto res =
+            vocbase->dropCollection(collection->id(), false, -1.0).errorNumber();
+
           if (res != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC(ERR, Logger::FIXME) << "unable to drop collection " << collection->name() << ": " << TRI_errno_string(res);
           }

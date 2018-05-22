@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "common.h"
+#include "Agency/AgencyComm.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
@@ -65,8 +66,11 @@ bool assertRules(
   );
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
     arangodb::aql::PART_MAIN
   );
 
@@ -98,8 +102,11 @@ arangodb::aql::QueryResult executeQuery(
   );
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
     arangodb::aql::PART_MAIN
   );
 
@@ -117,8 +124,11 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   );
 
   arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    nullptr, options,
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    options,
     arangodb::aql::PART_MAIN
   );
 
@@ -131,6 +141,14 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   return std::unique_ptr<arangodb::aql::ExecutionPlan>(
     arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast())
   );
+}
+
+uint64_t getCurrentPlanVersion() {
+  auto const result = arangodb::AgencyComm().getValues("Plan");
+  auto const planVersionSlice = result.slice()[0].get(
+    { arangodb::AgencyCommManager::path(), "Plan", "Version" }
+  );
+  return planVersionSlice.getNumber<uint64_t>();
 }
 
 NS_END // tests

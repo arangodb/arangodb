@@ -27,7 +27,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/WorkDescription.h"
 #include "Basics/threads.h"
 
 namespace arangodb {
@@ -91,12 +90,12 @@ class Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   static uint64_t currentThreadNumber();
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the name of the current thread, if set
   /// note that this function may return a nullptr
   //////////////////////////////////////////////////////////////////////////////
-  
+
   static char const* currentThreadName();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -107,40 +106,6 @@ class Thread {
 
   // returns the current thread
   static Thread* current() { return CURRENT_THREAD; }
-
-  // returns the current work description or nullptr
-  static WorkDescription* currentWorkDescription() {
-    return CURRENT_THREAD == nullptr ? nullptr
-                                     : CURRENT_THREAD->workDescription();
-  }
-
-  // returns the current work context or nullptr
-  static WorkContext* currentWorkContext() {
-    if (CURRENT_THREAD == nullptr) {
-      return nullptr;
-    }
-
-    auto description = CURRENT_THREAD->workDescription();
-
-    if (description == nullptr) {
-      return nullptr;
-    }
-
-    return description->_context.get();
-  }
-
-  // checks if work has been canceled
-  static bool isCanceled() {
-    Thread* thread = CURRENT_THREAD;
-
-    if (thread == nullptr) {
-      return false;
-    }
-
-    WorkDescription* desc = thread->workDescription();
-
-    return desc == nullptr ? false : desc->_data._thread._canceled.load();
-  }
 
  public:
   Thread(std::string const& name, bool deleteOnExit = false);
@@ -222,29 +187,18 @@ class Thread {
 
   void setProcessorAffinity(size_t c);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the current work description
-  //////////////////////////////////////////////////////////////////////////////
-
-  WorkDescription* workDescription() const { return _workDescription.load(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the current work description
-  //////////////////////////////////////////////////////////////////////////////
-
-  void setWorkDescription(WorkDescription*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief sets the previous work description
-  //////////////////////////////////////////////////////////////////////////////
-
-  WorkDescription* setPrevWorkDescription();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief generates a description of the thread
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void addStatus(arangodb::velocypack::Builder* b);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief optional notification call when thread gets unplanned exception
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void crashNotification(std::exception const & ex) {return;};
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -282,8 +236,6 @@ class Thread {
 
   // processor affinity
   int _affinity;
-
-  std::atomic<WorkDescription*> _workDescription;
 };
 }
 

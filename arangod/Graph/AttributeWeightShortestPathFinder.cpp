@@ -163,7 +163,7 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(
       _mmdr(new ManagedDocumentResult{}),
       _options(options) {}
 
-AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder(){};
+AttributeWeightShortestPathFinder::~AttributeWeightShortestPathFinder() {}
 
 bool AttributeWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice const& st,

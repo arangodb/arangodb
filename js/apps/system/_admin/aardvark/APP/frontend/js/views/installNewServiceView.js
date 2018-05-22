@@ -18,7 +18,15 @@
     },
 
     events: {
-      'click #installNewService': 'installNewService'
+      'click #installNewService': 'installNewService',
+      'keydown input': 'checkValidators'
+    },
+
+    checkValidators: function () {
+      if (window.modalView._validators.length !== 4) {
+        window.modalView.clearValidators();
+        this.setNewAppValidators();
+      }
     },
 
     initialize: function () {
@@ -74,6 +82,10 @@
         this.collection.generate(info, mount, this.installCallback.bind(this), flag);
       }
       window.modalView.hide();
+    },
+
+    checkValidation: function () {
+      window.modalView.modalTestAll();
     },
 
     installCallback: function (result) {

@@ -39,18 +39,17 @@ class ExecutionPlan;
 struct Collection;
 
 /// @brief class RemoteNode
-class RemoteNode : public ExecutionNode {
+class RemoteNode final : public ExecutionNode {
   friend class ExecutionBlock;
   friend class RemoteBlock;
 
   /// @brief constructor with an id
  public:
   RemoteNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection const* collection, std::string const& server,
-             std::string const& ownName, std::string const& queryId)
+             std::string const& server, std::string const& ownName,
+             std::string const& queryId)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
-        _collection(collection),
         _server(server),
         _ownName(ownName),
         _queryId(queryId),
@@ -89,12 +88,11 @@ class RemoteNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName,
-                            _queryId);
+    auto c = new RemoteNode(plan, _id, _vocbase, _server, _ownName, _queryId);
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief estimateCost
@@ -102,9 +100,6 @@ class RemoteNode : public ExecutionNode {
 
   /// @brief return the database
   TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
 
   /// @brief return the server name
   std::string server() const { return _server; }
@@ -132,9 +127,6 @@ class RemoteNode : public ExecutionNode {
  private:
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
-
-  /// @brief the underlying collection
-  Collection const* _collection;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string _server;
@@ -185,7 +177,7 @@ class ScatterNode : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief estimateCost
@@ -212,29 +204,22 @@ class ScatterNode : public ExecutionNode {
 class DistributeNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class DistributeBlock;
+  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id
  public:
   DistributeNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                 Collection const* collection, VariableId const varId,
-                 VariableId const alternativeVarId, bool createKeys,
+                 Collection const* collection, Variable const* variable,
+                 Variable const* alternativeVariable, bool createKeys,
                  bool allowKeyConversionToObject)
       : ExecutionNode(plan, id),
         _vocbase(vocbase),
         _collection(collection),
-        _varId(varId),
-        _alternativeVarId(alternativeVarId),
+        _variable(variable),
+        _alternativeVariable(alternativeVariable),
         _createKeys(createKeys),
         _allowKeyConversionToObject(allowKeyConversionToObject),
         _allowSpecifiedKeys(false) {}
-
-  DistributeNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                 Collection const* collection, VariableId const varId,
-                 bool createKeys, bool allowKeyConversionToObject)
-      : DistributeNode(plan, id, vocbase, collection, varId, varId, createKeys,
-                       allowKeyConversionToObject) {
-    // just delegates to the other constructor
-  }
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -255,14 +240,21 @@ class DistributeNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId,
-                                _alternativeVarId, _createKeys,
+    auto c = new DistributeNode(plan, _id, _vocbase, _collection, _variable,
+                                _alternativeVariable, _createKeys,
                                 _allowKeyConversionToObject);
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
+  
+  /// @brief getVariablesUsedHere, returning a vector
+  std::vector<Variable const*> getVariablesUsedHere() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
@@ -276,14 +268,12 @@ class DistributeNode : public ExecutionNode {
   /// @brief set collection
   void setCollection(Collection* coll) { _collection = coll; }
 
-  /// @brief set varId
-  void setVarId(VariableId varId) { _varId = varId; }
+  void variable(Variable const* variable) { _variable = variable; }
 
-  /// @brief set alternativeVarId
-  void setAlternativeVarId(VariableId alternativeVarId) {
-    _alternativeVarId = alternativeVarId;
+  void alternativeVariable(Variable const* variable) {
+    _alternativeVariable = variable;
   }
-
+  
   /// @brief set createKeys
   void setCreateKeys(bool b) { _createKeys = b; }
 
@@ -301,11 +291,11 @@ class DistributeNode : public ExecutionNode {
   Collection const* _collection;
 
   /// @brief the variable we must inspect to know where to distribute
-  VariableId _varId;
+  Variable const* _variable;
 
   /// @brief an optional second variable we must inspect to know where to
   /// distribute
-  VariableId _alternativeVarId;
+  Variable const* _alternativeVariable;
 
   /// @brief the node is responsible for creating document keys
   bool _createKeys;
@@ -318,9 +308,10 @@ class DistributeNode : public ExecutionNode {
 };
 
 /// @brief class GatherNode
-class GatherNode : public ExecutionNode {
+class GatherNode final : public ExecutionNode {
   friend class ExecutionBlock;
   friend class GatherBlock;
+  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id
  public:
@@ -351,7 +342,7 @@ class GatherNode : public ExecutionNode {
 
     cloneHelper(c, withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c);
   }
 
   /// @brief estimateCost
@@ -376,10 +367,11 @@ class GatherNode : public ExecutionNode {
     }
   }
 
-  /// @brief get Variables Used Here including ASC/DESC
-  SortElementVector const& getElements() const { return _elements; }
+  /// @brief get Variables used here including ASC/DESC
+  SortElementVector const& elements() const { return _elements; }
+  SortElementVector& elements() { return _elements; }
 
-  void setElements(SortElementVector const& src) { _elements = src; }
+  void elements(SortElementVector const& src) { _elements = src; }
   
   void clearElements() { _elements.clear(); }
 

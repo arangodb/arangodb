@@ -272,7 +272,6 @@ class Node {
   /// @return  second is true if url exists, first populated if second true
   std::pair<Slice, bool> hasAsArray(std::string const &) const;
 
-
   //
   // These two operator() functions could be "protected" once
   //  unit tests updated.
@@ -310,7 +309,7 @@ protected:
   /// @brief Get array value
   Slice getArray() const;
 
-public:
+ public:
   /// @brief Clear key value store
   void clear();
 

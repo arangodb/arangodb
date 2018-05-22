@@ -36,8 +36,10 @@
 using namespace arangodb;
 
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t* vocbase,
-                                   transaction::Options const& options)
+TransactionState::TransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+)
     : _vocbase(vocbase),
       _id(0),
       _type(AccessMode::Type::READ),
@@ -45,7 +47,7 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase,
       _arena(),
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
-      _resolver(new CollectionNameResolver(vocbase)),
+      _resolver(&vocbase),
       _hints(),
       _nestingLevel(0),
       _options(options) {}
@@ -60,8 +62,6 @@ TransactionState::~TransactionState() {
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     delete (*it);
   }
-
-  delete _resolver;
 }
 
 std::vector<std::string> TransactionState::collectionNames() const {
@@ -324,30 +324,38 @@ bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
 int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
                                                 AccessMode::Type accessType) const {
   ExecContext const* exec = ExecContext::CURRENT;
+
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec != nullptr && !exec->isSuperuser() && ExecContext::isAuthEnabled()) {
     // server is in read-only mode
     if (accessType > AccessMode::Type::READ && !ServerState::writeOpsEnabled()) {
       LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
+
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
-    std::string const colName = _resolver->getCollectionNameCluster(cid);
-    
-    auth::Level level = exec->collectionAuthLevel(_vocbase->name(), colName);
+
+    std::string const colName = _resolver.getCollectionNameCluster(cid);
+    auth::Level level = exec->collectionAuthLevel(_vocbase.name(), colName);
+
     TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
+
     if (level == auth::Level::NONE) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
       << " has collection auth::Level::NONE";
+
       return TRI_ERROR_FORBIDDEN;
     }
+
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
+
     if (level == auth::Level::RO && collectionWillWrite) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
       << " has no write right for collection " << colName;
+
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -375,6 +383,7 @@ void TransactionState::clearQueryCache() {
 
   try {
     std::vector<std::string> collections;
+
     for (auto& trxCollection : _collections) {
       if (trxCollection->hasOperations()) {
         // we're only interested in collections that may have been modified
@@ -383,12 +392,12 @@ void TransactionState::clearQueryCache() {
     }
 
     if (!collections.empty()) {
-      arangodb::aql::QueryCache::instance()->invalidate(_vocbase, collections);
+      arangodb::aql::QueryCache::instance()->invalidate(&_vocbase, collections);
     }
   } catch (...) {
     // in case something goes wrong, we have to remove all queries from the
     // cache
-    arangodb::aql::QueryCache::instance()->invalidate(_vocbase);
+    arangodb::aql::QueryCache::instance()->invalidate(&_vocbase);
   }
 }
 

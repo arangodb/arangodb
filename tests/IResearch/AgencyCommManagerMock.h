@@ -33,7 +33,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 class AgencyCommManagerMock: public arangodb::AgencyCommManager {
 public:
- AgencyCommManagerMock();
+ explicit AgencyCommManagerMock(std::string const& prefix = "");
 
  void addConnection(
    std::unique_ptr<arangodb::httpclient::GeneralClientConnection>&& connection
@@ -77,9 +77,13 @@ class GeneralClientConnectionMock
   : public arangodb::httpclient::GeneralClientConnection {
  public:
   EndpointMock endpoint;
-  irs::file_utils::handle_t nil;
+
+  #ifndef _WIN32
+    irs::file_utils::handle_t nil;
+  #endif
 
   GeneralClientConnectionMock();
+  ~GeneralClientConnectionMock();
   virtual bool connectSocket() override;
   virtual void disconnectSocket() override;
   virtual bool readable() override;
@@ -91,8 +95,8 @@ class GeneralClientConnectionMock
   ) override;
 
  protected:
-  virtual void getValue(arangodb::basics::StringBuffer& buffer); // override by specializations
-  virtual void setKey(char const* data, size_t length); // override by specializations
+  virtual void request(char const* data, size_t length); // override by specializations
+  virtual void response(arangodb::basics::StringBuffer& buffer); // override by specializations
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -103,7 +107,7 @@ class GeneralClientConnectionListMock: public GeneralClientConnectionMock {
  public:
   std::deque<std::string> responses;
 
-  virtual void getValue(arangodb::basics::StringBuffer& buffer) override;
+  virtual void response(arangodb::basics::StringBuffer& buffer) override;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -115,8 +119,8 @@ class GeneralClientConnectionMapMock: public GeneralClientConnectionMock {
   std::string lastKey;
   std::map<std::string, std::string> responses;
 
-  virtual void getValue(arangodb::basics::StringBuffer& buffer) override;
-  virtual void setKey(char const* data, size_t length) override;
+  virtual void request(char const* data, size_t length) override;
+  virtual void response(arangodb::basics::StringBuffer& buffer) override;
 };
 
 #endif

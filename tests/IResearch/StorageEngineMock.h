@@ -63,7 +63,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection*)> callback) override;
   virtual bool dropIndex(TRI_idx_iid_t iid) override;
   virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
-  virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(arangodb::transaction::Methods* trx, bool reverse) const override;
+  virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(arangodb::transaction::Methods* trx) const override;
   virtual void getPropertiesVPack(arangodb::velocypack::Builder&) const override;
   virtual void getPropertiesVPackCoordinator(arangodb::velocypack::Builder&) const override;
@@ -98,6 +98,9 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual void load() override {}
   virtual void unload() override {}
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) override;
+
+ private:
+  bool addIndex(std::shared_ptr<arangodb::Index> idx);
 };
 
 class TransactionCollectionMock: public arangodb::TransactionCollection {
@@ -125,7 +128,7 @@ class TransactionStateMock: public arangodb::TransactionState {
   static size_t beginTransactionCount;
   static size_t commitTransactionCount;
 
-  TransactionStateMock(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options);
+  TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options);
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
@@ -156,7 +159,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual arangodb::TransactionCollection* createTransactionCollection(arangodb::TransactionState* state, TRI_voc_cid_t cid, arangodb::AccessMode::Type, int nestingLevel) override;
   virtual arangodb::transaction::ContextData* createTransactionContextData() override;
   virtual arangodb::TransactionManager* createTransactionManager() override;
-  virtual arangodb::TransactionState* createTransactionState(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options) override;
+  virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(TRI_vocbase_t& vocbase, arangodb::transaction::Options const& options) override;
   virtual void createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id, arangodb::LogicalView const& view) override;
   virtual void getViewProperties(TRI_vocbase_t& vocbase, arangodb::LogicalView const* view, VPackBuilder& builder) override;
   virtual TRI_voc_tick_t currentTick() const override;

@@ -161,7 +161,6 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
-  bool isSystem() const;
   bool waitForSync() const;
   bool isSmart() const;
   bool isAStub() const { return _isAStub; }
@@ -172,7 +171,7 @@ class LogicalCollection: public LogicalDataSource {
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
-  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx, bool reverse);
+  std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
   void invokeOnAllElements(
@@ -232,7 +231,7 @@ class LogicalCollection: public LogicalDataSource {
   virtual Result rename(std::string&& name, bool doSync) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
-  // SECTION: Serialization
+  // SECTION: Serialisation
   void toVelocyPack(velocypack::Builder&, bool translateCids,
                     bool forPersistence = false) const;
 
@@ -346,6 +345,13 @@ class LogicalCollection: public LogicalDataSource {
   // with the checksum provided in the reference checksum
   Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
+ protected:
+  virtual arangodb::Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override;
+
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -355,17 +361,14 @@ class LogicalCollection: public LogicalDataSource {
 
   void increaseInternalVersion();
 
-  std::string generateGloballyUniqueId() const;
-
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
- protected:
   // SECTION: Meta Information
   //
   // @brief Internal version used for caching
   uint32_t _internalVersion;
-  
+
   bool const _isAStub;
 
   // @brief Collection type
@@ -391,8 +394,6 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Properties
   bool _isLocal;
 
-  bool const _isSystem;
-
   bool _waitForSync;
 
   uint32_t _version;
@@ -414,10 +415,6 @@ class LogicalCollection: public LogicalDataSource {
   std::shared_ptr<velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
-
-  /// @brief globally unique collection id. assigned by the
-  /// initial creator of the collection
-  std::string _globallyUniqueId;
 
   std::unique_ptr<PhysicalCollection> _physical;
 

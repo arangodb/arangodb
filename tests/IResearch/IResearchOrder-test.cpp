@@ -74,9 +74,12 @@ void assertOrder(
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     bindVars, std::make_shared<arangodb::velocypack::Builder>(),
-     arangodb::aql::PART_MAIN
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    std::make_shared<arangodb::velocypack::Builder>(),
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
@@ -138,7 +141,11 @@ void assertOrder(
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     arangodb::iresearch::QueryContext const ctx{
@@ -191,9 +198,12 @@ void assertOrderParseFail(std::string const& queryString, size_t parseCode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   arangodb::aql::Query query(
-     false, &vocbase, arangodb::aql::QueryString(queryString),
-     nullptr, nullptr,
-     arangodb::aql::PART_MAIN
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    nullptr,
+    arangodb::aql::PART_MAIN
   );
 
   auto const parseResult = query.parse();
@@ -246,7 +256,7 @@ struct IResearchOrderSetup {
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
     auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
-    arangodb::aql::Function invalid("INVALID", "|.", false, true, true, false);
+    arangodb::aql::Function invalid("INVALID", "|.", false, true, true);
 
     functions.add(invalid);
   }

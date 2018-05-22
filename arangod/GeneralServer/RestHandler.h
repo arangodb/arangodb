@@ -27,8 +27,6 @@
 #include "Basics/Common.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/WorkMonitor.h"
-#include "GeneralServer/RestEngine.h"
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/JobQueue.h"
@@ -37,12 +35,10 @@
 namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
-class WorkMonitor;
+  
+enum class RestStatus { DONE, FAIL};
 
 namespace rest {
-class GeneralCommTask;
-class RestHandlerFactory;
-
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
@@ -56,8 +52,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  public:
   uint64_t handlerId() const { return _handlerId; }
-  uint64_t messageId() const;
   bool needsOwnThread() const { return _needsOwnThread; }
+  uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
   std::unique_ptr<GeneralRequest> stealRequest() { return std::move(_request); }
@@ -66,8 +62,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::unique_ptr<GeneralResponse> stealResponse() {
     return std::move(_response);
   }
-
-  std::shared_ptr<WorkContext> context() { return _context; }
 
   RequestStatistics* statistics() const { return _statistics.load(); }
 
@@ -83,6 +77,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     }
   }
 
+  /// Execute the rest handler state machine
+  int runHandler(std::function<void(rest::RestHandler*)> cb);
+  
  public:
   virtual char const* name() const = 0;
   virtual bool isDirect() const = 0;
@@ -102,7 +99,16 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual void handleError(basics::Exception const&) = 0;
 
  protected:
+  
   void resetResponse(rest::ResponseCode);
+  
+ private:
+  
+  enum class State { PREPARE, EXECUTE, FINALIZE, DONE, FAILED };
+  
+  int prepareEngine(std::function<void(rest::RestHandler*)> const&);
+  int executeEngine(std::function<void(rest::RestHandler*)> const&);
+  int finalizeEngine(std::function<void(rest::RestHandler*)> const&);
 
  protected:
   uint64_t const _handlerId;
@@ -112,34 +118,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
 
-  std::shared_ptr<WorkContext> _context;
-
   std::atomic<RequestStatistics*> _statistics;
 
  private:
   bool _needsOwnThread = false;
-
- public:
-  void initEngine(EventLoop loop,
-                  std::function<void(RestHandler*)> const& storeResult) {
-    _storeResult = storeResult;
-    _engine.init(loop);
-  }
-
-  int asyncRunEngine() { return _engine.asyncRun(shared_from_this()); }
-  int syncRunEngine() {
-    _storeResult = [](RestHandler*) {};
-    return _engine.syncRun(shared_from_this());
-  }
-
-  int prepareEngine();
-  int executeEngine();
-  int runEngine(bool synchron);
-  int finalizeEngine();
-
- private:
-  RestEngine _engine;
-  std::function<void(rest::RestHandler*)> _storeResult;
+  State _state = State::PREPARE;
 };
 
 }

@@ -58,8 +58,6 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
 
   void toVelocyPack(arangodb::velocypack::Builder&);
   Function const* byName(std::string const& name);
-  std::string const& getOperatorName(AstNodeType const type,
-                                     std::string const& errorMessage);
 
  private:
   // Internal functions
@@ -70,14 +68,12 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   void addListFunctions();
   void addDocumentFunctions();
   void addGeoFunctions();
+  void addGeometryConstructors();
   void addDateFunctions();
   void addMiscFunctions();
   void addStorageEngineFunctions();
 
  private:
-  /// @brief AQL internal function names
-  std::unordered_map<int, std::string const> const
-      _internalFunctionNames;
   /// @brief AQL user-callable function names
   std::unordered_map<std::string, Function const> _functionNames;
 };

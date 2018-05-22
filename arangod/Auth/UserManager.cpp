@@ -63,16 +63,14 @@ static bool inline IsRole(std::string const& name) {
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager()
     : _outdated(true), _queryRegistry(nullptr) {}
-auth::UserManager::~UserManager() {}
 #else
 auth::UserManager::UserManager()
     : _outdated(true), _queryRegistry(nullptr), _authHandler(nullptr) {}
 
-auth::UserManager::UserManager(std::unique_ptr<auth::Handler>&& handler)
+auth::UserManager::UserManager(std::unique_ptr<auth::Handler> handler)
     : _outdated(true),
       _queryRegistry(nullptr),
-      _authHandler(handler.release()) {}
-auth::UserManager::~UserManager() { delete _authHandler; }
+      _authHandler(std::move(handler)) {}
 #endif
 
 // Parse the users
@@ -102,6 +100,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 static std::shared_ptr<VPackBuilder> QueryAllUsers(
     aql::QueryRegistry* queryRegistry) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -112,9 +111,14 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(false, vocbase,
-                             arangodb::aql::QueryString(queryStr), emptyBuilder,
-                             emptyBuilder, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(queryStr),
+    emptyBuilder,
+    emptyBuilder,
+    arangodb::aql::PART_MAIN
+  );
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load authentication and authorization information";
@@ -235,6 +239,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   TRI_ASSERT((replace && hasKey && hasRev) || (!replace && !hasKey && !hasRev));
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "unable to find system database");
   }
@@ -242,21 +247,27 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextScope scope(ExecContext::superuser());
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
+
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
+
   if (res.ok()) {
     OperationOptions opts;
+
     opts.returnNew = true;
     opts.ignoreRevs = false;
     opts.mergeObjects = false;
+
     OperationResult opres =
         replace ? trx.replace(TRI_COL_NAME_USERS, data.slice(), opts)
                 : trx.insert(TRI_COL_NAME_USERS, data.slice(), opts);
+
     res = trx.finish(opres.result);
+
     if (res.ok()) {
       VPackSlice userDoc = opres.slice();
       TRI_ASSERT(userDoc.isObject() && userDoc.hasKey("new"));
@@ -552,7 +563,7 @@ static Result RemoveUserInternal(auth::User const& entry) {
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContextScope scope(ExecContext::superuser());
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  auto ctx = transaction::StandaloneContext::Create(*vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
 

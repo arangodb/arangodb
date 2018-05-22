@@ -28,6 +28,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -72,6 +73,13 @@ RestStatus RestCursorHandler::execute() {
 bool RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
+}
+
+size_t RestCursorHandler::queue() const {
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::AQL_QUEUE; // needs to be on background thread
+  }
+  return JobQueue::STANDARD_QUEUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +143,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
   aql::Query query(
     false,
-    &_vocbase,
+    _vocbase,
     arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
     bindVarsBuilder,
     options,
@@ -197,12 +205,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         result.add("count", VPackValue(n));
       }
       result.add("cached", VPackValue(queryResult.cached));
-      if (queryResult.cached) {
+      if (queryResult.cached || !queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
         result.close();
       } else {
-        auto extra = queryResult.extra();
-        result.add("extra", extra->slice());
+        result.add("extra", queryResult.extra->slice());
       }
       result.add(StaticStrings::Error, VPackValue(false));
       result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));

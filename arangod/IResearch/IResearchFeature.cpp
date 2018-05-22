@@ -36,6 +36,8 @@
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
 #include "IResearchRocksDBLink.h"
+#include "IResearchLinkCoordinator.h"
+#include "IResearchLinkHelper.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
@@ -51,6 +53,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "MMFiles/MMFilesEngine.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
 
@@ -107,7 +111,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 
@@ -117,7 +120,6 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 
@@ -127,25 +129,38 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
 }
 
-void registerIndexFactory() {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    return; // no registration required on coordinator (collections not instantiated)
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Single-server or DB server index factories
+////////////////////////////////////////////////////////////////////////////////
+const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> dbServerIndexFactories = {
+  { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
+  { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
+};
 
-  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
-    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
-    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
-  };
-  static const auto& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Coordinator index factories
+////////////////////////////////////////////////////////////////////////////////
+const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> coordinatorIndexFactories = {
+  { "MMFilesEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles },
+  { "RocksDBEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkRocksDB }
+};
+
+void registerIndexFactory() {
+  auto& factories = arangodb::ServerState::instance()->isCoordinator()
+    ? coordinatorIndexFactories
+    : dbServerIndexFactories;
+
+  auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
   // register 'arangosearch' link
   for (auto& entry: factories) {
-    auto* engine = arangodb::iresearch::getFeature<arangodb::StorageEngine>(entry.first);
+    auto* engine = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::StorageEngine
+    >(entry.first);
 
     // valid situation if not running with the specified storage engine
     if (!engine) {
@@ -167,7 +182,7 @@ void registerIndexFactory() {
     }
 
     res = indexFactory.emplaceNormalizer(
-      indexType, arangodb::iresearch::IResearchLink::normalize
+      indexType, arangodb::iresearch::IResearchLinkHelper::normalize
     );
 
     if (!res.ok()) {
@@ -199,7 +214,6 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       true,   // deterministic
       false,  // can't throw
       true,   // can be run on server
-      true,   // can pass arguments by reference
       &noop   // function implementation (use function name as placeholder)
     });
 
@@ -217,7 +231,9 @@ void registerRecoveryHelper() {
 
 void registerViewFactory() {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
-  auto* viewTypes = arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>();
+  auto* viewTypes = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::ViewTypesFeature
+  >();
 
   if (!viewTypes) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -245,6 +261,7 @@ void registerViewFactory() {
   }
 }
 
+template<typename Impl>
 arangodb::Result transactionStateRegistrationCallback(
     arangodb::LogicalDataSource& dataSource,
     arangodb::TransactionState& state
@@ -269,9 +286,9 @@ arangodb::Result transactionStateRegistrationCallback(
 
   // TODO FIXME find a better way to look up an IResearch View
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
+    auto* impl = dynamic_cast<Impl*>(view);
   #else
-    auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view);
+    auto* impl = static_cast<Impl*>(view);
   #endif
 
   if (!impl) {
@@ -286,6 +303,20 @@ arangodb::Result transactionStateRegistrationCallback(
   return arangodb::Result();
 }
 
+void registerTransactionStateCallback() {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    // NOOP
+  } else if(arangodb::ServerState::instance()->isDBServer()) {
+    arangodb::transaction::Methods::addStateRegistrationCallback(
+      transactionStateRegistrationCallback<arangodb::iresearch::IResearchViewDBServer>
+    );
+  } else {
+    arangodb::transaction::Methods::addStateRegistrationCallback(
+      transactionStateRegistrationCallback<arangodb::iresearch::IResearchView>
+    );
+  }
+}
+
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
 
@@ -298,7 +329,6 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   : ApplicationFeature(server, IResearchFeature::name()),
     _running(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
   startsAfter("ViewTypes");
   startsAfter("Logger");
   startsAfter("Database");
@@ -347,9 +377,7 @@ void IResearchFeature::prepare() {
   registerViewFactory();
 
   // register 'arangosearch' TransactionState state-change callback factory
-  arangodb::transaction::Methods::addStateRegistrationCallback(
-    transactionStateRegistrationCallback
-  );
+  registerTransactionStateCallback();
 
   registerRecoveryHelper();
 }
@@ -358,8 +386,10 @@ void IResearchFeature::start() {
   ApplicationFeature::start();
 
   // register IResearchView filters
- {
-    auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+  {
+    auto* functions = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::aql::AqlFunctionFeature
+    >("AQLFunctions");
 
     if (functions) {
       registerFilters(*functions);

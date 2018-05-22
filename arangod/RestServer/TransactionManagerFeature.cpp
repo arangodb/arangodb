@@ -37,9 +37,7 @@ std::unique_ptr<TransactionManager> TransactionManagerFeature::MANAGER;
 TransactionManagerFeature::TransactionManagerFeature(ApplicationServer* server)
     : ApplicationFeature(server, "TransactionManager") {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter("EngineSelector");
-  startsAfter("WorkMonitor");
 }
 
 void TransactionManagerFeature::prepare() {

@@ -22,8 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyCommManagerMock.h"
+#include "lib/Rest/HttpResponse.h"
+#include "velocypack/velocypack-aliases.h"
 
-AgencyCommManagerMock::AgencyCommManagerMock(): AgencyCommManager("") {
+AgencyCommManagerMock::AgencyCommManagerMock(std::string const& prefix /*= ""*/)
+  : AgencyCommManager(prefix) {
 }
 
 void AgencyCommManagerMock::addConnection(
@@ -80,10 +83,40 @@ int EndpointMock::port() const {
   return 0;
 }
 
-GeneralClientConnectionMock::GeneralClientConnectionMock()
-  : GeneralClientConnection(&endpoint, 0, 0, 0),
-    nil(file_open((file_path_t)nullptr, "rw")) {
+#ifndef _WIN32
+  GeneralClientConnectionMock::GeneralClientConnectionMock()
+    : GeneralClientConnection(&endpoint, 0, 0, 0),
+      nil(file_open((const file_path_t)nullptr, "rw")) {
   _socket.fileDescriptor = file_no(nil.get()); // must be a readable/writable descriptor
+  }
+#else
+  GeneralClientConnectionMock::GeneralClientConnectionMock()
+    : GeneralClientConnection(&endpoint, 0, 0, 0) {
+    struct sockaddr_in addr;
+    auto size = (int)sizeof(addr);
+    auto sock = socket(AF_INET, SOCK_DGRAM, 0); // should not return INVALID_SOCKET
+
+    addr.sin_family = AF_INET;
+    inet_pton(addr.sin_family, "127.0.0.1", &addr.sin_addr);
+    addr.sin_port = 0;
+    sock = socket(AF_INET, SOCK_DGRAM, 0); // should not return INVALID_SOCKET
+    bind(sock, (const struct sockaddr*)&addr, size); // should return 0
+    memset(&addr, 0, size);
+    getsockname(sock, (struct sockaddr*)&addr, &size); // should return 0
+
+    // make sure something in the socket
+    sendto(sock, "", 0, 0, (const struct sockaddr*)&addr, size); // should not return SOCKET_ERROR
+
+    _socket.fileHandle = sock; // must be a readable/writable descriptor
+  }
+#endif
+
+GeneralClientConnectionMock::~GeneralClientConnectionMock() {
+  #ifdef _WIN32
+    if (INVALID_SOCKET != _socket.fileHandle) {
+      closesocket(_socket.fileHandle);
+    }
+  #endif
 }
 
 bool GeneralClientConnectionMock::connectSocket() {
@@ -94,12 +127,6 @@ bool GeneralClientConnectionMock::connectSocket() {
 void GeneralClientConnectionMock::disconnectSocket() {
 }
 
-void GeneralClientConnectionMock::getValue(
-    arangodb::basics::StringBuffer& buffer
-) {
-  buffer.appendChar('\n');
-}
-
 bool GeneralClientConnectionMock::readable() {
   TRI_ASSERT(false);
   return false;
@@ -108,30 +135,36 @@ bool GeneralClientConnectionMock::readable() {
 bool GeneralClientConnectionMock::readClientConnection(
     arangodb::basics::StringBuffer& buffer, bool& connectionClosed
 ) {
-  getValue(buffer);
+  response(buffer);
   connectionClosed = true;
 
   return true;
 }
 
-void GeneralClientConnectionMock::setKey(char const* data, size_t length) {
+void GeneralClientConnectionMock::request(char const* data, size_t length) {
   // NOOP
+}
+
+void GeneralClientConnectionMock::response(
+    arangodb::basics::StringBuffer& buffer
+) {
+  buffer.appendChar('\n');
 }
 
 bool GeneralClientConnectionMock::writeClientConnection(
     void const* buffer, size_t length, size_t* bytesWritten
 ) {
-  setKey(static_cast<char const*>(buffer), length);
+  request(static_cast<char const*>(buffer), length);
   *bytesWritten = length; // assume wrote the entire buffer
 
   return true;
 }
 
-void GeneralClientConnectionListMock::getValue(
+void GeneralClientConnectionListMock::response(
     arangodb::basics::StringBuffer& buffer
 ) {
   if (responses.empty()) {
-    GeneralClientConnectionMock::getValue(buffer);
+    GeneralClientConnectionMock::response(buffer);
 
     return;
   }
@@ -140,30 +173,7 @@ void GeneralClientConnectionListMock::getValue(
   responses.pop_front();
 }
 
-void GeneralClientConnectionMapMock::getValue(
-    arangodb::basics::StringBuffer& buffer
-) {
-  auto itr = responses.find(lastKey);
-
-  // try to search by just the header
-  if (itr == responses.end()) {
-    auto pos = lastKey.find("\r\n");
-
-    if (pos != std::string::npos) {
-      itr = responses.find(lastKey.substr(0, pos));
-    }
-  }
-
-  if (itr == responses.end()) {
-    GeneralClientConnectionMock::getValue(buffer);
-
-    return;
-  }
-
-  buffer.appendText(itr->second);
-}
-
-void GeneralClientConnectionMapMock::setKey(char const* data, size_t length) {
+void GeneralClientConnectionMapMock::request(char const* data, size_t length) {
   lastKey.assign(data, length);
 
   auto pos = lastKey.find("\r\n");
@@ -178,6 +188,29 @@ void GeneralClientConnectionMapMock::setKey(char const* data, size_t length) {
   lastKey = pos == std::string::npos
           ? head // first line of header (no body in request)
           : head.append(lastKey.c_str() + pos); // first line of header with body
+}
+
+void GeneralClientConnectionMapMock::response(
+    arangodb::basics::StringBuffer& buffer
+) {
+  auto itr = responses.find(lastKey);
+
+  // try to search by just the header
+  if (itr == responses.end()) {
+    auto pos = lastKey.find("\r\n");
+
+    if (pos != std::string::npos) {
+      itr = responses.find(lastKey.substr(0, pos));
+    }
+  }
+
+  if (itr == responses.end()) {
+    GeneralClientConnectionMock::response(buffer);
+
+    return;
+  }
+
+  buffer.appendText(itr->second);
 }
 
 // -----------------------------------------------------------------------------

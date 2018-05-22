@@ -62,9 +62,6 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
   if (found) {
     _needsOwnThread = StringUtils::boolean(startThread);
   }
-
-  _context =
-      std::make_shared<WorkContext>(_request->user(), _request->databaseName());
 }
 
 RestHandler::~RestHandler() {
@@ -95,25 +92,60 @@ uint64_t RestHandler::messageId() const {
   return messageId;
 }
 
-int RestHandler::prepareEngine() {
+int RestHandler::runHandler(std::function<void(rest::RestHandler*)> cb) {
+  while (true) {
+    int res = TRI_ERROR_NO_ERROR;
+    
+    switch (_state) {
+      case State::PREPARE:
+        res = this->prepareEngine(cb);
+        break;
+        
+      case State::EXECUTE:
+        res = this->executeEngine(cb);
+        if (res != TRI_ERROR_NO_ERROR) {
+          this->finalizeEngine(cb);
+        }
+        break;
+        
+      case State::FINALIZE:
+        res = this->finalizeEngine(cb);
+        break;
+        
+      case State::DONE:
+      case State::FAILED:
+        return res;
+    }
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+  }
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+int RestHandler::prepareEngine(std::function<void(rest::RestHandler*)> const& cb) {
   // set end immediately so we do not get netative statistics
   RequestStatistics::SET_REQUEST_START_END(_statistics);
 
   if (_canceled) {
-    _engine.setState(RestEngine::State::DONE);
+    _state = State::DONE;
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
     handleError(err);
 
-    _storeResult(this);
+    cb(this);
     return TRI_ERROR_REQUEST_CANCELED;
   }
 
   try {
     prepareExecute();
-    _engine.setState(RestEngine::State::EXECUTE);
+    _state = State::EXECUTE;
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -128,12 +160,12 @@ int RestHandler::prepareEngine() {
     handleError(err);
   }
 
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _state = State::FAILED;
+  cb(this);
   return TRI_ERROR_INTERNAL;
 }
 
-int RestHandler::finalizeEngine() {
+int RestHandler::finalizeEngine(std::function<void(rest::RestHandler*)> const& cb) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -167,38 +199,33 @@ int RestHandler::finalizeEngine() {
   RequestStatistics::SET_REQUEST_END(_statistics);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    _engine.setState(RestEngine::State::DONE);
+    _state = State::DONE;
   } else {
-    _engine.setState(RestEngine::State::FAILED);
-    _storeResult(this);
+    _state = State::FAILED;
+    cb(this);
   }
   
   return res;
 }
 
-int RestHandler::executeEngine() {
+int RestHandler::executeEngine(std::function<void(rest::RestHandler*)> const& cb) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
   try {
     RestStatus result = execute();
 
-    if (result.isLeaf()) {
-      if (_response == nullptr) {
-        Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
-                      __FILE__, __LINE__);
+    if (result == RestStatus::FAIL) {
+      LOG_TOPIC(WARN, Logger::REQUESTS) << "Rest handler reported fail";
+    } else if (_response == nullptr) {
+      Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
+                    __FILE__, __LINE__);
 
-        handleError(err);
-      }
-
-      _engine.setState(RestEngine::State::FINALIZE);
-      _storeResult(this);
-      return TRI_ERROR_NO_ERROR;
+      handleError(err);
     }
 
-    _engine.setState(RestEngine::State::RUN);
-    _engine.appendRestStatus(result.element());
-
+    _state = State::FINALIZE;
+    cb(this);
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -241,90 +268,8 @@ int RestHandler::executeEngine() {
     handleError(err);
   }
 
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
-  return TRI_ERROR_INTERNAL;
-}
-
-int RestHandler::runEngine(bool synchron) {
-  TRI_ASSERT(ExecContext::CURRENT == nullptr);
-  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-  ExecContextScope scope(exec);
-  try {
-    while (_engine.hasSteps()) {
-      std::shared_ptr<RestStatusElement> result = _engine.popStep();
-
-      switch (result->state()) {
-        case RestStatusElement::State::DONE:
-          _engine.setState(RestEngine::State::FINALIZE);
-          _storeResult(this);
-          break;
-
-        case RestStatusElement::State::FAIL:
-          _engine.setState(RestEngine::State::FINALIZE);
-          _storeResult(this);
-          return TRI_ERROR_NO_ERROR;
-
-        case RestStatusElement::State::WAIT_FOR:
-          if (!synchron) {
-            _engine.setState(RestEngine::State::WAITING);
-
-            std::shared_ptr<RestHandler> self = shared_from_this();
-            result->callWaitFor([self, this]() {
-              _engine.setState(RestEngine::State::RUN);
-              _engine.asyncRun(self);
-            });
-
-            return TRI_ERROR_NO_ERROR;
-          }
-
-          return TRI_ERROR_INTERNAL;
-
-        case RestStatusElement::State::QUEUED:
-          if (!synchron) {
-            std::shared_ptr<RestHandler> self = shared_from_this();
-            _engine.queue([self, this]() { _engine.asyncRun(self); });
-            return TRI_ERROR_NO_ERROR;
-          }
-          break;
-
-        case RestStatusElement::State::THEN: {
-          auto status = result->callThen();
-
-          if (status != nullptr) {
-            _engine.appendRestStatus(status->element());
-          }
-
-          break;
-        }
-      }
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  } catch (Exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    handleError(ex);
-  } catch (arangodb::velocypack::Exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, std::string("VPack error: ") + ex.what(),
-                  __FILE__, __LINE__);
-    handleError(err);
-  } catch (std::bad_alloc const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
-    handleError(err);
-  } catch (std::exception const& ex) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
-    handleError(err);
-  } catch (...) {
-    RequestStatistics::SET_EXECUTE_ERROR(_statistics);
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
-    handleError(err);
-  }
-
-  _engine.setState(RestEngine::State::FAILED);
-  _storeResult(this);
+  _state = State::FAILED;
+  cb(this);
   return TRI_ERROR_INTERNAL;
 }
 

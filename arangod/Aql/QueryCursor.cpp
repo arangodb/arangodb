@@ -28,7 +28,6 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/WorkMonitor.h"
 #include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -56,18 +55,16 @@ QueryResultCursor::QueryResultCursor(
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
-      _extra(_result.extra()),
       _iterator(_result.result->slice()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());
-  result.profile = nullptr;
 }
 
 VPackSlice QueryResultCursor::extra() const {
-  if (_extra == nullptr) {
-    return VPackSlice();
+  if (_result.extra) {
+    _result.extra->slice();
   }
-  return _extra->slice();
+  return VPackSlice();
 }
 
 /// @brief check whether the cursor contains more data
@@ -122,8 +119,8 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    if (extra().isObject()) {
-      builder.add("extra", extra());
+    if (_result.extra.get() != nullptr) {
+      builder.add("extra", _result.extra->slice());
     }
 
     builder.add("cached", VPackValue(_cached));
@@ -162,7 +159,7 @@ QueryStreamCursor::QueryStreamCursor(
 
   _query = std::make_unique<Query>(
     false,
-    &(_guard.database()),
+    _guard.database(),
     aql::QueryString(_queryString.c_str(), _queryString.length()),
     std::move(bindVars),
     std::move(opts),
@@ -197,10 +194,6 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
   CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
-  // we do have a query string... pass query to WorkMonitor
-  AqlWorkStack work(
-    &(_guard.database()), _query->id(), _queryString.data(), _queryString.size()
-  );
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _queryString.substr(1024) << "'";
 
@@ -258,9 +251,8 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
     if (!hasMore) {
       QueryResult result;
       _query->finalize(result);
-      auto extra = result.extra();
-      if (extra && extra->slice().isObject()) {
-        builder.add("extra", extra->slice());
+      if (result.extra && result.extra->slice().isObject()) {
+        builder.add("extra", result.extra->slice());
       }
       _query.reset();
       this->deleted();

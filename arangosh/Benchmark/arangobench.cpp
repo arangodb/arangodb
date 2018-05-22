@@ -41,7 +41,6 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 int main(int argc, char* argv[]) {
   return ClientFeature::runMain(argc, argv, [&](int argc, char* argv[]) -> int {

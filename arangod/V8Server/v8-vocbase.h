@@ -30,20 +30,28 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 namespace aql {
+
 class QueryRegistry;
+
 }
 
 class CollectionNameResolver;
 class JSLoader;
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a TRI_vocbase_t global context
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context>,
-                         arangodb::aql::QueryRegistry*, 
-                         TRI_vocbase_t*, size_t);
+void TRI_InitV8VocBridge(
+  v8::Isolate* isolate,
+  v8::Handle<v8::Context> context,
+  arangodb::aql::QueryRegistry* queryRegistry,
+  TRI_vocbase_t& vocbase,
+  size_t threadNumber
+);
 
 #endif

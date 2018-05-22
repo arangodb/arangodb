@@ -52,7 +52,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 option(SKIP_PACKAGING "" OFF)
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
-  set(CMAKE_EXE_LINKER_FLAGS "-static")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
 endif()
 
 # be verbose about flags used
@@ -112,6 +112,7 @@ set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 
 # libraries
 set(LIB_ARANGO        arango)
+set(LIB_ARANGO_GEO     arango_geo)
 set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
@@ -167,12 +168,6 @@ configure_file(
   NEWLINE_STYLE UNIX
 )
 
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js.in"
-  "${CMAKE_CURRENT_SOURCE_DIR}/js/common/tests/shell/shell-database.js"
-  NEWLINE_STYLE UNIX
-)
-
 ################################################################################
 ## Find the git revision
 ################################################################################
@@ -222,6 +217,7 @@ option(HOMEBREW
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
+  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX)
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
@@ -360,8 +356,8 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
     message(FATAL_ERROR "ArangoDB requires g++ 5.4 or newer.")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "7.9.9")
-    message(FATAL_ERROR "ArangoDB doesn't support g++ 8.0 yet.")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "8.9.9")
+    message(FATAL_ERROR "ArangoDB doesn't support g++ 9.0 yet.")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
@@ -440,9 +436,9 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/552f562/src)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
-
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -818,6 +814,8 @@ if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
 endif ()
 
+include_directories(SYSTEM ${ASIO_INCLUDES})
+
 ################################################################################
 ## VELOCYPACK
 ################################################################################
@@ -833,7 +831,7 @@ endforeach()
 ## ICU
 ################################################################################
 
-include_directories(${ICU_INCLUDE_DIR})
+include_directories(SYSTEM ${ICU_INCLUDE_DIR})
 
 ################################################################################
 ## OPENSSL

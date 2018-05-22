@@ -96,7 +96,7 @@ AqlValue ViewExpressionContext::getVariableValue(
 ) const {
   TRI_ASSERT(var);
 
-  if (var == _node->outVariable()) {
+  if (var == &_node->outVariable()) {
     // self-reference
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
@@ -168,7 +168,7 @@ void IResearchViewBlockBase::reset() {
   auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());
 
   arangodb::iresearch::QueryContext const queryCtx = {
-    _trx, plan, plan->getAst(), &_ctx, viewNode.outVariable()
+    _trx, plan, plan->getAst(), &_ctx, &viewNode.outVariable()
   };
 
   if (_volatileFilter) { // `_volatileSort` implies `_volatileFilter`

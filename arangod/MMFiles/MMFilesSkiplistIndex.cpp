@@ -32,6 +32,7 @@
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "MMFiles/MMFilesCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -289,7 +290,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         tmp->clear();
         unique_set.clear();
         value->toVelocyPackValue(*(tmp.get()));
-        for (auto const& it : VPackArrayIterator(tmp->slice())) {
+        for (VPackSlice it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
         }
         TRI_IF_FAILURE("SkiplistIndex::permutationIN") {
@@ -584,10 +585,50 @@ bool MMFilesSkiplistIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     }
     TRI_ASSERT(tmp != nullptr);
     TRI_ASSERT(tmp->document() != nullptr);
+      
     cb(tmp->document()->localDocumentId());
     limit--;
   }
   return true;
+}
+
+bool MMFilesSkiplistIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
+
+  bool done = false;
+  while (limit > 0) {
+    if (_cursor == nullptr) {
+      // We are exhausted already, sorry
+      done = true;
+      break;
+    }
+    TRI_ASSERT(_currentInterval < _intervals.size());
+    auto const& interval = _intervals[_currentInterval];
+    Node* tmp = _cursor;
+    if (_reverse) {
+      if (_cursor == interval.first) {
+        forwardCursor();
+      } else {
+        _cursor = _cursor->prevNode();
+      }
+    } else {
+      if (_cursor == interval.second) {
+        forwardCursor();
+      } else {
+        _cursor = _cursor->nextNode();
+      }
+    }
+    TRI_ASSERT(tmp != nullptr);
+    TRI_ASSERT(tmp->document() != nullptr);
+      
+    _documentIds.emplace_back(std::make_pair(tmp->document()->localDocumentId(), nullptr));
+    limit--;
+  }
+  
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
 }
 
 void MMFilesSkiplistIterator::forwardCursor() {
@@ -1277,7 +1318,9 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
 IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   std::vector<std::vector<arangodb::aql::AstNode const*>> mapping;
   bool usesIn = false;
   if (node != nullptr) {
@@ -1299,16 +1342,16 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
 
   if (usesIn) {
     auto builder = std::make_unique<MMFilesSkiplistInLookupBuilder>(
-        trx, mapping, reference, reverse);
+        trx, mapping, reference, !opts.ascending);
     return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
                                        _skiplistIndex, numPaths(), CmpElmElm,
-                                       reverse, builder.release());
+                                       !opts.ascending, builder.release());
   }
   auto builder = std::make_unique<MMFilesSkiplistLookupBuilder>(
-      trx, mapping, reference, reverse);
+      trx, mapping, reference, !opts.ascending);
   return new MMFilesSkiplistIterator(_collection, trx, mmdr, this,
                                      _skiplistIndex, numPaths(), CmpElmElm,
-                                     reverse, builder.release());
+                                     !opts.ascending, builder.release());
 }
 
 bool MMFilesSkiplistIndex::supportsFilterCondition(

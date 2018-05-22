@@ -178,7 +178,7 @@ typedef long suseconds_t;
 #undef TRI_WITHIN_COMMON
 
 #ifdef _WIN32
-// some Windows headers define macros named free and small, 
+// some Windows headers define macros named free and small,
 // leading to follow-up compile errors
 #undef free
 #undef small
@@ -252,7 +252,7 @@ inline void ADB_WindowsExitFunction(int, void*) {}
 // -----------------------------------------------------------------------------
 
 /// Use in a function (or scope) as:
-///   TRI_DEFER( <ONE_STATEMENT> );
+///   TRI_DEFER( <STATEMENT> );
 /// and the statement will be called regardless if the function throws or
 /// returns regularly.
 /// Do not put multiple TRI_DEFERs on a single source code line (will not
@@ -273,7 +273,8 @@ struct TRI_AutoOutOfScope {
   T& m_destructor;
 };
 
-
+//Note: We could pass std::function an object and let the user
+//      decide on the default capture type (e.g. `this,&,=`)
 #define TRI_DEFER_INTERNAL(Destructor, funcname, objname) \
   auto funcname = [&]() { Destructor; };                  \
   TRI_AutoOutOfScope<decltype(funcname)> objname(funcname);
@@ -284,5 +285,10 @@ struct TRI_AutoOutOfScope {
 
 #undef TRI_SHOW_LOCK_TIME
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199
+
+#ifdef sleep
+#undef sleep
+#endif
+#define sleep ERROR_USE_std_this_thread_sleep_for
 
 #endif

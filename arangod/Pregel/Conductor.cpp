@@ -419,16 +419,16 @@ void Conductor::startRecovery() {
   _statistics.reset();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  asio::io_context* ioService = SchedulerFeature::SCHEDULER->ioContext();
   TRI_ASSERT(ioService != nullptr);
 
   // let's wait for a final state in the cluster
-  _boost_timer.reset(new boost::asio::deadline_timer(
+  _boost_timer.reset(new asio::deadline_timer(
       *ioService, boost::posix_time::seconds(2)));
-  _boost_timer->async_wait([this](const boost::system::error_code& error) {
+  _boost_timer->async_wait([this](const asio::error_code& error) {
     _boost_timer.reset();
 
-    if (error == boost::asio::error::operation_aborted ||
+    if (error == asio::error::operation_aborted ||
         _state != ExecutionState::RECOVERING) {
       return;  // seems like we are canceled
     }
