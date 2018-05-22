@@ -137,7 +137,7 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
   void reset() override { _pos = _docs.begin(); }
 
   void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end()) {
+    while (_pos != _docs.end() && skipped < count) {
       _pos++;
       skipped++;
     }
