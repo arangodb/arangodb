@@ -732,12 +732,15 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                              "distributeShardsLike", "objectId"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
+
     for (auto const& p : VPackObjectIterator(params.slice())) {
       result.add(p.key);
       result.add(p.value);
     }
+
     if (!_distributeShardsLike.empty()) {
-      CollectionNameResolver resolver(&vocbase());
+      CollectionNameResolver resolver(vocbase());
+
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
@@ -813,14 +816,18 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   result.add(VPackValue("shards"));
   result.openObject();
   auto tmpShards = _shardIds;
+
   for (auto const& shards : *tmpShards) {
     result.add(VPackValue(shards.first));
     result.openArray();
+
     for (auto const& servers : shards.second) {
       result.add(VPackValue(servers));
     }
+
     result.close();  // server array
   }
+
   result.close();  // shards
 
   if (isSatellite()) {
@@ -828,10 +835,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   } else {
     result.add("replicationFactor", VPackValue(_replicationFactor));
   }
+
   if (!_distributeShardsLike.empty() &&
       ServerState::instance()->isCoordinator()) {
+
     if (translateCids) {
-      CollectionNameResolver resolver(&vocbase());
+      CollectionNameResolver resolver(vocbase());
+
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
@@ -843,9 +853,11 @@ arangodb::Result LogicalCollection::appendVelocyPack(
 
   result.add(VPackValue("shardKeys"));
   result.openArray();
+
   for (auto const& key : _shardKeys) {
     result.add(VPackValue(key));
   }
+
   result.close();  // shardKeys
 
   if (!_avoidServers.empty()) {

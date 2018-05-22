@@ -47,7 +47,7 @@ TransactionState::TransactionState(
       _arena(),
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
-      _resolver(&vocbase),
+      _resolver(vocbase),
       _hints(),
       _nestingLevel(0),
       _options(options) {}

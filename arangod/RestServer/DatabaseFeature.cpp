@@ -1123,7 +1123,7 @@ std::string DatabaseFeature::translateCollectionName(
 
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
-    CollectionNameResolver resolver(vocbase);
+    CollectionNameResolver resolver(*vocbase);
 
     return resolver.getCollectionNameCluster(NumberUtils::atoi_zero<TRI_voc_cid_t>(collectionName.data(), collectionName.data() + collectionName.size()));
   } else {
