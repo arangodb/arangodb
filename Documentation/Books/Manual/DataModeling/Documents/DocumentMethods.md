@@ -1,5 +1,6 @@
 Collection Methods
 ==================
+<!-- the filename is a fail - can it be moved? -->
 
 All
 ---
@@ -567,8 +568,13 @@ used to specify the following options:
     a default *waitForSync* value of *true*.
   - *silent*: If this flag is set to *true*, the method does not return
     any output.
+  - *overwirte*: If this flag is set to *true*, data containing an existing
+    key will replace the matiching existing data.
   - *returnNew*: If this flag is set to *true*, the complete new document
     is returned in the output under the attribute *new*.
+  - *returnOld*: If this flag is set to *true*, the complete old document
+    is returned in the output under the attribute *old*. Only available 
+    in combiantion with the *overwrite* option
 
 Note: since ArangoDB 2.2, *insert* is an alias for *save*.
 
@@ -610,6 +616,14 @@ multiple documents with one call.
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock documentsCollectionInsertMulti
 
+    @startDocuBlockInline documentsCollectionInsertSingleOverwrite
+    @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsertSingleOverwrite}
+    ~ db._create("example");
+      db.example.insert({ _key : "666", Hello : "World" });
+      db.example.insert({ _key : "666", Hello : "Universe" }, {overwrite: true, returnOld: true});
+    ~ db._drop("example");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock documentsCollectionInsertSingle
 
 
 Replace
