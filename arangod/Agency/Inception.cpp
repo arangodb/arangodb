@@ -106,8 +106,8 @@ void Inception::gossip() {
         std::string clientid = config.id() + std::to_string(j++);
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
-            << out->toJson() << " to peer " << clientid;
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message 1: "
+            << out->toJson() << " to peer " << p;
         if (this->isStopping() || _agent->isStopping()) {
           LOG_TOPIC(INFO, Logger::AGENCY)
             << "Ending inception thread as we are stopping";
@@ -138,8 +138,8 @@ void Inception::gossip() {
         auto const clientid = config.id() + std::to_string(j++);
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
-            << out->toJson() << " to pool member " << clientid;
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message 2: "
+            << out->toJson() << " to pool member " << pair.second;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
