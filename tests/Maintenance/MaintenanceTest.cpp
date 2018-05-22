@@ -105,9 +105,129 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   std::map<std::string, Node> localNodes {
     {dbsIds[2], createNode(dbs1Str)},
     {dbsIds[0], createNode(dbs2Str)},
-    {dbsIds[1], createNode(dbs3Str)}};
-  
+    {dbsIds[1], createNode(dbs3Str)}};  
 
+  SECTION("Construct minimal ActionDescription") {
+    ActionDescription desc(std::map<std::string,std::string>{{"name", "SomeAction"}});
+    REQUIRE(desc.get("name") == "SomeAction");
+  }
+    
+  SECTION("Construct minimal ActionDescription with nullptr props") {
+    std::shared_ptr<VPackBuilder> props; 
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+  }
+    
+  SECTION("Construct minimal ActionDescription with empty props") {
+    std::shared_ptr<VPackBuilder> props; 
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+  }
+    
+  SECTION("Retrieve non-assigned key from ActionDescription") {
+    std::shared_ptr<VPackBuilder> props; 
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    try {
+      auto bogus = desc.get("bogus");
+      REQUIRE(bogus == "bogus");
+    } catch (std::out_of_range const& e) {}
+    std::string value;
+    auto res = desc.get("bogus", value);
+    REQUIRE(value.empty());
+    REQUIRE(!res.ok());
+  }
+    
+  SECTION("Retrieve non-assigned key from ActionDescription") {
+    std::shared_ptr<VPackBuilder> props; 
+    ActionDescription desc({{"name", "SomeAction"}, {"bogus", "bogus"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    try {
+      auto bogus = desc.get("bogus");
+      REQUIRE(bogus == "bogus");
+    } catch (std::out_of_range const& e) {}
+    std::string value;
+    auto res = desc.get("bogus", value);
+    REQUIRE(value == "bogus");
+    REQUIRE(res.ok());
+  }
+    
+  SECTION("Retrieve non-assigned properties from ActionDescription") {
+    std::shared_ptr<VPackBuilder> props; 
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    REQUIRE(desc.properties() == nullptr);
+  }
+    
+  SECTION("Retrieve empty properties from ActionDescription") {
+    auto props = std::make_shared<VPackBuilder>(); 
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    REQUIRE(desc.properties()->isEmpty());
+  }
+    
+  SECTION("Retrieve empty object properties from ActionDescription") {
+    auto props = std::make_shared<VPackBuilder>();
+    { VPackObjectBuilder empty(props.get()); }
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    REQUIRE(desc.properties()->slice().isEmptyObject());
+  }
+    
+  SECTION("Retrieve string value from ActionDescription's properties") {
+    auto props = std::make_shared<VPackBuilder>();
+    { VPackObjectBuilder obj(props.get());
+      props->add("hello", VPackValue("world")); }
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    REQUIRE(desc.properties()->slice().hasKey("hello"));
+    REQUIRE(desc.properties()->slice().get("hello").copyString() == "world");
+  }
+    
+  SECTION("Retrieve double value from ActionDescription's properties") {
+    double pi = 3.14159265359;
+    auto props = std::make_shared<VPackBuilder>();
+    { VPackObjectBuilder obj(props.get());
+      props->add("pi", VPackValue(3.14159265359)); }
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    REQUIRE(desc.properties()->slice().hasKey("pi"));
+    REQUIRE(
+      desc.properties()->slice().get("pi").getNumber<double>() == pi);
+  }
+    
+  SECTION("Retrieve integer value from ActionDescription's properties") {
+    size_t one = 1;
+    auto props = std::make_shared<VPackBuilder>();
+    { VPackObjectBuilder obj(props.get());
+      props->add("one", VPackValue(one)); }
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    REQUIRE(desc.properties()->slice().hasKey("one"));
+    REQUIRE(
+      desc.properties()->slice().get("one").getNumber<size_t>() == one);
+  }
+    
+  SECTION("Retrieve array value from ActionDescription's properties") {
+    double pi = 3.14159265359;
+    size_t one = 1;
+    std::string hello("hello world!");
+    auto props = std::make_shared<VPackBuilder>();
+    { VPackObjectBuilder obj(props.get());
+      props->add(VPackValue("array"));
+      { VPackArrayBuilder arr(props.get());
+        props->add(VPackValue(pi));
+        props->add(VPackValue(one));
+        props->add(VPackValue(hello)); }}
+    ActionDescription desc({{"name", "SomeAction"}}, props);
+    REQUIRE(desc.get("name") == "SomeAction");
+    REQUIRE(desc.properties()->slice().hasKey("array"));
+    REQUIRE(desc.properties()->slice().get("array").isArray());
+    REQUIRE(desc.properties()->slice().get("array").length() == 3);
+    REQUIRE(desc.properties()->slice().get("array")[0].getNumber<double>()==pi);
+    REQUIRE(desc.properties()->slice().get("array")[1].getNumber<size_t>()==one);
+    REQUIRE(desc.properties()->slice().get("array")[2].copyString() == hello );
+  }
+    
   SECTION("In sync should have 0 effects") {
     
     std::vector<ActionDescription> actions;

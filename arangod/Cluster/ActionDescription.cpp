@@ -36,6 +36,7 @@ ActionDescription::ActionDescription(
   std::shared_ptr<VPackBuilder> const p) :
   _description(d), _properties(p) {
   TRI_ASSERT(d.find(NAME) != d.end());
+  TRI_ASSERT(p == nullptr || p->isEmpty() || p->slice().isObject());
 }
 
 /// @brief Default dtor
@@ -106,7 +107,7 @@ void ActionDescription::toVelocyPack(VPackBuilder& b) const {
   for (auto const& i : _description) {
     b.add(i.first, VPackValue(i.second));
   }
-  if (!_properties->isEmpty()) {
+  if (_properties != nullptr && !_properties->isEmpty()) {
     b.add("properties", _properties->slice());
   }
 }
@@ -123,12 +124,14 @@ std::shared_ptr<VPackBuilder> const ActionDescription::properties() const {
   return _properties;
 }
 
+
 /// @brief hash implementation for ActionRegistry
 namespace std {
 std::size_t hash<ActionDescription>::operator()(
   ActionDescription const& a) const noexcept {
   return a.hash();
 }}
+
 
 std::ostream& operator<< (
   std::ostream& out, arangodb::maintenance::ActionDescription const& d) {
