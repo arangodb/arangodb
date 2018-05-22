@@ -3986,8 +3986,7 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
 
-  TRI_vocbase_t* vocbase = query->vocbase();
-
+  auto& vocbase = query->vocbase();
   std::vector<LogicalCollection*> colls;
 
   // clean memory
@@ -4003,9 +4002,10 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
         }
       }
     };
-    colls = GetCollectionsCluster(vocbase);
+
+    colls = GetCollectionsCluster(&vocbase);
   } else {
-    colls = vocbase->collections(false);
+    colls = vocbase.collections(false);
     cleanup = []() {};
   }
 
@@ -4019,12 +4019,12 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
             });
 
   size_t const n = colls.size();
+
   for (size_t i = 0; i < n; ++i) {
     LogicalCollection* coll = colls[i];
 
     if (ExecContext::CURRENT != nullptr &&
-        !ExecContext::CURRENT->canUseCollection(vocbase->name(), coll->name(),
-                                                auth::Level::RO)) {
+        !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
       continue;
     }
 
@@ -6301,7 +6301,7 @@ AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
                                     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "CURRENT_DATABASE", 0, 0);
 
-  return AqlValue(query->vocbase()->name());
+  return AqlValue(query->vocbase().name());
 }
 
 /// @brief function CURRENT_USER
