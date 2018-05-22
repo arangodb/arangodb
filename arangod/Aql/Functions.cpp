@@ -4703,7 +4703,6 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   AqlValue p2 = ExtractFunctionParameterValue(parameters, 1);
   AqlValue p3 = ExtractFunctionParameterValue(parameters, 2);
 
-  LOG_TOPIC(WARN, Logger::QUERIES) << "IS_IN_POLYGON is deprecated use GEO_CONTAINS";
   if (!coords.isArray()) {
     ::registerWarning(query, "IS_IN_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
@@ -6305,6 +6304,24 @@ AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
   return AqlValue(query->vocbase()->name());
 }
 
+/// @brief function CURRENT_USER
+AqlValue Functions::CurrentUser(
+    arangodb::aql::Query* query, transaction::Methods* trx,
+    VPackFunctionParameters const& parameters) {
+
+  if (ExecContext::CURRENT == nullptr) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  std::string const& username = ExecContext::CURRENT->user();
+
+  if (username.size() == 0) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  return AqlValue(username);
+}
+
 /// @brief function COLLECTION_COUNT
 AqlValue Functions::CollectionCount(arangodb::aql::Query* query,
                                     transaction::Methods* trx,
@@ -6721,7 +6738,7 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
       args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
     } else {
       // a call to a built-in V8 function
-      jsName = "AQL_" + func->nonAliasedName;
+      jsName = "AQL_" + func->name;
       for (int i = 0; i < n; ++i) {
         args[i] = invokeParams[i].toV8(isolate, trx);
       }

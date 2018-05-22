@@ -197,6 +197,7 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
         if (index_exists) {
           reader->read(dir, meta, segments_file);
           meta.clear();
+          meta.last_gen_ = type_limits<type_t::index_gen_t>::invalid(); // this meta is for a totaly new index
         }
       } catch (const error_base&) {
         meta = index_meta();
@@ -563,6 +564,10 @@ void index_writer::consolidate(
 }
 
 bool index_writer::import(const index_reader& reader) {
+  if (!reader.live_docs_count()) {
+    return true; // skip empty readers since no documents to import
+  }
+
   auto ctx = get_flush_context();
   auto merge_segment_name = file_name(meta_.increment());
   merge_writer merge_writer(*(ctx->dir_), merge_segment_name);

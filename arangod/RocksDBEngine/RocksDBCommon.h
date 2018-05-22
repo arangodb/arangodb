@@ -64,53 +64,6 @@ class RocksDBEngine;
   
 namespace rocksutils {
 
-//// to persistent
-template <typename T>
-typename std::enable_if<std::is_integral<T>::value, void>::type toPersistent(
-    T in, char*& out) {
-  in = basics::hostToLittle(in);
-  using TT = typename std::decay<T>::type;
-  std::memcpy(out, &in, sizeof(TT));
-  out += sizeof(TT);
-}
-
-//// from persistent
-template <typename T,
-          typename std::enable_if<
-              std::is_integral<typename std::remove_reference<T>::type>::value,
-              int>::type = 0>
-typename std::decay<T>::type fromPersistent(char const*& in) {
-  using TT = typename std::decay<T>::type;
-  TT out;
-  std::memcpy(&out, in, sizeof(TT));
-  in += sizeof(TT);
-  return basics::littleToHost(out);
-}
-
-// we need this overload or the template will match
-template <typename T,
-          typename std::enable_if<
-              std::is_integral<typename std::remove_reference<T>::type>::value,
-              int>::type = 1>
-typename std::decay<T>::type fromPersistent(char*& in) {
-  using TT = typename std::decay<T>::type;
-  TT out;
-  std::memcpy(&out, in, sizeof(TT));
-  in += sizeof(TT);
-  return basics::littleToHost(out);
-}
-
-template <typename T, typename StringLike,
-          typename std::enable_if<
-              std::is_integral<typename std::remove_reference<T>::type>::value,
-              int>::type = 2>
-typename std::decay<T>::type fromPersistent(StringLike& in) {
-  using TT = typename std::decay<T>::type;
-  TT out;
-  std::memcpy(&out, in.data(), sizeof(TT));
-  return basics::littleToHost(out);
-}
-
 inline uint64_t doubleToInt(double d) {
   uint64_t i;
   std::memcpy(&i, &d, sizeof(i));

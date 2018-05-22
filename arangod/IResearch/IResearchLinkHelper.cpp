@@ -315,7 +315,7 @@ namespace iresearch {
         // remove modification if came from the stale list and a separate reindex or removal request also present
         // otherwise consider 'stale list requests' as valid removal requests
         if (state._stale // originated from the stale list
-            && (collectionsToRemove.find(cid) != collectionsToUpdate.end() // also has a removal request (duplicate removal request)
+            && (collectionsToRemove.find(cid) != collectionsToRemove.end() // also has a removal request (duplicate removal request)
                 || collectionsToUpdate.find(cid) != collectionsToUpdate.end())) { // also has a reindex request
           itr = linkModifications.erase(itr);
 

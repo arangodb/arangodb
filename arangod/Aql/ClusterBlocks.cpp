@@ -175,40 +175,6 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief count: the sum of the count() of the dependencies or -1 (if any
-/// dependency has count -1
-int64_t GatherBlock::count() const {
-  DEBUG_BEGIN_BLOCK();
-  int64_t sum = 0;
-  for (auto const& x : _dependencies) {
-    if (x->count() == -1) {
-      return -1;
-    }
-    sum += x->count();
-  }
-  return sum;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
-/// any dependency has remaining -1
-int64_t GatherBlock::remaining() {
-  DEBUG_BEGIN_BLOCK();
-  int64_t sum = 0;
-  for (auto const& x : _dependencies) {
-    if (x->remaining() == -1) {
-      return -1;
-    }
-    sum += x->remaining();
-  }
-  return sum;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 /// @brief hasMore: true if any position of _buffer hasMore and false
 /// otherwise.
 bool GatherBlock::hasMore() {
@@ -736,37 +702,6 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
     }
   }
   return true;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief remainingForShard: remaining for shard, sum of the number of row left
-/// in the buffer and _dependencies[0]->remaining()
-int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
-  DEBUG_BEGIN_BLOCK();
-  
-  size_t clientId = getClientId(shardId);
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
-    return 0;
-  }
-
-  int64_t sum = _dependencies[0]->remaining();
-  if (sum == -1) {
-    return -1;
-  }
-
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
-
-  if (pos.first <= _buffer.size()) {
-    sum += _buffer.at(pos.first)->size() - pos.second;
-    for (auto i = pos.first + 1; i < _buffer.size(); i++) {
-      sum += _buffer.at(i)->size();
-    }
-  }
-
-  return sum;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1557,64 +1492,6 @@ bool RemoteBlock::hasMore() {
     hasMore = slice.get("hasMore").getBoolean();
   }
   return hasMore;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief count
-int64_t RemoteBlock::count() const {
-  DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::GET, "/_api/aql/count/", std::string());
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-
-  int64_t count = 0;
-  if (slice.hasKey("count")) {
-    count = slice.get("count").getNumericValue<int64_t>();
-  }
-  return count;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief remaining
-int64_t RemoteBlock::remaining() {
-  DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::GET, "/_api/aql/remaining/", std::string());
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-
-  int64_t remaining = 0;
-  if (slice.hasKey("remaining")) {
-    remaining = slice.get("remaining").getNumericValue<int64_t>();
-  }
-  return remaining;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

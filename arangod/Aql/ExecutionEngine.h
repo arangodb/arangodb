@@ -102,12 +102,6 @@ class ExecutionEngine {
   /// @brief hasMore
   inline bool hasMore() const { return _root->hasMore(); }
 
-  /// @brief count
-  inline int64_t count() const { return _root->count(); }
-
-  /// @brief remaining
-  inline int64_t remaining() const { return _root->remaining(); }
-
   /// @brief add a block to the engine
   TEST_VIRTUAL void addBlock(ExecutionBlock*);
 
