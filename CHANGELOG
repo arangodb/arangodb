@@ -1,3 +1,9 @@
+v3.3.10 (XXXX-XX-XX)
+--------------------
+
+* inception was ignoring leader's configuration
+
+
 v3.3.9 (2018-05-17)
 -------------------
 
@@ -8,13 +14,13 @@ v3.3.9 (2018-05-17)
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header
 
-* upgraded arangosync version to 0.5.1 
+* upgraded arangosync version to 0.5.1
 
 * upgraded arangodb starter version to 0.11.3
 
 * fix cluster upgrading issue introduced in 3.3.8
-  
-  the issue made arangod crash when starting a DB server with option 
+
+  the issue made arangod crash when starting a DB server with option
   `--database.auto-upgrade true`
 
 * fix C++ implementation of AQL ZIP function to return each distinct attribute
@@ -30,10 +36,10 @@ v3.3.9 (2018-05-17)
 * self heal during a Foxx service install, upgrade or replace no longer breaks
   the respective operation
 
-* make /_api/index, /_api/database and /_api/user REST handlers use the scheduler's 
+* make /_api/index, /_api/database and /_api/user REST handlers use the scheduler's
   internal queue, so they do not run in an I/O handling thread
 
-* fixed issue #4919: C++ implementation of LIKE function now matches the old and 
+* fixed issue #4919: C++ implementation of LIKE function now matches the old and
   correct behavior of the JavaScript implementation.
 
 * added REST API endpoint /_admin/server/availability for monitoring purposes
@@ -43,10 +49,10 @@ v3.3.9 (2018-05-17)
 * fixed issue #3811: gharial api is now checking existence of _from and _to vertices
   during edge creation
 
-* fixed internal issue #2149: number of documents in the UI is not adjusted after 
+* fixed internal issue #2149: number of documents in the UI is not adjusted after
   moving them
 
-* fixed internal issue #2150: UI - loading a saved query does not update the list 
+* fixed internal issue #2150: UI - loading a saved query does not update the list
   of bind parameters
 
 * fixed internal issue #2147 - fixed database filter in UI
