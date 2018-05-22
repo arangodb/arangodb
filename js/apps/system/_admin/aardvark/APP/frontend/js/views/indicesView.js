@@ -95,7 +95,7 @@
           };
           break;
         case 'Persistent':
-          fields = arangoHelper.escapeHtml($('#newPersistentFields').val());
+          fields = $('#newPersistentFields').val();
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
@@ -108,7 +108,7 @@
           };
           break;
         case 'Hash':
-          fields = arangoHelper.escapeHtml($('#newHashFields').val());
+          fields = $('#newHashFields').val();
           unique = self.checkboxToValue('#newHashUnique');
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
@@ -121,8 +121,8 @@
           };
           break;
         case 'Fulltext':
-          fields = arangoHelper.escapeHtml($('#newFulltextFields').val());
-          var minLength = parseInt(arangoHelper.escapeHtml($('#newFulltextMinLength').val()), 10) || 0;
+          fields = $('#newFulltextFields').val();
+          var minLength = parseInt($('#newFulltextMinLength').val(), 10) || 0;
           postParameter = {
             type: 'fulltext',
             fields: self.stringToArray(fields),
@@ -130,7 +130,7 @@
           };
           break;
         case 'Skiplist':
-          fields = arangoHelper.escapeHtml($('#newSkiplistFields').val());
+          fields = $('#newSkiplistFields').val();
           unique = self.checkboxToValue('#newSkiplistUnique');
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
@@ -366,10 +366,10 @@
 
     selectIndexType: function () {
       $('.newIndexClass').hide();
-      var type = arangoHelper.escapeHtml($('#newIndexType').val());
+      var type = $('#newIndexType').val();
       if (type === null) {
         type = $('#newIndexType').children().first().attr('value');
-        arangoHelper.escapeHtml($('#newIndexType').val(type));
+        $('#newIndexType').val(type);
       }
       $('#newIndexType' + type).show();
     },
