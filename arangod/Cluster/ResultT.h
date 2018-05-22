@@ -77,7 +77,7 @@ class ResultT : public arangodb::Result {
 
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
-  ResultT(T&& val) : ResultT(std::forward<T>(val), TRI_ERROR_NO_ERROR) {}
+  ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
   // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
   ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
@@ -142,11 +142,11 @@ class ResultT : public arangodb::Result {
   boost::optional<T> _val;
 
   ResultT(boost::optional<T>&& val_, int errorNumber)
-      : Result(errorNumber), _val(std::forward<decltype(_val)>(val_)) {}
+      : Result(errorNumber), _val(std::move(val_)) {}
 
   ResultT(boost::optional<T>&& val_, int errorNumber,
           std::string const& errorMessage)
-      : Result(errorNumber, errorMessage), _val(std::forward<decltype(_val)>(val_)) {}
+      : Result(errorNumber, errorMessage), _val(std::move(val_)) {}
 
   ResultT(boost::optional<T> const& val_, int errorNumber)
       : Result(errorNumber), _val(val_) {}
