@@ -47,7 +47,36 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **files**: `Object` (optional)
 
-  An object defining [file assets](Assets.md) served by this service.
+  An object defining file assets served by this service.
+
+  Each entry in can represent either a single file or a directory. When serving entire directories, the key acts as a prefix and requests to that prefix will be resolved within the given directory:
+
+  * **path**: `string`
+
+    The relative path of the file or folder within the service.
+
+  * **type**: `string` (optional)
+
+    The MIME content type of the file. Defaults to an intelligent guess based on the filename's extension.
+
+  * **gzip**: `boolean` (Default: `false`)
+
+    If set to `true` the file will be served with gzip-encoding if supported by the client. This can be useful when serving text files like client-side JavaScript, CSS or HTML.
+
+  If a string is provided instead of an object, it will be interpreted as the *path* option.
+
+  Example serving the `public` folder at `/static` and the `favicon.ico` at `/favicon.ico`:
+
+  ```json
+  "files": {
+    "favicon.ico": {
+      "path": "public/favicon.ico",
+      "gzip": false
+    },
+    "static": "public"
+  }
+  ```
+
 
 * **lib**: `string` (Default: `"."`)
 
@@ -77,7 +106,20 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
 * **tests**: `string` or `Array<string>` (optional)
 
-  A path or list of paths of [JavaScript tests](Testing.md) provided for this service.
+  One or more patterns to match the paths of test files, e.g.:
+
+  ```json
+  "tests": [
+    "**/test_*.js",
+    "**/*_test.js"
+  ]
+  ```
+
+  These patterns can be either relative file paths or "globstar" patterns where
+
+  * `*` matches zero or more characters in a filename
+  * `**` matches zero or more nested directories.
+
 
 Additionally manifests can provide the following metadata:
 

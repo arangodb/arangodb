@@ -3,9 +3,9 @@ User management
 
 Foxx does not provide any user management out of the box but it is very easy to roll your own solution:
 
-The [session middleware](Sessions/README.md) provides mechanisms for adding session logic to your service, using e.g. a collection or JSON Web Tokens to store the sessions between requests.
+The [session middleware](../Reference/Sessions/README.md) provides mechanisms for adding session logic to your service, using e.g. a collection or JSON Web Tokens to store the sessions between requests.
 
-The [auth module](Modules/Auth.md) provides utilities for basic password verification and hashing.
+The [auth module](../Reference/Modules/Auth.md) provides utilities for basic password verification and hashing.
 
 The following example service demonstrates how user management can be implemented using these basic building blocks.
 
