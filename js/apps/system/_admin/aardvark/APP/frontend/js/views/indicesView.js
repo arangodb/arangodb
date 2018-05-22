@@ -76,7 +76,7 @@
     createIndex: function () {
       // e.preventDefault()
       var self = this;
-      var indexType = arangoHelper.escapeHtml($('#newIndexType').val());
+      var indexType = $('#newIndexType').val();
       var postParameter = {};
       var fields;
       var unique;
@@ -369,7 +369,7 @@
       var type = $('#newIndexType').val();
       if (type === null) {
         type = $('#newIndexType').children().first().attr('value');
-        $('#newIndexType').val(type);
+        arangoHelper.escapeHtml($('#newIndexType').val(type));
       }
       $('#newIndexType' + type).show();
     },
