@@ -891,6 +891,11 @@ ArangoCollection.prototype.save =
     if (options.returnNew) {
       url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
     }
+
+    if (options.returnOld) {
+      url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    }
+
     if (options.silent) {
       url = this._appendBoolParameter(url, 'silent', options.silent);
     }
