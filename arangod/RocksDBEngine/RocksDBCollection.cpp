@@ -388,7 +388,6 @@ void RocksDBCollection::prepareIndexes(
     }
   }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
        (_indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX ||
@@ -396,11 +395,13 @@ void RocksDBCollection::prepareIndexes(
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "got invalid indexes for collection '" << _logicalCollection->name()
         << "'";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     for (auto it : _indexes) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it.get();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "- " << it->context();
     }
-  }
 #endif
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("got invalid indexes for collection '") + _logicalCollection->name() + "'");
+  }
 }
 
 static std::shared_ptr<Index> findIndex(
