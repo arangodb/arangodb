@@ -157,8 +157,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
-  bool allowExpansion() const override { return true; }
-
   bool canBeDropped() const override { return true; }
   
   bool hasCoveringIterator() const override { return true; }

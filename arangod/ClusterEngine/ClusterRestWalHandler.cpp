@@ -160,27 +160,6 @@ void ClusterRestWalHandler::transactions() {
   builder.openObject();
   builder.add("runningTransactions",
               VPackValue(mngr->getActiveTransactionCount()));
-
-  // lastCollectedId
-  /*{
-    auto value = std::get<1>(info);
-    if (value == UINT64_MAX) {
-      builder.add("minLastCollected", VPackValue(VPackValueType::Null));
-    } else {
-      builder.add("minLastCollected", VPackValue(value));
-    }
-  }
-
-  // lastSealedId
-  {
-    auto value = std::get<2>(info);
-    if (value == UINT64_MAX) {
-      builder.add("minLastSealed", VPackValue(VPackValueType::Null));
-    } else {
-      builder.add("minLastSealed", VPackValue(value));
-    }
-  }*/
-
   builder.close();
   generateResult(rest::ResponseCode::NOT_IMPLEMENTED, builder.slice());
 }

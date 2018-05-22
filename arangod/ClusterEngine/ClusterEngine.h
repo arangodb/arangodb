@@ -133,25 +133,46 @@ public:
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                                          int& status) override;
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;
-  int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
-  int removeReplicationApplierConfiguration() override;
+  int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
+  int removeReplicationApplierConfiguration() override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
   int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                           arangodb::velocypack::Slice slice,
-                                          bool doSync) override;
+                                          bool doSync) override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
-                                          bool doSync) override;
+                                          bool doSync) override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
   Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                         arangodb::LogicalCollection* col,
-                        std::string const& keysId) override;
+                        std::string const& keysId) override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
   Result createLoggerState(TRI_vocbase_t* vocbase,
-                           velocypack::Builder& builder) override;
-  Result createTickRanges(velocypack::Builder& builder) override;
-  Result firstTick(uint64_t& tick) override;
+                           velocypack::Builder& builder) override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
+  Result createTickRanges(velocypack::Builder& builder) override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
+  Result firstTick(uint64_t& tick) override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
   Result lastLogger(TRI_vocbase_t* vocbase,
                     std::shared_ptr<transaction::Context>, uint64_t tickStart,
                     uint64_t tickEnd,
-                    std::shared_ptr<velocypack::Builder>& builderSPtr) override;
-  WalAccess const* walAccess() const override;
+                    std::shared_ptr<velocypack::Builder>& builderSPtr) override {
+    return TRI_ERROR_NOT_IMPLEMENTED;
+  }
+  WalAccess const* walAccess() const override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    return nullptr;
+  }
 
   // database, collection and index management
   // -----------------------------------------
@@ -160,7 +181,9 @@ public:
   void waitForSyncTick(TRI_voc_tick_t) override {}
   void waitForSyncTimeout(double) override {}
   Result flushWal(bool waitForSync, bool waitForCollector,
-                  bool writeShutdownFile) override;
+                  bool writeShutdownFile) override {
+    return TRI_ERROR_NO_ERROR;
+  }
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
@@ -293,9 +316,15 @@ public:
                                 arangodb::velocypack::Slice info) override;
 
   // management methods for synchronizing with external persistent stores
-  virtual TRI_voc_tick_t currentTick() const override;
-  virtual TRI_voc_tick_t releasedTick() const override;
-  virtual void releaseTick(TRI_voc_tick_t) override;
+  TRI_voc_tick_t currentTick() const override {
+    return 0;
+  }
+  TRI_voc_tick_t releasedTick() const override {
+    return 0;
+  }
+  void releaseTick(TRI_voc_tick_t) override {
+    // noop
+  }
 
  private:
   

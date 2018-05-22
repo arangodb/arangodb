@@ -191,8 +191,6 @@ class Index {
 
   virtual char const* typeName() const = 0;
 
-  virtual bool allowExpansion() const = 0;
-
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
             type == TRI_IDX_TYPE_SKIPLIST_INDEX ||

@@ -65,9 +65,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-namespace arangodb {
-
-
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, "Cluster", "ClusterEngine", new ClusterIndexFactory()) {
@@ -216,31 +213,6 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
   return VPackBuilder();
 }
 
-int ClusterEngine::removeReplicationApplierConfiguration(
-    TRI_vocbase_t* vocbase) {
-  return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
-int ClusterEngine::removeReplicationApplierConfiguration() {
-  return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
-int ClusterEngine::saveReplicationApplierConfiguration(
-    TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) {
-  return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
-int ClusterEngine::saveReplicationApplierConfiguration(
-    arangodb::velocypack::Slice slice, bool doSync) {
-  return TRI_ERROR_NOT_IMPLEMENTED;
-}
-  
-Result ClusterEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer&,
-                                     arangodb::LogicalCollection*,
-                                     std::string const&)  {
-  return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
 // database, collection and index management
 // -----------------------------------------
 
@@ -287,7 +259,7 @@ void ClusterEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
 
 // wal in recovery
 bool ClusterEngine::inRecovery() {
-  return false;//RocksDBRecoveryManager::instance()->inRecovery();
+  return false;
 }
 
 void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
@@ -448,14 +420,11 @@ void ClusterEngine::addV8Functions() {
 void ClusterEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
   ClusterRestHandlers::registerResources(handlerFactory);
 }
-
-Result ClusterEngine::flushWal(bool waitForSync, bool waitForCollector,
-                               bool /*writeShutdownFile*/) {
-  return TRI_ERROR_NO_ERROR;
-}
   
 void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
-  // noop
+  // fixes tests by allowing us to reload the cluster selectivity estimates
+  // If test `shell-cluster-collection-selectivity.js` fails consider increasing timeout
+  std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 }
 
 /// @brief open an existing database. internal function
@@ -468,47 +437,6 @@ TRI_vocbase_t* ClusterEngine::openExistingDatabase(TRI_voc_tick_t id,
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
   return vocbase.release();
 }
-  
-Result ClusterEngine::createLoggerState(TRI_vocbase_t* vocbase,
-                                        VPackBuilder& builder) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-Result ClusterEngine::createTickRanges(VPackBuilder& builder) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-Result ClusterEngine::firstTick(uint64_t& tick) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-
-}
-
-Result ClusterEngine::lastLogger(
-    TRI_vocbase_t* vocbase,
-    std::shared_ptr<transaction::Context> transactionContext,
-    uint64_t tickStart, uint64_t tickEnd,
-    std::shared_ptr<VPackBuilder>& builderSPtr) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-WalAccess const* ClusterEngine::walAccess() const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return nullptr;
-}
-
-
-// management methods for synchronizing with external persistent stores
-TRI_voc_tick_t ClusterEngine::currentTick() const {
-  return 0;
-}
-
-TRI_voc_tick_t ClusterEngine::releasedTick() const {
-  return 0;
-}
-
-void ClusterEngine::releaseTick(TRI_voc_tick_t tick) {}
-
-}  // namespace arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

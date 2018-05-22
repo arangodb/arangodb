@@ -209,14 +209,7 @@ int ClusterTransactionCollection::use(int nestingLevel) {
       return res;
     }
   }
-
-  /*if (doSetup) {
-    RocksDBCollection* rc =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
-    _initialNumberDocuments = rc->numberDocuments();
-    _revision = rc->revision();
-  }*/
-
+  
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -276,41 +269,11 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type,
   LogicalCollection* collection = _collection;
   TRI_ASSERT(collection != nullptr);
 
-  /*auto physical = static_cast<RocksDBCollection*>(collection->getPhysical());
-  TRI_ASSERT(physical != nullptr);
-
-  double timeout = _transaction->timeout();
-  if (_transaction->hasHint(transaction::Hints::Hint::TRY_LOCK)) {
-    // give up early if we cannot acquire the lock instantly
-    timeout = 0.00000001;
-  }*/
-
   LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
-  int res = 0;
-  /*if (AccessMode::isExclusive(type)) {
-    // exclusive locking means we'll be acquiring the collection's RW lock in
-    // write mode
-    res = physical->lockWrite(timeout);
-  } else {
-    // write locking means we'll be acquiring the collection's RW lock in read
-    // mode
-    res = physical->lockRead(timeout);
-  }*/
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    _lockType = type;
-    // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually acquired the lock ourselves
-    return TRI_ERROR_LOCKED;
-  }
-
-  /*if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
-    LOG_TOPIC(WARN, Logger::QUERIES)
-        << "timed out after " << timeout << " s waiting for "
-        << AccessMode::typeString(type) << "-lock on collection '"
-        << _collection->name() << "'";
-  }*/
-
-  return res;
+  _lockType = type;
+  // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually acquired the lock ourselves
+  return TRI_ERROR_LOCKED;
 }
 
 /// @brief unlock a collection
@@ -361,20 +324,6 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type,
 
   LogicalCollection* collection = _collection;
   TRI_ASSERT(collection != nullptr);
-
-  /*auto physical = static_cast<RocksDBCollection*>(collection->getPhysical());
-  TRI_ASSERT(physical != nullptr);
-
-  LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
-  if (AccessMode::isExclusive(type)) {
-    // exclusive locking means we'll be releasing the collection's RW lock in
-    // write mode
-    physical->unlockWrite();
-  } else {
-    // write locking means we'll be releasing the collection's RW lock in read
-    // mode
-    physical->unlockRead();
-  }*/
 
   _lockType = AccessMode::Type::NONE;
 

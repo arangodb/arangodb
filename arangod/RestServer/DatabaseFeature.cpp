@@ -525,11 +525,6 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
   // name not yet in use, release the read lock
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
-  /*try {
-    vocbase->addReplicationApplier();
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }*/
 
   // increase reference counter
   vocbase->use();

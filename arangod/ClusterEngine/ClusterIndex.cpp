@@ -53,10 +53,9 @@ ClusterIndex::~ClusterIndex() {}
 void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
-  // technically nothing sensible can be added here
-  // builder.add(VPackObjectIterator(_indexDefinition.slice()));
-  // TODO fix
 }
+
+// ========== below is cluster schmutz ============
 
 /// @brief return a VelocyPack representation of the index
 void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
@@ -82,6 +81,51 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.close();
 }
 
+bool ClusterIndex::hasSelectivityEstimate() const {
+  if (_engineType == ClusterEngineType::MMFilesEngine) {
+    return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ;
+  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+    return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unsupported cluster storage engine");
+  return true;
+}
+
+bool ClusterIndex::isPersistent() const {
+  if (_engineType == ClusterEngineType::MMFilesEngine) {
+    return _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+    return true;
+  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unsupported cluster storage engine");
+}
+
+bool ClusterIndex::isSorted() const {
+  if (_engineType == ClusterEngineType::MMFilesEngine) {
+    return _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
+    return _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+    _indexType == Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
+  }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "unsupported cluster storage engine");
+}
+
 void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   VPackBuilder merge;
   merge.openObject();
@@ -95,7 +139,8 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
 
   } else {
     TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unsupported cluster storage engine");
   }
 
   merge.close();
@@ -113,31 +158,9 @@ bool ClusterIndex::hasCoveringIterator() const {
   return false;
 }
 
-bool ClusterIndex::isSorted() const {
-  ClusterEngine* ce =
-      static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-  if (ce->isMMFiles()) {
-    return _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
-  } else if (ce->isRocksDB()) {
-    return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_FULLTEXT_INDEX;
-  } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
-}
-
-// ========== here the real clusrwe schmutz starts ============
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
-  /*if (!Index::matchesDefinition(info)) {
-    return false;
-  }*/
+  // TODO implement fasrter version of this
   return Index::Compare(_info.slice(), info);
 }
 
@@ -149,10 +172,6 @@ bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
 static std::vector<std::vector<arangodb::basics::AttributeName>> const
     PrimaryIndexAttributes{{arangodb::basics::AttributeName("_id", false)},
                            {arangodb::basics::AttributeName("_key", false)}};
-// MMFiles need _from and _to
-/*static std::vector<std::vector<arangodb::basics::AttributeName>> const
-EdgeIndexAttributes{{arangodb::basics::AttributeName("_from", false)},
-                    {arangodb::basics::AttributeName("_to", false)}};*/
 
 
 bool ClusterIndex::supportsFilterCondition(
@@ -189,16 +208,10 @@ bool ClusterIndex::supportsFilterCondition(
       break;
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {
-      /*if (_engineType == ClusterEngineType::MMFilesEngine) {
-        SimpleAttributeEqualityMatcher matcher(EdgeIndexAttributes);
-        return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
-                                estimatedCost);
-      } else if (_engineType == ClusterEngineType::RocksDBEngine) {*/
       // same for both engines
       SimpleAttributeEqualityMatcher matcher(this->_fields);
       return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                                 estimatedCost);
-      //}
       break;
     }
 
@@ -303,7 +316,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::specializeCondition(node, reference); // unsupported
     }
-    case TRI_IDX_TYPE_HASH_INDEX: {
+    case TRI_IDX_TYPE_HASH_INDEX:
       if (_engineType == ClusterEngineType::MMFilesEngine) {
         SimpleAttributeEqualityMatcher matcher(this->_fields);
         return matcher.specializeAll(this, node, reference);
@@ -311,7 +324,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
         return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
       }
       break;
-    }
+    
     case TRI_IDX_TYPE_EDGE_INDEX: {
       // same for both engines
       SimpleAttributeEqualityMatcher matcher(this->_fields);

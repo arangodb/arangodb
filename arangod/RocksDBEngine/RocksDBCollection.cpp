@@ -202,15 +202,6 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
 }
 
-/// @brief used for updating properties
-/*void RocksDBCollection::getPropertiesVPackCoordinator(
-    velocypack::Builder& result) const {
-  // objectId might be undefined on the coordinator
-  TRI_ASSERT(result.isOpenObject());
-  result.add("cacheEnabled", VPackValue(_cacheEnabled));
-  TRI_ASSERT(result.isOpenObject());
-}*/
-
 /// @brief closes an open collection
 int RocksDBCollection::close() {
   READ_LOCKER(guard, _indexesLock);
@@ -385,14 +376,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
     info, true, _logicalCollection, false
   );
   TRI_ASSERT(idx != nullptr);
-
-  /*if (ServerState::instance()->isCoordinator()) {
-    // In the coordinator case we do not fill the index
-    // We only inform the others.
-    addIndexCoordinator(idx);
-    created = true;
-    return idx;
-  }*/
 
   int res = saveIndex(trx, idx);
 

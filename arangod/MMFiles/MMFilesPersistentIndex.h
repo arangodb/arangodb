@@ -113,8 +113,6 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
 
   char const* typeName() const override { return "persistent"; }
 
-  bool allowExpansion() const override { return true; }
-
   bool isPersistent() const override { return true; }
   bool canBeDropped() const override { return true; }
 

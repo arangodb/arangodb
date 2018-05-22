@@ -179,8 +179,6 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   char const* typeName() const override { return "primary"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return false; }
 
   bool isSorted() const override { return false; }

@@ -51,8 +51,6 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
 
   char const* typeName() const override { return "fulltext"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }

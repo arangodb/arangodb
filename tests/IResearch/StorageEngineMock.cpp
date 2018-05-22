@@ -168,8 +168,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   char const* typeName() const override { return "edge"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return false; }
 
   bool isSorted() const override { return false; }
@@ -414,7 +412,6 @@ class IndexMock final : public arangodb::Index {
     : arangodb::Index(0, nullptr, std::vector<std::vector<arangodb::basics::AttributeName>>(), false, false) {
   }
   virtual char const* typeName() const override { return "IndexMock"; }
-  virtual bool allowExpansion() const override { return false; }
   virtual IndexType type() const override { return TRI_IDX_TYPE_UNKNOWN; }
   virtual bool canBeDropped() const override { return true; }
   virtual bool isSorted() const override { return true; }

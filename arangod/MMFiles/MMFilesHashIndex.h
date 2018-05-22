@@ -245,8 +245,6 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   char const* typeName() const override { return "hash"; }
 
-  bool allowExpansion() const override { return true; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }

@@ -544,6 +544,7 @@ RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
 /// @brief return a selectivity estimate for the index
 double RocksDBEdgeIndex::selectivityEstimateLocal(
     arangodb::StringRef const* attribute) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (attribute != nullptr && attribute->compare(_directionAttr)) {
     return 0.0;
   }

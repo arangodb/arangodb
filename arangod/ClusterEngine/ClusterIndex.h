@@ -40,7 +40,7 @@ class ClusterIndex : public Index {
   ~ClusterIndex();
 
   void toVelocyPackFigures(velocypack::Builder& builder) const override;
-
+  
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder, bool withFigures,
                     bool forPersistence) const override;
@@ -51,16 +51,16 @@ class ClusterIndex : public Index {
     return Index::oldtypeName(_indexType);
   }
 
-  bool allowExpansion() const override { return false; }
-
-  bool isPersistent() const override final { return true; }
+  bool isPersistent() const override;
 
   bool canBeDropped() const override {
     return _indexType != Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
            _indexType != Index::TRI_IDX_TYPE_EDGE_INDEX;
   }
+  
+  bool isSorted() const override;
 
-  bool hasSelectivityEstimate() const override { return true; }
+  bool hasSelectivityEstimate() const override;
 
   double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override {
@@ -79,8 +79,6 @@ class ClusterIndex : public Index {
 
   /// @brief Checks if this index is identical to the given definition
   bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
-
-  bool isSorted() const override;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,

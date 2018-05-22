@@ -570,9 +570,6 @@ SECTION("clone") {
 }
 
 SECTION("serialize") {
-#warning REMOVE
-  std::this_thread::sleep_for(std::chrono::seconds(10));
-  
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");

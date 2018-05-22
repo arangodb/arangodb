@@ -153,8 +153,6 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   char const* typeName() const override { return "edge"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return false; }
 
   bool isSorted() const override { return false; }
