@@ -45,7 +45,6 @@
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFeature.h"
@@ -338,7 +337,7 @@ SECTION("test_drop") {
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
 }
-
+/*
 SECTION("test_drop_with_link") {
   std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-123")).utf8();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
@@ -376,7 +375,7 @@ SECTION("test_drop_with_link") {
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
 }
-
+*/
 SECTION("test_drop_cid") {
   static std::vector<std::string> const EMPTY;
 
@@ -700,8 +699,9 @@ SECTION("test_drop_cid") {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = []()->void { throw std::exception(); };
-      auto* feature =
-        arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+      auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::DatabaseFeature
+      >("Database");
 
       CHECK_THROWS((feature->recoveryDone()));
     }
@@ -962,8 +962,9 @@ SECTION("test_emplace_cid") {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = []()->void { throw std::exception(); };
-      auto* feature =
-        arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+      auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::DatabaseFeature
+      >("Database");
 
       CHECK_THROWS((feature->recoveryDone()));
     }
@@ -1390,7 +1391,9 @@ SECTION("test_query") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
-    auto* feature = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+    auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::FlushFeature
+    >("Flush");
     REQUIRE(feature);
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -2027,7 +2030,9 @@ SECTION("test_tracked_cids") {
     {
       s.engine.views.clear();
       auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102, \"properties\": { } }");
-      auto* feature = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+      auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::FlushFeature
+      >("Flush");
       REQUIRE(feature);
       Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
       auto logicalView = vocbase.createView(createJson->slice());

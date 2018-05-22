@@ -42,9 +42,6 @@ struct Function {
            FunctionImplementation implementation = nullptr,
            ExecutionCondition = nullptr);
 
-  /// @brief destroy the function
-  ~Function();
-
   inline bool hasImplementation() const {
     return implementation != nullptr;
   }
@@ -68,20 +65,12 @@ struct Function {
     return conversions[position];
   }
 
-  /// @brief return the name of the function's v8 implementation
-  std::string v8FunctionName() const {
-    return std::string("AQL_") + nonAliasedName;
-  }
-
   /// @brief parse the argument list and set the minimum and maximum number of
   /// arguments
   void initializeArguments();
 
   /// @brief function name (name visible to the end user, may be an alias)
   std::string name;
-  
-  /// @brief function name (internal, must not be an alias)
-  std::string const nonAliasedName;
   
   /// @brief function arguments
   char const* arguments;

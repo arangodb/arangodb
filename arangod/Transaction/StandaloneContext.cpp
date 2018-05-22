@@ -25,6 +25,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 
 /// @brief create the context
