@@ -606,12 +606,7 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
 EngineInfoContainerDBServer::createDBServerMapping(
     std::unordered_set<ShardID>& lockedShards) const {
   auto* ci = ClusterInfo::instance();
-
-  if (!ci) {
-    // we should not reach this point
-    TRI_ASSERT(false);
-    return {};
-  }
+  TRI_ASSERT(ci);
 
   std::map<ServerID, DBServerInfo> dbServerMapping;
 
