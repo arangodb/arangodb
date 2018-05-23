@@ -77,7 +77,7 @@ $ update-rc.d -f arangodb3 remove
 
 ### Set supervision in maintenance mode
 
-It is required to disable _cluster_ supervision in order to upgrade your _cluster.The
+It is required to disable _cluster_ supervision in order to upgrade your _cluster_.The
 following API calls will activate and de-activate the Maintenance mode of the Supervision job:
 
 You might use _curl_ to send the API call.
