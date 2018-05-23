@@ -51,10 +51,6 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
   TRI_ASSERT(vocbase != nullptr);
 }
 
-/// @brief destroy a collection wrapper
-Collection::~Collection() {}
-
-
 /// @brief get the collection id
 TRI_voc_cid_t Collection::cid() const {
   return getCollection()->id();
