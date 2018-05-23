@@ -147,6 +147,17 @@ class GraphOperations {
   ResultT<std::pair<OperationResult, Result>> getVertex(
       std::string const& collectionName, std::string const& key,
       boost::optional<TRI_voc_rid_t> rev);
+
+  /// @brief Get a single edge document from definitionName.
+  /// Similar to getVertex().
+  ResultT<std::pair<OperationResult, Result>> getEdge(
+      const std::string& definitionName, const std::string& key,
+      boost::optional<TRI_voc_rid_t> rev);
+
+ private:
+  ResultT<std::pair<OperationResult, Result>> getDocument(
+      const std::string& collectionName, const std::string& key,
+      boost::optional<TRI_voc_rid_t> rev);
 };
 
 class GraphCache {

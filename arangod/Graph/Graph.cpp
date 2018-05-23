@@ -254,7 +254,22 @@ std::ostream& Graph::operator<<(std::ostream& ostream) {
   return ostream;
 }
 
+// TODO check if collection is a vertex collection in _graph?
+// TODO are orphans allowed?
 ResultT<std::pair<OperationResult, Result>> GraphOperations::getVertex(
+    std::string const& collectionName, std::string const& key,
+    boost::optional<TRI_voc_rid_t> rev) {
+  return getDocument(collectionName, key, std::move(rev));
+};
+
+// TODO check if definitionName is an edge collection in _graph?
+ResultT<std::pair<OperationResult, Result>> GraphOperations::getEdge(
+    const std::string& definitionName, const std::string& key,
+    boost::optional<TRI_voc_rid_t> rev) {
+  return getDocument(definitionName, key, std::move(rev));
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::getDocument(
     std::string const& collectionName, std::string const& key,
     boost::optional<TRI_voc_rid_t> rev) {
   OperationOptions options;

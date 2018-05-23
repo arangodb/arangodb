@@ -20,11 +20,13 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestGraphHandler.h"
+
 #include <boost/optional.hpp>
 #include <utility>
+
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
-#include "RestGraphHandler.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -226,8 +228,8 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
 }
 
 boost::optional<RestStatus> RestGraphHandler::vertexAction(
-    const std::shared_ptr<const Graph> graph, const std::string& vertexCollectionName,
-    const std::string& vertexKey) {
+    const std::shared_ptr<const Graph> graph,
+    const std::string& vertexCollectionName, const std::string& vertexKey) {
   LOG_TOPIC(WARN, Logger::GRAPHS)
       << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
       << "vertexCollectionName = " << vertexCollectionName << ", "
@@ -260,8 +262,8 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
     case RequestType::GET:
       // TODO Maybe edgeActionRead can return void as it already handles
       // errors
-      // edgeActionRead(graph, edgeDefinitionName, edgeKey);
-      // return RestStatus::DONE;
+      edgeActionRead(graph, edgeDefinitionName, edgeKey);
+      return RestStatus::DONE;
     case RequestType::DELETE_REQ:
     case RequestType::PATCH:
     case RequestType::PUT:
@@ -323,14 +325,27 @@ Result RestGraphHandler::vertexActionRead(
 /// @brief generate response object: { error, code, vertex }
 void RestGraphHandler::generateVertex(VPackSlice vertex,
                                       VPackOptions const& options) {
+  generateResultWithField("vertex", vertex, options);
+}
+
+/// @brief generate response object: { error, code, edge }
+void RestGraphHandler::generateEdge(VPackSlice edge,
+                                    VPackOptions const& options) {
+  generateResultWithField("edge", edge, options);
+}
+
+/// @brief generate response object: { error, code, key: value }
+void RestGraphHandler::generateResultWithField(std::string const& key,
+                                               VPackSlice value,
+                                               VPackOptions const& options) {
   ResponseCode code = rest::ResponseCode::OK;
   resetResponse(code);
 
-  vertex = vertex.resolveExternal();
+  value = value.resolveExternal();
   std::string rev;
-  if (vertex.isObject()) {
+  if (value.isObject()) {
     rev = basics::VelocyPackHelper::getStringValue(
-        vertex, StaticStrings::RevString, "");
+        value, StaticStrings::RevString, "");
   }
 
   // set ETAG header
@@ -346,7 +361,7 @@ void RestGraphHandler::generateVertex(VPackSlice vertex,
     tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    tmp.add("vertex", vertex);
+    tmp.add(key, value);
     tmp.close();
 
     writeResult(std::move(buffer), options);
@@ -355,6 +370,57 @@ void RestGraphHandler::generateVertex(VPackSlice vertex,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "cannot generate output");
   }
+}
+
+// TODO this is nearly exactly the same as vertexActionRead. reuse somehow?
+Result RestGraphHandler::edgeActionRead(
+    const std::shared_ptr<const graph::Graph> graph,
+    const std::string& definitionName, const std::string& key) {
+  LOG_TOPIC(WARN, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << "definitionName = " << definitionName << ", "
+      << "key = " << key;
+
+  bool isValidRevision;
+  TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
+  if (!isValidRevision) {
+    ifRid =
+        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+  }
+
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(&_vocbase);
+  GraphOperations gops{*graph, ctx};
+  auto maybeRev = boost::make_optional(ifRid != 0, ifRid);
+  auto resultT = gops.getEdge(definitionName, key, maybeRev);
+
+  if (!resultT.ok()) {
+    generateTransactionError(definitionName, resultT, "");
+    return resultT.copy_result();
+  }
+
+  OperationResult& result = resultT.get().first;
+
+  Result res = resultT.get().second;
+
+  if (!result.ok()) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      generateDocumentNotFound(definitionName, key);
+    } else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
+      generatePreconditionFailed(result.slice());
+    } else {
+      generateTransactionError(definitionName, res, key);
+    }
+    return result.result;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError(definitionName, res, key);
+    return res;
+  }
+
+  // use default options
+  generateEdge(result.slice(), *ctx->getVPackOptionsForDump());
+  return Result();
 }
 
 std::shared_ptr<Graph const> RestGraphHandler::getGraph(

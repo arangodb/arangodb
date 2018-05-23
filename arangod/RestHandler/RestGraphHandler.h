@@ -35,6 +35,10 @@ class Graph;
 class GraphCache;
 }
 
+namespace transaction {
+class StandaloneContext;
+}
+
 class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestGraphHandler(GeneralRequest* request, GeneralResponse* response,
@@ -92,6 +96,11 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                           const std::string& collectionName,
                           const std::string& key);
 
+  // GET /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
+  Result edgeActionRead(std::shared_ptr<const graph::Graph> graph,
+                        const std::string& definitionName,
+                        const std::string& key);
+
   void generateVertex(VPackSlice vertex, VPackOptions const& options);
 
  private:
@@ -100,6 +109,10 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   std::shared_ptr<graph::Graph const> getGraph(
       std::shared_ptr<transaction::StandaloneContext> ctx,
       const std::string& graphName);
+
+  void generateResultWithField(const std::string &key, VPackSlice value, const VPackOptions &options);
+
+  void generateEdge(VPackSlice edge, const VPackOptions &options);
 };
 
 }  // namespace arangodb
