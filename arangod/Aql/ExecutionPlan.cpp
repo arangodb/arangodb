@@ -60,7 +60,7 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 namespace {
-   
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
 struct NodeCounter final : public WalkerWorker<ExecutionNode> {
@@ -234,7 +234,7 @@ ExecutionPlan::~ExecutionPlan() {
       ::NodeCounter counter;
       _root->walk(counter);
 
-        
+
       // and compare it to the number of nodes we have in our counters array
       size_t j = 0;
       for (auto const& it : _typeCounts) {
@@ -269,7 +269,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
       ast->query()->queryOptions().fullCount) {
     ExecutionNode::castTo<LimitNode*>(plan->_lastLimitNode)->setFullCount();
   }
-  
+
   // set count flag for final RETURN node
   if (plan->_root->getType() == ExecutionNode::RETURN) {
     static_cast<ReturnNode*>(plan->_root)->setCount();
@@ -279,7 +279,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   return plan.release();
 }
-  
+
 /// @brief whether or not the plan contains at least one node of this type
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
   TRI_ASSERT(_varUsageComputed);
@@ -441,7 +441,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
     TRI_ASSERT(expression->numMembers() == 1);
     expression = expression->getMember(0);
   }
- 
+
   bool containsCollection = false;
   // replace occurrences of collection names used as function call arguments
   // (that are of type NODE_TYPE_COLLECTION) with their string equivalents
@@ -469,7 +469,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
     } else if (node->type == NODE_TYPE_COLLECTION) {
       containsCollection = true;
     }
-      
+
     return node;
   };
 
@@ -478,7 +478,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
 
   if (containsCollection) {
     // we found at least one occurence of NODE_TYPE_COLLECTION
-    // now replace them with proper (FOR doc IN collection RETURN doc) 
+    // now replace them with proper (FOR doc IN collection RETURN doc)
     // subqueries
     auto visitor = [this, &previous](AstNode* node) {
       if (node->type == NODE_TYPE_COLLECTION) {
@@ -490,12 +490,12 @@ ExecutionNode* ExecutionPlan::createCalculation(
         AstNode* forNode = _ast->createNodeFor(v, node);
         // RETURN part
         AstNode* returnNode = _ast->createNodeReturn(_ast->createNodeReference(v));
-        
+
         // add both nodes to subquery
         rootNode->addMember(forNode);
         rootNode->addMember(returnNode);
 
-        // produce the proper ExecutionNodes from the subquery AST 
+        // produce the proper ExecutionNodes from the subquery AST
         auto subquery = fromNode(rootNode);
         if (subquery == nullptr) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -509,11 +509,11 @@ ExecutionNode* ExecutionPlan::createCalculation(
         previous = en;
         return _ast->createNodeReference(v);
       }
-      
+
       return node;
     };
 
-    // replace remaining NODE_TYPE_COLLECTION occurrences in the expression 
+    // replace remaining NODE_TYPE_COLLECTION occurrences in the expression
     node = Ast::traverseAndModify(node, visitor);
   }
 
@@ -669,6 +669,8 @@ ModificationOptions ExecutionPlan::createModificationOptions(
           options.nullMeansRemove = value->isFalse();
         } else if (name == "mergeObjects") {
           options.mergeObjects = value->isTrue();
+        } else if (name == "overwrite") {
+          options.overwrite = value->isTrue();
         }
       }
     }
@@ -1543,7 +1545,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() == 4);
+  TRI_ASSERT(node->numMembers() == 5);
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
@@ -1553,6 +1555,10 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
 
   auto returnVarNode = node->getMember(3);
   Variable const* outVariableNew =
+      static_cast<Variable*>(returnVarNode->getData());
+
+  returnVarNode = node->getMember(4);
+  Variable const* outVariableOld =
       static_cast<Variable*>(returnVarNode->getData());
 
   ExecutionNode* en = nullptr;
@@ -1569,6 +1575,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
       collection,
       options,
       v,
+      outVariableOld,
       outVariableNew
     ));
   } else {
@@ -1582,6 +1589,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
       collection,
       options,
       getOutVariable(calc),
+      outVariableOld,
       outVariableNew
     ));
     previous = calc;
@@ -1933,8 +1941,8 @@ void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
 void ExecutionPlan::findNodesOfType(
     SmallVector<ExecutionNode*>& result,
     std::vector<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
- 
-  // check if any of the node types is actually present in the plan 
+
+  // check if any of the node types is actually present in the plan
   for (auto const& type : types) {
     if (contains(type)) {
       // found a node type that is in the plan
@@ -1981,7 +1989,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   bool before(ExecutionNode* en) override final {
     // count the type of node found
     en->plan()->increaseCounter(en->getType());
-     
+
     en->invalidateVarUsage();
     en->setVarsUsedLater(_usedLater);
     // Add variables used here to _usedLater:
@@ -2173,7 +2181,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");
   }
-    
+
   ExecutionNode* ret = nullptr;
 
   // first, re-create all nodes from the Slice, using the node ids

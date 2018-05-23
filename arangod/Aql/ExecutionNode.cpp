@@ -109,7 +109,7 @@ void ExecutionNode::validateType(int type) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
 }
-  
+
 /// @brief add a dependency
 void ExecutionNode::addDependency(ExecutionNode* ep) {
   TRI_ASSERT(ep != nullptr);
@@ -997,6 +997,13 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       nrRegs.emplace_back(registerId);
 
       auto ep = ExecutionNode::castTo<InsertNode const*>(en);
+      if (ep->getOutVariableOld() != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.emplace(ep->getOutVariableOld()->id,
+                        VarInfo(depth, totalNrRegs));
+        totalNrRegs++;
+      }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -1189,7 +1196,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     en->setRegsToClear(std::move(regsToClear));
   }
 }
-  
+
 /// @brief replace a dependency, returns true if the pointer was found and
 /// replaced, please note that this does not delete oldNode!
 bool ExecutionNode::replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
@@ -1226,7 +1233,7 @@ bool ExecutionNode::replaceDependency(ExecutionNode* oldNode, ExecutionNode* new
   }
   return false;
 }
-  
+
 /// @brief remove a dependency, returns true if the pointer was found and
 /// removed, please note that this does not delete ep!
 bool ExecutionNode::removeDependency(ExecutionNode* ep) {
@@ -1260,7 +1267,7 @@ bool ExecutionNode::removeDependency(ExecutionNode* ep) {
 
   return false;
 }
-  
+
 /// @brief remove all dependencies for the given node
 void ExecutionNode::removeDependencies() {
   for (auto& x : _dependencies) {
@@ -1954,7 +1961,7 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
 void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
-  
+
   //And close it
   nodes.close();
 }
