@@ -54,6 +54,7 @@ bool toSortMode(
   auto const it = NameToValue.find(str);
 
   if (it == NameToValue.end()) {
+    TRI_ASSERT(false);
     return false;
   }
 
@@ -270,7 +271,7 @@ GatherNode::GatherNode(
     _sortmode(SortMode::Unset) {
   auto const sortModeSlice = base.get("sortmode");
 
-  if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, {}), _sortmode)) {
+  if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
     LOG_TOPIC(ERR, Logger::AQL)
       << "invalid sort mode detected while creating 'GatherNode' from vpack";
   }
