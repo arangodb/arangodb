@@ -3,10 +3,14 @@ v3.2.16 (XXXX-XX-XX)
 
 * fixed issue #5400: Unexpected AQL Result
 
+* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+
 * issue one HTTP call less per cluster AQL query
 
 * self heal during a Foxx service install, upgrade or replace no longer breaks 
   the respective operation
+
+* inception was ignoring leader's configuration
 
 
 v3.2.15 (2018-05-13)
