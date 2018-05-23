@@ -137,7 +137,7 @@ function appendHeader() {
         "Manual": "",
         "AQL": "/Aql",
         "HTTP": "/HttpApi",
-        "Cookbook": "/Cookbook"
+        "Cookbook": "/Cookbook",
         "cookbook": "/Cookbook"
       };
       currentBook = legacyMap[currentBook];
