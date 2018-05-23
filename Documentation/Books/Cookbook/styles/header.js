@@ -130,7 +130,7 @@ function appendHeader() {
   $(".arangodb-version-switcher").on("change", function(e) {
     var urlSplit = gitbook.state.root.split("/");
     urlSplit.pop(); // ""
-    var currentBook = "Cookbook";
+    var currentBook = urlSplit.pop();
     urlSplit.pop() // e.g. "3.0"
     if (e.target.value == "2.8") {
       var legacyMap = {
@@ -138,6 +138,7 @@ function appendHeader() {
         "AQL": "/Aql",
         "HTTP": "/HttpApi",
         "Cookbook": "/Cookbook"
+        "cookbook": "/Cookbook"
       };
       currentBook = legacyMap[currentBook];
     } else {
