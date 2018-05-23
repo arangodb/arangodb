@@ -162,8 +162,6 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool doSetup = false;
-
   if (_collection == nullptr) {
     // open the collection
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
@@ -191,8 +189,6 @@ int ClusterTransactionCollection::use(int nestingLevel) {
       }
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
-
-    doSetup = true;
   }
 
   TRI_ASSERT(_collection != nullptr);
