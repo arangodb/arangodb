@@ -1,9 +1,9 @@
 Manually Upgrading a _Cluster_ Deployment
 =========================================
 
-This page will guide you through the process of a manual upgrade of a [Cluster](../../Scalability/Cluster/README.md)
-setup. The different nodes in a cluster can be upgraded one at a time without
-incurring downtime of the cluster and very short downtimes of the single nodes.
+This page will guide you through the process of a manual upgrade of a [_cluster_](../../Scalability/Cluster/README.md)
+setup. The different nodes in a _cluster_ can be upgraded one at a time without
+incurring downtime of the _cluster_ and very short downtimes of the single nodes.
 
 The manual upgrade procedure described in this _Section_ can be used to upgrade
  to a new hotfix, or to perform an upgrade to a new minor version of ArangoDB.
@@ -18,20 +18,20 @@ database will be upgraded (see [`--database.auto-upgrade` in General
 Options](../../Administration/Configuration/GeneralArangod.md#database-upgrade))
 and the service will be (re)started.
 
-You have to make sure that your cluster deployment is independent of this
+You have to make sure that your _cluster_ deployment is independent of this
 standalone instance. Specifically, make sure that the database directory as
 well as the socket used by the standalone instance provided by the package are
-separate from the ones in your cluster configuration. Also, that you haven't
+separate from the ones in your _cluster_ configuration. Also, that you haven't
 modified the init script or systemd unit file for the standalone instance in way
-that it would start or stop your cluster instance instead.
+that it would start or stop your _cluster_ instance instead.
 
-You can read about the details on how to deploy your cluster indendently of the
-standalone instance in the [cluster deployment preliminary](../../Deployment/Cluster/PreliminaryInformation.md).
+You can read about the details on how to deploy your _cluster_ indendently of the
+standalone instance in the [_cluster_ deployment preliminary](../../Deployment/Cluster/PreliminaryInformation.md).
 
 In the following, we assume that you don't use the standalone instance from the
-package but only a manually started cluster instance, and we will move the
+package but only a manually started _cluster_ instance, and we will move the
 standalone instance out of the way if necessary so you have to make as little
-changes as possible to the running cluster.
+changes as possible to the running _cluster_.
 
 ### Install the new ArangoDB version binary
 
@@ -59,7 +59,7 @@ after you have downloaded the corresponding file from https://download.arangodb.
 
 As the package will automatically start the standalone instance, you might want to
 stop it now, as otherwise this standalone instance that is started on your machine
-can create some confusion later. As you are starting the cluster processes manually
+can create some confusion later. As you are starting the _cluster_ processes manually
 you do not need this standalone instance, and you can hence stop it:
 
 ```
@@ -112,7 +112,7 @@ curl http://localhost:7002/_admin/cluster/maintenance -XPUT -d'"off"'
 
 ### Upgrade the _cluster_ processes
 
-Now all the cluster (_arangod_) processes (_Agents_, _DBServers_ and _Coordinators_) have to be
+Now all the _cluster_ (_Agents_, _DBServers_ and _Coordinators_) processes (_arangod_) have to be
 upgraded on each node.
 
 **Note:** The maintenance mode has to be activated.
@@ -152,7 +152,7 @@ max      29938 16224  2 13:56 pts/3    00:02:13 arangod --server.authentication=
 ```
 
 
-#### Upgrade a cluster node
+#### Upgrade a _cluster_ node
 
 The following procedure is upgrading _Agent_, _DBServer_ and _Coordinator_ on one node.
 
