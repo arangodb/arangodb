@@ -86,10 +86,6 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
 }
 
-bool IResearchLink::allowExpansion() const {
-  return true; // maps to multivalued
-}
-
 void IResearchLink::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,

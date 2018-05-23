@@ -54,10 +54,6 @@ class IResearchLinkMMFilesCoordinator final
     _sparse = true;  // always sparse
   }
 
-  bool allowExpansion() const noexcept override {
-    return true;
-  }
-
   void batchInsert(
       arangodb::transaction::Methods*,
       std::vector<std::pair<arangodb::LocalDocumentId, VPackSlice>> const&,
@@ -183,12 +179,7 @@ class IResearchLinkRocksDBCoordinator final
     _unique = false; // cannot be unique since multiple fields are indexed
     _sparse = true;  // always sparse
   }
-
-  bool allowExpansion() const noexcept override {
-    // maps to multivalued
-    return true;
-  }
-
+        
   void batchInsert(
       arangodb::transaction::Methods*,
       std::vector<std::pair<arangodb::LocalDocumentId, VPackSlice>> const&,

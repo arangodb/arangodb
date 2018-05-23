@@ -58,9 +58,9 @@ struct RocksDBTransactionData final : public TransactionData {};
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
     transaction::Options const& options
-)
-    : TransactionState(vocbase, options),
+) : TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _snapshot(nullptr),
       _rocksWriteOptions(),
@@ -113,8 +113,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   if (_nestingLevel == 0) {
-    // get a new id
-    _id = TRI_NewTickServer();
 
     // register a protector (intentionally empty)
     auto data = std::make_unique<RocksDBTransactionData>();

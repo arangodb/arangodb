@@ -89,7 +89,7 @@ ValueLength Parser::parseInternal(bool multi) {
 // skips over all following whitespace tokens but does not consume the
 // byte following the whitespace
 int Parser::skipWhiteSpace(char const* err) {
-  if (_pos >= _size) {
+  if (VELOCYPACK_UNLIKELY(_pos >= _size)) {
     throw Exception(Exception::ParseError, err);
   }
   uint8_t c = _start[_pos];
@@ -284,7 +284,7 @@ void Parser::parseString() {
       case '\\':
         // Handle cases or throw error
         i = consume();
-        if (i < 0) {
+        if (VELOCYPACK_UNLIKELY(i < 0)) {
           throw Exception(Exception::ParseError, "Invalid escape sequence");
         }
         switch (i) {
@@ -372,7 +372,7 @@ void Parser::parseString() {
       default:
         if ((i & 0x80) == 0) {
           // non-UTF-8 sequence
-          if (i < 0x20) {
+          if (VELOCYPACK_UNLIKELY(i < 0x20)) {
             // control character
             throw Exception(Exception::UnexpectedControlCharacter);
           }
@@ -444,7 +444,7 @@ void Parser::parseArray() {
       return;
     }
     // skip over ','
-    if (i != ',') {
+    if (VELOCYPACK_UNLIKELY(i != ',')) {
       throw Exception(Exception::ParseError, "Expecting ',' or ']'");
     }
     ++_pos;  // the ','
@@ -473,7 +473,7 @@ void Parser::parseObject() {
 
   while (true) {
     // always expecting a string attribute name here
-    if (i != '"') {
+    if (VELOCYPACK_UNLIKELY(i != '"')) {
       throw Exception(Exception::ParseError, "Expecting '\"' or '}'");
     }
     // get past the initial '"'
@@ -514,7 +514,7 @@ void Parser::parseObject() {
 
     i = skipWhiteSpace("Expecting ':'");
     // always expecting the ':' here
-    if (i != ':') {
+    if (VELOCYPACK_UNLIKELY(i != ':')) {
       throw Exception(Exception::ParseError, "Expecting ':'");
     }
     ++_pos;  // skip over the colon
@@ -536,7 +536,7 @@ void Parser::parseObject() {
       decreaseNesting();
       return;
     }
-    if (i != ',') {
+    if (VELOCYPACK_UNLIKELY(i != ',')) {
       throw Exception(Exception::ParseError, "Expecting ',' or '}'");
     }
     // skip over ','

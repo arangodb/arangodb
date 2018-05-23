@@ -440,9 +440,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     bool needsErrorCleanup = true;
     auto cleanup = [&]() {
       if (needsErrorCleanup) {
-        _dbserverParts.cleanupEngines(ClusterComm::instance(),
-                                      TRI_ERROR_INTERNAL,
-                                      _query->vocbase()->name(), queryIds);
+        _dbserverParts.cleanupEngines(
+          ClusterComm::instance(),
+          TRI_ERROR_INTERNAL,
+          _query->vocbase().name(), queryIds
+        );
       }
     };
     TRI_DEFER(cleanup());
@@ -455,11 +457,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
     res = _coordinatorParts.buildEngines(
-        _query, registry, _query->vocbase()->name(),
-        _query->queryOptions().shardIds, queryIds, lockedShards);
+      _query,
+      registry,
+      _query->vocbase().name(),
+      _query->queryOptions().shardIds,
+      queryIds,
+      lockedShards
+    );
+
     if (res.ok()) {
       needsErrorCleanup = false;
     }
+
     return res;
   }
 };

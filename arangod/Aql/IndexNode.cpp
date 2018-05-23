@@ -64,7 +64,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _indexes(),
@@ -72,10 +72,10 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)),
       _restrictedTo(""),
       _options() {
-
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
   VPackSlice restrictedTo = base.get("restrictedTo");
+
   if (restrictedTo.isString()) {
     _restrictedTo = restrictedTo.copyString();
   }
@@ -85,6 +85,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   _options.evaluateFCalls = basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
   _options.fullRange = basics::VelocyPackHelper::readBooleanValue(base, "fullRange", false);
   _options.limit = basics::VelocyPackHelper::readNumericValue(base, "limit", 0);
+
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
     // legacy
     _options.sorted = true;
@@ -184,9 +185,9 @@ void IndexNode::initIndexCoversProjections() {
 }
 
 /// @brief toVelocyPack, for IndexNode
-void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // Now put info about vocbase and cid in there
   nodes.add("database", VPackValue(_vocbase->name()));
@@ -209,7 +210,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
     }
   }
   nodes.add(VPackValue("condition"));
-  _condition->toVelocyPack(nodes, verbose);
+  _condition->toVelocyPack(nodes, flags);
   // IndexIteratorOptions
   nodes.add("sorted", VPackValue(_options.sorted));
   nodes.add("ascending", VPackValue(_options.ascending));

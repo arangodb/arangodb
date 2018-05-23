@@ -38,16 +38,17 @@ using namespace arangodb;
 /// @brief transaction type
 TransactionState::TransactionState(
     TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
     transaction::Options const& options
 )
     : _vocbase(vocbase),
-      _id(0),
+      _id(tid),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
       _arena(),
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
-      _resolver(&vocbase),
+      _resolver(vocbase),
       _hints(),
       _nestingLevel(0),
       _options(options) {}

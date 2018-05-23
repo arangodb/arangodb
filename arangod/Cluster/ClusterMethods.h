@@ -89,6 +89,10 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result,
                        bool sendNoLockHeader);
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the selectivity estimates from DBservers
+////////////////////////////////////////////////////////////////////////////////
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
                                       std::unordered_map<std::string, double>& result);
