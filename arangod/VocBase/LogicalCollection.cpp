@@ -1238,23 +1238,9 @@ Result LogicalCollection::replace(transaction::Methods* trx,
   }
 
   prevRev = 0;
-  VPackSlice fromSlice;
-  VPackSlice toSlice;
-
-  if (type() == TRI_COL_TYPE_EDGE) {
-    fromSlice = newSlice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    toSlice = newSlice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-  }
 
   return getPhysical()->replace(trx, newSlice, result, options,
-                                resultMarkerTick, lock, prevRev, previous,
-                                fromSlice, toSlice);
+                                resultMarkerTick, lock, prevRev, previous);
 }
 
 /// @brief removes a document or edge
