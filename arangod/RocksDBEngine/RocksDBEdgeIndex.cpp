@@ -547,7 +547,8 @@ double RocksDBEdgeIndex::selectivityEstimate(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
-  } else if (attribute != nullptr && attribute->compare(_directionAttr)) {
+  }
+  if (attribute != nullptr && attribute->compare(_directionAttr)) {
     return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);

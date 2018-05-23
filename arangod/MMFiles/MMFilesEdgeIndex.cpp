@@ -214,7 +214,8 @@ double MMFilesEdgeIndex::selectivityEstimate(
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
-  } else if (_edgesFrom == nullptr || _edgesTo == nullptr) {
+  }
+  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
     // use hard-coded selectivity estimate in case of cluster coordinator
     return 0.1;
   }
