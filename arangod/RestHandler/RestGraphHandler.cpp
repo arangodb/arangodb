@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <boost/optional.hpp>
-
+#include <utility>
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
 #include "RestGraphHandler.h"
@@ -40,8 +40,9 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 RestGraphHandler::RestGraphHandler(GeneralRequest* request,
-                                   GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+                                   GeneralResponse* response,
+                                   GraphCache* graphCache_)
+    : RestVocbaseBaseHandler(request, response), _graphCache(*graphCache_) {}
 
 RestStatus RestGraphHandler::execute() {
   LOG_TOPIC(INFO, Logger::GRAPHS)
@@ -95,8 +96,6 @@ RestStatus RestGraphHandler::execute() {
   return restStatus;
 }
 
-RestGraphHandler::~RestGraphHandler() {}
-
 // Note: boost::none indicates "not (yet) implemented".
 // Error-handling for nonexistent routes is, for now, taken from the fallback.
 // TODO as soon as this implements everything, just return a RestStatus.
@@ -118,30 +117,11 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
 
   auto ctx = transaction::StandaloneContext::Create(&_vocbase);
 
-  // TODO cache graph (then, don't pass a unique_ptr around anymore)
-  std::unique_ptr<const Graph> graph;
-
-  try {
-    graph.reset(lookupGraphByName(ctx, graphName));
-  } catch (arangodb::basics::Exception& exception) {
-    // reset some error messages to match the tests.
-    // TODO it's possibly sane to change the tests to check for error codes
-    // only instead
-    switch (exception.code()) {
-      case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
-      default:
-        throw exception;
-    }
-  };
-
-  if (graph == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
-  }
+  std::shared_ptr<Graph const> graph = getGraph(ctx, graphName);
 
   if (noMoreSuffixes()) {
     // /_api/gharial/{graph-name}
-    return graphAction(std::move(graph));
+    return graphAction(graph);
   }
 
   std::string const& collType = getNextSuffix();
@@ -155,10 +135,10 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex
-      return vertexSetsAction(std::move(graph));
+      return vertexSetsAction(graph);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge
-      return edgeSetsAction(std::move(graph));
+      return edgeSetsAction(graph);
     }
   }
 
@@ -191,10 +171,10 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex/{collection-name}
-      return vertexSetAction(std::move(graph), setName);
+      return vertexSetAction(graph, setName);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge/{definition-name}
-      return edgeSetAction(std::move(graph), setName);
+      return edgeSetAction(graph, setName);
     }
   }
 
@@ -203,10 +183,10 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   if (noMoreSuffixes()) {
     if (collType == vertex) {
       // /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
-      return vertexAction(std::move(graph), setName, elementKey);
+      return vertexAction(graph, setName, elementKey);
     } else if (collType == edge) {
       // /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
-      return edgeAction(std::move(graph), setName, elementKey);
+      return edgeAction(graph, setName, elementKey);
     }
   }
 
@@ -219,44 +199,47 @@ boost::optional<RestStatus> RestGraphHandler::graphsAction() {
 }
 
 boost::optional<RestStatus> RestGraphHandler::graphAction(
-    const std::unique_ptr<const Graph> graph) {
+    const std::shared_ptr<const Graph> graph) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::vertexSetsAction(
-    const std::unique_ptr<const Graph> graph) {
+    const std::shared_ptr<const Graph> graph) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::edgeSetsAction(
-    const std::unique_ptr<const Graph> graph) {
+    const std::shared_ptr<const Graph> graph) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
-    const std::unique_ptr<const Graph> graph,
+    const std::shared_ptr<const Graph> graph,
     const std::string& edgeDefinitionName) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
-    const std::unique_ptr<const Graph> graph,
+    const std::shared_ptr<const Graph> graph,
     const std::string& vertexCollectionName) {
   return boost::none;
 }
 
 boost::optional<RestStatus> RestGraphHandler::vertexAction(
-    std::unique_ptr<const Graph> graph,
-    const std::string& vertexCollectionName, const std::string& vertexKey) {
+    const std::shared_ptr<const Graph> graph, const std::string& vertexCollectionName,
+    const std::string& vertexKey) {
   LOG_TOPIC(WARN, Logger::GRAPHS)
       << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
       << "vertexCollectionName = " << vertexCollectionName << ", "
       << "vertexKey = " << vertexKey;
 
   switch (request()->requestType()) {
-    case RequestType::GET:
-      vertexActionRead(std::move(graph), vertexCollectionName, vertexKey);
+    case RequestType::GET: {
+      // TODO Maybe vertexActionRead can return void as it already handles
+      // errors
+      Result res = vertexActionRead(graph, vertexCollectionName, vertexKey);
       return RestStatus::DONE;
+    }
     case RequestType::DELETE_REQ:
     case RequestType::PATCH:
     case RequestType::PUT:
@@ -266,24 +249,33 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
 }
 
 boost::optional<RestStatus> RestGraphHandler::edgeAction(
-    const std::unique_ptr<const Graph> graph,
+    const std::shared_ptr<const Graph> graph,
     const std::string& edgeDefinitionName, const std::string& edgeKey) {
   LOG_TOPIC(WARN, Logger::GRAPHS)
       << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
       << "edgeDefinitionName = " << edgeDefinitionName << ", "
       << "edgeKey = " << edgeKey;
+
+  switch (request()->requestType()) {
+    case RequestType::GET:
+      // TODO Maybe edgeActionRead can return void as it already handles
+      // errors
+      // edgeActionRead(graph, edgeDefinitionName, edgeKey);
+      // return RestStatus::DONE;
+    case RequestType::DELETE_REQ:
+    case RequestType::PATCH:
+    case RequestType::PUT:
+    default:;
+  }
   return boost::none;
 }
 
 Result RestGraphHandler::vertexActionRead(
-    const std::unique_ptr<const Graph> graph, const std::string& collectionName,
+    const std::shared_ptr<const Graph> graph, const std::string& collectionName,
     const std::string& key) {
   LOG_TOPIC(WARN, Logger::GRAPHS)
       << LOGPREFIX(__func__) << "collectionName = " << collectionName << ", "
       << "key = " << key;
-
-  OperationOptions options;
-  options.ignoreRevs = true;
 
   bool isValidRevision;
   TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
@@ -295,14 +287,13 @@ Result RestGraphHandler::vertexActionRead(
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(&_vocbase);
   GraphOperations gops{*graph, ctx};
-  auto resultT = gops.getVertex(collectionName, key, boost::make_optional(ifRid != 0, ifRid));
+  auto maybeRev = boost::make_optional(ifRid != 0, ifRid);
+  auto resultT = gops.getVertex(collectionName, key, maybeRev);
 
   if (!resultT.ok()) {
     generateTransactionError(collectionName, resultT, "");
-    // Note: copy result, do not slice TODO is this necessary?
-    return {resultT};
+    return resultT.copy_result();
   }
-
 
   OperationResult& result = resultT.get().first;
 
@@ -329,7 +320,7 @@ Result RestGraphHandler::vertexActionRead(
   return Result();
 }
 
-/// @brief generate response { error, code, vertex }
+/// @brief generate response object: { error, code, vertex }
 void RestGraphHandler::generateVertex(VPackSlice vertex,
                                       VPackOptions const& options) {
   ResponseCode code = rest::ResponseCode::OK;
@@ -364,4 +355,19 @@ void RestGraphHandler::generateVertex(VPackSlice vertex,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "cannot generate output");
   }
+}
+
+std::shared_ptr<Graph const> RestGraphHandler::getGraph(
+    std::shared_ptr<transaction::StandaloneContext> ctx,
+    const std::string& graphName) {
+  std::shared_ptr<Graph const> graph;
+
+  graph = _graphCache.getGraph(std::move(ctx), graphName);
+
+  // TODO remove exception, handle return value instead
+  if (graph == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NOT_FOUND);
+  }
+
+  return graph;
 }

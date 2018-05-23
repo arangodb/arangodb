@@ -201,6 +201,8 @@ void GeneralServerFeature::start() {
 
   _handlerFactory.reset(new RestHandlerFactory());
 
+  _graphCache = std::make_unique<graph::GraphCache>();
+
   HANDLER_FACTORY = _handlerFactory.get();
 
   defineHandlers();
@@ -331,7 +333,8 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::GHARIAL_PATH,
-      RestHandlerCreator<RestGraphHandler>::createNoData);
+      RestHandlerCreator<RestGraphHandler>::createData<graph::GraphCache*>,
+      _graphCache.get());
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::ENDPOINT_PATH,
