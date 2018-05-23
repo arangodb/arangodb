@@ -119,7 +119,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // --------------------
 
   // return the name of the specific storage engine e.g. rocksdb
-  char const* typeName() const { return _typeName.c_str(); }
+  virtual char const* typeName() const { return _typeName.c_str(); }
 
   // inventory functionality
   // -----------------------
@@ -462,7 +462,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     for (auto& it: indexFactory().supportedIndexes()) {
       builder.add(velocypack::Value(it));
     }
-
+    
     builder.close(); // indexes
     builder.close(); // supports
     builder.close(); // object

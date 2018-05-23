@@ -67,8 +67,6 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }

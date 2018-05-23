@@ -34,7 +34,7 @@ using namespace arangodb::aql;
 /// @brief constructor for RemoteNode 
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _server(base.get("server").copyString()),
       _ownName(base.get("ownName").copyString()),
       _queryId(base.get("queryId").copyString()),
@@ -52,9 +52,9 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
 }
 
 /// @brief toVelocyPack, for RemoteNode
-void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
@@ -85,7 +85,7 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
 ScatterNode::ScatterNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())) {}
 
@@ -103,8 +103,9 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
 }
 
 /// @brief toVelocyPack, for ScatterNode
-void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
+void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
@@ -125,7 +126,7 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
 DistributeNode::DistributeNode(ExecutionPlan* plan,
                                arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _variable(nullptr),
@@ -133,7 +134,6 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _createKeys(base.get("createKeys").getBoolean()),
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
       _allowSpecifiedKeys(false) {
- 
   if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {     
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
@@ -158,9 +158,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 
 /// @brief toVelocyPack, for DistributedNode
 void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                        bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+                                        unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
@@ -208,12 +208,12 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
                        SortElementVector const& elements, std::size_t shardsRequiredForHeapMerge)
     : ExecutionNode(plan, base),
       _elements(elements),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _sortmode( _collection ? ( _collection->numberOfShards() >= shardsRequiredForHeapMerge ? 'h' : 'm') : 'u')
       {}
-  
+
 GatherNode::GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
              Collection const* collection, std::size_t shardsRequiredForHeapMerge)
       : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection),
@@ -222,9 +222,9 @@ GatherNode::GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         {}
 
 /// @brief toVelocyPack, for GatherNode
-void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   if (_collection) {
