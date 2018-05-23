@@ -44,7 +44,7 @@ class TraversalBlock final : public ExecutionBlock {
   ~TraversalBlock();
 
   /// @brief initialize, here we fetch all docs from the database
-  int initialize() override;
+  int initialize() override final;
 
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;

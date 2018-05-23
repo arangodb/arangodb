@@ -202,6 +202,9 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SHA512", ".", true, false, true, &Functions::Sha512});
   add({"HASH", ".", true, false, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, &Functions::RandomToken});
+  add({"TO_HEX", ".", true, false, true, &Functions::ToHex});
+  add({"TO_BASE64", ".", true, false, true, &Functions::ToBase64});
+  add({"ENCODE_URI_COMPONENT", ".", true, false, true, &Functions::EncodeUriComponent});
 }
 
 void AqlFunctionFeature::addNumericFunctions() {
@@ -228,6 +231,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"RADIANS", ".", true, false, true, &Functions::Radians});
   add({"DEGREES", ".", true, false, true, &Functions::Degrees});
   add({"PI", "", true, false, true, &Functions::Pi});
+  add({"SIGN", ".", true, false, true, &Functions::Sign});
 }
 
 void AqlFunctionFeature::addListFunctions() {
@@ -279,6 +283,8 @@ void AqlFunctionFeature::addDocumentFunctions() {
   // document functions
   add({"HAS", ".,.", true, false, true, &Functions::Has});
   add({"ATTRIBUTES", ".|.,.", true, false, true, &Functions::Attributes});
+  add({"ATTRIBUTES_REGEX", ".,.|.,.", true, false, true, &Functions::AttributesRegex});
+  addAlias("KEYS", "ATTRIBUTES");
   add({"VALUES", ".|.", true, false, true, &Functions::Values});
   add({"MERGE", ".|+", true, false, true, &Functions::Merge});
   add({"MERGE_RECURSIVE", ".,.|+", true, false, true, &Functions::MergeRecursive});
@@ -286,7 +292,9 @@ void AqlFunctionFeature::addDocumentFunctions() {
   add({"MATCHES", ".,.|.", true, false, true, &Functions::Matches});
   add({"UNSET", ".,.|+", true, false, true, &Functions::Unset});
   add({"UNSET_RECURSIVE", ".,.|+", true, false, true, &Functions::UnsetRecursive});
+  add({"UNSET_REGEX", ".,.|.,.", true, false, true, &Functions::UnsetRegex});
   add({"KEEP", ".,.|+", true, false, true, &Functions::Keep});
+  add({"KEEP_REGEX", ".,.|.,.", true, false, true, &Functions::KeepRegex});
   add({"TRANSLATE", ".,.|.", true, false, true, &Functions::Translate});
   add({"ZIP", ".,.", true, false, true, &Functions::Zip});
   add({"JSON_STRINGIFY", ".", true, false, true, &Functions::JsonStringify});
@@ -351,6 +359,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_LIST", ".|+", true, false, true, &Functions::FirstList});
   add({"FIRST_DOCUMENT", ".|+", true, false, true, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", true, false, true, &Functions::ParseIdentifier});
+  add({"UUID", "", false, false, true, &Functions::Uuid});
   add({"IS_SAME_COLLECTION", ".h,.h", true, false, true, &Functions::IsSameCollection});
   add({"CURRENT_USER", "", false, false, false, &Functions::CurrentUser});
   add({"CURRENT_DATABASE", "", false, false, false, &Functions::CurrentDatabase});

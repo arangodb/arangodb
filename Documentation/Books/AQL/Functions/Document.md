@@ -155,6 +155,26 @@ KEEP(doc, "firstname", "name", "likes")
 KEEP(doc, [ "firstname", "name", "likes" ])
 ```
 
+KEEP_REGEX()
+------
+
+`KEEP_REGEX(document, search, caseInsensitive, recursive) → doc`
+
+Keep only the attributes matched by the pattern *search* of *document*.
+All other attributes will be removed from the result.
+
+- **document** (object): a document / object
+- **search** (string): a regular expression search pattern
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
+- **recursive** (bool, *optional*): whether or not the procedure should work
+  on sub-attributes too. The default is *false*.
+- returns **doc** (object): a document with only the specified attributes
+
+```js
+KEEP_REGEX(doc, "^userdefined:", false)
+```
+
 LENGTH()
 --------
 
@@ -418,6 +438,26 @@ UNSET_RECURSIVE( doc, "_id", "_key", "foo", "bar" )
 
 ```js
 UNSET_RECURSIVE( doc, [ "_id", "_key", "foo", "bar" ] )
+```
+
+UNSET_REGEX()
+-------
+
+`UNSET_REGEX(document, search, caseInsensitive, recursive) → doc`
+
+Remove the attributes matched by the pattern *search* of *document*.
+All other attributes will be preserved.
+
+- **document** (object): a document / object
+- **search** (string): a regular expression search pattern
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
+- **recursive** (bool, *optional*): whether or not the procedure should work
+  on sub-attributes too. The default is *false*.
+- returns **doc** (object): *document* without the specified attributes
+
+```js
+UNSET_REGEX( doc, "^test:")
 ```
 
 VALUES()

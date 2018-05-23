@@ -531,13 +531,12 @@ AqlValue Expression::executeSimpleExpressionAttributeAccess(
   TRI_ASSERT(node->numMembers() == 1);
 
   auto member = node->getMemberUnchecked(0);
-  char const* name = static_cast<char const*>(node->getData());
 
   bool localMustDestroy;
   AqlValue result = executeSimpleExpression(member, trx, localMustDestroy, false);
   AqlValueGuard guard(result, localMustDestroy);
 
-  return result.get(trx, std::string(name, node->getStringLength()), mustDestroy, true);
+  return result.get(trx, std::string(node->getStringValue(), node->getStringLength()), mustDestroy, true);
 }
 
 /// @brief execute an expression of type SIMPLE with INDEXED ACCESS
@@ -1613,10 +1612,10 @@ AqlValue Expression::executeSimpleExpressionIterator(
 AqlValue Expression::executeSimpleExpressionArithmetic(
     AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
-  AqlValue lhs = executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, true);
+  AqlValue lhs = executeSimpleExpression(node->getMemberUnchecked(0), trx, mustDestroy, false);
   AqlValueGuard guardLhs(lhs, mustDestroy);
 
-  AqlValue rhs = executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, true);
+  AqlValue rhs = executeSimpleExpression(node->getMemberUnchecked(1), trx, mustDestroy, false);
   AqlValueGuard guardRhs(rhs, mustDestroy);
 
   mustDestroy = false;

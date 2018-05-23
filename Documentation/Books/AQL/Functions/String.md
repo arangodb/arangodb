@@ -341,6 +341,8 @@ using regular expression matching.
 
 - **text** (string): the string to search in
 - **search** (string): a regular expression search pattern
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 - returns **bool** (bool): *true* if the pattern is contained in *text*,
   and *false* otherwise
 
@@ -409,6 +411,8 @@ Replace the pattern *search* with the string *replacement* in the string
 - **text** (string): the string to search in
 - **search** (string): a regular expression search pattern
 - **replacement** (string): the string to replace the *search* pattern with
+- **caseInsensitive** (bool, *optional*): if set to *true*, the matching will be
+  case-insensitive. The default is *false*.
 - returns **string** (string): the string *text* with the *search* regex
   pattern replaced with the *replacement* string wherever the pattern exists
   in *text*
