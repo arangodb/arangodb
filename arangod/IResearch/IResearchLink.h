@@ -64,8 +64,6 @@ class IResearchLink {
     return !(*this == meta);
   }
 
-  bool allowExpansion() const; // arangodb::Index override
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a set of ArangoDB documents into an iResearch View using
   ///        '_meta' params

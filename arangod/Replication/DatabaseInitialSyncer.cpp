@@ -893,7 +893,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   // -------------------------------------------------------------------------------------
 
   if (phase == PHASE_DROP_CREATE) {
-    auto* col = resolveCollection(&vocbase(), parameters).get();
+    auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
       // not found...
@@ -991,24 +991,26 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     std::string progress = "creating " + collectionMsg;
+
     if (_configuration._skipCreateDrop) {
       progress += " skipped because of configuration";
       setProgress(progress);
       return Result();
     }
-    
+
     setProgress(progress);
 
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Dump is creating collection "
       << parameters.toJson();
-    auto r = createCollection(&vocbase(), parameters, &col);
+
+    auto r = createCollection(vocbase(), parameters, &col);
 
     if (r.fail()) {
       return Result(r.errorNumber(), std::string("unable to create ") +
                     collectionMsg + ": " + TRI_errno_string(r.errorNumber()) +
                     ". Collection info " + parameters.toJson());
     }
-   
+
     return r;
   }
 
@@ -1019,7 +1021,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const progress = "dumping data for " + collectionMsg;
     setProgress(progress);
 
-    auto* col = resolveCollection(&vocbase(), parameters).get();
+    auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::string("cannot dump: ") +

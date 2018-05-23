@@ -93,8 +93,6 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   char const* typeName() const override { return "primary"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return false; }
 
   bool hasCoveringIterator() const override { return true; } 

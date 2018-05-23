@@ -30,7 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"

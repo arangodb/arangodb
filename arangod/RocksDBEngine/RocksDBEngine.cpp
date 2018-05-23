@@ -656,7 +656,7 @@ std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
     transaction::Options const& options
 ) {
   return std::unique_ptr<TransactionState>(
-    new RocksDBTransactionState(vocbase, options)
+    new RocksDBTransactionState(vocbase, TRI_NewTickServer(), options)
   );
 }
 
@@ -704,8 +704,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
        iter->Next()) {
     auto slice = VPackSlice(iter->value().data());
 
-    //// check format
-    // id
+    //// check format id
     VPackSlice idSlice = slice.get("id");
     if (!idSlice.isString()) {
       LOG_TOPIC(ERR, arangodb::Logger::STARTUP)

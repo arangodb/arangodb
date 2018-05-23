@@ -458,10 +458,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
   
-  if (server()->isEnabled("V8Dealer")) {
-    _handlerFactory->addHandler(
-      "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
-  }
+  _handlerFactory->addHandler(
+    "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
   // ...........................................................................
   // /_admin

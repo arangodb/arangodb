@@ -159,8 +159,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
-  /// @brief used for updating properties
-  void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   // datafile management
   bool applyForTickRange(
@@ -415,7 +413,6 @@ class MMFilesCollection final : public PhysicalCollection {
   void removeLocalDocumentId(LocalDocumentId const& documentId, bool updateStats);
 
  private:
-  void createInitialIndexes();
   void sizeHint(transaction::Methods* trx, int64_t hint);
 
   bool openIndex(VPackSlice const& description, transaction::Methods* trx);
@@ -492,15 +489,14 @@ class MMFilesCollection final : public PhysicalCollection {
                                                 bool excludeWal) const;
   void batchLookupRevisionVPack(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const;
 
+  void createInitialIndexes();
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexLocal(std::shared_ptr<arangodb::Index> idx);
-  void addIndexCoordinator(std::shared_ptr<arangodb::Index> idx);
 
   bool removeIndex(TRI_idx_iid_t iid);
 
   /// @brief return engine-specific figures
-  void figuresSpecific(
-      std::shared_ptr<arangodb::velocypack::Builder>&) override;
+  void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) override;
 
   // SECTION: Index storage
 

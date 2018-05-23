@@ -104,6 +104,7 @@
 #endif
 
 // storage engines
+#include "ClusterEngine/ClusterEngine.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 
@@ -217,6 +218,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
 #endif
 
     // storage engines
+    server.addFeature(new ClusterEngine(&server));
     server.addFeature(new MMFilesEngine(&server));
     server.addFeature(new RocksDBEngine(&server));
 
