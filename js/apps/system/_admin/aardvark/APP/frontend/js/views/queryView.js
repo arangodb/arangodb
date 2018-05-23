@@ -1882,9 +1882,13 @@
             );
             self.maps[counter] = L.map('outputGeo' + counter).setView([51.505, -0.09], 13);
 
-            L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            }).addTo(self.maps[counter]);
+            L.tileLayer(
+              'https://api.mapbox.com/styles/v1/mapbox/streets-v9/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoiaGtlcm5iYWNoIiwiYSI6ImNqaGowNG40cjAwaDEzNnQ5amw5Ymh0OTUifQ.2wPZ8Wl00hLjNCNu94IqIw', {
+                tileSize: 512,
+                zoomOffset: -1,
+                attribution: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> | <a href="https://www.mapbox.com/map-feedback/" target="_blank">Improve this map</a></strong>'
+              })
+            .addTo(self.maps[counter]);
 
             var position = 1;
             var geojson;
