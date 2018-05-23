@@ -117,7 +117,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
       }
     }
 
-    CollectionNameResolver resolver(vocbase);
+    CollectionNameResolver resolver(*vocbase);
 
     // List of edge collection names
     for (size_t i = 0; i < edgeCollectionCount; ++i) {
