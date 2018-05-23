@@ -44,7 +44,8 @@ ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection* collection,
     : Index(id, collection, info),
       _engineType(engineType),
       _indexType(itype),
-      _info(info) {
+      _info(info),
+      _clusterSelectivity(/* default */0.1) {
   TRI_ASSERT(_info.slice().isObject());
 }
 
@@ -97,6 +98,22 @@ bool ClusterIndex::hasSelectivityEstimate() const {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unsupported cluster storage engine");
   return true;
+}
+
+/// @brief default implementation for selectivityEstimate
+double ClusterIndex::selectivityEstimate(StringRef const* extra) const {
+  TRI_ASSERT(hasSelectivityEstimate());
+  if (_unique) {
+    return 1.0;
+  }
+  
+  // floating-point tolerance
+  TRI_ASSERT(_clusterSelectivity >= 0.0 && _clusterSelectivity <= 1.00001);
+  return _clusterSelectivity;
+}
+
+void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
+  _clusterSelectivity = estimate;
 }
 
 bool ClusterIndex::isPersistent() const {

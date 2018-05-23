@@ -286,7 +286,7 @@ void SchedulerFeature::buildControlCHandler() {
   // least one thread.
   sigset_t all;
   sigemptyset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, 0);
+  pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
   auto ioService = _scheduler->managerService();
   _exitSignals = std::make_shared<asio::signal_set>(*ioService, SIGINT,
