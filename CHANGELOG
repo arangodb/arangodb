@@ -1,9 +1,12 @@
 v3.3.10 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5252: Empty result if FULLTEXT() is used together with LIMIT offset
+
+* fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+
 * inception was ignoring leader's configuration
 
-* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 v3.3.9 (2018-05-17)
 -------------------
