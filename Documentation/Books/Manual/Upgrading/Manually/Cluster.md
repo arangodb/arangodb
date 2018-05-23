@@ -29,9 +29,9 @@ You can read about the details on how to deploy your cluster indendently of the
 standalone instance in the [cluster deployment preliminary](../../Deployment/Cluster/PreliminaryInformation.md).
 
 In the following, we assume that you don't use the standalone instance from the
-package but only a cluster instance, and we will move the standalone instance
-out of the way if necessary so you have to make as little changes as possible to
-the running cluster.
+package but only a manually started cluster instance, and we will move the
+standalone instance out of the way if necessary so you have to make as little
+changes as possible to the running cluster.
 
 ### Install the new ArangoDB version binary
 
@@ -77,7 +77,8 @@ $ update-rc.d -f arangodb3 remove
 
 ### Set supervision in maintenance mode
 
-The following API calls will activate and de-activate the Maintenance mode of the Supervision job:
+It is required to disable _cluster_ supervision in order to upgrade your _cluster.The
+following API calls will activate and de-activate the Maintenance mode of the Supervision job:
 
 You might use _curl_ to send the API call.
 
@@ -97,6 +98,9 @@ It will be reactivated automatically in 60 minutes unless this call is repeated 
 
 #### Deactivate Maintenance mode:
 
+The _cluster_ supervision reactivates 60 minutes after disabling it. In case the upgrade procedure
+is finished earlier, the supervision can be manually reactivated by the following API call:
+
 `curl -u username:password <coordinator>/_admin/cluster/maintenance -XPUT -d'"off"'`
 
 For example:
@@ -108,10 +112,12 @@ curl http://localhost:7002/_admin/cluster/maintenance -XPUT -d'"off"'
 
 ### Upgrade the _cluster_ processes
 
-Now all the cluster (_arangod_) processes (_Agents_, _DBServers_ and _Coordinators_) have to be upgraded on each node.
+Now all the cluster (_arangod_) processes (_Agents_, _DBServers_ and _Coordinators_) have to be
+upgraded on each node.
 
+**Note:** The maintenance mode has to be activated.
 
-In order to stop the _arangod_ processes  we will need to use a command like `kill -15`:
+In order to stop the _arangod_ processes we will need to use a command like `kill -15`:
 
 ```
 kill -15 <pid-of-arangod-process>
@@ -152,7 +158,6 @@ The following procedure is upgrading _Agent_, _DBServer_ and _Coordinator_ on on
 
 **Note:** The starting commands of _Agent_, _DBServer_ and _Coordinator_ have to be reused.
 
-
 ##### Stop the _Agent_
 
 ```
@@ -161,7 +166,7 @@ kill -15 <pid-of-agent>
 
 ##### Upgrade the _Agent_
 
-The _arangod_ process has of the _Agent_ has to be upgraded using the same command that has
+The _arangod_ process of the _Agent_ has to be upgraded using the same command that has
 been used before with the additional option:
 
 ```
@@ -178,12 +183,12 @@ been used before (without the additional option).
 ##### Stop the _DBServer_
 
 ```
-kill -9 <pid-of-dbserver>
+kill -15 <pid-of-dbserver>
 ```
 
 ##### Upgrade the _DBServer_
 
-The _arangod_ process has of the _DBServer_ has to be upgraded using the same command that has
+The _arangod_ process of the _DBServer_ has to be upgraded using the same command that has
 been used before with the additional option:
 
 ```
@@ -200,19 +205,19 @@ been used before (without the additional option).
 ##### Stop the _Coordinator_
 
 ```
-kill -9 <pid-of-coordinator>
+kill -15 <pid-of-coordinator>
 ```
 
 ##### Upgrade the _Coordinator_
 
-The _arangod_ process has of the _Coordinator_ has to be upgraded using the same command that has
+The _arangod_ process of the _Coordinator_ has to be upgraded using the same command that has
 been used before with the additional option:
 
 ```
 --database.auto-upgrade=true
 ```
 
-The Agent will stop automatically after the upgrade.
+The _Coordinator_ will stop automatically after the upgrade.
 
 ##### Restart the _Coordinator_
 
@@ -221,3 +226,7 @@ been used before (without the additional option).
 
 After repeating this process on every node all _Agents_, _DBServers_ and _Coordinators_ are upgraded and the manual upgrade
 has successfully finished.
+
+The _cluster_ supervision is reactivated after 60 minutes or by the API call:
+
+`curl -u username:password <coordinator>/_admin/cluster/maintenance -XPUT -d'"off"'`
