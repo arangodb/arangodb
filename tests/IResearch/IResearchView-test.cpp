@@ -337,7 +337,7 @@ SECTION("test_drop") {
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
 }
-/*
+
 SECTION("test_drop_with_link") {
   std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-123")).utf8();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
@@ -375,7 +375,7 @@ SECTION("test_drop_with_link") {
   CHECK((true == !vocbase.lookupView("testView")));
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
 }
-*/
+
 SECTION("test_drop_cid") {
   static std::vector<std::string> const EMPTY;
 

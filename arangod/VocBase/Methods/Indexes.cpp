@@ -569,8 +569,9 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
   TRI_idx_iid_t iid = 0;
   if (ServerState::instance()->isCoordinator()) {
-    CollectionNameResolver resolver(&(collection->vocbase()));
+    CollectionNameResolver resolver(collection->vocbase());
     Result res = Indexes::extractHandle(collection, &resolver, indexArg, iid);
+
     if (!res.ok()) {
       return res;
     }

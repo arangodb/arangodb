@@ -33,7 +33,7 @@
 using namespace arangodb::aql;
 
 /// @brief convert the statistics to VelocyPack
-void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
+void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) const {
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
@@ -41,8 +41,11 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("filtered", VPackValue(filtered));
   builder.add("httpRequests", VPackValue(httpRequests));
-  builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
-  builder.add("count", VPackValue(count));
+  if (reportFullCount) {
+    // fullCount is optional
+    builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
+  }
+  //builder.add("count", VPackValue(count));
   builder.add("executionTime", VPackValue(executionTime));
   
   if (!nodes.empty()) {
@@ -62,7 +65,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
 
 void ExecutionStats::toVelocyPackStatic(VPackBuilder& builder) {
   ExecutionStats s;
-  s.toVelocyPack(builder);
+  s.toVelocyPack(builder, true);
 }
 
 /// @brief sumarize two sets of ExecutionStats
@@ -116,11 +119,11 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
   if (slice.hasKey("httpRequests")) {
     httpRequests = slice.get("httpRequests").getNumber<int64_t>();
   }
-  
+ /* 
   if (slice.hasKey("count")) {
     count = slice.get("count").getNumber<int64_t>();
   }
-
+*/
   // note: fullCount is an optional attribute!
   if (slice.hasKey("fullCount")) {
     fullCount = slice.get("fullCount").getNumber<int64_t>();

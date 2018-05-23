@@ -56,7 +56,7 @@ struct ExecutionStats {
   
  public:
   /// @brief convert the statistics to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
   /// @brief create empty statistics for VelocyPack
   static void toVelocyPackStatic(arangodb::velocypack::Builder&);

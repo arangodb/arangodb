@@ -4,6 +4,8 @@ devel
 
 * The AQL Editor in the Web UI now supports GeoJSON types and is able to render them.
 
+* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header
 

@@ -287,7 +287,7 @@ std::unique_ptr<TransactionState> MMFilesEngine::createTransactionState(
     transaction::Options const& options
 ) {
   return std::unique_ptr<TransactionState>(
-    new MMFilesTransactionState(vocbase, options)
+    new MMFilesTransactionState(vocbase, TRI_NewTickServer(), options)
   );
 }
 

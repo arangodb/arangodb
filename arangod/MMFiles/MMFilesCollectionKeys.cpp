@@ -43,9 +43,12 @@
 
 using namespace arangodb;
 
-MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::unique_ptr<CollectionGuard> guard,
-                                             TRI_voc_tick_t blockerId, double ttl)
-    : CollectionKeys(vocbase, ttl),
+MMFilesCollectionKeys::MMFilesCollectionKeys(
+    TRI_vocbase_t& vocbase,
+    std::unique_ptr<CollectionGuard> guard,
+    TRI_voc_tick_t blockerId,
+    double ttl
+): CollectionKeys(&vocbase, ttl),
       _guard(std::move(guard)),
       _ditch(nullptr),
       _resolver(vocbase),
@@ -181,7 +184,7 @@ void MMFilesCollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
   if (from >= _vpack.size() || from >= to || to == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   for (size_t i = from; i < to; ++i) {
     VPackSlice current(_vpack.at(i));
     TRI_ASSERT(current.isObject());
@@ -203,9 +206,10 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size
   if (!ids.isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-        
+
   auto buffer = result.buffer();
   size_t offset = 0;
+
   for (auto const& it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -216,7 +220,7 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size
     if (position >= _vpack.size()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
-    
+
     if (offset < offsetInChunk) {
       // skip over the initial few documents
       result.add(VPackValue(VPackValueType::Null));
@@ -233,4 +237,3 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size
     ++offset;
   }
 }
-

@@ -75,7 +75,7 @@ static bool SignalHandler(DWORD eventType) {
 
 #else
 
-static void SignalHandler(int signal) {
+static void SignalHandler(int /*signal*/) {
   // get the instance of the console
   auto instance = SINGLETON.load();
 
@@ -106,7 +106,7 @@ class V8Completer : public Completer {
   ~V8Completer() {}
 
  public:
-  bool isComplete(std::string const& source, size_t lineno) override final {
+  bool isComplete(std::string const& source, size_t /*lineno*/) override final {
     int openParen = 0;
     int openBrackets = 0;
     int openBraces = 0;
@@ -395,7 +395,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate,
   sigemptyset(&sa.sa_mask);
   sa.sa_handler = &SignalHandler;
 
-  int res = sigaction(SIGINT, &sa, 0);
+  int res = sigaction(SIGINT, &sa, nullptr);
 
   if (res != 0) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to install signal handler";

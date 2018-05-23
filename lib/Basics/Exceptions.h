@@ -97,7 +97,7 @@ class Exception final : public virtual std::exception {
   int code() const noexcept;
   void addToMessage(std::string const&);
  private:
-  void appendLocation();
+  void appendLocation() noexcept;
 
  protected:
   std::string _errorMessage;

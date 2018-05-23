@@ -70,8 +70,8 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Register query with id " << id << " : " << query->queryString();
-  auto vocbase = query->vocbase();
- 
+  auto& vocbase = query->vocbase();
+
   // create the query info object outside of the lock 
   auto p = std::make_unique<QueryInfo>(id, query, ttl);
 
@@ -79,16 +79,17 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl) {
   {
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto m = _queries.find(vocbase->name());
-    if (m == _queries.end()) {
-      m = _queries.emplace(vocbase->name(),
-                          std::unordered_map<QueryId, QueryInfo*>()).first;
+    auto m = _queries.find(vocbase.name());
 
-      TRI_ASSERT(_queries.find(vocbase->name()) != _queries.end());
+    if (m == _queries.end()) {
+      m = _queries.emplace(
+        vocbase.name(), std::unordered_map<QueryId, QueryInfo*>()
+      ).first;
+      TRI_ASSERT(_queries.find(vocbase.name()) != _queries.end());
     }
-    
+
     auto q = m->second.find(id);
-    
+
     if (q != m->second.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
@@ -324,7 +325,7 @@ void QueryRegistry::destroyAll() {
 }
 
 QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl)
-    : _vocbase(query->vocbase()), 
+    : _vocbase(&(query->vocbase())),
       _id(id), 
       _query(query), 
       _isOpen(false), 

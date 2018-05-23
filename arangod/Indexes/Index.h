@@ -105,8 +105,7 @@ class Index {
   inline TRI_idx_iid_t id() const { return _iid; }
 
   /// @brief return the index fields
-  inline std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  fields() const {
+  inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
     return _fields;
   }
 
@@ -158,14 +157,7 @@ class Index {
 
   /// @brief whether or not any attribute is expanded
   inline bool hasExpansion() const {
-    for (auto const& it : _fields) {
-      for (auto const& it2 : it) {
-        if (it2.shouldExpand) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return _useExpansion;
   }
 
   /// @brief return the underlying collection
@@ -198,8 +190,6 @@ class Index {
   }
 
   virtual char const* typeName() const = 0;
-
-  virtual bool allowExpansion() const = 0;
 
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
@@ -304,6 +294,9 @@ class Index {
   virtual bool supportsSortCondition(arangodb::aql::SortCondition const*,
                                      arangodb::aql::Variable const*, size_t,
                                      double&, size_t&) const;
+  
+  virtual arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                                      arangodb::aql::Variable const*) const;
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods*,
                                               ManagedDocumentResult*,
@@ -312,9 +305,6 @@ class Index {
                                               IndexIteratorOptions const&) {
     return nullptr; // IResearch will never use this
   };
-
-  virtual arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,
@@ -326,8 +316,8 @@ class Index {
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
   ///        entries.
-  virtual void expandInSearchValues(arangodb::velocypack::Slice const,
-                                    arangodb::velocypack::Builder&) const;
+  void expandInSearchValues(arangodb::velocypack::Slice const,
+                            arangodb::velocypack::Builder&) const;
 
   virtual void warmup(arangodb::transaction::Methods* trx,
                       std::shared_ptr<basics::LocalTaskQueue> queue);
@@ -336,24 +326,17 @@ class Index {
   // unfortunatly access the logical collection on the coordinator is not always safe!
   std::pair<bool,double> updateClusterEstimate(double defaultValue = 0.1);
 
- protected:
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
   //returns estimate for index in cluster - the bool is true if the index was found
 
- private:
-  /// @brief set fields from slice
-  void setFields(velocypack::Slice const& slice, bool allowExpansion);
-
  protected:
   TRI_idx_iid_t const _iid;
-
   LogicalCollection* _collection;
-
-  std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
+  bool const _useExpansion;
 
   mutable bool _unique;
-
   mutable bool _sparse;
 
   double _clusterSelectivity;

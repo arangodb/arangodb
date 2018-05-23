@@ -1561,7 +1561,7 @@ AqlValue Functions::FindFirst(arangodb::aql::Query* query,
 
   auto locale = LanguageFeature::instance()->getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  StringSearch search(uSearchBuf, uBuf, locale, NULL, status);
+  StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   for(int pos = search.first(status);
       U_SUCCESS(status) && pos != USEARCH_DONE;
@@ -1632,7 +1632,7 @@ AqlValue Functions::FindLast(arangodb::aql::Query* query,
 
   auto locale = LanguageFeature::instance()->getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  StringSearch search(uSearchBuf, uBuf, locale, NULL, status);
+  StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   int foundPos = -1;
   for(int pos = search.first(status);
@@ -3986,8 +3986,7 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
 
-  TRI_vocbase_t* vocbase = query->vocbase();
-
+  auto& vocbase = query->vocbase();
   std::vector<LogicalCollection*> colls;
 
   // clean memory
@@ -4003,9 +4002,10 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
         }
       }
     };
-    colls = GetCollectionsCluster(vocbase);
+
+    colls = GetCollectionsCluster(&vocbase);
   } else {
-    colls = vocbase->collections(false);
+    colls = vocbase.collections(false);
     cleanup = []() {};
   }
 
@@ -4019,12 +4019,12 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
             });
 
   size_t const n = colls.size();
+
   for (size_t i = 0; i < n; ++i) {
     LogicalCollection* coll = colls[i];
 
     if (ExecContext::CURRENT != nullptr &&
-        !ExecContext::CURRENT->canUseCollection(vocbase->name(), coll->name(),
-                                                auth::Level::RO)) {
+        !ExecContext::CURRENT->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
       continue;
     }
 
@@ -4703,7 +4703,6 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   AqlValue p2 = ExtractFunctionParameterValue(parameters, 1);
   AqlValue p3 = ExtractFunctionParameterValue(parameters, 2);
 
-  LOG_TOPIC(WARN, Logger::QUERIES) << "IS_IN_POLYGON is deprecated use GEO_CONTAINS";
   if (!coords.isArray()) {
     ::registerWarning(query, "IS_IN_POLYGON", TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(AqlValueHintNull());
@@ -6302,7 +6301,25 @@ AqlValue Functions::CurrentDatabase(arangodb::aql::Query* query,
                                     VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "CURRENT_DATABASE", 0, 0);
 
-  return AqlValue(query->vocbase()->name());
+  return AqlValue(query->vocbase().name());
+}
+
+/// @brief function CURRENT_USER
+AqlValue Functions::CurrentUser(
+    arangodb::aql::Query* query, transaction::Methods* trx,
+    VPackFunctionParameters const& parameters) {
+
+  if (ExecContext::CURRENT == nullptr) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  std::string const& username = ExecContext::CURRENT->user();
+
+  if (username.size() == 0) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  return AqlValue(username);
 }
 
 /// @brief function COLLECTION_COUNT
@@ -6721,7 +6738,7 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
       args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
     } else {
       // a call to a built-in V8 function
-      jsName = "AQL_" + func->nonAliasedName;
+      jsName = "AQL_" + func->name;
       for (int i = 0; i < n; ++i) {
         args[i] = invokeParams[i].toV8(isolate, trx);
       }

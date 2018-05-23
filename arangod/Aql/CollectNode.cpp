@@ -56,9 +56,9 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() {}
 
 /// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // group variables
   nodes.add(VPackValue("groups"));
