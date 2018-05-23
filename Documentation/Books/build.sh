@@ -80,7 +80,7 @@ function check-summary()
 
     if test "$(comm -3 /tmp/is_md.txt /tmp/is_summary.txt|wc -l)" -ne 0; then
         echo "${ERR_COLOR}"
-        echo "not all files are mapped to the summary!"
+        echo "not all files of ${NAME} are mapped to the summary!"
         echo " files found       |    files in summary"
         comm -3 /tmp/is_md.txt /tmp/is_summary.txt
         echo "${RESET}"
@@ -106,7 +106,7 @@ function book-check-restheader-leftovers()
 {
     NAME="$1"
     echo "${STD_COLOR}##### checking for restheader leftovers in ${NAME}${RESET}"
-    ERRORS=$(find "ppbooks/${NAME}" -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
+    ERRORS=$(find "ppbooks/${NAME}" -not \( -path "ppbooks/Drivers/SpringData/*" -prune \) -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
         echo "found these unconverted Swagger Restapi tags: "
@@ -149,7 +149,7 @@ function ppbook-check-html-link()
     echo "${ALLBOOKS}" | tr " " "\n" | sed -e 's;^;/;' -e 's;$;/;' > /tmp/books.regex
 
     set +e
-    egrep -r '\[.*\]\(.*\)' "ppbooks/${NAME}"| \
+    grep -r -E '\[.*\]\(.*\)' "ppbooks/${NAME}"| \
         grep '\.md:'| grep 'html'| \
         grep -v 'http://' | \
         grep -v 'https://' | \
@@ -172,7 +172,7 @@ function ppbook-check-directory-link()
     NAME="$1"
     echo "${STD_COLOR}##### checking for invalid md links in ${NAME}${RESET}"
     set +e
-    ERRORS=$(egrep -r '\[.*\]\(.*\)' "ppbooks/${NAME}" | \
+    ERRORS=$(grep -r -E '\[.*\]\(.*\)' "ppbooks/${NAME}" | \
                     grep '\.md:' | \
                     grep -v html | \
                     grep -v http://| \
@@ -218,7 +218,7 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md\"[ />]' {} \; | grep -v data-filepath)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '"[a-zA-Z/\.]*\.md\"[ />]' {} \; -print | grep -v data-filepath)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
@@ -229,7 +229,7 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md#' {} \; -print)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '"[a-zA-Z/\.]*\.md#' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
@@ -286,7 +286,7 @@ function check-dangling-anchors()
 
     echo "${STD_COLOR}##### fetching anchors from generated http files${RESET}"
     grep -R "a href.*#" books/ | \
-        egrep -v "(styles/header\.js|/app\.js|class=\"navigation|https*://|href=\"#\")" | \
+        grep -v -E "(styles/header\\.js|/app\\.js|class=\"navigation|https*://|href=\"#\")" | \
         sed 's;\(.*\.html\):.*a href="\(.*\)#\(.*\)">.*</a>.*;\1,\2,\3;' | grep -v " " > /tmp/anchorlist.txt
 
     echo "${STD_COLOR}##### cross checking anchors${RESET}"
@@ -330,6 +330,8 @@ function check-dangling-anchors()
     if test "${NO}" -gt 0; then
         echo "${ERR_COLOR}"
         echo "${NO} Dangling anchors found!"
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -365,6 +367,7 @@ function build-book-symlinks()
 
 function build-book()
 {
+    python ../Scripts/codeBlockReader.py || exit 1
     export NAME="$1"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
@@ -434,7 +437,7 @@ function build-book()
         RELEASE_DIRECTORY=devel
     else
         VERSION="${newVersionNumber}"
-        RELEASE_DIRECTORY=$(sed "s;\.[0-9]*$;;" <<< "${newVersionNumber}")
+        RELEASE_DIRECTORY=$(sed "s;\\.[0-9]*$;;" <<< "${newVersionNumber}")
     fi
     export VERSION
 
@@ -527,14 +530,16 @@ function check-docublocks()
     grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v '@startDocuBlockInline' |\
         grep -v ppbook |\
+        grep -v outline-regexp |\
         grep -v allComments.txt |\
         grep -v Makefile |\
         grep -v '.*~:.*' |\
         grep -v '.*#.*:.*' \
              > /tmp/rawindoc.txt
 
-    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
+    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" .  |\
         grep -v ppbook |\
+        grep -v outline-regexp |\
         grep -v allComments.txt |\
         grep -v Makefile |\
         grep -v '.*~:.*' |\
@@ -545,24 +550,29 @@ function check-docublocks()
 
     set +e
     grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
+    grep -R '//.*@startDocuBlock' ../DocuBlocks     ../../js ../../arangod ../../lib/ --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" |grep -v aardvark |grep -v outline-regexp >> /tmp/rawinprog.txt
+
     # searching the Inline docublocks needs some more blacklisting:
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
+        grep -v outline-regexp |\
         grep -v allComments.txt |\
-        grep -v Makefile |\
+        grep -v build.sh |\
         grep -v '.*~:.*' |\
         grep -v '.*#.*:.*' \
              >> /tmp/rawinprog.txt
     set -e
     echo "Generated: startDocuBlockInline errorCodes">> /tmp/rawinprog.txt
 
-    sed -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawinprog.txt  |sort > /tmp/inprog_raw.txt
+    sed -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawinprog.txt  |sort -u > /tmp/inprog_raw.txt
     sort -u < /tmp/inprog_raw.txt > /tmp/inprog.txt
 
     if test "$(wc -l < /tmp/inprog.txt)" -ne "$(wc -l < /tmp/inprog_raw.txt)"; then 
         echo "${ERR_COLOR}"
         echo "Duplicate entry found in the source trees:"
         comm -3 /tmp/inprog_raw.txt /tmp/inprog.txt
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -584,6 +594,8 @@ function check-docublocks()
                 grep "$grepit" /tmp/rawinprog.txt | sed "s;/// @startDocuBlock;\t\t;"
             done
         fi
+        echo "${WRN_COLOR}"
+        echo "${1}"
         echo "${RESET}"
         exit 1
     fi
@@ -607,13 +619,12 @@ function build-book-keep-md()
 {
     NAME="$1"
     test -d books || mkdir books
-    python ../Scripts/codeBlockReader.py || exit 1
     build-book "${NAME}"
 }
 
 function build-books()
 {
-    rm -rf /tmp/tags
+    rm -rf /tmp/tags books
     set -e
     for book in ${ALLBOOKS}; do
         clean-intermediate "${book}"
@@ -627,10 +638,9 @@ function build-books()
         ppbook-check-html-link "${book}"
     done
 
-    # check-docublocks
-    check-dangling-anchors
-    echo "${STD_COLOR}##### Generating redirect index.html${RESET}"; \
-    echo '<html><head><meta http-equiv="refresh" content="0; url=Manual/"></head><body></body></html>' > books/index.html
+    check-docublocks ""
+    check-dangling-anchors ""
+    cd books; ln -s Users/* .
 }
 
 function build-dist-books()
@@ -725,7 +735,6 @@ while [ $# -gt 0 ];  do
     esac
 done
 
-
 case "$VERB" in
     build-books)
         build-books
@@ -737,7 +746,18 @@ case "$VERB" in
             exit 1
         fi
         build-book "$NAME"
+        check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+        check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
         ;;
+    check-book)
+	check-summary "${NAME}"
+    	book-check-leftover-docublocks "${NAME}"
+    	book-check-restheader-leftovers "${NAME}"
+    	ppbook-check-directory-link "${NAME}"
+    	book-check-images-referenced "${NAME}"
+	book-check-markdown-leftovers "${NAME}"
+        check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+	;;
     build-dist-books)
         build-dist-books
         ;;
@@ -753,6 +773,15 @@ case "$VERB" in
         clean "$@"
         ;;
     *)
+        if test -d "${VERB}"; then
+            guessBookName="${VERB/\/}"
+            if [[ $ALLBOOKS = *"${guessBookName}"* ]]; then
+                build-book "$guessBookName"
+                check-docublocks "some of the above errors may be because of referenced books weren't rebuilt."
+                check-dangling-anchors "some of the above errors may be because of referenced books weren't rebuilt."
+                exit 0
+            fi
+        fi
         printHelp
         exit 1
         ;;
