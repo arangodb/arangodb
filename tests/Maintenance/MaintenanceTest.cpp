@@ -92,20 +92,7 @@ namespace arangodb {
 class LogicalCollection;
 }
 
-TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
-
-  auto plan = createNode(planStr);
-  auto current = createNode(currentStr);
-
-  std::vector<std::string> dbsIds;
-  for (auto const& dbs : plan("/arango/Plan/DBServers").children()) {
-    dbsIds.push_back(dbs.first);
-  }
-  
-  std::map<std::string, Node> localNodes {
-    {dbsIds[2], createNode(dbs1Str)},
-    {dbsIds[0], createNode(dbs2Str)},
-    {dbsIds[1], createNode(dbs3Str)}};  
+TEST_CASE("ActionDescription", "[cluster][maintenance]") {
 
   SECTION("Construct minimal ActionDescription") {
     ActionDescription desc(std::map<std::string,std::string>{{"name", "SomeAction"}});
@@ -228,6 +215,23 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
     REQUIRE(desc.properties()->slice().get("array")[2].copyString() == hello );
   }
     
+}
+
+TEST_CASE("ActionPhases", "[cluster][maintenance]") {
+
+  auto plan = createNode(planStr);
+  auto current = createNode(currentStr);
+
+  std::vector<std::string> dbsIds;
+  for (auto const& dbs : plan("/arango/Plan/DBServers").children()) {
+    dbsIds.push_back(dbs.first);
+  }
+  
+  std::map<std::string, Node> localNodes {
+    {dbsIds[2], createNode(dbs1Str)},
+    {dbsIds[0], createNode(dbs2Str)},
+    {dbsIds[1], createNode(dbs3Str)}};  
+
   SECTION("In sync should have 0 effects") {
     
     std::vector<ActionDescription> actions;
