@@ -1,19 +1,13 @@
---> TMP <---
+Manually Upgrading a _Cluster_ Deployment
+=========================================
 
+This page will guide you through the process of manual upgrade of a [Cluster](../../Scalability/Cluster/README.md)
+setup. The different nodes in a cluster can be upgraded one at a time without
+incurring downtime of the cluster and very short downtimes of the single nodes.
 
-Upgrading a Cluster
-===================
+The manual upgrade procedure described in this _Section_ can be used to upgrade
+ to a new hotfix, or to perform an upgrade to a new minor version of ArangoDB.
 
-This page will guide you through the process of an in-place upgrade (see also
-[General Upgrade Information](../GeneralInfo/README.md)). The different
-nodes in a cluster can be updated one at a time without incurring downtime
-of the cluster and very short downtimes of the single nodes.
-
-
-Upgrading a Cluster on Debian & Ubuntu
-======================================
-
-Please note that this procedure is not guaranteed to work for upgrades between minor versions, e.g. from `3.2.x` to `3.3.x`, but only for upgrades between patch versions, e.g. from `3.2.6` to `3.2.12`.
 
 Preparations
 ------------
@@ -39,91 +33,185 @@ package but only a cluster instance, and we will move the standalone instance
 out of the way if necessary so you have to make as little changes as possible to
 the running cluster.
 
-Install the new version
------------------------
+### Install the new ArangoDB version binary
 
-Now you can install the new package version. You don't have to stop the cluster
-process(es) before doing that.
+The first step is to install the new ArangoDB package. 
 
-For example, if you want to upgrade to `3.2.12-1` on Debian or Ubuntu, either call
+**Note:** you do not have to stop the _cluster_ (_arangod_) processes before upgrading it.
+
+For example, if you want to upgrade to `3.3.9-1` on Debian or Ubuntu, either call
 
 ```
-$ apt install arangodb=3.2.12-1
+$ apt install arangodb=3.3.9
 ```
 
-(`apt-get` on older versions) if you've added the ArangoDB repository. Or
+(`apt-get` on older versions) if you have added the ArangoDB repository. Or
 install a specific package using
 
 ```
-$ dpkg -i arangodb3-3.2.12-1_amd64.deb
+$ dpkg -i arangodb3-3.3.9-1_amd64.deb
 ```
 
-after you've downloaded the file. See https://download.arangodb.com/.
+after you have downloaded the corresponding file from https://download.arangodb.com/.
 
-Stop standalone instance
-------------------------
 
-As the package will have started the standalone instance, you might want to
-stop it now.
+#### Stop the Standalone Instance
+
+As the package will automatically start the standalone instance, you might want to
+stop it now, as otherwise this standalone instance that is started on your machine
+can create some confusion later. As you are starting the cluster processes manually
+you do not need this standalone instance, and you can hence stop it:
 
 ```
 $ service arangodb3 stop
 ```
 
 Also, you might want to remove the standalone instance from the default
-runlevels to prevent it to start on the next reboot; again, how this is done
-depends on your distribution and init system. For example, on older Debian and
-Ubuntu systems using a SystemV-compatible init, you can use
+_runlevels_ to prevent it to start on the next reboot of your machine. How this
+is done depends on your distribution and _init_ system. For example, on older Debian
+and Ubuntu systems using a SystemV-compatible _init_, you can use:
 
 ```
 $ update-rc.d -f arangodb3 remove
 ```
 
-Restart arangod processes
--------------------------
+### Set supervision in maintenance mode
 
-Now all `arangod` processes have to be restarted.
+The following API calls will activate and de-activate the Maintenance mode of the Supervision job:
 
-### Using the starter
+You might use _curl_ to send the API call.
 
-If you're using the [ArangoDB starter](../../Manual/GettingStarted/Starter),
-shut down the processes one by one. The starter process `arangodb` will restart
-them for you afterwards.
+Activate Maintenance mode:
 
-#### Have a look at the running processes
+```
+curl http://localhost:7002/_admin/cluster/maintenance -XPUT -d'"on"'
+{"error":false,"warning":"Cluster supervision deactivated. 
+It will be reactivated automatically in 60 minutes unless this call is repeated until then."}
+```
+**Note:** In case the manual upgrade takes longer than 60 minutes, the API call has to be resend.
+
+
+Deactivate Maintenance mode:
+
+```
+curl http://localhost:7002/_admin/cluster/maintenance -XPUT -d'"off"'
+{"error":false,"warning":"Cluster supervision reactivated."}
+```
+
+### Upgrade the _cluster_ processes
+
+Now all the cluster (_arangod_) processes (_Agents_, _DBServers_ and _Coordinators_) have to be upgraded on each node.
+
+
+In order to stop the _arangod_ processes  we will need to use a command like `kill -15`:
+
+```
+kill -15 <pid-of-arangod-process>
+```
+
+The _pid_ associated to your _cluster_ can be checked using a command like _ps_:
+
 
 ```
 ps -C arangod -fww
 ```
 
-#### Stop the agent (if applicable)
+The output of the command above does not only show the PID's of all _arangod_ 
+processes but also the used commands, which can be useful for the following
+restart of all _arangod_ processes.
 
-```
-pkill -f '\<arangod\>.*agent'
-```
-
-#### Stop the DBServer (if applicable)
-
-```
-pkill -f '\<arangod\>.*dbserver'
-```
-
-#### Stop the coordinator (if applicable)
-
-```
-pkill -f '\<arangod\>.*coordinator'
-```
-
-#### Check if the processes are up again
+The output below is from a test machine where three _Agents_, two _DBServers_
+and two _Coordinators_ are running locally. In a more production-like scenario,
+you will find only one instance of each one running:
 
 ```
 ps -C arangod -fww
+UID        PID  PPID  C STIME TTY          TIME CMD
+max      29075  8072  0 13:50 pts/2    00:00:42 arangod --server.endpoint tcp://0.0.0.0:5001 --agency.my-address=tcp://127.0.0.1:5001 --server.authentication false --agency.activate true --agency.size 3 --agency.endpoint tcp://127.0.0.1:5001 --agency.supervision true --log.file a1 --javascript.app-path /tmp --database.directory agent1
+max      29208  8072  2 13:51 pts/2    00:02:08 arangod --server.endpoint tcp://0.0.0.0:5002 --agency.my-address=tcp://127.0.0.1:5002 --server.authentication false --agency.activate true --agency.size 3 --agency.endpoint tcp://127.0.0.1:5001 --agency.supervision true --log.file a2 --javascript.app-path /tmp --database.directory agent2
+max      29329 16224  0 13:51 pts/3    00:00:42 arangod --server.endpoint tcp://0.0.0.0:5003 --agency.my-address=tcp://127.0.0.1:5003 --server.authentication false --agency.activate true --agency.size 3 --agency.endpoint tcp://127.0.0.1:5001 --agency.supervision true --log.file a3 --javascript.app-path /tmp --database.directory agent3
+max      29461 16224  1 13:53 pts/3    00:01:11 arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:6001 --cluster.my-address tcp://127.0.0.1:6001 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --log.file db1 --javascript.app-path /tmp --database.directory dbserver1
+max      29596  8072  0 13:54 pts/2    00:00:56 arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:6002 --cluster.my-address tcp://127.0.0.1:6002 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --log.file db2 --javascript.app-path /tmp --database.directory dbserver2
+max      29824 16224  1 13:55 pts/3    00:01:53 arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:7001 --cluster.my-address tcp://127.0.0.1:7001 --cluster.my-role COORDINATOR --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --log.file c1 --javascript.app-path /tmp --database.directory coordinator1
+max      29938 16224  2 13:56 pts/3    00:02:13 arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:7002 --cluster.my-address tcp://127.0.0.1:7002 --cluster.my-role COORDINATOR --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --log.file c2 --javascript.app-path /tmp --database.directory coordinator2
+
 ```
 
-If you haven't used the starter but executed `arangod` directly, you still have
-to stop the process(es) (by sending `SIGTERM`), but start it (or them) again
-manually.
 
-After repeating this process on every node you're done!
+#### Upgrade a cluster node
+
+The following procedure is upgrading _Agent_, _DBServer_ and _Coordinator_ on one node.
+
+**Note:** The starting commands of _Agent_, _DBServer_ and _Coordinator_ have to be reused.
+
+
+##### Stop the _Agent_
+
+```
+kill -15 <pid-of-agent>
+```
+
+##### Upgrade the _Agent_
+
+The _arangod_ process has of the _Agent_ has to be upgraded using the same command that has
+been used before with the additional option:
+
+```
+--database.auto-upgrade=true
+```
+
+The _Agent_ will stop automatically after the upgrade.
+
+##### Restart the _Agent_
+
+The _arangod_ process of the _Agent_ has to be upgraded using the same command that has
+been used before (without the additional option).
+
+##### Stop the _DBServer_
+
+```
+kill -9 <pid-of-dbserver>
+```
+
+##### Upgrade the _DBServer_
+
+The _arangod_ process has of the _DBServer_ has to be upgraded using the same command that has
+been used before with the additional option:
+
+```
+--database.auto-upgrade=true
+```
+
+The _DBServer_ will stop automatically after the upgrade.
+
+##### Restart the _DBServer_
+
+The _arangod_ process of the _DBServer_ has to be upgraded using the same command that has
+been used before (without the additional option).
+
+##### Stop the _Coordinator_
+
+```
+kill -9 <pid-of-coordinator>
+```
+
+##### Upgrade the _Coordinator_
+
+The _arangod_ process has of the _Coordinator_ has to be upgraded using the same command that has
+been used before with the additional option:
+
+```
+--database.auto-upgrade=true
+```
+
+The Agent will stop automatically after the upgrade.
+
+##### Restart the _Coordinator_
+
+The _arangod_ process of the _Coordinator_ has to be upgraded using the same command that has
+been used before (without the additional option).
+
+After repeating this process on every node all _Agents_, _DBServers_ and _Coordinators_ are upgraded and the rolling upgrade
+has successfully finished.
 
 
