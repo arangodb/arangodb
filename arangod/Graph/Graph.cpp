@@ -305,6 +305,49 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::getDocument(
   return std::make_pair(std::move(result), std::move(res));
 }
 
+ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdge(
+    const std::string& definitionName, const std::string& key,
+    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
+  // TODO inline collectionName or move code to a generalized removeDocument
+  // method
+  std::string const& collectionName = definitionName;
+
+  OperationOptions opOptions;
+  opOptions.waitForSync = waitForSync;
+  opOptions.returnOld = returnOld;
+
+  VPackBuilder builder;
+  VPackSlice search;
+  std::shared_ptr<VPackBuilder> builderPtr;
+
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::KeyString, VPackValue(key));
+    if (rev) {
+      opOptions.ignoreRevs = false;
+      builder.add(StaticStrings::RevString,
+                  VPackValue(TRI_RidToString(rev.get())));
+    }
+  }
+  search = builder.slice();
+
+  SingleCollectionTransaction trx{ctx(), collectionName,
+                                  AccessMode::Type::WRITE};
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  OperationResult result = trx.remove(collectionName, search, opOptions);
+
+  res = trx.finish(result.result);
+
+  return std::make_pair(std::move(result), std::move(res));
+}
+
 namespace getGraphFromCacheResult {
 struct Success {
   std::shared_ptr<Graph const> graph;

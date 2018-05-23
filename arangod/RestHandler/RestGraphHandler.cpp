@@ -32,6 +32,9 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Graphs.h"
 
+// TODO this is here for easy debugging during development. most log messages
+// using this should be removed or at least have their log level reduced before
+// this is merged.
 #define S1(x) #x
 #define S2(x) S1(x)
 #define LOGPREFIX(func)                                                   \
@@ -265,6 +268,8 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
       edgeActionRead(graph, edgeDefinitionName, edgeKey);
       return RestStatus::DONE;
     case RequestType::DELETE_REQ:
+      edgeActionRemove(graph, edgeDefinitionName, edgeKey);
+      return RestStatus::DONE;
     case RequestType::PATCH:
     case RequestType::PUT:
     default:;
@@ -280,16 +285,16 @@ Result RestGraphHandler::vertexActionRead(
       << "key = " << key;
 
   bool isValidRevision;
-  TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
+  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    ifRid =
+    revision =
         UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
+  auto maybeRev = boost::make_optional(revision != 0, revision);
 
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(&_vocbase);
   GraphOperations gops{*graph, ctx};
-  auto maybeRev = boost::make_optional(ifRid != 0, ifRid);
   auto resultT = gops.getVertex(collectionName, key, maybeRev);
 
   if (!resultT.ok()) {
@@ -304,7 +309,7 @@ Result RestGraphHandler::vertexActionRead(
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       generateDocumentNotFound(collectionName, key);
-    } else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
+    } else if (maybeRev && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
       generatePreconditionFailed(result.slice());
     } else {
       generateTransactionError(collectionName, res, key);
@@ -325,46 +330,70 @@ Result RestGraphHandler::vertexActionRead(
 /// @brief generate response object: { error, code, vertex }
 void RestGraphHandler::generateVertex(VPackSlice vertex,
                                       VPackOptions const& options) {
+  vertex = vertex.resolveExternal();
+  resetResponse(rest::ResponseCode::OK);
+  addEtagHeader(vertex.get(StaticStrings::RevString));
   generateResultWithField("vertex", vertex, options);
 }
 
 /// @brief generate response object: { error, code, edge }
 void RestGraphHandler::generateEdge(VPackSlice edge,
                                     VPackOptions const& options) {
+  edge = edge.resolveExternal();
+  resetResponse(rest::ResponseCode::OK);
+  addEtagHeader(edge.get(StaticStrings::RevString));
   generateResultWithField("edge", edge, options);
+}
+
+/// @brief generate response object: { error, code, removed, old? }
+/// "old" is omitted if old is a NoneSlice.
+void RestGraphHandler::generateRemoved(bool removed, bool wasSynchronous,
+                                       VPackSlice old,
+                                       VPackOptions const& options) {
+  ResponseCode code;
+  if (wasSynchronous) {
+    code = rest::ResponseCode::OK;
+  } else {
+    code = rest::ResponseCode::ACCEPTED;
+  }
+  resetResponse(code);
+  VPackBuilder obj;
+  obj.add(VPackValue(VPackValueType::Object, true));
+  obj.add("removed", basics::VelocyPackHelper::BooleanValue(removed));
+  if (!old.isNone()) {
+    obj.add("old", old);
+  }
+  obj.close();
+  generateResultMergedWithObject(obj.slice(), options);
 }
 
 /// @brief generate response object: { error, code, key: value }
 void RestGraphHandler::generateResultWithField(std::string const& key,
                                                VPackSlice value,
                                                VPackOptions const& options) {
-  ResponseCode code = rest::ResponseCode::OK;
-  resetResponse(code);
+  VPackBuilder obj;
+  obj.add(VPackValue(VPackValueType::Object, true));
+  obj.add(key, value);
+  obj.close();
+  generateResultMergedWithObject(obj.slice(), options);
+}
 
-  value = value.resolveExternal();
-  std::string rev;
-  if (value.isObject()) {
-    rev = basics::VelocyPackHelper::getStringValue(
-        value, StaticStrings::RevString, "");
-  }
-
-  // set ETAG header
-  if (!rev.empty()) {
-    _response->setHeaderNC(StaticStrings::Etag, rev);
-  }
-
+/// @brief generate response object: MERGE({ error, code }, obj)
+void RestGraphHandler::generateResultMergedWithObject(
+    VPackSlice obj, VPackOptions const& options) {
   _response->setContentType(_request->contentTypeResponse());
 
   try {
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder tmp(buffer);
-    tmp.add(VPackValue(VPackValueType::Object, true));
-    tmp.add(StaticStrings::Error, VPackValue(false));
-    tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    tmp.add(key, value);
-    tmp.close();
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object, true));
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code,
+               VPackValue(static_cast<int>(_response->responseCode())));
+    result.close();
+    VPackBuilder merged =
+        basics::VelocyPackHelper::merge(result.slice(), obj, false, false);
 
-    writeResult(std::move(buffer), options);
+    writeResult(std::move(*merged.buffer().get()), options);
   } catch (...) {
     // Building the error response failed
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
@@ -381,16 +410,16 @@ Result RestGraphHandler::edgeActionRead(
       << "key = " << key;
 
   bool isValidRevision;
-  TRI_voc_rid_t ifRid = extractRevision("if-match", isValidRevision);
+  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
-    ifRid =
+    revision =
         UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
+  auto maybeRev = boost::make_optional(revision != 0, revision);
 
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(&_vocbase);
   GraphOperations gops{*graph, ctx};
-  auto maybeRev = boost::make_optional(ifRid != 0, ifRid);
   auto resultT = gops.getEdge(definitionName, key, maybeRev);
 
   if (!resultT.ok()) {
@@ -405,7 +434,7 @@ Result RestGraphHandler::edgeActionRead(
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       generateDocumentNotFound(definitionName, key);
-    } else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
+    } else if (maybeRev && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
       generatePreconditionFailed(result.slice());
     } else {
       generateTransactionError(definitionName, res, key);
@@ -436,4 +465,75 @@ std::shared_ptr<Graph const> RestGraphHandler::getGraph(
   }
 
   return graph;
+}
+// TODO this is very similar to (edge|vertex)ActionRead. find a way to reduce
+// the duplicate code.
+// TODO The tests check that, if "returnOld: true" is passed,  the result
+// contains the old value in the field "old". This is not documented!
+Result RestGraphHandler::edgeActionRemove(
+    const std::shared_ptr<const Graph> graph, const std::string& definitionName,
+    const std::string& key) {
+  LOG_TOPIC(WARN, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << "definitionName = " << definitionName << ", "
+      << "key = " << key;
+
+  bool waitForSync =
+      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+
+  bool returnOld =
+      extractBooleanParameter(StaticStrings::ReturnOldString, false);
+
+  bool isValidRevision;
+  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
+  if (!isValidRevision) {
+    revision =
+        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+  }
+  auto maybeRev = boost::make_optional(revision != 0, revision);
+
+  LOG_TOPIC(INFO, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << "opts: "
+      << "waitForSync = " << waitForSync << ", "
+      << "returnOld = " << returnOld << ", "
+      << "rev = " << (maybeRev ? maybeRev.get() : 0ul);
+
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(&_vocbase);
+  GraphOperations gops{*graph, ctx};
+
+  auto resultT =
+      gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
+
+  if (!resultT.ok()) {
+    generateTransactionError(definitionName, resultT, "");
+    return resultT.copy_result();
+  }
+
+  OperationResult& result = resultT.get().first;
+
+  Result res = resultT.get().second;
+
+  if (result.fail()) {
+    generateTransactionError(result);
+    return result.result;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError(definitionName, res, key);
+    return res;
+  }
+
+  generateRemoved(true, result.wasSynchronous, result.slice().get("old"),
+                  *ctx->getVPackOptionsForDump());
+
+  return Result();
+}
+
+/// @brief If rev is a string, set the Etag header to its value.
+/// rev is expected to be either None or a string.
+void RestGraphHandler::addEtagHeader(velocypack::Slice rev) {
+  TRI_ASSERT(rev.isString() || rev.isNone());
+  if (rev.isString()) {
+    _response->setHeaderNC(StaticStrings::Etag, rev.copyString());
+  }
 }

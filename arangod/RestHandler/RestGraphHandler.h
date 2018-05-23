@@ -40,6 +40,9 @@ class StandaloneContext;
 }
 
 class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
+ private:
+  graph::GraphCache& _graphCache;
+
  public:
   RestGraphHandler(GeneralRequest* request, GeneralResponse* response,
                    graph::GraphCache* graphCache);
@@ -54,6 +57,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   RestStatus execute() override;
 
+ private:
   boost::optional<RestStatus> executeGharial();
 
   // /_api/gharial
@@ -101,18 +105,28 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                         const std::string& definitionName,
                         const std::string& key);
 
-  void generateVertex(VPackSlice vertex, VPackOptions const& options);
-
- private:
-  graph::GraphCache& _graphCache;
+  // DELETE /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
+  Result edgeActionRemove(std::shared_ptr<const graph::Graph> graph,
+                          const std::string& definitionName,
+                          const std::string& key);
 
   std::shared_ptr<graph::Graph const> getGraph(
       std::shared_ptr<transaction::StandaloneContext> ctx,
       const std::string& graphName);
 
-  void generateResultWithField(const std::string &key, VPackSlice value, const VPackOptions &options);
+  void generateVertex(VPackSlice vertex, VPackOptions const &options);
 
   void generateEdge(VPackSlice edge, const VPackOptions &options);
+
+  void generateRemoved(bool removed, bool wasSynchronous, VPackSlice old,
+                       VPackOptions const& options);
+
+  // TODO maybe cleanup the generate* zoo a little?
+  void generateResultWithField(std::string const &key, VPackSlice value, VPackOptions const &options);
+
+  void generateResultMergedWithObject(VPackSlice obj, VPackOptions const &options);
+
+  void addEtagHeader(velocypack::Slice slice);
 };
 
 }  // namespace arangodb

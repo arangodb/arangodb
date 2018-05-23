@@ -154,6 +154,11 @@ class GraphOperations {
       const std::string& definitionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev);
 
+  /// @brief Remove a single edge document from definitionName.
+  ResultT<std::pair<OperationResult, Result>> removeEdge(
+      const std::string& definitionName, const std::string& key,
+      boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
+
  private:
   ResultT<std::pair<OperationResult, Result>> getDocument(
       const std::string& collectionName, const std::string& key,
