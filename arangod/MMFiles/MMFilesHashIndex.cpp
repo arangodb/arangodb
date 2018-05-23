@@ -353,7 +353,7 @@ MMFilesHashIndex::~MMFilesHashIndex() {
 }
 
 /// @brief returns a selectivity estimate for the index
-double MMFilesHashIndex::selectivityEstimateLocal(StringRef const*) const {
+double MMFilesHashIndex::selectivityEstimate(StringRef const*) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_multiArray == nullptr) {
     return 0.1;

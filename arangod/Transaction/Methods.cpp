@@ -3107,11 +3107,15 @@ transaction::Methods::indexesForCollectionCoordinator(
   auto collection = clusterInfo->getCollection(vocbase().name(), name);
   std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
 
-  collection->clusterIndexEstimates(); // update estiamtes in logical collection
+  // update estimates in logical collection
+  auto selectivity = collection->clusterIndexEstimates();
 
   // push updated values into indexes
-  for(auto i : indexes){
-    i->updateClusterEstimate();
+  for(std::shared_ptr<Index>& idx : indexes){
+    auto it = selectivity.find(std::to_string(idx->id()));
+    if (it != selectivity.end()) {
+      idx->updateClusterSelectivityEstimate(it->second);
+    }
   }
 
   return indexes;
