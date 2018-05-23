@@ -56,12 +56,6 @@ function appendHeader() {
     '    <li>\n' +
     '      <a href="#" data-book="Manual">Manual</a>\n' +
     '    </li>\n' +
-    '    <li>\n' +
-    '      <a href="#" data-book="AQL">AQL</a>\n' +
-    '    </li>\n' +
-    '    <li>\n' +
-    '      <a href="#" data-book="HTTP">HTTP</a>\n' +
-    '    </li>\n' +
     '    <li class="active-tab">\n' +
     '      <a href="#" data-book="Cookbook">Cookbook</a>\n' +
     '    </li>\n' +
@@ -120,8 +114,8 @@ function appendHeader() {
     e.preventDefault();
     var urlSplit = gitbook.state.root.split("/");
     urlSplit.pop(); // ""
-    urlSplit.pop(); // e.g. "Manual"
-    window.location.href = urlSplit.join("/") + "/" + e.target.getAttribute("data-book") + "/index.html";
+    urlSplit.pop(); // e.g. "cookbook"
+    window.location.href = urlSplit.join("/") + "/" + "/index.html";
   });
 
   // set again using jQuery to accommodate non-standard browsers (*cough* IE *cough*)
@@ -136,7 +130,7 @@ function appendHeader() {
   $(".arangodb-version-switcher").on("change", function(e) {
     var urlSplit = gitbook.state.root.split("/");
     urlSplit.pop(); // ""
-    var currentBook = urlSplit.pop(); // e.g. "Manual"
+    var currentBook = "Cookbook";
     urlSplit.pop() // e.g. "3.0"
     if (e.target.value == "2.8") {
       var legacyMap = {
