@@ -640,7 +640,7 @@ function build-books()
 
     check-docublocks ""
     check-dangling-anchors ""
-    cd books; ln -s Users/* .; ln -s Cookbook cookbook
+    (cd books; ln -s Users/* .; ln -s Cookbook cookbook)
 }
 
 function build-dist-books()
