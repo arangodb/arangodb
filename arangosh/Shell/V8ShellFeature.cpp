@@ -918,9 +918,9 @@ void V8ShellFeature::initGlobals() {
   // we take the last entry in _startupDirectory as global path;
   // all the other entries are only used for the modules
 
-  TRI_InitV8Buffer(_isolate, context);
+  TRI_InitV8Buffer(_isolate);
   TRI_InitV8Utils(_isolate, context, _startupDirectory, modules);
-  TRI_InitV8Shell(_isolate, context);
+  TRI_InitV8Shell(_isolate);
 
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)
   v8::Local<v8::Value> console = v8::External::New(_isolate, _console);

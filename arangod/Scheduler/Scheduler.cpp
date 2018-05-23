@@ -504,7 +504,7 @@ void Scheduler::initializeSignalHandlers() {
   // ignore broken pipes
   action.sa_handler = SIG_IGN;
 
-  int res = sigaction(SIGPIPE, &action, 0);
+  int res = sigaction(SIGPIPE, &action, nullptr);
 
   if (res < 0) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot initialize signal handlers for pipe";
