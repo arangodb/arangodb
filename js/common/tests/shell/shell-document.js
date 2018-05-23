@@ -2357,22 +2357,30 @@ function DatabaseDocumentSuiteReturnStuff () {
       }
 
       // overwrite with same key must work
-      collection.insert({a : 2, _key: key},{overwrite:true});
+      var rv = collection.insert({c : 3, _key: key},{overwrite:true, returnOld:true, returnNew:true});
       var arr = collection.toArray();
       assertEqual(arr.length, 1);
-      assertEqual(arr[0].a, 2);
+      assertEqual(rv.new.c, 3);
+      assertEqual(rv.new.a, undefined);
+      assertEqual(rv.old.a, 1);
 
       // overwrite (babies) with same key must work
-      collection.insert({a : 2, _key: key},{overwrite:true});
+      collection.insert({b : 2, _key: key},{overwrite:true});
       arr = collection.toArray();
       assertEqual(arr.length, 1);
-      assertEqual(arr[0].a, 2);
+      assertEqual(arr[0].b, 2);
 
       // overwrite (babies) with same key must work
       collection.insert([{a : 3, _key: key}, {a : 4, _key: key}, {a : 5, _key: key}], {overwrite:true});
       arr = collection.toArray();
       assertEqual(arr.length, 1);
       assertEqual(arr[0].a, 5);
+
+      rv = collection.insert({x : 3},{overwrite:true, returnNew:true});
+      assertEqual(rv.new.x, 3);
+      assertTypeOf("string", rv._id);
+      assertTypeOf("string", rv._key);
+
     },
 
 

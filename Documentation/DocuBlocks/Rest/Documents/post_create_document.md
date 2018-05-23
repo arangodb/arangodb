@@ -28,7 +28,7 @@ in the result.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
 Additionally return the complete old document under the attribute *old*
-in the result. Only available if the overwirte option is used.
+in the result. Only available if the overwrite option is used.
 
 @RESTQUERYPARAM{silent,boolean,optional}
 If set to *true*, an empty object will be returned as response. No meta-data 

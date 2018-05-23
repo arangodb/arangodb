@@ -1,6 +1,5 @@
 Collection Methods
 ==================
-<!-- the filename is a fail - can it be moved? -->
 
 All
 ---
@@ -568,7 +567,7 @@ used to specify the following options:
     a default *waitForSync* value of *true*.
   - *silent*: If this flag is set to *true*, the method does not return
     any output.
-  - *overwirte*: If set to *true*, the insert becomes a replace-insert.
+  - *overwrite*: If set to *true*, the insert becomes a replace-insert.
     If a document with the same *_key* already exists the new document
     is not rejected with unique constraint violated but will replace
     the old document.

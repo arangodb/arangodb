@@ -1591,7 +1591,7 @@ OperationResult transaction::Methods::insertLocal(
         "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
         "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
         "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId();
-        "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false"); //CHEKME
+        "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
 
       VPackBuilder payload;
 

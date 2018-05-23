@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global arango, assertEqual, fail */
+/*global arango, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the document interface
@@ -30,7 +30,6 @@
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
-var ERRORS = arangodb.errors;
 var db = arangodb.db;
 
 function CollectionDocumentKeysSuite () {
@@ -152,7 +151,7 @@ function CollectionDocumentKeysSuite () {
 
         result = arango.PUT_RAW("/_api/document/" + encodeURIComponent(cn) + "/" + encodeURIComponent(key), JSON.stringify(doc));
         assertEqual(202, result.code);
-
+        
         assertEqual(index + 1, collection.count());
       });
     },
@@ -172,10 +171,10 @@ function CollectionDocumentKeysSuite () {
         // remove document
         result = arango.DELETE_RAW("/_api/document/" + encodeURIComponent(cn) + "/" + encodeURIComponent(key));
         assertEqual(202, result.code);
-
+        
         assertEqual(0, collection.count());
       });
-    },
+    }
 
   };
 }
