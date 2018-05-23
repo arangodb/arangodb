@@ -175,6 +175,7 @@ typedef long suseconds_t;
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
+#include "Basics/ScopeGuard.h"
 #undef TRI_WITHIN_COMMON
 
 #ifdef _WIN32
@@ -247,7 +248,6 @@ inline void ADB_WindowsEntryFunction() {}
 inline void ADB_WindowsExitFunction(int, void*) {}
 #endif
 
-#include "Basics/ScopeGuard.h"
 
 #undef TRI_SHOW_LOCK_TIME
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199
