@@ -115,7 +115,7 @@ function appendHeader() {
     var urlSplit = gitbook.state.root.split("/");
     urlSplit.pop(); // ""
     urlSplit.pop(); // e.g. "cookbook"
-    window.location.href = urlSplit.join("/") + "/" + "/index.html";
+    window.location.href = urlSplit.join("/") + "/index.html";
   });
 
   // set again using jQuery to accommodate non-standard browsers (*cough* IE *cough*)
