@@ -77,7 +77,9 @@ $ update-rc.d -f arangodb3 remove
 
 ### Set supervision in maintenance mode
 
-It is required to disable _cluster_ supervision in order to upgrade your _cluster_.The
+**Important**: Maintenance mode is supported from versions 3.3.8/3.2.14.
+
+It is required to disable _cluster_ supervision in order to upgrade your _cluster_. The
 following API calls will activate and de-activate the Maintenance mode of the Supervision job:
 
 You might use _curl_ to send the API call.
@@ -98,8 +100,8 @@ It will be reactivated automatically in 60 minutes unless this call is repeated 
 
 #### Deactivate Maintenance mode:
 
-The _cluster_ supervision reactivates 60 minutes after disabling it. In case the upgrade procedure
-is finished earlier, the supervision can be manually reactivated by the following API call:
+The _cluster_ supervision reactivates 60 minutes after disabling it.
+It can be manually reactivated by the following API call:
 
 `curl -u username:password <coordinator>/_admin/cluster/maintenance -XPUT -d'"off"'`
 
@@ -227,6 +229,6 @@ been used before (without the additional option).
 After repeating this process on every node all _Agents_, _DBServers_ and _Coordinators_ are upgraded and the manual upgrade
 has successfully finished.
 
-The _cluster_ supervision is reactivated after 60 minutes or by the API call:
+The _cluster_ supervision is reactivated by the API call:
 
 `curl -u username:password <coordinator>/_admin/cluster/maintenance -XPUT -d'"off"'`
