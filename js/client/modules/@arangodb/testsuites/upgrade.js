@@ -81,7 +81,7 @@ function upgrade (options) {
 
   const argv = toArgv(args);
 
-  result.upgrade.first = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir);
+  result.upgrade.first = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir, options.enableCoreCheck);
 
   if (result.upgrade.first.status !== true) {
     result.upgrade.failed = 1;
@@ -91,7 +91,7 @@ function upgrade (options) {
 
   ++result.upgrade.total;
 
-  result.upgrade.second = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir);
+  result.upgrade.second = pu.executeAndWait(pu.ARANGOD_BIN, argv, options, 'upgrade', tmpDataDir, options.enableCoreCheck);
 
   if (result.upgrade.second.status !== true) {
     result.upgrade.failed = 1;

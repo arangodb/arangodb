@@ -70,7 +70,7 @@ function catchRunner (options) {
       let argv = [
         '[exclude:longRunning][exclude:cache]'
       ];
-      results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir);
+      results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {
         results.failed += 1;
@@ -94,7 +94,7 @@ function catchRunner (options) {
                   fs.join(options.testOutputDirectory, 'catch-cache.xml')
                  ];
       results.cache_suite = pu.executeAndWait(run, argv, options,
-                                           'cache_suite', rootDir);
+                                              'cache_suite', rootDir, options.coreCheck);
       results.cache_suite.failed = results.cache_suite.status ? 0 : 1;
       if (!results.cache_suite.status) {
         results.failed += 1;
@@ -117,7 +117,7 @@ function catchRunner (options) {
                   '-o',
                   fs.join(options.testOutputDirectory, 'catch-geo.xml')
                  ];
-      results.geo_suite = pu.executeAndWait(run, argv, options, 'geo_suite', rootDir);
+      results.geo_suite = pu.executeAndWait(run, argv, options, 'geo_suite', rootDir, options.coreCheck);
       results.geo_suite.failed = results.geo_suite.status ? 0 : 1;
       if (!results.geo_suite.status) {
         results.failed += 1;
