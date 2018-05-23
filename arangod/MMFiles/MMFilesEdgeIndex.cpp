@@ -212,7 +212,9 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
 double MMFilesEdgeIndex::selectivityEstimate(
     arangodb::StringRef const* attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
+  if (_unique) {
+    return 1.0;
+  } else if (_edgesFrom == nullptr || _edgesTo == nullptr) {
     // use hard-coded selectivity estimate in case of cluster coordinator
     return 0.1;
   }

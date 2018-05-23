@@ -355,7 +355,9 @@ MMFilesHashIndex::~MMFilesHashIndex() {
 /// @brief returns a selectivity estimate for the index
 double MMFilesHashIndex::selectivityEstimate(StringRef const*) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (_multiArray == nullptr) {
+  if (_unique) {
+    return 1.0;
+  } else if (_multiArray == nullptr) {
     return 0.1;
   }
   return _multiArray->_hashArray->selectivity();

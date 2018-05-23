@@ -545,7 +545,9 @@ RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
 double RocksDBEdgeIndex::selectivityEstimate(
     arangodb::StringRef const* attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (attribute != nullptr && attribute->compare(_directionAttr)) {
+  if (_unique) {
+    return 1.0;
+  } else if (attribute != nullptr && attribute->compare(_directionAttr)) {
     return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);

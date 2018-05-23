@@ -299,8 +299,10 @@ RocksDBVPackIndex::~RocksDBVPackIndex() {}
 double RocksDBVPackIndex::selectivityEstimate(
     arangodb::StringRef const*) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  TRI_ASSERT(!_unique);
-  TRI_ASSERT(_estimator != nullptr);
+  if (_unique) {
+    return 1.0;
+  }
+  TRI_ASSERT(_estimator != nullptr);  
   return _estimator->computeEstimate();
 }
 
