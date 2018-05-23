@@ -259,33 +259,24 @@ std::ostream& Graph::operator<<(std::ostream& ostream) {
 ResultT<std::pair<OperationResult, Result>> GraphOperations::getVertex(
     std::string const& collectionName, std::string const& key,
     boost::optional<TRI_voc_rid_t> rev) {
-  return getDocument(collectionName, key, std::move(rev));
+  return _getDocument(collectionName, key, std::move(rev));
 };
 
 // TODO check if definitionName is an edge collection in _graph?
 ResultT<std::pair<OperationResult, Result>> GraphOperations::getEdge(
     const std::string& definitionName, const std::string& key,
     boost::optional<TRI_voc_rid_t> rev) {
-  return getDocument(definitionName, key, std::move(rev));
+  return _getDocument(definitionName, key, std::move(rev));
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::getDocument(
+ResultT<std::pair<OperationResult, Result>> GraphOperations::_getDocument(
     std::string const& collectionName, std::string const& key,
     boost::optional<TRI_voc_rid_t> rev) {
   OperationOptions options;
-  options.ignoreRevs = true;
+  options.ignoreRevs = !rev.is_initialized();
 
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder guard(&builder);
-    builder.add(StaticStrings::KeyString, VPackValue(key));
-    if (rev) {
-      options.ignoreRevs = false;
-      builder.add(StaticStrings::RevString,
-                  VPackValue(TRI_RidToString(rev.get())));
-    }
-  }
-  VPackSlice search = builder.slice();
+  VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
+  VPackSlice search {searchBuffer->data()};
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(ctx(), collectionName,
@@ -305,33 +296,34 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::getDocument(
   return std::make_pair(std::move(result), std::move(res));
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdge(
-    const std::string& definitionName, const std::string& key,
-    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
-  // TODO inline collectionName or move code to a generalized removeDocument
-  // method
-  std::string const& collectionName = definitionName;
-
-  OperationOptions opOptions;
-  opOptions.waitForSync = waitForSync;
-  opOptions.returnOld = returnOld;
-
+GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
+  const std::string &key, boost::optional<TRI_voc_rid_t> &rev
+) const {
   VPackBuilder builder;
-  VPackSlice search;
-  std::shared_ptr<VPackBuilder> builderPtr;
-
   {
     VPackObjectBuilder guard(&builder);
     builder.add(StaticStrings::KeyString, VPackValue(key));
     if (rev) {
-      opOptions.ignoreRevs = false;
       builder.add(StaticStrings::RevString,
                   VPackValue(TRI_RidToString(rev.get())));
     }
   }
-  search = builder.slice();
 
-  SingleCollectionTransaction trx{ctx(), collectionName,
+  return builder.buffer();
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdge(
+    const std::string& definitionName, const std::string& key,
+    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
+  OperationOptions options;
+  options.waitForSync = waitForSync;
+  options.returnOld = returnOld;
+  options.ignoreRevs = !rev.is_initialized();
+
+  VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
+  VPackSlice search {searchBuffer->data()};
+
+  SingleCollectionTransaction trx{ctx(), definitionName,
                                   AccessMode::Type::WRITE};
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -341,7 +333,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdge(
     return res;
   }
 
-  OperationResult result = trx.remove(collectionName, search, opOptions);
+  OperationResult result = trx.remove(definitionName, search, options);
 
   res = trx.finish(result.result);
 

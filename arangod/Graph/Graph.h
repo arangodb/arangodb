@@ -46,6 +46,7 @@ class EdgeDefinition {
   std::unordered_set<std::string> const& getFrom() const { return _from; }
   std::unordered_set<std::string> const& getTo() const { return _to; }
 
+  // TODO implement these
   bool isFrom(std::string const& vertexCollection) const;
   bool isTo(std::string const& vertexCollection) const;
 
@@ -137,6 +138,11 @@ class GraphOperations {
                   std::shared_ptr<transaction::StandaloneContext> ctx_)
       : _graph(graph_), _ctx(std::move(ctx_)) {}
 
+  // TODO I added the complex result type for the get* methods to exactly
+  // reproduce (in the RestGraphHandler) the behaviour of the similar methods
+  // in the RestDocumentHandler. A simpler type, e.g. ResultT<OperationResult>,
+  // would be preferable.
+
   /// @brief Get a single vertex document from collection, optionally check rev
   /// The return value is as follows:
   /// If trx.begin fails, the outer ResultT will contain this error Result.
@@ -160,9 +166,16 @@ class GraphOperations {
       boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
 
  private:
-  ResultT<std::pair<OperationResult, Result>> getDocument(
+  using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
+
+  ResultT<std::pair<OperationResult, Result>> _getDocument(
       const std::string& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev);
+
+  VPackBufferPtr _getSearchSlice(
+    const std::string &key,
+    boost::optional<TRI_voc_rid_t> &rev
+  ) const;
 };
 
 class GraphCache {
