@@ -35,6 +35,48 @@
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
+namespace {
+
+arangodb::velocypack::StringRef const SortModeUnset("unset");
+arangodb::velocypack::StringRef const SortModeMinElement("minelement");
+arangodb::velocypack::StringRef const SortModeHeap("heap");
+
+bool toSortMode(
+    arangodb::velocypack::StringRef const& str,
+    GatherNode::SortMode& mode
+) noexcept {
+  static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue {
+    { SortModeUnset, GatherNode::SortMode::Unset },
+    { SortModeMinElement, GatherNode::SortMode::MinElement},
+    { SortModeHeap, GatherNode::SortMode::Heap}
+  };
+
+  auto const it = NameToValue.find(str);
+
+  if (it == NameToValue.end()) {
+    return false;
+  }
+
+  mode = it->second;
+  return true;
+}
+
+arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
+  switch (mode) {
+    case GatherNode::SortMode::Unset:
+      return SortModeUnset;
+    case GatherNode::SortMode::MinElement:
+      return SortModeMinElement;
+    case GatherNode::SortMode::Heap:
+      return SortModeHeap;
+    default:
+      TRI_ASSERT(false);
+      return {};
+  }
+}
+
+}
+
 /// @brief constructor for RemoteNode 
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -228,22 +270,7 @@ GatherNode::GatherNode(
     _sortmode(SortMode::Unset) {
   auto const sortModeSlice = base.get("sortmode");
 
-  if (!sortModeSlice.isNumber()) {
-    LOG_TOPIC(ERR, Logger::AQL)
-      << "invalid sort mode detected while creating 'GatherNode' from vpack, number expected";
-    return;
-  }
-
-  try {
-    _sortmode = static_cast<SortMode>(
-      sortModeSlice.getNumber<std::underlying_type<SortMode>::type>()
-    );
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::AQL)
-      << "invalid sort mode detected while creating 'GatherNode' from vpack, error '"
-      << ex.what()
-      << "'";
-  } catch (...) {
+  if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, {}), _sortmode)) {
     LOG_TOPIC(ERR, Logger::AQL)
       << "invalid sort mode detected while creating 'GatherNode' from vpack";
   }
@@ -283,10 +310,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
-  nodes.add(
-    "sortmode",
-    VPackValue(static_cast<std::underlying_type<SortMode>::type>(_sortmode))
-  );
+  nodes.add("sortmode", VPackValue(toString(_sortmode).data()));
 
   nodes.add(VPackValue("elements"));
   {
