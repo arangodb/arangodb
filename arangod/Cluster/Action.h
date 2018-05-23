@@ -47,6 +47,13 @@ public:
   
   /// @brief construct with description
   Action(MaintenanceFeature&, std::shared_ptr<ActionDescription> const);
+
+  /**
+   * @brief construct with concrete action base
+   * @param feature  Maintenance feature
+   * @param action   Concrete action
+   */
+  Action(std::unique_ptr<ActionBase> action);
   
   /// @brief clean up
   virtual ~Action();
@@ -126,7 +133,10 @@ public:
   uint64_t id() const { return _action->id(); }
 
   /// @brief add VPackObject to supplied builder with info about this action
-  virtual void toVelocyPack(VPackBuilder & builder) const;
+  void toVelocyPack(VPackBuilder & builder) const;
+
+  /// @brief add VPackObject to supplied builder with info about this action
+  VPackBuilder toVelocyPack() const { return _action->toVelocyPack(); }
 
   /// @brief Returns json array of object contents for status reports
   ///  Thread safety of this function is questionable for some member objects
@@ -141,7 +151,6 @@ public:
   /// @brief waiting for a worker to grab it and go!
   bool runable() const {return _action->runable();}
 
-  
 private:
   
   std::unique_ptr<ActionBase> _action;

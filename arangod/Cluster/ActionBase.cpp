@@ -189,6 +189,12 @@ void ActionBase::toVelocyPack(VPackBuilder & builder) const {
     _description.toVelocyPack(builder); }
   
 } // MaintanceAction::toVelocityPack
+ 
+VPackBuilder ActionBase::toVelocyPack() const {
+  VPackBuilder builder;
+  toVelocyPack(builder);
+  return builder;
+}
 
 
 arangodb::Result ActionBase::run(

@@ -166,6 +166,53 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 
 } // MaintenanceFeature::deleteAction
 
+
+
+/// @brief This is the  API for creating an Action and executing it.
+///  Execution can be immediate by calling thread, or asynchronous via thread pool.
+///  not yet:  ActionDescription parameter will be MOVED to new object.
+Result MaintenanceFeature::addAction(
+  std::shared_ptr<maintenance::Action> newAction, bool executeNow) {
+
+  Result result;
+
+  // the underlying routines are believed to be safe and throw free,
+  //  but just in case
+  try {
+    
+    size_t action_hash = newAction->hash();
+    WRITE_LOCKER(wLock, _actionRegistryLock);
+
+    std::shared_ptr<Action> curAction = findActionHashNoLock(action_hash);
+
+    // similar action not in the queue (or at least no longer viable)
+    if (!curAction || curAction->done()) {
+
+      if (!newAction) {
+        /// something failed in action creation ... go check logs
+        result.reset(TRI_ERROR_BAD_PARAMETER, "createAction rejected parameters.");
+      } // if
+    } else {
+      // action already exist, need write lock to prevent race
+      result.reset(TRI_ERROR_BAD_PARAMETER, "addAction called while similar action already processing.");
+    } //else
+    
+    // executeNow process on this thread, right now!
+    if (result.ok() && executeNow) {
+      maintenance::MaintenanceWorker worker(*this, newAction);
+      worker.run();
+      result = worker.result();
+    } // if
+  } catch (...) {
+    result.reset(TRI_ERROR_INTERNAL, "addAction experience an unexpected throw.");
+  } // catch
+
+  return result;
+
+} // MaintenanceFeature::addAction
+
+
+
 /// @brief This is the  API for creating an Action and executing it.
 ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
 ///  not yet:  ActionDescription parameter will be MOVED to new object.
@@ -232,6 +279,28 @@ std::shared_ptr<Action> MaintenanceFeature::postAction(
 } // MaintenanceFeature::postAction
 
 
+void MaintenanceFeature::createAction(
+  std::shared_ptr<Action> action, bool executeNow) {
+
+  // mark as executing so no other workers accidentally grab it
+  if (executeNow) {
+    action->setState(maintenance::EXECUTING);
+  } // if
+  
+  // WARNING: holding write lock to _actionRegistry and about to
+  //   lock condition variable
+  {
+    CONDITION_LOCKER(cLock, _actionRegistryCond);
+    _actionRegistry.push_back(action);
+    
+    if (!executeNow) {
+      _actionRegistryCond.signal();
+    } // if
+  } // lock
+  
+}
+
+
 std::shared_ptr<Action> MaintenanceFeature::createAction(
   std::shared_ptr<ActionDescription> const & description,
   bool executeNow) {
@@ -248,28 +317,12 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
   // if a new action created
   if (newAction) {
     
-    // mark as executing so no other workers accidentally grab it
-    if (executeNow) {
-      newAction->setState(maintenance::EXECUTING);
-    } // if
+    createAction(newAction, executeNow);
     
-      // WARNING: holding write lock to _actionRegistry and about to
-      //   lock condition variable
-    {
-      CONDITION_LOCKER(cLock, _actionRegistryCond);
-      _actionRegistry.push_back(newAction);
-
-      if (!executeNow) {
-        _actionRegistryCond.signal();
-      } // if
-    } // lock
   } else {
     LOG_TOPIC(ERR, Logger::CLUSTER)
       << "createAction:  unknown action name given, \"" << name.c_str() << "\".";
   } // else
-
-
-  return newAction;
 
 } // if
 

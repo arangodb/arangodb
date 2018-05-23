@@ -343,7 +343,8 @@
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" },
     "ERROR_ACTION_ALREADY_REGISTERED" : { "code" : 6001, "message" : "maintenance action already registered" },
     "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
-    "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" }
+    "ERROR_ACTION_UNFINISHED"      : { "code" : 6003, "message" : "maintenance action still processing" },
+    "ERROR_NO_SUCH_ACTION"         : { "code" : 60004, "message" : "no such maintenance action" }
   };
 
   // For compatibility with <= 3.3

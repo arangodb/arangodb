@@ -162,6 +162,9 @@ class ActionBase {
   /// @brief add VPackObject to supplied builder with info about this action
   virtual void toVelocyPack(VPackBuilder & builder) const;
 
+  /// @brief add VPackObject to supplied builder with info about this action
+  VPackBuilder toVelocyPack() const;
+
   /// @brief Returns json array of object contents for status reports
   ///  Thread safety of this function is questionable for some member objects
   //  virtual Result toJson(/* builder */) {return Result;}

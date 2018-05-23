@@ -127,6 +127,19 @@ public:
   } // setMaintenanceThreadsMax
 
 
+  virtual arangodb::Result addAction(
+    std::shared_ptr<arangodb::maintenance::Action> action, bool executeNow=false) {
+    _recentAction = action;
+    return MaintenanceFeature::addAction(action, executeNow);
+  }
+
+  virtual arangodb::Result addAction(
+    std::shared_ptr<arangodb::maintenance::ActionDescription> const & description,
+    bool executeNow=false) {
+    return MaintenanceFeature::addAction(description, executeNow);
+  }
+  
+
   bool verifyRegistryState(ExpectedVec_t & expected) {
     bool good(true);
 
@@ -313,13 +326,19 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   SECTION("Iterate Action 0 times - ok") {
     TestMaintenanceFeature tf;
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
-    auto desc_ptr = std::make_shared<ActionDescription>(
-      std::map<std::string,std::string>{
-        {"name","TestActionBasic"},{"iterate_count","0"}});
 
-    arangodb::Result result = tf.addAction(desc_ptr, true);
+    std::unique_ptr<ActionBase> action_base_ptr;
+    action_base_ptr.reset((ActionBase*) new TestActionBasic(tf, 
+        ActionDescription(std::map<std::string,std::string>{
+            {"name","TestActionBasic"},{"iterate_count","0"}})));
+
+    std::cout << action_base_ptr->toVelocyPack().toJson() << std::endl;
+    arangodb::Result result = tf.addAction(
+      std::make_shared<Action>(std::move(action_base_ptr)), true);
 
     REQUIRE(result.ok());
+    std::cout << "wtf?"<<std::endl;
+    std::cout << tf._recentAction->toVelocyPack().toJson() << std::endl;
     REQUIRE(tf._recentAction->result().ok());
     REQUIRE(0==tf._recentAction->getProgress());
     REQUIRE(tf._recentAction->getState() == COMPLETE);
@@ -330,11 +349,14 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
   SECTION("Iterate Action 0 times - fail") {
     TestMaintenanceFeature tf;
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
-    auto desc_ptr = std::make_shared<ActionDescription>(
-      std::map<std::string,std::string>{
-        {"name","TestActionBasic"},{"iterate_count","0"}, {"result_code","1"}});
 
-    arangodb::Result result = tf.addAction(desc_ptr, true);
+    std::unique_ptr<ActionBase> action_base_ptr;
+    action_base_ptr.reset((ActionBase*) new TestActionBasic(tf, 
+        ActionDescription(std::map<std::string,std::string>{
+            {"name","TestActionBasic"},{"iterate_count","0"},{"result_code","1"}
+          })));
+    arangodb::Result result = tf.addAction(
+      std::make_shared<Action>(std::move(action_base_ptr)), true);
 
     REQUIRE(!result.ok());
     REQUIRE(!tf._recentAction->result().ok());

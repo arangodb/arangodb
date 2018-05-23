@@ -72,10 +72,15 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief This is the  API for creating an Action and executing it.
   ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
   ///  not yet:  ActionDescription parameter will be MOVED to new object.
-  Result addAction(
+  virtual Result addAction(
     std::shared_ptr<maintenance::ActionDescription> const & description,
     bool executeNow=false);
 
+  /// @brief This is the  API for creating an Action and executing it.
+  ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
+  ///  not yet:  ActionDescription parameter will be MOVED to new object.
+  virtual Result addAction(
+    std::shared_ptr<maintenance::Action> action, bool executeNow=false);
 
   /// @brief Internal API that allows existing actions to create pre actions
   std::shared_ptr<maintenance::Action> preAction(
@@ -89,6 +94,9 @@ protected:
   std::shared_ptr<maintenance::Action> createAction(
     std::shared_ptr<maintenance::ActionDescription> const & description,
     bool executeNow);
+  
+  void createAction(
+    std::shared_ptr<maintenance::Action> action, bool executeNow);
   
 public:
   /// @brief This API will attempt to fail an existing Action that is waiting

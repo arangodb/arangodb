@@ -46,13 +46,11 @@ Action::Action(
   } else {
     // We should never get here
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
-    TRI_ASSERT(false);
   }
 }
 
 Action::Action(
-  MaintenanceFeature& feature,
-  std::shared_ptr<ActionDescription> const desc)
+  MaintenanceFeature& feature, std::shared_ptr<ActionDescription> const desc)
   : _action(nullptr) {
   auto const& d = *desc;
   TRI_ASSERT(d.has("name"));
@@ -66,10 +64,11 @@ Action::Action(
   } else {
     // We should never get here
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
-    TRI_ASSERT(false);
   }
 }
 
+Action::Action(std::unique_ptr<ActionBase> action)
+  : _action(std::move(action)) {}
 
 Action::~Action() {}
 
