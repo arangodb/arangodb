@@ -500,9 +500,7 @@ Result ClusterCollection::replace(transaction::Methods* trx,
                                   OperationOptions& options,
                                   TRI_voc_tick_t& resultMarkerTick,
                                   bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                  ManagedDocumentResult& previous,
-                                  arangodb::velocypack::Slice const fromSlice,
-                                  arangodb::velocypack::Slice const toSlice) {
+                                  ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

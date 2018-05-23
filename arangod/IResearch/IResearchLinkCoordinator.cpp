@@ -407,7 +407,8 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false; // failed to parse metadata
   }
 
-  if (!definition.isObject()
+  if (!_collection
+      || !definition.isObject()
       || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error finding view for link '" << _id << "'";
@@ -418,7 +419,7 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
 
   auto identifier = definition.get(StaticStrings::ViewIdField);
   auto viewId = identifier.getNumber<uint64_t>();
-    auto& vocbase = collection().vocbase();
+  auto& vocbase = _collection->vocbase();
     auto logicalView  = vocbase.lookupView(viewId);
 
     if (!logicalView

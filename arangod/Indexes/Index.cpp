@@ -96,8 +96,7 @@ Index::Index(
       _fields(fields),
       _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
-      _sparse(sparse),
-      _clusterSelectivity(0.1) {
+      _sparse(sparse) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
@@ -113,8 +112,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
       )),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexSparse.c_str(), false
-      )),
-      _clusterSelectivity(0.1) {
+      )) {
 }
 
 Index::~Index() {}
@@ -566,23 +564,8 @@ double Index::selectivityEstimate(StringRef const* extra) const {
   if (_unique) {
     return 1.0;
   }
-
-  double estimate = 0.1; //default
-  if (!ServerState::instance()->isCoordinator()) {
-    estimate = selectivityEstimateLocal(extra);
-  } else {
-    // getClusterEstimate can not be called from within the index
-    // as _collection is not always vaild
-    estimate = _clusterSelectivity;
-  }
-
-  TRI_ASSERT(estimate >= 0.0 &&
-             estimate <= 1.00001);  // floating-point tolerance
-  return estimate;
-}
-
-double Index::selectivityEstimateLocal(StringRef const* extra) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return 0;
 }
 
 /// @brief default implementation for implicitlyUnique
@@ -910,25 +893,6 @@ void Index::warmup(arangodb::transaction::Methods*,
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
 }
-
-std::pair<bool,double> Index::updateClusterEstimate(double defaultValue) {
-  // try to receive an selectivity estimate for the index
-  // from indexEstimates stored in the logical collection.
-  // the caller has to guarantee that the _collection is valid.
-  // on the coordinator _collection is not always vaild!
-
-  std::pair<bool,double> rv(false,defaultValue);
-
-  auto estimates = _collection->clusterIndexEstimates();
-  auto found = estimates.find(std::to_string(_iid));
-
-  if( found != estimates.end()){
-    rv.first = true;
-    rv.second = found->second;
-    _clusterSelectivity = rv.second;
-  }
-  return rv;
-};
 
 /// @brief append the index description to an output stream
 std::ostream& operator<<(std::ostream& stream, arangodb::Index const* index) {
