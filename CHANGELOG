@@ -1,6 +1,8 @@
 v3.3.10 (XXXX-XX-XX)
 --------------------
 
+* validate `_from` and `_to` values of edges on updates consistently
+
 * fixed issue #5400: Unexpected AQL Result
 
 * fixe dissue #5429: Frequent 'updated local foxx repository' messages
