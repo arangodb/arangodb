@@ -1,7 +1,7 @@
 Manually Upgrading a _Cluster_ Deployment
 =========================================
 
-This page will guide you through the process of manual upgrade of a [Cluster](../../Scalability/Cluster/README.md)
+This page will guide you through the process of a manual upgrade of a [Cluster](../../Scalability/Cluster/README.md)
 setup. The different nodes in a cluster can be upgraded one at a time without
 incurring downtime of the cluster and very short downtimes of the single nodes.
 
@@ -81,20 +81,28 @@ The following API calls will activate and de-activate the Maintenance mode of th
 
 You might use _curl_ to send the API call.
 
-Activate Maintenance mode:
+#### Activate Maintenance mode:
 
+`curl -u username:password <coordinator>/_admin/cluster/maintenance -XPUT -d'"on"'`
+
+For Example:
 ```
 curl http://localhost:7002/_admin/cluster/maintenance -XPUT -d'"on"'
+
 {"error":false,"warning":"Cluster supervision deactivated. 
 It will be reactivated automatically in 60 minutes unless this call is repeated until then."}
 ```
 **Note:** In case the manual upgrade takes longer than 60 minutes, the API call has to be resend.
 
 
-Deactivate Maintenance mode:
+#### Deactivate Maintenance mode:
 
+`curl -u username:password <coordinator>/_admin/cluster/maintenance -XPUT -d'"off"'`
+
+For example:
 ```
 curl http://localhost:7002/_admin/cluster/maintenance -XPUT -d'"off"'
+
 {"error":false,"warning":"Cluster supervision reactivated."}
 ```
 
@@ -164,7 +172,7 @@ The _Agent_ will stop automatically after the upgrade.
 
 ##### Restart the _Agent_
 
-The _arangod_ process of the _Agent_ has to be upgraded using the same command that has
+The _arangod_ process of the _Agent_ has to be restarted using the same command that has
 been used before (without the additional option).
 
 ##### Stop the _DBServer_
@@ -186,7 +194,7 @@ The _DBServer_ will stop automatically after the upgrade.
 
 ##### Restart the _DBServer_
 
-The _arangod_ process of the _DBServer_ has to be upgraded using the same command that has
+The _arangod_ process of the _DBServer_ has to be restarted using the same command that has
 been used before (without the additional option).
 
 ##### Stop the _Coordinator_
@@ -208,10 +216,8 @@ The Agent will stop automatically after the upgrade.
 
 ##### Restart the _Coordinator_
 
-The _arangod_ process of the _Coordinator_ has to be upgraded using the same command that has
+The _arangod_ process of the _Coordinator_ has to be restarted using the same command that has
 been used before (without the additional option).
 
-After repeating this process on every node all _Agents_, _DBServers_ and _Coordinators_ are upgraded and the rolling upgrade
+After repeating this process on every node all _Agents_, _DBServers_ and _Coordinators_ are upgraded and the manual upgrade
 has successfully finished.
-
-
