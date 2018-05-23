@@ -184,6 +184,36 @@ function ahuacatlFulltextTestSuite () {
       actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'rubbish') LIMIT 3, 1 RETURN 1");
       assertEqual([ ], actual);
     },
+    
+    testLimitMany : function () {
+      for (let i = 0; i < 2000; ++i) {
+        fulltext.save({ text : "some rubbish text" });
+      }
+      
+      let actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 999, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 999, 2 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1000, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1000, 2 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1998, 2 RETURN 1");
+      assertEqual([ 1, 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1999, 1 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 1999, 2 RETURN 1");
+      assertEqual([ 1 ], actual);
+      
+      actual = getQueryResults("FOR d IN FULLTEXT(" + fulltext.name() + ", 'text', 'some') LIMIT 2000, 1 RETURN 1");
+      assertEqual([ ], actual);
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test without fulltext index available
