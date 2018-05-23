@@ -103,22 +103,27 @@ void Exception::addToMessage(std::string const& more) { _errorMessage += more; }
 char const* Exception::what() const throw() { return _errorMessage.c_str(); }
 
 /// @brief append original error location to message
-void Exception::appendLocation () {
-  if (_code == TRI_ERROR_INTERNAL) {
-    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
-  } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
-    _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ")";
-  }
+void Exception::appendLocation () noexcept {
+  try {
+    if (_code == TRI_ERROR_INTERNAL) {
+      _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + "). Please report this error to arangodb.com";
+    } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
+      _errorMessage += std::string(" (exception location: ") + _file + ":" + std::to_string(_line) + ")";
+    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
-  if (WithBackTrace) {
-    _errorMessage += std::string("\n\n");
-    TRI_GetBacktrace(_errorMessage);
-    _errorMessage += std::string("\n\n");
+    if (WithBackTrace) {
+      _errorMessage += std::string("\n\n");
+      TRI_GetBacktrace(_errorMessage);
+      _errorMessage += std::string("\n\n");
+    }
+#endif
+#endif
+  } catch (...) {
+    // this function is called from the constructor, so it should
+    // not itself throw another exception
   }
-#endif
-#endif
 }
 
 /// @brief construct an error message from a template string
