@@ -23,9 +23,11 @@
 #ifndef ARANGOD_GRAPH_GRAPH_H
 #define ARANGOD_GRAPH_GRAPH_H
 
+#include <chrono>
 #include <utility>
 
 #include "Aql/VariableGenerator.h"
+#include "Basics/ReadWriteLock.h"
 #include "Cluster/ResultT.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
@@ -145,6 +147,23 @@ class GraphOperations {
   ResultT<std::pair<OperationResult, Result>> getVertex(
       std::string const& collectionName, std::string const& key,
       boost::optional<TRI_voc_rid_t> rev);
+};
+
+class GraphCache {
+ public:
+  // save now() along with the graph
+  using EntryType = std::pair<std::chrono::steady_clock::time_point,
+                              std::shared_ptr<const Graph>>;
+  using CacheType = std::unordered_map<std::string, EntryType>;
+
+  const std::shared_ptr<const Graph> getGraph(
+      std::shared_ptr<transaction::StandaloneContext> ctx,
+      std::string const& name,
+      std::chrono::seconds maxAge = std::chrono::seconds(60));
+
+ private:
+  basics::ReadWriteLock _lock;
+  CacheType _cache;
 };
 }
 }
