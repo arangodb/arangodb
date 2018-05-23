@@ -144,6 +144,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief return list of shards related to the view (cluster only)
+  std::vector<std::string> const& shards() const noexcept {
+    return _shards;
+  }
+
+  /// @brief return list of shards related to the view (cluster only)
   std::vector<std::string>& shards() noexcept {
     return _shards;
   }
