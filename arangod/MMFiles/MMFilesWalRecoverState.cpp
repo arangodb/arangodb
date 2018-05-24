@@ -1586,7 +1586,7 @@ int MMFilesWalRecoverState::removeEmptyLogfiles() {
   for (auto it = emptyLogfiles.begin(); it != emptyLogfiles.end(); ++it) {
     auto filename = (*it);
 
-    if (basics::FileUtils::remove(filename, 0)) {
+    if (basics::FileUtils::remove(filename, nullptr)) {
       LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
           << "removing empty WAL logfile '" << filename << "'";
     }

@@ -62,11 +62,10 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    return 0;
-  }
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
+  
+  /// @brief update the cluster selectivity estimate
+  void updateClusterSelectivityEstimate(double estimate) override;
 
   void load() override {}
   void unload() override {}
@@ -115,6 +114,7 @@ class ClusterIndex : public Index {
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
+  double _clusterSelectivity;
 };
 }  // namespace arangodb
 

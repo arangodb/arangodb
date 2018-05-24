@@ -71,12 +71,17 @@ class LogicalView : public LogicalDataSource {
           && std::is_same<typename std::remove_const<Source>::type,
         LogicalView
       >::value, Target>::type
-    >::reference target_type_t;
+    > target_type_t;
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return dynamic_cast<target_type_t>(view);
+    // do not use dynamic_cast<typename target_type_t::reference>(view)
+    // to explicitly expose our intention to fail in 'noexcept' function
+    // in case of wrong type
+    auto impl = dynamic_cast<typename target_type_t::pointer>(&view);
+    TRI_ASSERT(impl);
+    return *impl;
   #else
-    return static_cast<target_type_t>(view);
+    return static_cast<typename target_type_t::reference>(view);
   #endif
   }
 

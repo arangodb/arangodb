@@ -39,6 +39,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "Basics/StringUtils.h"
 
+#include "velocypack/Iterator.h"
+
 namespace {
 
 using namespace arangodb;
@@ -143,13 +145,6 @@ IResearchViewNode::IResearchViewNode(
     _filterCondition(filterCondition ? filterCondition : &ALL),
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
-
-  view.visitCollections([this](TRI_voc_cid_t cid)->bool{
-    _collections.emplace_back(
-      basics::StringUtils::itoa(cid), &_vocbase, AccessMode::Type::READ
-    );
-    return true;
-  });
 }
 
 IResearchViewNode::IResearchViewNode(
@@ -177,6 +172,30 @@ IResearchViewNode::IResearchViewNode(
     _filterCondition = new aql::AstNode(
       plan.getAst(), filterSlice
     );
+  }
+
+  auto const shardsSlice = base.get("shards");
+
+  if (!shardsSlice.isArray()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "invalid 'IResearchViewNode' json format: unable to find 'shards' array";
+  }
+
+  TRI_ASSERT(plan.getAst() && plan.getAst()->query());
+  auto const* collections = plan.getAst()->query()->collections();
+  TRI_ASSERT(collections);
+
+  for (auto const shardSlice : velocypack::ArrayIterator(shardsSlice)) {
+    auto const shardId = shardSlice.copyString(); // shardID is collection name on db server
+    auto const* shard = collections->get(shardId);
+
+    if (!shard) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "unable to lookup shard '" << shardId << "' for the view '" << _view->name() << "'";
+      continue;
+    }
+
+    _shards.push_back(shard->getName());
   }
 }
 
@@ -236,17 +255,19 @@ void IResearchViewNode::toVelocyPackHelper(
     VPackBuilder& nodes,
     unsigned flags
 ) const {
-
   // call base class method
   aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
+  // system info
   nodes.add("database", VPackValue(_vocbase.name()));
   nodes.add("view", VPackValue(_view->name()));
   nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 
+  // our variable
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
 
+  // filter condition
   nodes.add(VPackValue("condition"));
   if (!filterConditionIsEmpty(_filterCondition)) {
     _filterCondition->toVelocyPack(nodes, flags != 0);
@@ -255,11 +276,45 @@ void IResearchViewNode::toVelocyPackHelper(
     nodes.close();
   }
 
+  // sort condition
   nodes.add(VPackValue("sortCondition"));
   ::toVelocyPack(nodes, _sortCondition, flags != 0);
 
-  // And close it:
+  // shards
+  {
+    VPackArrayBuilder guard(&nodes, "shards");
+    for (auto& shard: _shards) {
+      nodes.add(VPackValue(shard));
+    }
+  }
+
   nodes.close();
+}
+
+std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::collections() const {
+  TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
+  auto const* collections = _plan->getAst()->query()->collections();
+  TRI_ASSERT(collections);
+
+  std::vector<std::reference_wrapper<aql::Collection const>> viewCollections;
+
+  auto visitor = [&viewCollections, collections](TRI_voc_cid_t cid)->bool{
+    auto const id = basics::StringUtils::itoa(cid);
+    auto const* collection = collections->get(id);
+
+    if (collection) {
+      viewCollections.push_back(*collection);
+    } else {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "collection with id '" << id << "' is not registered with the query";
+    }
+
+    return true;
+  };
+
+  _view->visitCollections(visitor);
+
+  return viewCollections;
 }
 
 /// @brief clone ExecutionNode recursively
@@ -285,10 +340,15 @@ aql::ExecutionNode* IResearchViewNode::clone(
     const_cast<aql::AstNode*>(_filterCondition),
     decltype(_sortCondition)(_sortCondition)
   );
+  node->_shards = _shards;
 
   cloneHelper(node.get(), withDependencies, withProperties);
 
   return node.release();
+}
+
+bool IResearchViewNode::empty() const noexcept {
+  return _view->visitCollections([](TRI_voc_cid_t){ return false; });
 }
 
 /// @brief the cost of an enumerate view node
@@ -321,8 +381,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     // coordinator in a cluster: empty view case
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto& view = LogicalView::cast<IResearchViewCoordinator>(this->view());
-    TRI_ASSERT(view.visitCollections([](TRI_voc_cid_t){ return false; }));
+    TRI_ASSERT(this->empty());
 #endif
 
     return std::make_unique<aql::NoResultsBlock>(&engine, this);
@@ -344,7 +403,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    reader = LogicalView::cast<IResearchViewDBServer>(this->view()).snapshot(state);
+    // FIXME pass list of the shards involved
+    // FIXME cache snapshot in transaction state when transaction starts
+    reader = LogicalView::cast<IResearchViewDBServer>(this->view()).snapshot(state, true);
   } else {
     reader = LogicalView::cast<IResearchView>(this->view()).snapshot(state);
   }

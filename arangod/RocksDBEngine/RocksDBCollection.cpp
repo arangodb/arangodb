@@ -761,33 +761,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
 
-  if (isEdgeCollection) {
-    // _from:
-    fromSlice = slice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    VPackValueLength len;
-    char const* docId = fromSlice.getString(len);
-    size_t split;
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    // _to:
-    toSlice = slice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    docId = toSlice.getString(len);
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-  }
-
   transaction::BuilderLeaser builder(trx);
-  Result res(newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+  Result res(newObjectForInsert(trx, slice, isEdgeCollection,
                                 *builder.get(), options.isRestore, revisionId));
   if (res.fail()) {
     return res;
@@ -884,9 +859,14 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   // merge old and new values
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
-  mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                        options.mergeObjects, options.keepNull, *builder.get(),
-                        options.isRestore, revisionId);
+  res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
+                              options.mergeObjects, options.keepNull, *builder.get(),
+                              options.isRestore, revisionId);
+
+  if (res.fail()) {
+    return res;
+  }
+
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
@@ -945,9 +925,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   OperationOptions& options,
                                   TRI_voc_tick_t& resultMarkerTick,
                                   bool /*lock*/, TRI_voc_rid_t& prevRev,
-                                  ManagedDocumentResult& previous,
-                                  arangodb::velocypack::Slice const fromSlice,
-                                  arangodb::velocypack::Slice const toSlice) {
+                                  ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
   LocalDocumentId const documentId = LocalDocumentId::create();
 
@@ -991,9 +969,13 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   // merge old and new values
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
-  newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
-                      isEdgeCollection, *builder.get(), options.isRestore,
-                      revisionId);
+  res = newObjectForReplace(trx, oldDoc, newSlice, 
+                            isEdgeCollection, *builder.get(), options.isRestore,
+                            revisionId);
+
+  if (res.fail()) {
+    return res;
+  }
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:

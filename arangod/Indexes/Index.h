@@ -240,11 +240,13 @@ class Index {
   ///
   /// The extra StringRef is only used in the edge index as direction
   /// attribute attribute, a Slice would be more flexible.
-  double selectivityEstimate(
+  virtual double selectivityEstimate(
       arangodb::StringRef const* extra = nullptr) const;
-
-  virtual double selectivityEstimateLocal(
-      arangodb::StringRef const* extra) const;
+  
+  /// @brief update the cluster selectivity estimate
+  virtual void updateClusterSelectivityEstimate(double estimate = 0.1) {
+    TRI_ASSERT(false); // should never be called except on Coordinator
+  }
 
   /// @brief whether or not the index is implicitly unique
   /// this can be the case if the index is not declared as unique,
@@ -322,10 +324,6 @@ class Index {
   virtual void warmup(arangodb::transaction::Methods* trx,
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
-  // needs to be called when the _colllection is guaranteed to be valid!
-  // unfortunatly access the logical collection on the coordinator is not always safe!
-  std::pair<bool,double> updateClusterEstimate(double defaultValue = 0.1);
-
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
   //returns estimate for index in cluster - the bool is true if the index was found
@@ -338,8 +336,6 @@ class Index {
 
   mutable bool _unique;
   mutable bool _sparse;
-
-  double _clusterSelectivity;
 };
 }
 

@@ -47,7 +47,6 @@ class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class ClusterCollection final : public PhysicalCollection {
-  friend class ClusterCollection;
 
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
@@ -158,9 +157,7 @@ class ClusterCollection final : public PhysicalCollection {
                  arangodb::velocypack::Slice const newSlice,
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 arangodb::velocypack::Slice const fromSlice,
-                 arangodb::velocypack::Slice const toSlice) override;
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous) override;
 
   Result remove(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const slice,

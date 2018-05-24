@@ -1118,9 +1118,6 @@ void Query::getStats(VPackBuilder& builder) {
 ///        warnings. If there are none it will not modify the builder
 void Query::addWarningsToVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
-  if (_warnings.empty()) {
-    return;
-  }
   size_t const n = _warnings.size();
   builder.add(VPackValue("warnings"));
   {

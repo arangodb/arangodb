@@ -321,7 +321,7 @@ int TRI_InetPton6(char const* src, unsigned char* dst) {
      * Since some memmove()'s erroneously fail to handle
      * overlapping regions, we'll do the shift by hand.
      */
-    int const n = (int const)(tp - colonp);
+    int const n = (int)(tp - colonp);
     int i;
 
     if (tp == endp) {

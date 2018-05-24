@@ -198,7 +198,7 @@ class Thread {
   /// @brief optional notification call when thread gets unplanned exception
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void crashNotification(std::exception const & ex) {return;};
+  virtual void crashNotification(std::exception const&) {}
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

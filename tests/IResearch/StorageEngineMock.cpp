@@ -651,28 +651,19 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   before();
 
   arangodb::velocypack::Builder builder;
-  arangodb::velocypack::Slice fromSlice;
-  arangodb::velocypack::Slice toSlice;
   auto isEdgeCollection = _logicalCollection->type() == TRI_COL_TYPE_EDGE;
-
-  if (isEdgeCollection) {
-    fromSlice = newSlice.get(arangodb::StaticStrings::FromString);
-    toSlice = newSlice.get(arangodb::StaticStrings::ToString);
-  }
 
   TRI_voc_rid_t unused;
   auto res = newObjectForInsert(
     trx,
     newSlice,
-    fromSlice,
-    toSlice,
     isEdgeCollection,
     builder,
     options.isRestore,
     unused
   );
 
-  if (TRI_ERROR_NO_ERROR != res) {
+  if (res.fail()) {
     return res;
   }
 
@@ -882,7 +873,7 @@ arangodb::Result PhysicalCollectionMock::remove(arangodb::transaction::Methods* 
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 }
 
-arangodb::Result PhysicalCollectionMock::replace(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous, arangodb::velocypack::Slice const fromSlice, arangodb::velocypack::Slice const toSlice) {
+arangodb::Result PhysicalCollectionMock::replace(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous) {
   before();
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;

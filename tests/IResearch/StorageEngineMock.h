@@ -88,7 +88,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
                         arangodb::OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
-  virtual arangodb::Result replace(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous, arangodb::velocypack::Slice const fromSlice, arangodb::velocypack::Slice const toSlice) override;
+  virtual arangodb::Result replace(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev, arangodb::ManagedDocumentResult& previous) override;
   virtual int restoreIndex(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&, std::shared_ptr<arangodb::Index>&) override;
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   virtual void setPath(std::string const&) override;
