@@ -39,7 +39,7 @@ DropDatabase::DropDatabase(
 
 DropDatabase::~DropDatabase() {};
 
-arangodb::Result DropDatabase::first() {
+bool DropDatabase::first() {
 
   auto const& database = _description.get(DATABASE);
   auto* systemVocbase =
@@ -50,7 +50,7 @@ arangodb::Result DropDatabase::first() {
   }
 
   _result = Databases::drop(systemVocbase, database);
-  return _result;
+  return false;
     
 }
 

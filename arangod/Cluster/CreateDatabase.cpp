@@ -42,7 +42,7 @@ CreateDatabase::CreateDatabase(
 
 CreateDatabase::~CreateDatabase() {};
 
-arangodb::Result CreateDatabase::first() {
+bool CreateDatabase::first() {
 
   VPackSlice users;
 
@@ -57,7 +57,7 @@ arangodb::Result CreateDatabase::first() {
   // Assertion in constructor makes sure that we have DATABASE.
   _result = Databases::create(_description.get(DATABASE), users, properties());
 
-  return _result;
+  return false;
 
 }
 

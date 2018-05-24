@@ -59,15 +59,15 @@ void MaintenanceWorker::run() {
     switch(_loopState) {
       case eFIND_ACTION:
         _curAction = _feature.findReadyAction();
-        more = _curAction != nullptr;
+        more = (bool)_curAction;
         break;
 
       case eRUN_FIRST:
-        more = _curAction->first().is(TRI_ERROR_ACTION_UNFINISHED);
+        more = _curAction->first();
         break;
 
       case eRUN_NEXT:
-        more = _curAction->next().is(TRI_ERROR_ACTION_UNFINISHED);
+        more = _curAction->next();
         break;
 
       default:
@@ -89,7 +89,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
 
   // bad result code forces actionMore to false
   if (_curAction && (!_curAction->result().ok()
-                     || maintenance::FAILED == _curAction->getState()))
+                     || FAILED == _curAction->getState()))
   {
     actionMore = false;
   } // if
@@ -110,7 +110,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
       if (_curAction->getPreAction()) {
         std::shared_ptr<Action> tempPtr;
 
-        _curAction->setState(maintenance::WAITING);
+        _curAction->setState(WAITING);
         tempPtr=_curAction;
         _curAction=_curAction->getPreAction();
         _curAction->setPostAction(
@@ -128,17 +128,17 @@ void MaintenanceWorker::nextState(bool actionMore) {
 
       // if action's state not set, assume it succeeded when result ok
       if (_curAction->result().ok()
-          && maintenance::FAILED != _curAction->getState()) {
+          && FAILED != _curAction->getState()) {
 //        _curAction->incStats();
         _curAction->endStats();
-        _curAction->setState(maintenance::COMPLETE);
+        _curAction->setState(COMPLETE);
 
         // continue execution with "next" action tied to this one
         if (_curAction->getPostAction()) {
           _curAction = _curAction->getPostAction();
           _curAction->clearPreAction();
-          _loopState = (maintenance::WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
-          _curAction->setState(maintenance::EXECUTING);
+          _loopState = (WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
+          _curAction->setState(EXECUTING);
         } else {
           _curAction.reset();
           _loopState = (_directAction ? eSTOP : eFIND_ACTION);
@@ -148,7 +148,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
 
         // fail all actions that would follow
         do {
-          failAction->setState(maintenance::FAILED);
+          failAction->setState(FAILED);
           failAction->endStats();
           failAction=failAction->getPostAction();
         } while(failAction);

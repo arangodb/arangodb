@@ -41,7 +41,7 @@ public:
 
   virtual ~DropCollection();
 
-  virtual arangodb::Result first() override final;
+  virtual bool first() override final;
   
   virtual arangodb::Result kill(Signal const& signal) override final;
   

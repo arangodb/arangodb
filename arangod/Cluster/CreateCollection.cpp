@@ -61,7 +61,7 @@ CreateCollection::~CreateCollection() {};
 
 
 
-arangodb::Result CreateCollection::first() {
+bool CreateCollection::first() {
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
@@ -77,7 +77,8 @@ arangodb::Result CreateCollection::first() {
   if (vocbase == nullptr) {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
     errorMsg += database;
-    return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    return false;
   }
 
   auto cluster =
@@ -129,7 +130,7 @@ arangodb::Result CreateCollection::first() {
       << _result;
   }
 
-  return _result;
+  return false;
   
 }
 

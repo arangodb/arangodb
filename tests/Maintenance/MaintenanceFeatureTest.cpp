@@ -143,14 +143,11 @@ public:
   bool verifyRegistryState(ExpectedVec_t & expected) {
     bool good(true);
 
-    std::cout << toVelocyPack().slice().toJson() << std::endl;
     VPackArrayIterator registry(toVelocyPack().slice());
-    REQUIRE(registry.size() == expected.size());
-    std::cout << __LINE__ << std::endl;
+
     auto action = registry.begin();
     auto check = expected.begin();
 
-    std::cout << __LINE__ << std::endl;
     for ( ; registry.end() != action && expected.end()!=check; ++action, ++check) {
       VPackSlice id = (*action).get("id");
       if (!(id.isInteger() && id.getInt() == check->_id)) {
@@ -159,7 +156,6 @@ public:
         good = false;
       } // if
 
-    std::cout << __LINE__ << std::endl;
       VPackSlice result = (*action).get("result");
       if (!(result.isInteger() && check->_result == result.getInt())) {
         std::cerr << "Result mismatch: action has " << result.getInt()
@@ -167,7 +163,6 @@ public:
         good = false;
       } // if
 
-    std::cout << __LINE__ << std::endl;
       VPackSlice state = (*action).get("state");
       if (!(state.isInteger() && check->_state == state.getInt())) {
         std::cerr << "State mismatch: action has " << state.getInt()
@@ -175,7 +170,6 @@ public:
         good = false;
       } // if
 
-    std::cout << __LINE__ << std::endl;
       VPackSlice progress = (*action).get("progress");
       if (!(progress.isInteger() && check->_progress == progress.getInt())) {
         std::cerr << "Progress mismatch: action has " << progress.getInt()
@@ -184,7 +178,6 @@ public:
       } // if
     } // for
 
-    std::cout << __LINE__ << std::endl;
     return good;
 
   } // verifyRegistryState
@@ -260,7 +253,7 @@ public:
 
   virtual ~TestActionBasic() {};
 
-  arangodb::Result first() override {
+  bool first() override {
 
     // a pre action needs to push before setting _result
     if (_preDesc) {
@@ -278,7 +271,7 @@ public:
     return(iteratorEndTest());
   };
 
-  arangodb::Result next() override {
+  bool next() override {
     // time to set result?
     if (0==_iteration) {
       _result.reset(_resultCode);
@@ -294,7 +287,7 @@ public:
 
 
 protected:
-  arangodb::Result iteratorEndTest() {
+  bool iteratorEndTest() {
     bool more;
 
     //
@@ -319,8 +312,6 @@ public:
   std::shared_ptr<ActionDescription> _postDesc;
 
 };// TestActionBasic
-
-
 
 //
 //
@@ -374,6 +365,8 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     TestMaintenanceFeature tf;
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
+    std::cout << tf.toVelocyPack().toJson() << std::endl;
+    
     std::unique_ptr<ActionBase> action_base_ptr;
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
@@ -382,6 +375,8 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
           })));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
+
+    std::cout << tf.toVelocyPack().toJson() << std::endl;
     
     REQUIRE(result.ok());
     REQUIRE(tf._recentAction->result().ok());
@@ -395,6 +390,7 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     TestMaintenanceFeature tf;
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
+    std::cout << tf.toVelocyPack().toJson() << std::endl;
     std::unique_ptr<ActionBase> action_base_ptr;
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
@@ -403,6 +399,8 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
           })));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
+    
+    std::cout << tf.toVelocyPack().toJson() << std::endl;
     
     REQUIRE(!result.ok());
     REQUIRE(!tf._recentAction->result().ok());
@@ -425,6 +423,8 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
+    std::cout << tf.toVelocyPack().toJson() << std::endl;
+    
     REQUIRE(result.ok());
     REQUIRE(tf._recentAction->result().ok());
     REQUIRE(2==tf._recentAction->getProgress());
@@ -444,6 +444,8 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
             {"name","TestActionBasic"},{"iterate_count","100"}})));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
+
+    std::cout << tf.toVelocyPack().toJson() << std::endl;
 
     REQUIRE(result.ok());
     REQUIRE(tf._recentAction->result().ok());
@@ -465,6 +467,8 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
           })));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
+
+    std::cout << tf.toVelocyPack().toJson() << std::endl;
 
     REQUIRE(!result.ok());
     REQUIRE(!tf._recentAction->result().ok());
@@ -500,7 +504,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
             {"name","TestActionBasic"},{"iterate_count","100"},{"result_code","1"}
           })));
     arangodb::Result result = tf->addAction(
-      std::make_shared<Action>(std::move(action_base_ptr)), true);
+      std::make_shared<Action>(std::move(action_base_ptr)), false);
 
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
@@ -513,33 +517,32 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
             {"name","TestActionBasic"},{"iterate_count","2"}
           })));
     result = tf->addAction(
-      std::make_shared<Action>(std::move(action_base_ptr)), true);
+      std::make_shared<Action>(std::move(action_base_ptr)), false);
 
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
     pre_thread.push_back({2,0,READY,0});
     post_thread.push_back({2,0,COMPLETE,2});
 
-    #warning fix
-/*    //   c. duplicate of 'a', should fail to add
+    //   c. duplicate of 'a', should fail to add
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
         *tf, ActionDescription(std::map<std::string,std::string>{
             {"name","TestActionBasic"},{"iterate_count","100"},{"result_code","1"}
           })));
     result = tf->addAction(
-      std::make_shared<Action>(std::move(action_base_ptr)), true);
+      std::make_shared<Action>(std::move(action_base_ptr)), false);
 
     REQUIRE(!result.ok());   // has not executed, ok() is about parse and list add
     // _recentAction will NOT contain the aborted object ... don't test it
-    */
+
     //
     // 2. see if happy about queue prior to threads running
     REQUIRE(tf->verifyRegistryState(pre_thread));
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-/*    tf->setMaintenanceThreadsMax(1);
+    tf->setMaintenanceThreadsMax(1);
 
     //
     // 4. loop while waiting for threads to complete all actions
@@ -553,7 +556,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     std::string xx = (tf->toVelocyPack()).toJson();
     printf("%s\n", xx.c_str());
 #endif
-*/
+
     //
     // 6. bring down the ApplicationServer, i.e. clean up
     as.beginShutdown();
@@ -562,7 +565,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     
   }
 
-/*
+
   SECTION("Action that generates a pre-action") {
     std::vector<Expected> pre_thread, post_thread;
 
@@ -585,7 +588,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
             {"name","TestActionBasic"},{"iterate_count","100"},{"preaction_result_code","0"}
           })));
     arangodb::Result result = tf->addAction(
-      std::make_shared<Action>(std::move(action_base_ptr)), true);
+      std::make_shared<Action>(std::move(action_base_ptr)), false);
 
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
@@ -640,7 +643,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
             {"name","TestActionBasic"},{"iterate_count","100"},{"postaction_result_code","0"}
           })));
     arangodb::Result result = tf->addAction(
-      std::make_shared<Action>(std::move(action_base_ptr)), true);
+      std::make_shared<Action>(std::move(action_base_ptr)), false);
 
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
@@ -725,5 +728,5 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     th.join();
   }
 
-*/
+
  } // MaintenanceFeatureThreaded

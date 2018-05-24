@@ -186,7 +186,9 @@ Result MaintenanceFeature::addAction(
     std::shared_ptr<Action> curAction = findActionHashNoLock(action_hash);
 
     // similar action not in the queue (or at least no longer viable)
-    if (!curAction || curAction->done()) {
+    if (curAction == nullptr || curAction->done()) {
+
+      createAction(newAction, executeNow);
 
       if (!newAction) {
         /// something failed in action creation ... go check logs
@@ -237,7 +239,7 @@ Result MaintenanceFeature::addAction(
 
     // similar action not in the queue (or at least no longer viable)
     if (!curAction || curAction->done()) {
-      newAction = std::make_shared<Action>(*this, *description);
+      newAction = createAction(description, executeNow);
 
       if (!newAction) {
         /// something failed in action creation ... go check logs
@@ -312,8 +314,8 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
   std::string name = description->get(NAME);
   
   // call factory
-  newAction = std::make_shared<Action>(*this, description);
-  
+  newAction = std::make_shared<Action>(*this, *description);
+
   // if a new action created
   if (newAction) {
     
@@ -324,6 +326,8 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
       << "createAction:  unknown action name given, \"" << name.c_str() << "\".";
   } // else
 
+  return newAction;
+  
 } // if
 
 

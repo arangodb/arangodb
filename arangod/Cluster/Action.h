@@ -59,13 +59,13 @@ public:
   virtual ~Action();
   
   /// @brief run for some time and tell, if need more time or done
-  arangodb::Result next();
+  bool next();
 
   /// @brief run for some time and tell, if need more time or done
   arangodb::Result result();
 
   /// @brief run for some time and tell, if need more time or done
-  arangodb::Result first ();
+  bool first ();
 
   /// @brief run for some time and tell, if need more time or done
   ActionState state() const;

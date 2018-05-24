@@ -1819,10 +1819,10 @@ constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            
 /// This maintenance action is still processing
 constexpr int TRI_ERROR_ACTION_UNFINISHED                                       = 6003;
 
-/// 60004: ERROR_NO_SUCH_ACTION
+/// 6004: ERROR_NO_SUCH_ACTION
 /// "no such maintenance action"
 /// No such maintenance action exists
-constexpr int TRI_ERROR_NO_SUCH_ACTION                                          = 60004;
+constexpr int TRI_ERROR_NO_SUCH_ACTION                                          = 6004;
 
 
 /// register all errors for ArangoDB

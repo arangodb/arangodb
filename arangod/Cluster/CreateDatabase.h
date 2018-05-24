@@ -40,7 +40,7 @@ public:
 
   virtual ~CreateDatabase();
 
-  virtual arangodb::Result first() override;
+  virtual bool first() override;
 
   virtual arangodb::Result kill(Signal const& signal) override final;
   

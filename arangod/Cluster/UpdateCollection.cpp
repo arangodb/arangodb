@@ -89,7 +89,7 @@ void handleLeadership(
 
 UpdateCollection::~UpdateCollection() {};
 
-arangodb::Result UpdateCollection::first() {
+bool UpdateCollection::first() {
 
   auto const& database   = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
@@ -101,7 +101,8 @@ arangodb::Result UpdateCollection::first() {
   if (vocbase == nullptr) {
     std::string errorMsg("UpdateCollection: Failed to lookup database ");
     errorMsg += database;
-    return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    return false;
   }
 
   Result found = methods::Collections::lookup(
@@ -125,7 +126,8 @@ arangodb::Result UpdateCollection::first() {
     _result = actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
   
-  return _result;
+  return false;
+
 }
 
 arangodb::Result UpdateCollection::kill(Signal const& signal) {

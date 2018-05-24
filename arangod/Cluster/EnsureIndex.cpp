@@ -48,7 +48,7 @@ EnsureIndex::EnsureIndex(
 
 EnsureIndex::~EnsureIndex() {};
 
-arangodb::Result EnsureIndex::first() {
+bool EnsureIndex::first() {
   arangodb::Result res;
 
   auto const& database = _description.get(DATABASE);
@@ -59,14 +59,16 @@ arangodb::Result EnsureIndex::first() {
   if (vocbase == nullptr) {
     std::string errorMsg("EnsureIndex: Failed to lookup database ");
     errorMsg += database;
-    return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    _result.reset(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    return false;
   }
 
   auto col = vocbase->lookupCollection(collection);
   if (col == nullptr) {
     std::string errorMsg("EnsureIndex: Failed to lookup local collection ");
     errorMsg += collection + " in database " + database;
-    return actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);    
+    _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
+    return false;
   }
 
   auto const props = properties();
@@ -91,7 +93,7 @@ arangodb::Result EnsureIndex::first() {
       << "Failed to ensure index " << body.slice().toJson();
   }
   
-  return _result;
+  return false;
 }
 
 arangodb::Result EnsureIndex::kill(Signal const& signal) {

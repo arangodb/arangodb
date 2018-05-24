@@ -81,12 +81,12 @@ std::shared_ptr<VPackBuilder> const Action::properties() const {
   return describe().properties();
 }
 
-arangodb::Result Action::first() {
+bool Action::first() {
   TRI_ASSERT(_action != nullptr);
   return _action->first();
 }
 
-arangodb::Result Action::next() {
+bool Action::next() {
   TRI_ASSERT(_action != nullptr);
   return _action->next();
 }
@@ -119,7 +119,7 @@ void Action::incStats() {
 }
 
 void Action::endStats() {
-  _action->incStats();
+  _action->endStats();
 }
 
 arangodb::Result Action::run(
