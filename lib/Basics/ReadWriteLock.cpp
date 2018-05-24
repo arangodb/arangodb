@@ -51,6 +51,7 @@ void ReadWriteLock::writeLock() {
 
 /// @brief locks for writing, but only tries
 bool ReadWriteLock::tryWriteLock() {
+  // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire write lock as long as no readers or writers are active,
   // we might "overtake" other queued writers though.
@@ -80,6 +81,7 @@ void ReadWriteLock::readLock() {
 
 /// @brief locks for reading, tries only
 bool ReadWriteLock::tryReadLock() {
+  // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire read lock as long as no writers are active or queued
   while ((state & ~READER_MASK) == 0) {

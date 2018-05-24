@@ -54,6 +54,7 @@ public:
   }
 
   bool tryWriteLock() {
+    // order_relaxed is an optimization, cmpxchg will synchronize side-effects
     auto state = _state.load(std::memory_order_relaxed);    
     // try to acquire write lock as long as no readers or writers are active,
     // we might "overtake" other queued writers though.
@@ -92,8 +93,9 @@ public:
   }
 
   bool tryReadLock() {
+    // order_relaxed is an optimization, cmpxchg will synchronize side-effects
     auto state = _state.load(std::memory_order_relaxed);
-    // try to acquire write lock as long as no writers are active or queued
+    // try to acquire read lock as long as no writers are active or queued
     while ((state & ~READER_MASK) == 0) {
       if (_state.compare_exchange_weak(state, state + READER_INC, std::memory_order_acquire)) {
         return true;
