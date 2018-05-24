@@ -1210,6 +1210,8 @@ describe ArangoDB do
               check404CRUD(get_vertex(graph_name, unknown_name, unknown_name))
             end
 
+# TODO add tests where the edge/vertex collection is not part of the graph, but
+# the given key exists!
             it "update vertex" do
               check404CRUD(update_vertex( sync, graph_name, unknown_name, unknown_name, {}))
             end

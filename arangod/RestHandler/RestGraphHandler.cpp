@@ -258,6 +258,7 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
       vertexActionReplace(graph, vertexCollectionName, vertexKey);
       return RestStatus::DONE;
     case RequestType::DELETE_REQ:
+    case RequestType::POST:
     default:;
   }
   return boost::none;
@@ -286,6 +287,7 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
     case RequestType::PUT:
       edgeActionReplace(graph, edgeDefinitionName, edgeKey);
       return RestStatus::DONE;
+    case RequestType::POST:
     default:;
   }
   return boost::none;
@@ -650,7 +652,6 @@ Result RestGraphHandler::vertexModify(std::shared_ptr<const graph::Graph> graph,
 // contains the old value in the field "old"; and if "returnNew: true" is
 // passed, the field "new" contains the new value (along with "vertex"!).
 // This is not documented in HTTP/Gharial!
-// TODO move transaction-code to GraphOperations
 // TODO the document API also supports mergeObjects, silent and ignoreRevs;
 // should gharial, too?
 Result RestGraphHandler::documentModify(
