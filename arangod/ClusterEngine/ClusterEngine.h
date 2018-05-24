@@ -52,21 +52,19 @@ class ClusterEngine final : public StorageEngine {
   // create the storage engine
   explicit ClusterEngine(application_features::ApplicationServer*);
   ~ClusterEngine();
-  
-public:
-  
-  void setActualEngine(StorageEngine* e) { _actualEngine = e; }
+
+  void setActualEngine(StorageEngine* e);
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
   ClusterEngineType engineType() const;
-  
+
   // storage engine overrides
   // ------------------------
-  
-  char const* typeName() const override { return _actualEngine->typeName(); }
 
-public:
+  char const* typeName() const override {
+    return _actualEngine ? _actualEngine->typeName() : nullptr;
+  }
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -98,7 +96,7 @@ public:
 
   // inventory functionality
   // -----------------------
-  
+
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
   void getCollectionInfo(
@@ -342,5 +340,7 @@ public:
   std::string _basePath;
   StorageEngine* _actualEngine;
 };
+
 }  // namespace arangodb
+
 #endif
