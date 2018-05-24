@@ -140,6 +140,9 @@ void distributeInClusterRuleSmartEdgeCollection(
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 #endif
 
+/// @brief try to restrict fragments to a single shard if possible
+void restrictToSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
 /// @brief move collect to the DB servers in cluster
 void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
@@ -225,6 +228,9 @@ void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerR
 
 /// @brief replace FILTER and SORT containing DISTANCE function
 void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule const*);
+  
+/// @brief replace WITHIN_RECTANGLE, NEAR, WITHIN (under certain conditions)
+void replaceLegacyGeoFunctionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
 /// @brief replace FULLTEXT function
 void fulltextIndexRule(aql::Optimizer*, std::unique_ptr<aql::ExecutionPlan>, aql::OptimizerRule const*);

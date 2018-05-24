@@ -223,15 +223,13 @@ std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
+  TRI_DEFER(TRI_Free(dk));
+
   PKCS5_PBKDF2_HMAC_SHA1(pass, (int)passLength, (const unsigned char*)salt,
                          (int)saltLength, iter, keyLength, dk);
 
   // return value as hex
-  std::string result =
-      StringUtils::encodeHex(std::string((char*)dk, keyLength));
-  TRI_Free(dk);
-
-  return result;
+  return StringUtils::encodeHex((char*)dk, keyLength);
 }
 
 std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
@@ -258,16 +256,14 @@ std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
   if (dk == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  
+  TRI_DEFER(TRI_Free(dk));
 
   PKCS5_PBKDF2_HMAC(pass, (int)passLength, (const unsigned char*)salt,
                          (int)saltLength, iter, evp_md, keyLength, dk);
 
   // return value as hex
-  std::string result =
-      StringUtils::encodeHex(std::string((char*)dk, keyLength));
-  TRI_Free(dk);
-
-  return result;
+  return StringUtils::encodeHex((char*)dk, keyLength);
 }
 
 std::string sslHMAC(char const* key, size_t keyLength, char const* message,
@@ -294,15 +290,14 @@ std::string sslHMAC(char const* key, size_t keyLength, char const* message,
   if (md == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  
+  TRI_DEFER(TRI_Free(md));
   unsigned int md_len;
 
   HMAC(evp_md, key, (int)keyLength, (const unsigned char*)message, messageLen,
        md, &md_len);
 
-  std::string result = std::string((char*)md, md_len);
-  TRI_Free(md);
-
-  return result;
+  return std::string((char*)md, md_len);
 }
 
 bool verifyHMAC(char const* challenge, size_t challengeLength,
@@ -356,7 +351,7 @@ void salt64(uint64_t& result) {
 
 void saltChar(char*& result, size_t length) {
   if (length == 0) {
-    result = 0;
+    result = nullptr;
     return;
   }
 

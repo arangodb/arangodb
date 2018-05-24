@@ -30,7 +30,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/WorkMonitor.h"
 #include "Logger/Logger.h"
 #include "Logger/LogAppender.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -58,7 +57,6 @@ SchedulerFeature::SchedulerFeature(
   startsAfter("FileDescriptors");
   startsAfter("Logger");
   startsAfter("Random");
-  startsAfter("WorkMonitor");
 }
 
 SchedulerFeature::~SchedulerFeature() {}
@@ -133,12 +131,13 @@ void SchedulerFeature::start() {
 
   V8DealerFeature* dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-
-  dealer->defineContextUpdate(
-      [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
-        TRI_InitV8Dispatcher(isolate, context);
-      },
-      nullptr);
+  if (dealer->isEnabled()) {
+    dealer->defineContextUpdate(
+        [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
+          TRI_InitV8Dispatcher(isolate, context);
+        },
+        nullptr);
+  }
 }
 
 void SchedulerFeature::beginShutdown() {
@@ -167,9 +166,6 @@ void SchedulerFeature::stop() {
     _hangupSignals.reset();
   }
 #endif
-
-  // clear the handlers stuck in the WorkMonitor
-  WorkMonitor::clearHandlers();
 
   // shut-down scheduler
   _scheduler->beginShutdown();
@@ -290,13 +286,13 @@ void SchedulerFeature::buildControlCHandler() {
   // least one thread.
   sigset_t all;
   sigemptyset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, 0);
+  pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
   auto ioService = _scheduler->managerService();
-  _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT,
+  _exitSignals = std::make_shared<asio::signal_set>(*ioService, SIGINT,
                                                            SIGTERM, SIGQUIT);
 
-  _signalHandler = [this](const boost::system::error_code& error, int number) {
+  _signalHandler = [this](const asio::error_code& error, int number) {
     if (error) {
       return;
     }
@@ -311,7 +307,7 @@ void SchedulerFeature::buildControlCHandler() {
     }
   };
 
-  _exitHandler = [](const boost::system::error_code& error, int number) {
+  _exitHandler = [](const asio::error_code& error, int number) {
     if (error) {
       return;
     }
@@ -329,9 +325,9 @@ void SchedulerFeature::buildHangupHandler() {
   auto ioService = _scheduler->managerService();
 
   _hangupSignals =
-      std::make_shared<boost::asio::signal_set>(*ioService, SIGHUP);
+      std::make_shared<asio::signal_set>(*ioService, SIGHUP);
 
-  _hangupHandler = [this](const boost::system::error_code& error, int number) {
+  _hangupHandler = [this](const asio::error_code& error, int number) {
     if (error) {
       return;
     }

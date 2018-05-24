@@ -1096,9 +1096,9 @@ class pos_doc_iterator : public doc_iterator {
     const irs::attribute_view& attrs,
     const index_input* pos_in,
     const index_input* pay_in
-  ) final;
+  ) override final;
 
-  virtual void seek_notify(const skip_context &ctx) final {
+  virtual void seek_notify(const skip_context &ctx) override final {
     assert(pos_);
     // notify positions
     pos_->prepare(ctx);
@@ -1591,7 +1591,8 @@ class meta_writer final : public iresearch::column_meta_writer {
 
  private:
   index_output::ptr out_;
-  field_id count_{}; // number of written objects
+  size_t count_{}; // number of written objects
+  field_id max_id_{}; // the highest column id written (optimization for vector resize on read to highest id)
 }; // meta_writer 
 
 MSVC2015_ONLY(__pragma(warning(push)))
@@ -1626,10 +1627,12 @@ void meta_writer::write(const std::string& name, field_id id) {
   out_->write_vlong(id);
   write_string(*out_, name);
   ++count_;
+  max_id_ = std::max(max_id_, id);
 }
 
 void meta_writer::flush() {
   out_->write_long(count_); // write total number of written objects
+  out_->write_long(max_id_); // write highest column id written
   format_utils::write_footer(*out_);
   out_.reset();
   count_ = 0;
@@ -1640,19 +1643,22 @@ class meta_reader final : public iresearch::column_meta_reader {
   virtual bool prepare(
     const directory& dir, 
     const segment_meta& meta,
-    field_id& count
+    size_t& count,
+    field_id& max_id
   ) override;
   virtual bool read(column_meta& column) override;
 
  private:
   index_input::ptr in_;
-  field_id count_{0};
+  size_t count_{0};
+  field_id max_id_{0};
 }; // meta_writer
 
 bool meta_reader::prepare(
     const directory& dir,
     const segment_meta& meta,
-    field_id& count
+    size_t& count,
+    field_id& max_id
 ) {
   auto filename = file_name<column_meta_writer>(meta);
 
@@ -1667,11 +1673,11 @@ bool meta_reader::prepare(
 
   const auto checksum = format_utils::checksum(*in);
 
-  in->seek(in->length() - sizeof(field_id) - format_utils::FOOTER_LEN);
-
-  // read number of objects to read
-  count = in->read_long();
-
+  in->seek( // seek to start of meta footer (before count and max_id)
+    in->length() - sizeof(size_t) - sizeof(field_id) - format_utils::FOOTER_LEN
+  );
+  count = in->read_long(); // read number of objects to read
+  max_id = in->read_long(); // read highest column id written
   format_utils::check_footer(*in, checksum);
 
   in->seek(0);
@@ -1685,6 +1691,7 @@ bool meta_reader::prepare(
 
   in_ = std::move(in);
   count_ = count;
+  max_id_ = max_id;
   return true;
 }
 
@@ -1694,9 +1701,12 @@ bool meta_reader::read(column_meta& column) {
   }
 
   const auto id = in_->read_vlong();
+
+  assert(id <= max_id_);
   column.name = read_string<std::string>(*in_);
   column.id = id;
   --count_;
+
   return true;
 }
 
@@ -3077,8 +3087,8 @@ class column_iterator final: public irs::doc_iterator {
 
   struct payload_iterator: public irs::payload_iterator {
     const irs::bytes_ref* value_{ nullptr };
-    virtual bool next() { return nullptr != value_; }
-    virtual const irs::bytes_ref& value() const {
+    virtual bool next() override { return nullptr != value_; }
+    virtual const irs::bytes_ref& value() const override {
       return value_ ? *value_ : irs::bytes_ref::NIL;
     }
   };

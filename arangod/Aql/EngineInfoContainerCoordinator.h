@@ -41,8 +41,6 @@ class ExecutionNode;
 class Query;
 class QueryRegistry;
 
-
-
 class EngineInfoContainerCoordinator {
  private:
   struct EngineInfo {
@@ -61,7 +59,7 @@ class EngineInfoContainerCoordinator {
     Result buildEngine(Query* query, QueryRegistry* queryRegistry,
                        std::string const& dbname,
                        std::unordered_set<std::string> const& restrictToShards,
-                       std::unordered_map<std::string, std::string> const& dbServerQueryIds,
+                       MapRemoteToSnippet const& dbServerQueryIds,
                        std::vector<uint64_t>& coordinatorQueryIds,
                        std::unordered_set<ShardID> const& lockedShards) const;
 
@@ -108,7 +106,7 @@ class EngineInfoContainerCoordinator {
   ExecutionEngineResult buildEngines(
       Query* query, QueryRegistry* registry, std::string const& dbname,
       std::unordered_set<std::string> const& restrictToShards,
-      std::unordered_map<std::string, std::string>& queryIds,
+      MapRemoteToSnippet const& dbServerQueryIds,
       std::unordered_set<ShardID> const& lockedShards) const;
 
  private:

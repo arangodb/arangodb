@@ -39,7 +39,7 @@ class JobGuard : public SameThreadAsserter {
   JobGuard(JobGuard const&) = delete;
   JobGuard& operator=(JobGuard const&) = delete;
 
-  explicit JobGuard(EventLoop const& loop) : SameThreadAsserter(), _scheduler(loop._scheduler) {}
+  explicit JobGuard(EventLoop const& loop) : SameThreadAsserter(), _scheduler(loop.scheduler) {}
   explicit JobGuard(rest::Scheduler* scheduler) : SameThreadAsserter(), _scheduler(scheduler) {}
   ~JobGuard() { release(); }
 
@@ -69,6 +69,7 @@ class JobGuard : public SameThreadAsserter {
     if (_isWorkingFlag) {
       _isWorkingFlag = false;
 
+      TRI_ASSERT(_isWorking > 0);
       if (0 == --_isWorking) {
         // if this is the last JobGuard we inform the
         // scheduler that the thread is back to idle
@@ -79,6 +80,7 @@ class JobGuard : public SameThreadAsserter {
     if (_isBlockedFlag) {
       _isBlockedFlag = false;
 
+      TRI_ASSERT(_isBlocked > 0);
       if (0 == --_isBlocked) {
         // if this is the last JobGuard we inform the
         // scheduler that the thread is now unblocked

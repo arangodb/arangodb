@@ -113,6 +113,7 @@ VPackFeature::VPackFeature(application_features::ApplicationServer* server,
     : ApplicationFeature(server, "VPack"),
       _result(result),
       _prettyPrint(true),
+      _jsonInput(false),
       _hexInput(false),
       _printNonJson(true) {
   requiresElevatedPrivileges(false);
@@ -133,6 +134,9 @@ void VPackFeature::collectOptions(
   options->addOption(
       "--hex", "read hex-encoded input",
       new BooleanParameter(&_hexInput));
+  options->addOption(
+      "--json", "treat input as JSON",
+      new BooleanParameter(&_jsonInput));
   options->addOption(
       "--print-non-json", "print non-JSON types",
       new BooleanParameter(&_printNonJson));
@@ -169,17 +173,32 @@ void VPackFeature::start() {
     (_printNonJson ? VPackOptions::ConvertUnsupportedType : VPackOptions::FailOnUnsupportedType);
   options.customTypeHandler = &customTypeHandler;
 
-  try {
-    VPackValidator validator(&options);
-    validator.validate(s.c_str(), s.size(), false);
-  } catch (std::exception const& ex) {
-    std::cerr << "Invalid VPack input while processing infile '" << _inputFile
-              << "': " << ex.what() << std::endl;
-    *_result = TRI_ERROR_INTERNAL;
-    return;
-  }
+  VPackSlice slice;
+  std::shared_ptr<VPackBuilder> builder;
 
-  VPackSlice const slice(s.c_str());
+  if (_jsonInput) {
+    try {
+      builder = VPackParser::fromJson(s);
+      slice = builder->slice();
+    } catch (std::exception const& ex) {
+      std::cerr << "Invalid JSON input while processing infile '" << _inputFile
+                << "': " << ex.what() << std::endl;
+      *_result = TRI_ERROR_INTERNAL;
+      return;
+    }
+  } else {
+    try {
+      VPackValidator validator(&options);
+      validator.validate(s.c_str(), s.size(), false);
+    } catch (std::exception const& ex) {
+      std::cerr << "Invalid VPack input while processing infile '" << _inputFile
+                << "': " << ex.what() << std::endl;
+      *_result = TRI_ERROR_INTERNAL;
+      return;
+    }
+
+    slice = VPackSlice(s.data());
+  }
 
   VPackBuffer<char> buffer(4096);
   VPackCharBufferSink sink(&buffer);
@@ -220,10 +239,10 @@ void VPackFeature::start() {
 
   // cppcheck-suppress *
   if (!toStdOut) {
-    std::cout << "Successfully converted JSON infile '" << _inputFile << "'"
+    std::cout << "Successfully processed infile '" << _inputFile << "'"
               << std::endl;
-    std::cout << "VPack Infile size: " << s.size() << std::endl;
-    std::cout << "JSON Outfile size: " << buffer.size() << std::endl;
+    std::cout << "Infile size: " << s.size() << std::endl;
+    std::cout << "Outfile size: " << buffer.size() << std::endl;
   }
 
   *_result = TRI_ERROR_NO_ERROR;

@@ -66,7 +66,7 @@ class SortNode : public ExecutionNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -78,11 +78,11 @@ class SortNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new SortNode(plan, _id, _elements, _stable);
+    auto c = std::make_unique<SortNode>(plan, _id, _elements, _stable);
 
-    cloneHelper(c, withDependencies, withProperties);
+    cloneHelper(c.get(), withDependencies, withProperties);
 
-    return static_cast<ExecutionNode*>(c);
+    return c.release();
   }
 
   /// @brief estimateCost
@@ -108,7 +108,7 @@ class SortNode : public ExecutionNode {
   }
 
   /// @brief get Variables Used Here including ASC/DESC
-  SortElementVector const& getElements() const { return _elements; }
+  SortElementVector const& elements() const { return _elements; }
 
   /// @brief returns all sort information
   SortInformation getSortInformation(ExecutionPlan*,

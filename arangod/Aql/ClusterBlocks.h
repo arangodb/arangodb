@@ -30,6 +30,8 @@
 #include "Aql/ExecutionNode.h"
 #include "Rest/GeneralRequest.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -69,14 +71,6 @@ class GatherBlock : public ExecutionBlock {
 
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
-
-  /// @brief count: the sum of the count() of the dependencies or -1 (if any
-  /// dependency has count -1
-  int64_t count() const override final;
-
-  /// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
-  /// any dependency has remaining -1
-  int64_t remaining() override final;
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
@@ -160,12 +154,6 @@ class BlockWithClients : public ExecutionBlock {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  /// @brief remaining
-  int64_t remaining() override final {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   /// @brief hasMore
   bool hasMore() override final {
     TRI_ASSERT(false);
@@ -183,9 +171,6 @@ class BlockWithClients : public ExecutionBlock {
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   virtual bool hasMoreForShard(std::string const& shardId) = 0;
-
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  virtual int64_t remainingForShard(std::string const& shardId) = 0;
 
  protected:
   /// @brief getOrSkipSomeForShard
@@ -229,9 +214,6 @@ class ScatterBlock : public BlockWithClients {
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
 
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  int64_t remainingForShard(std::string const& shardId) override;
-
  private:
   /// @brief getOrSkipSomeForShard
   int getOrSkipSomeForShard(size_t atMost, bool skipping,
@@ -256,9 +238,6 @@ class DistributeBlock : public BlockWithClients {
   /// @brief shutdown
   int shutdown(int) override;
 
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  int64_t remainingForShard(std::string const& shardId) override { return -1; }
-
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
 
@@ -280,6 +259,12 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief create a new document key
   std::string createKey(arangodb::velocypack::Slice) const;
+
+  // a reusable Builder object for building _key values
+  arangodb::velocypack::Builder _keyBuilder;
+  
+  // a reusable Builder object for building document objects
+  arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief _distBuffer.at(i) is a deque containing pairs (j,k) such that
   //  _buffer.at(j) row k should be sent to the client with id = i.
@@ -305,7 +290,7 @@ class DistributeBlock : public BlockWithClients {
   bool _allowSpecifiedKeys;
 };
 
-class RemoteBlock : public ExecutionBlock {
+class RemoteBlock final : public ExecutionBlock {
   /// @brief constructors/destructors
  public:
   RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
@@ -335,14 +320,8 @@ class RemoteBlock : public ExecutionBlock {
   /// @brief hasMore
   bool hasMore() override final;
 
-  /// @brief count
-  int64_t count() const override final;
-
-  /// @brief remaining
-  int64_t remaining() override final;
-
-  /// @brief internal method to send a request
  private:
+  /// @brief internal method to send a request
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
       rest::RequestType type, std::string const& urlPart,
       std::string const& body) const;

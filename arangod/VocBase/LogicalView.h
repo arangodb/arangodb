@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
+#include "Meta/utility.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Buffer.h>
@@ -55,6 +56,58 @@ class LogicalView : public LogicalDataSource {
     std::shared_ptr<LogicalView>const& view // a pointer to the created view
   )> PreCommitCallback;
 
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief casts a specified 'LogicalView' to a provided Target type
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename Target, typename Source>
+  inline static typename meta::adjustConst<Source, Target>::reference cast(
+      Source& view
+  ) noexcept {
+    typedef typename meta::adjustConst<
+      Source,
+      typename std::enable_if<
+        std::is_base_of<LogicalView, Target>::value
+          && std::is_same<typename std::remove_const<Source>::type,
+        LogicalView
+      >::value, Target>::type
+    > target_type_t;
+
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // do not use dynamic_cast<typename target_type_t::reference>(view)
+    // to explicitly expose our intention to fail in 'noexcept' function
+    // in case of wrong type
+    auto impl = dynamic_cast<typename target_type_t::pointer>(&view);
+    TRI_ASSERT(impl);
+    return *impl;
+  #else
+    return static_cast<typename target_type_t::reference>(view);
+  #endif
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief casts a specified 'LogicalView' to a provided Target type
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename Target, typename Source>
+  inline static typename meta::adjustConst<Source, Target>::pointer cast(
+      Source* view
+  ) noexcept {
+    typedef typename meta::adjustConst<
+      Source,
+      typename std::enable_if<
+        std::is_base_of<LogicalView, Target>::value
+          && std::is_same<typename std::remove_const<Source>::type,
+        LogicalView
+      >::value, Target>::type
+    >::pointer target_type_t;
+
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return dynamic_cast<target_type_t>(view);
+  #else
+    return static_cast<target_type_t>(view);
+  #endif
+  }
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view
   //////////////////////////////////////////////////////////////////////////////
@@ -68,6 +121,7 @@ class LogicalView : public LogicalDataSource {
   static std::shared_ptr<LogicalView> create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
+    bool isNew,
     uint64_t planVersion = 0,
     PreCommitCallback const& preCommit = PreCommitCallback() // called before
   );
@@ -80,7 +134,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result drop() = 0;
+  virtual arangodb::Result drop() override = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief renames an existing view
@@ -88,16 +142,7 @@ class LogicalView : public LogicalDataSource {
   virtual Result rename(
     std::string&& newName,
     bool doSync
-  ) = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief builds a VelocyPack representation of the node LogicalView
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void toVelocyPack(
-    velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const = 0;
+  ) override = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
@@ -143,12 +188,6 @@ class DBServerLogicalView : public LogicalView {
     bool doSync
   ) override final;
 
-  void toVelocyPack(
-    velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const override final;
-
   arangodb::Result updateProperties(
     velocypack::Slice const& properties,
     bool partialUpdate,
@@ -162,11 +201,17 @@ class DBServerLogicalView : public LogicalView {
     uint64_t planVersion
   );
 
+  virtual Result appendVelocyPack(
+    arangodb::velocypack::Builder& builder,
+    bool detailed,
+    bool forPersistence
+  ) const override final;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called by view factories during view creation to persist the view
   ///        to the storage engine
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result create(DBServerLogicalView const& view) noexcept;
+  static arangodb::Result create(DBServerLogicalView const& view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view

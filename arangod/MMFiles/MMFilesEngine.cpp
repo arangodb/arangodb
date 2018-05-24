@@ -282,9 +282,13 @@ transaction::ContextData* MMFilesEngine::createTransactionContextData() {
   return new MMFilesTransactionContextData();
 }
 
-TransactionState* MMFilesEngine::createTransactionState(TRI_vocbase_t* vocbase,
-                transaction::Options const& options) {
-  return new MMFilesTransactionState(vocbase, options);
+std::unique_ptr<TransactionState> MMFilesEngine::createTransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+) {
+  return std::unique_ptr<TransactionState>(
+    new MMFilesTransactionState(vocbase, TRI_NewTickServer(), options)
+  );
 }
 
 TransactionCollection* MMFilesEngine::createTransactionCollection(
@@ -300,7 +304,7 @@ PhysicalCollection* MMFilesEngine::createPhysicalCollection(
   return new MMFilesCollection(collection, info);
 }
 
-void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
+void MMFilesEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   DatabaseFeature* databaseFeature =
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database");
@@ -308,7 +312,7 @@ void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
   if (!databaseFeature->checkVersion() && !databaseFeature->upgrade()) {
     // start compactor thread
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "starting compactor for database '" << vocbase->name() << "'";
+      << "starting compactor for database '" << vocbase.name() << "'";
 
     startCompactor(vocbase);
   }
@@ -1014,7 +1018,7 @@ arangodb::Result MMFilesEngine::dropCollection(
     builder.openObject();
     builder.add("id", VPackValue(std::to_string(collection->id())));
     builder.add("name", VPackValue(collection->name()));
-    builder.add("cuid", VPackValue(collection->globallyUniqueId()));
+    builder.add("cuid", VPackValue(collection->guid()));
     builder.close();
 
     MMFilesCollectionMarker marker(
@@ -2109,7 +2113,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
         );
       }
 
-      auto const view = LogicalView::create(*vocbase, it);
+      auto const view = LogicalView::create(*vocbase, it, false);
 
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";
@@ -2741,27 +2745,27 @@ int MMFilesEngine::stopCleanup(TRI_vocbase_t* vocbase) {
 }
 
 // start the compactor thread for the database
-int MMFilesEngine::startCompactor(TRI_vocbase_t* vocbase) {
+int MMFilesEngine::startCompactor(TRI_vocbase_t& vocbase) {
   std::shared_ptr<MMFilesCompactorThread> thread;
 
   {
     MUTEX_LOCKER(locker, _threadsLock);
 
-    auto it = _compactorThreads.find(vocbase);
+    auto it = _compactorThreads.find(&vocbase);
 
     if (it != _compactorThreads.end()) {
       return TRI_ERROR_INTERNAL;
     }
 
     thread.reset(new MMFilesCompactorThread(vocbase));
-  
+
     if (!thread->start()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "could not start compactor thread";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    _compactorThreads.emplace(vocbase, std::move(thread));
+    _compactorThreads.emplace(&vocbase, std::move(thread));
   }
 
   return TRI_ERROR_NO_ERROR;

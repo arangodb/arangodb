@@ -32,7 +32,6 @@
 #include "utils/log.hpp"
 #include "utils/utf8_path.hpp"
 
-#include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/AstNode.h"
@@ -46,7 +45,6 @@
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFeature.h"
@@ -112,8 +110,6 @@ struct DocIdScorer: public irs::sort {
 
 REGISTER_SCORER_TEXT(DocIdScorer, DocIdScorer::make);
 
-typedef std::unique_ptr<arangodb::TransactionState> TrxStatePtr;
-
 NS_END
 
 // -----------------------------------------------------------------------------
@@ -150,7 +146,6 @@ struct IResearchViewSetup {
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
-    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
@@ -238,7 +233,7 @@ SECTION("test_defaults") {
   // view definition with LogicalView (for persistence)
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto view = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto view = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
@@ -252,7 +247,8 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK(7 == slice.length());
+    CHECK((8 == slice.length()));
+    CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK(slice.get("name").copyString() == "testView");
     CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(false == slice.get("deleted").getBool());
@@ -267,7 +263,7 @@ SECTION("test_defaults") {
   // view definition with LogicalView
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto view = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto view = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
@@ -387,7 +383,7 @@ SECTION("test_drop_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -398,8 +394,11 @@ SECTION("test_drop_cid") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -409,7 +408,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -428,7 +427,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(0 == snapshot->live_docs_count());
     }
@@ -438,7 +437,7 @@ SECTION("test_drop_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"properties\": { \"collections\": [ 42 ] } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -449,8 +448,11 @@ SECTION("test_drop_cid") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -460,7 +462,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -479,7 +481,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(0 == snapshot->live_docs_count());
     }
@@ -489,7 +491,7 @@ SECTION("test_drop_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"collections\": [ 42 ] }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -500,8 +502,11 @@ SECTION("test_drop_cid") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -511,7 +516,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -533,7 +538,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(0 == snapshot->live_docs_count());
     }
@@ -557,7 +562,7 @@ SECTION("test_drop_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"properties\": { \"collections\": [ 42 ] } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -568,8 +573,11 @@ SECTION("test_drop_cid") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -579,7 +587,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -596,7 +604,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -620,7 +628,7 @@ SECTION("test_drop_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"properties\": { \"collections\": [ 42 ] } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -631,8 +639,11 @@ SECTION("test_drop_cid") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
       view->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -642,7 +653,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -664,7 +675,7 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(0 == snapshot->live_docs_count());
     }
@@ -688,8 +699,9 @@ SECTION("test_drop_cid") {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = []()->void { throw std::exception(); };
-      auto* feature =
-        arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+      auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::DatabaseFeature
+      >("Database");
 
       CHECK_THROWS((feature->recoveryDone()));
     }
@@ -701,7 +713,7 @@ SECTION("test_emplace_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"properties\": { \"collections\": [ 42 ] } }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -750,7 +762,7 @@ SECTION("test_emplace_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -799,7 +811,7 @@ SECTION("test_emplace_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -851,7 +863,7 @@ SECTION("test_emplace_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -898,7 +910,7 @@ SECTION("test_emplace_cid") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -950,8 +962,9 @@ SECTION("test_emplace_cid") {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = []()->void { throw std::exception(); };
-      auto* feature =
-        arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+      auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::DatabaseFeature
+      >("Database");
 
       CHECK_THROWS((feature->recoveryDone()));
     }
@@ -972,7 +985,7 @@ SECTION("test_insert") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -982,8 +995,11 @@ SECTION("test_insert") {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
 
       linkMeta._includeAllFields = true;
@@ -996,7 +1012,7 @@ SECTION("test_insert") {
       CHECK((view->sync()));
     }
 
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK(2 == snapshot->live_docs_count());
   }
@@ -1007,7 +1023,7 @@ SECTION("test_insert") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -1017,8 +1033,11 @@ SECTION("test_insert") {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> batch = {
         { arangodb::LocalDocumentId(1), docJson->slice() },
@@ -1033,7 +1052,7 @@ SECTION("test_insert") {
       CHECK((view->sync()));
     }
 
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((2 == snapshot->docs_count()));
   }
@@ -1042,7 +1061,7 @@ SECTION("test_insert") {
   {
     StorageEngineMock::inRecoveryResult = false;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -1053,7 +1072,7 @@ SECTION("test_insert") {
       view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
       std::unordered_set<TRI_voc_cid_t> actual;
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(actual, *snapshot);
       CHECK((actual.empty()));
@@ -1063,8 +1082,11 @@ SECTION("test_insert") {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
 
       linkMeta._includeAllFields = true;
@@ -1077,7 +1099,7 @@ SECTION("test_insert") {
       CHECK((view->sync()));
     }
 
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((4 == snapshot->docs_count()));
 
@@ -1088,7 +1110,7 @@ SECTION("test_insert") {
       CHECK((0 == cids.size()));
       std::unordered_set<TRI_voc_cid_t> expected = { 1 };
       std::unordered_set<TRI_voc_cid_t> actual;
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(actual, *snapshot);
 
@@ -1104,7 +1126,7 @@ SECTION("test_insert") {
   {
     StorageEngineMock::inRecoveryResult = false;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -1116,8 +1138,11 @@ SECTION("test_insert") {
       arangodb::transaction::Options options;
       options.waitForSync = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, options
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        options
       );
 
       linkMeta._includeAllFields = true;
@@ -1129,7 +1154,7 @@ SECTION("test_insert") {
       CHECK((trx.commit().ok()));
     }
 
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((4 == snapshot->docs_count()));
   }
@@ -1138,7 +1163,7 @@ SECTION("test_insert") {
   {
     StorageEngineMock::inRecoveryResult = false;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -1147,8 +1172,11 @@ SECTION("test_insert") {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> batch = {
         { arangodb::LocalDocumentId(1), docJson->slice() },
@@ -1163,7 +1191,7 @@ SECTION("test_insert") {
       CHECK((view->sync()));
     }
 
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((4 == snapshot->docs_count()));
   }
@@ -1172,7 +1200,7 @@ SECTION("test_insert") {
   {
     StorageEngineMock::inRecoveryResult = false;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto viewImpl = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
@@ -1183,8 +1211,11 @@ SECTION("test_insert") {
       arangodb::transaction::Options options;
       options.waitForSync = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, options
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        options
       );
       std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> batch = {
         { arangodb::LocalDocumentId(1), docJson->slice() },
@@ -1198,7 +1229,7 @@ SECTION("test_insert") {
       CHECK((trx.commit().ok()));
     }
 
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((4 == snapshot->docs_count()));
   }
@@ -1212,7 +1243,7 @@ SECTION("test_open") {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
 
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
-    auto view = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto view = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !view));
     CHECK((false == TRI_IsDirectory(dataPath.c_str())));
     view->open();
@@ -1239,7 +1270,7 @@ SECTION("test_query") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
 
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK(0 == snapshot->docs_count());
   }
@@ -1258,8 +1289,11 @@ SECTION("test_query") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
 
@@ -1271,7 +1305,7 @@ SECTION("test_query") {
       view->sync();
     }
 
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK(12 == snapshot->docs_count());
   }
@@ -1297,8 +1331,11 @@ SECTION("test_query") {
     // fill with test data
     {
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, collections, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        collections,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
 
@@ -1314,15 +1351,18 @@ SECTION("test_query") {
       view->sync();
     }
 
-    TrxStatePtr state0(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state0 = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot0 = view->snapshot(*state0, true);
     CHECK(12 == snapshot0->docs_count());
 
     // add more data
     {
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, collections, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        collections,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
 
@@ -1341,7 +1381,7 @@ SECTION("test_query") {
     // old reader sees same data as before
     CHECK(12 == snapshot0->docs_count());
     // new reader sees new data
-    TrxStatePtr state1(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state1 = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot1 = view->snapshot(*state1, true);
     CHECK(24 == snapshot1->docs_count());
   }
@@ -1351,7 +1391,9 @@ SECTION("test_query") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
-    auto* feature = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+    auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::FlushFeature
+    >("Flush");
     REQUIRE(feature);
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
@@ -1387,8 +1429,11 @@ SECTION("test_query") {
       {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"seq\": ") + std::to_string(i) + " }");
         arangodb::transaction::UserTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(&vocbase),
-          EMPTY, EMPTY, EMPTY, options
+          arangodb::transaction::StandaloneContext::Create(vocbase),
+          EMPTY,
+          EMPTY,
+          EMPTY,
+          options
         );
 
         CHECK((trx.begin().ok()));
@@ -1398,7 +1443,7 @@ SECTION("test_query") {
 
       // query
       {
-        TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+        auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
         auto* snapshot = view->snapshot(*state, true);
         CHECK(i == snapshot->docs_count());
       }
@@ -1499,7 +1544,7 @@ SECTION("test_register_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size()));
@@ -1517,7 +1562,7 @@ SECTION("test_register_link") {
     CHECK((false == !link));
     std::unordered_set<TRI_voc_cid_t> cids;
     view->sync();
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     arangodb::iresearch::appendKnownCollections(cids, *snapshot);
     CHECK((0 == cids.size())); // link addition does trigger collection load
@@ -1549,7 +1594,7 @@ SECTION("test_register_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size()));
@@ -1575,7 +1620,7 @@ SECTION("test_register_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size())); // link addition does trigger collection load
@@ -1599,7 +1644,7 @@ SECTION("test_register_link") {
     CHECK((false == !link1)); // duplicate link creation is allowed
     std::unordered_set<TRI_voc_cid_t> cids;
     view->sync();
-    TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     arangodb::iresearch::appendKnownCollections(cids, *snapshot);
     CHECK((0 == cids.size())); // link addition does trigger collection load
@@ -1644,8 +1689,11 @@ SECTION("test_unregister_link") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
       view->insert(trx, logicalCollection->id(), arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -1663,7 +1711,7 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((1 == cids.size()));
@@ -1694,7 +1742,7 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size()));
@@ -1728,8 +1776,11 @@ SECTION("test_unregister_link") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
       view->insert(trx, logicalCollection->id(), arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -1747,7 +1798,7 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((1 == cids.size()));
@@ -1774,7 +1825,7 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
+      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size()));
@@ -1847,7 +1898,7 @@ SECTION("test_unregister_link") {
     // create a new view with same ID to validate links
     {
       auto json = arangodb::velocypack::Parser::fromJson("{}");
-      auto view = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
+      auto view = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
       REQUIRE((false == !view));
       auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
       REQUIRE((nullptr != viewImpl));
@@ -1875,7 +1926,7 @@ SECTION("test_self_token") {
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto view = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), 0);
+    auto view = arangodb::iresearch::IResearchView::make(vocbase, json->slice(), true, 0);
     CHECK((false == !view));
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     REQUIRE((nullptr != viewImpl));
@@ -1896,7 +1947,7 @@ SECTION("test_tracked_cids") {
   {
     s.engine.views.clear();
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto view = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
+    auto view = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     CHECK((nullptr != view));
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     REQUIRE((nullptr != viewImpl));
@@ -1913,7 +1964,7 @@ SECTION("test_tracked_cids") {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
-    auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
+    auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     REQUIRE((false == !logicalView));
     StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1941,7 +1992,7 @@ SECTION("test_tracked_cids") {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
-    auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
+    auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), true, 0);
     REQUIRE((false == !logicalView));
     StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
@@ -1979,7 +2030,9 @@ SECTION("test_tracked_cids") {
     {
       s.engine.views.clear();
       auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102, \"properties\": { } }");
-      auto* feature = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+      auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+        arangodb::FlushFeature
+      >("Flush");
       REQUIRE(feature);
       Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
       auto logicalView = vocbase.createView(createJson->slice());
@@ -1992,8 +2045,11 @@ SECTION("test_tracked_cids") {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
       viewImpl->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -2104,7 +2160,7 @@ SECTION("test_transaction_registration") {
   // read transaction (by id)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->id(),
       arangodb::AccessMode::Type::READ
     );
@@ -2126,7 +2182,7 @@ SECTION("test_transaction_registration") {
   // read transaction (by name)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->name(),
       arangodb::AccessMode::Type::READ
     );
@@ -2148,7 +2204,7 @@ SECTION("test_transaction_registration") {
   // write transaction (by id)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->id(),
       arangodb::AccessMode::Type::WRITE
     );
@@ -2170,7 +2226,7 @@ SECTION("test_transaction_registration") {
   // write transaction (by name)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->name(),
       arangodb::AccessMode::Type::WRITE
     );
@@ -2192,7 +2248,7 @@ SECTION("test_transaction_registration") {
   // exclusive transaction (by id)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->id(),
       arangodb::AccessMode::Type::READ
     );
@@ -2214,7 +2270,7 @@ SECTION("test_transaction_registration") {
   // exclusive transaction (by name)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->name(),
       arangodb::AccessMode::Type::READ
     );
@@ -2239,7 +2295,7 @@ SECTION("test_transaction_registration") {
   // read transaction (by id) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->id(),
       arangodb::AccessMode::Type::READ
     );
@@ -2260,7 +2316,7 @@ SECTION("test_transaction_registration") {
   // read transaction (by name) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->name(),
       arangodb::AccessMode::Type::READ
     );
@@ -2281,7 +2337,7 @@ SECTION("test_transaction_registration") {
   // write transaction (by id) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->id(),
       arangodb::AccessMode::Type::WRITE
     );
@@ -2302,7 +2358,7 @@ SECTION("test_transaction_registration") {
   // write transaction (by name) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->name(),
       arangodb::AccessMode::Type::WRITE
     );
@@ -2323,7 +2379,7 @@ SECTION("test_transaction_registration") {
   // exclusive transaction (by id) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->id(),
       arangodb::AccessMode::Type::READ
     );
@@ -2344,7 +2400,7 @@ SECTION("test_transaction_registration") {
   // exclusive transaction (by name) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       logicalView->name(),
       arangodb::AccessMode::Type::READ
     );
@@ -2378,8 +2434,11 @@ SECTION("test_transaction_snapshot") {
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
     viewImpl->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
@@ -2388,18 +2447,14 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == false, waitForSync = false)
   {
-    std::unique_ptr<arangodb::TransactionState> state(
-      s.engine.createTransactionState(&vocbase, arangodb::transaction::Options())
-    );
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = viewImpl->snapshot(*state);
     CHECK((nullptr == snapshot));
   }
 
   // no snapshot in TransactionState (force == true, waitForSync = false)
   {
-    std::unique_ptr<arangodb::TransactionState> state(
-      s.engine.createTransactionState(&vocbase, arangodb::transaction::Options())
-    );
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = viewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
     CHECK((0 == snapshot->live_docs_count()));
@@ -2407,9 +2462,7 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == false, waitForSync = true)
   {
-    std::unique_ptr<arangodb::TransactionState> state(
-      s.engine.createTransactionState(&vocbase, arangodb::transaction::Options())
-    );
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     state->waitForSync(true);
     auto* snapshot = viewImpl->snapshot(*state);
     CHECK((nullptr == snapshot));
@@ -2418,9 +2471,7 @@ SECTION("test_transaction_snapshot") {
   // no snapshot in TransactionState (force == true, waitForSync = true)
   {
     arangodb::transaction::Options options;
-    std::unique_ptr<arangodb::TransactionState> state(
-      s.engine.createTransactionState(&vocbase, arangodb::transaction::Options())
-    );
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     state->waitForSync(true);
     auto* snapshot = viewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
@@ -2433,8 +2484,11 @@ SECTION("test_transaction_snapshot") {
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
     );
     CHECK((trx.begin().ok()));
     viewImpl->insert(trx, 42, arangodb::LocalDocumentId(1), doc->slice(), meta);
@@ -2443,9 +2497,7 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == false, waitForSync = false)
   {
-    std::unique_ptr<arangodb::TransactionState> state(
-      s.engine.createTransactionState(&vocbase, arangodb::transaction::Options())
-    );
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     viewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     auto* snapshot = viewImpl->snapshot(*state);
@@ -2456,9 +2508,7 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = false)
   {
-    std::unique_ptr<arangodb::TransactionState> state(
-      s.engine.createTransactionState(&vocbase, arangodb::transaction::Options())
-    );
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     viewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     auto* snapshot = viewImpl->snapshot(*state, true);
@@ -2469,9 +2519,7 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = false during updateStatus(), true during snapshot())
   {
-    std::unique_ptr<arangodb::TransactionState> state(
-      s.engine.createTransactionState(&vocbase, arangodb::transaction::Options())
-    );
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     viewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     state->waitForSync(true);
@@ -2483,9 +2531,7 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = true during updateStatus(), false during snapshot())
   {
-    std::unique_ptr<arangodb::TransactionState> state(
-      s.engine.createTransactionState(&vocbase, arangodb::transaction::Options())
-    );
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     state->waitForSync(true);
     viewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
@@ -2979,8 +3025,11 @@ SECTION("test_update_partial") {
       static std::vector<std::string> const EMPTY;
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+        arangodb::transaction::StandaloneContext::Create(vocbase),
+        EMPTY,
+        EMPTY,
+        EMPTY,
+        arangodb::transaction::Options()
       );
 
       CHECK((trx.begin().ok()));

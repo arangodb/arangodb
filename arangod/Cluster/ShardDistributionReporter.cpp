@@ -60,11 +60,14 @@ std::shared_ptr<ShardDistributionReporter>
 //////////////////////////////////////////////////////////////////////////////
 
 static inline bool TestIsShardInSync(
-    std::vector<ServerID> const& plannedServers,
-    std::vector<ServerID> const& realServers) {
-  // TODO We need to verify that lists are identical despite ordering?
-  return plannedServers.at(0) == realServers.at(0) &&
-         plannedServers.size() == realServers.size();
+    std::vector<ServerID> plannedServers,
+    std::vector<ServerID> realServers) {
+  // The leader at [0] must be the same, while the order of the followers must
+  // be ignored.
+  std::sort(plannedServers.begin() + 1, plannedServers.end());
+  std::sort(realServers.begin() + 1, realServers.end());
+
+  return plannedServers == realServers;
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -116,10 +116,10 @@ void RestAqlHandler::setupClusterQuery() {
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
+    // if no success here, generateError will have been called already
     LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Failed to setup query. Could not "
                                              "parse the transmitted plan. "
                                              "Aborting query.";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
     return;
   }
 
@@ -228,9 +228,8 @@ void RestAqlHandler::setupClusterQuery() {
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
   bool needToLock = true;
-  bool res = false;
-  res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                         options, ttl, needToLock, answerBuilder);
+  bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
+                              options, ttl, needToLock, answerBuilder);
   if (!res) {
     // TODO we need to trigger cleanup here??
     // Registering the snippets failed.
@@ -578,17 +577,10 @@ void RestAqlHandler::useQuery(std::string const& operation,
 // GET method for /_api/aql/<operation>/<queryId>, (internal)
 // this is using
 // the part of the cursor API without side effects. The operation must
-// be one of "count", "remaining" and "hasMore". The result is a Json
+// be "hasMore". The result is a Json
 // with, depending on the operation, the following attributes:
-//   for "count": the result has the attributes "error" (set to false)
-//                and "count" set to the total number of documents.
-//   for "remaining": the result has the attributes "error" (set to false)
-//                and "remaining" set to the total number of documents.
 //   for "hasMore": the result has the attributes "error" (set to false)
 //                  and "hasMore" set to a boolean value.
-// Note that both "count" and "remaining" may return "unknown" if the
-// internal cursor API returned -1.
-
 void RestAqlHandler::getInfoQuery(std::string const& operation,
                                   std::string const& idString) {
   bool found;
@@ -610,33 +602,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
   try {
     VPackObjectBuilder guard(&answerBody);
 
-    int64_t number;
-
-    if (operation == "count") {
-      number = query->engine()->count();
-      if (number == -1) {
-        answerBody.add("count", VPackValue("unknown"));
-      } else {
-        answerBody.add("count", VPackValue(number));
-      }
-    } else if (operation == "remaining") {
-      if (shardId.empty()) {
-        number = query->engine()->remaining();
-      } else {
-        auto block = static_cast<BlockWithClients*>(query->engine()->root());
-        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
-            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "unexpected node type");
-        }
-        number = block->remainingForShard(shardId);
-      }
-      if (number == -1) {
-        answerBody.add("remaining", VPackValue("unknown"));
-      } else {
-        answerBody.add("remaining", VPackValue(number));
-      }
-    } else if (operation == "hasMore") {
+    if (operation == "hasMore") {
       bool hasMore;
       if (shardId.empty()) {
         hasMore = query->engine()->hasMore();
@@ -780,6 +746,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   }
 
   if (query == nullptr) {
+    LOG_TOPIC_IF(ERR, Logger::AQL, iterations == MaxIterations) << "Timeout waiting for query " << _qId;
     _qId = 0;
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;

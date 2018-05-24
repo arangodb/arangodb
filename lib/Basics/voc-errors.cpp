@@ -39,6 +39,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_RESOURCE_LIMIT, "resource limit exceeded");
   REG_ERROR(ERROR_ARANGO_ICU_ERROR, "icu error: %s");
   REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
+  REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
@@ -74,7 +75,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_CONFLICT, "conflict");
   REG_ERROR(ERROR_ARANGO_DATADIR_INVALID, "invalid database directory");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND, "document not found");
-  REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_FOUND, "collection not found");
   REG_ERROR(ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "collection or view not found");
   REG_ERROR(ERROR_ARANGO_COLLECTION_PARAMETER_MISSING, "parameter 'collection' not found");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
@@ -180,6 +180,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
+  REG_ERROR(ERROR_CLUSTER_VIEW_ID_EXISTS, "view ID already exists");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -313,6 +314,17 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CANNOT_DROP_SMART_COLLECTION, "cannot drop this smart collection");
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be prefixed with the value of the smart graph attribute");
   REG_ERROR(ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE, "attribute cannot be used as smart graph attribute");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_NO_DBSERVERS, "no dbservers during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS, "mismatching leaders during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS, "mismatching followers during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES, "inconsistent attributes during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS, "mismatching shards during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_FAILED, "move shard job failed during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED, "move shard job disappeared during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, "agency transaction failed during cluster repairs");
   REG_ERROR(ERROR_AGENCY_INQUIRY_SYNTAX, "Illegal inquiry syntax");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_BE_OBJECT, "Inform message must be an object.");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM, "Inform message must contain uint parameter 'term'");

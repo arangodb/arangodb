@@ -56,7 +56,6 @@ class ShortestPathNode : public GraphNode {
   ~ShortestPathNode();
 
   /// @brief Internal constructor to clone the node.
- private:
   ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                    std::vector<std::unique_ptr<Collection>> const& edgeColls,
                    std::vector<std::unique_ptr<Collection>> const& vertexColls,
@@ -73,7 +72,7 @@ class ShortestPathNode : public GraphNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+                          unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

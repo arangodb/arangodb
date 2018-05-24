@@ -225,9 +225,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
-void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                          bool verbose) const {
-  GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
+void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
   // In variables
   if (usesStartInVariable()) {
     nodes.add(VPackValue("startInVariable"));
@@ -246,11 +245,11 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
   // Filter Conditions
   TRI_ASSERT(_fromCondition != nullptr);
   nodes.add(VPackValue("fromCondition"));
-  _fromCondition->toVelocyPack(nodes, verbose);
+  _fromCondition->toVelocyPack(nodes, flags);
 
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
-  _toCondition->toVelocyPack(nodes, verbose);
+  _toCondition->toVelocyPack(nodes, flags);
 
   // And close it:
   nodes.close();
@@ -272,7 +271,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
       std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = new ShortestPathNode(plan, _id, _vocbase, _edgeColls, _vertexColls,
+  auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls, _vertexColls,
                                 _directions, _inStartVariable, _startVertexId,
                                 _inTargetVariable, _targetVertexId, std::move(tmp));
   if (usesVertexOutVariable()) {
@@ -304,9 +303,9 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   c->_fromCondition = _fromCondition->clone(_plan->getAst());
   c->_toCondition = _toCondition->clone(_plan->getAst());
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 double ShortestPathNode::estimateCost(size_t& nrItems) const {

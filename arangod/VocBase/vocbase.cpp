@@ -229,7 +229,7 @@ void TRI_vocbase_t::signalCleanup() {
 
 void TRI_vocbase_t::checkCollectionInvariants() const {
   TRI_ASSERT(_dataSourceByName.size() == _dataSourceById.size());
-  TRI_ASSERT(_dataSourceByUuid.size() <= _dataSourceById.size()); // does not contain views
+  TRI_ASSERT(_dataSourceByUuid.size() == _dataSourceById.size());
 }
 
 /// @brief adds a new collection
@@ -274,11 +274,11 @@ void TRI_vocbase_t::registerCollection(
     }
 
     try {
-      auto it2 = _dataSourceByUuid.emplace(collection->globallyUniqueId(), collection);
+      auto it2 = _dataSourceByUuid.emplace(collection->guid(), collection);
 
       if (!it2.second) {
         std::string msg;
-        msg.append(std::string("duplicate entry for collection uuid '") + collection->globallyUniqueId() + "'");
+        msg.append(std::string("duplicate entry for collection uuid '") + collection->guid() + "'");
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
@@ -294,7 +294,7 @@ void TRI_vocbase_t::registerCollection(
     } catch (...) {
       _dataSourceByName.erase(name);
       _dataSourceById.erase(cid);
-      _dataSourceByUuid.erase(collection->globallyUniqueId());
+      _dataSourceByUuid.erase(collection->guid());
       throw;
     }
 
@@ -327,7 +327,7 @@ bool TRI_vocbase_t::unregisterCollection(
     // this is because someone else might have created a new collection with the
     // same name, but with a different id
   _dataSourceByName.erase(collection->name());
-  _dataSourceByUuid.erase(collection->globallyUniqueId());
+  _dataSourceByUuid.erase(collection->guid());
 
   // post-condition
   checkCollectionInvariants();
@@ -369,13 +369,28 @@ void TRI_vocbase_t::registerView(
         _dataSourceByName.erase(name);
 
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "duplicate view identifier " << view->id() << " for name '"
+            << "duplicate view identifier '" << view->id() << "' for name '"
             << name << "'";
 
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
       }
     } catch (...) {
       _dataSourceByName.erase(name);
+      throw;
+    }
+
+    try {
+      auto it2 = _dataSourceByUuid.emplace(view->guid(), view);
+
+      if (!it2.second) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "duplicate view globally-unique identifier '" << view->guid() << "' for name '" << name << "'";
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+      }
+    } catch (...) {
+      _dataSourceByName.erase(name);
+      _dataSourceById.erase(id);
       throw;
     }
 
@@ -405,6 +420,7 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
     // this is because someone else might have created a new view with the
     // same name, but with a different id
   _dataSourceByName.erase(view.name());
+  _dataSourceByUuid.erase(view.guid());
 
   // post-condition
   checkCollectionInvariants();
@@ -1105,11 +1121,10 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 /// @brief looks up a view by identifier
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
-) const noexcept {
+) const {
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::string viewId = StringUtils::itoa(id);
-    return ci->getView(name(), viewId);
+    std::string const viewId = StringUtils::itoa(id);
+    return ClusterInfo::instance()->getView(name(), viewId);
   }
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1127,10 +1142,9 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 /// @brief looks up a view by name or stringified cid or uuid
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
-) const noexcept{
+) const {
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->getView(name(), nameOrId);
+    return ClusterInfo::instance()->getView(name(), nameOrId);
   }
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1468,7 +1482,7 @@ int TRI_vocbase_t::renameCollection(
   auto res = collection->rename(std::string(newName), doSync);
 
   if (!res.ok()) {
-    res.errorNumber(); // rename failed
+    return res.errorNumber(); // rename failed
   }
 
   // The collection is renamed. Now swap cache entries.
@@ -1579,114 +1593,81 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     arangodb::velocypack::Slice parameters
 ) {
-  if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    auto id = arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
-
-    if (id == 0) {
-      id = ci->uniqid();
-    }
-
-    std::string viewId = StringUtils::itoa(id);
-
-    // Now put together the JSON we need for the agency:
-    VPackBuilder builder;
-    { VPackObjectBuilder guard(&builder);
-      builder.add("id", VPackValue(viewId));
-      builder.add(VPackValue("properties"));
-
-      std::string name;
-      { VPackObjectBuilder guard(&builder);
-        for (auto const& p : VPackObjectIterator(parameters)) {
-          if (p.key.copyString() == "name" && p.value.isString()) {
-            name = p.value.copyString();
-          } else {
-            builder.add(p.key);
-            builder.add(p.value);
-          }
-        }
-      }
-
-      if (name.empty()) {
-        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-          << "Could not create view in agency, error: no name given.";
-
-        return nullptr;
-      }
-
-      builder.add("name", VPackValue(name));
-      builder.add(VPackValue("collections"));
-      { VPackArrayBuilder guard2(&builder);
-      }
-    }
-
-    std::string errorMsg;
-    int res = ci->createViewCoordinator(name(), viewId, builder.slice(),
-        errorMsg);
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      return ci->getView(name(), viewId);
-    }
-
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "Could not create view in agency, error: " << errorMsg
-      << ", errorCode: " << res;
-
-    return nullptr;
-  }
-
   // check that the name does not contain any strange characters
   if (!IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
-  std::shared_ptr<arangodb::LogicalView> registeredView;
-  auto callback = [this, &registeredView](
-    std::shared_ptr<arangodb::LogicalView> const& view
-  )->bool {
-    TRI_ASSERT(false == !view);
-    RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
-    auto itr = _dataSourceByName.find(view->name());
+  std::shared_ptr<arangodb::LogicalView> view;
 
-    if (itr != _dataSourceByName.end()) {
-      events::CreateView(view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
+  if (ServerState::instance()->isCoordinator()) {
+    auto* ci = ClusterInfo::instance();
+    std::string errorMsg;
+    ViewID viewId;
 
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
-    }
-
-    registerView(basics::ConditionalLocking::DoNotLock, view);
-    registeredView = view;
-
-    return true;
-  };
-
-  READ_LOCKER(readLocker, _inventoryLock);
-
-  // Try to create a new view. This is not registered yet
-  auto const view = LogicalView::create(*this, parameters, 0, callback);
-
-  if (!view) {
-    if (registeredView) {
-      unregisterView(*registeredView);
-    }
-
-    auto name =
-      arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failed to instantiate view '") + name + "'"
+    int const res = ci->createViewCoordinator(
+      name(), parameters, viewId, errorMsg
     );
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      view = ci->getView(name(), viewId);
+    } else {
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+        << "Could not create view in agency, error: " << errorMsg
+        << ", errorCode: " << res;
+    }
+  } else {
+    std::shared_ptr<arangodb::LogicalView> registeredView;
+    auto callback = [this, &registeredView](
+      std::shared_ptr<arangodb::LogicalView> const& view
+    )->bool {
+      TRI_ASSERT(false == !view);
+      RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+      auto itr = _dataSourceByName.find(view->name());
+
+      if (itr != _dataSourceByName.end()) {
+        events::CreateView(view->name(), TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+      }
+
+      registerView(basics::ConditionalLocking::DoNotLock, view);
+      registeredView = view;
+
+      return true;
+    };
+
+    READ_LOCKER(readLocker, _inventoryLock);
+
+    // Try to create a new view. This is not registered yet
+    view = LogicalView::create(*this, parameters, true, 0, callback);
+
+    if (!view) {
+      if (registeredView) {
+        unregisterView(*registeredView);
+      }
+
+      auto name = arangodb::basics::VelocyPackHelper::getStringValue(
+        parameters, StaticStrings::DataSourceName, ""
+      );
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failed to instantiate view '") + name + "'"
+      );
+    }
+
+    events::CreateView(view->name(), TRI_ERROR_NO_ERROR);
+
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("create view");
+    }
   }
 
-  events::CreateView(view->name(), TRI_ERROR_NO_ERROR);
-
   // And lets open it.
-  view->open();
-
-  if (DatabaseFeature::DATABASE != nullptr &&
-      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-    DatabaseFeature::DATABASE->versionTracker()->track("create view");
+  if (view) {
+    view->open();
   }
 
   return view;
@@ -1697,7 +1678,7 @@ arangodb::Result TRI_vocbase_t::dropView(
     TRI_voc_cid_t cid,
     bool allowDropSystem
 ) {
-  auto view = lookupView(cid);
+  auto const view = lookupView(cid);
 
   if (!view) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -1719,10 +1700,11 @@ arangodb::Result TRI_vocbase_t::dropView(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
     std::string errorMsg;
-    auto res =
-      ci->dropViewCoordinator(name(), std::to_string(view->id()), errorMsg);
+
+    auto const res = ClusterInfo::instance()->dropViewCoordinator(
+      name(), StringUtils::itoa(view->id()), errorMsg
+    );
 
     if (res == TRI_ERROR_NO_ERROR) {
       return res;
@@ -1846,8 +1828,12 @@ bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
   return !slice.isObject()
     ? false
     : IsAllowedName(
-        arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "isSystem", false),
-        arangodb::basics::VelocyPackHelper::getStringRef(slice, "name", "")
+        arangodb::basics::VelocyPackHelper::readBooleanValue(
+          slice, StaticStrings::DataSourceSystem, false
+        ),
+        arangodb::basics::VelocyPackHelper::getStringRef(
+          slice, StaticStrings::DataSourceName, ""
+        )
       )
     ;
 }
@@ -1895,8 +1881,8 @@ bool TRI_vocbase_t::IsAllowedName(
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
+  TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
   auto* applier = DatabaseReplicationApplier::create(*this);
-
   _replicationApplier.reset(applier);
 }
 
@@ -1994,6 +1980,10 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
+  if (ServerState::instance()->isCoordinator()) {
+    return ClusterInfo::instance()->getViews(name());
+  }
+
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
   {

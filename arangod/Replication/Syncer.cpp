@@ -81,8 +81,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
  
   if (_configuration._chunkSize == 0) {
     _configuration._chunkSize = 2 * 1024 * 1024; // default: 2 MB
-  }
-  if (_configuration._chunkSize < 16 * 1024) {
+  } else if (_configuration._chunkSize < 16 * 1024) {
     _configuration._chunkSize = 16 * 1024;
   }
 
@@ -309,14 +308,16 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 
 /// @brief extract the collection by either id or name, may return nullptr!
 std::shared_ptr<LogicalCollection> Syncer::getCollectionByIdOrName(
-    TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, std::string const& name
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t cid,
+    std::string const& name
 ) {
-  auto idCol = vocbase->lookupCollection(cid);
+  auto idCol = vocbase.lookupCollection(cid);
   std::shared_ptr<LogicalCollection> nameCol;
 
   if (!name.empty()) {
     // try looking up the collection by name then
-    nameCol = vocbase->lookupCollection(name);
+    nameCol = vocbase.lookupCollection(name);
   }
 
   if (idCol != nullptr && nameCol != nullptr) {
@@ -324,8 +325,10 @@ std::shared_ptr<LogicalCollection> Syncer::getCollectionByIdOrName(
       // found collection by id and name, and both are identical!
       return idCol;
     }
+
     // found different collections by id and name
     TRI_ASSERT(!name.empty());
+
     if (name[0] == '_') {
       // system collection. always return collection by name when in doubt
       return nameCol;
@@ -386,9 +389,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 }
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
-    TRI_vocbase_t* vocbase, arangodb::velocypack::Slice const& slice
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice
 ) {
-  TRI_ASSERT(vocbase != nullptr);
   // extract "cid"
   TRI_voc_cid_t cid = getCid(slice);
 
@@ -396,9 +399,9 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     VPackSlice uuid;
 
     if ((uuid = slice.get("cuid")).isString()) {
-      return vocbase->lookupCollectionByUuid(uuid.copyString());
+      return vocbase.lookupCollectionByUuid(uuid.copyString());
     } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
-      return vocbase->lookupCollectionByUuid(uuid.copyString());
+      return vocbase.lookupCollectionByUuid(uuid.copyString());
     }
   }
 
@@ -420,15 +423,14 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
 
 Result Syncer::applyCollectionDumpMarker(
     transaction::Methods& trx, LogicalCollection* coll,
-    TRI_replication_operation_e type, VPackSlice const& old, 
-    VPackSlice const& slice) {
+    TRI_replication_operation_e type, VPackSlice const& slice) {
 
   if (_configuration._lockTimeoutRetries > 0) {
     decltype(_configuration._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      Result res = applyCollectionDumpMarkerInternal(trx, coll, type, old, slice);
-
+      Result res = applyCollectionDumpMarkerInternal(trx, coll, type, slice);
+      
       if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
       }
@@ -443,18 +445,18 @@ Result Syncer::applyCollectionDumpMarker(
       // retry
     }
   } else {
-    return applyCollectionDumpMarkerInternal(trx, coll, type, old, slice);
+    return applyCollectionDumpMarkerInternal(trx, coll, type, slice);
   }
 }
 
 /// @brief apply the data from a collection dump or the continuous log
 Result Syncer::applyCollectionDumpMarkerInternal(
       transaction::Methods& trx, LogicalCollection* coll,
-      TRI_replication_operation_e type, VPackSlice const& old, 
+      TRI_replication_operation_e type,
       VPackSlice const& slice) {
 
   if (type == REPLICATION_MARKER_DOCUMENT) {
-    // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+    // {"type":2300,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     OperationOptions options;
     options.silent = true;
@@ -513,7 +515,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(
   }
 
   else if (type == REPLICATION_MARKER_REMOVE) {
-    // {"type":2402,"key":"592063"}
+    // {"type":2302,"key":"592063"}
     
     try {
       OperationOptions options;
@@ -522,7 +524,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       if (!_leaderId.empty()) {
         options.isSynchronousReplicationFrom = _leaderId;
       }
-      OperationResult opRes = trx.remove(coll->name(), old, options);
+      OperationResult opRes = trx.remove(coll->name(), slice, options);
 
       if (opRes.ok() ||
           opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -544,9 +546,11 @@ Result Syncer::applyCollectionDumpMarkerInternal(
 }
 
 /// @brief creates a collection, based on the VelocyPack provided
-Result Syncer::createCollection(TRI_vocbase_t* vocbase, 
-                                VPackSlice const& slice,
-                                LogicalCollection** dst) {
+Result Syncer::createCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& slice,
+    LogicalCollection** dst
+) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
@@ -556,6 +560,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   }
 
   std::string const name = VelocyPackHelper::getStringValue(slice, "name", "");
+
   if (name.empty()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "no name specified for collection");
   }
@@ -581,11 +586,11 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   }
 
   // conflicting collections need to be dropped from 3.3 onwards
-  col = vocbase->lookupCollection(name).get();
+  col = vocbase.lookupCollection(name).get();
 
   if (col != nullptr) {
     if (col->system()) {
-      TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
+      TRI_ASSERT(!simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase),
         col->id(),
@@ -606,29 +611,34 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
       return trx.finish(opRes.result);
     } else {
-      vocbase->dropCollection(col->id(), false, -1.0);
+      vocbase.dropCollection(col->id(), false, -1.0);
     }
   }
 
   VPackSlice uuid = slice.get("globallyUniqueId");
   // merge in "isSystem" attribute, doesn't matter if name does not start with '_'
   VPackBuilder s;
+
   s.openObject();
   s.add("isSystem", VPackValue(true));
+
   if ((uuid.isString() && !simulate32Client()) || forceRemoveCid) { // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
     s.add("id", VPackSlice::nullSlice());
     s.add("cid", VPackSlice::nullSlice());
   }
+
   s.close();
+
   VPackBuilder merged = VPackCollection::merge(slice, s.slice(), /*mergeValues*/true,
                                                /*nullMeansRemove*/true);
-  
+
   // we need to remove every occurence of objectId as a key
   auto stripped = rocksutils::stripObjectIds(merged.slice());
+
   try {
-    col = vocbase->createCollection(stripped.first);
+    col = vocbase.createCollection(stripped.first);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -638,12 +648,12 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   }
 
   TRI_ASSERT(col != nullptr);
-  TRI_ASSERT(!uuid.isString() ||
-             uuid.compareString(col->globallyUniqueId()) == 0);
+  TRI_ASSERT(!uuid.isString() || uuid.compareString(col->guid()) == 0);
 
   if (dst != nullptr) {
     *dst = col;
   }
+
   return Result();
 }
 
@@ -655,7 +665,7 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* col = resolveCollection(vocbase, slice).get();
+  auto* col = resolveCollection(*vocbase, slice).get();
 
   if (col == nullptr) {
     if (reportError) {
@@ -685,7 +695,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto col = resolveCollection(vocbase, slice);
+  auto col = resolveCollection(*vocbase, slice);
 
   if (col == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -701,11 +711,10 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
   try {
     SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase),
+      transaction::StandaloneContext::Create(*vocbase),
       col->id(),
       AccessMode::Type::WRITE
     );
-
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -731,6 +740,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   auto cb = [&](VPackSlice const& slice) {
     std::string id;
+
     if (slice.hasKey("data")) {
       id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
     } else {
@@ -742,13 +752,13 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     }
 
     TRI_idx_iid_t const iid = StringUtils::uint64(id);
-
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
+
     if (vocbase == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
 
-    auto* col = resolveCollection(vocbase, slice).get();
+    auto* col = resolveCollection(*vocbase, slice).get();
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -757,6 +767,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     try {
       CollectionGuard guard(vocbase, col);
       bool result = guard.collection()->dropIndex(iid);
+
       if (!result) {
         return Result(); // TODO: why do we ignore failures here?
       }
@@ -772,6 +783,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   };
 
   Result r = cb(slice);
+
   if (r.fail() &&
       (r.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) ||
        r.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))) {
@@ -894,11 +906,10 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
   int major = 0;
   int minor = 0;
-
   std::string const versionString(version.copyString());
-
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE, std::string("invalid master version info") + endpointString + ": '" + versionString + "'");
+    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE,
+                  std::string("invalid master version info") + endpointString + ": '" + versionString + "'");
   }
 
   if (major != 3) {

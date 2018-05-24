@@ -28,8 +28,8 @@
 #include "Aql/Query.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
-#include "StorageEngine/TransactionState.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
@@ -57,22 +57,22 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   AqlValue collectionValue = ExtractFunctionParameterValue(parameters, 0);
   if (!collectionValue.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
-                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
 
   std::string const cname(collectionValue.slice().copyString());
-  
+
   AqlValue attribute = ExtractFunctionParameterValue(parameters, 1);
   if (!attribute.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
-                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const attributeName(attribute.slice().copyString());
 
   AqlValue queryValue = ExtractFunctionParameterValue(parameters, 2);
   if (!queryValue.isString()) {
     THROW_ARANGO_EXCEPTION_PARAMS(
-                                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
   }
   std::string const queryString = queryValue.slice().copyString();
 
@@ -81,7 +81,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
       THROW_ARANGO_EXCEPTION_PARAMS(
-                                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
     }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
@@ -134,7 +134,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   }
   // do we need this in rocksdb?
   trx->pinData(cid);
-  
+
   FulltextQuery parsedQuery;
   Result res = fulltextIndex->parseQueryString(queryString, parsedQuery);
   if (res.fail()) {
@@ -145,13 +145,13 @@ AqlValue RocksDBAqlFunctions::Fulltext(
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   PhysicalCollection* physical = collection->getPhysical();
   ManagedDocumentResult mmdr;
   if (maxResults == 0) {  // 0 appearantly means "all results"
     maxResults = SIZE_MAX;
   }
-  
+
   auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
   VPackBuilder builder(*buffer.get());
   builder.openArray();
@@ -166,7 +166,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
     ++it;
   }
   builder.close();
-  
+
   bool shouldDelete = true;
   AqlValue value = AqlValue(buffer.get(), shouldDelete);
   if (!shouldDelete) {
@@ -190,21 +190,14 @@ static arangodb::RocksDBGeoIndex* getGeoIndex(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  auto document = trx->documentCollection(cid);
-  if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
-
   arangodb::RocksDBGeoIndex* index = nullptr;
-  for (auto const& idx : document->getIndexes()) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
+  auto indexes = trx->indexesForCollection(collectionName);
+  for (auto const& idx : indexes) {
+    if (arangodb::Index::isGeoIndex(idx->type())) {
       index = static_cast<arangodb::RocksDBGeoIndex*>(idx.get());
       break;
     }
   }
-
   if (index == nullptr) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
                                   collectionName.c_str());
@@ -212,82 +205,6 @@ static arangodb::RocksDBGeoIndex* getGeoIndex(
 
   trx->pinData(cid);
   return index;
-}
-
-static AqlValue buildGeoResult(transaction::Methods* trx,
-                               LogicalCollection* collection,
-                               arangodb::aql::Query* query,
-                               rocksdbengine::GeoCoordinates* cors,
-                               TRI_voc_cid_t const& cid,
-                               std::string const& attributeName) {
-  if (cors == nullptr) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
-  }
-
-  size_t const nCoords = cors->length;
-  if (nCoords == 0) {
-    GeoIndex_CoordinatesFree(cors);
-    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
-  }
-
-  struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, LocalDocumentId token)
-        : _distance(distance), _token(token) {}
-    double _distance;
-    LocalDocumentId _token;
-  };
-
-  std::vector<geo_coordinate_distance_t> distances;
-
-  try {
-    distances.reserve(nCoords);
-
-    for (size_t i = 0; i < nCoords; ++i) {
-      distances.emplace_back(geo_coordinate_distance_t(
-          cors->distances[i], LocalDocumentId(cors->coordinates[i].data)));
-    }
-  } catch (...) {
-    GeoIndex_CoordinatesFree(cors);
-    throw;
-  }
-
-  GeoIndex_CoordinatesFree(cors);
-
-  // sort result by distance
-  std::sort(distances.begin(), distances.end(),
-            [](geo_coordinate_distance_t const& left,
-               geo_coordinate_distance_t const& right) {
-              return left._distance < right._distance;
-            });
-
-  ManagedDocumentResult mmdr;
-  transaction::BuilderLeaser builder(trx);
-  builder->openArray();
-  if (!attributeName.empty()) {
-    // We have to copy the entire document
-    for (auto& it : distances) {
-      VPackObjectBuilder docGuard(builder.get());
-      builder->add(attributeName, VPackValue(it._distance));
-      if (collection->readDocument(trx, it._token, mmdr)) {
-        VPackSlice doc(mmdr.vpack());
-        for (auto const& entry : VPackObjectIterator(doc)) {
-          std::string key = entry.key.copyString();
-          if (key != attributeName) {
-            builder->add(key, entry.value);
-          }
-        }
-      }
-    }
-
-  } else {
-    for (auto& it : distances) {
-      if (collection->readDocument(trx, it._token, mmdr)) {
-        mmdr.addToBuilder(*builder.get(), false);
-      }
-    }
-  }
-  builder->close();
-  return AqlValue(builder.get());
 }
 
 /// @brief function NEAR
@@ -347,12 +264,18 @@ AqlValue RocksDBAqlFunctions::Near(arangodb::aql::Query* query,
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  rocksdbengine::GeoCoordinates* cors =
-      index->nearQuery(trx, latitude.toDouble(trx), longitude.toDouble(trx),
-                       static_cast<size_t>(limitValue));
+  try {
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
+    index->nearQuery(trx, latitude.toDouble(trx), longitude.toDouble(trx),
+                     static_cast<size_t>(limitValue), attributeName,
+                     *builder.get());
+    builder->close();
 
-  return buildGeoResult(trx, index->collection(), query, cors, cid,
-                        attributeName);
+    return AqlValue(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 /// @brief function WITHIN
@@ -401,24 +324,29 @@ AqlValue RocksDBAqlFunctions::Within(
   TRI_ASSERT(index != nullptr);
   TRI_ASSERT(trx->isPinned(cid));
 
-  rocksdbengine::GeoCoordinates* cors = index->withinQuery(
-      trx, latitudeValue.toDouble(trx), longitudeValue.toDouble(trx),
-      radiusValue.toDouble(trx));
+  try {
+    transaction::BuilderLeaser builder(trx);
+    builder->openArray();
+    index->withinQuery(trx, latitudeValue.toDouble(trx),
+                       longitudeValue.toDouble(trx), radiusValue.toDouble(trx),
+                       attributeName, *builder.get());
+    builder->close();
 
-  return buildGeoResult(trx, index->collection(), query, cors, cid,
-                        attributeName);
+    return AqlValue(builder.get());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 }
 
 void RocksDBAqlFunctions::registerResources() {
   auto functions = AqlFunctionFeature::AQLFUNCTIONS;
   TRI_ASSERT(functions != nullptr);
 
-  // fulltext functions
   functions->add({"FULLTEXT", ".h,.,.|.", false, true,
-                  false, true, &RocksDBAqlFunctions::Fulltext,
+                  false, &RocksDBAqlFunctions::Fulltext,
                   NotInCoordinator});
   functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
-                  true, &RocksDBAqlFunctions::Near, NotInCoordinator});
+                  &RocksDBAqlFunctions::Near, NotInCoordinator});
   functions->add({"WITHIN", ".h,.,.,.|.", false, true,
-                  false, true, &RocksDBAqlFunctions::Within, NotInCoordinator});
+                  false, &RocksDBAqlFunctions::Within, NotInCoordinator});
 }

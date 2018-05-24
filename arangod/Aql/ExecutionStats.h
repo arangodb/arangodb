@@ -54,7 +54,7 @@ struct ExecutionStats {
     }
   };
   
-public:
+ public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
@@ -75,6 +75,7 @@ public:
     filtered = 0;
     httpRequests = 0;
     fullCount = 0;
+    count = 0;
     executionTime = 0.0;
   }
 
@@ -98,6 +99,9 @@ public:
 
   /// @brief total number of results, before applying last limit
   int64_t fullCount;
+  
+  /// @brief total number of results
+  int64_t count;
   
   /// @brief query execution time (wall-clock time). value will be set from 
   /// the outside

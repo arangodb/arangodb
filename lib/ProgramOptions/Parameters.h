@@ -176,7 +176,7 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(
 
 // convert a string into a number, version for double values
 template <>
-inline double toNumber<double>(std::string value, double base) {
+inline double toNumber<double>(std::string value, double /*base*/) {
   return std::stod(value);
 }
 
@@ -200,7 +200,7 @@ inline std::string stringifyValue(T const& value) {
   return std::to_string(value);
 }
 
-// stringify a value, base version for any type
+// stringify a double value, specialized version
 template <>
 inline std::string stringifyValue<double>(double const& value) {
   char buf[32];
@@ -500,7 +500,7 @@ struct DiscreteValuesParameter : public T {
   }
 
   std::string description() const override {
-    std::string msg("possible values: ");
+    std::string msg("Possible values: ");
     std::vector<std::string> values;
     for (auto const& it : allowed) {
       values.emplace_back(stringifyValue(it));

@@ -40,6 +40,7 @@
     "ERROR_RESOURCE_LIMIT"         : { "code" : 32, "message" : "resource limit exceeded" },
     "ERROR_ARANGO_ICU_ERROR"       : { "code" : 33, "message" : "icu error: %s" },
     "ERROR_CANNOT_READ_FILE"       : { "code" : 34, "message" : "cannot read file" },
+    "ERROR_INCOMPATIBLE_VERSION"   : { "code" : 35, "message" : "incompatible server version" },
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
@@ -109,7 +110,6 @@
     "ERROR_ARANGO_COLLECTION_TYPE_MISMATCH" : { "code" : 1237, "message" : "collection type mismatch" },
     "ERROR_ARANGO_COLLECTION_NOT_LOADED" : { "code" : 1238, "message" : "collection not loaded" },
     "ERROR_ARANGO_DOCUMENT_REV_BAD" : { "code" : 1239, "message" : "illegal document revision" },
-    "ERROR_ARANGO_COLLECTION_NOT_FOUND" : { "code" : 1240, "message" : "collection not found" },
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" },
     "ERROR_ARANGO_EMPTY_DATADIR"   : { "code" : 1301, "message" : "server database directory is empty" },
     "ERROR_ARANGO_TRY_AGAIN"       : { "code" : 1302, "message" : "operation should be tried again" },
@@ -181,6 +181,7 @@
     "ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING" : { "code" : 1495, "message" : "leadership challenge is ongoing" },
     "ERROR_CLUSTER_NOT_LEADER"     : { "code" : 1496, "message" : "not a leader" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN" : { "code" : 1497, "message" : "could not create view in plan" },
+    "ERROR_CLUSTER_VIEW_ID_EXISTS" : { "code" : 1498, "message" : "view ID already exists" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
@@ -314,6 +315,17 @@
     "ERROR_CANNOT_DROP_SMART_COLLECTION" : { "code" : 4002, "message" : "cannot drop this smart collection" },
     "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be prefixed with the value of the smart graph attribute" },
     "ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE" : { "code" : 4004, "message" : "attribute cannot be used as smart graph attribute" },
+    "ERROR_CLUSTER_REPAIRS_FAILED" : { "code" : 5000, "message" : "error during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY" : { "code" : 5001, "message" : "not enough (healthy) db servers" },
+    "ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED" : { "code" : 5002, "message" : "replication factor violated during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_NO_DBSERVERS" : { "code" : 5003, "message" : "no dbservers during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS" : { "code" : 5004, "message" : "mismatching leaders during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS" : { "code" : 5005, "message" : "mismatching followers during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES" : { "code" : 5006, "message" : "inconsistent attributes during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS" : { "code" : 5007, "message" : "mismatching shards during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_JOB_FAILED" : { "code" : 5008, "message" : "move shard job failed during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED" : { "code" : 5009, "message" : "move shard job disappeared during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_OPERATION_FAILED" : { "code" : 5010, "message" : "agency transaction failed during cluster repairs" },
     "ERROR_AGENCY_INQUIRY_SYNTAX"  : { "code" : 20001, "message" : "Illegal inquiry syntax" },
     "ERROR_AGENCY_INFORM_MUST_BE_OBJECT" : { "code" : 20011, "message" : "Inform message must be an object." },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM" : { "code" : 20012, "message" : "Inform message must contain uint parameter 'term'" },
@@ -330,5 +342,8 @@
     "ERROR_QUEUE_UNKNOWN"          : { "code" : 21002, "message" : "named queue does not exist" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
   };
+
+  // For compatibility with <= 3.3
+  internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
 }());
 

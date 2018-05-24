@@ -36,7 +36,6 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WorkMonitor.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -398,6 +397,11 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
     }
 #endif
   }
+    
+  TRI_ASSERT(plan != nullptr);
+  if (!plan->varUsageComputed()) {
+    plan->findVarUsage();
+  }
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
   
@@ -514,12 +518,13 @@ ExecutionPlan* Query::preparePlan() {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
+
+    if (!plan->varUsageComputed()) {
+      plan->findVarUsage();
+    }
   }
 
   TRI_ASSERT(plan != nullptr);
-
-  // varsUsedLater and varsValid are unordered_sets and so their orders
-  // are not the same in the serialized and deserialized plans
 
   // return the V8 context if we are in one
   exitContext();
@@ -533,8 +538,6 @@ QueryResult Query::execute(QueryRegistry* registry) {
                                     << "Query::execute"
                                     << " this: " << (uintptr_t) this;
   TRI_ASSERT(registry != nullptr);
-
-  std::unique_ptr<AqlWorkStack> work;
 
   try {
     bool useQueryCache = canUseQueryCache();
@@ -562,7 +565,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        res.context = transaction::StandaloneContext::Create(&_vocbase);
+        res.context = transaction::StandaloneContext::Create(_vocbase);
         res.extra = std::make_shared<VPackBuilder>();
         {
           VPackObjectBuilder guard(res.extra.get(), true);
@@ -578,16 +581,6 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     // will throw if it fails
     prepare(registry, queryHash);
-
-    if (_queryString.empty()) {
-      // we don't have query string... now pass query id to WorkMonitor
-      work.reset(new AqlWorkStack(&_vocbase, _id));
-    } else {
-      // we do have a query string... pass query to WorkMonitor
-      work.reset(new AqlWorkStack(
-        &_vocbase, _id, _queryString.data(), _queryString.size()
-      ));
-    }
 
     log();
     TRI_ASSERT(_trx != nullptr);
@@ -689,8 +682,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
                                     << " this: " << (uintptr_t) this;
   TRI_ASSERT(registry != nullptr);
 
-  std::unique_ptr<AqlWorkStack> work;
-
   try {
     bool useQueryCache = canUseQueryCache();
     uint64_t queryHash = hash();
@@ -703,7 +694,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
-        auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
         ExecContext const* exe = ExecContext::CURRENT;
 
         // got a result from the query cache
@@ -731,16 +722,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     // will throw if it fails
     prepare(registry, queryHash);
-
-    if (_queryString.empty()) {
-      // we don't have query string... now pass query id to WorkMonitor
-      work.reset(new AqlWorkStack(&_vocbase, _id));
-    } else {
-      // we do have a query string... pass query to WorkMonitor
-      work.reset(new AqlWorkStack(
-        &_vocbase, _id, _queryString.data(), _queryString.size()
-      ));
-    }
 
     log();
 
@@ -1054,7 +1035,7 @@ void Query::prepareV8Context() {
   ISOLATE;
   TRI_ASSERT(isolate != nullptr);
 
-  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); _AQL.clearCaches(); }");
+  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); }");
   
   {
     v8::HandleScope scope(isolate); 
@@ -1072,6 +1053,10 @@ void Query::prepareV8Context() {
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
+      if (V8DealerFeature::DEALER == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "V8 engine is disabled");
+      }
+      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       _context = V8DealerFeature::DEALER->enterContext(&_vocbase, false);
 
       if (_context == nullptr) {
@@ -1110,6 +1095,7 @@ void Query::exitContext() {
         ctx->unregisterTransaction();
       }
 
+      TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
       V8DealerFeature::DEALER->exitContext(_context);
       _context = nullptr;
     }
@@ -1132,9 +1118,6 @@ void Query::getStats(VPackBuilder& builder) {
 ///        warnings. If there are none it will not modify the builder
 void Query::addWarningsToVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
-  if (_warnings.empty()) {
-    return;
-  }
   size_t const n = _warnings.size();
   builder.add(VPackValue("warnings"));
   {
@@ -1288,11 +1271,11 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 /// @brief create a transaction::Context
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
-    // we can use v8
-    return transaction::V8Context::Create(&_vocbase, true);
+    // we must use v8
+    return transaction::V8Context::Create(_vocbase, true);
   }
 
-  return transaction::StandaloneContext::Create(&_vocbase);
+  return transaction::StandaloneContext::Create(_vocbase);
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs

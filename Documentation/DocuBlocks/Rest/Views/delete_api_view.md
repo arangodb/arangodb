@@ -9,8 +9,6 @@
 @RESTURLPARAM{view-name,string,required}
 The name of the view to drop.
 
-@RESTQUERYPARAMETERS
-
 @RESTDESCRIPTION
 Drops the view identified by *view-name*.
 

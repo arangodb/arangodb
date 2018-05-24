@@ -89,7 +89,6 @@ class TraversalNode : public GraphNode {
   ~TraversalNode();
 
   /// @brief Internal constructor to clone the node.
- private:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 std::vector<std::unique_ptr<aql::Collection>> const& edgeColls,
                 std::vector<std::unique_ptr<aql::Collection>> const& vertexColls,
@@ -102,8 +101,7 @@ class TraversalNode : public GraphNode {
   NodeType getType() const override final { return TRAVERSAL; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          bool) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

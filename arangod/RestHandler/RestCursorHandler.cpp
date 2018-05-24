@@ -28,6 +28,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -72,6 +73,13 @@ RestStatus RestCursorHandler::execute() {
 bool RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
+}
+
+size_t RestCursorHandler::queue() const {
+  if (ServerState::instance()->isCoordinator()) {
+    return JobQueue::AQL_QUEUE; // needs to be on background thread
+  }
+  return JobQueue::STANDARD_QUEUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +207,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       result.add("cached", VPackValue(queryResult.cached));
       if (queryResult.cached || !queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
+        // no warnings
+        result.add("warnings", VPackSlice::emptyArraySlice());
         result.close();
       } else {
         result.add("extra", queryResult.extra->slice());

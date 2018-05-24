@@ -80,8 +80,9 @@ void RestEdgesHandler::readCursor(
   }
 
   ManagedDocumentResult mmdr;
+  IndexIteratorOptions opts;
   std::unique_ptr<OperationCursor> cursor(trx.indexScanForCondition(
-      indexId, condition, var, &mmdr, false));
+      indexId, condition, var, &mmdr, opts));
 
   if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION(cursor->code);
@@ -145,11 +146,12 @@ bool RestEdgesHandler::parseDirection(TRI_edge_direction_e& direction) {
                   "<direction> must by any, in, or out, not: " + dirString);
     return false;
   }
+
   return true;
 }
 
 bool RestEdgesHandler::validateCollection(std::string const& name) {
-  CollectionNameResolver resolver(&_vocbase);
+  CollectionNameResolver resolver(_vocbase);
   auto collection = resolver.getCollection(name);
   auto colType = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 
@@ -164,6 +166,7 @@ bool RestEdgesHandler::validateCollection(std::string const& name) {
                   TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
+
   return true;
 }
 
@@ -230,7 +233,7 @@ bool RestEdgesHandler::readEdges() {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................
@@ -238,8 +241,10 @@ bool RestEdgesHandler::readEdges() {
   // .............................................................................
 
   Result res = trx.begin();
+
   if (!res.ok()) {
     generateTransactionError(collectionName, res, "");
+
     return false;
   }
 
@@ -380,7 +385,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................

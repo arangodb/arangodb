@@ -31,36 +31,16 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class LogicalCollection;
 class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
-/*
-arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
-                                       arangodb::LogicalCollection* col,
-                                       std::string const& keysId,
-                                       std::string const& leaderColl,
-                                       TRI_voc_tick_t maxTick);
-
-arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
-                                       arangodb::LogicalCollection* col,
-                                       std::string const& keysId, 
-                                       std::string const& leaderColl,
-                                       TRI_voc_tick_t maxTick);
-
-arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                                  std::string const& keysId, uint64_t chunkId,
-                                  std::string const& lowString,
-                                  std::string const& highString,
-                                  std::vector<std::pair<std::string, uint64_t>> const& markers);
-  */
-class DatabaseInitialSyncer : public InitialSyncer {
+class DatabaseInitialSyncer final : public InitialSyncer {
   friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
                                                               std::string const& keysId);
-  
   friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
                                                               std::string const& keysId);
-  
   friend ::arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
                                            std::string const& keysId, uint64_t chunkId,
                                            std::string const& lowString,
@@ -93,7 +73,9 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result runWithInventory(bool incremental,
                           velocypack::Slice collections);
 
-  TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override { return _vocbase; }
+  TRI_vocbase_t* resolveVocbase(velocypack::Slice const& slice) override {
+    return &_vocbase;
+  }
 
   /// @brief translate a phase to a phase name
   std::string translatePhase(sync_phase_e phase) const {
@@ -112,9 +94,9 @@ class DatabaseInitialSyncer : public InitialSyncer {
     return "none";
   }
 
-  TRI_vocbase_t* vocbase() const {
+  TRI_vocbase_t& vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);
-    return &(vocbases().begin()->second.database());
+    return vocbases().begin()->second.database();
   }
 
   /// @brief check whether the initial synchronization should be aborted
@@ -141,30 +123,35 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// The batch prevents compaction in mmfiles and keeps a snapshot
   /// in rocksdb for a constant view of the data
   double batchUpdateTime() const { return _batchUpdateTime; }
-  
+
  private:
-  
+
   /// @brief set a progress message
   void setProgress(std::string const& msg) override;
 
   /// @brief send a WAL flush command
   Result sendFlush();
-  
+
+  /// @brief handle a single dump marker
+  Result parseCollectionDumpMarker(transaction::Methods&,
+                                   arangodb::LogicalCollection*,
+                                   arangodb::velocypack::Slice const&);
+
   /// @brief apply the data from a collection dump
-  Result applyCollectionDump(transaction::Methods&, LogicalCollection* col,
+  Result parseCollectionDump(transaction::Methods&, LogicalCollection* col,
                              httpclient::SimpleHttpResult*, uint64_t&);
 
   /// @brief determine the number of documents in a collection
   int64_t getSize(arangodb::LogicalCollection*);
 
   /// @brief incrementally fetch data from a collection
-  Result handleCollectionDump(arangodb::LogicalCollection*,
-                              std::string const& leaderColl, TRI_voc_tick_t);
+  Result fetchCollectionDump(arangodb::LogicalCollection*,
+                             std::string const& leaderColl, TRI_voc_tick_t);
 
   /// @brief incrementally fetch data from a collection
-  Result handleCollectionSync(arangodb::LogicalCollection*,
-                              std::string const& leaderColl, TRI_voc_tick_t);
-   
+  Result fetchCollectionSync(arangodb::LogicalCollection*,
+                             std::string const& leaderColl, TRI_voc_tick_t);
+
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
   Result changeCollection(arangodb::LogicalCollection*,
@@ -174,7 +161,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   Result handleCollection(arangodb::velocypack::Slice const&,
                           arangodb::velocypack::Slice const&, bool incremental,
                           sync_phase_e);
-  
+
   /// @brief fetch the server's inventory
   Result fetchInventory(arangodb::velocypack::Builder& builder);
 
@@ -189,8 +176,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   std::unordered_map<std::string, std::string> createHeaders() const;
 
- private:
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 
   /// @brief whether or not the WAL on the remote server has been flushed by us
   bool _hasFlushed;
@@ -198,6 +184,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// @brief maximum internal value for chunkSize
   static size_t const MaxChunkSize;
 };
+
 } // arangodb
 
 #endif

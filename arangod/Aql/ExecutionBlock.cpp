@@ -393,14 +393,6 @@ bool ExecutionBlock::hasMore() {
   return false;
 }
 
-int64_t ExecutionBlock::remaining() {
-  int64_t sum = 0;
-  for (auto const& it : _buffer) {
-    sum += it->size();
-  }
-  return sum + _dependencies[0]->remaining();
-}
-
 int ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
                                   AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();

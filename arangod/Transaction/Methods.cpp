@@ -186,7 +186,7 @@ void transaction::Methods::IndexHandle::toVelocyPack(
   _index->toVelocyPack(builder, withFigures, false);
 }
 
-TRI_vocbase_t* transaction::Methods::vocbase() const {
+TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
 
@@ -509,15 +509,18 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       }
     }
 
-    // enable the following line to see index candidates considered with their
-    // abilities and scores
-    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
-
     if (!supportsFilter && !supportsSort) {
       continue;
     }
+    
+    double totalCost = filterCost;
+    if (!sortCondition->isEmpty()) {
+      // only take into account the costs for sorting if there is actually something to sort
+      totalCost += sortCost;
+    }
 
-    double const totalCost = filterCost + sortCost;
+    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << totalCost << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
+
     if (bestIndex == nullptr || totalCost < bestCost) {
       bestIndex = idx;
       bestCost = totalCost;
@@ -556,7 +559,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
 
     // enable the following line to see index candidates considered with their
     // abilities and scores
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
+    LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
 
     if (!supportsFilter) {
       continue;
@@ -605,20 +608,32 @@ transaction::Methods::Methods(
       _transactionContextPtr(transactionContext.get()) {
   TRI_ASSERT(_transactionContextPtr != nullptr);
 
-  TRI_vocbase_t* vocbase = _transactionContextPtr->vocbase();
-
   // brief initialize the transaction
   // this will first check if the transaction is embedded in a parent
   // transaction. if not, it will create a transaction of its own
   // check in the context if we are running embedded
   TransactionState* parent = _transactionContextPtr->getParentTransaction();
 
-  if (parent != nullptr) {
-    // yes, we are embedded
-    setupEmbedded(vocbase);
-  } else {
-    // non-embedded
-    setupToplevel(vocbase, options);
+  if (parent != nullptr) { // yes, we are embedded
+    if (!_transactionContextPtr->isEmbeddable()) {
+      // we are embedded but this is disallowed...
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
+    }
+    
+    _state = parent;
+    
+    TRI_ASSERT(_state != nullptr);
+    _state->increaseNesting();
+  } else { // non-embedded
+    TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
+    
+    // now start our own transaction
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    _state = engine->createTransactionState(vocbase, options).release();
+    TRI_ASSERT(_state != nullptr);
+    
+    // register the transaction in the context
+    _transactionContextPtr->registerTransaction(_state);
   }
 
   TRI_ASSERT(_state != nullptr);
@@ -879,7 +894,7 @@ OperationResult transaction::Methods::anyLocal(
   }
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ANY, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ANY);
 
   cursor->nextDocument([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
@@ -1255,18 +1270,27 @@ OperationResult transaction::Methods::documentCoordinator(
 
   if (!value.isArray()) {
     StringRef key(transaction::helpers::extractKeyPart(value));
+
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
     }
   }
 
   int res = arangodb::getDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, std::move(headers), responseCode,
-      errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    value,
+    options,
+    std::move(headers),
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultDocument(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -1335,7 +1359,7 @@ OperationResult transaction::Methods::documentLocal(
     res = workForOneDocument(value, false);
   } else {
     VPackArrayBuilder guard(&resultBuilder);
-    for (auto const& s : VPackArrayIterator(value)) {
+    for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, countErrorCodes, res, options.silent);
@@ -1386,17 +1410,22 @@ OperationResult transaction::Methods::insertCoordinator(
     std::string const& collectionName, VPackSlice const value,
     OperationOptions& options) {
   rest::ResponseCode responseCode;
-
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-
   int res = arangodb::createDocumentOnCoordinator(
-      databaseName(), collectionName, options, value, responseCode,
-      errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    options,
+    value,
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultInsert(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -1528,7 +1557,8 @@ OperationResult transaction::Methods::insertLocal(
 
       // Now replicate the good operations on all followers:
       std::string path =
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
+        "/_db/" +
+        arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
         "/_api/document/" +
         arangodb::basics::StringUtils::urlEncode(collection->name()) +
         "?isRestore=true&isSynchronousReplication=" +
@@ -1674,14 +1704,22 @@ OperationResult transaction::Methods::updateCoordinator(
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-
   int res = arangodb::modifyDocumentOnCoordinator(
-      databaseName(), collectionName, newValue, options, true /* isPatch */,
-      headers, responseCode, errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    newValue,
+    options,
+    true /* isPatch */,
+    headers,
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -1727,14 +1765,22 @@ OperationResult transaction::Methods::replaceCoordinator(
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-
   int res = arangodb::modifyDocumentOnCoordinator(
-      databaseName(), collectionName, newValue, options, false /* isPatch */,
-      headers, responseCode, errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    newValue,
+    options,
+    false /* isPatch */,
+    headers,
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultModify(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -1883,7 +1929,8 @@ OperationResult transaction::Methods::modifyLocal(
       if (cc != nullptr) {
         // nullptr only happens on controlled shutdown
         std::string path =
-          "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
+          "/_db/" +
+          arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
           "?isRestore=true&isSynchronousReplication=" +
@@ -1973,9 +2020,6 @@ OperationResult transaction::Methods::modifyLocal(
                     << (*followers)[i] << " for shard " << collectionName;
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
                 }
-                LOG_TOPIC(ERR, Logger::REPLICATION)
-                  << "modifyLocal: dropping follower " << (*followers)[i]
-                  << " for shard " << collectionName;
               }
             }
           }
@@ -2013,6 +2057,9 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
+  }
 
   return removeLocal(collectionName, value, optionsCopy);
 }
@@ -2027,14 +2074,20 @@ OperationResult transaction::Methods::removeCoordinator(
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-
   int res = arangodb::deleteDocumentOnCoordinator(
-      databaseName(), collectionName, value, options, responseCode,
-      errorCounter, resultBody);
+    vocbase().name(),
+    collectionName,
+    value,
+    options,
+    responseCode,
+    errorCounter,
+    resultBody
+  );
 
   if (res == TRI_ERROR_NO_ERROR) {
     return clusterResultRemove(responseCode, resultBody, errorCounter);
   }
+
   return OperationResult(res);
 }
 #endif
@@ -2167,7 +2220,8 @@ OperationResult transaction::Methods::removeLocal(
         // nullptr only happens on controled shutdown
 
         std::string path =
-          "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
+          "/_db/" +
+          arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
           "?isRestore=true&isSynchronousReplication=" +
@@ -2310,7 +2364,7 @@ OperationResult transaction::Methods::allLocal(
   }
 
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ALL, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   if (cursor->fail()) {
     return OperationResult(cursor->code);
@@ -2357,7 +2411,8 @@ OperationResult transaction::Methods::truncate(
 OperationResult transaction::Methods::truncateCoordinator(
     std::string const& collectionName, OperationOptions& options) {
   return OperationResult(arangodb::truncateCollectionOnCoordinator(
-      databaseName(), collectionName));
+    vocbase().name(), collectionName)
+  );
 }
 #endif
 
@@ -2416,26 +2471,30 @@ OperationResult transaction::Methods::truncateLocal(
     // Now replicate the same operation on all followers:
     auto const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
+
     if (!isFollower && followers->size() > 0) {
       // Now replicate the good operations on all followers:
       auto cc = arangodb::ClusterComm::instance();
+
       if (cc != nullptr) {
         // nullptr only happens on controlled shutdown
         std::string path =
-            "/_db/" + arangodb::basics::StringUtils::urlEncode(databaseName()) +
+            "/_db/" +
+            arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
             "/_api/collection/" +
             arangodb::basics::StringUtils::urlEncode(collectionName) +
             "/truncate?isSynchronousReplication=" +
             ServerState::instance()->getId();
-
         auto body = std::make_shared<std::string>();
 
         // Now prepare the requests:
         std::vector<ClusterCommRequest> requests;
+
         for (auto const& f : *followers) {
           requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT,
                                 path, body);
         }
+
         size_t nrDone = 0;
         // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
         // can be a much more expensive operation than a single document
@@ -2505,8 +2564,9 @@ OperationResult transaction::Methods::rotateActiveJournal(
 /// @brief rotate the journal of a collection
 OperationResult transaction::Methods::rotateActiveJournalCoordinator(
     std::string const& collectionName, OperationOptions const& options) {
-
-  return OperationResult(rotateActiveJournalOnAllDBServers(databaseName(), collectionName));
+  return OperationResult(
+    rotateActiveJournalOnAllDBServers(vocbase().name(), collectionName)
+  );
 }
 
 /// @brief rotate the journal of a collection
@@ -2545,8 +2605,9 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 OperationResult transaction::Methods::countCoordinator(
     std::string const& collectionName, bool aggregate, bool sendNoLockHeader) {
   std::vector<std::pair<std::string, uint64_t>> count;
-  int res = arangodb::countOnCoordinator(databaseName(), collectionName, count,
-                                         sendNoLockHeader);
+  auto res = arangodb::countOnCoordinator(
+    vocbase().name(), collectionName, count, sendNoLockHeader
+  );
 
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
@@ -2761,7 +2822,7 @@ std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
 OperationCursor* transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, ManagedDocumentResult* mmdr,
-    bool reverse) {
+    IndexIteratorOptions const& opts) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2775,7 +2836,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   std::unique_ptr<IndexIterator> iterator(
-      idx->iteratorForCondition(this, mmdr, condition, var, reverse));
+      idx->iteratorForCondition(this, mmdr, condition, var, opts));
 
   if (iterator == nullptr) {
     // We could not create an ITERATOR and it did not throw an error itself
@@ -2789,8 +2850,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
-    std::string const& collectionName, CursorType cursorType,
-    bool reverse) {
+    std::string const& collectionName, CursorType cursorType) {
   // For now we assume indexId is the iid part of the index.
 
   if (_state->isCoordinator()) {
@@ -2817,7 +2877,7 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
       break;
     }
     case CursorType::ALL: {
-      iterator = logical->getAllIterator(this, reverse);
+      iterator = logical->getAllIterator(this);
       break;
     }
   }
@@ -3026,15 +3086,16 @@ transaction::Methods* transaction::Methods::clone(transaction::Options const&) c
 std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
     std::string const& name, std::string const& id) const {
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(databaseName(), name);
-
+  auto collectionInfo = clusterInfo->getCollection(vocbase().name(), name);
   auto idxs = collectionInfo->getIndexes();
   TRI_idx_iid_t iid = basics::StringUtils::uint64(id);
+
   for (auto const& it : idxs) {
     if (it->id() == iid) {
       return it;
     }
   }
+
   return nullptr;
 }
 
@@ -3042,16 +3103,19 @@ std::shared_ptr<Index> transaction::Methods::indexForCollectionCoordinator(
 std::vector<std::shared_ptr<Index>>
 transaction::Methods::indexesForCollectionCoordinator(
     std::string const& name) const {
-
-  auto dbname = databaseName();
   auto clusterInfo = arangodb::ClusterInfo::instance();
-  std::shared_ptr<LogicalCollection> collection = clusterInfo->getCollection(databaseName(), name);
+  auto collection = clusterInfo->getCollection(vocbase().name(), name);
   std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
 
-  collection->clusterIndexEstimates(); // update estiamtes in logical collection
+  // update estimates in logical collection
+  auto selectivity = collection->clusterIndexEstimates();
+
   // push updated values into indexes
-  for(auto i : indexes){
-    i->updateClusterEstimate();
+  for(std::shared_ptr<Index>& idx : indexes){
+    auto it = selectivity.find(std::to_string(idx->id()));
+    if (it != selectivity.end()) {
+      idx->updateClusterSelectivityEstimate(it->second);
+    }
   }
 
   return indexes;
@@ -3163,32 +3227,6 @@ Result transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid,
   }
 
   return res;
-}
-
-/// @brief set up an embedded transaction
-void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
-  if (!_transactionContextPtr->isEmbeddable()) {
-    // we are embedded but this is disallowed...
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
-  }
-
-  _state = _transactionContextPtr->getParentTransaction();
-
-  TRI_ASSERT(_state != nullptr);
-  _state->increaseNesting();
-}
-
-/// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase,
-                                         transaction::Options const& options) {
-  // we are not embedded. now start our own transaction
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  _state = engine->createTransactionState(vocbase, options);
-
-  TRI_ASSERT(_state != nullptr);
-
-  // register the transaction in the context
-  _transactionContextPtr->registerTransaction(_state);
 }
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,

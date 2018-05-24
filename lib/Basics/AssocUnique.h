@@ -333,6 +333,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   void appendToVelocyPack(VPackBuilder& builder) {
+    TRI_ASSERT(builder.isOpenObject());
     builder.add("buckets", VPackValue(VPackValueType::Array));
     for (auto& b : _buckets) {
       builder.openObject();

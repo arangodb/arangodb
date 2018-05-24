@@ -104,16 +104,19 @@ bool State::persist(index_t index, term_t term,
   }
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
   SingleCollectionTransaction trx(ctx, "log", AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
   Result res = trx.begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   OperationResult result;
+
   try {
     result = trx.insert("log", body.slice(), _options);
   } catch (std::exception const& e) {
@@ -871,9 +874,8 @@ bool State::loadOrPersistConfiguration() {
     }
     _agent->id(uuid);
 
-    auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
-
     Result res = trx.begin();
     OperationResult result;
 
@@ -1162,6 +1164,7 @@ bool State::persistCompactionSnapshot(index_t cind,
                                       arangodb::consensus::Store& snapshot) {
   if (checkCollection("compact")) {
     std::stringstream i_str;
+
     i_str << std::setw(20) << std::setfill('0') << cind;
 
     Builder store;
@@ -1173,9 +1176,8 @@ bool State::persistCompactionSnapshot(index_t cind,
       store.add("_key", VPackValue(i_str.str())); }
 
     TRI_ASSERT(_vocbase != nullptr);
-    auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
     SingleCollectionTransaction trx(ctx, "compact", AccessMode::Type::WRITE);
-
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -1183,12 +1185,14 @@ bool State::persistCompactionSnapshot(index_t cind,
     }
 
     auto result = trx.insert("compact", store.slice(), _options);
+
     res = trx.finish(result.result);
 
     return res.ok();
   }
 
   LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist snapshot for compaction!";
+
   return false;
 }
 
@@ -1248,24 +1252,28 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
     }
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  
+  auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
+
   MUTEX_LOCKER(guard, _configurationWriteLock);
   SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
-
   Result res = trx.begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   auto result = trx.update("configuration", builder.slice(), _options);
+
   if (result.fail()) {
     THROW_ARANGO_EXCEPTION(result.result);
   }
+
   res = trx.finish(result.result);
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Updated persisted agency configuration: "
     << builder.slice().toJson();
 }

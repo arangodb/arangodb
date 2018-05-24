@@ -576,17 +576,17 @@ void Worker<V, E, M>::_continueAsync() {
   }
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  asio::io_context* ioService = SchedulerFeature::SCHEDULER->ioContext();
   TRI_ASSERT(ioService != nullptr);
 
   // wait for new messages before beginning to process
   int64_t milli =
       _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _boost_timer.reset(new boost::asio::deadline_timer(
+  _boost_timer.reset(new asio::deadline_timer(
       *ioService, boost::posix_time::millisec(milli)));
-  _boost_timer->async_wait([this](const boost::system::error_code& error) {
-    if (error != boost::asio::error::operation_aborted) {
+  _boost_timer->async_wait([this](const asio::error_code& error) {
+    if (error != asio::error::operation_aborted) {
       {  // swap these pointers atomically
         MY_WRITE_LOCKER(guard, _cacheRWLock);
         std::swap(_readCache, _writeCache);
@@ -695,6 +695,11 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
         _algorithm->createCompensation(&_config));
     _initializeVertexContext(vCompensate.get());
+    if (!vCompensate) {
+      _state = WorkerState::DONE;
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      return;
+    }
     vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;

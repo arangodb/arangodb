@@ -264,11 +264,15 @@ struct ClusterCommResult {
     // request => response we simulate the old behaviour now and fake a request
     // containing the body of our response
     // :snake: OPST_CIRCUS
-    answer_code = dynamic_cast<HttpResponse*>(response.get())->responseCode();
+    auto httpResponse = dynamic_cast<HttpResponse*>(response.get());
+    if (httpResponse == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+    }
+    answer_code = httpResponse->responseCode();
     HttpRequest* request = HttpRequest::createHttpRequest(
         ContentType::JSON,
-        dynamic_cast<HttpResponse*>(response.get())->body().c_str(),
-        dynamic_cast<HttpResponse*>(response.get())->body().length(), std::unordered_map<std::string,std::string>());
+        httpResponse->body().c_str(),
+        httpResponse->body().length(), std::unordered_map<std::string, std::string>());
 
     auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
@@ -371,9 +375,8 @@ struct ClusterCommRequest {
         requestType(type),
         path(path),
         body(body),
-        done(false) {
-    headerFields = std::move(headers);
-  }
+        headerFields(std::move(headers)),
+        done(false) {}
 
 
   void setHeaders(

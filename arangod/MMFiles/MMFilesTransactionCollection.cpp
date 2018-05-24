@@ -209,11 +209,12 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
       TRI_vocbase_col_status_e status;
+
       LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _collection = _transaction->vocbase()->useCollection(_cid, status);
+      _collection = _transaction->vocbase().useCollection(_cid, status);
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase()->lookupCollection(_cid).get();
+      _collection = _transaction->vocbase().lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
@@ -299,14 +300,14 @@ void MMFilesTransactionCollection::unuse(int nestingLevel) {
     _lockType = AccessMode::Type::NONE;
   }
 }
-    
+
 void MMFilesTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
     LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
 
-    _transaction->vocbase()->releaseCollection(_collection);
+    _transaction->vocbase().releaseCollection(_collection);
     _collection = nullptr;
   }
 }

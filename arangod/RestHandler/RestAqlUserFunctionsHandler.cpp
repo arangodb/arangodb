@@ -60,7 +60,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // call internal function that does the work
     bool replacedExisting = false;
-    auto res = registerUserFunction(&_vocbase, body, replacedExisting);
+    auto res = registerUserFunction(_vocbase, body, replacedExisting);
 
     if (res.ok()) {
       auto code = (replacedExisting)? rest::ResponseCode::OK : rest::ResponseCode::CREATED;
@@ -74,6 +74,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     } else {
       generateError(res);
     }
+
     return RestStatus::DONE;
   } else if (type == rest::RequestType::DELETE_REQ) {
     // JSF_delete_api_aqlfunction.md
@@ -87,12 +88,12 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     Result res;
     int deletedCount = 0;
+    bool deleteGroup = _request->parsedValue(StaticStrings::Group, false);
 
-    bool deleteGroup = extractBooleanParameter(StaticStrings::Group, false);
     if (deleteGroup) {
-      res = unregisterUserFunctionsGroup(&_vocbase, suffixes[0], deletedCount);
+      res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);
     } else { // delete single
-      res = unregisterUserFunction(&_vocbase, suffixes[0]);
+      res = unregisterUserFunction(_vocbase, suffixes[0]);
       ++deletedCount;
     }
 
@@ -105,6 +106,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     } else {
       generateError(res);
     }
+
     return RestStatus::DONE;
     // DELETE
   } else if (type == rest::RequestType::GET) {
@@ -136,7 +138,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     // internal get
     VPackBuilder arrayOfFunctions;
     auto res =
-      toArrayUserFunctions(&_vocbase, functionNamespace, arrayOfFunctions);
+      toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
 
     // error handling
     if (res.ok()) {

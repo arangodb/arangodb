@@ -136,7 +136,9 @@ arangodb::aql::AqlValue aqlFnTokens(
 
   auto data = arangodb::iresearch::getStringRef(args[0].slice());
   auto name = arangodb::iresearch::getStringRef(args[1].slice());
-  auto analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>("IResearchAnalyzer");
+  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
+  >();
 
   if (!analyzers) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -224,7 +226,6 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
     true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
     true, // can throw
     true, // can be run on server
-    true, // can pass arguments by reference
     aqlFnTokens // function implementation
   });
 }
@@ -251,7 +252,9 @@ void ensureConfigCollection(TRI_vocbase_t& vocbase) {
 /// @brief return a pointer to the system database or nullptr on error
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::iresearch::SystemDatabaseFeature::ptr getSystemDatabase() {
-  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+  auto* database = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::iresearch::SystemDatabaseFeature
+  >();
 
   if (!database) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -560,7 +563,7 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
       }
 
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         ANALYZER_COLLECTION_NAME,
         arangodb::AccessMode::Type::WRITE
       );
@@ -766,7 +769,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
   }
 
   arangodb::SingleCollectionTransaction trx(
-    arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+    arangodb::transaction::StandaloneContext::Create(*vocbase),
     ANALYZER_COLLECTION_NAME,
     arangodb::AccessMode::Type::READ
   );
@@ -822,7 +825,7 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
       return true; // not a valid configuration, skip
     }
 
-    auto key = getStringRef(slice.get(StaticStrings::KeyString));
+    auto key = getStringRef(slice.get(arangodb::StaticStrings::KeyString));
     auto name = getStringRef(slice.get("name"));
     auto type = getStringRef(slice.get("type"));
     irs::string_ref properties;
@@ -972,7 +975,9 @@ void IResearchAnalyzerFeature::start() {
 
   // register analyzer functions
   {
-    auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+    auto* functions = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::aql::AqlFunctionFeature
+    >("AQLFunctions");
 
     if (functions) {
       addFunctions(*functions);
@@ -1004,7 +1009,9 @@ void IResearchAnalyzerFeature::start() {
             << "failure to get storage engine while starting feature 'IResearchAnalyzer'";
           // assume not inRecovery(), create collection immediately
         } else if (engine->inRecovery()) {
-          auto* feature = getFeature<arangodb::DatabaseFeature>("Database");
+          auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
+            arangodb::DatabaseFeature
+          >("Database");
 
           if (!feature) {
             LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -1103,7 +1110,7 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
 
   try {
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+      arangodb::transaction::StandaloneContext::Create(*vocbase),
       ANALYZER_COLLECTION_NAME,
       arangodb::AccessMode::Type::WRITE
     );

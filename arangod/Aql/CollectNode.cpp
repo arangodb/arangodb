@@ -56,9 +56,9 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() {}
 
 /// @brief toVelocyPack, for CollectNode
-void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   // group variables
   nodes.add(VPackValue("groups"));
@@ -182,8 +182,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     }
   }
 
-  auto c =
-      new CollectNode(plan, _id, _options, groupVariables, aggregateVariables,
+  auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables, aggregateVariables,
                       expressionVariable, outVariable, _keepVariables,
                       _variableMap, _count, _isDistinctCommand);
 
@@ -192,9 +191,9 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specialized();
   }
 
-  cloneHelper(c, withDependencies, withProperties);
+  cloneHelper(c.get(), withDependencies, withProperties);
 
-  return static_cast<ExecutionNode*>(c);
+  return c.release();
 }
 
 /// @brief helper struct for finding variables
@@ -255,9 +254,7 @@ void CollectNode::getVariablesUsedHere(
     vars.emplace(p.second);
   }
   for (auto const& p : _aggregateVariables) {
-    if (Aggregator::requiresInput(p.second.second)) {
-      vars.emplace(p.second.first);
-    }
+    vars.emplace(p.second.first);
   }
 
   if (_expressionVariable != nullptr) {

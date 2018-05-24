@@ -29,7 +29,6 @@
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Basics/asio-helper.h"
 #include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Logger/Logger.h"
@@ -136,10 +135,10 @@ class HeartbeatThread : public CriticalThread,
   void runSingleServer();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop, agent version
+  /// @brief heartbeat main loop for agent and single db ... provides thread crash reporting
   //////////////////////////////////////////////////////////////////////////////
 
-  void runAgentServer();
+  void runSimpleServer();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
@@ -169,7 +168,7 @@ class HeartbeatThread : public CriticalThread,
   /// @brief bring the db server in sync with the desired state
   //////////////////////////////////////////////////////////////////////////////
 
-  void syncDBServerStatusQuo();
+  void syncDBServerStatusQuo(bool asyncPush = false);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice

@@ -2006,13 +2006,11 @@ static std::string getTempPath() {
   return system;
 }
 
-static int mkDTemp(char* s, size_t bufferSize) {
+static int mkDTemp(char* s, size_t /*bufferSize*/) {
   if (mkdtemp(s) != nullptr) {
     return TRI_ERROR_NO_ERROR;
   }
-  else {
-    return errno;
-  }
+  return errno;
 }
 
 #endif

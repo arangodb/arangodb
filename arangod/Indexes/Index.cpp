@@ -47,6 +47,43 @@
 
 using namespace arangodb;
 
+namespace {
+  bool hasExpansion(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) {
+    for (auto const& it : fields) {
+      if (TRI_AttributeNamesHaveExpansion(it)) {
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  /// @brief set fields from slice
+  std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice const& fields,
+                                                                        bool allowExpansion) {
+    std::vector<std::vector<arangodb::basics::AttributeName>> result;
+    if (!fields.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                     "invalid index description");
+    }
+    
+    size_t const n = static_cast<size_t>(fields.length());
+    result.reserve(n);
+    
+    for (auto const& name : VPackArrayIterator(fields)) {
+      if (!name.isString()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+                                       "invalid index description");
+      }
+      
+      std::vector<arangodb::basics::AttributeName> parsedAttributes;
+      TRI_ParseAttributeString(name.copyString(), parsedAttributes,
+                               allowExpansion);
+      result.emplace_back(std::move(parsedAttributes));
+    }
+    return result;
+  }
+}
+
 // If the Index is on a coordinator instance the index may not access the
 // logical collection because it could be gone!
 
@@ -57,9 +94,9 @@ Index::Index(
     : _iid(iid),
       _collection(collection),
       _fields(fields),
+      _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
-      _sparse(sparse),
-      _clusterSelectivity(0.1) {
+      _sparse(sparse) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
@@ -67,15 +104,15 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
              VPackSlice const& slice)
     : _iid(iid),
       _collection(collection),
-      _fields(),
+      _fields(::parseFields(slice.get(arangodb::StaticStrings::IndexFields),
+                            Index::allowExpansion(Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString())))),
+      _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "unique", false)),
+          slice, arangodb::StaticStrings::IndexUnique.c_str(), false
+      )),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, "sparse", false)),
-      _clusterSelectivity(0.1) {
-  VPackSlice const fields = slice.get("fields");
-  setFields(fields,
-            Index::allowExpansion(Index::type(slice.get("type").copyString())));
+          slice, arangodb::StaticStrings::IndexSparse.c_str(), false
+      )) {
 }
 
 Index::~Index() {}
@@ -99,39 +136,19 @@ size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
   }
 }
 
-/// @brief set fields from slice
-void Index::setFields(VPackSlice const& fields, bool allowExpansion) {
-  if (!fields.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                   "invalid index description");
-  }
-
-  size_t const n = static_cast<size_t>(fields.length());
-  _fields.reserve(n);
-
-  for (auto const& name : VPackArrayIterator(fields)) {
-    if (!name.isString()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                     "invalid index description");
-    }
-
-    std::vector<arangodb::basics::AttributeName> parsedAttributes;
-    TRI_ParseAttributeString(name.copyString(), parsedAttributes,
-                             allowExpansion);
-    _fields.emplace_back(std::move(parsedAttributes));
-  }
-}
-
 /// @brief validate fields from slice
 void Index::validateFields(VPackSlice const& slice) {
-  bool const allowExpansion =
-      Index::allowExpansion(Index::type(slice.get("type").copyString()));
+  auto allowExpansion = Index::allowExpansion(
+    Index::type(slice.get(arangodb::StaticStrings::IndexType).copyString())
+  );
 
-  VPackSlice fields = slice.get("fields");
+  auto fields = slice.get(arangodb::StaticStrings::IndexFields);
 
   if (!fields.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                   "invalid index description");
+// FIXME
+    return;
+//    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+//                                   "invalid index description");
   }
 
   for (auto const& name : VPackArrayIterator(fields)) {
@@ -172,6 +189,9 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  if (::strcmp(type, "geo") == 0) {
+    return TRI_IDX_TYPE_GEO_INDEX;
+  }
 #ifdef USE_IRESEARCH
   if (arangodb::iresearch::DATA_SOURCE_TYPE.name() == type) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -207,6 +227,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
+    case TRI_IDX_TYPE_GEO_INDEX:
+      return "geo";
 #ifdef USE_IRESEARCH
     case TRI_IDX_TYPE_IRESEARCH_LINK:
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
@@ -286,36 +308,42 @@ TRI_idx_iid_t Index::generateId() { return TRI_NewTickServer(); }
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
 bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
-  VPackSlice lhsType = lhs.get("type");
+  auto lhsType = lhs.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(lhsType.isString());
 
   // type must be identical
-  if (arangodb::basics::VelocyPackHelper::compare(lhsType, rhs.get("type"),
-                                                  false) != 0) {
+  if (arangodb::basics::VelocyPackHelper::compare(
+        lhsType, rhs.get(arangodb::StaticStrings::IndexType), false
+      ) != 0) {
     return false;
   }
 
   auto type = Index::type(lhsType.copyString());
 
   // unique must be identical if present
-  VPackSlice value = lhs.get("unique");
+  auto value = lhs.get(arangodb::StaticStrings::IndexUnique);
+
   if (value.isBoolean()) {
-    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("unique"),
-                                                    false) != 0) {
+    if (arangodb::basics::VelocyPackHelper::compare(
+          value, rhs.get(arangodb::StaticStrings::IndexUnique), false
+        ) != 0) {
       return false;
     }
   }
 
   // sparse must be identical if present
-  value = lhs.get("sparse");
+  value = lhs.get(arangodb::StaticStrings::IndexSparse);
+
   if (value.isBoolean()) {
-    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("sparse"),
-                                                    false) != 0) {
+    if (arangodb::basics::VelocyPackHelper::compare(
+          value, rhs.get(arangodb::StaticStrings::IndexSparse), false
+        ) != 0) {
       return false;
     }
   }
 
-  if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX) {
+  if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX ||
+      type == IndexType::TRI_IDX_TYPE_GEO_INDEX) {
     // geoJson must be identical if present
     value = lhs.get("geoJson");
     if (value.isBoolean()) {
@@ -336,14 +364,14 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
   }
 
   // other index types: fields must be identical if present
-  value = lhs.get("fields");
+  value = lhs.get(arangodb::StaticStrings::IndexFields);
 
   if (value.isArray()) {
     if (type == IndexType::TRI_IDX_TYPE_HASH_INDEX) {
       VPackValueLength const nv = value.length();
 
       // compare fields in arbitrary order
-      VPackSlice const r = rhs.get("fields");
+      auto r = rhs.get(arangodb::StaticStrings::IndexFields);
 
       if (!r.isArray() || nv != r.length()) {
         return false;
@@ -366,8 +394,9 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
         }
       }
     } else {
-      if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get("fields"),
-                                                      false) != 0) {
+      if (arangodb::basics::VelocyPackHelper::compare(
+            value, rhs.get(arangodb::StaticStrings::IndexFields), false
+          ) != 0) {
         return false;
       }
     }
@@ -413,16 +442,27 @@ std::shared_ptr<VPackBuilder> Index::toVelocyPack(bool withFigures, bool forPers
 /// note: needs an already-opened object as its input!
 void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
   TRI_ASSERT(builder.isOpenObject());
-  builder.add("id", VPackValue(std::to_string(_iid)));
-  builder.add("type", VPackValue(oldtypeName()));
+  builder.add(
+    arangodb::StaticStrings::IndexId,
+    arangodb::velocypack::Value(std::to_string(_iid))
+  );
+  //builder.add(arangodb::StaticStrings::IndexType, VPackValue(oldtypeName()));
+  builder.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(oldtypeName(type()))
+  );
 
-  builder.add(VPackValue("fields"));
+  builder.add(
+    arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields)
+  );
   builder.openArray();
+
   for (auto const& field : fields()) {
     std::string fieldString;
     TRI_AttributeNamesToString(field, fieldString);
     builder.add(VPackValue(fieldString));
   }
+
   builder.close();
 
   if (hasSelectivityEstimate() && !ServerState::instance()->isCoordinator()) {
@@ -457,12 +497,13 @@ void Index::toVelocyPackFigures(VPackBuilder& builder) const {
 bool Index::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  VPackSlice typeSlice = info.get("type");
+  auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
   StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
-  auto value = info.get("id");
+  auto value = info.get(arangodb::StaticStrings::IndexId);
+
   if (!value.isNone()) {
     // We already have an id.
     if (!value.isString()) {
@@ -473,7 +514,9 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
     StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
-  value = info.get("fields");
+
+  value = info.get(arangodb::StaticStrings::IndexFields);
+
   if (!value.isArray()) {
     return false;
   }
@@ -482,14 +525,21 @@ bool Index::matchesDefinition(VPackSlice const& info) const {
   if (n != _fields.size()) {
     return false;
   }
+
   if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "unique", false)) {
+                   info, arangodb::StaticStrings::IndexUnique.c_str(), false
+                 )
+     ) {
     return false;
   }
+
   if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
-                     info, "sparse", false)) {
+                   info, arangodb::StaticStrings::IndexSparse.c_str(), false
+                 )
+      ) {
     return false;
   }
+
   // This check takes ordering of attributes into account.
   std::vector<arangodb::basics::AttributeName> translate;
   for (size_t i = 0; i < n; ++i) {
@@ -514,23 +564,8 @@ double Index::selectivityEstimate(StringRef const* extra) const {
   if (_unique) {
     return 1.0;
   }
-
-  double estimate = 0.1; //default
-  if (!ServerState::instance()->isCoordinator()) {
-    estimate = selectivityEstimateLocal(extra);
-  } else {
-    // getClusterEstimate can not be called from within the index
-    // as _collection is not always vaild
-    estimate = _clusterSelectivity;
-  }
-
-  TRI_ASSERT(estimate >= 0.0 &&
-             estimate <= 1.00001);  // floating-point tolerance
-  return estimate;
-}
-
-double Index::selectivityEstimateLocal(StringRef const* extra) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return 0;
 }
 
 /// @brief default implementation for implicitlyUnique
@@ -597,17 +632,6 @@ bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
     estimatedCost = 0.0;
   }
   return false;
-}
-
-/// @brief default iterator factory method. does not create an iterator
-IndexIterator* Index::iteratorForCondition(transaction::Methods*,
-                                           ManagedDocumentResult*,
-                                           arangodb::aql::AstNode const*,
-                                           arangodb::aql::Variable const*,
-                                           bool) {
-  // the super class index cannot create an iterator
-  // the derived index classes have to manage this.
-  return nullptr;
 }
 
 /// @brief specializes the condition for use with the index
@@ -869,25 +893,6 @@ void Index::warmup(arangodb::transaction::Methods*,
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
 }
-
-std::pair<bool,double> Index::updateClusterEstimate(double defaultValue) {
-  // try to receive an selectivity estimate for the index
-  // from indexEstimates stored in the logical collection.
-  // the caller has to guarantee that the _collection is valid.
-  // on the coordinator _collection is not always vaild!
-
-  std::pair<bool,double> rv(false,defaultValue);
-
-  auto estimates = _collection->clusterIndexEstimates();
-  auto found = estimates.find(std::to_string(_iid));
-
-  if( found != estimates.end()){
-    rv.first = true;
-    rv.second = found->second;
-    _clusterSelectivity = rv.second;
-  }
-  return rv;
-};
 
 /// @brief append the index description to an output stream
 std::ostream& operator<<(std::ostream& stream, arangodb::Index const* index) {

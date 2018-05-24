@@ -392,7 +392,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                                             tickStart);
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
@@ -407,11 +407,13 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     generateError(GeneralResponse::responseCode(res), res);
     return;
   }
+
   bool const checkMore = (dump._lastFoundTick > 0 &&
                           dump._lastFoundTick != state.lastCommittedTick);
 
   // generate the result
   size_t length = 0;
+
   if (useVst) {
     length = dump._slices.size();
   } else {
@@ -510,7 +512,7 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
     return;
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(
@@ -519,13 +521,14 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // and dump
   int res =
       MMFilesDetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
+
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const err = "failed to determine open transactions";
     LOG_TOPIC(ERR, Logger::REPLICATION) << err;
     generateError(rest::ResponseCode::BAD, res, err);
     return;
   }
-    
+
   // generate the result
   size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
@@ -693,7 +696,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
 
   // initialize a container with the keys
   auto keys = std::make_unique<MMFilesCollectionKeys>(
-    &_vocbase, std::move(guard), id, 300.0
+    _vocbase, std::move(guard), id, 300.0
   );
 
   std::string const idString(std::to_string(keys->id()));
@@ -865,7 +868,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   try {
-    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     VPackBuilder resultBuilder(ctx->getVPackOptions());
 
     resultBuilder.openArray();
@@ -882,6 +885,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
         collectionKeys->release();
         return;
       }
+
       collectionKeys->dumpDocs(resultBuilder, chunk,
                                static_cast<size_t>(chunkSize), offsetInChunk,
                                maxChunkSize, parsedIds);
@@ -942,44 +946,20 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  // determine start tick for dump
-  TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd = static_cast<TRI_voc_tick_t>(UINT64_MAX);
-  bool flush = true;  // flush WAL before dumping?
-  bool withTicks = true;
-  uint64_t flushWait = 0;
-
-  // determine flush WAL value
-  bool found;
-  std::string const& value1 = _request->value("flush", found);
-
-  if (found) {
-    flush = StringUtils::boolean(value1);
-  }
+  // flush WAL before dumping?
+  bool flush = _request->parsedValue("flush", true);
 
   // determine flush WAL wait time value
-  std::string const& value3 = _request->value("flushWait", found);
-
-  if (found) {
-    flushWait = StringUtils::uint64(value3);
-    if (flushWait > 60) {
-      flushWait = 60;
-    }
+  uint64_t flushWait = _request->parsedValue("flushWait", static_cast<uint64_t>(0));
+  if (flushWait > 60) {
+    flushWait = 60;
   }
 
   // determine start tick for dump
-  std::string const& value4 = _request->value("from", found);
-
-  if (found) {
-    tickStart = (TRI_voc_tick_t)StringUtils::uint64(value4);
-  }
+  TRI_voc_tick_t tickStart = _request->parsedValue("from", static_cast<TRI_voc_tick_t>(0));
 
   // determine end tick for dump
-  std::string const& value5 = _request->value("to", found);
-
-  if (found) {
-    tickEnd = (TRI_voc_tick_t)StringUtils::uint64(value5);
-  }
+  TRI_voc_tick_t tickEnd = _request->parsedValue("to", static_cast<TRI_voc_tick_t>(UINT64_MAX));
 
   if (tickStart > tickEnd || tickEnd == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -987,18 +967,10 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  bool includeSystem = true;
-
-  std::string const& value6 = _request->value("includeSystem", found);
-
-  if (found) {
-    includeSystem = StringUtils::boolean(value6);
-  }
-
-  std::string const& value7 = _request->value("ticks", found);
-  if (found) {
-    withTicks = StringUtils::boolean(value7);
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
+  bool withTicks = _request->parsedValue("ticks", true);
+  
+  grantTemporaryRights();
 
   auto c = _vocbase.lookupCollection(collection);
 
@@ -1035,13 +1007,13 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(&_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),
                                      includeSystem, 0);
-  
+
   int res = MMFilesDumpCollectionReplication(&dump, col, tickStart, tickEnd,
                                              withTicks);
 

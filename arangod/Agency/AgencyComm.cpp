@@ -499,7 +499,7 @@ std::vector<std::string> AgencyCommManager::slicePath(std::string const& p1) {
 }
 
 std::string AgencyCommManager::generateStamp() {
-  time_t tt = time(0);
+  time_t tt = time(nullptr);
   struct tm tb;
   char buffer[21];
 
@@ -1308,7 +1308,7 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
   for (const auto& i : VPackObjectIterator(current)) {
     auto const endpoint = Endpoint::unifiedForm(i.value.copyString());
     if (std::find(stored.begin(), stored.end(), endpoint) == stored.end()) {
-      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
+      LOG_TOPIC(INFO, Logger::AGENCYCOMM)
         << "Adding endpoint " << endpoint << " to agent pool";
       AgencyCommManager::MANAGER->addEndpoint(endpoint);
     }
@@ -1321,7 +1321,6 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
       << "Removing endpoint " << i << " from agent pool";
     AgencyCommManager::MANAGER->removeEndpoint(i);
   }
-
 }
 
 

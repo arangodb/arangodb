@@ -7,10 +7,6 @@ var db = require('@arangodb').db,
   print = internal.print,
   colors = { };
 
-if (typeof internal.printBrowser === 'function') {
-  print = internal.printBrowser;
-}
-
 const anonymize = function(doc) {
   if (Array.isArray(doc)) {
     return doc.map(anonymize);
@@ -943,8 +939,15 @@ function processQuery (query, explain) {
   };
 
   var projection = function (node) {
-    if (node.projection && node.projection.length > 0) {
-      return ', projection: `' + node.projection.join('`.`') + '`';
+    if (node.projections && node.projections.length > 0) {
+      return ', projections: `' + node.projections.join('`, `') + '`';
+    }
+    return '';
+  };
+
+  const restriction = function (node) {
+    if (node.restrictedTo) {
+      return `, shard: ${node.restrictedTo}`;
     }
     return '';
   };
@@ -959,7 +962,7 @@ function processQuery (query, explain) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + (node.producesResult ? '' : ', index only') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + ' */');
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -968,7 +971,7 @@ function processQuery (query, explain) {
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [];
         node.indexes.forEach(function (idx, i) {
-          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + (node.producesResult ? '' : ', index only');
+          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
           if (types.length === 0 || what !== types[types.length - 1]) {
             types.push(what);
           }
@@ -981,7 +984,7 @@ function processQuery (query, explain) {
           }
           indexes.push(idx);
         });
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + types.join(', ') + projection(node) + (node.satellite ? ', satellite' : '') + ' */');
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
       case 'IndexRangeNode':
         collectionVariables[node.outVariable.id] = node.collection;
         var index = node.index;
@@ -1221,38 +1224,66 @@ function processQuery (query, explain) {
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }).join(', ');
       case 'LimitNode':
-        return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit));
+        return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
-      case 'InsertNode':
+      case 'InsertNode': {
         modificationFlags = node.modificationFlags;
-        return keyword('INSERT') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'UpdateNode':
-        modificationFlags = node.modificationFlags;
-        if (node.hasOwnProperty('inKeyVariable')) {
-          return keyword('UPDATE') + ' ' + variableName(node.inKeyVariable) + ' ' + keyword('WITH') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
         }
-        return keyword('UPDATE') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'ReplaceNode':
+        return keyword('INSERT') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + ' ' + restrictString;
+      }
+      case 'UpdateNode': {
         modificationFlags = node.modificationFlags;
+        let inputExplain = '';
         if (node.hasOwnProperty('inKeyVariable')) {
-          return keyword('REPLACE') + ' ' + variableName(node.inKeyVariable) + ' ' + keyword('WITH') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+          inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
+        } else {
+          inputExplain = `variableName(node.inDocVariable)`;
         }
-        return keyword('REPLACE') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+        }
+        return `${keyword('UPDATE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
+      case 'ReplaceNode': {
+        modificationFlags = node.modificationFlags;
+        let inputExplain = '';
+        if (node.hasOwnProperty('inKeyVariable')) {
+          inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
+          } else {
+          inputExplain = `variableName(node.inDocVariable)`;
+          }
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+          }
+        return `${keyword('REPLACE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
       case 'UpsertNode':
         modificationFlags = node.modificationFlags;
         return keyword('UPSERT') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('INSERT') + ' ' + variableName(node.insertVariable) + ' ' + keyword(node.isReplace ? 'REPLACE' : 'UPDATE') + ' ' + variableName(node.updateVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
-      case 'RemoveNode':
+      case 'RemoveNode': {
         modificationFlags = node.modificationFlags;
-        return keyword('REMOVE') + ' ' + variableName(node.inVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
+        let restrictString = '';
+        if (node.restrictedTo) {
+          restrictString = annotation('/* ' + restriction(node) + ' */');
+          }
+        return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
+      }
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
         return keyword('DISTRIBUTE');
       case 'ScatterNode':
         return keyword('SCATTER');
+      case 'ScatterViewNode':
+        return keyword('SCATTER VIEW');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
             if (node.path && node.path.length) {
@@ -1465,6 +1496,7 @@ function debug(query, bindVars, options) {
   let result = {
     engine: db._engine(),
     version: db._version(true),
+    database: db._name(),
     query: input,
     collections: {}
   };
@@ -1474,8 +1506,51 @@ function debug(query, bindVars, options) {
   let stmt = db._createStatement(input);
   result.explain = stmt.explain(input.options);
 
+  let graphs = {};
+  let collections = result.explain.plan.collections;
+  let map = {};
+  collections.forEach(function(c) {
+    map[c.name] = true;
+  });
+
+  // export graphs
+  let findGraphs = function(nodes) {
+    nodes.forEach(function(node) {
+      if (node.type === 'TraversalNode') {
+        if (node.graph) {
+          try {
+            graphs[node.graph] = db._graphs.document(node.graph);
+          } catch (err) {}
+        }
+        if (node.graphDefinition) {
+          try {
+            node.graphDefinition.vertexCollectionNames.forEach(function(c) {
+              if (!map.hasOwnProperty(c)) {
+                map[c] = true;
+                collections.push({ name: c });
+              }
+            });
+          } catch (err) {}
+          try {
+            node.graphDefinition.edgeCollectionNames.forEach(function(c) {
+              if (!map.hasOwnProperty(c)) {
+                map[c] = true;
+                collections.push({ name: c });
+              }
+            });
+          } catch (err) {}
+        }
+      } else if (node.type === 'SubqueryNode') {
+        // recurse into subqueries
+        findGraphs(node.subquery.nodes);
+      }
+    });
+  };
+  // mangle with graphs used in query
+  findGraphs(result.explain.plan.nodes);
+
   // add collection information
-  result.explain.plan.collections.forEach(function(collection) {
+  collections.forEach(function(collection) {
     let c = db._collection(collection.name);
     let examples;
     if (input.options.examples) {
@@ -1495,7 +1570,7 @@ function debug(query, bindVars, options) {
       }
     }
     result.collections[collection.name] = { 
-      type: c.type() === 2,
+      type: c.type(),
       properties: c.properties(),
       indexes: c.getIndexes(true),
       count: c.count(),
@@ -1503,6 +1578,8 @@ function debug(query, bindVars, options) {
       examples
     };
   });
+  
+  result.graphs = graphs;
   return result;
 }
 
@@ -1514,16 +1591,29 @@ function debugDump(filename, query, bindVars, options) {
 
 function inspectDump(filename) {
   let data = JSON.parse(require("fs").read(filename));
+  if (data.database) {
+    print("/* original data gathered from database '" + data.database + "' */");
+  }
   if (db._engine().name !== data.engine.name) {
     print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
   }
+  print();
+
+  print("/* graphs */");
+  let graphs = data.graphs || {};
+  Object.keys(graphs).forEach(function(graph) {
+    let details = graphs[graph];
+    print("try { db._graphs.remove(" + JSON.stringify(graph) + "); } catch (err) {}");
+    print("db._graphs.insert(" + JSON.stringify(details) + ");");
+  });
+  print();
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
   Object.keys(data.collections).forEach(function(collection) {
     let details = data.collections[collection];
     print("db._drop(" + JSON.stringify(collection) + ");");
-    if (details.type === 3) {
+    if (details.type === false || details.type === 3) {
       print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
     } else {
       print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");

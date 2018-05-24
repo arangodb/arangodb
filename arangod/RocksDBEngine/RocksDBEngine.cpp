@@ -651,9 +651,13 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
   return new RocksDBTransactionContextData();
 }
 
-TransactionState* RocksDBEngine::createTransactionState(
-    TRI_vocbase_t* vocbase, transaction::Options const& options) {
-  return new RocksDBTransactionState(vocbase, options);
+std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+) {
+  return std::unique_ptr<TransactionState>(
+    new RocksDBTransactionState(vocbase, TRI_NewTickServer(), options)
+  );
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -700,8 +704,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
        iter->Next()) {
     auto slice = VPackSlice(iter->value().data());
 
-    //// check format
-    // id
+    //// check format id
     VPackSlice idSlice = slice.get("id");
     if (!idSlice.isString()) {
       LOG_TOPIC(ERR, arangodb::Logger::STARTUP)
@@ -771,17 +774,20 @@ void RocksDBEngine::getCollectionInfo(
     VPackSlice indexes = fullParameters.get("indexes");
     builder.add(VPackValue("indexes"));
     builder.openArray();
+
     if (indexes.isArray()) {
       for (auto const idx : VPackArrayIterator(indexes)) {
         // This is only allowed to contain user-defined indexes.
         // So we have to exclude Primary + Edge Types
-        VPackSlice type = idx.get("type");
+        auto type = idx.get(StaticStrings::IndexType);
         TRI_ASSERT(type.isString());
+
         if (!type.isEqualString("primary") && !type.isEqualString("edge")) {
           builder.add(idx);
         }
       }
     }
+
     builder.close();
   }
 
@@ -810,10 +816,13 @@ int RocksDBEngine::getCollectionsAndIndexes(
 
     auto slice = VPackSlice(iter->value().data());
 
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted",
-                                                             false)) {
+    if (arangodb::basics::VelocyPackHelper::readBooleanValue(
+          slice, StaticStrings::DataSourceDeleted, false
+        )
+       ) {
       continue;
     }
+
     result.add(slice);
   }
 
@@ -839,8 +848,10 @@ int RocksDBEngine::getViews(
 
     LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << slice.toJson();
 
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "deleted",
-                                                             false)) {
+    if (arangodb::basics::VelocyPackHelper::readBooleanValue(
+          slice, StaticStrings::DataSourceDeleted, false
+        )
+       ) {
       continue;
     }
 
@@ -1035,7 +1046,7 @@ bool RocksDBEngine::inRecovery() {
   return RocksDBRecoveryManager::instance()->inRecovery();
 }
 
-void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
+void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   // nothing to do here
 }
 
@@ -1107,7 +1118,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // Prepare collection remove batch
   RocksDBLogValue logValue = RocksDBLogValue::CollectionDrop(
-    vocbase.id(), collection->id(), StringRef(collection->globallyUniqueId())
+    vocbase.id(), collection->id(), StringRef(collection->guid())
   );
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
@@ -1621,13 +1632,12 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
-        TRI_ASSERT(it.get("type").isString());
-        Index::IndexType type = Index::type(it.get("type").copyString());
-        bool unique =
-            basics::VelocyPackHelper::getBooleanValue(it, "unique", false);
-
+        TRI_ASSERT(it.get(StaticStrings::IndexType).isString());
+        auto type = Index::type(it.get(StaticStrings::IndexType).copyString());
+        bool unique = basics::VelocyPackHelper::getBooleanValue(
+          it, StaticStrings::IndexUnique.c_str(), false
+        );
         bool prefix_same_as_start = type != Index::TRI_IDX_TYPE_EDGE_INDEX;
-
         RocksDBKeyBounds bounds =
             RocksDBIndex::getBounds(type, objectId, unique);
 
@@ -1746,7 +1756,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
       TRI_ASSERT(!it.get("id").isNone());
 
-      auto const view = LogicalView::create(*vocbase, it);
+      auto const view = LogicalView::create(*vocbase, it, false);
 
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";
@@ -1781,7 +1791,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    for (auto const& it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
@@ -1913,8 +1923,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   auto rates = manager->globalHitRates();
   builder.add("cache.limit", VPackValue(manager->globalLimit()));
   builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
-  builder.add("cache.hit-rate-lifetime", VPackValue(rates.first));
-  builder.add("cache.hit-rate-recent", VPackValue(rates.second));
+  // handle NaN
+  builder.add("cache.hit-rate-lifetime", VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
+  builder.add("cache.hit-rate-recent", VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
 
   // print column family statistics
   builder.add("columnFamilies", VPackValue(VPackValueType::Object));

@@ -34,7 +34,6 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
-#include "Basics/WorkMonitor.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -94,26 +93,26 @@ class V8GcThread : public Thread {
 V8DealerFeature::V8DealerFeature(
     application_features::ApplicationServer* server)
     : application_features::ApplicationFeature(server, "V8Dealer"),
-      _gcFrequency(30.0),
-      _gcInterval(1000),
+      _gcFrequency(60.0),
+      _gcInterval(2000),
       _maxContextAge(60.0),
       _nrMaxContexts(0),
       _nrMinContexts(0),
       _nrInflightContexts(0),
       _maxContextInvocations(0),
       _allowAdminExecute(false),
+      _enableJS(true),
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
       _dynamicContextCreationBlockers(0) {
-  setOptional(false);
+  setOptional(true);
   startsAfter("Action");
   startsAfter("Authentication");
   startsAfter("Database");
   startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("V8Platform");
-  startsAfter("WorkMonitor");
   startsAfter("Temp");
 }
 
@@ -167,9 +166,23 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.allow-admin-execute",
       "for testing purposes allow '_admin/execute', NEVER enable on production",
       new BooleanParameter(&_allowAdminExecute));
+  
+  options->addHiddenOption(
+      "--javascript.enabled",
+      "enable or disable the V8 JS engine entirely",
+      new BooleanParameter(&_enableJS));
 }
 
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (!_enableJS) {
+    disable();
+    application_features::ApplicationServer::disableFeatures({"V8Platform", "Action",
+      "Script", "FoxxQueues", "Frontend"});
+    LOG_TOPIC(WARN, arangodb::Logger::V8) << "V8 JavaScript engine is disabled, this is an"
+      << " experimental option, some features may be missing or broken !";
+    return;
+  }
+  
   // check the startup path
   if (_startupDirectory.empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::V8)
@@ -440,8 +453,7 @@ void V8DealerFeature::collectGarbage() {
       gc->updateGcStamp(lastGc);
 
       if (context != nullptr) {
-        arangodb::CustomWorkStack custom("V8 GC", (uint64_t)context->id());
-
+        
         LOG_TOPIC(TRACE, arangodb::Logger::V8) << "collecting V8 garbage in context #" << context->id()
                   << ", invocations total: " << context->invocations()  
                   << ", invocations since last gc: " << context->invocationsSinceLastGc()  
@@ -1208,7 +1220,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
     v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
     v8::Persistent<v8::Context> persistentContext;
-    persistentContext.Reset(isolate, v8::Context::New(isolate, 0, global));
+    persistentContext.Reset(isolate, v8::Context::New(isolate, nullptr, global));
     auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
 
     localContext->Enter();
@@ -1247,10 +1259,10 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       }
       TRI_InitV8UserFunctions(isolate, localContext);
       TRI_InitV8UserStructures(isolate, localContext);
-      TRI_InitV8Buffer(isolate, localContext);
+      TRI_InitV8Buffer(isolate);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8DebugUtils(isolate, localContext);
-      TRI_InitV8Shell(isolate, localContext);
+      TRI_InitV8Shell(isolate);
 
       {
         v8::HandleScope scope(isolate);

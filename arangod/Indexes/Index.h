@@ -43,6 +43,7 @@ class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 class StringRef;
+struct IndexIteratorOptions;
 
 namespace velocypack {
 class Builder;
@@ -78,6 +79,7 @@ class Index {
   enum IndexType {
     TRI_IDX_TYPE_UNKNOWN = 0,
     TRI_IDX_TYPE_PRIMARY_INDEX,
+    TRI_IDX_TYPE_GEO_INDEX,
     TRI_IDX_TYPE_GEO1_INDEX,
     TRI_IDX_TYPE_GEO2_INDEX,
     TRI_IDX_TYPE_HASH_INDEX,
@@ -103,8 +105,7 @@ class Index {
   inline TRI_idx_iid_t id() const { return _iid; }
 
   /// @brief return the index fields
-  inline std::vector<std::vector<arangodb::basics::AttributeName>> const&
-  fields() const {
+  inline std::vector<std::vector<arangodb::basics::AttributeName>> const& fields() const {
     return _fields;
   }
 
@@ -156,14 +157,7 @@ class Index {
 
   /// @brief whether or not any attribute is expanded
   inline bool hasExpansion() const {
-    for (auto const& it : _fields) {
-      for (auto const& it2 : it) {
-        if (it2.shouldExpand) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return _useExpansion;
   }
 
   /// @brief return the underlying collection
@@ -189,9 +183,13 @@ class Index {
 
   static IndexType type(std::string const& type);
 
-  virtual char const* typeName() const = 0;
+  static bool isGeoIndex(IndexType type) {
+    return type == TRI_IDX_TYPE_GEO1_INDEX ||
+           type == TRI_IDX_TYPE_GEO2_INDEX ||
+           type == TRI_IDX_TYPE_GEO_INDEX;
+  }
 
-  virtual bool allowExpansion() const = 0;
+  virtual char const* typeName() const = 0;
 
   static bool allowExpansion(IndexType type) {
     return (type == TRI_IDX_TYPE_HASH_INDEX ||
@@ -220,6 +218,13 @@ class Index {
 
   virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
+ 
+  /// @brief whether or not the index provides an iterator that can extract
+  /// attribute values from the index data, without having to refer to the
+  /// actual document data
+  /// By default, indexes do not have this type of iterator, but they can
+  /// add it as a performance optimization
+  virtual bool hasCoveringIterator() const { return false; }
 
   /// @brief Checks if this index is identical to the given definition
   virtual bool matchesDefinition(arangodb::velocypack::Slice const&) const;
@@ -235,11 +240,13 @@ class Index {
   ///
   /// The extra StringRef is only used in the edge index as direction
   /// attribute attribute, a Slice would be more flexible.
-  double selectivityEstimate(
+  virtual double selectivityEstimate(
       arangodb::StringRef const* extra = nullptr) const;
-
-  virtual double selectivityEstimateLocal(
-      arangodb::StringRef const* extra) const;
+  
+  /// @brief update the cluster selectivity estimate
+  virtual void updateClusterSelectivityEstimate(double estimate = 0.1) {
+    TRI_ASSERT(false); // should never be called except on Coordinator
+  }
 
   /// @brief whether or not the index is implicitly unique
   /// this can be the case if the index is not declared as unique,
@@ -275,7 +282,7 @@ class Index {
   virtual int drop();
 
   // called after the collection was truncated
-  virtual int afterTruncate(); 
+  virtual int afterTruncate();
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);
@@ -289,15 +296,17 @@ class Index {
   virtual bool supportsSortCondition(arangodb::aql::SortCondition const*,
                                      arangodb::aql::Variable const*, size_t,
                                      double&, size_t&) const;
+  
+  virtual arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
+                                                      arangodb::aql::Variable const*) const;
 
   virtual IndexIterator* iteratorForCondition(transaction::Methods*,
                                               ManagedDocumentResult*,
                                               arangodb::aql::AstNode const*,
                                               arangodb::aql::Variable const*,
-                                              bool);
-
-  virtual arangodb::aql::AstNode* specializeCondition(
-      arangodb::aql::AstNode*, arangodb::aql::Variable const*) const;
+                                              IndexIteratorOptions const&) {
+    return nullptr; // IResearch will never use this
+  };
 
   bool canUseConditionPart(arangodb::aql::AstNode const* access,
                            arangodb::aql::AstNode const* other,
@@ -309,37 +318,24 @@ class Index {
   /// @brief Transform the list of search slices to search values.
   ///        This will multiply all IN entries and simply return all other
   ///        entries.
-  virtual void expandInSearchValues(arangodb::velocypack::Slice const,
-                                    arangodb::velocypack::Builder&) const;
+  void expandInSearchValues(arangodb::velocypack::Slice const,
+                            arangodb::velocypack::Builder&) const;
 
   virtual void warmup(arangodb::transaction::Methods* trx,
                       std::shared_ptr<basics::LocalTaskQueue> queue);
 
-  // needs to be called when the _colllection is guaranteed to be valid!
-  // unfortunatly access the logical collection on the coordinator is not always safe!
-  std::pair<bool,double> updateClusterEstimate(double defaultValue = 0.1);
-
- protected:
   static size_t sortWeight(arangodb::aql::AstNode const* node);
 
   //returns estimate for index in cluster - the bool is true if the index was found
 
- private:
-  /// @brief set fields from slice
-  void setFields(velocypack::Slice const& slice, bool allowExpansion);
-
  protected:
   TRI_idx_iid_t const _iid;
-
   LogicalCollection* _collection;
-
-  std::vector<std::vector<arangodb::basics::AttributeName>> _fields;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;
+  bool const _useExpansion;
 
   mutable bool _unique;
-
   mutable bool _sparse;
-
-  double _clusterSelectivity;
 };
 }
 

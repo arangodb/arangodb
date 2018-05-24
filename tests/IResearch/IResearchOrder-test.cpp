@@ -141,7 +141,11 @@ void assertOrder(
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
     arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase), {}, {}, {}, arangodb::transaction::Options()
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
     );
 
     arangodb::iresearch::QueryContext const ctx{
@@ -252,7 +256,7 @@ struct IResearchOrderSetup {
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
     auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
-    arangodb::aql::Function invalid("INVALID", "|.", false, true, true, false);
+    arangodb::aql::Function invalid("INVALID", "|.", false, true, true);
 
     functions.add(invalid);
   }

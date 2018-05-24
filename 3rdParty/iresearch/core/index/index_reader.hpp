@@ -85,7 +85,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   using index_reader::docs_count;
 
   // returns number of live documents by the specified field
-  virtual uint64_t docs_count(const string_ref& field) const {
+  virtual uint64_t docs_count(const string_ref& field) const override {
     const term_reader* rdr = this->field(field);
     return nullptr == rdr ? 0 : rdr->docs_count();
   }

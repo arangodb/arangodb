@@ -37,6 +37,7 @@ const fs = require('fs');
 const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.startupPath, 'common', 'test-data', 'apps'));
 const download = internal.download;
+const request = require('@arangodb/request');
 
 const arangodb = require('@arangodb');
 const arango = require('@arangodb').arango;
@@ -115,16 +116,46 @@ describe('Foxx service', () => {
     expect(jobResult.length).to.equal(1);
   });
 
-  const waitForJob = () => {
+  it('should support jobs running in the queue', () => {
+    let res = request.post(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, {
+      body: JSON.stringify({repeatTimes: 2})
+    });
+    expect(res.statusCode).to.equal(204);
+    expect(waitForJob(2)).to.equal(true, 'job from foxx queue did not run!');
+    const jobResult = db._query(aql`
+      FOR i IN foxx_queue_test
+        FILTER i.job == true
+        RETURN 1
+    `).toArray();
+    expect(jobResult.length).to.equal(2);
+  });
+
+  it('should ignore the arango user', () => {
+    let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
+      method: 'post',
+      username: 'root',
+      password: ''
+    });
+    expect(res.code).to.equal(204);
+    expect(waitForJob()).to.equal(true, 'job from foxx queue did not run!');
+    const jobResult = db._query(aql`
+      FOR i IN foxx_queue_test
+        FILTER i.job == true
+        RETURN 1
+    `).toArray();
+    expect(jobResult.length).to.equal(1);
+  });
+
+  const waitForJob = (runs = 1) => {
     let i = 0;
     while (i++ < 50) {
       internal.wait(0.1);
       const jobs = db._query(aql`
         FOR job IN _jobs
           FILTER job.type.mount == ${mount}
-          RETURN job.status
+          RETURN job
       `).toArray();
-      if (jobs.length === 1 && jobs[0] === 'complete') {
+      if (jobs.length === 1 && jobs[0].status === 'complete' && jobs[0].runs === runs) {
         return true;
       }
     }

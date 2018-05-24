@@ -34,7 +34,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -172,7 +171,8 @@ void HeartbeatThread::runBackgroundJob() {
       _launchAnotherBackgroundJob = false;
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
-      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
+      _lastSyncTime = TRI_microtime();
+      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -216,22 +216,23 @@ void HeartbeatThread::run() {
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
-  logThreadDeaths();
-
   if (ServerState::instance()->isCoordinator(role)) {
     runCoordinator();
   } else if (ServerState::instance()->isDBServer(role)) {
     runDBServer();
   } else if (ServerState::instance()->isSingleServer(role)) {
-    runSingleServer();
+    if (ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
+      runSingleServer();
+    } else {
+      // runSimpleServer();  // for later when CriticalThreads identified
+    } // else
   } else if (ServerState::instance()->isAgent(role)) {
-    runAgentServer();
+    runSimpleServer();
   } else {
     LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
     TRI_ASSERT(false);
   }
 
-  logThreadDeaths(true);  // force log
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (" << role << ")";
 }
@@ -265,7 +266,7 @@ void HeartbeatThread::runDBServer() {
     }
 
     if (doSync) {
-      syncDBServerStatusQuo();
+      syncDBServerStatusQuo(true);
     }
 
     return true;
@@ -289,6 +290,13 @@ void HeartbeatThread::runDBServer() {
   int const currentCountStart = 1;  // set to 1 by Max to speed up discovery
   int currentCount = currentCountStart;
 
+  // Loop priorities / goals
+  // 0. send state to agency server
+  // 1. schedule handlePlanChange immediately when agency callback occurs
+  // 2. poll for plan change, schedule handlePlanChange immediately if change detected
+  // 3. force handlePlanChange every 7.4 seconds just in case
+  //     (7.4 seconds is just less than half the 15 seconds agency uses to declare dead server)
+  // 4. if handlePlanChange runs long (greater than 7.4 seconds), have another start immediately after
 
   while (!isStopping()) {
     logThreadDeaths();
@@ -324,9 +332,7 @@ void HeartbeatThread::runDBServer() {
               << "Heartbeat: Could not read from agency!";
         } else {
 
-          VPackSlice agentPool =
-            result.slice()[0].get(
-              std::vector<std::string>({".agency","pool"}));
+          VPackSlice agentPool = result.slice()[0].get(".agency");
           updateAgentPool(agentPool);
 
           VPackSlice shutdownSlice =
@@ -517,7 +523,7 @@ void HeartbeatThread::runSingleServer() {
       }
 
       VPackSlice response = result.slice()[0];
-      VPackSlice agentPool = response.get(std::vector<std::string>{".agency", "pool"});
+      VPackSlice agentPool = response.get(".agency");
       updateAgentPool(agentPool);
 
       VPackSlice shutdownSlice = response.get({AgencyCommManager::path(), "Shutdown"});
@@ -580,7 +586,10 @@ void HeartbeatThread::runSingleServer() {
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
-        ServerState::setServerMode(ServerState::Mode::DEFAULT);
+        auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
+        if (prv == ServerState::Mode::REDIRECT) {
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Sucessfull leadership takeover";
+        }
         continue; // nothing more to do
       }
 
@@ -612,7 +621,7 @@ void HeartbeatThread::runSingleServer() {
         // wait for everything to calm down for good measure
         std::this_thread::sleep_for(std::chrono::seconds(10));
       }
-      
+
       TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
       auto sendTransient = [&]() {
         VPackBuilder builder;
@@ -756,9 +765,7 @@ void HeartbeatThread::runCoordinator() {
             << result.bodyRef() << ", timeout: " << timeout;
       } else {
 
-        VPackSlice agentPool =
-          result.slice()[0].get(
-            std::vector<std::string>({".agency","pool"}));
+        VPackSlice agentPool = result.slice()[0].get(".agency");
         updateAgentPool(agentPool);
 
         VPackSlice shutdownSlice = result.slice()[0].get(
@@ -941,10 +948,10 @@ void HeartbeatThread::runCoordinator() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop, agent version
+/// @brief heartbeat main loop, agent and sole db version
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::runAgentServer() {
+void HeartbeatThread::runSimpleServer() {
 
   // simple loop to post dead threads every hour, no other tasks today
   while (!isStopping()) {
@@ -958,9 +965,9 @@ void HeartbeatThread::runAgentServer() {
     }
   } // while
 
-  return;
+  logThreadDeaths(true);
 
-} // HeartbeatThread::runAgentServer
+} // HeartbeatThread::runSimpleServer
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the heartbeat
@@ -1140,7 +1147,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 /// and every few heartbeats if the Current/Version has changed.
 ////////////////////////////////////////////////////////////////////////////////
 
-void HeartbeatThread::syncDBServerStatusQuo() {
+void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
   bool shouldUpdate = false;
   bool becauseOfPlan = false;
   bool becauseOfCurrent = false;
@@ -1162,8 +1169,10 @@ void HeartbeatThread::syncDBServerStatusQuo() {
     becauseOfCurrent = true;
   }
 
+  // 7.4 seconds is just less than half the 15 seconds agency uses to declare dead server,
+  //  perform a safety execution of job in case other plan changes somehow incomplete or undetected
   double now = TRI_microtime();
-  if (now > _lastSyncTime + 7.4) {
+  if (now > _lastSyncTime + 7.4 || asyncPush) {
     shouldUpdate = true;
   }
 
@@ -1250,11 +1259,11 @@ bool HeartbeatThread::sendServerState() {
 }
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
-  if (agentPool.isObject() && agentPool.hasKey("size") &&
-      agentPool.get("size").getUInt() > 1) {
-    _agency.updateEndpoints(agentPool);
+  if (agentPool.isObject() && agentPool.get("pool").isObject() &&
+      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
+    _agency.updateEndpoints(agentPool.get("pool"));
   } else {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Cannot find an agency persisted in RAFT 8|";
   }
 }
 
@@ -1269,9 +1278,6 @@ void HeartbeatThread::recordThreadDeath(const std::string & threadName) {
 
   deadThreads.insert(std::pair<std::chrono::system_clock::time_point, const std::string>
                      (std::chrono::system_clock::now(), threadName));
-
-  return;
-
 } // HeartbeatThread::recordThreadDeath
 
   //////////////////////////////////////////////////////////////////////////////

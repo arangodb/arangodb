@@ -80,11 +80,13 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     RocksDBPrimaryIndex* index,
-    std::unique_ptr<VPackBuilder> keys)
+    std::unique_ptr<VPackBuilder> keys,
+    bool allowCoveringIndexOptimization)
     : IndexIterator(collection, trx, index),
       _index(index),
       _keys(std::move(keys)),
-      _iterator(_keys->slice()) {
+      _iterator(_keys->slice()),
+      _allowCoveringIndexOptimization(allowCoveringIndexOptimization) {
   TRI_ASSERT(_keys->slice().isArray());
 }
 
@@ -102,12 +104,36 @@ bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
     return false;
   }
-
+  
   while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
     LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
     if (documentId.isSet()) {
       cb(documentId);
+      --limit;
+    }
+
+    _iterator.next();
+    if (!_iterator.valid()) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool RocksDBPrimaryIndexIterator::nextCovering(DocumentCallback const& cb, size_t limit) {
+  if (limit == 0 || !_iterator.valid()) {
+    // No limit no data, or we are actually done. The last call should have
+    // returned false
+    TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    return false;
+  }
+  
+  while (limit > 0) {
+    // TODO: prevent copying of the value into result, as we don't need it here!
+    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    if (documentId.isSet()) {
+      cb(documentId, *_iterator);
       --limit;
     }
 
@@ -157,17 +183,23 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   // hard-coded
-  builder.add("unique", VPackValue(true));
-  builder.add("sparse", VPackValue(false));
+  builder.add(
+    arangodb::StaticStrings::IndexUnique,
+    arangodb::velocypack::Value(true)
+  );
+  builder.add(
+    arangodb::StaticStrings::IndexSparse,
+    arangodb::velocypack::Value(false)
+  );
   builder.close();
 }
 
 LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
-                                            arangodb::StringRef keyRef) const {
+                                               arangodb::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
-  auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
-    
+  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
+
   bool lockTimeout = false;
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
@@ -227,7 +259,11 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(documentId);
+
+
+
+  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(slice);
+  auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
   if (mthd->Exists(_cf, key.ref())) {
     std::string existingId(slice.get(StaticStrings::KeyString).copyString());
@@ -257,7 +293,9 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId);
+
+  TRI_voc_rid_t revision = transaction::helpers::extractRevFromDocument(newDoc);
+  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId, revision);
 
   TRI_ASSERT(mthd->Exists(_cf, key.ref()));
   blackListKey(key->string().data(),
@@ -298,13 +336,13 @@ bool RocksDBPrimaryIndex::supportsFilterCondition(
 IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
+    arangodb::aql::Variable const* reference,
+    IndexIteratorOptions const& opts) {
+  TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
   TRI_ASSERT(node->numMembers() == 1);
 
   auto comp = node->getMember(0);
-
   // assume a.b == value
   auto attrNode = comp->getMember(0);
   auto valNode = comp->getMember(1);
@@ -370,12 +408,12 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys));
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys), !isId);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
 IndexIterator* RocksDBPrimaryIndex::createEqIterator(
-    transaction::Methods* trx, 
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) {
   // _key or _id?
@@ -393,7 +431,7 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys));
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, std::move(keys), !isId);
 }
 
 /// @brief add a single value node to the iterator's keys
@@ -436,13 +474,13 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
         }
 
-        if (_collection->planId() != c->getLocalCid() && 
-            _collection->planId() != c->getFromCid() && 
+        if (_collection->planId() != c->getLocalCid() &&
+            _collection->planId() != c->getFromCid() &&
             _collection->planId() != c->getToCid()) {
           // invalid planId
           return;
         }
-      } else 
+      } else
 #endif
       if (collection->planId() != _collection->planId()) {
         // only continue lookup if the id value is syntactically correct and

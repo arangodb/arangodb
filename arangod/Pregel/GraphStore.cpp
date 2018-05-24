@@ -336,8 +336,7 @@ std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
   transaction::Options transactionOptions;
   transactionOptions.waitForSync = false;
   transactionOptions.allowImplicitCollections = true;
-  auto ctx =
-    transaction::StandaloneContext::Create(&(_vocbaseGuard.database()));
+  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
   std::unique_ptr<transaction::Methods> trx(
       new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
   Result res = trx->begin();
@@ -362,7 +361,7 @@ void GraphStore<V, E>::_loadVertices(size_t i,
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
 
   std::unique_ptr<OperationCursor> cursor =
-      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, false);
+    trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL);
 
   if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
@@ -521,7 +520,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       transactionOptions.waitForSync = false;
       transactionOptions.allowImplicitCollections = false;
       trx.reset(new transaction::UserTransaction(
-        transaction::StandaloneContext::Create(&(_vocbaseGuard.database())),
+        transaction::StandaloneContext::Create(_vocbaseGuard.database()),
         {},
         {shard},
         {},

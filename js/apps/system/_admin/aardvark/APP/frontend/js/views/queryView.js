@@ -511,7 +511,7 @@
       var outputEditor = ace.edit('outputEditor' + counter);
 
       outputEditor.setReadOnly(true);
-      outputEditor.getSession().setMode('ace/mode/json');
+      outputEditor.getSession().setMode('ace/mode/aql');
       outputEditor.setOption('vScrollBarAlwaysVisible', true);
       outputEditor.setOption('showPrintMargin', false);
       this.setEditorAutoHeight(outputEditor);

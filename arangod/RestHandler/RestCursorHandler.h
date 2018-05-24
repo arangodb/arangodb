@@ -62,7 +62,9 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void finalizeExecute() override;
 #endif
 
-  bool cancel() override;
+  bool cancel() override final;
+  
+  size_t queue() const override final;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
