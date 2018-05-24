@@ -45,6 +45,7 @@ bool toSortMode(
     arangodb::velocypack::StringRef const& str,
     GatherNode::SortMode& mode
 ) noexcept {
+  // std::map ~25-30% faster than std::unordered_map for small number of elements
   static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue {
     { SortModeUnset, GatherNode::SortMode::Unset },
     { SortModeMinElement, GatherNode::SortMode::MinElement},
