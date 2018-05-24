@@ -182,6 +182,10 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
       outVariableNew =
           plan->getAst()->variables()->createVariable(outVariableNew);
     }
+    if (_outVariableOld != nullptr) {
+      outVariableOld =
+          plan->getAst()->variables()->createVariable(outVariableOld);
+    }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
