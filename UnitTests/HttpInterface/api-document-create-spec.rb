@@ -892,7 +892,7 @@ describe ArangoDB do
         etag.should eq("\"#{rev}\"")
         location.should eq("/_db/_system/_api/document/#{did}")
 
-        cmd = "/_api/document?collection=#{@cn}&overwrite=true&waitForSync=false"
+        cmd = "/_api/document?collection=#{@cn}&overwrite=true&waitForSync=false&returnOld=true"
         body = "{ \"_key\" : \"#{key}\",  \"Hallo\" : \"ULF\" }"
         newdoc = ArangoDB.log_post("#{prefix}-accept", cmd, :body => body, :headers => {})
 
@@ -903,6 +903,10 @@ describe ArangoDB do
         newoldrev = newdoc.parsed_response['_oldRev']
         newoldrev.should be_kind_of(String)
         newoldrev.should eq(rev)
+
+        newoldrev = newdoc.parsed_response['old']['Hallo']
+        newoldrev.should be_kind_of(String)
+        newoldrev.should eq("World")
 
         newkey = newdoc.parsed_response['_key']
         newkey.should be_kind_of(String)
@@ -963,10 +967,15 @@ describe ArangoDB do
         newnew["_key"].should be_kind_of(String)
         newnew["_key"].should eq(key)
         newnew["_rev"].should eq(newrev)
+        newnew["Hallo"].should eq("ULF")
 
         newold = newdoc.parsed_response['old']
         newold["_key"].should eq(key)
         newold["_rev"].should eq(newoldrev)
+
+        newold["Hallo"].should be_kind_of(String)
+        newold["Hallo"].should eq("World")
+
         newdoc.code.should eq(201)
 
         ArangoDB.delete(location)
@@ -1032,9 +1041,9 @@ describe ArangoDB do
         newrev.should be_kind_of(String)
         newrev.should !eq(rev)
 
-        newrev = newdoc.parsed_response[1]['new']['Hallo']
-        newrev.should be_kind_of(String)
-        newrev.should !eq("ULFINE")
+        newdoc.parsed_response[1]['new']['Hallo'].should eq("ULFINE")
+        newdoc.parsed_response[1]['old']['Hallo'].should eq("ULF")
+
 
         newdoc.code.should eq(201)
 
