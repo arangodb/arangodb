@@ -38,14 +38,11 @@ class ExecutionEngine;
 class SingletonBlock final : public ExecutionBlock {
  public:
   SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
-      : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr), _whitelistBuilt(false) {}
+      : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr), _whitelistBuilt(false) {
+    deleteInputVariables();
+  }
 
   ~SingletonBlock() { deleteInputVariables(); }
-
-  int initialize() override final {
-    deleteInputVariables();
-    return ExecutionBlock::initialize();
-  }
 
   /// @brief initializeCursor, store a copy of the register values coming from
   /// above
@@ -110,13 +107,12 @@ class LimitBlock final : public ExecutionBlock {
         _state(0),  // start in the beginning
         _fullCount(ep->_fullCount) {}
 
-  ~LimitBlock() {}
-
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-  virtual int getOrSkipSome(size_t atMost, bool skipping,
-                            AqlItemBlock*& result, size_t& skipped) override;
-
+  int getOrSkipSome(size_t atMost, bool skipping,
+                    AqlItemBlock*& result, size_t& skipped) override;
+ 
+ private:
   /// @brief _offset
   size_t _offset;
 
@@ -138,8 +134,6 @@ class ReturnBlock final : public ExecutionBlock {
   ReturnBlock(ExecutionEngine* engine, ReturnNode const* ep)
       : ExecutionBlock(engine, ep), _returnInheritedResults(false) {}
 
-  ~ReturnBlock() {}
-
   /// @brief getSome
   AqlItemBlock* getSome(size_t atMost) override final;
 
@@ -160,8 +154,6 @@ class NoResultsBlock final : public ExecutionBlock {
  public:
   NoResultsBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       : ExecutionBlock(engine, ep) {}
-
-  ~NoResultsBlock() {}
 
   /// @brief initializeCursor, store a copy of the register values coming from
   /// above

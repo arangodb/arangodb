@@ -370,8 +370,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
   if (verbose) {
     flags |= ExecutionNode::SERIALIZE_PARENTS |
-             ExecutionNode::SERIALIZE_DETAILS |
-             ExecutionNode::SERIALIZE_FUNCTIONS;
+             ExecutionNode::SERIALIZE_DETAILS;
   }
   // keeps top level of built object open
   _root->toVelocyPack(builder, flags, true);

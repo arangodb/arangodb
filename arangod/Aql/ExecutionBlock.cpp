@@ -87,8 +87,17 @@ bool ExecutionBlock::removeDependency(ExecutionBlock* ep) {
   return false;
 }
 
+/// @brief whether or not the query was killed
+bool ExecutionBlock::isKilled() const { return _engine->getQuery()->killed(); }
+
+/// @brief whether or not the query was killed
+void ExecutionBlock::throwIfKilled() {
+  if (isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+}
+  
 int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   for (auto& d : _dependencies) {
     int res = d->initializeCursor(items, pos);
 
@@ -103,29 +112,6 @@ int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _buffer.clear();
 
   _done = false;
-  return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();
-}
-
-/// @brief whether or not the query was killed
-bool ExecutionBlock::isKilled() const { return _engine->getQuery()->killed(); }
-
-/// @brief whether or not the query was killed
-void ExecutionBlock::throwIfKilled() {
-  if (isKilled()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-}
-
-/// @brief initialize
-int ExecutionBlock::initialize() {
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->initialize();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
   return TRI_ERROR_NO_ERROR;
 }
 

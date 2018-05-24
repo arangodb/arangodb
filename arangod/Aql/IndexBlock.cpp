@@ -136,6 +136,8 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
   // build the _documentProducer callback for extracting
   // documents from the index 
   buildCallback();
+
+  initializeOnce();
 }
 
 IndexBlock::~IndexBlock() { cleanupNonConstExpressions(); }
@@ -211,40 +213,11 @@ void IndexBlock::executeExpressions() {
         tmp->changeMember(idx, evaluatedNode);
       }
     }
-
-    /*AstNode* oldOrMember = _condition->getMember(toReplace->orMember);
-    AstNode* orMember = ast->shallowCopyForModify(oldOrMember);
-    TRI_DEFER(FINALIZE_SUBTREE(orMember));
-    newCondition->changeMember(toReplace->orMember, orMember);
-
-    AstNode* oldAndMember = orMember->getMember(toReplace->andMember);
-    AstNode* andMember = ast->shallowCopyForModify(oldAndMember);
-    TRI_DEFER(FINALIZE_SUBTREE(andMember));
-    orMember->changeMember(toReplace->andMember, andMember);
-
-    if (toReplace->funcMember < 0) {
-      andMember->changeMember(toReplace->operatorMember, evaluatedNode);
-    } else {
-      AstNode* oldFuncMember = andMember->getMember(toReplace->funcMember);
-      AstNode* funcMember = ast->shallowCopyForModify(oldFuncMember);
-      TRI_DEFER(FINALIZE_SUBTREE(funcMember));
-      andMember->changeMember(toReplace->operatorMember, funcMember);
-
-      AstNode* oldArrayMember = funcMember->getMember(0);
-      AstNode* arrayMember = ast->shallowCopyForModify(oldArrayMember);
-      TRI_DEFER(FINALIZE_SUBTREE(arrayMember));
-      funcMember->changeMember(0, arrayMember);
-
-      arrayMember->changeMember(toReplace->funcMember, evaluatedNode);
-    }*/
   }
   DEBUG_END_BLOCK();
 }
 
-int IndexBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initialize();
-
+void IndexBlock::initializeOnce() {
   auto en = ExecutionNode::castTo<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
 
@@ -284,8 +257,8 @@ int IndexBlock::initialize() {
   };
 
   if (_condition == nullptr) {
-    // This Node has no condition. Iterate over the complete index.
-    return res;
+    // this node has no condition. Iterate over the complete index.
+    return;
   }
 
   auto outVariable = en->outVariable();
@@ -371,11 +344,6 @@ int IndexBlock::initialize() {
       }
     }
   }
-
-  return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 // init the ranges for reading, this should be called once per new incoming
