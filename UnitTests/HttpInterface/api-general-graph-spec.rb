@@ -848,7 +848,9 @@ describe ArangoDB do
           it "can not replace a non existing edge" do
             key = "unknownKey"
 
-            doc = replace_edge( sync, graph_name, friend_collection, key, {"type2" => "divorced"})
+            # [tg, 2018-05-24] added _from and _to, because otherwise a 400
+            # might conceal the 404. TODO what's really desired here?
+            doc = replace_edge( sync, graph_name, friend_collection, key, {"type2" => "divorced", "_from" => "1", "_to" => "2"})
             doc.code.should eq(404)
             doc.parsed_response['error'].should eq(true)
             doc.parsed_response['errorMessage'].should include("document not found")
@@ -1277,7 +1279,9 @@ describe ArangoDB do
             end
 
             it "replace edge" do
-              check404(replace_edge( sync, graph_name, friend_collection, unknown_name, {}))
+            # [tg, 2018-05-24] added _from and _to, because otherwise a 400
+            # might conceal the 404. TODO what's really desired here?
+              check404(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "1", "_to" => "2"}))
             end
 
             it "delete edge" do

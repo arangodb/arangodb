@@ -100,6 +100,16 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                           const std::string& collectionName,
                           const std::string& key);
 
+  // PATCH /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
+  Result vertexActionUpdate(std::shared_ptr<const graph::Graph> graph,
+                            const std::string& collectionName,
+                            const std::string& key);
+
+  // PUT /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
+  Result vertexActionReplace(std::shared_ptr<const graph::Graph> graph,
+                             const std::string& collectionName,
+                             const std::string& key);
+
   // GET /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
   Result edgeActionRead(std::shared_ptr<const graph::Graph> graph,
                         const std::string& definitionName,
@@ -114,19 +124,54 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
       std::shared_ptr<transaction::StandaloneContext> ctx,
       const std::string& graphName);
 
-  void generateVertex(VPackSlice vertex, VPackOptions const &options);
+  void generateVertexRead(VPackSlice vertex, VPackOptions const& options);
 
-  void generateEdge(VPackSlice edge, const VPackOptions &options);
+  void generateEdgeRead(VPackSlice edge, const VPackOptions& options);
 
   void generateRemoved(bool removed, bool wasSynchronous, VPackSlice old,
                        VPackOptions const& options);
 
   // TODO maybe cleanup the generate* zoo a little?
-  void generateResultWithField(std::string const &key, VPackSlice value, VPackOptions const &options);
+  void generateResultWithField(std::string const& key, VPackSlice value,
+                               VPackOptions const& options);
 
-  void generateResultMergedWithObject(VPackSlice obj, VPackOptions const &options);
+  void generateResultMergedWithObject(VPackSlice obj,
+                                      VPackOptions const& options);
 
   void addEtagHeader(velocypack::Slice slice);
+
+  Result vertexModify(std::shared_ptr<const graph::Graph> graph,
+                      const std::string& collectionName, const std::string& key,
+                      bool isPatch);
+
+  void generateVertexModified(bool wasSynchronous, VPackSlice resultSlice,
+                              const velocypack::Options& options);
+
+  void generateModified(TRI_col_type_e colType, bool wasSynchronous,
+                        VPackSlice resultSlice,
+                        const velocypack::Options& options);
+
+  Result edgeActionUpdate(std::shared_ptr<const graph::Graph> graph,
+                          const std::string& collectionName,
+                          const std::string& key);
+
+  Result edgeActionReplace(std::shared_ptr<const graph::Graph> graph,
+                           const std::string& collectionName,
+                           const std::string& key);
+
+  Result edgeModify(std::shared_ptr<const graph::Graph> graph,
+                    const std::string& collectionName, const std::string& key,
+                    bool isPatch);
+
+  Result documentModify(
+    std::shared_ptr<const graph::Graph> graph, const std::string &collectionName,
+    const std::string &key, bool isPatch, TRI_col_type_e colType
+  );
+
+  void generateEdgeModified(
+    bool wasSynchronous, VPackSlice resultSlice,
+    const velocypack::Options &options
+  );
 };
 
 }  // namespace arangodb

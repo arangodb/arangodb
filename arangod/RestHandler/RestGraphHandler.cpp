@@ -43,6 +43,7 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 RestGraphHandler::RestGraphHandler(GeneralRequest* request,
                                    GeneralResponse* response,
@@ -157,6 +158,11 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
   // non-existent collection is expected to throw
   // ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.
   // This is commented out until the tests are changed.
+  // TODO The existing API seems to ignore the type of the collection for
+  // most operations. So fetching an edge via
+  // /_api/gharial/{graph}/vertex/{coll}/{key} works just fine. Should this be
+  // changed? One way or the other, make sure there are tests for the desired
+  // behaviour!
   /*
     if (collType == vertex) {
       if (graph->vertexCollections().find(setName) ==
@@ -245,9 +251,13 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
       Result res = vertexActionRead(graph, vertexCollectionName, vertexKey);
       return RestStatus::DONE;
     }
-    case RequestType::DELETE_REQ:
     case RequestType::PATCH:
+      vertexActionUpdate(graph, vertexCollectionName, vertexKey);
+      return RestStatus::DONE;
     case RequestType::PUT:
+      vertexActionReplace(graph, vertexCollectionName, vertexKey);
+      return RestStatus::DONE;
+    case RequestType::DELETE_REQ:
     default:;
   }
   return boost::none;
@@ -271,7 +281,11 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
       edgeActionRemove(graph, edgeDefinitionName, edgeKey);
       return RestStatus::DONE;
     case RequestType::PATCH:
+      edgeActionUpdate(graph, edgeDefinitionName, edgeKey);
+      return RestStatus::DONE;
     case RequestType::PUT:
+      edgeActionReplace(graph, edgeDefinitionName, edgeKey);
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -323,13 +337,13 @@ Result RestGraphHandler::vertexActionRead(
   }
 
   // use default options
-  generateVertex(result.slice(), *ctx->getVPackOptionsForDump());
+  generateVertexRead(result.slice(), *ctx->getVPackOptionsForDump());
   return Result();
 }
 
 /// @brief generate response object: { error, code, vertex }
-void RestGraphHandler::generateVertex(VPackSlice vertex,
-                                      VPackOptions const& options) {
+void RestGraphHandler::generateVertexRead(VPackSlice vertex,
+                                          VPackOptions const& options) {
   vertex = vertex.resolveExternal();
   resetResponse(rest::ResponseCode::OK);
   addEtagHeader(vertex.get(StaticStrings::RevString));
@@ -337,8 +351,8 @@ void RestGraphHandler::generateVertex(VPackSlice vertex,
 }
 
 /// @brief generate response object: { error, code, edge }
-void RestGraphHandler::generateEdge(VPackSlice edge,
-                                    VPackOptions const& options) {
+void RestGraphHandler::generateEdgeRead(VPackSlice edge,
+                                        VPackOptions const& options) {
   edge = edge.resolveExternal();
   resetResponse(rest::ResponseCode::OK);
   addEtagHeader(edge.get(StaticStrings::RevString));
@@ -359,9 +373,65 @@ void RestGraphHandler::generateRemoved(bool removed, bool wasSynchronous,
   resetResponse(code);
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));
-  obj.add("removed", basics::VelocyPackHelper::BooleanValue(removed));
+  obj.add("removed", VelocyPackHelper::BooleanValue(removed));
   if (!old.isNone()) {
     obj.add("old", old);
+  }
+  obj.close();
+  generateResultMergedWithObject(obj.slice(), options);
+}
+
+/// @brief generate response object: { error, code, vertex, old?, new? }
+void RestGraphHandler::generateVertexModified(
+    bool wasSynchronous, VPackSlice resultSlice,
+    const velocypack::Options& options) {
+  generateModified(TRI_COL_TYPE_DOCUMENT, wasSynchronous, resultSlice, options);
+}
+
+/// @brief generate response object: { error, code, edge, old?, new? }
+void RestGraphHandler::generateEdgeModified(
+    bool wasSynchronous, VPackSlice resultSlice,
+    const velocypack::Options& options) {
+  generateModified(TRI_COL_TYPE_EDGE, wasSynchronous, resultSlice, options);
+}
+
+/// @brief generate response object: { error, code, vertex/edge, old?, new? }
+// TODO Maybe a class enum in Graph.h to discern Vertex/Edge is better than
+// abusing document/edge collection types?
+void RestGraphHandler::generateModified(TRI_col_type_e colType,
+                                        bool wasSynchronous,
+                                        VPackSlice resultSlice,
+                                        const velocypack::Options& options) {
+  TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
+  if (wasSynchronous) {
+    resetResponse(rest::ResponseCode::OK);
+  } else {
+    resetResponse(rest::ResponseCode::ACCEPTED);
+  }
+  addEtagHeader(resultSlice.get(StaticStrings::RevString));
+
+  const char* objectTypeName = "_";
+  if (colType == TRI_COL_TYPE_DOCUMENT) {
+    objectTypeName = "vertex";
+  } else if (colType == TRI_COL_TYPE_EDGE) {
+    objectTypeName = "edge";
+  }
+
+  VPackBuilder objectBuilder =
+      VelocyPackHelper::copyObjectWithout(resultSlice, {"old", "new"});
+  // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
+  VPackSlice objectSlice = objectBuilder.slice();
+  VPackSlice oldSlice = resultSlice.get("old");
+  VPackSlice newSlice = resultSlice.get("new");
+
+  VPackBuilder obj;
+  obj.add(VPackValue(VPackValueType::Object, true));
+  obj.add(objectTypeName, objectSlice);
+  if (!oldSlice.isNone()) {
+    obj.add("old", oldSlice);
+  }
+  if (!newSlice.isNone()) {
+    obj.add("new", newSlice);
   }
   obj.close();
   generateResultMergedWithObject(obj.slice(), options);
@@ -391,7 +461,7 @@ void RestGraphHandler::generateResultMergedWithObject(
                VPackValue(static_cast<int>(_response->responseCode())));
     result.close();
     VPackBuilder merged =
-        basics::VelocyPackHelper::merge(result.slice(), obj, false, false);
+        VelocyPackHelper::merge(result.slice(), obj, false, false);
 
     writeResult(std::move(*merged.buffer().get()), options);
   } catch (...) {
@@ -448,7 +518,7 @@ Result RestGraphHandler::edgeActionRead(
   }
 
   // use default options
-  generateEdge(result.slice(), *ctx->getVPackOptionsForDump());
+  generateEdgeRead(result.slice(), *ctx->getVPackOptionsForDump());
   return Result();
 }
 
@@ -469,7 +539,8 @@ std::shared_ptr<Graph const> RestGraphHandler::getGraph(
 // TODO this is very similar to (edge|vertex)ActionRead. find a way to reduce
 // the duplicate code.
 // TODO The tests check that, if "returnOld: true" is passed,  the result
-// contains the old value in the field "old". This is not documented!
+// contains the old value in the field "old". This is not documented in
+// HTTP/Gharial!
 Result RestGraphHandler::edgeActionRemove(
     const std::shared_ptr<const Graph> graph, const std::string& definitionName,
     const std::string& key) {
@@ -536,4 +607,166 @@ void RestGraphHandler::addEtagHeader(velocypack::Slice rev) {
   if (rev.isString()) {
     _response->setHeaderNC(StaticStrings::Etag, rev.copyString());
   }
+}
+
+Result RestGraphHandler::vertexActionUpdate(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key) {
+  return vertexModify(std::move(graph), collectionName, key, true);
+}
+
+Result RestGraphHandler::vertexActionReplace(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key) {
+  return vertexModify(std::move(graph), collectionName, key, false);
+}
+
+Result RestGraphHandler::edgeActionUpdate(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key) {
+  return edgeModify(std::move(graph), collectionName, key, true);
+}
+
+Result RestGraphHandler::edgeActionReplace(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key) {
+  return edgeModify(std::move(graph), collectionName, key, false);
+}
+Result RestGraphHandler::edgeModify(std::shared_ptr<const graph::Graph> graph,
+                                    const std::string& collectionName,
+                                    const std::string& key, bool isPatch) {
+  return documentModify(
+    std::move(graph), collectionName, key, isPatch,
+    TRI_COL_TYPE_EDGE
+  );
+}
+
+
+Result RestGraphHandler::vertexModify(std::shared_ptr<const graph::Graph> graph,
+                                      const std::string& collectionName,
+                                      const std::string& key, bool isPatch) {
+  return documentModify(
+    std::move(graph), collectionName, key, isPatch,
+    TRI_COL_TYPE_DOCUMENT
+  );
+}
+
+// TODO The tests check that, if "returnOld: true" is passed,  the result
+// contains the old value in the field "old"; and if "returnNew: true" is
+// passed, the field "new" contains the new value (along with "vertex"!).
+// This is not documented in HTTP/Gharial!
+// TODO move transaction-code to GraphOperations
+Result RestGraphHandler::documentModify(
+  std::shared_ptr<const graph::Graph> graph, const std::string &collectionName,
+  const std::string &key, bool isPatch, TRI_col_type_e colType
+) {
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return false;
+  }
+
+  OperationOptions opOptions;
+  opOptions.isRestore =
+      extractBooleanParameter(StaticStrings::IsRestoreString, false);
+  opOptions.ignoreRevs =
+      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync =
+      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew =
+      extractBooleanParameter(StaticStrings::ReturnNewString, false);
+  opOptions.returnOld =
+      extractBooleanParameter(StaticStrings::ReturnOldString, false);
+  opOptions.silent =
+      extractBooleanParameter(StaticStrings::SilentString, false);
+  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
+                         opOptions.isSynchronousReplicationFrom);
+
+  // extract the revision, if single document variant and header given:
+  std::shared_ptr<VPackBuilder> builder;
+  TRI_voc_rid_t revision = 0;
+  bool isValidRevision;
+  revision = extractRevision("if-match", isValidRevision);
+  if (!isValidRevision) {
+    revision = UINT64_MAX;  // an impossible revision, so precondition failed
+  }
+  VPackSlice keyInBody = body.get(StaticStrings::KeyString);
+  if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
+      keyInBody.isNone() || keyInBody.isNull() ||
+      (keyInBody.isString() && keyInBody.copyString() != key)) {
+    // We need to rewrite the document with the given revision and key:
+    builder = std::make_shared<VPackBuilder>();
+    {
+      VPackObjectBuilder guard(builder.get());
+      TRI_SanitizeObject(body, *builder);
+      builder->add(StaticStrings::KeyString, VPackValue(key));
+      if (revision != 0) {
+        builder->add(StaticStrings::RevString,
+                     VPackValue(TRI_RidToString(revision)));
+      }
+    }
+    body = builder->slice();
+  }
+  if (revision != 0) {
+    opOptions.ignoreRevs = false;
+  }
+
+  // find and load collection given by name or identifier
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  // ...........................................................................
+  // inside write transaction
+  // ...........................................................................
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    generateTransactionError(collectionName, res, "");
+    return false;
+  }
+
+  OperationResult result(TRI_ERROR_NO_ERROR);
+  if (isPatch) {
+    // patching an existing document
+    opOptions.keepNull =
+        extractBooleanParameter(StaticStrings::KeepNullString, true);
+    opOptions.mergeObjects =
+        extractBooleanParameter(StaticStrings::MergeObjectsString, true);
+    result = trx.update(collectionName, body, opOptions);
+  } else {
+    result = trx.replace(collectionName, body, opOptions);
+  }
+
+  res = trx.finish(result.result);
+
+  // ...........................................................................
+  // outside write transaction
+  // ...........................................................................
+
+  if (result.fail()) {
+    generateTransactionError(result);
+    return false;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError(collectionName, res, key, 0);
+    return false;
+  }
+
+  switch(colType) {
+    case TRI_COL_TYPE_DOCUMENT:
+      generateVertexModified(result.wasSynchronous, result.slice(),
+        *ctx->getVPackOptionsForDump());
+      break;
+    case TRI_COL_TYPE_EDGE:
+      generateEdgeModified(result.wasSynchronous, result.slice(),
+        *ctx->getVPackOptionsForDump());
+      break;
+    default:
+      TRI_ASSERT(false);
+  }
+
+  return true;
 }
