@@ -250,7 +250,7 @@ static MMFilesDatafile* CreatePhysicalDatafile(std::string const& filename,
   // try populating the mapping already
   flags |= MAP_POPULATE;
 #endif
-  int res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
+  int res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, flags, fd,
                        &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1157,7 +1157,7 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   }
 
   // memory map the data
-  int res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd,
+  int res = TRI_MMFile(nullptr, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd,
                        &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1931,7 +1931,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   // map datafile into memory
   void* data;
   void* mmHandle;
-  res = TRI_MMFile(0, size, PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
+  res = TRI_MMFile(nullptr, size, PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);

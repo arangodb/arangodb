@@ -47,7 +47,6 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  bool writeShutdownFile = false;
   double maxWaitTime = -1.0;
 
   if (args.Length() > 0) {
@@ -61,10 +60,6 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
         waitForCollector = TRI_ObjectToBoolean(
                                                obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile"))) {
-        writeShutdownFile = TRI_ObjectToBoolean(
-                                                obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
-      }
       if (obj->Has(TRI_V8_ASCII_STRING(isolate, "maxWaitTime"))) {
         maxWaitTime = TRI_ObjectToDouble(
                                          obj->Get(TRI_V8_ASCII_STRING(isolate, "maxWaitTime")));
@@ -74,13 +69,8 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       
       if (args.Length() > 1) {
         waitForCollector = TRI_ObjectToBoolean(args[1]);
-        
-        if (args.Length() > 2) {
-          writeShutdownFile = TRI_ObjectToBoolean(args[2]);
-          
-          if (args.Length() > 3) {
+        if (args.Length() > 3) { // ignore writeShutdownFile
             maxWaitTime = TRI_ObjectToDouble(args[3]);
-          }
         }
       }
     }

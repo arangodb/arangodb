@@ -1790,11 +1790,8 @@ arangodb::Result IResearchView::updateProperties(
   IResearchViewMeta::Mask mask;
   WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
   arangodb::Result res;
-
-  {
-    SCOPED_LOCK(mutex);
-
     arangodb::velocypack::Builder originalMetaJson; // required for reverting links on failure
+  SCOPED_LOCK_NAMED(mutex, mtx);
 
     if (!_meta.json(arangodb::velocypack::ObjectBuilder(&originalMetaJson))) {
       return arangodb::Result(
@@ -1826,7 +1823,7 @@ arangodb::Result IResearchView::updateProperties(
     }
 
     _meta = std::move(meta);
-  }
+  mutex.unlock(true); // downgrade to a read-lock
 
   if (!slice.hasKey(StaticStrings::LinksField)) {
     return res;
@@ -1842,13 +1839,19 @@ arangodb::Result IResearchView::updateProperties(
   auto links = slice.get(StaticStrings::LinksField);
 
   if (partialUpdate) {
+    mtx.unlock(); // release lock
+
     return IResearchLinkHelper::updateLinks(
       collections, vocbase(), *this, links
     );
   }
 
+  auto stale = _meta._collections;
+
+  mtx.unlock(); // release lock
+
   return IResearchLinkHelper::updateLinks(
-    collections, vocbase(), *this, links, _meta._collections
+    collections, vocbase(), *this, links, stale
   );
 }
 

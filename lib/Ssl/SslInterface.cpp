@@ -351,7 +351,7 @@ void salt64(uint64_t& result) {
 
 void saltChar(char*& result, size_t length) {
   if (length == 0) {
-    result = 0;
+    result = nullptr;
     return;
   }
 

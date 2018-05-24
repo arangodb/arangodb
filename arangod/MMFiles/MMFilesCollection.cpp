@@ -2757,19 +2757,15 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
 }
 
 LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {
-  //LOG_TOPIC(ERR, Logger::FIXME) << "REUSEORCREATE. ISRECOVERY: " << (options.recoveryData != nullptr);
   if (options.recoveryData != nullptr) {
     auto marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
-  //LOG_TOPIC(ERR, Logger::FIXME) << "CHECKING FOR EXISTING DOCUMENTID";
     if (marker->hasLocalDocumentId()) {
-  //LOG_TOPIC(ERR, Logger::FIXME) << "FOUND EXISTING DOCUMENTID: " << marker->getLocalDocumentId().id();
       return marker->getLocalDocumentId();
     }
     // falls through intentionally
   }
 
   // new operation, no recovery -> generate a new LocalDocumentId
-  //LOG_TOPIC(ERR, Logger::FIXME) << "GENERATING NEW DOCUMENTID";
   return LocalDocumentId::create();
 }
 
@@ -2784,40 +2780,14 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   VPackSlice toSlice;
 
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
-  //LOG_TOPIC(ERR, Logger::FIXME) << "INSERT. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
-
-  if (isEdgeCollection) {
-    // _from:
-    fromSlice = slice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    VPackValueLength len;
-    char const* docId = fromSlice.getString(len);
-    size_t split;
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    // _to:
-    toSlice = slice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    docId = toSlice.getString(len);
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-  }
 
   transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
   Result res(TRI_ERROR_NO_ERROR);
   if (options.recoveryData == nullptr) {
-    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+    res = newObjectForInsert(trx, slice, isEdgeCollection,
                              *builder.get(), options.isRestore, revisionId);
     if (res.fail()) {
       return res;
@@ -3297,9 +3267,13 @@ Result MMFilesCollection::update(
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   if (options.recoveryData == nullptr) {
-    mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                          options.mergeObjects, options.keepNull,
-                          *builder.get(), options.isRestore, revisionId);
+    res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
+                                options.mergeObjects, options.keepNull,
+                                *builder.get(), options.isRestore, revisionId);
+
+    if (res.fail()) { 
+      return res;
+    }
 
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
@@ -3375,8 +3349,7 @@ Result MMFilesCollection::replace(
     transaction::Methods* trx, VPackSlice const newSlice,
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    ManagedDocumentResult& previous,
-    VPackSlice const fromSlice, VPackSlice const toSlice) {
+    ManagedDocumentResult& previous) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
 
   bool const isEdgeCollection =
@@ -3434,9 +3407,12 @@ Result MMFilesCollection::replace(
   // merge old and new values
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
-  newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
-                      isEdgeCollection, *builder.get(),
-                      options.isRestore, revisionId);
+  res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection, *builder.get(),
+                            options.isRestore, revisionId);
+  
+  if (res.fail()) {
+    return res;
+  }
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:

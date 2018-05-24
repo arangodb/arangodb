@@ -104,7 +104,7 @@ class ConnectionManager {
           _connection(connection),
           _endpoint(endpoint),
           _endpointSpecification(endpointSpecification),
-          _lastUsed(::time(0)) {}
+          _lastUsed(::time(nullptr)) {}
 
     ~SingleServerConnection();
   };
