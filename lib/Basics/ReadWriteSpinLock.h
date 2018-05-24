@@ -79,7 +79,7 @@ public:
     while (++attempts < maxAttempts) {
       while ((state & ~QUEUED_WRITER_MASK) == 0) {
         // try to acquire lock and perform queued writer decrement in one step
-        if (_state.compare_exchange_strong(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK, std::memory_order_acquire)) {
+        if (_state.compare_exchange_weak(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK, std::memory_order_acquire)) {
           return true;
         }
         if (++attempts > maxAttempts) {
