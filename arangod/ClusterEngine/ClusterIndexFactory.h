@@ -32,11 +32,6 @@ class ClusterIndexFactory final : public IndexFactory {
   ClusterIndexFactory();
   ~ClusterIndexFactory() = default;
 
-  Result enhanceIndexDefinition(velocypack::Slice const definition,
-                                velocypack::Builder& normalized,
-                                bool isCreation,
-                                bool isCoordinator) const override;
-
   void fillSystemIndexes(arangodb::LogicalCollection* col,
                          std::vector<std::shared_ptr<arangodb::Index>>&
                              systemIndexes) const override;
@@ -45,7 +40,11 @@ class ClusterIndexFactory final : public IndexFactory {
   void prepareIndexes(
       LogicalCollection* col, velocypack::Slice const&,
       std::vector<std::shared_ptr<arangodb::Index>>&) const override;
+
+  // reset registered index factories/normalizers
+  void reset(IndexFactory const* other = nullptr);
 };
+
 }
 
 #endif
