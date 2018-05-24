@@ -635,20 +635,15 @@ Result RestGraphHandler::edgeActionReplace(
 Result RestGraphHandler::edgeModify(std::shared_ptr<const graph::Graph> graph,
                                     const std::string& collectionName,
                                     const std::string& key, bool isPatch) {
-  return documentModify(
-    std::move(graph), collectionName, key, isPatch,
-    TRI_COL_TYPE_EDGE
-  );
+  return documentModify(std::move(graph), collectionName, key, isPatch,
+                        TRI_COL_TYPE_EDGE);
 }
-
 
 Result RestGraphHandler::vertexModify(std::shared_ptr<const graph::Graph> graph,
                                       const std::string& collectionName,
                                       const std::string& key, bool isPatch) {
-  return documentModify(
-    std::move(graph), collectionName, key, isPatch,
-    TRI_COL_TYPE_DOCUMENT
-  );
+  return documentModify(std::move(graph), collectionName, key, isPatch,
+                        TRI_COL_TYPE_DOCUMENT);
 }
 
 // TODO The tests check that, if "returnOld: true" is passed,  the result
@@ -656,94 +651,67 @@ Result RestGraphHandler::vertexModify(std::shared_ptr<const graph::Graph> graph,
 // passed, the field "new" contains the new value (along with "vertex"!).
 // This is not documented in HTTP/Gharial!
 // TODO move transaction-code to GraphOperations
+// TODO the document API also supports mergeObjects, silent and ignoreRevs;
+// should gharial, too?
 Result RestGraphHandler::documentModify(
-  std::shared_ptr<const graph::Graph> graph, const std::string &collectionName,
-  const std::string &key, bool isPatch, TRI_col_type_e colType
-) {
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key, bool isPatch,
+    TRI_col_type_e colType) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     return false;
   }
 
-  OperationOptions opOptions;
-  opOptions.isRestore =
-      extractBooleanParameter(StaticStrings::IsRestoreString, false);
-  opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync =
+  bool waitForSync =
       extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.returnNew =
+  bool returnNew =
       extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  opOptions.returnOld =
+  bool returnOld =
       extractBooleanParameter(StaticStrings::ReturnOldString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
-  extractStringParameter(StaticStrings::IsSynchronousReplicationString,
-                         opOptions.isSynchronousReplicationFrom);
+  // Note: the default here differs from the one in the RestDoumentHandler
+  bool keepNull = extractBooleanParameter(StaticStrings::KeepNullString, true);
 
   // extract the revision, if single document variant and header given:
-  std::shared_ptr<VPackBuilder> builder;
+  std::unique_ptr<VPackBuilder> builder;
   TRI_voc_rid_t revision = 0;
   bool isValidRevision;
   revision = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
     revision = UINT64_MAX;  // an impossible revision, so precondition failed
   }
-  VPackSlice keyInBody = body.get(StaticStrings::KeyString);
-  if ((revision != 0 && TRI_ExtractRevisionId(body) != revision) ||
-      keyInBody.isNone() || keyInBody.isNull() ||
-      (keyInBody.isString() && keyInBody.copyString() != key)) {
-    // We need to rewrite the document with the given revision and key:
-    builder = std::make_shared<VPackBuilder>();
-    {
-      VPackObjectBuilder guard(builder.get());
-      TRI_SanitizeObject(body, *builder);
-      builder->add(StaticStrings::KeyString, VPackValue(key));
-      if (revision != 0) {
-        builder->add(StaticStrings::RevString,
-                     VPackValue(TRI_RidToString(revision)));
-      }
-    }
-    body = builder->slice();
-  }
-  if (revision != 0) {
-    opOptions.ignoreRevs = false;
-  }
+  auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(&_vocbase);
+  GraphOperations gops{*graph, ctx};
 
-  // ...........................................................................
-  // inside write transaction
-  // ...........................................................................
-
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
-
-  OperationResult result(TRI_ERROR_NO_ERROR);
-  if (isPatch) {
-    // patching an existing document
-    opOptions.keepNull =
-        extractBooleanParameter(StaticStrings::KeepNullString, true);
-    opOptions.mergeObjects =
-        extractBooleanParameter(StaticStrings::MergeObjectsString, true);
-    result = trx.update(collectionName, body, opOptions);
+  ResultT<std::pair<OperationResult, Result>> resultT{
+      Result(TRI_ERROR_INTERNAL)};
+  if (isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
+    resultT = gops.updateVertex(collectionName, key, body, maybeRev,
+                                waitForSync, returnOld, returnNew, keepNull);
+  } else if (!isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
+    resultT = gops.replaceVertex(collectionName, key, body, maybeRev,
+                                 waitForSync, returnOld, returnNew, keepNull);
+  } else if (isPatch && colType == TRI_COL_TYPE_EDGE) {
+    resultT = gops.updateEdge(collectionName, key, body, maybeRev, waitForSync,
+                              returnOld, returnNew, keepNull);
+  } else if (!isPatch && colType == TRI_COL_TYPE_EDGE) {
+    resultT = gops.replaceEdge(collectionName, key, body, maybeRev, waitForSync,
+                               returnOld, returnNew, keepNull);
   } else {
-    result = trx.replace(collectionName, body, opOptions);
+    TRI_ASSERT(false);
   }
 
-  res = trx.finish(result.result);
+  if (!resultT.ok()) {
+    generateTransactionError(collectionName, resultT, "");
+    return resultT.copy_result();
+  }
 
-  // ...........................................................................
-  // outside write transaction
-  // ...........................................................................
+  OperationResult& result = resultT.get().first;
+
+  Result res = resultT.get().second;
 
   if (result.fail()) {
     generateTransactionError(result);
@@ -755,14 +723,14 @@ Result RestGraphHandler::documentModify(
     return false;
   }
 
-  switch(colType) {
+  switch (colType) {
     case TRI_COL_TYPE_DOCUMENT:
       generateVertexModified(result.wasSynchronous, result.slice(),
-        *ctx->getVPackOptionsForDump());
+                             *ctx->getVPackOptionsForDump());
       break;
     case TRI_COL_TYPE_EDGE:
       generateEdgeModified(result.wasSynchronous, result.slice(),
-        *ctx->getVPackOptionsForDump());
+                           *ctx->getVPackOptionsForDump());
       break;
     default:
       TRI_ASSERT(false);

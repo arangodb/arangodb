@@ -276,7 +276,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::_getDocument(
   options.ignoreRevs = !rev.is_initialized();
 
   VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
-  VPackSlice search {searchBuffer->data()};
+  VPackSlice search{searchBuffer->data()};
 
   // find and load collection given by name or identifier
   SingleCollectionTransaction trx(ctx(), collectionName,
@@ -297,8 +297,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::_getDocument(
 }
 
 GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
-  const std::string &key, boost::optional<TRI_voc_rid_t> &rev
-) const {
+    const std::string& key, boost::optional<TRI_voc_rid_t>& rev) const {
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
@@ -321,7 +320,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdge(
   options.ignoreRevs = !rev.is_initialized();
 
   VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
-  VPackSlice search {searchBuffer->data()};
+  VPackSlice search{searchBuffer->data()};
 
   SingleCollectionTransaction trx{ctx(), definitionName,
                                   AccessMode::Type::WRITE};
@@ -340,16 +339,104 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdge(
   return std::make_pair(std::move(result), std::move(res));
 }
 
+ResultT<std::pair<OperationResult, Result>> GraphOperations::_modifyDocument(
+    std::string const& collectionName, std::string const& key,
+    VPackSlice document, bool isPatch, boost::optional<TRI_voc_rid_t> rev,
+    bool waitForSync, bool returnOld, bool returnNew, bool keepNull) {
+  OperationOptions options;
+  options.ignoreRevs = !rev.is_initialized();
+  options.waitForSync = waitForSync;
+  options.returnNew = returnNew;
+  options.returnOld = returnOld;
+  if (isPatch) {
+    options.keepNull = keepNull;
+    // options.mergeObjects = true;
+  }
+
+  // extract the revision, if single document variant and header given:
+  std::unique_ptr<VPackBuilder> builder;
+
+  VPackSlice keyInBody = document.get(StaticStrings::KeyString);
+  if ((rev && TRI_ExtractRevisionId(document) != rev.get()) ||
+      keyInBody.isNone() || keyInBody.isNull() ||
+      (keyInBody.isString() && keyInBody.copyString() != key)) {
+    // We need to rewrite the document with the given revision and key:
+    builder = std::make_unique<VPackBuilder>();
+    {
+      VPackObjectBuilder guard(builder.get());
+      TRI_SanitizeObject(document, *builder);
+      builder->add(StaticStrings::KeyString, VPackValue(key));
+      if (rev) {
+        builder->add(StaticStrings::RevString,
+                     VPackValue(TRI_RidToString(rev.get())));
+      }
+    }
+    document = builder->slice();
+  }
+
+  // find and load collection given by name or identifier
+  SingleCollectionTransaction trx(ctx(), collectionName,
+                                  AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  OperationResult result;
+
+  if (isPatch) {
+    result = trx.update(collectionName, document, options);
+  } else {
+    result = trx.replace(collectionName, document, options);
+  }
+
+  res = trx.finish(result.result);
+
+  return std::make_pair(std::move(result), std::move(res));
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::updateEdge(
+    const std::string& definitionName, const std::string& key,
+    VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+    bool returnOld, bool returnNew, bool keepNull) {
+  return _modifyDocument(definitionName, key, document, true, std::move(rev),
+                         waitForSync, returnOld, returnNew, keepNull);
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceEdge(
+    const std::string& definitionName, const std::string& key,
+    VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+    bool returnOld, bool returnNew, bool keepNull) {
+  return _modifyDocument(definitionName, key, document, false, std::move(rev),
+                         waitForSync, returnOld, returnNew, keepNull);
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::updateVertex(
+    const std::string& collectionName, const std::string& key,
+    VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+    bool returnOld, bool returnNew, bool keepNull) {
+  return _modifyDocument(collectionName, key, document, true, std::move(rev),
+                         waitForSync, returnOld, returnNew, keepNull);
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceVertex(
+    const std::string& collectionName, const std::string& key,
+    VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+    bool returnOld, bool returnNew, bool keepNull) {
+  return _modifyDocument(collectionName, key, document, false, std::move(rev),
+                         waitForSync, returnOld, returnNew, keepNull);
+}
+
 namespace getGraphFromCacheResult {
 struct Success {
   std::shared_ptr<Graph const> graph;
 
   explicit Success(std::shared_ptr<Graph const> graph_)
       : graph(std::move(graph_)){};
-  Success& operator=(Success const& other) {
-    graph = other.graph;
-    return *this;
-  };
+  Success& operator=(Success const& other) = default;
   Success() = delete;
 };
 struct Outdated {};

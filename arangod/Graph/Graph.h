@@ -165,6 +165,26 @@ class GraphOperations {
       const std::string& definitionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
 
+  ResultT<std::pair<OperationResult, Result>> updateEdge(
+      const std::string& definitionName, const std::string& key,
+      VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+      bool returnOld, bool returnNew, bool keepNull);
+
+  ResultT<std::pair<OperationResult, Result>> replaceEdge(
+      const std::string& definitionName, const std::string& key,
+      VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+      bool returnOld, bool returnNew, bool keepNull);
+
+  ResultT<std::pair<OperationResult, Result>> updateVertex(
+      const std::string& collectionName, const std::string& key,
+      VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+      bool returnOld, bool returnNew, bool keepNull);
+
+  ResultT<std::pair<OperationResult, Result>> replaceVertex(
+      const std::string& collectionName, const std::string& key,
+      VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+      bool returnOld, bool returnNew, bool keepNull);
+
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
@@ -172,10 +192,13 @@ class GraphOperations {
       const std::string& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev);
 
-  VPackBufferPtr _getSearchSlice(
-    const std::string &key,
-    boost::optional<TRI_voc_rid_t> &rev
-  ) const;
+  VPackBufferPtr _getSearchSlice(const std::string& key,
+                                 boost::optional<TRI_voc_rid_t>& rev) const;
+
+  ResultT<std::pair<OperationResult, Result>> _modifyDocument(
+      const std::string& collectionName, const std::string& key,
+      VPackSlice document, bool isPatch, boost::optional<TRI_voc_rid_t> rev,
+      bool waitForSync, bool returnOld, bool returnNew, bool keepNull);
 };
 
 class GraphCache {
