@@ -445,13 +445,13 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   std::string errorMessage;
   bool const producesNew = (ep->_outVariableNew != nullptr);
   bool const producesOld = (ep->_outVariableOld != nullptr);
-  bool const producesOutput = !producesNew && !producesOld;
+  bool const producesOutput = producesNew || producesOld;
 
   result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
   // use "silent" mode if we do not access the results later on
-  options.silent = producesOutput;
+  options.silent = !producesOutput;
   options.returnNew = producesNew;
   options.returnOld = producesOld;
   options.isRestore = ep->_options.useIsRestore;
@@ -494,7 +494,12 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               }
               if (options.returnOld) {
                 // return $OLD
-                result->emplaceValue(dstRow, _outRegOld, opRes.slice().get("old"));
+                auto slice = opRes.slice().get("old");
+                if(slice.isNone()){
+                  result->emplaceValue(dstRow, _outRegOld, VPackSlice::nullSlice());
+                } else {
+                  result->emplaceValue(dstRow, _outRegOld, slice);
+                }
               }
             } else {
               errorMessage.assign(opRes.errorMessage());
@@ -550,7 +555,12 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                 }
                 if (producesOld) {
                   // store $OLD
-                  result->emplaceValue(dstRow, _outRegOld, elm.get("old"));
+                  auto slice = elm.get("old");
+                  if(slice.isNone()){
+                    result->emplaceValue(dstRow, _outRegOld, VPackSlice::nullSlice());
+                  } else {
+                    result->emplaceValue(dstRow, _outRegOld, slice);
+                  }
                 }
               }
               ++iter;

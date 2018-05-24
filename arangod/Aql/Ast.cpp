@@ -29,6 +29,7 @@
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
+#include "Aql/ExecutionPlan.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -326,20 +327,32 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
                                AstNode const* collection,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
-  node->reserve(5);
+
+
 
   if (options == nullptr) {
     // no options given. now use default options
     options = &NopNode;
   }
 
+  bool overwrite = false;
+  if (options->type == NODE_TYPE_OBJECT){
+      auto ops = ExecutionPlan::parseModificationOptions(options);
+      overwrite = ops.overwrite;
+
+  }
+
+  node->reserve(overwrite ? 5: 4);
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
   node->addMember(
       createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
-  node->addMember(
-      createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false));
+  if(overwrite){
+    node->addMember(
+      createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false)
+    );
+  }
 
   return node;
 }

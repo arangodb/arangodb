@@ -642,8 +642,7 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
   return en;
 }
 
-/// @brief create modification options from an AST node
-ModificationOptions ExecutionPlan::createModificationOptions(
+ModificationOptions ExecutionPlan::parseModificationOptions(
     AstNode const* node) {
   ModificationOptions options;
 
@@ -675,6 +674,13 @@ ModificationOptions ExecutionPlan::createModificationOptions(
       }
     }
   }
+  return options;
+}
+
+/// @brief create modification options from an AST node
+ModificationOptions ExecutionPlan::createModificationOptions(
+    AstNode const* node) {
+  ModificationOptions options = parseModificationOptions(node);
 
   // this means a data-modification query must first read the entire input data
   // before starting with the modifications
@@ -1545,7 +1551,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() == 5);
+  TRI_ASSERT(node->numMembers() > 3);
+  TRI_ASSERT(node->numMembers() < 6);
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
@@ -1557,9 +1564,11 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
   Variable const* outVariableNew =
       static_cast<Variable*>(returnVarNode->getData());
 
-  returnVarNode = node->getMember(4);
-  Variable const* outVariableOld =
-      static_cast<Variable*>(returnVarNode->getData());
+  Variable const* outVariableOld = nullptr;
+  if(node->numMembers() == 5) {
+    returnVarNode = node->getMember(4);
+    outVariableOld = static_cast<Variable*>(returnVarNode->getData());
+  }
 
   ExecutionNode* en = nullptr;
 
