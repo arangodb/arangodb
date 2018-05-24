@@ -408,7 +408,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -427,7 +428,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(0 == snapshot->live_docs_count());
     }
@@ -462,7 +464,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -481,7 +484,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(0 == snapshot->live_docs_count());
     }
@@ -516,7 +520,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -538,7 +543,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(0 == snapshot->live_docs_count());
     }
@@ -587,7 +593,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -604,7 +611,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -653,7 +661,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(1 == snapshot->live_docs_count());
     }
@@ -675,7 +684,8 @@ SECTION("test_drop_cid") {
 
     // query
     {
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       CHECK(0 == snapshot->live_docs_count());
     }
@@ -1012,7 +1022,8 @@ SECTION("test_insert") {
       CHECK((view->sync()));
     }
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK(2 == snapshot->live_docs_count());
   }
@@ -1052,7 +1063,8 @@ SECTION("test_insert") {
       CHECK((view->sync()));
     }
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((2 == snapshot->docs_count()));
   }
@@ -1072,7 +1084,8 @@ SECTION("test_insert") {
       view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
       std::unordered_set<TRI_voc_cid_t> actual;
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(actual, *snapshot);
       CHECK((actual.empty()));
@@ -1099,7 +1112,8 @@ SECTION("test_insert") {
       CHECK((view->sync()));
     }
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((4 == snapshot->docs_count()));
 
@@ -1110,7 +1124,8 @@ SECTION("test_insert") {
       CHECK((0 == cids.size()));
       std::unordered_set<TRI_voc_cid_t> expected = { 1 };
       std::unordered_set<TRI_voc_cid_t> actual;
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(actual, *snapshot);
 
@@ -1154,7 +1169,8 @@ SECTION("test_insert") {
       CHECK((trx.commit().ok()));
     }
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((4 == snapshot->docs_count()));
   }
@@ -1191,7 +1207,8 @@ SECTION("test_insert") {
       CHECK((view->sync()));
     }
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((4 == snapshot->docs_count()));
   }
@@ -1229,7 +1246,8 @@ SECTION("test_insert") {
       CHECK((trx.commit().ok()));
     }
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK((4 == snapshot->docs_count()));
   }
@@ -1270,7 +1288,8 @@ SECTION("test_query") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !view));
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK(0 == snapshot->docs_count());
   }
@@ -1305,7 +1324,8 @@ SECTION("test_query") {
       view->sync();
     }
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     CHECK(12 == snapshot->docs_count());
   }
@@ -1351,7 +1371,8 @@ SECTION("test_query") {
       view->sync();
     }
 
-    auto state0 = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver0(vocbase);
+    auto state0 = s.engine.createTransactionState(resolver0, arangodb::transaction::Options());
     auto* snapshot0 = view->snapshot(*state0, true);
     CHECK(12 == snapshot0->docs_count());
 
@@ -1381,7 +1402,8 @@ SECTION("test_query") {
     // old reader sees same data as before
     CHECK(12 == snapshot0->docs_count());
     // new reader sees new data
-    auto state1 = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver1(vocbase);
+    auto state1 = s.engine.createTransactionState(resolver1, arangodb::transaction::Options());
     auto* snapshot1 = view->snapshot(*state1, true);
     CHECK(24 == snapshot1->docs_count());
   }
@@ -1443,7 +1465,8 @@ SECTION("test_query") {
 
       // query
       {
-        auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+        arangodb::CollectionNameResolver resolver(vocbase);
+        auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
         auto* snapshot = view->snapshot(*state, true);
         CHECK(i == snapshot->docs_count());
       }
@@ -1544,7 +1567,8 @@ SECTION("test_register_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size()));
@@ -1562,7 +1586,8 @@ SECTION("test_register_link") {
     CHECK((false == !link));
     std::unordered_set<TRI_voc_cid_t> cids;
     view->sync();
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     arangodb::iresearch::appendKnownCollections(cids, *snapshot);
     CHECK((0 == cids.size())); // link addition does trigger collection load
@@ -1594,7 +1619,8 @@ SECTION("test_register_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size()));
@@ -1620,7 +1646,8 @@ SECTION("test_register_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size())); // link addition does trigger collection load
@@ -1644,7 +1671,8 @@ SECTION("test_register_link") {
     CHECK((false == !link1)); // duplicate link creation is allowed
     std::unordered_set<TRI_voc_cid_t> cids;
     view->sync();
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = view->snapshot(*state, true);
     arangodb::iresearch::appendKnownCollections(cids, *snapshot);
     CHECK((0 == cids.size())); // link addition does trigger collection load
@@ -1711,7 +1739,8 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((1 == cids.size()));
@@ -1742,7 +1771,8 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size()));
@@ -1798,7 +1828,8 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((1 == cids.size()));
@@ -1825,7 +1856,8 @@ SECTION("test_unregister_link") {
     {
       std::unordered_set<TRI_voc_cid_t> cids;
       view->sync();
-      auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+      arangodb::CollectionNameResolver resolver(vocbase);
+      auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
       auto* snapshot = view->snapshot(*state, true);
       arangodb::iresearch::appendKnownCollections(cids, *snapshot);
       CHECK((0 == cids.size()));
@@ -2447,14 +2479,16 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == false, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = viewImpl->snapshot(*state);
     CHECK((nullptr == snapshot));
   }
 
   // no snapshot in TransactionState (force == true, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = viewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
     CHECK((0 == snapshot->live_docs_count()));
@@ -2462,7 +2496,8 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == false, waitForSync = true)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     state->waitForSync(true);
     auto* snapshot = viewImpl->snapshot(*state);
     CHECK((nullptr == snapshot));
@@ -2470,8 +2505,8 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == true, waitForSync = true)
   {
-    arangodb::transaction::Options options;
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     state->waitForSync(true);
     auto* snapshot = viewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
@@ -2497,7 +2532,8 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == false, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     viewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     auto* snapshot = viewImpl->snapshot(*state);
@@ -2508,7 +2544,8 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     viewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     auto* snapshot = viewImpl->snapshot(*state, true);
@@ -2519,7 +2556,8 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = false during updateStatus(), true during snapshot())
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     viewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     state->waitForSync(true);
@@ -2531,7 +2569,8 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = true during updateStatus(), false during snapshot())
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     state->waitForSync(true);
     viewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
