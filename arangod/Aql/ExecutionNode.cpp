@@ -33,6 +33,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
+#include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
@@ -1562,6 +1563,45 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
   }
 
   nodes.add("expressionType", VPackValue(_expression->typeString()));
+  
+  if ((flags & SERIALIZE_DETAILS) &&
+      _expression->node() != nullptr) {
+    auto root = _expression->node();
+    if (root != nullptr) {
+      // enumerate all used functions, but report each function only once
+      std::unordered_set<std::string> functionsSeen;
+      nodes.add("functions", VPackValue(VPackValueType::Array));
+
+      Ast::traverseReadOnly(root, [&functionsSeen, &nodes](AstNode const* node) -> bool {
+        if (node->type == NODE_TYPE_FCALL) {
+          auto func = static_cast<Function const*>(node->getData());
+          if (functionsSeen.emplace(func->name).second) {
+            // built-in function, not seen before
+            nodes.openObject();
+            nodes.add("name", VPackValue(func->name));
+            nodes.add("isDeterministic", VPackValue(func->isDeterministic));
+            nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
+            nodes.add("usesV8", VPackValue(func->implementation == nullptr || (func->condition && !func->condition())));
+            nodes.close();
+          }
+        } else if (node->type == NODE_TYPE_FCALL_USER) {
+          auto func = node->getString();
+          if (functionsSeen.emplace(func).second) {
+            // user defined function, not seen before
+            nodes.openObject();
+            nodes.add("name", VPackValue(func));
+            nodes.add("isDeterministic", VPackValue(false));
+            nodes.add("canRunOnDBServer", VPackValue(false));
+            nodes.add("usesV8", VPackValue(true));
+            nodes.close();
+          }
+        }
+        return true;
+      });
+
+      nodes.close();
+    }
+  }
 
   // And close it
   nodes.close();
