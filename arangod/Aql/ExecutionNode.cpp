@@ -1571,7 +1571,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
 
   nodes.add("expressionType", VPackValue(_expression->typeString()));
   
-  if ((flags & SERIALIZE_DETAILS) &&
+  if ((flags & SERIALIZE_FUNCTIONS) &&
       _expression->node() != nullptr) {
     auto root = _expression->node();
     if (root != nullptr) {
