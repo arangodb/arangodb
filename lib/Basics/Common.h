@@ -175,6 +175,7 @@ typedef long suseconds_t;
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
+#include "Basics/ScopeGuard.h"
 #undef TRI_WITHIN_COMMON
 
 #ifdef _WIN32
@@ -247,41 +248,6 @@ inline void ADB_WindowsEntryFunction() {}
 inline void ADB_WindowsExitFunction(int, void*) {}
 #endif
 
-// -----------------------------------------------------------------------------
-// --SECTIONS--                                               deferred execution
-// -----------------------------------------------------------------------------
-
-/// Use in a function (or scope) as:
-///   TRI_DEFER( <STATEMENT> );
-/// and the statement will be called regardless if the function throws or
-/// returns regularly.
-/// Do not put multiple TRI_DEFERs on a single source code line (will not
-/// compile).
-/// Multiple TRI_DEFERs in one scope will be executed in reverse order of
-/// appearance.
-/// The idea to this is from
-///   http://blog.memsql.com/c-error-handling-with-auto/
-#define TOKEN_PASTE_WRAPPED(x, y) x##y
-#define TOKEN_PASTE(x, y) TOKEN_PASTE_WRAPPED(x, y)
-
-template <typename T>
-struct TRI_AutoOutOfScope {
-  explicit TRI_AutoOutOfScope(T& destructor) : m_destructor(destructor) {}
-  ~TRI_AutoOutOfScope() { try { m_destructor(); } catch (...) { } }
-
- private:
-  T& m_destructor;
-};
-
-//Note: We could pass std::function an object and let the user
-//      decide on the default capture type (e.g. `this,&,=`)
-#define TRI_DEFER_INTERNAL(Destructor, funcname, objname) \
-  auto funcname = [&]() { Destructor; };                  \
-  TRI_AutoOutOfScope<decltype(funcname)> objname(funcname);
-
-#define TRI_DEFER(Destructor)                                     \
-  TRI_DEFER_INTERNAL(Destructor, TOKEN_PASTE(auto_fun, __LINE__), \
-                     TOKEN_PASTE(auto_obj, __LINE__))
 
 #undef TRI_SHOW_LOCK_TIME
 #define TRI_SHOW_LOCK_THRESHOLD 0.000199

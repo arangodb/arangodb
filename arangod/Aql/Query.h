@@ -142,7 +142,7 @@ class Query {
   inline QueryPart part() const { return _part; }
 
   /// @brief get the vocbase
-  inline TRI_vocbase_t* vocbase() const { return &_vocbase; }
+  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief collections
   inline Collections* collections() { return &_collections; }

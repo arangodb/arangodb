@@ -264,7 +264,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   plan->_root = plan->fromNode(root);
 
-  // sett fullCount flag for last LIMIT node on main level
+  // set fullCount flag for last LIMIT node on main level
   if (plan->_lastLimitNode != nullptr &&
       ast->query()->queryOptions().fullCount) {
     ExecutionNode::castTo<LimitNode*>(plan->_lastLimitNode)->setFullCount();
@@ -367,8 +367,13 @@ std::shared_ptr<VPackBuilder> ExecutionPlan::toVelocyPack(Ast* ast,
 /// @brief export to VelocyPack
 void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
                                  bool verbose) const {
+  unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
+  if (verbose) {
+    flags |= ExecutionNode::SERIALIZE_PARENTS |
+             ExecutionNode::SERIALIZE_DETAILS;
+  }
   // keeps top level of built object open
-  _root->toVelocyPack(builder, verbose, true);
+  _root->toVelocyPack(builder, flags, true);
 
   TRI_ASSERT(!builder.isClosed());
 
@@ -820,22 +825,22 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                      "no collection for EnumerateCollection");
     }
     en = registerNode(new EnumerateCollectionNode(
-        this, nextId(), _ast->query()->vocbase(), collection, v, false));
+      this, nextId(), &(_ast->query()->vocbase()), collection, v, false)
+    );
 #ifdef USE_IRESEARCH
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
     std::string const viewName = expression->getString();
-    auto vocbase = _ast->query()->vocbase();
-    auto view = vocbase->lookupView(viewName);
+    auto& vocbase = _ast->query()->vocbase();
+    auto view = vocbase.lookupView(viewName);
 
     if (view == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no view for EnumerateView");
     }
 
-    en = registerNode(
-      new iresearch::IResearchViewNode(
-        *this, nextId(), *vocbase, *view, *v, nullptr, {}
+    en = registerNode(new iresearch::IResearchViewNode(
+      *this, nextId(), vocbase, *view, *v, nullptr, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
@@ -898,8 +903,14 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
-  auto travNode = new TraversalNode(this, nextId(), _ast->query()->vocbase(),
-                                    direction, start, graph, std::move(options));
+  auto travNode = new TraversalNode(
+    this,
+    nextId(),
+    &(_ast->query()->vocbase()),
+    direction,
+    start,
+    graph, std::move(options)
+  );
 
   auto variable = node->getMember(4);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -974,9 +985,16 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   auto options = createShortestPathOptions(getAst()->query(), node->getMember(4));
 
   // First create the node
-  auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),
-                                     direction, start, target,
-                                     graph, std::move(options));
+  auto spNode = new ShortestPathNode(
+    this,
+    nextId(),
+    &(_ast->query()->vocbase()),
+    direction,
+    start,
+    target,
+    graph,
+    std::move(options)
+  );
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -1491,15 +1509,30 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
+
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, v, outVariableOld));
+    en = registerNode(new RemoveNode(
+      this,
+      nextId(),
+      &(_ast->query()->vocbase()),
+      collection,
+      options,
+      v,
+      outVariableOld
+    ));
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, getOutVariable(calc),
-                                     outVariableOld));
+
+    en = registerNode(new RemoveNode(
+      this,
+      nextId(),
+      &(_ast->query()->vocbase()),
+      collection,
+      options,
+      getOutVariable(calc),
+      outVariableOld
+    ));
     previous = calc;
   }
 
@@ -1527,15 +1560,30 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
+
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, v, outVariableNew));
+    en = registerNode(new InsertNode(
+      this,
+      nextId(),
+      &(_ast->query()->vocbase()),
+      collection,
+      options,
+      v,
+      outVariableNew
+    ));
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, getOutVariable(calc),
-                                     outVariableNew));
+
+    en = registerNode(new InsertNode(
+      this,
+      nextId(),
+      &(_ast->query()->vocbase()),
+      collection,
+      options,
+      getOutVariable(calc),
+      outVariableNew
+    ));
     previous = calc;
   }
 
@@ -1584,16 +1632,34 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
   if (docExpression->type == NODE_TYPE_REFERENCE) {
     // document operand is already a variable
     auto v = static_cast<Variable*>(docExpression->getData());
+
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new UpdateNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, v, keyVariable,
-                                     outVariableOld, outVariableNew));
+    en = registerNode(new UpdateNode(
+      this,
+      nextId(),
+      &(_ast->query()->vocbase()),
+      collection,
+      options,
+      v,
+      keyVariable,
+      outVariableOld,
+      outVariableNew
+    ));
   } else {
     // document operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
+
     en = registerNode(new UpdateNode(
-        this, nextId(), _ast->query()->vocbase(), collection, options,
-        getOutVariable(calc), keyVariable, outVariableOld, outVariableNew));
+      this,
+      nextId(),
+      &(_ast->query()->vocbase()),
+      collection,
+      options,
+      getOutVariable(calc),
+      keyVariable,
+      outVariableOld,
+      outVariableNew
+    ));
     previous = calc;
   }
 
@@ -1642,16 +1708,34 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
   if (docExpression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(docExpression->getData());
+
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new ReplaceNode(this, nextId(), _ast->query()->vocbase(),
-                                      collection, options, v, keyVariable,
-                                      outVariableOld, outVariableNew));
+    en = registerNode(new ReplaceNode(
+      this,
+      nextId(),
+      &(_ast->query()->vocbase()),
+      collection,
+      options,
+      v,
+      keyVariable,
+      outVariableOld,
+      outVariableNew
+    ));
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression, previous);
+
     en = registerNode(new ReplaceNode(
-        this, nextId(), _ast->query()->vocbase(), collection, options,
-        getOutVariable(calc), keyVariable, outVariableOld, outVariableNew));
+      this,
+      nextId(),
+      &(_ast->query()->vocbase()),
+      collection,
+      options,
+      getOutVariable(calc),
+      keyVariable,
+      outVariableOld,
+      outVariableNew
+    ));
     previous = calc;
   }
 
@@ -1704,10 +1788,18 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
 
   bool isReplace =
       (node->getIntValue(true) == static_cast<int64_t>(NODE_TYPE_REPLACE));
-
   ExecutionNode* en = registerNode(new UpsertNode(
-      this, nextId(), _ast->query()->vocbase(), collection, options,
-      docVariable, insertVar, updateVar, outVariableNew, isReplace));
+    this,
+    nextId(),
+    &(_ast->query()->vocbase()),
+    collection,
+    options,
+    docVariable,
+    insertVar,
+    updateVar,
+    outVariableNew,
+    isReplace
+  ));
 
   return addDependency(previous, en);
 }

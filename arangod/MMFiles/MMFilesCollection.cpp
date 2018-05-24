@@ -497,6 +497,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
       _useSecondaryIndexes(true),
       _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_isVolatile && _logicalCollection->waitForSync()) {
     // Illegal collection configuration
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -543,6 +544,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
     _indexes.emplace_back(idx);
   }
 */
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   setCompactionStatus("compaction not yet started");
   //  not copied
   //  _datafiles;   // all datafiles
@@ -1215,15 +1217,6 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   result.add("path", VPackValue(_path));
 
   TRI_ASSERT(result.isOpenObject());
-}
-
-/// @brief used for updating properties
-void MMFilesCollection::getPropertiesVPackCoordinator(
-    velocypack::Builder& result) const {
-  TRI_ASSERT(result.isOpenObject());
-  result.add("doCompact", VPackValue(_doCompact));
-  result.add("indexBuckets", VPackValue(_indexBuckets));
-  result.add("journalSize", VPackValue(_journalSize));
 }
 
 void MMFilesCollection::figuresSpecific(
@@ -2019,22 +2012,17 @@ bool MMFilesCollection::readDocumentConditional(
 
 void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
-  if (indexesSlice.length() == 0) {
-    createInitialIndexes();
-  }
-
+  
   bool foundPrimary = false;
   bool foundEdge = false;
-
+  
   for (auto const& it : VPackArrayIterator(indexesSlice)) {
     auto const& s = it.get(arangodb::StaticStrings::IndexType);
 
     if (s.isString()) {
-      std::string const type = s.copyString();
-
-      if (type == "primary") {
+      if (s.isEqualString("primary")) {
         foundPrimary = true;
-      } else if (type == "edge") {
+      } else if (s.isEqualString("edge")) {
         foundEdge = true;
       }
     }
@@ -2048,43 +2036,25 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
       foundEdge = true;
     }
   }
-
+  
+  std::vector<std::shared_ptr<arangodb::Index>> indexes;
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   if (!foundPrimary ||
       (!foundEdge && _logicalCollection->type() == TRI_COL_TYPE_EDGE)) {
     // we still do not have any of the default indexes, so create them now
-    createInitialIndexes();
+    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
   }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto& idxFactory = engine->indexFactory();
-
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
-                                                            false)) {
-      // We have an error here.
-      // Do not add index.
-      continue;
-    }
-
-    auto idx =
-        idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
-
-    if (!idx) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-        << "error creating index from definition '"
-        << indexesSlice.toString() << "'";
-      continue;
-    }
-
+  engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
+  
+  for (std::shared_ptr<Index>& idx : indexes) {
     if (ServerState::instance()->isRunningInCluster()) {
-      addIndexCoordinator(idx);
+      addIndex(std::move(idx));
     } else {
-      addIndexLocal(idx);
+      addIndexLocal(std::move(idx));
     }
   }
 
   TRI_ASSERT(!_indexes.empty());
-
   if (_indexes[0]->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX ||
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE &&
        (_indexes.size() < 2 || _indexes[1]->type() != Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX))) {
@@ -2117,22 +2087,6 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
 #endif
   
   TRI_ASSERT(!_indexes.empty());
-}
-
-/// @brief creates the initial indexes for the collection
-void MMFilesCollection::createInitialIndexes() {
-  if (!_indexes.empty()) {
-    return;
-  }
-
-  std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-
-  engine->indexFactory().fillSystemIndexes(_logicalCollection, systemIndexes);
-
-  for (auto const& it : systemIndexes) {
-    addIndex(it);
-  }
 }
 
 std::shared_ptr<Index> MMFilesCollection::lookupIndex(
@@ -2187,7 +2141,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
     // We only inform the others.
-    addIndexCoordinator(idx);
+    addIndex(idx);
     created = true;
     return idx;
   }
@@ -2314,11 +2268,6 @@ void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
   if (idx->isPersistent()) {
     ++_persistentIndexes;
   }
-}
-
-void MMFilesCollection::addIndexCoordinator(
-    std::shared_ptr<arangodb::Index> idx) {
-  addIndex(idx);
 }
 
 int MMFilesCollection::restoreIndex(transaction::Methods* trx,
@@ -2808,19 +2757,15 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
 }
 
 LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {
-  //LOG_TOPIC(ERR, Logger::FIXME) << "REUSEORCREATE. ISRECOVERY: " << (options.recoveryData != nullptr);
   if (options.recoveryData != nullptr) {
     auto marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
-  //LOG_TOPIC(ERR, Logger::FIXME) << "CHECKING FOR EXISTING DOCUMENTID";
     if (marker->hasLocalDocumentId()) {
-  //LOG_TOPIC(ERR, Logger::FIXME) << "FOUND EXISTING DOCUMENTID: " << marker->getLocalDocumentId().id();
       return marker->getLocalDocumentId();
     }
     // falls through intentionally
   }
 
   // new operation, no recovery -> generate a new LocalDocumentId
-  //LOG_TOPIC(ERR, Logger::FIXME) << "GENERATING NEW DOCUMENTID";
   return LocalDocumentId::create();
 }
 
@@ -2835,40 +2780,14 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   VPackSlice toSlice;
 
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
-  //LOG_TOPIC(ERR, Logger::FIXME) << "INSERT. EFFECTIVE LOCALDOCUMENTID: " << documentId.id();
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
-
-  if (isEdgeCollection) {
-    // _from:
-    fromSlice = slice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    VPackValueLength len;
-    char const* docId = fromSlice.getString(len);
-    size_t split;
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    // _to:
-    toSlice = slice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    docId = toSlice.getString(len);
-    if (!TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len),
-                                            &split)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-  }
 
   transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
   Result res(TRI_ERROR_NO_ERROR);
   if (options.recoveryData == nullptr) {
-    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+    res = newObjectForInsert(trx, slice, isEdgeCollection,
                              *builder.get(), options.isRestore, revisionId);
     if (res.fail()) {
       return res;
@@ -3348,9 +3267,13 @@ Result MMFilesCollection::update(
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   if (options.recoveryData == nullptr) {
-    mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                          options.mergeObjects, options.keepNull,
-                          *builder.get(), options.isRestore, revisionId);
+    res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
+                                options.mergeObjects, options.keepNull,
+                                *builder.get(), options.isRestore, revisionId);
+
+    if (res.fail()) { 
+      return res;
+    }
 
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
@@ -3426,8 +3349,7 @@ Result MMFilesCollection::replace(
     transaction::Methods* trx, VPackSlice const newSlice,
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    ManagedDocumentResult& previous,
-    VPackSlice const fromSlice, VPackSlice const toSlice) {
+    ManagedDocumentResult& previous) {
   LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
 
   bool const isEdgeCollection =
@@ -3485,9 +3407,12 @@ Result MMFilesCollection::replace(
   // merge old and new values
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
-  newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
-                      isEdgeCollection, *builder.get(),
-                      options.isRestore, revisionId);
+  res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection, *builder.get(),
+                            options.isRestore, revisionId);
+  
+  if (res.fail()) {
+    return res;
+  }
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:

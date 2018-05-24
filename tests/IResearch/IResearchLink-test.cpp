@@ -37,7 +37,6 @@
 
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Basics/files.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -204,7 +203,6 @@ SECTION("test_defaults") {
     bool created;
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
     REQUIRE((false == !link && created));
-    CHECK((true == link->allowExpansion()));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection == link->collection()));
     CHECK((link->fieldNames().empty()));
@@ -257,7 +255,6 @@ SECTION("test_defaults") {
     bool created;
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
     REQUIRE((false == !link && created));
-    CHECK((true == link->allowExpansion()));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection == link->collection()));
     CHECK((link->fieldNames().empty()));
@@ -596,7 +593,9 @@ SECTION("test_write") {
   );
   REQUIRE((false == !view));
   view->open();
-  auto* flush = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+  auto* flush = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::FlushFeature
+  >("Flush");
   REQUIRE((flush));
 
   irs::fs_directory directory(dataPath);

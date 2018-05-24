@@ -207,6 +207,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       result.add("cached", VPackValue(queryResult.cached));
       if (queryResult.cached || !queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
+        // no warnings
+        result.add("warnings", VPackSlice::emptyArraySlice());
         result.close();
       } else {
         result.add("extra", queryResult.extra->slice());

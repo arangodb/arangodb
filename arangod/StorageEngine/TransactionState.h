@@ -79,7 +79,9 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, transaction::Options const& options);
+  TransactionState(TRI_vocbase_t& vocbase,
+                   TRI_voc_tid_t,
+                   transaction::Options const& options);
   virtual ~TransactionState();
 
   /// @brief add a callback to be called for state change events
@@ -209,7 +211,7 @@ class TransactionState {
   /// @brief vocbase
   TRI_vocbase_t& _vocbase;
   /// @brief local trx id
-  TRI_voc_tid_t _id;
+  TRI_voc_tid_t const _id;
   /// @brief access type (read|write)
   AccessMode::Type _type;
   /// @brief current status

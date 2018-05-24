@@ -59,9 +59,9 @@ arangodb::aql::ExecutionNode* ExecutionNodeMock::clone(
 
 void ExecutionNodeMock::toVelocyPackHelper(
     arangodb::velocypack::Builder& nodes,
-    bool verbose
+    unsigned flags
 ) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);  // call base class method
   nodes.close();
 }
 

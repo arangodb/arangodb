@@ -31,6 +31,14 @@
 // for size_t:
 #include <cstring>
 
+#if defined(__GNUC__) || defined(__GNUG__)
+#define VELOCYPACK_LIKELY(v) __builtin_expect(!!(v), 1)
+#define VELOCYPACK_UNLIKELY(v) __builtin_expect(!!(v), 0)
+#else
+#define VELOCYPACK_LIKELY(v) v
+#define VELOCYPACK_UNLIKELY(v) v
+#endif
+
 // debug mode
 #ifndef NDEBUG
 #ifndef VELOCYPACK_DEBUG

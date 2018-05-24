@@ -517,12 +517,12 @@ void ClusterInfo::loadPlan() {
             std::string const collectionId =
                 collectionPairSlice.key.copyString();
 
-            decltype(vocbase->lookupCollection(collectionId)->clusterIndexEstimates()) selectivityEstimates;
+            decltype(vocbase->lookupCollection(collectionId)->clusterIndexEstimates()) selectivity;
             double selectivityTTL = 0;
             if (isCoordinator) {
               auto collection = _plannedCollections[databaseName][collectionId];
               if(collection){
-                selectivityEstimates = collection->clusterIndexEstimates(/*do not update*/ true);
+                selectivity = collection->clusterIndexEstimates(/*do not update*/ true);
                 selectivityTTL = collection->clusterIndexEstimatesTTL();
               }
             }
@@ -556,12 +556,15 @@ void ClusterInfo::loadPlan() {
 
               auto& collectionName = newCollection->name();
 
-              if (isCoordinator && !selectivityEstimates.empty()){
+              if (isCoordinator && !selectivity.empty()){
                 LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
-                newCollection->clusterIndexEstimates(std::move(selectivityEstimates));
+                newCollection->clusterIndexEstimates(std::move(selectivity));
                 newCollection->clusterIndexEstimatesTTL(selectivityTTL);
-                for(auto i : newCollection->getIndexes()){
-                  i->updateClusterEstimate();
+                for(std::shared_ptr<Index>& idx : newCollection->getIndexes()){
+                  auto it = selectivity.find(std::to_string(idx->id()));
+                  if (it != selectivity.end()) {
+                    idx->updateClusterSelectivityEstimate(it->second);
+                  }
                 }
               }
               // register with name as well as with id:
@@ -1794,7 +1797,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   temp.openObject();
   temp.add("waitForSync", VPackValue(info->waitForSync()));
   temp.add("replicationFactor", VPackValue(info->replicationFactor()));
-  info->getPhysical()->getPropertiesVPackCoordinator(temp);
+  info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
   VPackBuilder builder = VPackCollection::merge(collection, temp.slice(), true);

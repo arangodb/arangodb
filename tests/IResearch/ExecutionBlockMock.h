@@ -75,7 +75,7 @@ class ExecutionNodeMock final : public arangodb::aql::ExecutionNode {
   /// @brief toVelocyPack
   virtual void toVelocyPackHelper(
     arangodb::velocypack::Builder& nodes,
-    bool verbose
+    unsigned flags
   ) const override;
 }; // ExecutionNodeMock
 

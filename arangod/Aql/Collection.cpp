@@ -30,7 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -51,10 +50,6 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
   TRI_ASSERT(!name.empty());
   TRI_ASSERT(vocbase != nullptr);
 }
-
-/// @brief destroy a collection wrapper
-Collection::~Collection() {}
-
 
 /// @brief get the collection id
 TRI_voc_cid_t Collection::cid() const {

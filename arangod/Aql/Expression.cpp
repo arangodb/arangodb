@@ -1013,7 +1013,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
     } else {
       // a call to a built-in V8 function
       auto func = static_cast<Function*>(node->getData());
-      jsName = "AQL_" + func->nonAliasedName;
+      jsName = "AQL_" + func->name;
 
       for (size_t i = 0; i < n; ++i) {
         auto arg = member->getMemberUnchecked(i);

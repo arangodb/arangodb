@@ -381,7 +381,7 @@ bool SslClientConnection::connectSocket() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "SSL connection opened: " 
              << SSL_get_cipher(_ssl) << ", " 
              << SSL_get_cipher_version(_ssl) 
-             << " (" << SSL_get_cipher_bits(_ssl, 0) << " bits)"; 
+             << " (" << SSL_get_cipher_bits(_ssl, nullptr) << " bits)"; 
 
   return true;
 }
