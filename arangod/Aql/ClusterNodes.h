@@ -320,6 +320,13 @@ class GatherNode final : public ExecutionNode {
     Heap
   };
 
+  /// @brief inspect dependencies starting from a specified 'node'
+  /// and return first corresponding collection within
+  /// a diamond if so exist
+  static Collection const* findCollection(
+    GatherNode const& node
+  ) noexcept;
+
   /// @returns sort mode for the specified collection
   static SortMode getSortMode(
     Collection const* collection,
@@ -355,10 +362,6 @@ class GatherNode final : public ExecutionNode {
 
     return ExecutionNode::castTo<ExecutionNode*>(c);
   }
-
-  /// @brief lookup dependencies and return first
-  ///        corresponding collection if so exist
-  Collection const* collection() const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

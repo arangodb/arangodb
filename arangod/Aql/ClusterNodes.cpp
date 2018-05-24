@@ -250,6 +250,32 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
+/*static*/ Collection const* GatherNode::findCollection(
+    GatherNode const& root
+) noexcept {
+  ExecutionNode const* node = root.getFirstDependency();
+
+  while (node) {
+    switch (node->getType()) {
+      case ENUMERATE_COLLECTION:
+        return castTo<EnumerateCollectionNode const*>(node)->collection();
+      case INDEX:
+        return castTo<IndexNode const*>(node)->collection();
+      case TRAVERSAL:
+      case SHORTEST_PATH:
+        return castTo<GraphNode const*>(node)->collection();
+      case SCATTER:
+      case SCATTER_IRESEARCH_VIEW:
+        return nullptr; // diamond boundary
+      default:
+        node = node->getFirstDependency();
+        break;
+    }
+  }
+
+  return nullptr;
+}
+
 /*static*/ GatherNode::SortMode GatherNode::getSortMode(
     Collection const* collection,
     std::size_t shardsRequiredForHeapMerge /*= 5*/
@@ -283,27 +309,6 @@ GatherNode::GatherNode(
     SortMode sortMode) noexcept
   : ExecutionNode(plan, id),
     _sortmode(sortMode) {
-}
-
-Collection const* GatherNode::collection() const {
-  ExecutionNode const* node = getFirstDependency();
-
-  while (node) {
-    switch (node->getType()) {
-      case ENUMERATE_COLLECTION:
-        return castTo<EnumerateCollectionNode const*>(node)->collection();
-      case INDEX:
-        return castTo<IndexNode const*>(node)->collection();
-      case TRAVERSAL:
-      case SHORTEST_PATH:
-        return castTo<GraphNode const*>(node)->collection();
-      default:
-        node = node->getFirstDependency();
-        break;
-    }
-  }
-
-  return nullptr;
 }
 
 /// @brief toVelocyPack, for GatherNode

@@ -3057,7 +3057,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     gatherNode->addDependency(remoteNode);
     // On SmartEdge collections we have 0 shards and we need the elements
     // to be injected here as well. So do not replace it with > 1
-    if (!elements.empty() && gatherNode->collection()->numberOfShards() != 1) {
+    if (!elements.empty() && collection->numberOfShards() != 1) {
       gatherNode->elements(elements);
     }
 
@@ -3759,7 +3759,9 @@ void arangodb::aql::distributeSortToClusterRule(
           }
           // On SmartEdge collections we have 0 shards and we need the elements
           // to be injected here as well. So do not replace it with > 1
-          if (gatherNode->collection()->numberOfShards() != 1) {
+          auto const* collection = GatherNode::findCollection(*gatherNode);
+
+          if (collection && collection->numberOfShards() != 1) {
             gatherNode->elements(thisSortNode->elements());
           }
           modified = true;
