@@ -53,7 +53,7 @@ function CollectionSuite() {
         db._create(cn, { indexes: [{ id: "1", type: "edge", fields: ["_from"] }] });
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_INTERNAL.code, err.errorNum);
       }
 
       assertNull(db._collection(cn));
@@ -67,7 +67,7 @@ function CollectionSuite() {
         db._create(cn, { indexes: [{ id: "1234", type: "hash", fields: ["a"] }] });
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_INTERNAL.code, err.errorNum);
       }
 
       assertNull(db._collection(cn));
