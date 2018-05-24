@@ -2361,7 +2361,7 @@ function DatabaseDocumentSuiteReturnStuff () {
       var arr = collection.toArray();
       assertEqual(arr.length, 1);
       assertEqual(rv.new.c, 3);
-      assertEqual(rv.new.a, undefined);
+      assertFalse(rv.new.hasOwnProperty('a'));
       assertEqual(rv.old.a, 1);
 
       // overwrite (babies) with same key must work

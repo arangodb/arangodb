@@ -1232,7 +1232,11 @@ describe('babies collection document', function () {
       let res2 = b2[0];
 
       expect(req2.statusCode).to.equal(202);
-      expect(req2._key).to.equal(req1._key);
+      expect(res2._key).to.equal(res1._key);
+      expect(res2._oldRev).to.equal(res1._rev);
+      expect(res2.old.Hallo).to.equal(12);
+
+
     });
 
     it('overwrite multi', function () {
