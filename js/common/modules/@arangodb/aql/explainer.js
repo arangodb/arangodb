@@ -1496,6 +1496,7 @@ function debug(query, bindVars, options) {
   let result = {
     engine: db._engine(),
     version: db._version(true),
+    database: db._name(),
     query: input,
     collections: {}
   };
@@ -1505,8 +1506,51 @@ function debug(query, bindVars, options) {
   let stmt = db._createStatement(input);
   result.explain = stmt.explain(input.options);
 
+  let graphs = {};
+  let collections = result.explain.plan.collections;
+  let map = {};
+  collections.forEach(function(c) {
+    map[c.name] = true;
+  });
+
+  // export graphs
+  let findGraphs = function(nodes) {
+    nodes.forEach(function(node) {
+      if (node.type === 'TraversalNode') {
+        if (node.graph) {
+          try {
+            graphs[node.graph] = db._graphs.document(node.graph);
+          } catch (err) {}
+        }
+        if (node.graphDefinition) {
+          try {
+            node.graphDefinition.vertexCollectionNames.forEach(function(c) {
+              if (!map.hasOwnProperty(c)) {
+                map[c] = true;
+                collections.push({ name: c });
+              }
+            });
+          } catch (err) {}
+          try {
+            node.graphDefinition.edgeCollectionNames.forEach(function(c) {
+              if (!map.hasOwnProperty(c)) {
+                map[c] = true;
+                collections.push({ name: c });
+              }
+            });
+          } catch (err) {}
+        }
+      } else if (node.type === 'SubqueryNode') {
+        // recurse into subqueries
+        findGraphs(node.subquery.nodes);
+      }
+    });
+  };
+  // mangle with graphs used in query
+  findGraphs(result.explain.plan.nodes);
+
   // add collection information
-  result.explain.plan.collections.forEach(function(collection) {
+  collections.forEach(function(collection) {
     let c = db._collection(collection.name);
     let examples;
     if (input.options.examples) {
@@ -1526,7 +1570,7 @@ function debug(query, bindVars, options) {
       }
     }
     result.collections[collection.name] = { 
-      type: c.type() === 2,
+      type: c.type(),
       properties: c.properties(),
       indexes: c.getIndexes(true),
       count: c.count(),
@@ -1534,6 +1578,8 @@ function debug(query, bindVars, options) {
       examples
     };
   });
+  
+  result.graphs = graphs;
   return result;
 }
 
@@ -1545,16 +1591,29 @@ function debugDump(filename, query, bindVars, options) {
 
 function inspectDump(filename) {
   let data = JSON.parse(require("fs").read(filename));
+  if (data.database) {
+    print("/* original data gathered from database '" + data.database + "' */");
+  }
   if (db._engine().name !== data.engine.name) {
     print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
   }
+  print();
+
+  print("/* graphs */");
+  let graphs = data.graphs || {};
+  Object.keys(graphs).forEach(function(graph) {
+    let details = graphs[graph];
+    print("try { db._graphs.remove(" + JSON.stringify(graph) + "); } catch (err) {}");
+    print("db._graphs.insert(" + JSON.stringify(details) + ");");
+  });
+  print();
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
   Object.keys(data.collections).forEach(function(collection) {
     let details = data.collections[collection];
     print("db._drop(" + JSON.stringify(collection) + ");");
-    if (details.type === 3) {
+    if (details.type === false || details.type === 3) {
       print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
     } else {
       print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");

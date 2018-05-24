@@ -98,7 +98,7 @@ class Graph {
   std::string const& name() const { return _graphName; }
 
   /// @brief return a VelocyPack representation of the graph
-  void toVelocyPack(velocypack::Builder&, bool) const;
+  void toVelocyPack(velocypack::Builder&) const;
 
   virtual void enhanceEngineInfo(velocypack::Builder&) const;
 

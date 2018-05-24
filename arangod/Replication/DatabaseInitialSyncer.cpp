@@ -553,8 +553,11 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 #endif
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(&vocbase()), coll->id(),
-        AccessMode::Type::EXCLUSIVE);
+      transaction::StandaloneContext::Create(vocbase()),
+      coll->id(),
+      AccessMode::Type::EXCLUSIVE
+    );
+
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
     // smaller batch sizes should work better here
@@ -757,9 +760,10 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(&vocbase()), coll->id(),
-        AccessMode::Type::EXCLUSIVE);
-
+      transaction::StandaloneContext::Create(vocbase()),
+      coll->id(),
+      AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -767,9 +771,11 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
     }
 
     OperationOptions options;
+
     if (!_leaderId.empty()) {
       options.isSynchronousReplicationFrom = _leaderId;
     }
+
     OperationResult opRes = trx.truncate(coll->name(), options);
 
     if (opRes.fail()) {
@@ -809,7 +815,8 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 /// @brief determine the number of documents in a collection
 int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
   SingleCollectionTransaction trx(
-    transaction::StandaloneContext::Create(&vocbase()), col->id(),
+    transaction::StandaloneContext::Create(vocbase()),
+    col->id(),
     AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -819,13 +826,17 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
   }
 
   OperationResult result = trx.count(col->name(), false);
+
   if (result.result.fail()) {
     return -1;
   }
+
   VPackSlice s = result.slice();
+
   if (!s.isNumber()) {
     return -1;
   }
+
   return s.getNumber<int64_t>();
 }
 
@@ -882,7 +893,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   // -------------------------------------------------------------------------------------
 
   if (phase == PHASE_DROP_CREATE) {
-    auto* col = resolveCollection(&vocbase(), parameters).get();
+    auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
       // not found...
@@ -924,7 +935,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             setProgress("truncating " + collectionMsg);
 
             SingleCollectionTransaction trx(
-              transaction::StandaloneContext::Create(&vocbase()), col->id(),
+              transaction::StandaloneContext::Create(vocbase()),
+              col->id(),
               AccessMode::Type::EXCLUSIVE
             );
             Result res = trx.begin();
@@ -979,24 +991,26 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     std::string progress = "creating " + collectionMsg;
+
     if (_configuration._skipCreateDrop) {
       progress += " skipped because of configuration";
       setProgress(progress);
       return Result();
     }
-    
+
     setProgress(progress);
 
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Dump is creating collection "
       << parameters.toJson();
-    auto r = createCollection(&vocbase(), parameters, &col);
+
+    auto r = createCollection(vocbase(), parameters, &col);
 
     if (r.fail()) {
       return Result(r.errorNumber(), std::string("unable to create ") +
                     collectionMsg + ": " + TRI_errno_string(r.errorNumber()) +
                     ". Collection info " + parameters.toJson());
     }
-   
+
     return r;
   }
 
@@ -1007,7 +1021,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const progress = "dumping data for " + collectionMsg;
     setProgress(progress);
 
-    auto* col = resolveCollection(&vocbase(), parameters).get();
+    auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::string("cannot dump: ") +
@@ -1045,7 +1059,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
       try {
         SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(&vocbase()), col->id(),
+          transaction::StandaloneContext::Create(vocbase()),
+          col->id(),
           AccessMode::Type::EXCLUSIVE
         );
 

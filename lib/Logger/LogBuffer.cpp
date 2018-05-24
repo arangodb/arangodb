@@ -36,7 +36,7 @@ uint64_t LogBuffer::_ringBufferId = 0;
 LogBuffer LogBuffer::_ringBuffer[RING_BUFFER_SIZE];
 
 static void logEntry(LogMessage* message) {
-  auto timestamp = time(0);
+  auto timestamp = time(nullptr);
 
   MUTEX_LOCKER(guard, LogBuffer::_ringBufferLock);
 

@@ -55,11 +55,11 @@ RocksDBExportCursor::RocksDBExportCursor(
     bool hasCount
 ): Cursor(id, batchSize, ttl, hasCount),
    _guard(vocbase),
-   _resolver(&vocbase),
+   _resolver(vocbase),
    _restrictions(restrictions),
    _name(name),
    _trx(new SingleCollectionTransaction(
-     transaction::StandaloneContext::Create(&vocbase),
+     transaction::StandaloneContext::Create(vocbase),
      _name,
      AccessMode::Type::READ
    )),
@@ -112,7 +112,7 @@ VPackSlice RocksDBExportCursor::next() {
 size_t RocksDBExportCursor::count() const { return _size; }
 
 Result RocksDBExportCursor::dump(VPackBuilder& builder) {
-  auto ctx = transaction::StandaloneContext::Create(&(_guard.database()));
+  auto ctx = transaction::StandaloneContext::Create(_guard.database());
   VPackOptions const* oldOptions = builder.options;
 
   builder.options = ctx->getVPackOptions();
@@ -123,13 +123,16 @@ Result RocksDBExportCursor::dump(VPackBuilder& builder) {
 
   try {
     builder.add("result", VPackValue(VPackValueType::Array));
+
     size_t const n = batchSize();
 
     auto cb = [&, this](LocalDocumentId const& token, VPackSlice slice) {
       if (_position == _size) {
         return false;
       }
+
       builder.openObject();
+
       // Copy over shaped values
       for (auto const& entry : VPackObjectIterator(slice)) {
         std::string key(entry.key.copyString());

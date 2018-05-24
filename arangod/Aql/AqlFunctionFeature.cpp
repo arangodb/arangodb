@@ -57,6 +57,7 @@ void AqlFunctionFeature::validateOptions(
 void AqlFunctionFeature::prepare() {
   // set singleton
   AQLFUNCTIONS = this;
+  Functions::init();
 
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
@@ -334,7 +335,8 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_SUBTRACT", ".,.|.", true, false, true, &Functions::DateSubtract});
   add({"DATE_DIFF", ".,.,.|.", true, false, true, &Functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", true, false, true, &Functions::DateCompare});
-  add({"DATE_FORMAT", ".,.", true, false, true });
+  add({"DATE_FORMAT", ".,.", true, false, true, &Functions::DateFormat});
+  add({"DATE_TRUNC",   ".,.", true, false, true, &Functions::DateTrunc});
 }
 
 void AqlFunctionFeature::addMiscFunctions() {
@@ -343,7 +345,6 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"PASSTHRU", ".", false, false, true, &Functions::Passthru});
   addAlias("NOOPT", "PASSTHRU");
   add({"V8", ".", true, false, true });
-  add({"TEST_INTERNAL", ".,.", false, false, true });
   add({"SLEEP", ".", false, true, true, &Functions::Sleep});
   add({"COLLECTIONS", "", false, true, false, &Functions::Collections});
   add({"NOT_NULL", ".|+", true, false, true, &Functions::NotNull});
@@ -351,7 +352,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_DOCUMENT", ".|+", true, false, true, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", true, false, true, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", true, false, true, &Functions::IsSameCollection});
-  add({"CURRENT_USER", "", false, false, false });
+  add({"CURRENT_USER", "", false, false, false, &Functions::CurrentUser});
   add({"CURRENT_DATABASE", "", false, false, false, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", ".h", false, true, false, &Functions::CollectionCount});
   add({"ASSERT", ".,.", false, true, true, &Functions::Assert});

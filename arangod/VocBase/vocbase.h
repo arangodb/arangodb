@@ -316,12 +316,12 @@ struct TRI_vocbase_t {
   /// @brief looks up a view by identifier
   std::shared_ptr<arangodb::LogicalView> lookupView(
     TRI_voc_cid_t id
-  ) const noexcept;
+  ) const;
 
   /// @brief looks up a view by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalView> lookupView(
     std::string const& nameOrId
-  ) const noexcept;
+  ) const;
 
   /// @brief renames a collection
   int renameCollection(

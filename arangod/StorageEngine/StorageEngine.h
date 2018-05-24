@@ -39,6 +39,7 @@
 #include <chrono>
 
 namespace arangodb {
+
 class DatabaseInitialSyncer;
 class LogicalCollection;
 class LogicalView;
@@ -51,17 +52,20 @@ class TransactionState;
 class WalAccess;
 
 namespace rest {
+
 class RestHandlerFactory;
+
 }
 
 namespace transaction {
+
 class Context;
 class ContextData;
 struct Options;
+
 }
 
 class StorageEngine : public application_features::ApplicationFeature {
-
  public:
 
   // create the storage engine
@@ -90,17 +94,20 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual TransactionManager* createTransactionManager() = 0;
   virtual transaction::ContextData* createTransactionContextData() = 0;
-  virtual TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) = 0;
+  virtual std::unique_ptr<TransactionState> createTransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+  ) = 0;
   virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t,
                                                              AccessMode::Type, int nestingLevel) = 0;
 
   // when a new collection is created, this method is called to augment the collection
   // creation data with engine-specific information
-  virtual void addParametersForNewCollection(VPackBuilder& builder, VPackSlice info) {}
+  virtual void addParametersForNewCollection(VPackBuilder&, VPackSlice /*info*/) {}
 
   // when a new index is created, this method is called to augment the index
   // creation data with engine-specific information
-  virtual void addParametersForNewIndex(VPackBuilder& builder, VPackSlice info) {}
+  virtual void addParametersForNewIndex(VPackBuilder&, VPackSlice /*info*/) {}
 
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
@@ -112,7 +119,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // --------------------
 
   // return the name of the specific storage engine e.g. rocksdb
-  char const* typeName() const { return _typeName.c_str(); }
+  virtual char const* typeName() const { return _typeName.c_str(); }
 
   // inventory functionality
   // -----------------------
@@ -230,7 +237,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual bool inRecovery() { return false; }
 
   /// @brief function to be run when recovery is done
-  virtual void recoveryDone(TRI_vocbase_t* vocbase) {}
+  virtual void recoveryDone(TRI_vocbase_t& /*vocbase*/) {}
 
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
@@ -455,7 +462,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     for (auto& it: indexFactory().supportedIndexes()) {
       builder.add(velocypack::Value(it));
     }
-
+    
     builder.close(); // indexes
     builder.close(); // supports
     builder.close(); // object

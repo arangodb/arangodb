@@ -499,7 +499,7 @@ std::vector<std::string> AgencyCommManager::slicePath(std::string const& p1) {
 }
 
 std::string AgencyCommManager::generateStamp() {
-  time_t tt = time(0);
+  time_t tt = time(nullptr);
   struct tm tb;
   char buffer[21];
 

@@ -392,7 +392,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                                             tickStart);
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
@@ -407,11 +407,13 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     generateError(GeneralResponse::responseCode(res), res);
     return;
   }
+
   bool const checkMore = (dump._lastFoundTick > 0 &&
                           dump._lastFoundTick != state.lastCommittedTick);
 
   // generate the result
   size_t length = 0;
+
   if (useVst) {
     length = dump._slices.size();
   } else {
@@ -510,7 +512,7 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
     return;
   }
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(
@@ -519,13 +521,14 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // and dump
   int res =
       MMFilesDetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
+
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const err = "failed to determine open transactions";
     LOG_TOPIC(ERR, Logger::REPLICATION) << err;
     generateError(rest::ResponseCode::BAD, res, err);
     return;
   }
-    
+
   // generate the result
   size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
@@ -693,7 +696,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
 
   // initialize a container with the keys
   auto keys = std::make_unique<MMFilesCollectionKeys>(
-    &_vocbase, std::move(guard), id, 300.0
+    _vocbase, std::move(guard), id, 300.0
   );
 
   std::string const idString(std::to_string(keys->id()));
@@ -865,7 +868,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   try {
-    auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     VPackBuilder resultBuilder(ctx->getVPackOptions());
 
     resultBuilder.openArray();
@@ -882,6 +885,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
         collectionKeys->release();
         return;
       }
+
       collectionKeys->dumpDocs(resultBuilder, chunk,
                                static_cast<size_t>(chunkSize), offsetInChunk,
                                maxChunkSize, parsedIds);
@@ -1003,13 +1007,13 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(&_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),
                                      includeSystem, 0);
-  
+
   int res = MMFilesDumpCollectionReplication(&dump, col, tickStart, tickEnd,
                                              withTicks);
 

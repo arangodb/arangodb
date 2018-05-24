@@ -269,8 +269,6 @@ AqlValue MMFilesAqlFunctions::Near(arangodb::aql::Query* query,
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
 
 /// @brief function WITHIN
@@ -331,8 +329,6 @@ AqlValue MMFilesAqlFunctions::Within(
   } catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
-
-  return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
 
 void MMFilesAqlFunctions::registerResources() {

@@ -137,9 +137,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
   } else {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(&(collection->vocbase())),
-        collection->id(),
-        AccessMode::Type::READ
+      transaction::StandaloneContext::Create(collection->vocbase()),
+      collection->id(),
+      AccessMode::Type::READ
     );
 
     // we actually need this hint here, so that the collection is not
@@ -154,7 +154,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     // get list of indexes
     auto indexes = collection->getIndexes();
+
     tmp.openArray(true);
+
     for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
       idx->toVelocyPack(tmp, withFigures, false);
     }
@@ -567,8 +569,9 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
   TRI_idx_iid_t iid = 0;
   if (ServerState::instance()->isCoordinator()) {
-    CollectionNameResolver resolver(&(collection->vocbase()));
+    CollectionNameResolver resolver(collection->vocbase());
     Result res = Indexes::extractHandle(collection, &resolver, indexArg, iid);
+
     if (!res.ok()) {
       return res;
     }

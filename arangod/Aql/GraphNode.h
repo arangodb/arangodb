@@ -65,7 +65,7 @@ class GraphNode : public ExecutionNode {
   virtual ~GraphNode();
 
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
-                          bool verbose) const override;
+                          unsigned flags) const override;
 
   /// @brief flag, if smart traversal (enterprise edition only!) is done
   bool isSmart() const { return _isSmart; }

@@ -239,7 +239,7 @@ namespace arangodb {
   template <>
   bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
     bool found = false;
-    std::string const& val = value(key, found);
+    std::string const& val = this->value(key, found);
     if (found) {
       return StringUtils::boolean(val);
     }
@@ -249,7 +249,7 @@ namespace arangodb {
   template <>
   uint64_t GeneralRequest::parsedValue(std::string const& key, uint64_t valueNotFound) {
     bool found = false;
-    std::string const& val = value(key, found);
+    std::string const& val = this->value(key, found);
     if (found) {
       return StringUtils::uint64(val);
     }
@@ -259,7 +259,7 @@ namespace arangodb {
   template <>
   double GeneralRequest::parsedValue(std::string const& key, double valueNotFound) {
     bool found = false;
-    std::string const& val = value(key, found);
+    std::string const& val = this->value(key, found);
     if (found) {
       return StringUtils::doubleDecimal(val);
     }

@@ -65,16 +65,31 @@ arangodb::Result createLink(
 ) {
   TRI_ASSERT(builder.isEmpty());
 
+  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+      irs::string_ref const& key
+  )->bool {
+    // ignored fields
+    return key != arangodb::StaticStrings::IndexType
+      && key != StaticStrings::ViewIdField;
+  };
+
   builder.openObject();
-  if (!mergeSlice(builder, link)
-      || !IResearchLinkHelper::setType(builder)
-      || !IResearchLinkHelper::setView(builder, view.id())) {
+  builder.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(IResearchLinkHelper::type())
+  );
+  builder.add(
+    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.id())
+  );
+
+  if (!mergeSliceSkipKeys(builder, link, acceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failed to update link definition with the view name while updating IResearch view '")
       + std::to_string(view.id()) + "' collection '" + collection.name() + "'"
     );
   }
+
   builder.close();
 
   VPackBuilder tmp;
@@ -98,8 +113,7 @@ arangodb::Result updateLinks(
     newLinks = VPackSlice::emptyObjectSlice();
   }
 
-  arangodb::CollectionNameResolver resolver(&view.vocbase());
-
+  arangodb::CollectionNameResolver resolver(view.vocbase());
   arangodb::Result res;
   std::string error;
   VPackBuilder builder;
@@ -509,4 +523,3 @@ Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
 
 } // iresearch
 } // arangodb
-

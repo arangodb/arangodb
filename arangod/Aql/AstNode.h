@@ -306,13 +306,13 @@ struct AstNode {
 
   /// @brief set a flag for the node
   inline void setFlag(AstNodeFlagType flag) const {
-    flags |= static_cast<decltype(flags)>(flag);
+    flags |= flag;
   }
 
   /// @brief set two flags for the node
   inline void setFlag(AstNodeFlagType typeFlag,
                       AstNodeFlagType valueFlag) const {
-    flags |= static_cast<decltype(flags)>(typeFlag | valueFlag);
+    flags |= (typeFlag | valueFlag);
   }
 
   /// @brief whether or not the node value is trueish
@@ -323,9 +323,7 @@ struct AstNode {
 
   /// @brief whether or not the members of a list node are sorted
   inline bool isSorted() const {
-    return ((flags &
-             static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED)) ==
-            static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED));
+    return ((flags & (DETERMINED_SORTED | VALUE_SORTED)) == (DETERMINED_SORTED | VALUE_SORTED));
   }
 
   /// @brief whether or not a value node is NULL

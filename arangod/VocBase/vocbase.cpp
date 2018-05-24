@@ -1121,7 +1121,7 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 /// @brief looks up a view by identifier
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
-) const noexcept {
+) const {
   if (ServerState::instance()->isCoordinator()) {
     std::string const viewId = StringUtils::itoa(id);
     return ClusterInfo::instance()->getView(name(), viewId);
@@ -1142,7 +1142,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 /// @brief looks up a view by name or stringified cid or uuid
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
-) const noexcept{
+) const {
   if (ServerState::instance()->isCoordinator()) {
     return ClusterInfo::instance()->getView(name(), nameOrId);
   }
@@ -1482,7 +1482,7 @@ int TRI_vocbase_t::renameCollection(
   auto res = collection->rename(std::string(newName), doSync);
 
   if (!res.ok()) {
-    res.errorNumber(); // rename failed
+    return res.errorNumber(); // rename failed
   }
 
   // The collection is renamed. Now swap cache entries.
@@ -1881,8 +1881,8 @@ bool TRI_vocbase_t::IsAllowedName(
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
+  TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
   auto* applier = DatabaseReplicationApplier::create(*this);
-
   _replicationApplier.reset(applier);
 }
 

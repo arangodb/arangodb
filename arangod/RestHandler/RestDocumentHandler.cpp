@@ -112,19 +112,15 @@ bool RestDocumentHandler::createDocument() {
   }
 
   arangodb::OperationOptions opOptions;
-  opOptions.isRestore =
-      extractBooleanParameter(StaticStrings::IsRestoreString, false);
-  opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.returnNew =
-      extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
+  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
 
@@ -227,11 +223,13 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
       builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(ifRid)));
     }
   }
+
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  auto ctx(transaction::StandaloneContext::Create(&_vocbase));
+  auto ctx(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
+
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // ...........................................................................
@@ -371,18 +369,12 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   OperationOptions opOptions;
-  opOptions.isRestore =
-      extractBooleanParameter(StaticStrings::IsRestoreString, false);
-  opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
-  opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  opOptions.returnNew =
-      extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  opOptions.returnOld =
-      extractBooleanParameter(StaticStrings::ReturnOldString, false);
-  opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+  opOptions.isRestore = _request->parsedValue(StaticStrings::IsRestoreString, false);
+  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
+  opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
+  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
+  opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -410,16 +402,19 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
                        VPackValue(TRI_RidToString(revision)));
         }
       }
+
       body = builder->slice();
     }
+
     if (revision != 0) {
       opOptions.ignoreRevs = false;
     }
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+
   if (!isArrayCase) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -439,9 +434,9 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   if (isPatch) {
     // patching an existing document
     opOptions.keepNull =
-        extractBooleanParameter(StaticStrings::KeepNullString, true);
+        _request->parsedValue(StaticStrings::KeepNullString, true);
     opOptions.mergeObjects =
-        extractBooleanParameter(StaticStrings::MergeObjectsString, true);
+        _request->parsedValue(StaticStrings::MergeObjectsString, true);
     result = trx.update(collectionName, body, opOptions);
   } else {
     result = trx.replace(collectionName, body, opOptions);
@@ -503,17 +498,17 @@ bool RestDocumentHandler::deleteDocument() {
 
   OperationOptions opOptions;
   opOptions.returnOld =
-      extractBooleanParameter(StaticStrings::ReturnOldString, false);
+      _request->parsedValue(StaticStrings::ReturnOldString, false);
   opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+      _request->parsedValue(StaticStrings::IgnoreRevsString, true);
   opOptions.waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.silent =
-      extractBooleanParameter(StaticStrings::SilentString, false);
+      _request->parsedValue(StaticStrings::SilentString, false);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder builder;
   VPackSlice search;
   std::shared_ptr<VPackBuilder> builderPtr;
@@ -521,13 +516,16 @@ bool RestDocumentHandler::deleteDocument() {
   if (suffixes.size() == 2) {
     {
       VPackObjectBuilder guard(&builder);
+
       builder.add(StaticStrings::KeyString, VPackValue(key));
+
       if (revision != 0) {
         opOptions.ignoreRevs = false;
         builder.add(StaticStrings::RevString,
                     VPackValue(TRI_RidToString(revision)));
       }
     }
+
     search = builder.slice();
   } else {
     try {
@@ -598,10 +596,9 @@ bool RestDocumentHandler::readManyDocuments() {
   std::string const& collectionName = suffixes[0];
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs =
-      extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
+  opOptions.ignoreRevs = _request->parsedValue(StaticStrings::IgnoreRevsString, true);
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName,
                                   AccessMode::Type::READ);
 

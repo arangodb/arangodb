@@ -956,9 +956,8 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 
+/// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
-
 
 int selectivityEstimatesOnCoordinator(
   std::string const& dbname,
@@ -2618,16 +2617,14 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
   bool waitForSyncReplication, bool enforceReplicationFactor,
   VPackSlice) {
-  
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> avoid = col->avoidServers();
-
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<std::string> dbServers = ci->getCurrentDBServers();
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
   if (!distributeShardsLike.empty()) {
-    CollectionNameResolver resolver(&(col->vocbase()));
+    CollectionNameResolver resolver(col->vocbase());
     TRI_voc_cid_t otherCid =
       resolver.getCollectionIdCluster(distributeShardsLike);
 

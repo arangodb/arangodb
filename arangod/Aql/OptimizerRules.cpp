@@ -2691,22 +2691,22 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     Collection const* c = getCollection(nodes[0]);
     TRI_ASSERT(c != nullptr);
 
-    TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
-
+    auto& vocbase = plan->getAst()->query()->vocbase();
     ExecutionNode* rootNode = plan->root();
 
     // insert a remote node
     ExecutionNode* remoteNode = new RemoteNode(
-      plan.get(), plan->nextId(), vocbase, "", "", ""
+      plan.get(), plan->nextId(), &vocbase, "", "", ""
     );
+
     plan->registerNode(remoteNode);
     remoteNode->addDependency(rootNode);
 
     // insert a gather node
-    ExecutionNode* gatherNode = new GatherNode(plan.get(), plan->nextId(), vocbase, c);
+    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), &vocbase, c);
+
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
-
     plan->root(gatherNode, true);
     wasModified = true;
   }
@@ -3348,7 +3348,6 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
     // found a node we need to replace in the plan
 
-    auto const& parents = node->getParents();
     auto const& deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
 
@@ -5373,17 +5372,22 @@ static bool isValueTypeCollection(AstNode const* node) {
 static aql::Collection* addCollectionToQuery(Query* query, std::string const& cname) {
   aql::Collections* colls = query->collections();
   aql::Collection* coll = colls->get(cname);
+
   if (coll == nullptr) { // TODO: cleanup this mess
     coll = colls->add(cname, AccessMode::Type::READ);
+
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      auto cptr = query->trx()->vocbase()->lookupCollection(cname);
+      auto cptr = query->trx()->vocbase().lookupCollection(cname);
+
       coll->setCollection(cptr.get());
       // FIXME: does this need to happen in the coordinator?
       query->trx()->addCollectionAtRuntime(cname);
     }
   }
+
   TRI_ASSERT(coll != nullptr);
+
   return coll;
 }
 
@@ -5415,7 +5419,9 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (func->name != "FULLTEXT" || flltxtNode->numMembers() != 1) {
     return false;
   }
+
   AstNode* fargs = flltxtNode->getMember(0);
+
   if (fargs->numMembers() != 3 && fargs->numMembers() != 4) {
     return false;
   }
@@ -5424,6 +5430,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
   AstNode* limitArg = fargs->numMembers() == 4 ? fargs->getMember(3) : nullptr;
+
   if (!isValueTypeCollection(collArg) || !attrArg->isStringValue() ||
       !queryArg->isStringValue() || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
       (limitArg != nullptr && !limitArg->isNumericValue())) {
@@ -5431,9 +5438,11 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   }
 
   std::string cname = collArg->getString();
-  TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
+  auto& vocbase = plan->getAst()->query()->vocbase();
   std::vector<basics::AttributeName> field;
+
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
+
   if (field.empty()) {
     return false;
   }
@@ -5441,11 +5450,14 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   // check for suitable indexes
   std::shared_ptr<arangodb::Index> index;
   Ast* ast = plan->getAst();
+
   try {
     auto indexes = ast->query()->trx()->indexesForCollection(cname);
+
     for (auto& idx : indexes) {
       if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         TRI_ASSERT(idx->fields().size() == 1);
+
         if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
           index = idx;
           break;
@@ -5474,11 +5486,19 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
 
   // we assume by now that collection `name` exists
   aql::Collection* coll = addCollectionToQuery(ast->query(), cname);
-  auto inode = new IndexNode(plan, plan->nextId(), vocbase,
-                             coll, elnode->outVariable(),
-                             std::vector<transaction::Methods::IndexHandle>{
-                               transaction::Methods::IndexHandle{index}},
-                             condition.get(), IndexIteratorOptions());
+  auto inode = new IndexNode(
+    plan,
+    plan->nextId(),
+    &vocbase,
+    coll,
+    elnode->outVariable(),
+    std::vector<transaction::Methods::IndexHandle>{
+      transaction::Methods::IndexHandle{index}
+    },
+    condition.get(),
+    IndexIteratorOptions()
+  );
+
   plan->registerNode(inode);
   condition.release();
   plan->replaceNode(elnode, inode);
@@ -5488,6 +5508,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
 
   if (limitArg != nullptr) { // add LIMIT
     size_t limit = static_cast<size_t>(limitArg->getIntValue());
+
     if (ln == nullptr) {
       ln = new LimitNode(plan, plan->nextId(), 0, limit);
       plan->registerNode(ln);

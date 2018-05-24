@@ -121,7 +121,7 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
 
   std::string const& graphName = getNextSuffix();
 
-  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
 
   std::shared_ptr<Graph const> graph = getGraph(ctx, graphName);
 
@@ -309,7 +309,7 @@ Result RestGraphHandler::vertexActionRead(
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
   std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(&_vocbase);
+      transaction::StandaloneContext::Create(_vocbase);
   GraphOperations gops{*graph, ctx};
   auto resultT = gops.getVertex(collectionName, key, maybeRev);
 
@@ -490,7 +490,7 @@ Result RestGraphHandler::edgeActionRead(
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
   std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(&_vocbase);
+      transaction::StandaloneContext::Create(_vocbase);
   GraphOperations gops{*graph, ctx};
   auto resultT = gops.getEdge(definitionName, key, maybeRev);
 
@@ -551,10 +551,9 @@ Result RestGraphHandler::edgeActionRemove(
       << "key = " << key;
 
   bool waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
-  bool returnOld =
-      extractBooleanParameter(StaticStrings::ReturnOldString, false);
+  bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
 
   bool isValidRevision;
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
@@ -571,7 +570,7 @@ Result RestGraphHandler::edgeActionRemove(
       << "rev = " << (maybeRev ? maybeRev.get() : 0ul);
 
   std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(&_vocbase);
+      transaction::StandaloneContext::Create(_vocbase);
   GraphOperations gops{*graph, ctx};
 
   auto resultT =
@@ -665,13 +664,11 @@ Result RestGraphHandler::documentModify(
   }
 
   bool waitForSync =
-      extractBooleanParameter(StaticStrings::WaitForSyncString, false);
-  bool returnNew =
-      extractBooleanParameter(StaticStrings::ReturnNewString, false);
-  bool returnOld =
-      extractBooleanParameter(StaticStrings::ReturnOldString, false);
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
+  bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
   // Note: the default here differs from the one in the RestDoumentHandler
-  bool keepNull = extractBooleanParameter(StaticStrings::KeepNullString, true);
+  bool keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
 
   // extract the revision, if single document variant and header given:
   std::unique_ptr<VPackBuilder> builder;
@@ -684,7 +681,7 @@ Result RestGraphHandler::documentModify(
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
   std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(&_vocbase);
+      transaction::StandaloneContext::Create(_vocbase);
   GraphOperations gops{*graph, ctx};
 
   ResultT<std::pair<OperationResult, Result>> resultT{

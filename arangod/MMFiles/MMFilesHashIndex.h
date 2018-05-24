@@ -245,16 +245,13 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   char const* typeName() const override { return "hash"; }
 
-  bool allowExpansion() const override { return true; }
-
   bool canBeDropped() const override { return true; }
 
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override;
+  double selectivityEstimate(arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
 

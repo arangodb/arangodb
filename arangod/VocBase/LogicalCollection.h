@@ -184,11 +184,11 @@ class LogicalCollection: public LogicalDataSource {
   std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
   void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
 
-  double clusterIndexEstimatesTTL(){
+  double clusterIndexEstimatesTTL() const {
     return _clusterEstimateTTL;
   }
 
-  void clusterIndexEstimatesTTL(double ttl){
+  void clusterIndexEstimatesTTL(double ttl) {
     _clusterEstimateTTL = ttl;
   }
   // End - Estimates

@@ -651,9 +651,13 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
   return new RocksDBTransactionContextData();
 }
 
-TransactionState* RocksDBEngine::createTransactionState(
-    TRI_vocbase_t* vocbase, transaction::Options const& options) {
-  return new RocksDBTransactionState(vocbase, options);
+std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
+    TRI_vocbase_t& vocbase,
+    transaction::Options const& options
+) {
+  return std::unique_ptr<TransactionState>(
+    new RocksDBTransactionState(vocbase, TRI_NewTickServer(), options)
+  );
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(
@@ -700,8 +704,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
        iter->Next()) {
     auto slice = VPackSlice(iter->value().data());
 
-    //// check format
-    // id
+    //// check format id
     VPackSlice idSlice = slice.get("id");
     if (!idSlice.isString()) {
       LOG_TOPIC(ERR, arangodb::Logger::STARTUP)
@@ -1043,7 +1046,7 @@ bool RocksDBEngine::inRecovery() {
   return RocksDBRecoveryManager::instance()->inRecovery();
 }
 
-void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
+void RocksDBEngine::recoveryDone(TRI_vocbase_t& vocbase) {
   // nothing to do here
 }
 

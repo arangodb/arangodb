@@ -34,7 +34,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -1261,7 +1260,7 @@ bool HeartbeatThread::sendServerState() {
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
   if (agentPool.isObject() && agentPool.get("pool").isObject() &&
-      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 1) {
+      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
     _agency.updateEndpoints(agentPool.get("pool"));
   } else {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Cannot find an agency persisted in RAFT 8|";

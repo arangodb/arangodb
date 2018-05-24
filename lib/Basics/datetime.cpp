@@ -133,6 +133,10 @@ bool arangodb::basics::parse_dateTime(
   // returns true if "p" pointed to a valid number, and false otherwise
   auto parseDateComponent = [](char const*& p, char const* e, int& result) -> bool {
     char const* s = p; // remember initial start
+    if (p < e && *p == '-') {
+      // skip over initial '-'
+      ++p;
+    }
     while (p < e && *p >= '0' && *p <= '9') {
       ++p;
     }
