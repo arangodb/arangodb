@@ -129,7 +129,7 @@ public:
   bool isWriteLocked() const { return _state.load(std::memory_order_relaxed) & WRITE_LOCK; }
 
  private:
-  std::atomic<unsigned> _state;
+  std::atomic<uint32_t> _state;
 
   static const unsigned WRITE_LOCK = 1;
 

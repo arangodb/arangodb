@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 

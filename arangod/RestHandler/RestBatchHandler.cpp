@@ -212,7 +212,7 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       // ignore any errors here, will be handled later by inspecting the response
       try {
-        ExecContextScope scope(nullptr);// workaround because of assertions
+        ExecContextScope scope(nullptr);// workaround because of assertions        
         handler->runHandler([](RestHandler*) {});
       } catch (...) {
       }
