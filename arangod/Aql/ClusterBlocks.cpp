@@ -1223,7 +1223,7 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
     urlPart + _queryId;
 
-  ++_engine->_stats.httpRequests;
+  ++_engine->_stats.requests;
   {
     JobGuard guard(SchedulerFeature::SCHEDULER);
     guard.block();
