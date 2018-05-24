@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,22 +27,23 @@ using namespace arangodb::basics;
 
 /// @brief locks for writing
 void ReadWriteLock::writeLock() {
-  if (tryWriteLock())
+  if (tryWriteLock()) {
     return;
+  }
 
   // the lock is either hold by another writer or we have active readers
   // -> announce that we want to write
   _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
 
   std::unique_lock<std::mutex> guard(_writer_mutex);
-  while (true)
-  {
+  while (true) {
     auto state = _state.load(std::memory_order_relaxed);
-    while ((state & ~QUEUED_WRITER_MASK) == 0)
-    {
+    // try to acquire write lock as long as no readers or writers are active,
+    while ((state & ~QUEUED_WRITER_MASK) == 0) {
       // try to acquire lock and perform queued writer decrement in one step
-      if (_state.compare_exchange_strong(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK, std::memory_order_acquire))
+      if (_state.compare_exchange_strong(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK, std::memory_order_acquire)) {
         return;
+      }
     }
     _writers_bell.wait(guard);
   }
@@ -53,8 +54,7 @@ bool ReadWriteLock::tryWriteLock() {
   auto state = _state.load(std::memory_order_relaxed);
   // try to acquire write lock as long as no readers or writers are active,
   // we might "overtake" other queued writers though.
-  while ((state & ~QUEUED_WRITER_MASK) == 0)
-  {
+  while ((state & ~QUEUED_WRITER_MASK) == 0) {
     if (_state.compare_exchange_weak(state, state | WRITE_LOCK, std::memory_order_acquire)) {
       return true; // we successfully acquired the write lock!
     }
@@ -64,14 +64,15 @@ bool ReadWriteLock::tryWriteLock() {
 
 /// @brief locks for reading
 void ReadWriteLock::readLock() {
-  if (tryReadLock())
+  if (tryReadLock()) {
     return;
+  }
 
   std::unique_lock<std::mutex> guard(_reader_mutex);
-  while (true)
-  {
-    if (tryReadLock())
+  while (true) {
+    if (tryReadLock()) {
       return;
+    }
 
     _readers_bell.wait(guard);
   }
@@ -80,7 +81,7 @@ void ReadWriteLock::readLock() {
 /// @brief locks for reading, tries only
 bool ReadWriteLock::tryReadLock() {
   auto state = _state.load(std::memory_order_relaxed);
-  // try to acquire write lock as long as no writers are active or queued
+  // try to acquire read lock as long as no writers are active or queued
   while ((state & ~READER_MASK) == 0) {
     if (_state.compare_exchange_weak(state, state + READER_INC, std::memory_order_acquire)) {
       return true;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,8 +57,7 @@ public:
     auto state = _state.load(std::memory_order_relaxed);    
     // try to acquire write lock as long as no readers or writers are active,
     // we might "overtake" other queued writers though.
-    while ((state & ~QUEUED_WRITER_MASK) == 0)
-    {
+    while ((state & ~QUEUED_WRITER_MASK) == 0) {
       if (_state.compare_exchange_weak(state, state | WRITE_LOCK, std::memory_order_acquire)) {
         return true; // we successfully acquired the write lock!
       }
@@ -67,23 +66,24 @@ public:
   }
 
   bool writeLock(uint64_t maxAttempts = UINT64_MAX) {
-    if (tryWriteLock())
+    if (tryWriteLock()) {
       return true;
+    }
 
     uint64_t attempts = 0;
 
     // the lock is either hold by another writer or we have active readers
     // -> announce that we want to write
     auto state = _state.fetch_add(QUEUED_WRITER_INC, std::memory_order_relaxed);
-    while (++attempts < maxAttempts)
-    {
-      while ((state & ~QUEUED_WRITER_MASK) == 0)
-      {
+    while (++attempts < maxAttempts) {
+      while ((state & ~QUEUED_WRITER_MASK) == 0) {
         // try to acquire lock and perform queued writer decrement in one step
-        if (_state.compare_exchange_strong(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK, std::memory_order_acquire))
+        if (_state.compare_exchange_strong(state, (state - QUEUED_WRITER_INC) | WRITE_LOCK, std::memory_order_acquire)) {
           return true;
-        if (++attempts > maxAttempts)
+        }
+        if (++attempts > maxAttempts) {
           return false;
+        }
       }
       cpu_relax();
       state = _state.load(std::memory_order_relaxed);
@@ -105,8 +105,9 @@ public:
   bool readLock(uint64_t maxAttempts = UINT64_MAX) {
     uint64_t attempts = 0;
     while (attempts++ < maxAttempts) {
-      if (tryReadLock())
+      if (tryReadLock()) {
         return true;
+      }
       cpu_relax();
     }
     return false;
