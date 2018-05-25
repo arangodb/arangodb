@@ -314,4 +314,51 @@ describe('_api/gharial', () => {
     expect(db._collection(vName)).to.not.be.null;
   });
 
+  it('should check if incident edges are deleted with a vertex', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    // vertices
+    const alice = 'alice';
+    const bob = 'bob';
+    const eve = 'eve';
+
+    expect(db._collection(eName)).to.be.null;
+    expect(db._collection(vName)).to.be.null;
+    // load graph
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    // pre-check that the expected edges are there
+    expect(db[eName].all().toArray().length).to.equal(5);
+
+    // delete vertex bob
+    const res = request.delete(`${url}/${exampleGraphName}/vertex/${vName}/${bob}`);
+
+    // check response
+    expect(res).to.be.an.instanceof(request.Response);
+    expect(res.body).to.be.a('string');
+    const body = JSON.parse(res.body);
+    // 202 without waitForSync (default)
+    expect(body).to.eql({
+      error: false,
+      code: 202,
+      removed: true
+    });
+
+    // check that all edges incident to bob were removed as well
+    expect(db[eName].all().toArray().length).to.equal(1);
+
+    // check that the remaining edge is the expected one
+    const eveKnowsAlice = db[eName].all().toArray()[0];
+    expect(eveKnowsAlice).to.have.all.keys(['_key', '_id', '_rev', '_from', '_to', 'vertex']);
+    expect(eveKnowsAlice).to.include({
+      _from: `${vName}/${eve}`,
+      _to: `${vName}/${alice}`,
+      vertex: eve
+    });
+  });
 });
