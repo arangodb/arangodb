@@ -28,7 +28,6 @@
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // /////////////////////////////////////////////////////////////////////////////
 
-var request = require("@arangodb/request");
 var internal = require('internal');
 var fs = require('fs');
 
@@ -48,6 +47,11 @@ function INFO() {
 function WARN() {
   let args = Array.prototype.slice.call(arguments);
   print.apply(print, ["WARN"].concat(args));
+}
+
+function ERROR() {
+  let args = Array.prototype.slice.call(arguments);
+  print.apply(print, ["ERROR"].concat(args));
 }
 
 function loadAgencyConfig() {
@@ -257,7 +261,7 @@ function agencyDoctor(obj) {
       if (servers[serverId].Status == "BAD") {
         WARN('bad db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
       } else if (servers[serverId].Status == "FAILED") {
-        ERROR('failed db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
+        WARN('*** FAILED *** db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
       }
     }
   });
@@ -273,11 +277,11 @@ function agencyDoctor(obj) {
       report.servers.coordinators[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName, status : servers[serverId].Status};
 
       if (!supervision.Health.hasOwnProperty(serverId)) {
-        ERROR('planned db server ' + serverId + ' missing in supervision\'s health records.');
+        WARN('planned coordinator ' + serverId + ' missing in supervision\'s health records.');
       }
       servers[serverId] = supervision.Health[serverId];
       if (servers[serverId].Status != "GOOD") {
-        WARN('unhealthy db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
+        WARN('*** FAILED *** coordinator ' + serverId + '(' + servers[serverId].ShortName+ ')');
       }
     }
   });
@@ -564,21 +568,43 @@ function getServerData(arango) {
         const log = arango.GET('_admin/log').text;  // log api
         const statistics = arango.GET('_admin/statistics').text;  // log api
         var tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'dmesg | tee /tmp/dmesg.out > /dev/null']);
-        const dmesg = fs.readFileSync('/tmp/dmesg.out', 'utf8');
+          '/bin/bash', ['-c', 'dmesg | tee /tmp/doctor-dmesg.out > /dev/null']);
+        const dmesg = fs.readFileSync('/tmp/doctor-dmesg.out', 'utf8');
         tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'df -h | tee /tmp/df.out > /dev/null']);
         const df = fs.readFileSync('/tmp/df.out', 'utf8');
+        tmp = executeExternalAndWait(
+          '/bin/bash', ['-c', 'vmstat -s | tee /tmp/doctor-vmstat.out > /dev/null']);
+        const vmstat = fs.readFileSync('/tmp/doctor-vmstat.out', 'utf8');
         tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'uptime | tee /tmp/uptime.out > /dev/null']);
         const uptime = fs.readFileSync('/tmp/uptime.out', 'utf8');
         tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'uname -a | tee /tmp/uname.out > /dev/null']);
         const uname = fs.readFileSync('/tmp/uname.out', 'utf8');
+
+        var local = {};
+        var localDBs = db._databases();
+        localDBs.forEach( function(localDB) {
+          db._useDatabase(localDB);
+          local[localDB] = {};
+          var localCols = db._collections();
+          localCols.forEach( function(localCol) {
+            var colName = localCol.name();
+            local[localDB][colName] = {};
+            Object.keys(localCol.properties()).forEach( function(property) {
+              local[localDB][colName][property] = localCol.properties()[property];
+            });
+            local[localDB][colName].index = localCol.getIndexes();
+            local[localDB][colName].count = localCol.count();
+          });});
+        db._useDatabase('_system');
+
         // Version, logs, dmesg, df, uptime, uname 
         report[server] = { version: version, log: log, dmesg: dmesg,
                            statistics: statistics, df: df, uptime: uptime,
-                           uname: uname};
+                           uname: uname, vmstat: vmstat, local: local};
+
       } catch (e) {
         print(e);
       }
