@@ -127,15 +127,15 @@ class Graph {
 class GraphOperations {
  private:
   Graph const& _graph;
-  std::shared_ptr<transaction::StandaloneContext> _ctx;
+  std::shared_ptr<transaction::Context> _ctx;
 
   Graph const& graph() const { return _graph; };
-  std::shared_ptr<transaction::StandaloneContext>& ctx() { return _ctx; };
+  std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
 
  public:
   GraphOperations() = delete;
   GraphOperations(Graph const& graph_,
-                  std::shared_ptr<transaction::StandaloneContext> ctx_)
+                  std::shared_ptr<transaction::Context> ctx_)
       : _graph(graph_), _ctx(std::move(ctx_)) {}
 
   // TODO I added the complex result type for the get* methods to exactly
@@ -163,6 +163,11 @@ class GraphOperations {
   /// @brief Remove a single edge document from definitionName.
   ResultT<std::pair<OperationResult, Result>> removeEdge(
       const std::string& definitionName, const std::string& key,
+      boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
+
+  /// @brief Remove a vertex and all incident edges in the graph
+  ResultT<std::pair<OperationResult, Result>> removeVertex(
+      const std::string& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
 
   ResultT<std::pair<OperationResult, Result>> updateEdge(
@@ -209,8 +214,7 @@ class GraphCache {
   using CacheType = std::unordered_map<std::string, EntryType>;
 
   const std::shared_ptr<const Graph> getGraph(
-      std::shared_ptr<transaction::StandaloneContext> ctx,
-      std::string const& name,
+      std::shared_ptr<transaction::Context> ctx, std::string const& name,
       std::chrono::seconds maxAge = std::chrono::seconds(60));
 
  private:

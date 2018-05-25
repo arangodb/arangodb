@@ -35,12 +35,14 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/UserTransaction.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Graphs.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
+using UserTransaction = transaction::UserTransaction;
 
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
@@ -431,6 +433,45 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceVertex(
                          waitForSync, returnOld, returnNew, keepNull);
 }
 
+ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
+    const std::string& collectionName, const std::string& key,
+    boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
+  OperationOptions options;
+  options.waitForSync = waitForSync;
+  options.returnOld = returnOld;
+  options.ignoreRevs = !rev.is_initialized();
+
+  VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
+  VPackSlice search{searchBuffer->data()};
+
+  auto const& edgeCollections = _graph.edgeCollections();
+  std::vector<std::string> trxCollections;
+
+  trxCollections.emplace_back(collectionName);
+
+  for (auto const& it : edgeCollections) {
+    trxCollections.emplace_back(it);
+  }
+
+  transaction::Options trxOptions;
+  trxOptions.waitForSync = waitForSync;
+  UserTransaction trx{ctx(), {}, trxCollections, {}, trxOptions};
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  OperationResult result = trx.remove(collectionName, search, options);
+
+  // TODO remove all edges (via AQL)
+
+  res = trx.finish(result.result);
+
+  return std::make_pair(std::move(result), std::move(res));
+}
+
 namespace getGraphFromCacheResult {
 struct Success {
   std::shared_ptr<Graph const> graph;
@@ -480,7 +521,7 @@ GetGraphFromCacheResult _getGraphFromCache(GraphCache::CacheType const& _cache,
 }
 
 const std::shared_ptr<const Graph> GraphCache::getGraph(
-    std::shared_ptr<transaction::StandaloneContext> ctx,
+    std::shared_ptr<transaction::Context> ctx,
     std::string const& name, std::chrono::seconds maxAge) {
   using namespace getGraphFromCacheResult;
 

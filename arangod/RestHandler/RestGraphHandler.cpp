@@ -28,8 +28,10 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/Graphs.h"
 
 // TODO this is here for easy debugging during development. most log messages
@@ -121,7 +123,20 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
 
   std::string const& graphName = getNextSuffix();
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  V8Context* v8Context = V8DealerFeature::DEALER->enterContext(
+      &_vocbase, true /*allow use database*/);
+
+  if (!v8Context) {
+    generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
+    return RestStatus::DONE;
+  }
+
+  TRI_DEFER(V8DealerFeature::DEALER->exitContext(v8Context));
+
+  // auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::V8Context::Create(_vocbase, true);
+
+  TRI_ASSERT(ctx);
 
   std::shared_ptr<Graph const> graph = getGraph(ctx, graphName);
 
@@ -258,6 +273,8 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
       vertexActionReplace(graph, vertexCollectionName, vertexKey);
       return RestStatus::DONE;
     case RequestType::DELETE_REQ:
+      vertexActionRemove(graph, vertexCollectionName, vertexKey);
+      return RestStatus::DONE;
     case RequestType::POST:
     default:;
   }
@@ -525,8 +542,7 @@ Result RestGraphHandler::edgeActionRead(
 }
 
 std::shared_ptr<Graph const> RestGraphHandler::getGraph(
-    std::shared_ptr<transaction::StandaloneContext> ctx,
-    const std::string& graphName) {
+    std::shared_ptr<transaction::Context> ctx, const std::string& graphName) {
   std::shared_ptr<Graph const> graph;
 
   graph = _graphCache.getGraph(std::move(ctx), graphName);
@@ -686,6 +702,8 @@ Result RestGraphHandler::documentModify(
 
   ResultT<std::pair<OperationResult, Result>> resultT{
       Result(TRI_ERROR_INTERNAL)};
+  // TODO get rid of this branching, rather use several functions and reuse the
+  // common code another way.
   if (isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
     resultT = gops.updateVertex(collectionName, key, body, maybeRev,
                                 waitForSync, returnOld, returnNew, keepNull);
@@ -735,4 +753,62 @@ Result RestGraphHandler::documentModify(
   }
 
   return true;
+}
+
+Result RestGraphHandler::vertexActionRemove(
+    const std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key) {
+  LOG_TOPIC(WARN, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << "collectionName = " << collectionName << ", "
+      << "key = " << key;
+
+  bool waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+
+  bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
+
+  bool isValidRevision;
+  TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
+  if (!isValidRevision) {
+    revision =
+        UINT64_MAX;  // an impossible rev, so precondition failed will happen
+  }
+  auto maybeRev = boost::make_optional(revision != 0, revision);
+
+  LOG_TOPIC(INFO, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << "opts: "
+      << "waitForSync = " << waitForSync << ", "
+      << "returnOld = " << returnOld << ", "
+      << "rev = " << (maybeRev ? maybeRev.get() : 0ul);
+
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(_vocbase);
+  GraphOperations gops{*graph, ctx};
+
+  auto resultT =
+      gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);
+
+  if (!resultT.ok()) {
+    generateTransactionError(collectionName, resultT, "");
+    return resultT.copy_result();
+  }
+
+  OperationResult& result = resultT.get().first;
+
+  Result res = resultT.get().second;
+
+  if (result.fail()) {
+    generateTransactionError(result);
+    return result.result;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError(collectionName, res, key);
+    return res;
+  }
+
+  generateRemoved(true, result.wasSynchronous, result.slice().get("old"),
+                  *ctx->getVPackOptionsForDump());
+
+  return Result();
 }
