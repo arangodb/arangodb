@@ -552,9 +552,8 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     // 5. verify completed actions
     REQUIRE(tf->verifyRegistryState(post_thread));
     
-#if 1   // for debugging
-    std::string xx = (tf->toVelocyPack()).toJson();
-    printf("%s\n", xx.c_str());
+#if 0   // for debugging
+    std::cout << tf->toVelocyPack().toJson() << std::endl;
 #endif
 
     //
@@ -613,8 +612,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     REQUIRE(tf->verifyRegistryState(post_thread));
 
 #if 0   // for debugging
-    std::string xx = (tf->toVelocyPack()).toJson();
-    printf("%s\n", xx.c_str());
+    std::cout << tf->toVelocyPack().toJson() << std::endl;
 #endif
 
     //
@@ -668,8 +666,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     REQUIRE(tf->verifyRegistryState(post_thread));
 
 #if 0   // for debugging
-    std::string xx = (tf->toVelocyPack()).toJson();
-    printf("%s\n", xx.c_str());
+    std::cout << tf->toVelocyPack().toJson() << std::endl;
 #endif
 
     //
@@ -690,11 +687,15 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     //
     // 1. load up the queue without threads running
     //   a. 100 iterations then fail
-    auto desc_ptr = std::make_shared<ActionDescription>(
-      std::map<std::string,std::string>{
-        {"name","TestActionBasic"},{"iterate_count","100"},{"postaction_result_code","0"}});
+    std::unique_ptr<ActionBase> action_base_ptr;
+    action_base_ptr.reset(
+      (ActionBase*) new TestActionBasic(
+        *tf, ActionDescription(std::map<std::string,std::string>{
+            {"name","TestActionBasic"},{"iterate_count","100"},{"postaction_result_code","0"}
+          })));
+    arangodb::Result result = tf->addAction(
+      std::make_shared<Action>(std::move(action_base_ptr)), false);
 
-    arangodb::Result result = tf->addAction(desc_ptr, false);
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
     pre_thread.push_back({1,0,READY,0});
@@ -717,9 +718,8 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     // 5. verify completed actions
     REQUIRE(tf->verifyRegistryState(post_thread));
 
-#if 0   // for debugging
-    std::string xx = (tf->toVelocyPack()).toJson();
-    printf("%s\n", xx.c_str());
+#if 1   // for debugging
+    std::cout << tf->toVelocyPack().toJson() << std::endl;
 #endif
 
     //
