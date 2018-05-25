@@ -25,21 +25,20 @@
 #define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/Exceptions.h"
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/JobQueue.h"
-#include "Statistics/RequestStatistics.h"
 
 namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
   
-enum class RestStatus { DONE, FAIL};
+enum class RestStatus { DONE, WAITING, FAIL};
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
+  friend class GeneralCommTask;
+  
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
 
@@ -64,25 +63,31 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
 
   RequestStatistics* statistics() const { return _statistics.load(); }
-
   RequestStatistics* stealStatistics() {
     return _statistics.exchange(nullptr);
   }
   
-  void setStatistics(RequestStatistics* stat) {
-    RequestStatistics* old = _statistics.exchange(stat);
-
-    if (old != nullptr) {
-      old->release();
-    }
-  }
+  void setStatistics(RequestStatistics* stat);
 
   /// Execute the rest handler state machine
-  int runHandler(std::function<void(rest::RestHandler*)> cb);
+  void continueHandlerExecution() {
+    TRI_ASSERT(_state == HandlerState::PAUSED);
+    runHandlerStateMachine();
+  }
+  
+  /// Execute the rest handler state machine
+  void runHandler(std::function<void(rest::RestHandler*)> const& cb) {
+    TRI_ASSERT(_state == HandlerState::PREPARE);
+    _callback = cb;
+    runHandlerStateMachine();
+  }
   
  public:
+  /// @brief rest handler name
   virtual char const* name() const = 0;
+  /// @brief allow execution on the network thread
   virtual bool isDirect() const = 0;
+  /// @brief priority of this request
   virtual size_t queue() const { return JobQueue::STANDARD_QUEUE; }
 
   virtual void prepareExecute() {}
@@ -104,11 +109,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   
  private:
   
-  enum class State { PREPARE, EXECUTE, FINALIZE, DONE, FAILED };
+  enum class HandlerState { PREPARE, EXECUTE, PAUSED, FINALIZE, DONE, FAILED };
   
-  int prepareEngine(std::function<void(rest::RestHandler*)> const&);
-  int executeEngine(std::function<void(rest::RestHandler*)> const&);
-  int finalizeEngine(std::function<void(rest::RestHandler*)> const&);
+  void runHandlerStateMachine();
+  
+  int prepareEngine();
+  int executeEngine();
+  int finalizeEngine();
 
  protected:
   uint64_t const _handlerId;
@@ -122,7 +129,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  private:
   bool _needsOwnThread = false;
-  State _state = State::PREPARE;
+  HandlerState _state;
+  std::function<void(rest::RestHandler*)> _callback;
 };
 
 }

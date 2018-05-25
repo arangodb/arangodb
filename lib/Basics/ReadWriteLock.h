@@ -87,7 +87,7 @@ private:
 
   /// @brief _state, lowest bit is write_lock, the next 15 bits is the number of queued writers,
   /// the last 16 bits the number of active readers.  
-  std::atomic<unsigned> _state;
+  std::atomic<uint32_t> _state;
 
   static const unsigned WRITE_LOCK = 1;
 

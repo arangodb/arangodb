@@ -54,7 +54,8 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       _canceled(false),
       _request(request),
       _response(response),
-      _statistics(nullptr) {
+      _statistics(nullptr),
+      _state(HandlerState::PREPARE) {
   bool found;
   std::string const& startThread =
       _request->header(StaticStrings::StartThread, found);
@@ -92,33 +93,48 @@ uint64_t RestHandler::messageId() const {
   return messageId;
 }
 
-int RestHandler::runHandler(std::function<void(rest::RestHandler*)> cb) {
+void RestHandler::setStatistics(RequestStatistics* stat) {
+  RequestStatistics* old = _statistics.exchange(stat);
+  if (old != nullptr) {
+    old->release();
+  }
+}
+
+void RestHandler::runHandlerStateMachine() {
+  TRI_ASSERT(_callback);
+  
   while (true) {
-    int res = TRI_ERROR_NO_ERROR;
-    
     switch (_state) {
-      case State::PREPARE:
-        res = this->prepareEngine(cb);
+      case HandlerState::PREPARE:
+        this->prepareEngine();
         break;
         
-      case State::EXECUTE:
-        res = this->executeEngine(cb);
+      case HandlerState::EXECUTE: {
+        int res = this->executeEngine();
         if (res != TRI_ERROR_NO_ERROR) {
-          this->finalizeEngine(cb);
+          this->finalizeEngine();
+        }
+        if (_state == HandlerState::PAUSED) {
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
+          return; // stop state machine
         }
         break;
+      }
         
-      case State::FINALIZE:
-        res = this->finalizeEngine(cb);
+      case HandlerState::PAUSED:
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Resuming rest handler execution";
+        TRI_ASSERT(_response != nullptr);
+        _callback(this);
+        _state = HandlerState::FINALIZE;
         break;
         
-      case State::DONE:
-      case State::FAILED:
-        return res;
-    }
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      case HandlerState::FINALIZE:
+        this->finalizeEngine();
+        break;
+        
+      case HandlerState::DONE:
+      case HandlerState::FAILED:
+        return;
     }
   }
 }
@@ -127,25 +143,25 @@ int RestHandler::runHandler(std::function<void(rest::RestHandler*)> cb) {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-int RestHandler::prepareEngine(std::function<void(rest::RestHandler*)> const& cb) {
+int RestHandler::prepareEngine() {
   // set end immediately so we do not get netative statistics
   RequestStatistics::SET_REQUEST_START_END(_statistics);
 
   if (_canceled) {
-    _state = State::DONE;
+    _state = HandlerState::DONE;
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
     handleError(err);
 
-    cb(this);
+    _callback(this);
     return TRI_ERROR_REQUEST_CANCELED;
   }
 
   try {
     prepareExecute();
-    _state = State::EXECUTE;
+    _state = HandlerState::EXECUTE;
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -160,12 +176,12 @@ int RestHandler::prepareEngine(std::function<void(rest::RestHandler*)> const& cb
     handleError(err);
   }
 
-  _state = State::FAILED;
-  cb(this);
+  _state = HandlerState::FAILED;
+  _callback(this);
   return TRI_ERROR_INTERNAL;
 }
 
-int RestHandler::finalizeEngine(std::function<void(rest::RestHandler*)> const& cb) {
+int RestHandler::finalizeEngine() {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -199,16 +215,16 @@ int RestHandler::finalizeEngine(std::function<void(rest::RestHandler*)> const& c
   RequestStatistics::SET_REQUEST_END(_statistics);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    _state = State::DONE;
+    _state = HandlerState::DONE;
   } else {
-    _state = State::FAILED;
-    cb(this);
+    _state = HandlerState::FAILED;
+    _callback(this);
   }
   
   return res;
 }
 
-int RestHandler::executeEngine(std::function<void(rest::RestHandler*)> const& cb) {
+int RestHandler::executeEngine() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
@@ -217,6 +233,9 @@ int RestHandler::executeEngine(std::function<void(rest::RestHandler*)> const& cb
 
     if (result == RestStatus::FAIL) {
       LOG_TOPIC(WARN, Logger::REQUESTS) << "Rest handler reported fail";
+    } else if (result == RestStatus::WAITING) {
+      _state = HandlerState::PAUSED; // wait for someone to continue the state machine
+      return TRI_ERROR_NO_ERROR;
     } else if (_response == nullptr) {
       Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
                     __FILE__, __LINE__);
@@ -224,8 +243,8 @@ int RestHandler::executeEngine(std::function<void(rest::RestHandler*)> const& cb
       handleError(err);
     }
 
-    _state = State::FINALIZE;
-    cb(this);
+    _state = HandlerState::FINALIZE;
+    _callback(this);
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -268,8 +287,8 @@ int RestHandler::executeEngine(std::function<void(rest::RestHandler*)> const& cb
     handleError(err);
   }
 
-  _state = State::FAILED;
-  cb(this);
+  _state = HandlerState::FAILED;
+  _callback(this);
   return TRI_ERROR_INTERNAL;
 }
 
