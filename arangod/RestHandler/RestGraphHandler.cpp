@@ -259,6 +259,8 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
       return RestStatus::DONE;
     case RequestType::DELETE_REQ:
     case RequestType::POST:
+      vertexActionCreate(graph, vertexCollectionName, vertexKey);
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -288,6 +290,8 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
       edgeActionReplace(graph, edgeDefinitionName, edgeKey);
       return RestStatus::DONE;
     case RequestType::POST:
+      edgeActionCreate(graph, edgeDefinitionName, edgeKey);
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -390,11 +394,25 @@ void RestGraphHandler::generateVertexModified(
   generateModified(TRI_COL_TYPE_DOCUMENT, wasSynchronous, resultSlice, options);
 }
 
+/// @brief generate response object: { error, code, vertex }
+void RestGraphHandler::generateVertexCreated(
+    bool wasSynchronous, VPackSlice resultSlice,
+    const velocypack::Options& options) {
+  generateCreated(TRI_COL_TYPE_DOCUMENT, wasSynchronous, resultSlice, options);
+}
+
 /// @brief generate response object: { error, code, edge, old?, new? }
 void RestGraphHandler::generateEdgeModified(
     bool wasSynchronous, VPackSlice resultSlice,
     const velocypack::Options& options) {
   generateModified(TRI_COL_TYPE_EDGE, wasSynchronous, resultSlice, options);
+}
+
+/// @brief generate response object: { error, code, edge }
+void RestGraphHandler::generateEdgeCreated(
+    bool wasSynchronous, VPackSlice resultSlice,
+    const velocypack::Options& options) {
+  generateCreated(TRI_COL_TYPE_EDGE, wasSynchronous, resultSlice, options);
 }
 
 /// @brief generate response object: { error, code, vertex/edge, old?, new? }
@@ -435,6 +453,40 @@ void RestGraphHandler::generateModified(TRI_col_type_e colType,
   if (!newSlice.isNone()) {
     obj.add("new", newSlice);
   }
+  obj.close();
+  generateResultMergedWithObject(obj.slice(), options);
+}
+
+/// @brief generate response object: { error, code, vertex/edge }
+// TODO Maybe a class enum in Graph.h to discern Vertex/Edge is better than
+// abusing document/edge collection types?
+void RestGraphHandler::generateCreated(TRI_col_type_e colType,
+                                        bool wasSynchronous,
+                                        VPackSlice resultSlice,
+                                        const velocypack::Options& options) {
+  TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
+  if (wasSynchronous) {
+    resetResponse(rest::ResponseCode::OK);
+  } else {
+    resetResponse(rest::ResponseCode::ACCEPTED);
+  }
+  addEtagHeader(resultSlice.get(StaticStrings::RevString));
+
+  const char* objectTypeName = "_";
+  if (colType == TRI_COL_TYPE_DOCUMENT) {
+    objectTypeName = "vertex";
+  } else if (colType == TRI_COL_TYPE_EDGE) {
+    objectTypeName = "edge";
+  }
+
+  VPackBuilder objectBuilder =
+      VelocyPackHelper::copyObjectWithout(resultSlice, {"old", "new"});
+  // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
+  VPackSlice objectSlice = objectBuilder.slice();
+
+  VPackBuilder obj;
+  obj.add(VPackValue(VPackValueType::Object, true));
+  obj.add(objectTypeName, objectSlice);
   obj.close();
   generateResultMergedWithObject(obj.slice(), options);
 }
@@ -622,6 +674,12 @@ Result RestGraphHandler::vertexActionReplace(
   return vertexModify(std::move(graph), collectionName, key, false);
 }
 
+Result RestGraphHandler::vertexActionCreate(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key) {
+  return vertexModify(std::move(graph), collectionName, key, false);
+}
+
 Result RestGraphHandler::edgeActionUpdate(
     std::shared_ptr<const graph::Graph> graph,
     const std::string& collectionName, const std::string& key) {
@@ -638,6 +696,12 @@ Result RestGraphHandler::edgeModify(std::shared_ptr<const graph::Graph> graph,
                                     const std::string& key, bool isPatch) {
   return documentModify(std::move(graph), collectionName, key, isPatch,
                         TRI_COL_TYPE_EDGE);
+}
+
+Result RestGraphHandler::edgeActionCreate(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key) {
+  return edgeModify(std::move(graph), collectionName, key, true);
 }
 
 Result RestGraphHandler::vertexModify(std::shared_ptr<const graph::Graph> graph,
@@ -728,6 +792,69 @@ Result RestGraphHandler::documentModify(
       break;
     case TRI_COL_TYPE_EDGE:
       generateEdgeModified(result.wasSynchronous, result.slice(),
+                           *ctx->getVPackOptionsForDump());
+      break;
+    default:
+      TRI_ASSERT(false);
+  }
+
+  return true;
+}
+
+Result RestGraphHandler::documentCreate(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName, const std::string& key,
+    TRI_col_type_e colType) {
+
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return false;
+  }
+
+  bool waitForSync =
+    _request->parsedValue(StaticStrings::WaitForSyncString, false);
+
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(_vocbase);
+  GraphOperations gops{*graph, ctx};
+
+  ResultT<std::pair<OperationResult, Result>> resultT{
+      Result(TRI_ERROR_INTERNAL)};
+  if (colType == TRI_COL_TYPE_DOCUMENT) {
+    resultT = gops.createVertex(collectionName, key, body, waitForSync);
+  } else if (colType == TRI_COL_TYPE_EDGE) {
+    resultT = gops.createEdge(collectionName, key, body, waitForSync);
+  } else {
+    TRI_ASSERT(false);
+  }
+
+  if (!resultT.ok()) {
+    generateTransactionError(collectionName, resultT, "");
+    return resultT.copy_result();
+  }
+
+  OperationResult& result = resultT.get().first;
+
+  Result res = resultT.get().second;
+
+  if (result.fail()) {
+    generateTransactionError(result);
+    return false;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError(collectionName, res, key, 0);
+    return false;
+  }
+
+  switch (colType) {
+    case TRI_COL_TYPE_DOCUMENT:
+      generateVertexCreated(result.wasSynchronous, result.slice(),
+                             *ctx->getVPackOptionsForDump());
+      break;
+    case TRI_COL_TYPE_EDGE:
+      generateEdgeCreated(result.wasSynchronous, result.slice(),
                            *ctx->getVPackOptionsForDump());
       break;
     default:

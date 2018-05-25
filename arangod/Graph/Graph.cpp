@@ -399,6 +399,11 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::_modifyDocument(
   return std::make_pair(std::move(result), std::move(res));
 }
 
+ResultT<std::pair<OperationResult, Result>> GraphOperations::_createDocument(
+    std::string const& collectionName, std::string const& key,
+    VPackSlice document, bool waitForSync) {
+}
+
 ResultT<std::pair<OperationResult, Result>> GraphOperations::updateEdge(
     const std::string& definitionName, const std::string& key,
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
@@ -415,6 +420,12 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceEdge(
                          waitForSync, returnOld, returnNew, keepNull);
 }
 
+ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
+    const std::string& definitionName, const std::string& key,
+    VPackSlice document, bool waitForSync) {
+  return _createDocument(definitionName, key, document, waitForSync);
+}
+
 ResultT<std::pair<OperationResult, Result>> GraphOperations::updateVertex(
     const std::string& collectionName, const std::string& key,
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
@@ -429,6 +440,12 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceVertex(
     bool returnOld, bool returnNew, bool keepNull) {
   return _modifyDocument(collectionName, key, document, false, std::move(rev),
                          waitForSync, returnOld, returnNew, keepNull);
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::createVertex(
+    const std::string& collectionName, const std::string& key,
+    VPackSlice document, bool waitForSync) {
+  return _createDocument(collectionName, key, document, waitForSync);
 }
 
 namespace getGraphFromCacheResult {

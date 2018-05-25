@@ -110,6 +110,11 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                              const std::string& collectionName,
                              const std::string& key);
 
+  // POST /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
+  Result vertexActionCreate(std::shared_ptr<const graph::Graph> graph,
+                             const std::string& collectionName,
+                             const std::string& key);
+
   // GET /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
   Result edgeActionRead(std::shared_ptr<const graph::Graph> graph,
                         const std::string& definitionName,
@@ -117,6 +122,11 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   // DELETE /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
   Result edgeActionRemove(std::shared_ptr<const graph::Graph> graph,
+                          const std::string& definitionName,
+                          const std::string& key);
+  
+  // POST /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
+  Result edgeActionCreate(std::shared_ptr<const graph::Graph> graph,
                           const std::string& definitionName,
                           const std::string& key);
 
@@ -147,7 +157,14 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   void generateVertexModified(bool wasSynchronous, VPackSlice resultSlice,
                               const velocypack::Options& options);
 
+  void generateVertexCreated(bool wasSynchronous, VPackSlice resultSlice,
+                              const velocypack::Options& options);
+
   void generateModified(TRI_col_type_e colType, bool wasSynchronous,
+                        VPackSlice resultSlice,
+                        const velocypack::Options& options);
+
+  void generateCreated(TRI_col_type_e colType, bool wasSynchronous,
                         VPackSlice resultSlice,
                         const velocypack::Options& options);
 
@@ -168,7 +185,17 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     const std::string &key, bool isPatch, TRI_col_type_e colType
   );
 
+  Result documentCreate(
+    std::shared_ptr<const graph::Graph> graph, const std::string &collectionName,
+    const std::string &key, TRI_col_type_e colType
+  );
+
   void generateEdgeModified(
+    bool wasSynchronous, VPackSlice resultSlice,
+    const velocypack::Options &options
+  );
+
+  void generateEdgeCreated(
     bool wasSynchronous, VPackSlice resultSlice,
     const velocypack::Options &options
   );

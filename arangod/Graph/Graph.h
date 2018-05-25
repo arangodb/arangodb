@@ -175,6 +175,10 @@ class GraphOperations {
       VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
       bool returnOld, bool returnNew, bool keepNull);
 
+  ResultT<std::pair<OperationResult, Result>> createEdge(
+      const std::string& definitionName, const std::string& key,
+      VPackSlice document, bool waitForSync);
+
   ResultT<std::pair<OperationResult, Result>> updateVertex(
       const std::string& collectionName, const std::string& key,
       VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
@@ -184,6 +188,10 @@ class GraphOperations {
       const std::string& collectionName, const std::string& key,
       VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
       bool returnOld, bool returnNew, bool keepNull);
+
+  ResultT<std::pair<OperationResult, Result>> createVertex(
+      const std::string& collectionName, const std::string& key,
+      VPackSlice document, bool waitForSync);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
@@ -199,6 +207,10 @@ class GraphOperations {
       const std::string& collectionName, const std::string& key,
       VPackSlice document, bool isPatch, boost::optional<TRI_voc_rid_t> rev,
       bool waitForSync, bool returnOld, bool returnNew, bool keepNull);
+
+  ResultT<std::pair<OperationResult, Result>> _createDocument(
+      const std::string& collectionName, const std::string& key,
+      VPackSlice document, bool waitForSync);
 };
 
 class GraphCache {
