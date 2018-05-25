@@ -26,6 +26,7 @@
 #include <velocypack/velocypack-aliases.h>
 #include <boost/variant.hpp>
 #include <utility>
+#include <array>
 
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
@@ -154,7 +155,7 @@ Result Graph::validateEdgeDefinition(VPackSlice const& edgeDefinition) {
   }
 
   for (auto const& key :
-       std::array<std::string, 3>{"collection", "from", "to"}) {
+       std::array<std::string, 3>{{"collection", "from", "to"}}) {
     if (!edgeDefinition.hasKey(key)) {
       return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                     "Attribute '" + key + "' missing in edge definition!");
@@ -166,7 +167,7 @@ Result Graph::validateEdgeDefinition(VPackSlice const& edgeDefinition) {
                   "edge definition is not a string!");
   }
 
-  for (auto const& key : std::array<std::string, 2>{"from", "to"}) {
+  for (auto const& key : std::array<std::string, 2>{{"from", "to"}}) {
     if (!edgeDefinition.get(key).isArray()) {
       return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                     "Edge definition '" + key + "' is not an array!");
