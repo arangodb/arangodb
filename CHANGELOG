@@ -1,6 +1,8 @@
 v3.2.16 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #5400: Unexpected AQL Result
+
 * Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 * issue one HTTP call less per cluster AQL query
