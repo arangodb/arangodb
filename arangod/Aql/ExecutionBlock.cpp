@@ -330,9 +330,7 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
 }
 
 size_t ExecutionBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
-
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSome(atMost, true, result, skipped);
 
@@ -343,25 +341,17 @@ size_t ExecutionBlock::skipSome(size_t atMost) {
   }
 
   return skipped;
-  DEBUG_END_BLOCK();
 }
 
-// skip exactly <number> outputs, returns <true> if _done after
-// skipping, and <false> otherwise . . .
-bool ExecutionBlock::skip(size_t number, size_t& numActuallySkipped) {
-  DEBUG_BEGIN_BLOCK();
-  size_t skipped = skipSome(number);
+// skip exactly atMost outputs
+void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
+  size_t skipped = skipSome(atMost);
   size_t nr = skipped;
-  while (nr != 0 && skipped < number) {
-    nr = skipSome(number - skipped);
+  while (nr != 0 && skipped < atMost) {
+    nr = skipSome(atMost - skipped);
     skipped += nr;
   }
   numActuallySkipped = skipped;
-  if (nr == 0) {
-    return true;
-  }
-  return !hasMore();
-  DEBUG_END_BLOCK();
 }
 
 bool ExecutionBlock::hasMore() {
