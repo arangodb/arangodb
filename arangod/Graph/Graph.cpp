@@ -24,16 +24,18 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <array>
 #include <boost/variant.hpp>
 #include <utility>
-#include <array>
 
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
+#include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
 #include "Utils/OperationOptions.h"
@@ -465,8 +467,40 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
 
   OperationResult result = trx.remove(collectionName, search, options);
 
-  // TODO remove all edges (via AQL)
+  // TODO remove all edges (via AQL):
+  {
+    aql::QueryString const queryString =
+        aql::QueryString({"FOR e IN @@collection "
+                          "FILTER e._from == @vertexId "
+                          "REMOVE e IN @@collection"});
+    // TODO delete _to as well
 
+    std::string const vertexId = collectionName + "/" + key;
+
+    for (auto const& edgeCollection : edgeCollections) {
+      std::shared_ptr<VPackBuilder> bindVars{std::make_shared<VPackBuilder>()};
+
+      bindVars->add(VPackValue(VPackValueType::Object));
+      bindVars->add("@collection", VPackValue(edgeCollection));
+      bindVars->add("vertexId", VPackValue(vertexId));
+      bindVars->close();
+
+      // TODO this seems to create a deadlock; does the query try to get an
+      // additional lock in its subtransaction / does not find the parent
+      // transaction?
+      arangodb::aql::Query query(true, ctx()->vocbase(), queryString, bindVars,
+                                 nullptr, arangodb::aql::PART_MAIN);
+
+      auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+
+      if (queryResult.code != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+      }
+    }
+  }
+
+  // TODO result.result is not the only result that counts here: must abort
+  // if any AQL query fails, too.
   res = trx.finish(result.result);
 
   return std::make_pair(std::move(result), std::move(res));
@@ -521,8 +555,8 @@ GetGraphFromCacheResult _getGraphFromCache(GraphCache::CacheType const& _cache,
 }
 
 const std::shared_ptr<const Graph> GraphCache::getGraph(
-    std::shared_ptr<transaction::Context> ctx,
-    std::string const& name, std::chrono::seconds maxAge) {
+    std::shared_ptr<transaction::Context> ctx, std::string const& name,
+    std::chrono::seconds maxAge) {
   using namespace getGraphFromCacheResult;
 
   GetGraphFromCacheResult cacheResult = Exception{};

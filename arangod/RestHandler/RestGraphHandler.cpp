@@ -135,6 +135,7 @@ boost::optional<RestStatus> RestGraphHandler::executeGharial() {
 
   // auto ctx = transaction::StandaloneContext::Create(_vocbase);
   auto ctx = transaction::V8Context::Create(_vocbase, true);
+  // ctx->makeGlobal(); // TODO ???
 
   TRI_ASSERT(ctx);
 
