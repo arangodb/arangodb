@@ -907,7 +907,7 @@ QueryResult Query::explain() {
   try {
     init();
     enterState(QueryExecutionState::ValueType::PARSING);
-  
+
     Parser parser(this);
 
     parser.parse(true);
@@ -983,8 +983,7 @@ QueryResult Query::explain() {
                        !_isModificationQuery && _warnings.empty() &&
                        _ast->root()->isCacheable());
     }
-   
-    // technically no need to commit, as we are only explaining here 
+    
     auto commitResult = _trx->commit();
     if (commitResult.fail()) {
         THROW_ARANGO_EXCEPTION(commitResult);

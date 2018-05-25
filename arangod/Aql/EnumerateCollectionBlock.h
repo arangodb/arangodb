@@ -46,11 +46,6 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   EnumerateCollectionBlock(ExecutionEngine* engine,
                            EnumerateCollectionNode const* ep);
 
-  ~EnumerateCollectionBlock() = default;
-
-  /// @brief initialize, here we fetch all docs from the database
-  int initialize() override final;
-
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
