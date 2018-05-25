@@ -345,6 +345,8 @@ class ExecutionNode {
   static constexpr unsigned SERIALIZE_ESTIMATES  = 1 << 1;
   /// Print all ExecutionNode information required in cluster snippets
   static constexpr unsigned SERIALIZE_DETAILS    = 1 << 2;
+  /// include additional function info for explain
+  static constexpr unsigned SERIALIZE_FUNCTIONS  = 1 << 3;
 
   /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags,

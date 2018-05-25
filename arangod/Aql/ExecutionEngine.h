@@ -79,11 +79,17 @@ class ExecutionEngine {
 
   /// @brief getSome
   AqlItemBlock* getSome(size_t atMost) {
+    if (!_initializeCursorCalled) {
+      initializeCursor(nullptr, 0);
+    }
     return _root->getSome(atMost);
   }
 
   /// @brief skipSome
   size_t skipSome(size_t atMost) {
+    if (!_initializeCursorCalled) {
+      initializeCursor(nullptr, 0);
+    }
     return _root->skipSome(atMost);
   }
 
@@ -92,6 +98,9 @@ class ExecutionEngine {
 
   /// @brief skip
   bool skip(size_t number, size_t& actuallySkipped) { 
+    if (!_initializeCursorCalled) {
+      initializeCursor(nullptr, 0);
+    }
     return _root->skip(number, actuallySkipped); 
   }
 

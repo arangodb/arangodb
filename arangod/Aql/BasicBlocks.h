@@ -37,12 +37,7 @@ class ExecutionEngine;
 
 class SingletonBlock final : public ExecutionBlock {
  public:
-  SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
-      : ExecutionBlock(engine, ep), _inputRegisterValues(nullptr), _whitelistBuilt(false) {
-    deleteInputVariables();
-  }
-
-  ~SingletonBlock() { deleteInputVariables(); }
+  SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep);
 
   /// @brief initializeCursor, store a copy of the register values coming from
   /// above
@@ -53,19 +48,13 @@ class SingletonBlock final : public ExecutionBlock {
   bool hasMore() override final { return !_done; }
 
  private:
-  void deleteInputVariables();
-
-  void buildWhitelist();
-
   int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief _inputRegisterValues
-  AqlItemBlock* _inputRegisterValues;
+  std::unique_ptr<AqlItemBlock> _inputRegisterValues;
 
   std::unordered_set<RegisterId> _whitelist;
-
-  bool _whitelistBuilt;
 };
 
 class FilterBlock final : public ExecutionBlock {

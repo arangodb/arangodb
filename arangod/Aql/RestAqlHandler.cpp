@@ -828,7 +828,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
           skipped = block->skipSomeForShard(atMost, shardId);
         }
-        answerBuilder.add("skipped", VPackValue(static_cast<double>(skipped)));
+        answerBuilder.add("skipped", VPackValue(skipped));
         answerBuilder.add("error", VPackValue(false));
       } else if (operation == "initialize") {
         // this is a no-op now
@@ -847,7 +847,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           res = query->engine()->initializeCursor(items.get(), pos);
         }
         answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
-        answerBuilder.add(StaticStrings::Code, VPackValue(static_cast<double>(res)));
+        answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else if (operation == "shutdown") {
         int errorCode = VelocyPackHelper::getNumericValue<int>(
             querySlice, "code", TRI_ERROR_INTERNAL);
