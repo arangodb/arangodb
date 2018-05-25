@@ -24,7 +24,7 @@ for book in ${ALLBOOKS}; do
         if test -d "${CODIR}"; then
             (
                 cd "${CODIR}"
-                git pull --all
+                #git pull --all
             )
         else
             git clone "${AUTHREPO}" "${CODIR}"
@@ -39,20 +39,20 @@ for book in ${ALLBOOKS}; do
         fi
 
         # checkout name from VERSIONS file and pull=merge origin
-        (cd "${CODIR}" && git checkout "${branch}" && git pull)
+        # (cd "${CODIR}" && git checkout "${branch}" && git pull)
 
         for oneMD in $(cd "${CODIR}/${SUBDIR}"; find "./${SRC}" -type f |sed "s;\./;;"); do
             export oneMD
             export NAME=$(basename ${oneMD})
             export MDSUBDIR=$(echo "${oneMD}" | sed "s;${NAME};;")
             export DSTDIR="../Books/${book}/${DST}/${MDSUBDIR}"
-            
+            export TOPREF=$(echo ${MDSUBDIR} | sed 's;\([a-zA-Z]*\)/;../;g')
             if test ! -d "${DSTDIR}"; then
                 mkdir -p "${DSTDIR}"
             fi
             (
                 echo "<!-- don't edit here, its from ${REPO} / ${SUBDIR}/${SRC} -->"
-                cat "${CODIR}/${SUBDIR}/${SRC}/${oneMD}"
+                cat "${CODIR}/${SUBDIR}/${SRC}/${oneMD}" |sed "s;https://docs.arangodb.com/latest;../${TOPREF};g"
             ) > "${DSTDIR}/${NAME}"
 
         done
