@@ -69,6 +69,21 @@ void PhysicalCollection::drop() {
   }
 }
 
+bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
+  if (!slice.isString()) {
+    return false;
+  }
+
+  // validate id string    
+  VPackValueLength len;
+  char const* docId = slice.getString(len);
+  if (len < 3) {
+    return false;
+  }
+  size_t split;
+  return TRI_ValidateDocumentIdKeyGenerator(docId, static_cast<size_t>(len), &split);
+}
+
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
@@ -92,7 +107,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
 
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
-void PhysicalCollection::mergeObjectsForUpdate(
+Result PhysicalCollection::mergeObjectsForUpdate(
     transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, bool isEdgeCollection, LocalDocumentId const& documentId,
     bool mergeObjects, bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
@@ -135,9 +150,13 @@ void PhysicalCollection::mergeObjectsForUpdate(
   if (isEdgeCollection) {
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
+    } else if (!isValidEdgeAttribute(fromSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE); 
     }
     if (toSlice.isNone()) {
       toSlice = oldValue.get(StaticStrings::ToString);
+    } else if (!isValidEdgeAttribute(toSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE); 
     }
   }
 
@@ -152,8 +171,8 @@ void PhysicalCollection::mergeObjectsForUpdate(
 
   // _from, _to
   if (isEdgeCollection) {
-    TRI_ASSERT(!fromSlice.isNone());
-    TRI_ASSERT(!toSlice.isNone());
+    TRI_ASSERT(fromSlice.isString());
+    TRI_ASSERT(toSlice.isString());
     b.add(StaticStrings::FromString, fromSlice);
     b.add(StaticStrings::ToString, toSlice);
   }
@@ -233,12 +252,12 @@ void PhysicalCollection::mergeObjectsForUpdate(
   }
 
   b.close();
+  return Result();
 }
 
 /// @brief new object for insert, computes the hash of the key
-int PhysicalCollection::newObjectForInsert(
+Result PhysicalCollection::newObjectForInsert(
     transaction::Methods* trx, VPackSlice const& value,
-    VPackSlice const& fromSlice, VPackSlice const& toSlice,
     LocalDocumentId const& documentId, bool isEdgeCollection, 
     VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
@@ -253,11 +272,11 @@ int PhysicalCollection::newObjectForInsert(
     std::string keyString =
         _logicalCollection->keyGenerator()->generate();
     if (keyString.empty()) {
-      return TRI_ERROR_ARANGO_OUT_OF_KEYS;
+      return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
     }
     builder.add(StaticStrings::KeyString, VPackValue(keyString));
   } else if (!s.isString()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   } else {
     VPackValueLength l;
     char const* p = s.getString(l);
@@ -265,7 +284,7 @@ int PhysicalCollection::newObjectForInsert(
     int res =
         _logicalCollection->keyGenerator()->validate(p, l, isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      return Result(res);
     }
     builder.add(StaticStrings::KeyString, s);
   }
@@ -289,8 +308,17 @@ int PhysicalCollection::newObjectForInsert(
 
   // _from and _to
   if (isEdgeCollection) {
-    TRI_ASSERT(!fromSlice.isNone());
-    TRI_ASSERT(!toSlice.isNone());
+    VPackSlice fromSlice = value.get(StaticStrings::FromString);
+    if (!isValidEdgeAttribute(fromSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+  
+    VPackSlice toSlice = value.get(StaticStrings::ToString);
+    if (!isValidEdgeAttribute(toSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+    TRI_ASSERT(fromSlice.isString());
+    TRI_ASSERT(toSlice.isString());
     builder.add(StaticStrings::FromString, fromSlice);
     builder.add(StaticStrings::ToString, toSlice);
   }
@@ -317,7 +345,7 @@ int PhysicalCollection::newObjectForInsert(
   TRI_SanitizeObjectWithEdges(value, builder);
 
   builder.close();
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief new object for remove, must have _key set
@@ -342,10 +370,9 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
 
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
-void PhysicalCollection::newObjectForReplace(
+Result PhysicalCollection::newObjectForReplace(
     transaction::Methods* trx, VPackSlice const& oldValue,
-    VPackSlice const& newValue, VPackSlice const& fromSlice,
-    VPackSlice const& toSlice, bool isEdgeCollection, LocalDocumentId const& documentId,
+    VPackSlice const& newValue, bool isEdgeCollection, LocalDocumentId const& documentId,
     VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
@@ -362,10 +389,20 @@ void PhysicalCollection::newObjectForReplace(
   TRI_ASSERT(!s.isNone());
   builder.add(StaticStrings::IdString, s);
 
-  // _from and _to here
+  // _from and _to
   if (isEdgeCollection) {
-    TRI_ASSERT(!fromSlice.isNone());
-    TRI_ASSERT(!toSlice.isNone());
+    VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
+    if (!isValidEdgeAttribute(fromSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+  
+    VPackSlice toSlice = newValue.get(StaticStrings::ToString);
+    if (!isValidEdgeAttribute(toSlice)) {
+      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    }
+
+    TRI_ASSERT(fromSlice.isString());
+    TRI_ASSERT(toSlice.isString());
     builder.add(StaticStrings::FromString, fromSlice);
     builder.add(StaticStrings::ToString, toSlice);
   }
@@ -392,6 +429,7 @@ void PhysicalCollection::newObjectForReplace(
   TRI_SanitizeObjectWithEdges(newValue, builder);
 
   builder.close();
+  return Result();
 }
 
 /// @brief checks the revision of a document
