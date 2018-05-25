@@ -29,6 +29,7 @@
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
+#include "Aql/ExecutionPlan.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -46,7 +47,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace {  
+namespace {
 auto doNothingVisitor = [](AstNode const*) {};
 }
 
@@ -326,18 +327,32 @@ AstNode* Ast::createNodeInsert(AstNode const* expression,
                                AstNode const* collection,
                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_INSERT);
-  node->reserve(4);
+
+
 
   if (options == nullptr) {
     // no options given. now use default options
     options = &NopNode;
   }
 
+  bool overwrite = false;
+  if (options->type == NODE_TYPE_OBJECT){
+      auto ops = ExecutionPlan::parseModificationOptions(options);
+      overwrite = ops.overwrite;
+
+  }
+
+  node->reserve(overwrite ? 5: 4);
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
   node->addMember(
       createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_NEW), false));
+  if(overwrite){
+    node->addMember(
+      createNodeVariable(TRI_CHAR_LENGTH_PAIR(Variable::NAME_OLD), false)
+    );
+  }
 
   return node;
 }
@@ -1813,13 +1828,13 @@ void Ast::validateAndOptimize() {
   };
 
   TraversalContext context;
-  
+
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
     if (ctx->filterDepth >= 0) {
       ++ctx->filterDepth;
     }
-    
+
     if (node->type == NODE_TYPE_FILTER) {
       TRI_ASSERT(ctx->filterDepth == -1);
       ctx->filterDepth = 0;
@@ -2209,13 +2224,13 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode cons
       }
 
     }
-     
+
     return false;
   };
- 
+
   std::unordered_set<std::string> result;
   isSafeForOptimization = true;
-  
+
   std::function<bool(AstNode const*)> visitor = [&](AstNode const* node) {
     if (!isSafeForOptimization) {
       return false;
@@ -2263,7 +2278,7 @@ std::unordered_set<std::string> Ast::getReferencedAttributesForKeep(AstNode cons
 
 /// @brief determines the top-level attributes referenced in an expression for the
 /// specified out variable
-bool Ast::getReferencedAttributes(AstNode const* node, 
+bool Ast::getReferencedAttributes(AstNode const* node,
                                   Variable const* variable,
                                   std::unordered_set<std::string>& vars) {
   // traversal state
@@ -2275,7 +2290,7 @@ bool Ast::getReferencedAttributes(AstNode const* node,
     if (node == nullptr || !isSafeForOptimization) {
       return false;
     }
-    
+
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       attributeName = node->getStringValue();
       nameLength = node->getStringLength();
@@ -2307,7 +2322,7 @@ bool Ast::getReferencedAttributes(AstNode const* node,
     return true;
   };
 
-  traverseReadOnly(node, visitor, doNothingVisitor); 
+  traverseReadOnly(node, visitor, doNothingVisitor);
   return isSafeForOptimization;
 }
 
@@ -2882,7 +2897,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   Expression exp(nullptr, this, node);
   FixedVarExpressionContext context;
   bool mustDestroy;
-  
+
   AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
@@ -3158,7 +3173,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   // place. note that the transaction has not necessarily been
   // started yet...
   TRI_ASSERT(_query->trx() != nullptr);
-  
+
   if (node->willUseV8()) {
     // if the expression is going to use V8 internally, we do not
     // bother to optimize it here
@@ -3168,7 +3183,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   Expression exp(nullptr, this, node);
   FixedVarExpressionContext context;
   bool mustDestroy;
- 
+
   AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
@@ -3540,7 +3555,7 @@ AstNode* Ast::traverseAndModify(
 }
 
 /// @brief traverse the AST, using pre- and post-order visitors
-void Ast::traverseReadOnly(AstNode const* node, 
+void Ast::traverseReadOnly(AstNode const* node,
     std::function<bool(AstNode const*)> const& preVisitor,
     std::function<void(AstNode const*)> const& postVisitor) {
   if (node == nullptr) {

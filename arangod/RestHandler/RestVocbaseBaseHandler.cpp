@@ -241,7 +241,7 @@ std::string RestVocbaseBaseHandler::assembleDocumentId(
 void RestVocbaseBaseHandler::generateSaved(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options, bool isMultiple) {
-  if (result.wasSynchronous) {
+  if (result._options.waitForSync) {
     resetResponse(rest::ResponseCode::CREATED);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
@@ -268,7 +268,7 @@ void RestVocbaseBaseHandler::generateSaved(
 void RestVocbaseBaseHandler::generateDeleted(
     arangodb::OperationResult const& result, std::string const& collectionName,
     TRI_col_type_e type, VPackOptions const* options) {
-  if (result.wasSynchronous) {
+  if (result._options.waitForSync) {
     resetResponse(rest::ResponseCode::OK);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
