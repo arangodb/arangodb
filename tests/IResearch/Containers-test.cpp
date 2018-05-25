@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <set>
+#include <tuple>
 #include "catch.hpp"
 #include "utils/thread_utils.hpp"
 
