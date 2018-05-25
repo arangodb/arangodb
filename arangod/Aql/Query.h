@@ -107,7 +107,7 @@ class Query {
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction (transaction::Methods* trx) {
+  void injectTransaction(transaction::Methods* trx) {
     _trx = trx;
     init();
   }
