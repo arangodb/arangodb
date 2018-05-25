@@ -76,9 +76,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
   
   /// Execute the rest handler state machine
-  void runHandler(std::function<void(rest::RestHandler*)> const& cb) {
+  void runHandler(std::function<void(rest::RestHandler*)> cb) {
     TRI_ASSERT(_state == HandlerState::PREPARE);
-    _callback = cb;
+    _callback = std::move(cb);
     runHandlerStateMachine();
   }
   
