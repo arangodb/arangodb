@@ -595,8 +595,7 @@ void scatterViewInClusterRule(
       std::make_unique<GatherNode>(
         plan.get(),
         plan->nextId(),
-        &vocbase,
-        nullptr //FIXME collection
+        GatherNode::SortMode::Unset
     ));
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);

@@ -58,9 +58,10 @@ using StringBuffer = arangodb::basics::StringBuffer;
 
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
+      _atDep(0),
       _sortRegisters(),
       _isSimple(en->elements().empty()),
-      _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
+      _heap(en->_sortmode == GatherNode::SortMode::Heap ? new Heap : nullptr) {
 
   if (!_isSimple) {
     for (auto const& p : en->elements()) {
@@ -85,16 +86,6 @@ GatherBlock::~GatherBlock() {
     x.clear();
   }
   _gatherBlockBuffer.clear();
-}
-
-/// @brief initialize
-int GatherBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  _atDep = 0;
-  return ExecutionBlock::initialize();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief shutdown: need our own method since our _buffer is different
@@ -1209,71 +1200,37 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
        !ownName.empty()));
 }
 
-RemoteBlock::~RemoteBlock() {}
-
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
     std::string const& body) const {
   DEBUG_BEGIN_BLOCK();
   auto cc = ClusterComm::instance();
-  if (cc != nullptr) {
+  if (cc == nullptr) {
     // nullptr only happens on controlled shutdown
-
-    // Later, we probably want to set these sensibly:
-    ClientTransactionID const clientTransactionId = std::string("AQL");
-    CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-    std::unordered_map<std::string, std::string> headers;
-    if (!_ownName.empty()) {
-      headers.emplace("Shard-Id", _ownName);
-    }
-
-    ++_engine->_stats.httpRequests;
-    {
-      JobGuard guard(SchedulerFeature::SCHEDULER);
-      guard.block();
-
-      std::string const url = std::string("/_db/") +
-      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
-      urlPart + _queryId;
-      auto result =
-          cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                          std::move(url), body, headers, defaultTimeOut);
-      
-      return result;
-    }
-  }
-  return std::make_unique<ClusterCommResult>();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief initialize
-int RemoteBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-
-  if (!_isResponsibleForInitializeCursor) {
-    // do nothing...
-    return TRI_ERROR_NO_ERROR;
+    return std::make_unique<ClusterCommResult>();
   }
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/initialize/", "{}");
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (slice.hasKey("code")) {
-    return slice.get("code").getNumericValue<int>();
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = std::string("AQL");
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
+  if (!_ownName.empty()) {
+    headers.emplace("Shard-Id", _ownName);
   }
-  return TRI_ERROR_INTERNAL;
+    
+  std::string url = std::string("/_db/") +
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    urlPart + _queryId;
+
+  ++_engine->_stats.requests;
+  {
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.block();
+
+    return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                           std::move(url), body, headers, defaultTimeOut);
+  }
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1288,6 +1245,12 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
   }
+  
+  if (items == nullptr) {
+    // we simply ignore the initialCursor request, as the remote side
+    // will initialize the cursor lazily
+    return TRI_ERROR_NO_ERROR;
+  } 
 
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
@@ -1295,21 +1258,15 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   VPackBuilder builder(&options);
   builder.openObject();
-
-  if (items == nullptr) {
-    // first call, items is still a nullptr
-    builder.add("exhausted", VPackValue(true));
-    builder.add("error", VPackValue(false));
-  } else {
-    builder.add("exhausted", VPackValue(false));
-    builder.add("error", VPackValue(false));
-    builder.add("pos", VPackValue(pos));
-    builder.add(VPackValue("items"));
-    builder.openObject();
-    items->toVelocyPack(_engine->getQuery()->trx(), builder);
-    builder.close();
-  }
-
+ 
+  builder.add("exhausted", VPackValue(false));
+  builder.add("error", VPackValue(false));
+  builder.add("pos", VPackValue(pos));
+  builder.add(VPackValue("items"));
+  builder.openObject();
+  items->toVelocyPack(_engine->getQuery()->trx(), builder);
+  builder.close();
+  
   builder.close();
 
   std::string bodyString(builder.slice().toJson());

@@ -102,16 +102,7 @@ class ExecutionBlock {
   /// @brief remove a dependency, returns true if the pointer was found and
   /// removed, please note that this does not delete ep!
   bool removeDependency(ExecutionBlock* ep);
-
-  /// @brief access the pos-th dependency
-  ExecutionBlock* operator[](size_t pos) {
-    if (pos >= _dependencies.size()) {
-      return nullptr;
-    }
-
-    return _dependencies.at(pos);
-  }
-
+  
   /// @brief Methods for execution
   /// Lifecycle is:
   ///    CONSTRUCTOR
@@ -123,8 +114,6 @@ class ExecutionBlock {
   ///    then the ExecutionEngine automatically calls
   ///      shutdown()
   ///    DESTRUCTOR
-  /// @brief initialize
-  virtual int initialize();
 
   /// @brief initializeCursor, could be called multiple times
   virtual int initializeCursor(AqlItemBlock* items, size_t pos);
@@ -223,7 +212,7 @@ class ExecutionBlock {
 
   /// @brief current working position in the first entry of _buffer
   size_t _pos;
-
+  
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 

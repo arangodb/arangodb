@@ -34,6 +34,7 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
+#include "Statistics/RequestStatistics.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

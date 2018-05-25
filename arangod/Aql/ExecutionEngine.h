@@ -70,24 +70,26 @@ class ExecutionEngine {
 
   /// @brief initializeCursor, could be called multiple times
   int initializeCursor(AqlItemBlock* items, size_t pos) {
+    _initializeCursorCalled = true;
     return _root->initializeCursor(items, pos);
   }
   
-  /// @brief initialize
-  int initialize() {
-    return _root->initialize();
-  }
-
   /// @brief shutdown, will be called exactly once for the whole query
   int shutdown(int errorCode);
 
   /// @brief getSome
   AqlItemBlock* getSome(size_t atMost) {
+    if (!_initializeCursorCalled) {
+      initializeCursor(nullptr, 0);
+    }
     return _root->getSome(atMost);
   }
 
   /// @brief skipSome
   size_t skipSome(size_t atMost) {
+    if (!_initializeCursorCalled) {
+      initializeCursor(nullptr, 0);
+    }
     return _root->skipSome(atMost);
   }
 
@@ -96,11 +98,17 @@ class ExecutionEngine {
 
   /// @brief skip
   bool skip(size_t number, size_t& actuallySkipped) { 
+    if (!_initializeCursorCalled) {
+      initializeCursor(nullptr, 0);
+    }
     return _root->skip(number, actuallySkipped); 
   }
 
   /// @brief hasMore
   inline bool hasMore() const { return _root->hasMore(); }
+
+  /// @brief whether or not initializeCursor was called
+  bool initializeCursorCalled() const { return _initializeCursorCalled; }
 
   /// @brief add a block to the engine
   TEST_VIRTUAL void addBlock(ExecutionBlock*);
@@ -148,9 +156,12 @@ class ExecutionEngine {
   /// @brief the register the final result of the query is stored in
   RegisterId _resultRegister;
 
+  /// @brief whether or not initializeCursor was called
+  bool _initializeCursorCalled;
+
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
-
+  
   /// @brief _previouslyLockedShards, this is read off at instanciating
   /// time from a thread local variable
   std::unordered_set<std::string>* _previouslyLockedShards;

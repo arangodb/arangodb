@@ -2703,7 +2703,7 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     remoteNode->addDependency(rootNode);
 
     // insert a gather node
-    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), &vocbase, c);
+    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(c));
 
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
@@ -3051,13 +3051,13 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
     // insert a gather node
     GatherNode* gatherNode =
-        new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
+        new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(collection));
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
     // On SmartEdge collections we have 0 shards and we need the elements
     // to be injected here as well. So do not replace it with > 1
-    if (!elements.empty() && gatherNode->collection()->numberOfShards() != 1) {
+    if (!elements.empty() && collection->numberOfShards() != 1) {
       gatherNode->elements(elements);
     }
 
@@ -3310,7 +3310,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
 
     // insert a gather node
     ExecutionNode* gatherNode =
-        new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
+        new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(collection));
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
 
@@ -3548,7 +3548,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
           if (gatherNode != nullptr && removeGatherNodeSort) {
             // remove sort(s) from GatherNode if we can
-            gatherNode->clearElements();
+            gatherNode->elements().clear();
           }
 
           wasModified = true;
@@ -3759,7 +3759,9 @@ void arangodb::aql::distributeSortToClusterRule(
           }
           // On SmartEdge collections we have 0 shards and we need the elements
           // to be injected here as well. So do not replace it with > 1
-          if (gatherNode->collection()->numberOfShards() != 1) {
+          auto const* collection = GatherNode::findCollection(*gatherNode);
+
+          if (collection && collection->numberOfShards() != 1) {
             gatherNode->elements(thisSortNode->elements());
           }
           modified = true;

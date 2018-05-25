@@ -40,7 +40,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("filtered", VPackValue(filtered));
-  builder.add("httpRequests", VPackValue(httpRequests));
+  builder.add("httpRequests", VPackValue(requests));
   if (reportFullCount) {
     // fullCount is optional
     builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
@@ -75,7 +75,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   scannedFull += summand.scannedFull;
   scannedIndex += summand.scannedIndex;
   filtered += summand.filtered;
-  httpRequests += summand.httpRequests;
+  requests += summand.requests;
   if (summand.fullCount > 0) {
     fullCount += summand.fullCount;
   }
@@ -98,7 +98,7 @@ ExecutionStats::ExecutionStats()
       scannedFull(0),
       scannedIndex(0),
       filtered(0),
-      httpRequests(0),
+      requests(0),
       fullCount(0),
       count(0),
       executionTime(0.0) {}
@@ -117,13 +117,9 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice)
   filtered = slice.get("filtered").getNumber<int64_t>();
   
   if (slice.hasKey("httpRequests")) {
-    httpRequests = slice.get("httpRequests").getNumber<int64_t>();
+    requests = slice.get("httpRequests").getNumber<int64_t>();
   }
- /* 
-  if (slice.hasKey("count")) {
-    count = slice.get("count").getNumber<int64_t>();
-  }
-*/
+  
   // note: fullCount is an optional attribute!
   if (slice.hasKey("fullCount")) {
     fullCount = slice.get("fullCount").getNumber<int64_t>();
