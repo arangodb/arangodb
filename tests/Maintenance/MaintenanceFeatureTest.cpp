@@ -59,7 +59,7 @@ class TestProgressHandler : public arangodb::application_features::ProgressHandl
 public:
   TestProgressHandler() {
     _serverReady=false;
-
+    
     using std::placeholders::_1;
     _state = std::bind(& TestProgressHandler::StateChange, this, _1);
 
@@ -365,19 +365,14 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     TestMaintenanceFeature tf;
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
-    std::cout << tf.toVelocyPack().toJson() << std::endl;
-    
     std::unique_ptr<ActionBase> action_base_ptr;
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
-            {"name","TestActionBasic"},{"iterate_count","1"},{"result_code","1"}
-          })));
+            {"name","TestActionBasic"},{"iterate_count","1"}})));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
-    std::cout << tf.toVelocyPack().toJson() << std::endl;
-    
     REQUIRE(result.ok());
     REQUIRE(tf._recentAction->result().ok());
     REQUIRE(1==tf._recentAction->getProgress());
@@ -390,17 +385,14 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     TestMaintenanceFeature tf;
     tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
-    std::cout << tf.toVelocyPack().toJson() << std::endl;
     std::unique_ptr<ActionBase> action_base_ptr;
     action_base_ptr.reset(
       (ActionBase*) new TestActionBasic(
         tf, ActionDescription(std::map<std::string,std::string>{
-            {"name","TestActionBasic"},{"iterate_count","1"}
+            {"name","TestActionBasic"},{"iterate_count","1"},{"result_code","1"}
           })));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
-    
-    std::cout << tf.toVelocyPack().toJson() << std::endl;
     
     REQUIRE(!result.ok());
     REQUIRE(!tf._recentAction->result().ok());
@@ -423,8 +415,6 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
 
-    std::cout << tf.toVelocyPack().toJson() << std::endl;
-    
     REQUIRE(result.ok());
     REQUIRE(tf._recentAction->result().ok());
     REQUIRE(2==tf._recentAction->getProgress());
@@ -444,8 +434,6 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
             {"name","TestActionBasic"},{"iterate_count","100"}})));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
-
-    std::cout << tf.toVelocyPack().toJson() << std::endl;
 
     REQUIRE(result.ok());
     REQUIRE(tf._recentAction->result().ok());
@@ -467,8 +455,6 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
           })));
     arangodb::Result result = tf.addAction(
       std::make_shared<Action>(std::move(action_base_ptr)), true);
-
-    std::cout << tf.toVelocyPack().toJson() << std::endl;
 
     REQUIRE(!result.ok());
     REQUIRE(!tf._recentAction->result().ok());
@@ -718,7 +704,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     // 5. verify completed actions
     REQUIRE(tf->verifyRegistryState(post_thread));
 
-#if 1   // for debugging
+#if 0   // for debugging
     std::cout << tf->toVelocyPack().toJson() << std::endl;
 #endif
 
