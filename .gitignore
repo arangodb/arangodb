@@ -63,8 +63,6 @@ arangosh/cmake_install.cmake
 cmake_install.cmake
 lib/cmake_install.cmake
 
-Documentation/Examples/*.generated
-
 arangod/Aql/grammar.output
 
 UnitTests/HttpInterface/logs/
