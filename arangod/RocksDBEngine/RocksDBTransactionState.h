@@ -77,8 +77,8 @@ class RocksDBTransactionState final : public TransactionState {
 
  public:
   RocksDBTransactionState(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_tid_t,
+    CollectionNameResolver const& resolver,
+    TRI_voc_tid_t tid,
     transaction::Options const& options
   );
   ~RocksDBTransactionState();
