@@ -182,7 +182,7 @@ void RestAqlHandler::setupClusterQuery() {
   //   variables: <variables slice>
   // }
 
- 
+
   auto options = std::make_shared<VPackBuilder>(
       VPackBuilder::clone(optionsSlice));
 
@@ -292,8 +292,10 @@ bool RestAqlHandler::registerSnippets(
       (needToLock ? PART_MAIN : PART_DEPENDENT)
     );
 
+    bool prepared = false;
     try {
       query->prepare(_queryRegistry, 0);
+      prepared = true;
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::AQL)
           << "failed to instantiate the query: " << ex.what();
@@ -343,7 +345,7 @@ bool RestAqlHandler::registerSnippets(
 
       }
 
-      _queryRegistry->insert(qId, query.get(), ttl);
+      _queryRegistry->insert(qId, query.get(), ttl, prepared);
       query.release();
       answerBuilder.add(it.key);
       answerBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(qId)));
@@ -446,7 +448,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   }
 
   // Now the query is ready to go, store it in the registry and return:
-  double ttl = 600.0;
+  double ttl = QueryInsertTTL;
   bool found;
   std::string const& ttlstring = _request->header("ttl", found);
 
@@ -455,16 +457,13 @@ void RestAqlHandler::createQueryFromVelocyPack() {
   }
 
   _qId = TRI_NewTickServer();
-  auto transactionContext = query->trx()->transactionContext().get();
-
   try {
-    _queryRegistry->insert(_qId, query.get(), ttl);
+    _queryRegistry->insert(_qId, query.get(), ttl, false);
     query.release();
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "could not keep query in registry";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "could not keep query in registry");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL, "could not insert query into registry");
     return;
   }
 
@@ -485,8 +484,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     return;
   }
 
-  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice(),
-               transactionContext);
+  sendResponse(rest::ResponseCode::ACCEPTED, answerBody.slice());
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
@@ -496,7 +494,7 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 // The body must be a Json with the following attributes:
 // For the "getSome" operation one has to give:
 //   "atMost": must be a positive integer, the cursor returns never
-//             more than "atMost" items. The result is the JSON representation 
+//             more than "atMost" items. The result is the JSON representation
 //             of an AqlItemBlock.
 //             If "atMost" is not given it defaults to ExecutionBlock::DefaultBatchSize.
 // For the "skipSome" operation one has to give:
@@ -916,4 +914,12 @@ void RestAqlHandler::sendResponse(rest::ResponseCode code,
                                   transaction::Context* transactionContext) {
   resetResponse(code);
   writeResult(slice, *(transactionContext->getVPackOptionsForDump()));
+}
+// Send slice as result with the given response type.
+void RestAqlHandler::sendResponse(
+    rest::ResponseCode code, VPackSlice const slice) {
+  resetResponse(code);
+  VPackOptions options = VPackOptions::Defaults;
+  options.escapeUnicode = true;
+  writeResult(slice, options);
 }
