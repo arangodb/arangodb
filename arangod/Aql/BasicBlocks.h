@@ -73,10 +73,8 @@ class FilterBlock final : public ExecutionBlock {
   int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
-  bool hasMore() override final;
-
-  /// @brief input register
  private:
+  /// @brief input register
   RegisterId _inReg;
 
   /// @brief vector of indices of those documents in the current block

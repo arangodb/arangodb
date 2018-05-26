@@ -35,16 +35,12 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 namespace basics {
-
 class StringBuffer;
-
 }
 
 namespace velocypack {
-
 class Builder;
 struct CustomTypeHandler;
-
 }
 
 class CollectionNameResolver;
