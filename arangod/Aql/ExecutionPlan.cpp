@@ -406,6 +406,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   builder.add("estimatedCost", VPackValue(_root->getCost(nrItems)));
   builder.add("estimatedNrItems", VPackValue(nrItems));
   builder.add("initialize", VPackValue(_isResponsibleForInitialize));
+  builder.add("isModificationQuery", VPackValue(ast->query()->isModificationQuery()));
 
   builder.close();
 }

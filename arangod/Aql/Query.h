@@ -225,6 +225,9 @@ class Query {
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
 
+  /// @brief whether or not a query is a modification query
+  bool isModificationQuery() const { return _isModificationQuery; }
+
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
 
