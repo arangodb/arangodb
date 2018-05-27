@@ -113,8 +113,7 @@ arangodb::Result updateLinks(
     newLinks = VPackSlice::emptyObjectSlice();
   }
 
-  arangodb::CollectionNameResolver resolver(&view.vocbase());
-
+  arangodb::CollectionNameResolver resolver(view.vocbase());
   arangodb::Result res;
   std::string error;
   VPackBuilder builder;
@@ -524,4 +523,3 @@ Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
 
 } // iresearch
 } // arangodb
-

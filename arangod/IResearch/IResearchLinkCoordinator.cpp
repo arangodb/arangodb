@@ -54,10 +54,6 @@ class IResearchLinkMMFilesCoordinator final
     _sparse = true;  // always sparse
   }
 
-  bool allowExpansion() const noexcept override {
-    return true;
-  }
-
   void batchInsert(
       arangodb::transaction::Methods*,
       std::vector<std::pair<arangodb::LocalDocumentId, VPackSlice>> const&,
@@ -183,12 +179,7 @@ class IResearchLinkRocksDBCoordinator final
     _unique = false; // cannot be unique since multiple fields are indexed
     _sparse = true;  // always sparse
   }
-
-  bool allowExpansion() const noexcept override {
-    // maps to multivalued
-    return true;
-  }
-
+        
   void batchInsert(
       arangodb::transaction::Methods*,
       std::vector<std::pair<arangodb::LocalDocumentId, VPackSlice>> const&,
@@ -416,7 +407,8 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
     return false; // failed to parse metadata
   }
 
-  if (!definition.isObject()
+  if (!_collection
+      || !definition.isObject()
       || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error finding view for link '" << _id << "'";
@@ -427,7 +419,7 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
 
   auto identifier = definition.get(StaticStrings::ViewIdField);
   auto viewId = identifier.getNumber<uint64_t>();
-    auto& vocbase = collection().vocbase();
+  auto& vocbase = _collection->vocbase();
     auto logicalView  = vocbase.lookupView(viewId);
 
     if (!logicalView

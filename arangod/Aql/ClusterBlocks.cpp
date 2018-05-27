@@ -38,7 +38,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -59,9 +58,10 @@ using StringBuffer = arangodb::basics::StringBuffer;
 
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
+      _atDep(0),
       _sortRegisters(),
       _isSimple(en->elements().empty()),
-      _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
+      _heap(en->_sortmode == GatherNode::SortMode::Heap ? new Heap : nullptr) {
 
   if (!_isSimple) {
     for (auto const& p : en->elements()) {
@@ -86,16 +86,6 @@ GatherBlock::~GatherBlock() {
     x.clear();
   }
   _gatherBlockBuffer.clear();
-}
-
-/// @brief initialize
-int GatherBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  _atDep = 0;
-  return ExecutionBlock::initialize();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief shutdown: need our own method since our _buffer is different
@@ -171,40 +161,6 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     _done = false;
   }
   return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief count: the sum of the count() of the dependencies or -1 (if any
-/// dependency has count -1
-int64_t GatherBlock::count() const {
-  DEBUG_BEGIN_BLOCK();
-  int64_t sum = 0;
-  for (auto const& x : _dependencies) {
-    if (x->count() == -1) {
-      return -1;
-    }
-    sum += x->count();
-  }
-  return sum;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
-/// any dependency has remaining -1
-int64_t GatherBlock::remaining() {
-  DEBUG_BEGIN_BLOCK();
-  int64_t sum = 0;
-  for (auto const& x : _dependencies) {
-    if (x->remaining() == -1) {
-      return -1;
-    }
-    sum += x->remaining();
-  }
-  return sum;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -742,37 +698,6 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief remainingForShard: remaining for shard, sum of the number of row left
-/// in the buffer and _dependencies[0]->remaining()
-int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
-  DEBUG_BEGIN_BLOCK();
-  
-  size_t clientId = getClientId(shardId);
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
-    return 0;
-  }
-
-  int64_t sum = _dependencies[0]->remaining();
-  if (sum == -1) {
-    return -1;
-  }
-
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
-
-  if (pos.first <= _buffer.size()) {
-    sum += _buffer.at(pos.first)->size() - pos.second;
-    for (auto i = pos.first + 1; i < _buffer.size(); i++) {
-      sum += _buffer.at(i)->size();
-    }
-  }
-
-  return sum;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 /// @brief getOrSkipSomeForShard
 int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
                                         bool skipping, AqlItemBlock*& result,
@@ -1275,71 +1200,37 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
        !ownName.empty()));
 }
 
-RemoteBlock::~RemoteBlock() {}
-
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
     std::string const& body) const {
   DEBUG_BEGIN_BLOCK();
   auto cc = ClusterComm::instance();
-  if (cc != nullptr) {
+  if (cc == nullptr) {
     // nullptr only happens on controlled shutdown
-
-    // Later, we probably want to set these sensibly:
-    ClientTransactionID const clientTransactionId = std::string("AQL");
-    CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-    std::unordered_map<std::string, std::string> headers;
-    if (!_ownName.empty()) {
-      headers.emplace("Shard-Id", _ownName);
-    }
-
-    ++_engine->_stats.httpRequests;
-    {
-      JobGuard guard(SchedulerFeature::SCHEDULER);
-      guard.block();
-
-      std::string const url = std::string("/_db/") +
-      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
-      urlPart + _queryId;
-      auto result =
-          cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                          std::move(url), body, headers, defaultTimeOut);
-      
-      return result;
-    }
-  }
-  return std::make_unique<ClusterCommResult>();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief initialize
-int RemoteBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-
-  if (!_isResponsibleForInitializeCursor) {
-    // do nothing...
-    return TRI_ERROR_NO_ERROR;
+    return std::make_unique<ClusterCommResult>();
   }
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/initialize/", "{}");
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (slice.hasKey("code")) {
-    return slice.get("code").getNumericValue<int>();
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = std::string("AQL");
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
+  if (!_ownName.empty()) {
+    headers.emplace("Shard-Id", _ownName);
   }
-  return TRI_ERROR_INTERNAL;
+    
+  std::string url = std::string("/_db/") +
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    urlPart + _queryId;
+
+  ++_engine->_stats.requests;
+  {
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.block();
+
+    return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                           std::move(url), body, headers, defaultTimeOut);
+  }
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1354,6 +1245,12 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
   }
+  
+  if (items == nullptr) {
+    // we simply ignore the initialCursor request, as the remote side
+    // will initialize the cursor lazily
+    return TRI_ERROR_NO_ERROR;
+  } 
 
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
@@ -1361,21 +1258,15 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   VPackBuilder builder(&options);
   builder.openObject();
-
-  if (items == nullptr) {
-    // first call, items is still a nullptr
-    builder.add("exhausted", VPackValue(true));
-    builder.add("error", VPackValue(false));
-  } else {
-    builder.add("exhausted", VPackValue(false));
-    builder.add("error", VPackValue(false));
-    builder.add("pos", VPackValue(pos));
-    builder.add(VPackValue("items"));
-    builder.openObject();
-    items->toVelocyPack(_engine->getQuery()->trx(), builder);
-    builder.close();
-  }
-
+ 
+  builder.add("exhausted", VPackValue(false));
+  builder.add("error", VPackValue(false));
+  builder.add("pos", VPackValue(pos));
+  builder.add(VPackValue("items"));
+  builder.openObject();
+  items->toVelocyPack(_engine->getQuery()->trx(), builder);
+  builder.close();
+  
   builder.close();
 
   std::string bodyString(builder.slice().toJson());
@@ -1558,64 +1449,6 @@ bool RemoteBlock::hasMore() {
     hasMore = slice.get("hasMore").getBoolean();
   }
   return hasMore;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief count
-int64_t RemoteBlock::count() const {
-  DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::GET, "/_api/aql/count/", std::string());
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-
-  int64_t count = 0;
-  if (slice.hasKey("count")) {
-    count = slice.get("count").getNumericValue<int64_t>();
-  }
-  return count;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief remaining
-int64_t RemoteBlock::remaining() {
-  DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::GET, "/_api/aql/remaining/", std::string());
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-
-  int64_t remaining = 0;
-  if (slice.hasKey("remaining")) {
-    remaining = slice.get("remaining").getNumericValue<int64_t>();
-  }
-  return remaining;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

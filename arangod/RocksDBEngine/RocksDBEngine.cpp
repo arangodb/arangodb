@@ -652,11 +652,11 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
 }
 
 std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
-    TRI_vocbase_t& vocbase,
+    CollectionNameResolver const& resolver,
     transaction::Options const& options
 ) {
   return std::unique_ptr<TransactionState>(
-    new RocksDBTransactionState(vocbase, options)
+    new RocksDBTransactionState(resolver, TRI_NewTickServer(), options)
   );
 }
 
@@ -704,8 +704,7 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
        iter->Next()) {
     auto slice = VPackSlice(iter->value().data());
 
-    //// check format
-    // id
+    //// check format id
     VPackSlice idSlice = slice.get("id");
     if (!idSlice.isString()) {
       LOG_TOPIC(ERR, arangodb::Logger::STARTUP)

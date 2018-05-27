@@ -212,7 +212,7 @@ bool jsonCommitMeta(
   builder.add("commitTimeoutMsec", arangodb::velocypack::Value(meta._commitTimeoutMsec));
 
   typedef arangodb::iresearch::IResearchViewMeta::CommitMeta::ConsolidationPolicy ConsolidationPolicy;
-  struct ConsolidationPolicyHash { size_t operator()(ConsolidationPolicy::Type const& value) const { return size_t(value); } }; // for GCC compatibility
+  struct ConsolidationPolicyHash { size_t operator()(ConsolidationPolicy::Type const& value) const noexcept { return size_t(value); } }; // for GCC compatibility
   static const std::unordered_map<ConsolidationPolicy::Type, std::string, ConsolidationPolicyHash> policies = {
     { ConsolidationPolicy::Type::BYTES, "bytes" },
     { ConsolidationPolicy::Type::BYTES_ACCUM, "bytes_accum" },

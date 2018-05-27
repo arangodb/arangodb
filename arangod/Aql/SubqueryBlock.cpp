@@ -41,17 +41,6 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
 }
 
-/// @brief initialize, tell dependency and the subquery
-int SubqueryBlock::initialize() {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  return getSubquery()->initialize();
-}
-
 /// @brief getSome
 AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();

@@ -33,7 +33,6 @@ Function::Function(std::string const& name,
                    FunctionImplementation implementation,
                    ExecutionCondition condition)
     : name(name),
-      nonAliasedName(name),
       arguments(arguments),
       isDeterministic(isDeterministic),
       canThrow(canThrow),
@@ -42,23 +41,18 @@ Function::Function(std::string const& name,
       condition(condition),
       conversions() {
   initializeArguments();
+                                     
+  // condition must only be set if we also have an implementation
+  TRI_ASSERT(implementation != nullptr || condition == nullptr);
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "setting up AQL function '" << name << 
+  LOG_TOPIC(TRACE, Logger::FIXME) << "registered AQL function '" << name << 
                                      "'. cacheable: " << isCacheable() << 
                                      ", deterministic: " << isDeterministic << 
                                      ", canThrow: " << canThrow << 
                                      ", canRunOnDBServer: " << canRunOnDBServer << 
                                      ", hasCxxImplementation: " << (implementation != nullptr) << 
                                      ", hasConversions: " << !conversions.empty();
-                                     
-  // condition must only be set if we also have an implementation
-  TRI_ASSERT(implementation != nullptr || condition == nullptr);
-  
-  LOG_TOPIC(TRACE, Logger::FIXME) << "setting up AQL function '" << name << ", hasImpl:" << hasImplementation(); 
 }
-
-/// @brief destroy the function
-Function::~Function() {}
 
 /// @brief parse the argument list and set the minimum and maximum number of
 /// arguments

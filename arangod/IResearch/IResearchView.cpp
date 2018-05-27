@@ -1790,11 +1790,8 @@ arangodb::Result IResearchView::updateProperties(
   IResearchViewMeta::Mask mask;
   WriteMutex mutex(_mutex); // '_meta' can be asynchronously read
   arangodb::Result res;
-
-  {
-    SCOPED_LOCK(mutex);
-
     arangodb::velocypack::Builder originalMetaJson; // required for reverting links on failure
+  SCOPED_LOCK_NAMED(mutex, mtx);
 
     if (!_meta.json(arangodb::velocypack::ObjectBuilder(&originalMetaJson))) {
       return arangodb::Result(
@@ -1826,7 +1823,7 @@ arangodb::Result IResearchView::updateProperties(
     }
 
     _meta = std::move(meta);
-  }
+  mutex.unlock(true); // downgrade to a read-lock
 
   if (!slice.hasKey(StaticStrings::LinksField)) {
     return res;
@@ -1842,13 +1839,19 @@ arangodb::Result IResearchView::updateProperties(
   auto links = slice.get(StaticStrings::LinksField);
 
   if (partialUpdate) {
+    mtx.unlock(); // release lock
+
     return IResearchLinkHelper::updateLinks(
       collections, vocbase(), *this, links
     );
   }
 
+  auto stale = _meta._collections;
+
+  mtx.unlock(); // release lock
+
   return IResearchLinkHelper::updateLinks(
-    collections, vocbase(), *this, links, _meta._collections
+    collections, vocbase(), *this, links, stale
   );
 }
 
@@ -1919,8 +1922,8 @@ void IResearchView::verifyKnownCollections() {
   {
     static const arangodb::transaction::Options defaults;
     struct State final: public arangodb::TransactionState {
-      State(TRI_vocbase_t& vocbase)
-        : arangodb::TransactionState(vocbase, defaults) {}
+      State(arangodb::CollectionNameResolver const& resolver)
+        : arangodb::TransactionState(resolver, 0, defaults) {}
       virtual arangodb::Result abortTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
@@ -1933,7 +1936,8 @@ void IResearchView::verifyKnownCollections() {
       virtual bool hasFailedOperations() const override { return false; }
     };
 
-    State state(vocbase());
+    arangodb::CollectionNameResolver resolver(vocbase());
+    State state(resolver);
 
     if (!appendKnownCollections(cids, *snapshot(state, true))) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)

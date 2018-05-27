@@ -63,22 +63,11 @@ class GatherBlock : public ExecutionBlock {
 
   ~GatherBlock();
 
-  /// @brief initialize
-  int initialize() override;
-
   /// @brief shutdown: need our own method since our _buffer is different
   int shutdown(int) override final;
 
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
-
-  /// @brief count: the sum of the count() of the dependencies or -1 (if any
-  /// dependency has count -1
-  int64_t count() const override final;
-
-  /// @brief remaining: the sum of the remaining() of the dependencies or -1 (if
-  /// any dependency has remaining -1
-  int64_t remaining() override final;
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
@@ -162,12 +151,6 @@ class BlockWithClients : public ExecutionBlock {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
-  /// @brief remaining
-  int64_t remaining() override final {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
   /// @brief hasMore
   bool hasMore() override final {
     TRI_ASSERT(false);
@@ -185,9 +168,6 @@ class BlockWithClients : public ExecutionBlock {
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   virtual bool hasMoreForShard(std::string const& shardId) = 0;
-
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  virtual int64_t remainingForShard(std::string const& shardId) = 0;
 
  protected:
   /// @brief getOrSkipSomeForShard
@@ -220,8 +200,6 @@ class ScatterBlock : public BlockWithClients {
                std::vector<std::string> const& shardIds)
       : BlockWithClients(engine, ep, shardIds) {}
 
-  ~ScatterBlock() {}
-
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -230,9 +208,6 @@ class ScatterBlock : public BlockWithClients {
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
-
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  int64_t remainingForShard(std::string const& shardId) override;
 
  private:
   /// @brief getOrSkipSomeForShard
@@ -250,16 +225,11 @@ class DistributeBlock : public BlockWithClients {
                   std::vector<std::string> const& shardIds,
                   Collection const* collection);
 
-  ~DistributeBlock() {}
-
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown
   int shutdown(int) override;
-
-  /// @brief remainingForShard: remaining for shard <shardId>?
-  int64_t remainingForShard(std::string const& shardId) override { return -1; }
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
@@ -320,13 +290,8 @@ class RemoteBlock final : public ExecutionBlock {
               std::string const& server, std::string const& ownName,
               std::string const& queryId);
 
-  ~RemoteBlock();
-
   /// @brief timeout
   static double const defaultTimeOut;
-
-  /// @brief initialize
-  int initialize() override final;
 
   /// @brief initializeCursor, could be called multiple times
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
@@ -342,28 +307,22 @@ class RemoteBlock final : public ExecutionBlock {
 
   /// @brief hasMore
   bool hasMore() override final;
-
-  /// @brief count
-  int64_t count() const override final;
-
-  /// @brief remaining
-  int64_t remaining() override final;
-
-  /// @brief internal method to send a request
+  
  private:
+  /// @brief internal method to send a request
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
       rest::RequestType type, std::string const& urlPart,
       std::string const& body) const;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
-  std::string _server;
+  std::string const _server;
 
   /// @brief our own identity, in case of the coordinator this is empty,
   /// in case of the DBservers, this is the shard ID as a string
-  std::string _ownName;
+  std::string const _ownName;
 
   /// @brief the ID of the query on the server as a string
-  std::string _queryId;
+  std::string const _queryId;
 
   /// @brief whether or not this block will forward initialize, 
   /// initializeCursor or shutDown requests

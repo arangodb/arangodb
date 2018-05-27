@@ -36,7 +36,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/CollectionLockState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
@@ -325,7 +324,7 @@ static void ExistsVocbaseVPack(
   {
     VPackObjectBuilder guard(&builder);
     res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, transactionContext->getResolver(), col,
+      isolate, vocbase, &(transactionContext->resolver()), col,
       collectionName, builder, true, args[0]);
   }
 
@@ -493,7 +492,7 @@ static void DocumentVocbase(
     int res = ParseDocumentOrDocumentHandle(
       isolate,
       &vocbase,
-      transactionContext->getResolver(),
+      &(transactionContext->resolver()),
       col,
       collectionName,
       builder,
@@ -733,7 +732,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     int res = ParseDocumentOrDocumentHandle(
       isolate,
       &vocbase,
-      transactionContext->getResolver(),
+      &(transactionContext->resolver()),
       col,
       collectionName,
       builder,
@@ -948,7 +947,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       allowDropSystem = TRI_ObjectToBoolean(args[0]);
     }
   }
- 
+
   auto res =
     methods::Collections::drop(&vocbase, collection, allowDropSystem, timeout);
 
@@ -1773,7 +1772,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     res = ParseDocumentOrDocumentHandle(
       isolate,
       &vocbase,
-      transactionContext->getResolver(),
+      &(transactionContext->resolver()),
       col,
       collectionName,
       updateBuilder,
@@ -2200,6 +2199,10 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       options.waitForSync =
           TRI_ObjectToBoolean(optionsObject->Get(WaitForSyncKey));
     }
+    TRI_GET_GLOBAL_STRING(OverwriteKey);
+    if (optionsObject->Has(OverwriteKey)) {
+      options.overwrite = TRI_ObjectToBoolean(optionsObject->Get(OverwriteKey));
+    }
     TRI_GET_GLOBAL_STRING(SilentKey);
     if (optionsObject->Has(SilentKey)) {
       options.silent = TRI_ObjectToBoolean(optionsObject->Get(SilentKey));
@@ -2207,6 +2210,10 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(ReturnNewKey);
     if (optionsObject->Has(ReturnNewKey)) {
       options.returnNew = TRI_ObjectToBoolean(optionsObject->Get(ReturnNewKey));
+    }
+    TRI_GET_GLOBAL_STRING(ReturnOldKey);
+    if (optionsObject->Has(ReturnOldKey)) {
+      options.returnOld = TRI_ObjectToBoolean(optionsObject->Get(ReturnOldKey)) && options.overwrite;
     }
     TRI_GET_GLOBAL_STRING(IsRestoreKey);
     if (optionsObject->Has(IsRestoreKey)) {
@@ -2284,7 +2291,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
     transactionContext, collection->id(), AccessMode::Type::WRITE
   );
 
-  if (!payloadIsArray) {
+  if (!payloadIsArray && !options.overwrite) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 

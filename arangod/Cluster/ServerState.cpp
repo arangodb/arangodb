@@ -73,14 +73,14 @@ void ServerState::findHost(std::string const& fallback) {
 
   // the following is set by Mesos or by an administrator:
   char* p = getenv("HOST");
-  if (p != NULL) {
+  if (p != nullptr) {
     _host = p;
     return;
   }
 
   // the following is set by Kubernetes when using the downward API:
   p = getenv("NODE_NAME");
-  if (p != NULL) {
+  if (p != nullptr) {
     _host = p;
     return;
   }

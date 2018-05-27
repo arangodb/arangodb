@@ -24,6 +24,7 @@
 #include "RestCursorHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/QueryResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -207,6 +208,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       result.add("cached", VPackValue(queryResult.cached));
       if (queryResult.cached || !queryResult.extra) {
         result.add("extra", VPackValue(VPackValueType::Object));
+        // no warnings
+        result.add("warnings", VPackSlice::emptyArraySlice());
         result.close();
       } else {
         result.add("extra", queryResult.extra->slice());

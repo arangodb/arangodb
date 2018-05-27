@@ -65,7 +65,8 @@ class StaticStrings {
   static std::string const Group;
   static std::string const Namespace;
   static std::string const ReplaceExisting;
-  static std::string const Prefix;;
+  static std::string const Prefix;
+  static std::string const OverWrite;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -74,8 +75,8 @@ class StaticStrings {
   static std::string const ReplicationHeaderLastTick;
   static std::string const ReplicationHeaderFromPresent;
   static std::string const ReplicationHeaderActive;
- 
-  // database and collection names 
+
+  // database and collection names
   static std::string const SystemDatabase;
 
   // LogicalDataSource definition fields

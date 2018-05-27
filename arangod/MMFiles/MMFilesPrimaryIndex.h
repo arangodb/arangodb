@@ -179,16 +179,13 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   char const* typeName() const override { return "primary"; }
 
-  bool allowExpansion() const override { return false; }
-
   bool canBeDropped() const override { return false; }
 
   bool isSorted() const override { return false; }
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimateLocal(
-      arangodb::StringRef const* = nullptr) const override {
+  double selectivityEstimate(StringRef const* = nullptr) const override {
     return 1.0;
   }
 

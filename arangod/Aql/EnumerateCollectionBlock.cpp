@@ -50,10 +50,6 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
   TRI_ASSERT(_cursor->ok());
 
   buildCallback();
-}
-
-int EnumerateCollectionBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
 
   if (ServerState::instance()->isRunningInCluster() && _collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
@@ -90,11 +86,6 @@ int EnumerateCollectionBlock::initialize() {
           "collection " + _collection->name + " did not come into sync in time (" + std::to_string(maxWait) +")");
     }
   }
-
-  return ExecutionBlock::initialize();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
