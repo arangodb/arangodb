@@ -229,7 +229,6 @@ bool ClusterIndex::supportsFilterCondition(
       SimpleAttributeEqualityMatcher matcher(this->_fields);
       return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                                 estimatedCost);
-      break;
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX: {
@@ -246,7 +245,6 @@ bool ClusterIndex::supportsFilterCondition(
       // same for both engines
       return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
                                                                       estimatedItems, estimatedCost);
-      break;
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -287,7 +285,6 @@ bool ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_EDGE_INDEX: {
       return Index::supportsSortCondition(sortCondition, reference, itemsInIndex,
                                           estimatedCost, coveredAttributes);
-      break;
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:{
@@ -304,7 +301,6 @@ bool ClusterIndex::supportsSortCondition(
       // same for both indexes
       return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex,
                                                                     estimatedCost, coveredAttributes);
-      break;
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -358,7 +354,6 @@ aql::AstNode* ClusterIndex::specializeCondition(
     }
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
-      break;
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
