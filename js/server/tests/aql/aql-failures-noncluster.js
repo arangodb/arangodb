@@ -189,7 +189,7 @@ function ahuacatlFailureSuite () {
     
     testSingletonBlock1 : function () {
       internal.debugSetFailAt("SingletonBlock::getOrSkipSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN UNIQUE(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +198,7 @@ function ahuacatlFailureSuite () {
     
     testSingletonBlock2 : function () {
       internal.debugSetFailAt("SingletonBlock::getOrSkipSomeSet");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q * year)) RETURN UNIQUE(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +207,7 @@ function ahuacatlFailureSuite () {
 
     testReturnBlock : function () {
       internal.debugSetFailAt("ReturnBlock::getSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ] RETURN CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', q))) RETURN LENGTH(quarters)");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ] RETURN CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', q))) RETURN UNIQUE(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

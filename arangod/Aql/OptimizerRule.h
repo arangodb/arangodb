@@ -91,8 +91,9 @@ struct OptimizerRule {
     // remove redundant sort blocks
     removeRedundantSortsRule_pass2,
     
-    // try to inline subqueries after removing unecessary calculations
-    //inlineSubqueriesRule_pass2,
+    // push limits into subqueries and simplify them
+    optimizeSubqueriesRule_pass2,
+
 
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher
@@ -133,8 +134,6 @@ struct OptimizerRule {
     // remove unused out variables for data-modification queries
     removeDataModificationOutVariablesRule_pass5,
     
-    limitSubqueriesRule_pass5,
-
     /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
     // ======================================================
 

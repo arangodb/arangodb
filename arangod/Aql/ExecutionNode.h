@@ -1262,8 +1262,10 @@ class ReturnNode : public ExecutionNode {
 
   Variable const* inVariable() const { return _inVariable; }
 
+  void inVariable(Variable const* v) { _inVariable = v; }
+
  private:
-  /// @brief we need to know the offset and limit
+  /// @brief the variable produced by Return
   Variable const* _inVariable;
 
   bool _count;

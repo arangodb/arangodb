@@ -235,8 +235,8 @@ void replaceLegacyGeoFunctionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, O
 /// @brief replace FULLTEXT function
 void fulltextIndexRule(aql::Optimizer*, std::unique_ptr<aql::ExecutionPlan>, aql::OptimizerRule const*);
 
-/// @brief push LIMIT into subqueries
-void limitSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+/// @brief push LIMIT into subqueries, and simplify them
+void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
 }  // namespace aql
 }  // namespace arangodb
