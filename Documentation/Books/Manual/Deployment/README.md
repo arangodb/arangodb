@@ -10,6 +10,7 @@ By ArangoDB _Deployment Mode_:
 - [Active Failover](ActiveFailover/README.md)
 - [Cluster](Cluster/README.md)
 - [Multiple Datacenters](DC2DC.md) 
+- [Standalone Agency](StandaloneAgency/README.md) 
 
 By _Technology_:
 
