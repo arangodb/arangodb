@@ -38,6 +38,18 @@
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+/// @brief hard-coded vector of the index attributes
+/// note that the attribute names must be hard-coded here to avoid an init-order
+/// fiasco with StaticStrings::FromString etc.
+
+// The primary indexes do not have `_id` in the _fields instance variable
+std::vector<std::vector<arangodb::basics::AttributeName>> const
+    PrimaryIndexAttributes{{arangodb::basics::AttributeName("_id", false)},
+                           {arangodb::basics::AttributeName("_key", false)}};
+
+};
+
 ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection* collection,
                            ClusterEngineType engineType, Index::IndexType itype,
                            VPackSlice const& info)
@@ -177,19 +189,9 @@ bool ClusterIndex::hasCoveringIterator() const {
 
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
-  // TODO implement fasrter version of this
+  // TODO implement faster version of this
   return Index::Compare(_info.slice(), info);
 }
-
-/// @brief hard-coded vector of the index attributes
-/// note that the attribute names must be hard-coded here to avoid an init-order
-/// fiasco with StaticStrings::FromString etc.
-
-// The primary indexes do not have `_id` in the _fields instance variable
-static std::vector<std::vector<arangodb::basics::AttributeName>> const
-    PrimaryIndexAttributes{{arangodb::basics::AttributeName("_id", false)},
-                           {arangodb::basics::AttributeName("_key", false)}};
-
 
 bool ClusterIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
