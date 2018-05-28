@@ -3451,13 +3451,22 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
             if (!collectNode->aggregateVariables().empty()) {
               for (auto const& it : collectNode->aggregateVariables()) {
-                if (it.second.second == "SUM" || 
-                    it.second.second == "MAX" || 
-                    it.second.second == "MIN" ||
-                    it.second.second == "COUNT" ||
-                    it.second.second == "LENGTH") {
+                std::string func = it.second.second;
+                if (func == "SUM" || 
+                    func == "MAX" || 
+                    func == "MIN" ||
+                    func == "COUNT" ||
+                    func == "LENGTH" ||
+                    func == "UNIQUE" ||
+                    func == "SORTED_UNIQUE" ||
+                    func == "COUNT_DISTINCT" ||
+                    func == "COUNT_UNIQUE") {
                   auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
-                  aggregateVariables.emplace_back(std::make_pair(outVariable, std::make_pair(it.second.first, it.second.second)));
+                  if (func == "COUNT_DISTINCT" || func == "COUNT_UNIQUE") {
+                    // translate COUNT_DISTINCT/COUNT_UNIQUE to UNIQUE on DB server
+                    func = "UNIQUE";
+                  }
+                  aggregateVariables.emplace_back(std::make_pair(outVariable, std::make_pair(it.second.first, func)));
                 } else {
                   eligible = false;
                   break;
@@ -3517,10 +3526,19 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               size_t i = 0;
               for (auto& it : collectNode->aggregateVariables()) {   
                 it.second.first = aggregateVariables[i].first;
-                if (it.second.second == "COUNT" ||
-                    it.second.second == "LENGTH") {
+                auto& func = it.second.second;
+                if (func == "COUNT" || func == "LENGTH") {
                   // COUNT/LENGTH need to be converted to SUM on coordinator
-                  it.second.second = "SUM";
+                  func = "SUM";
+                } else if (func == "UNIQUE") {
+                  // UNIQUE needs to be converted to UNIQUE_ADD on coordinator
+                  func = "UNIQUE_ADD";
+                } else if (func == "SORTED_UNIQUE") {
+                  // UNIQUE needs to be converted to SORTED_UNIQUE_ADD on coordinator
+                  func = "SORTED_UNIQUE_ADD";
+                } else if (func == "COUNT_DISTINCT" || func == "COUNT_UNIQUE") {
+                  // COUNT_UNIQUE needs to be converted to COUNT_UNIQUE_ADD on coordinator
+                  func = "COUNT_UNIQUE_ADD";
                 }
                 ++i;
               }

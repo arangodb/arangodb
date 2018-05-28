@@ -22,10 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aggregator.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -62,6 +64,24 @@ std::unique_ptr<Aggregator> Aggregator::fromTypeString(transaction::Methods* trx
   if (type == "STDDEV_SAMPLE") {
     return std::make_unique<AggregatorStddev>(trx, false);
   }
+  if (type == "UNIQUE") {
+    return std::make_unique<AggregatorUnique>(trx, false);
+  }
+  if (type == "UNIQUE_ADD") {
+    return std::make_unique<AggregatorUnique>(trx, true);
+  }
+  if (type == "SORTED_UNIQUE") {
+    return std::make_unique<AggregatorSortedUnique>(trx, false);
+  }
+  if (type == "SORTED_UNIQUE_ADD") {
+    return std::make_unique<AggregatorSortedUnique>(trx, true);
+  }
+  if (type == "COUNT_DISTINCT" || type == "COUNT_UNIQUE") {
+    return std::make_unique<AggregatorCountDistinct>(trx, false);
+  }
+  if (type == "COUNT_UNIQUE_ADD") {
+    return std::make_unique<AggregatorCountDistinct>(trx, true);
+  }
 
   // aggregator function name should have been validated before
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
@@ -86,7 +106,9 @@ bool Aggregator::isSupported(std::string const& type) {
           type == "AVG" || type == "VARIANCE_POPULATION" ||
           type == "VARIANCE" || type == "VARIANCE_SAMPLE" ||
           type == "STDDEV_POPULATION" || type == "STDDEV" ||
-          type == "STDDEV_SAMPLE");
+          type == "STDDEV_SAMPLE" || type == "UNIQUE" ||
+          type == "SORTED_UNIQUE" ||
+          type == "COUNT_DISTINCT" || type == "COUNT_UNIQUE");
 }
 
 bool Aggregator::requiresInput(std::string const& type) {
@@ -106,11 +128,9 @@ void AggregatorLength::reduce(AqlValue const&) {
 }
 
 AqlValue AggregatorLength::stealValue() {
-  builder.clear();
-  builder.add(VPackValue(count));
-  AqlValue temp(builder.slice());
+  uint64_t value = count;
   reset();
-  return temp;
+  return AqlValue(AqlValueHintUInt(value));
 }
 
 AggregatorMin::~AggregatorMin() { value.destroy(); }
@@ -306,4 +326,182 @@ AqlValue AggregatorStddev::stealValue() {
   AqlValue temp(builder.slice());
   reset();
   return temp;
+}
+      
+AggregatorUnique::AggregatorUnique(transaction::Methods* trx, bool isArrayInput)
+    : Aggregator(trx), 
+      allocator(1024), 
+      seen(512, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual(trx->transactionContext()->getVPackOptions())),
+      isArrayInput(isArrayInput) {}
+      
+AggregatorUnique::~AggregatorUnique() { reset(); } 
+
+void AggregatorUnique::reset() {
+  seen.clear();
+  builder.clear();
+  allocator.clear();
+}
+
+void AggregatorUnique::reduce(AqlValue const& cmpValue) {
+  AqlValueMaterializer materializer(trx);
+
+  VPackSlice s = materializer.slice(cmpValue, true);
+  
+  auto adder = [this](VPackSlice s) {
+    auto it = seen.find(s);
+    
+    if (it != seen.end()) {
+      // already saw the same value
+      return;
+    }
+
+    char* pos = allocator.store(s.startAs<char>(), s.byteSize());
+    seen.emplace(pos);
+
+    if (builder.isClosed()) {
+      builder.openArray();
+    }
+    builder.add(VPackSlice(pos));
+  };
+
+  if (isArrayInput) {
+    if (!s.isArray()) {
+      return;
+    }
+    for (auto it : VPackArrayIterator(s)) {
+      adder(it);
+    }
+  } else {
+    adder(s);
+  }
+}
+
+AqlValue AggregatorUnique::stealValue() {
+  // if not yet an array, start one
+  if (builder.isClosed()) {
+    builder.openArray();
+  }
+
+  // always close the Builder
+  builder.close();
+  AqlValue result(builder.slice());
+  reset();
+  return result;
+}
+
+AggregatorSortedUnique::AggregatorSortedUnique(transaction::Methods* trx, bool isArrayInput)
+    : Aggregator(trx), 
+      allocator(1024),
+      seen(trx->transactionContext()->getVPackOptions()),
+      isArrayInput(isArrayInput) {}
+
+AggregatorSortedUnique::~AggregatorSortedUnique() { reset(); } 
+
+void AggregatorSortedUnique::reset() {
+  seen.clear();
+  allocator.clear();
+  builder.clear();
+}
+
+void AggregatorSortedUnique::reduce(AqlValue const& cmpValue) {
+  AqlValueMaterializer materializer(trx);
+
+  VPackSlice s = materializer.slice(cmpValue, true);
+  
+  auto adder = [this](VPackSlice s) {
+    auto it = seen.find(s);
+    
+    if (it != seen.end()) {
+      // already saw the same value
+      return;
+    }
+
+    char* pos = allocator.store(s.startAs<char>(), s.byteSize());
+    seen.emplace(pos);
+
+    if (builder.isClosed()) {
+      builder.openArray();
+    }
+    builder.add(VPackSlice(pos));
+  };
+  
+  if (isArrayInput) {
+    if (!s.isArray()) {
+      return;
+    }
+    for (auto it : VPackArrayIterator(s)) {
+      adder(it);
+    }
+  } else {
+    adder(s);
+  }
+}
+
+AqlValue AggregatorSortedUnique::stealValue() {
+  builder.openArray();
+  for (auto const& it : seen) {
+    builder.add(it);
+  }
+  builder.close();
+  AqlValue result(builder.slice());
+  reset();
+  return result;
+}
+
+AggregatorCountDistinct::AggregatorCountDistinct(transaction::Methods* trx, bool isArrayInput)
+    : Aggregator(trx), 
+      allocator(1024),
+      seen(512, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual(trx->transactionContext()->getVPackOptions())),
+      isArrayInput(isArrayInput) {}
+
+AggregatorCountDistinct::~AggregatorCountDistinct() { reset(); } 
+
+void AggregatorCountDistinct::reset() {
+  seen.clear();
+  allocator.clear();
+  builder.clear();
+}
+
+void AggregatorCountDistinct::reduce(AqlValue const& cmpValue) {
+  AqlValueMaterializer materializer(trx);
+
+  VPackSlice s = materializer.slice(cmpValue, true);
+
+  auto adder = [this](VPackSlice s) {
+    auto it = seen.find(s);
+    
+    if (it != seen.end()) {
+      // already saw the same value
+      return;
+    }
+
+    char* pos = allocator.store(s.startAs<char>(), s.byteSize());
+    seen.emplace(pos);
+
+    if (builder.isClosed()) {
+      builder.openArray();
+    }
+    builder.add(VPackSlice(pos));
+  };
+  
+  if (isArrayInput) {
+    if (!s.isArray()) {
+      return;
+    }
+    for (auto it : VPackArrayIterator(s)) {
+      adder(it);
+    }
+  } else {
+    adder(s);
+  }
+}
+
+AqlValue AggregatorCountDistinct::stealValue() {
+  if (seen.empty()) {
+    return AqlValue(AqlValueHintUInt(0));
+  }
+
+  uint64_t value = seen.size();
+  reset();
+  return AqlValue(AqlValueHintUInt(value));
 }

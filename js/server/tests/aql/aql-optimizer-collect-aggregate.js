@@ -28,12 +28,12 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
-var assertQueryError = helper.assertQueryError;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
+const assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ const isCluster = require("@arangodb/cluster").isCluster();
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerAggregateTestSuite () {
-  var c;
+  let c;
 
   return {
     setUp : function () {
@@ -186,6 +186,107 @@ function optimizerAggregateTestSuite () {
       assertEqual("MIN", collectNode.aggregates[1].type);
       assertEqual("max", collectNode.aggregates[2].outVariable.name);
       assertEqual("MAX", collectNode.aggregates[2].type);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test aggregate
+////////////////////////////////////////////////////////////////////////////////
+
+    testAggregateUnique : function () {
+      var query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), unique1 = UNIQUE(i.value1), unique2 = UNIQUE(i.value2), uniqueGroup = UNIQUE(i.group) RETURN { group, length, unique1, unique2, uniqueGroup }";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(10, results.json.length);
+      for (var i = 0; i < 10; ++i) {
+        assertEqual("test" + i, results.json[i].group);
+        assertEqual(200, results.json[i].length);
+        assertEqual(200, results.json[i].unique1.length);
+        assertEqual([ i % 5 ], results.json[i].unique2);
+        assertEqual([ "test" + i ], results.json[i].uniqueGroup);
+      }
+
+      let plan = AQL_EXPLAIN(query).plan;
+      // must have a SortNode
+      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      assertEqual(isCluster ? 2 : 1, collectNodes.length);
+      
+      let collectNode = collectNodes[0];
+      if (isCluster) {
+        assertEqual("hash", collectNode.collectOptions.method);
+        assertFalse(collectNode.count);
+        assertFalse(collectNode.isDistinctCommand);
+
+        assertEqual(1, collectNode.groups.length);
+
+        assertEqual(4, collectNode.aggregates.length);
+        assertEqual("LENGTH", collectNode.aggregates[0].type);
+        assertEqual("UNIQUE", collectNode.aggregates[1].type);
+        assertEqual("UNIQUE", collectNode.aggregates[2].type);
+        assertEqual("UNIQUE", collectNode.aggregates[3].type);
+
+        collectNode = collectNodes[1];
+      }
+      assertEqual("hash", collectNode.collectOptions.method);
+      assertFalse(collectNode.count);
+      assertFalse(collectNode.isDistinctCommand);
+
+      assertEqual(1, collectNode.groups.length);
+      assertEqual("group", collectNode.groups[0].outVariable.name);
+
+      assertEqual(4, collectNode.aggregates.length);
+      assertEqual("length", collectNode.aggregates[0].outVariable.name);
+      assertEqual(isCluster ? "SUM" : "LENGTH", collectNode.aggregates[0].type);
+      assertEqual("unique1", collectNode.aggregates[1].outVariable.name);
+      assertEqual("UNIQUE", collectNode.aggregates[1].type);
+      assertEqual("unique2", collectNode.aggregates[2].outVariable.name);
+      assertEqual("UNIQUE", collectNode.aggregates[2].type);
+      assertEqual("uniqueGroup", collectNode.aggregates[3].outVariable.name);
+      assertEqual("UNIQUE", collectNode.aggregates[3].type);
+    },
+    
+    testAggregateUnique2 : function () {
+      var query = "FOR i IN " + c.name() + " COLLECT AGGREGATE unique1 = UNIQUE(i.value1), unique2 = UNIQUE(i.value2) RETURN { unique1, unique2 }";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      let expected = [];
+      for (let i = 0; i < 2000; ++i) {
+        expected.push(i);
+      }
+      assertEqual(expected.sort(), results.json[0].unique1.sort());
+      assertEqual([ 0, 1, 2, 3, 4 ], results.json[0].unique2.sort());
+
+      let plan = AQL_EXPLAIN(query).plan;
+
+      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      assertEqual(isCluster ? 2 : 1, collectNodes.length);
+      
+      let collectNode = collectNodes[0];
+      if (isCluster) {
+        assertEqual("hash", collectNode.collectOptions.method);
+        assertFalse(collectNode.count);
+        assertFalse(collectNode.isDistinctCommand);
+
+        assertEqual(0, collectNode.groups.length);
+
+        assertEqual(2, collectNode.aggregates.length);
+        assertEqual("UNIQUE", collectNode.aggregates[0].type);
+        assertEqual("UNIQUE", collectNode.aggregates[0].type);
+
+        collectNode = collectNodes[1];
+      }
+      assertFalse(collectNode.count);
+      assertFalse(collectNode.isDistinctCommand);
+
+      assertEqual(0, collectNode.groups.length);
+
+      assertEqual(2, collectNode.aggregates.length);
+      assertEqual("unique1", collectNode.aggregates[0].outVariable.name);
+      assertEqual("UNIQUE", collectNode.aggregates[0].type);
+      assertEqual("unique2", collectNode.aggregates[1].outVariable.name);
+      assertEqual("UNIQUE", collectNode.aggregates[1].type);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

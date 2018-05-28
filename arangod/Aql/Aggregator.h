@@ -25,9 +25,13 @@
 #define ARANGOD_AQL_AGGREGATOR_H 1
 
 #include "Basics/Common.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Aql/AqlValue.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+#include <set>
 
 namespace arangodb {
 namespace transaction {
@@ -35,6 +39,71 @@ class Methods;
 }
 
 namespace aql {
+
+class MemoryBlockAllocator {
+ public:
+  /// @brief create a temporary storage instance
+  explicit MemoryBlockAllocator(size_t blockSize)
+      : blocks(), blockSize(blockSize), current(nullptr), end(nullptr) {}
+
+  /// @brief destroy a temporary storage instance
+  ~MemoryBlockAllocator() {
+    clear();
+  }
+    
+  void clear() {
+    for (auto& it : blocks) {
+      delete[] it;
+    }
+    blocks.clear();
+    current = nullptr;
+    end = nullptr;
+  }
+
+  /// @brief register a short string
+  char* store(char const* p, size_t length) {
+    if (current == nullptr || (current + length > end)) {
+      allocateBlock();
+    }
+
+    TRI_ASSERT(!blocks.empty());
+    TRI_ASSERT(current != nullptr);
+    TRI_ASSERT(end != nullptr);
+    TRI_ASSERT(current + length <= end);
+
+    char* position = current;
+    memcpy(static_cast<void*>(position), p, length);
+    current += length;
+    return position;
+  }
+
+ private:
+  /// @brief allocate a new block of memory
+  void allocateBlock() {
+    char* buffer = new char[blockSize];
+
+    try {
+      blocks.emplace_back(buffer);
+    } catch (...) {
+      delete[] buffer;
+      throw;
+    }
+    current = buffer;
+    end = current + blockSize;
+  }
+ 
+  /// @brief already allocated blocks
+  std::vector<char*> blocks;
+
+  /// @brief size of each block
+  size_t const blockSize;
+
+  /// @brief offset into current block
+  char* current;
+
+  /// @brief end of current block
+  char* end;
+};
 
 struct Aggregator {
   Aggregator() = delete;
@@ -180,6 +249,54 @@ struct AggregatorStddev final : public AggregatorVarianceBase {
   }
 
   AqlValue stealValue() override final;
+};
+
+struct AggregatorUnique final : public Aggregator {
+  explicit AggregatorUnique(transaction::Methods* trx, bool isArrayInput);
+
+  ~AggregatorUnique();
+
+  char const* name() const override final { return "UNIQUE"; }
+
+  void reset() override final;
+  void reduce(AqlValue const&) override final;
+  AqlValue stealValue() override final;
+
+  MemoryBlockAllocator allocator;
+  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  bool isArrayInput;
+};
+
+struct AggregatorSortedUnique final : public Aggregator {
+  explicit AggregatorSortedUnique(transaction::Methods* trx, bool isArrayInput);
+
+  ~AggregatorSortedUnique();
+
+  char const* name() const override final { return "SORTED_UNIQUE"; }
+
+  void reset() override final;
+  void reduce(AqlValue const&) override final;
+  AqlValue stealValue() override final;
+
+  MemoryBlockAllocator allocator;
+  std::set<velocypack::Slice, basics::VelocyPackHelper::VPackLess<true>> seen;
+  bool isArrayInput;
+};
+
+struct AggregatorCountDistinct final : public Aggregator {
+  explicit AggregatorCountDistinct(transaction::Methods* trx, bool isArrayInput);
+
+  ~AggregatorCountDistinct();
+
+  char const* name() const override final { return "COUNT_DISTINCT"; }
+
+  void reset() override final;
+  void reduce(AqlValue const&) override final;
+  AqlValue stealValue() override final;
+
+  MemoryBlockAllocator allocator;
+  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  bool isArrayInput;
 };
 
 }  // namespace arangodb::aql
