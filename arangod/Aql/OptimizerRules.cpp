@@ -5280,25 +5280,25 @@ static bool isValueTypeNumber(AstNode* node) {
                                             node->value.type == VALUE_TYPE_DOUBLE));
 }
 
-static bool applyFulltextOptimization(EnumerateListNode* elnode,
-                                      LimitNode* limitNode, ExecutionPlan* plan) {
+static ExecutionNode* applyFulltextOptimization(EnumerateListNode* elnode,
+                                                LimitNode* limitNode, ExecutionPlan* plan) {
   std::vector<Variable const*> varsUsedHere = elnode->getVariablesUsedHere();
   TRI_ASSERT(varsUsedHere.size() == 1);
   // now check who introduced our variable
   ExecutionNode* node = plan->getVarSetBy(varsUsedHere[0]->id);
   if (node->getType() != EN::CALCULATION) {
-    return false;
+    return nullptr;
   }
   
   CalculationNode* calcNode = static_cast<CalculationNode*>(node);
   Expression* expr = calcNode->expression();
   // the expression must exist and it must have an astNode
   if (expr->node() == nullptr) {
-    return false;// not the right type of node
+    return nullptr;// not the right type of node
   }
   AstNode* flltxtNode = expr->nodeForModification();
   if (flltxtNode->type != NODE_TYPE_FCALL) {
-    return false;
+    return nullptr;
   }
   
   // get the ast node of the expression
@@ -5306,11 +5306,11 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   // we're looking for "FULLTEXT()", which is a function call
   // with a parameters array with collection, attribute, query, limit
   if (func->name != "FULLTEXT" || flltxtNode->numMembers() != 1) {
-    return false;
+    return nullptr;
   }
   AstNode* fargs = flltxtNode->getMember(0);
   if (fargs->numMembers() != 3 && fargs->numMembers() != 4) {
-    return false;
+    return nullptr;
   }
   
   AstNode* collArg = fargs->getMember(0);
@@ -5320,7 +5320,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (!isValueTypeCollection(collArg) || !isValueTypeString(attrArg) ||
       !isValueTypeString(queryArg) || // (...  || queryArg->type == NODE_TYPE_REFERENCE)
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
-    return false;
+    return nullptr;
   }
   
   std::string name = collArg->getString();
@@ -5328,7 +5328,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
   if (field.empty()) {
-    return false;
+    return nullptr;
   }
   
   // check for suitable indexes
@@ -5345,7 +5345,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     }
   });
   if (!index) { // no index found
-    return false;
+    return nullptr;
   }
   
   Ast* ast = plan->getAst();  
@@ -5401,7 +5401,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     limitNode->addDependency(indexNode);
   }
   
-  return true;
+  return indexNode;
 }
 
 void arangodb::aql::fulltextIndexRule(Optimizer* opt,
@@ -5419,8 +5419,12 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
     while (current) {
       if (current->getType() == EN::ENUMERATE_LIST) {
         EnumerateListNode* elnode = static_cast<EnumerateListNode*>(current);
-        modified = modified || applyFulltextOptimization(elnode, limit, plan.get());
-        break;
+        auto indexNode = applyFulltextOptimization(elnode, limit, plan.get());
+        if (indexNode != nullptr) {
+          modified = true;
+          limit = nullptr;
+          current = indexNode; // resume iteration at new node
+        }
       } else if (current->getType() == EN::LIMIT) {
         limit = static_cast<LimitNode*>(current);
       }
