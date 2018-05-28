@@ -582,7 +582,7 @@ function getServerData(arango) {
           '/bin/bash', ['-c', 'dmesg | tee /tmp/inspector-dmesg.out > /dev/null']);
         const dmesg = fs.readFileSync('/tmp/inspector-dmesg.out', 'utf8');
         tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'df -h | tee /inspector-tmp/df.out > /dev/null']);
+          '/bin/bash', ['-c', 'df -h | tee /tmp/inspector-df.out > /dev/null']);
         const df = fs.readFileSync('/tmp/inspector-df.out', 'utf8');
         tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'vmstat -s | tee /tmp/inspector-vmstat.out > /dev/null']);
@@ -701,4 +701,4 @@ exports.listServers = listServers;
   }
 }());
 
-exports.show = require("@arangodb/inspector/show");
+//exports.show = require("@arangodb/inspector/show");

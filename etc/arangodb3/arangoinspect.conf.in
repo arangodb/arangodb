@@ -11,4 +11,4 @@ ask-jwt-secret = true
 
 [javascript]
 startup-directory = @PKGDATADIR@/js
-client-module = doctor.js
+client-module = inspector.js
