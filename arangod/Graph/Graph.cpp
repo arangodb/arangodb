@@ -484,13 +484,12 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
 
   OperationResult result = trx.remove(collectionName, search, options);
 
-  // TODO remove all edges (via AQL):
   {
     aql::QueryString const queryString =
         aql::QueryString({"FOR e IN @@collection "
                           "FILTER e._from == @vertexId "
+                          "OR e._to == @vertexId "
                           "REMOVE e IN @@collection"});
-    // TODO delete _to as well
 
     std::string const vertexId = collectionName + "/" + key;
 
@@ -502,11 +501,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
       bindVars->add("vertexId", VPackValue(vertexId));
       bindVars->close();
 
-      // TODO this seems to create a deadlock; does the query try to get an
-      // additional lock in its subtransaction / does not find the parent
-      // transaction?
       arangodb::aql::Query query(true, ctx()->vocbase(), queryString, bindVars,
-                                 nullptr, arangodb::aql::PART_MAIN);
+                                 nullptr, arangodb::aql::PART_DEPENDENT);
 
       auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
 
