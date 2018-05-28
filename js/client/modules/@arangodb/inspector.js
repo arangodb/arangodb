@@ -701,4 +701,3 @@ exports.listServers = listServers;
   }
 }());
 
-//exports.show = require("@arangodb/inspector/show");
