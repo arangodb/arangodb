@@ -625,11 +625,12 @@ transaction::Methods::Methods(
     TRI_ASSERT(_state != nullptr);
     _state->increaseNesting();
   } else { // non-embedded
-    TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
-
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    _state = engine->createTransactionState(vocbase, options).release();
+
+    _state = engine->createTransactionState(
+       _transactionContextPtr->resolver(), options
+    ).release();
     TRI_ASSERT(_state != nullptr);
 
     // register the transaction in the context
@@ -668,7 +669,7 @@ transaction::Methods::~Methods() {
 
 /// @brief return the collection name resolver
 CollectionNameResolver const* transaction::Methods::resolver() const {
-  return _transactionContextPtr->getResolver();
+  return &(_transactionContextPtr->resolver());
 }
 
 /// @brief return the transaction collection for a document collection

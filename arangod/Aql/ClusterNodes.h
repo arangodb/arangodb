@@ -313,13 +313,38 @@ class GatherNode final : public ExecutionNode {
   friend class GatherBlock;
   friend class RedundantCalculationsReplacer;
 
-  /// @brief constructor with an id
  public:
-  GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection const* collection, std::size_t shardsRequiredForHeapMerge = 5);
+  enum class SortMode : uint32_t {
+    Unset = 0, // FIXME do we really 'Unset' value?
+    MinElement,
+    Heap
+  };
 
-  GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
-             SortElementVector const& elements, std::size_t shardsRequiredForHeapMerge = 5);
+  /// @brief inspect dependencies starting from a specified 'node'
+  /// and return first corresponding collection within
+  /// a diamond if so exist
+  static Collection const* findCollection(
+    GatherNode const& node
+  ) noexcept;
+
+  /// @returns sort mode for the specified collection
+  static SortMode getSortMode(
+    Collection const* collection,
+    std::size_t shardsRequiredForHeapMerge = 5
+  );
+
+  /// @brief constructor with an id
+  GatherNode(
+    ExecutionPlan* plan,
+    size_t id,
+    SortMode sortMode
+  ) noexcept;
+
+  GatherNode(
+    ExecutionPlan*,
+    arangodb::velocypack::Slice const& base,
+    SortElementVector const& elements
+  );
 
   /// @brief return the type of the node
   NodeType getType() const override final { return GATHER; }
@@ -328,22 +353,22 @@ class GatherNode final : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           unsigned flags) const override final;
 
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final {
+    auto c = new GatherNode(plan, _id, _sortmode);
+
+    cloneHelper(c, withDependencies, withProperties);
+
+    return ExecutionNode::castTo<ExecutionNode*>(c);
+  }
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
     std::unordered_set<std::string> const&
   ) const override;
-
-  /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
-    auto c = new GatherNode(plan, _id, _vocbase, _collection);
-
-    cloneHelper(c, withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c);
-  }
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
@@ -372,44 +397,17 @@ class GatherNode final : public ExecutionNode {
   SortElementVector& elements() { return _elements; }
 
   void elements(SortElementVector const& src) { _elements = src; }
-  
-  void clearElements() { _elements.clear(); }
 
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  void setCollection(Collection const* collection) { _collection = collection; }
-
-  std::unordered_set<Collection const*> auxiliaryCollections() const {
-    return _auxiliaryCollections;
-  }
-
-  void addAuxiliaryCollection(Collection const* auxiliaryCollection) {
-    _auxiliaryCollections.emplace(auxiliaryCollection);
-  }
-
-  bool hasAuxiliaryCollections() const { return !_auxiliaryCollections.empty(); }
-
-  void forceSortHeap(){ _sortmode='h'; }
-  void forceSortMinElement(){ _sortmode='m'; }
+  SortMode sortMode() const noexcept { return _sortmode; }
+  void sortMode(SortMode sortMode) noexcept { _sortmode = sortMode; }
 
  private:
   /// @brief sort elements, variable, ascending flags and possible attribute
   /// paths.
   SortElementVector _elements;
 
-  /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief the underlying collection
-  Collection const* _collection;
-
-  /// @brief (optional) auxiliary collections (satellites)
-  std::unordered_set<Collection const*> _auxiliaryCollections;
-  char _sortmode; // u - unset, m - min element, h - heap
+  /// @brief sorting mode
+  SortMode _sortmode;
 };
 
 }  // namespace arangodb::aql

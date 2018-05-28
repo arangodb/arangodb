@@ -324,7 +324,7 @@ static void ExistsVocbaseVPack(
   {
     VPackObjectBuilder guard(&builder);
     res = ParseDocumentOrDocumentHandle(
-      isolate, vocbase, transactionContext->getResolver(), col,
+      isolate, vocbase, &(transactionContext->resolver()), col,
       collectionName, builder, true, args[0]);
   }
 
@@ -492,7 +492,7 @@ static void DocumentVocbase(
     int res = ParseDocumentOrDocumentHandle(
       isolate,
       &vocbase,
-      transactionContext->getResolver(),
+      &(transactionContext->resolver()),
       col,
       collectionName,
       builder,
@@ -732,7 +732,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     int res = ParseDocumentOrDocumentHandle(
       isolate,
       &vocbase,
-      transactionContext->getResolver(),
+      &(transactionContext->resolver()),
       col,
       collectionName,
       builder,
@@ -1772,7 +1772,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
     res = ParseDocumentOrDocumentHandle(
       isolate,
       &vocbase,
-      transactionContext->getResolver(),
+      &(transactionContext->resolver()),
       col,
       collectionName,
       updateBuilder,

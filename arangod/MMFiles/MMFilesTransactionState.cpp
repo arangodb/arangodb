@@ -50,10 +50,11 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 }
 
 /// @brief transaction type
-MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t& vocbase,
-                                                 TRI_voc_tid_t tid,
-                                                 transaction::Options const& options)
-    : TransactionState(vocbase, tid, options),
+MMFilesTransactionState::MMFilesTransactionState(
+    CollectionNameResolver const& resolver,
+    TRI_voc_tid_t tid,
+    transaction::Options const& options
+): TransactionState(resolver, tid, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
       _hasOperations(false) {}
@@ -270,7 +271,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     bool const wakeUpSynchronizer = isSingleOperationTransaction;
 
     auto slotInfo = MMFilesLogfileManager::instance()->allocateAndWrite(
-      _vocbase.id(),
+      _resolver.vocbase().id(),
       collection->id(),
       marker,
       wakeUpSynchronizer,
@@ -329,7 +330,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     operation.handled();
 
     arangodb::aql::QueryCache::instance()->invalidate(
-      &_vocbase, collection->name()
+      &(_resolver.vocbase()), collection->name()
     );
 
     physical->increaseUncollectedLogfileEntries(1);
@@ -356,7 +357,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     _hasOperations = true;
 
     arangodb::aql::QueryCache::instance()->invalidate(
-      &_vocbase, collection->name()
+      &(_resolver.vocbase()), collection->name()
     );
   }
 
@@ -396,7 +397,7 @@ int MMFilesTransactionState::writeBeginMarker() {
 
   try {
     MMFilesTransactionMarker marker(
-      TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, _vocbase.id(), _id
+      TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION, _resolver.vocbase().id(), _id
     );
 
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
@@ -442,7 +443,7 @@ int MMFilesTransactionState::writeAbortMarker() {
 
   try {
     MMFilesTransactionMarker marker(
-      TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, _vocbase.id(), _id
+      TRI_DF_MARKER_VPACK_ABORT_TRANSACTION, _resolver.vocbase().id(), _id
     );
 
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, false).errorCode;
@@ -482,7 +483,7 @@ int MMFilesTransactionState::writeCommitMarker() {
 
   try {
     MMFilesTransactionMarker marker(
-      TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, _vocbase.id(), _id
+      TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION, _resolver.vocbase().id(), _id
     );
 
     res = GetMMFilesLogfileManager()->allocateAndWrite(marker, _options.waitForSync).errorCode;
@@ -534,4 +535,3 @@ int MMFilesTransactionState::writeCommitMarker() {
 
   return res;
 }
-

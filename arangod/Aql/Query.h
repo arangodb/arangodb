@@ -107,7 +107,7 @@ class Query {
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction (transaction::Methods* trx) {
+  void injectTransaction(transaction::Methods* trx) {
     _trx = trx;
     init();
   }
@@ -227,6 +227,9 @@ class Query {
 
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
+
+  /// @brief test is a query is a modification query
+  bool isModificationQuery() const { return _isModificationQuery; }
 
   /// @brief prepare a V8 context for execution for this expression
   /// this needs to be called once before executing any V8 function in this

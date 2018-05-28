@@ -41,6 +41,11 @@ struct Collection {
 
   Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
 
+  ~Collection() {}
+
+  /// @brief upgrade the access type to exclusive
+  void setExclusiveAccess();
+
   /// @brief set the current shard
   inline void setCurrentShard(std::string const& shard) {
     currentShard = shard;
@@ -73,10 +78,10 @@ struct Collection {
 
   /// @brief returns the responsible servers for the collection
   std::unordered_set<std::string> responsibleServers() const;
-  
+
   /// @brief returns the "distributeShardsLike" attribute for the collection
   std::string distributeShardsLike() const;
-  
+
   /// @brief fills the set with the responsible servers for the collection
   /// returns the number of responsible servers found for the collection
   size_t responsibleServers(std::unordered_set<std::string>&) const;
@@ -89,7 +94,7 @@ struct Collection {
 
   /// @brief returns the shard keys of a collection
   std::vector<std::string> shardKeys() const;
-  
+
   size_t numberOfShards() const;
 
   /// @brief whether or not the collection uses the default sharding
