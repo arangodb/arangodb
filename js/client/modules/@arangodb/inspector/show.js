@@ -2,7 +2,7 @@
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
-// @brief ArangoDB Doctor
+// @brief ArangoDB Insector
 // 
 // @file
 // 
@@ -29,11 +29,11 @@
 // /////////////////////////////////////////////////////////////////////////////
 
 const _ = require("lodash");
-const doctor = require("@arangodb/doctor");
+const inspector = require("@arangodb/inspector");
 const AsciiTable = require("ascii-table");
 
 function showServers() {
-  let servers = doctor.listServers();
+  let servers = inspector.listServers();
   let table = new AsciiTable();
 
   table.setHeading("type", "id", "endpoint", "status");

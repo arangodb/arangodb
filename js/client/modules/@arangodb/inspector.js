@@ -25,6 +25,7 @@
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 // 
 // @author Dr. Frank Celler
+// @author Kaveh Vahedipour
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // /////////////////////////////////////////////////////////////////////////////
 
@@ -84,7 +85,7 @@ function sortShardKeys(keys) {
 }
 
 
-function agencyDoctor(obj) {
+function agencyInspector(obj) {
 
   var nerrors = 0;
   var nwarnings = 0;
@@ -578,20 +579,20 @@ function getServerData(arango) {
         }
 
         var tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'dmesg | tee /tmp/doctor-dmesg.out > /dev/null']);
-        const dmesg = fs.readFileSync('/tmp/doctor-dmesg.out', 'utf8');
+          '/bin/bash', ['-c', 'dmesg | tee /tmp/inspector-dmesg.out > /dev/null']);
+        const dmesg = fs.readFileSync('/tmp/inspector-dmesg.out', 'utf8');
         tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'df -h | tee /tmp/df.out > /dev/null']);
-        const df = fs.readFileSync('/tmp/df.out', 'utf8');
+          '/bin/bash', ['-c', 'df -h | tee /inspector-tmp/df.out > /dev/null']);
+        const df = fs.readFileSync('/tmp/inspector-df.out', 'utf8');
         tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'vmstat -s | tee /tmp/doctor-vmstat.out > /dev/null']);
-        const vmstat = fs.readFileSync('/tmp/doctor-vmstat.out', 'utf8');
+          '/bin/bash', ['-c', 'vmstat -s | tee /tmp/inspector-vmstat.out > /dev/null']);
+        const vmstat = fs.readFileSync('/tmp/inspector-vmstat.out', 'utf8');
         tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'uptime | tee /tmp/uptime.out > /dev/null']);
-        const uptime = fs.readFileSync('/tmp/uptime.out', 'utf8');
+          '/bin/bash', ['-c', 'uptime | tee /tmp/inspector-uptime.out > /dev/null']);
+        const uptime = fs.readFileSync('/tmp/inspector-uptime.out', 'utf8');
         tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'uname -a | tee /tmp/uname.out > /dev/null']);
-        const uname = fs.readFileSync('/tmp/uname.out', 'utf8');
+          '/bin/bash', ['-c', 'uname -a | tee /tmp/inspector-uname.out > /dev/null']);
+        const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8');
 
         var local = {};
         var localDBs = db._databases();
@@ -684,13 +685,13 @@ exports.listServers = listServers;
       locateServers(agencyDump);
     }
 
-    healthRecord['analysis'] = agencyDoctor(agencyDump);
+    healthRecord['analysis'] = agencyInspector(agencyDump);
     healthRecord['agency'] = agencyDump[0].arango;
     
     // Get all sorts of meta data from all servers
     healthRecord['servers'] = getServerData(arango);
 
-    const ofname = 'arango-doctor.json';
+    const ofname = 'arango-inspector.json';
     require('fs').writeFileSync(ofname, JSON.stringify(healthRecord));
 
     INFO("Report written to " + ofname + ".");
@@ -700,4 +701,4 @@ exports.listServers = listServers;
   }
 }());
 
-exports.show = require("@arangodb/doctor/show");
+exports.show = require("@arangodb/inspector/show");
