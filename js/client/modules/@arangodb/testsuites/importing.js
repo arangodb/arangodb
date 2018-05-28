@@ -35,6 +35,15 @@ const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 const yaml = require('js-yaml');
 
+const testPaths = {
+  'importing': [
+    'js/server/tests/import/import-setup.js',
+    'js/server/tests/import/import.js',
+    'js/server/tests/import/import-teardown.js',
+    'js/common/test-data/import/' // our testdata...
+  ]
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: importing
 // //////////////////////////////////////////////////////////////////////////////
@@ -202,7 +211,7 @@ function importing (options) {
 
   try {
     result.setup = tu.runInArangosh(options, instanceInfo,
-      tu.makePathUnix('js/server/tests/import/import-setup.js'));
+      tu.makePathUnix(testPaths.import[0]));
 
     result.setup.failed = 0;
     if (result.setup.status !== true) {
@@ -227,13 +236,13 @@ function importing (options) {
     result.check = tu.runInArangosh(
       options,
       instanceInfo,
-      tu.makePathUnix('js/server/tests/import/import.js'));
+      tu.makePathUnix(testPaths.import[1]));
     result.check.failed = result.check.success ? 0 : 1;
 
     result.teardown = tu.runInArangosh(
       options,
       instanceInfo,
-      tu.makePathUnix('js/server/tests/import/import-teardown.js'));
+      tu.makePathUnix(testPaths.import[2]));
     result.teardown.failed = result.teardown.success ? 0 : 1;
   } catch (banana) {
     print('An exceptions of the following form was caught:',
@@ -247,11 +256,10 @@ function importing (options) {
   return result;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['importing'] = importing;
   defaultFns.push('importing');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};
