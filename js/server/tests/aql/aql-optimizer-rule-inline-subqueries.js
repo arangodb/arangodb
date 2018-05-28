@@ -83,6 +83,7 @@ function optimizerRuleTestSuite () {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertEqual([ ], result.plan.rules, query);
         result = AQL_EXPLAIN(query, { }, paramNone);
+        assertEqual([ ], result.plan.rules, query);
       });
     },
 

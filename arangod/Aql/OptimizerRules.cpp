@@ -1836,7 +1836,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         continue;
       }
 
-      if (nn->isModificationQuery()) {
+      if (nn->isModificationSubquery()) {
         // subqueries that modify data must not be optimized away
         continue;
       }
@@ -3611,7 +3611,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         }
 
         case EN::COLLECT:
-        case EN::SUBQUERY:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::SCATTER:
@@ -3624,6 +3623,7 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::ENUMERATE_COLLECTION:
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
+        case EN::SUBQUERY:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::SCATTER_IRESEARCH_VIEW:
@@ -3633,14 +3633,35 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
           break;
 
         case EN::CALCULATION:
-          // check if the expression can be executed on a DB server safely
-          if (!ExecutionNode::castTo<CalculationNode const*>(inspectNode)->expression()->canRunOnDBServer()) {
-            stopSearching = true;
-            break;
-          }
-          // intentionally falls through
-
         case EN::FILTER:
+          if (inspectNode->getType() == EN::CALCULATION) {
+            // check if the expression can be executed on a DB server safely
+            if (!ExecutionNode::castTo<CalculationNode const*>(inspectNode)->expression()->canRunOnDBServer()) {
+              stopSearching = true;
+              break;
+            }
+            // intentionally falls through
+          }
+#if 0
+          // TODO: this is already prepared to push subqueries on the DB servers.
+          // However, the ExecutionEngine's instanciator cannot yet handle subqueries
+          // on DB servers. Once it can do this, this part can be finished
+          else if (inspectNode->getType() == EN::SUBQUERY) {
+            // check if the subquery can be executed on a DB server safely
+            SubqueryNode* s = ExecutionNode::castTo<SubqueryNode*>(inspectNode);
+            if (!s->isDeterministic() || s->mayAccessCollections()) {
+              stopSearching = true;
+              break;
+            }
+            // intentionally falls through
+          }
+#endif
+          // no special handling for filters here
+
+          TRI_ASSERT(inspectNode->getType() == EN::SUBQUERY || 
+                     inspectNode->getType() == EN::CALCULATION || 
+                     inspectNode->getType() == EN::FILTER);
+
           for (auto& v : inspectNode->getVariablesUsedHere()) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
               // do not move over the definition of variables that we need
@@ -5209,7 +5230,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
   for (auto const& n : nodes) {
     auto subqueryNode = ExecutionNode::castTo<SubqueryNode*>(n);
 
-    if (subqueryNode->isModificationQuery()) {
+    if (subqueryNode->isModificationSubquery()) {
       // can't modify modifying subqueries
       continue;
     }
@@ -6289,12 +6310,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         case EN::COLLECT:
           info.invalidate(); // TODO reset info to original state instead
           break;
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
         case EN::ENUMERATE_LIST:
           checkEnumerateListNode(plan.get(), ExecutionNode::castTo<EnumerateListNode*>(current), info);
-          // intentional fallthrough
-#pragma GCC diagnostic pop
+          // intentionally falls through
         case EN::ENUMERATE_COLLECTION: {
           if (info && info.collectionNodeToReplace == current) {
             mod = mod || applyGeoOptimization(plan.get(), limit, info);
@@ -6450,5 +6468,199 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
     }
   }
 
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt, 
+                                           std::unique_ptr<ExecutionPlan> plan, 
+                                           OptimizerRule const* rule) {
+  bool modified = false;
+  
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::CALCULATION, true);
+    
+  std::unordered_map<ExecutionNode*, std::tuple<int64_t, std::unordered_set<ExecutionNode const*>, bool>> subqueryAttributes;
+
+  for (auto const& n : nodes) {
+    auto cn = ExecutionNode::castTo<CalculationNode*>(n);
+    auto expr = cn->expression();
+    if (expr == nullptr) {
+      continue;
+    }
+   
+    AstNode const* root = expr->node();
+    if (root == nullptr) {
+      continue;
+    }
+
+    auto visitor = [&subqueryAttributes, &plan, n](AstNode const* node) -> bool {
+      std::pair<ExecutionNode*, int64_t> found{ nullptr, 0 };
+      bool usedForCount = false;
+        
+      if (node->type == NODE_TYPE_REFERENCE) {
+        Variable const* v = static_cast<Variable const*>(node->getData());
+        auto setter = plan->getVarSetBy(v->id);
+        if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
+          // we found a subquery result being used somehow in some
+          // way that will make the optimization produce wrong results
+          found.first = setter;
+          found.second = -1; // negative values will disable the optimization
+        }
+      } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+        auto sub = node->getMemberUnchecked(0);
+        if (sub->type == NODE_TYPE_REFERENCE) {
+          Variable const* v = static_cast<Variable const*>(sub->getData());
+          auto setter = plan->getVarSetBy(v->id);
+          auto index = node->getMemberUnchecked(1);
+          if (index->type == NODE_TYPE_VALUE && index->isNumericValue() &&
+              setter != nullptr && setter->getType() == EN::SUBQUERY) {
+            found.first = setter;
+            found.second = index->getIntValue() + 1; // x[0] => LIMIT 1
+            if (found.second <= 0) {
+              // turn optimization off
+              found.second = -1;
+            }
+          }
+        }
+      } else if (node->type == NODE_TYPE_FCALL && node->numMembers() > 0) {
+        auto func = static_cast<Function const*>(node->getData());
+        auto args = node->getMember(0);
+        if (func->name == "FIRST" || func->name == "LENGTH" || func->name == "COUNT") {
+          if (args->numMembers() > 0 && args->getMember(0)->type == NODE_TYPE_REFERENCE) {
+            Variable const* v = static_cast<Variable const*>(args->getMember(0)->getData());
+            auto setter = plan->getVarSetBy(v->id);
+            if (setter != nullptr && setter->getType() == EN::SUBQUERY) {
+              found.first = setter;
+              if (func->name == "FIRST") {
+                found.second = 1; // FIRST(x) => LIMIT 1
+              } else {
+                found.second = -1;
+                usedForCount = true;
+              }
+            }
+          }
+        }
+      }
+
+      if (found.first != nullptr) {
+        auto it = subqueryAttributes.find(found.first);
+        if (it == subqueryAttributes.end()) {
+          subqueryAttributes.emplace(found.first, std::make_tuple(found.second, std::unordered_set<ExecutionNode const*>{n}, usedForCount));
+        } else {
+          auto& sq = (*it).second;
+          if (usedForCount) {
+            // COUNT + LIMIT together will turn off the optimization
+            std::get<2>(sq) = (std::get<0>(sq) <= 0);
+            std::get<0>(sq) = -1;
+            std::get<1>(sq).clear();
+          } else {
+            if (found.second <= 0 || std::get<0>(sq) < 0) {
+              // negative value will turn off the optimization
+              std::get<0>(sq) = -1;
+              std::get<1>(sq).clear();
+            } else {
+              // otherwise, use the maximum of the limits needed, and insert
+              // current node into our "safe" list
+              std::get<0>(sq) = std::max(std::get<0>(sq), found.second);
+              std::get<1>(sq).emplace(n);
+            }
+            std::get<2>(sq) = false;
+          }
+        }
+        // don't descend further
+        return false;
+      }
+ 
+      // descend further
+      return true;
+    };
+
+    Ast::traverseReadOnly(root, visitor, [](AstNode const*) {});
+  }
+
+  for (auto const& it : subqueryAttributes) {
+    ExecutionNode* node = it.first;
+    TRI_ASSERT(node->getType() == EN::SUBQUERY);
+    auto sn = ExecutionNode::castTo<SubqueryNode const*>(node);
+
+    if (sn->isModificationSubquery()) {
+      // cannot push a LIMIT into data-modification subqueries
+      continue;
+    }
+          
+    auto const& sq = it.second;
+    int64_t limitValue = std::get<0>(sq);
+    bool usedForCount = std::get<2>(sq);
+    if (limitValue <= 0 && !usedForCount) {
+      // optimization turned off
+      continue;
+    }
+
+    // scan from the subquery node to the bottom of the ExecutionPlan to check
+    // if any of the following nodes also use the subquery result
+    auto out = sn->outVariable();
+    std::unordered_set<Variable const*> used;
+    bool invalid = false;
+
+    auto current = node->getFirstParent();
+    while (current != nullptr) {
+      auto const& referencedBy = std::get<1>(sq);
+      if (referencedBy.find(current) == referencedBy.end()) {
+        // node not found in "safe" list
+        // now check if it uses the subquery's out variable
+        used.clear();
+        current->getVariablesUsedHere(used);
+        if (used.find(out) != used.end()) {
+          invalid = true;
+          break;
+        }
+      }
+      // continue iteration
+      current = current->getFirstParent();
+    }
+
+    if (invalid) {
+      continue;
+    }
+    
+    auto root = sn->getSubquery();
+    if (root != nullptr && root->getType() == EN::RETURN) {
+      // now inject a limit
+      auto f = root->getFirstDependency();
+      TRI_ASSERT(f != nullptr);
+
+      if (std::get<2>(sq)) {
+        // used for count, e.g. COUNT(FOR doc IN collection RETURN ...)
+        // this will be turned into
+        // COUNT(FOR doc IN collection RETURN 1) 
+        Ast* ast = plan->getAst();
+        // generate a calculation node that only produces "true"
+        auto expr = std::make_unique<Expression>(plan.get(), ast, Ast::createNodeValueBool(true));
+        Variable* outVariable = ast->variables()->createTemporaryVariable();
+        auto calcNode = new CalculationNode(plan.get(), plan->nextId(), expr.get(), nullptr, outVariable);
+        plan->registerNode(calcNode);
+        expr.release();
+        plan->insertAfter(f, calcNode);
+        // change the result value of the existing Return node
+        TRI_ASSERT(root->getType() == EN::RETURN);
+        ExecutionNode::castTo<ReturnNode*>(root)->inVariable(outVariable);
+        modified = true;
+        continue;
+      }
+
+      if (f->getType() == EN::LIMIT) {
+        // subquery already has a LIMIT node at its end
+        // no need to do anything
+        continue;
+      }
+    
+      auto limitNode = new LimitNode(plan.get(), plan->nextId(), 0, limitValue);
+      plan->registerNode(limitNode);
+      plan->insertAfter(f, limitNode);
+      modified = true;
+    }
+  }
+   
   opt->addPlan(std::move(plan), rule, modified);
 }

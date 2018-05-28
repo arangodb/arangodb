@@ -2021,7 +2021,7 @@ void ExecutionPlan::findNodesOfType(
       NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result,
                                                               enterSubqueries);
       root()->walk(finder);
-      // abort, because we were lookig for all nodes at the same type
+      // abort, because we were looking for all nodes at the same type
       return;
     }
   }
