@@ -35,12 +35,32 @@
 #include "Aql/Optimizer.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ServerState.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
+
+size_t numberOfShards(
+    arangodb::CollectionNameResolver const& resolver,
+    arangodb::LogicalView const& view
+) {
+  size_t numberOfShards = 0;
+
+  auto visitor = [&numberOfShards](
+      arangodb::LogicalCollection const& collection
+  ) noexcept {
+    numberOfShards += collection.numberOfShards();
+    return true;
+  };
+
+  resolver.visitCollections(visitor, view.id());
+
+  return numberOfShards;
+}
 
 std::vector<arangodb::iresearch::IResearchSort> buildSort(
     ExecutionPlan const& plan,
@@ -525,6 +545,14 @@ void scatterViewInClusterRule(
   nodes.clear();
   plan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
+  TRI_ASSERT(
+    plan->getAst()
+      && plan->getAst()->query()
+      && plan->getAst()->query()->trx()
+  );
+  auto* resolver = plan->getAst()->query()->trx()->resolver();
+  TRI_ASSERT(resolver);
+
   for (auto* node : nodes) {
     TRI_ASSERT(node);
     auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
@@ -590,20 +618,22 @@ void scatterViewInClusterRule(
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
 
-    // insert a gather node
+    // insert gather node
+    auto const sortMode = GatherNode::evaluateSortMode(
+      numberOfShards(*resolver, view)
+    );
     auto* gatherNode = plan->registerNode(
       std::make_unique<GatherNode>(
         plan.get(),
         plan->nextId(),
-        GatherNode::SortMode::Unset
+        sortMode
     ));
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
 
-   // FIXME
-   // if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
-   //   gatherNode->setElements(elements);
-   // }
+//    if (!elements.empty()) {
+//      gatherNode->elements(elements);
+//    }
 
     // and now link the gather node with the rest of the plan
     if (parents.size() == 1) {

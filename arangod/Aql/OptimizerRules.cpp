@@ -2703,7 +2703,13 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     remoteNode->addDependency(rootNode);
 
     // insert a gather node
-    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(c));
+    auto const sortMode = GatherNode::evaluateSortMode(
+      c->numberOfShards()
+    );
+
+    auto* gatherNode = new GatherNode(
+      plan.get(), plan->nextId(), sortMode
+    );
 
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
@@ -2945,6 +2951,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, types, true);
 
+  TRI_ASSERT(
+    plan->getAst()
+      && plan->getAst()->query()
+      && plan->getAst()->query()->trx()
+  );
+  auto* resolver = plan->getAst()->query()->trx()->resolver();
+  TRI_ASSERT(resolver);
+
   for (auto& node : nodes) {
     // found a node we need to replace in the plan
 
@@ -3050,8 +3064,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     remoteNode->addDependency(node);
 
     // insert a gather node
-    GatherNode* gatherNode =
-        new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(collection));
+    auto const sortMode = GatherNode::evaluateSortMode(
+      collection->numberOfShards()
+    );
+    auto* gatherNode = new GatherNode(
+      plan.get(),
+      plan->nextId(),
+      sortMode
+    );
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
@@ -3309,8 +3329,14 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     remoteNode->addDependency(node);
 
     // insert a gather node
-    ExecutionNode* gatherNode =
-        new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(collection));
+    auto const sortMode = GatherNode::evaluateSortMode(
+      collection->numberOfShards()
+    );
+    auto* gatherNode = new GatherNode(
+      plan.get(),
+      plan->nextId(),
+      sortMode
+    );
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
 

@@ -56,25 +56,103 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
+namespace {
+
+/// @brief OurLessThan: comparison method for elements of _gatherBlockPos
+class OurLessThan {
+ public:
+  OurLessThan(
+      transaction::Methods* trx,
+      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : _trx(trx),
+      _gatherBlockBuffer(gatherBlockBuffer),
+      _sortRegisters(sortRegisters) {
+  }
+
+  bool operator()(
+    std::pair<size_t, size_t> const& a,
+    std::pair<size_t, size_t> const& b
+  ) const;
+
+ private:
+  transaction::Methods* _trx;
+  std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
+  std::vector<SortRegister>& _sortRegisters;
+}; // OurLessThan
+
+bool OurLessThan::operator()(
+    std::pair<size_t, size_t> const& a,
+    std::pair<size_t, size_t> const& b
+) const {
+  // nothing in the buffer is maximum!
+  if (_gatherBlockBuffer[a.first].empty()) {
+    return false;
+  }
+
+  if (_gatherBlockBuffer[b.first].empty()) {
+    return true;
+  }
+
+  TRI_ASSERT(!_gatherBlockBuffer[a.first].empty());
+  TRI_ASSERT(!_gatherBlockBuffer[b.first].empty());
+
+  for (auto const& reg : _sortRegisters) {
+    auto const& lhs = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
+    auto const& rhs = _gatherBlockBuffer[a.first].front()->getValueReference(b.second, reg.reg);
+    auto const& attributePath = reg.attributePath;
+
+    // Fast path if there is no attributePath:
+    int cmp;
+
+    if (attributePath.empty()) {
+#ifdef USE_IRESEARCH
+      TRI_ASSERT(reg.comparator);
+      cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
+#else
+      cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+#endif
+    } else {
+      // Take attributePath into consideration:
+      bool mustDestroyA;
+      AqlValue aa = lhs.get(_trx, attributePath, mustDestroyA, false);
+      AqlValueGuard guardA(aa, mustDestroyA);
+      bool mustDestroyB;
+      AqlValue bb = rhs.get(_trx, attributePath, mustDestroyB, false);
+      AqlValueGuard guardB(bb, mustDestroyB);
+      cmp = AqlValue::Compare(_trx, aa, bb, true);
+    }
+
+    if (cmp == -1) {
+      return reg.asc;
+    } else if (cmp == 1) {
+      return !reg.asc;
+    }
+  }
+
+  return false;
+}
+
+}
+
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
-      _atDep(0),
-      _sortRegisters(),
-      _isSimple(en->elements().empty()),
-      _heap(en->_sortmode == GatherNode::SortMode::Heap ? new Heap : nullptr) {
+      _isSimple(en->elements().empty()) {
+  TRI_ASSERT(en && en->plan() && en->getRegisterPlan());
 
   if (!_isSimple) {
-    for (auto const& p : en->elements()) {
-      // We know that planRegisters has been run, so
-      // getPlanNode()->_registerPlan is set up
-      auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
-      TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      _sortRegisters.emplace_back(it->second.registerId, p.ascending);
-      if (!p.attributePath.empty()) {
-        _sortRegisters.back().attributePath = p.attributePath;
-      }
+    if (en->_sortmode == GatherNode::SortMode::Heap) {
+      _heap.reset(new Heap());
     }
+
+    // We know that planRegisters has been run, so
+    // getPlanNode()->_registerPlan is set up
+    SortRegister::fill(
+      *en->plan(),
+      *en->getRegisterPlan(),
+      en->elements(),
+      _sortRegisters
+    );
   }
 }
 
@@ -456,51 +534,6 @@ bool GatherBlock::getBlock(size_t i, size_t atMost) {
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
-}
-
-/// @brief OurLessThan: comparison method for elements of _gatherBlockPos
-bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
-                                          std::pair<size_t, size_t> const& b) {
-  // nothing in the buffer is maximum!
-  if (_gatherBlockBuffer[a.first].empty()) {
-    return false;
-  }
-  if (_gatherBlockBuffer[b.first].empty()) {
-    return true;
-  }
-  TRI_ASSERT(!_gatherBlockBuffer[a.first].empty());
-  TRI_ASSERT(!_gatherBlockBuffer[b.first].empty());
-
-  for (auto const& reg : _sortRegisters) {
-    // Fast path if there is no attributePath:
-    int cmp;
-    if (reg.attributePath.empty()) {
-      cmp = AqlValue::Compare(
-          _trx,
-          _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg),
-          _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg),
-          true);
-    } else {
-      // Take attributePath into consideration:
-      AqlValue const& topA = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
-      AqlValue const& topB = _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
-      bool mustDestroyA;
-      AqlValue aa = topA.get(_trx, reg.attributePath, mustDestroyA, false);
-      AqlValueGuard guardA(aa, mustDestroyA);
-      bool mustDestroyB;
-      AqlValue bb = topB.get(_trx, reg.attributePath, mustDestroyB, false);
-      AqlValueGuard guardB(bb, mustDestroyB);
-      cmp = AqlValue::Compare(_trx, aa, bb, true);
-    }
-
-    if (cmp == -1) {
-      return reg.ascending;
-    } else if (cmp == 1) {
-      return !reg.ascending;
-    }
-  }
-
-  return false;
 }
 
 BlockWithClients::BlockWithClients(ExecutionEngine* engine,
