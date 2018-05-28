@@ -1,6 +1,11 @@
 v3.3.10 (XXXX-XX-XX)
 --------------------
 
+* apply fulltext index optimization rule for multiple fulltext searches in
+  the same query
+
+  this fixes https://stackoverflow.com/questions/50496274/two-fulltext-searches-on-arangodb-cluster-v8-is-involved
+
 * validate `_from` and `_to` values of edges on updates consistently
 
 * fixed issue #5400: Unexpected AQL Result
