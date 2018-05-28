@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added exclusive option for rocksdb collections. Modifying AQL queries can
+  now set the exclusive option as well as it can be set on javascipt transactions.
+
 * Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 * fixed Foxx queues bug when queues are created in a request handler with an
