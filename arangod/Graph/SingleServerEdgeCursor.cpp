@@ -58,9 +58,9 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(
   _cursors.reserve(nrCursors);
   _cache.reserve(1000);
   if (_opts->cache() == nullptr) {
-    throw;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no cache present for single server edge cursor");
   }
-};
+}
 
 SingleServerEdgeCursor::~SingleServerEdgeCursor() {
   for (auto& it : _cursors) {
