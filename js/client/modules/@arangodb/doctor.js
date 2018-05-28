@@ -98,7 +98,7 @@ function agencyDoctor(obj) {
   INFO('Analysing agency dump ...');
   
   // Must be array with length 1
-  if (obj.length != 1) {
+  if (obj.length !== 1) {
     ERROR('agency dump must be an array with a single object inside');
     process.exit(1);
   }
@@ -130,7 +130,7 @@ function agencyDoctor(obj) {
   INFO('Plan (version ' + plan.Version+ ')');
 
   // Planned databases check if also in collections and current
-  INFO("  Databases")
+  INFO("  Databases");
   report.Databases = {};
   if (!plan.hasOwnProperty('Databases')) {
     ERROR('no databases in plan');
@@ -147,7 +147,7 @@ function agencyDoctor(obj) {
     }
   });
 
-  INFO("  Collections")
+  INFO("  Collections");
 
   // Planned collections
   if (!plan.hasOwnProperty('Collections')) {
@@ -174,23 +174,23 @@ function agencyDoctor(obj) {
       const distributeShardsLike = col.distributeShardsLike;
       var myShardKeys = sortShardKeys(Object.keys(col.shards));
 
-      if (distributeShardsLike && distributeShardsLike != "") {      
+      if (distributeShardsLike && distributeShardsLike !== "") {      
         const prototype = plan.Collections[database][distributeShardsLike];
-        if (prototype.replicationFactor != col.replicationFactor) {
+        if (prototype.replicationFactor !== col.replicationFactor) {
           ERROR('distributeShardsLike: replicationFactor mismatch');
         }
-        if (prototype.numberOfShards != col.numberOfShards) {
+        if (prototype.numberOfShards !== col.numberOfShards) {
           ERROR('distributeShardsLike: numberOfShards mismatch');
         }      
         var prototypeShardKeys = sortShardKeys(Object.keys(prototype.shards));
         var ncshards = myShardKeys.length;
-        if (prototypeShardKeys.length != ncshards) {
+        if (prototypeShardKeys.length !== ncshards) {
           ERROR('distributeShardsLike: shard map mismatch');
         }
         for (var i = 0; i < ncshards; ++i) {
           const shname = myShardKeys[i];
           const ccul = current.Collections[database];     
-          if (JSON.stringify(col.shards[shname]) !=
+          if (JSON.stringify(col.shards[shname]) !==
               JSON.stringify(prototype.shards[prototypeShardKeys[i]])) {
             ERROR(
               'distributeShardsLike: planned shard map mismatch between "/arango/Plan/Collections/' +
@@ -214,15 +214,15 @@ function agencyDoctor(obj) {
             }
             const shard = current.Collections[database][collection][shname];
             if (shard) {
-              if (JSON.stringify(shard.servers) != JSON.stringify(col.shards[shname])) {
-                if (shard.servers[0] != col.shards[shname][0]) {
+              if (JSON.stringify(shard.servers) !== JSON.stringify(col.shards[shname])) {
+                if (shard.servers[0] !== col.shards[shname][0]) {
                   ERROR('/arango/Plan/Collections/' + database + '/' + collection + '/shards/'
                         + shname + ' and /arango/Current/Collections/' + database + '/'
                         + collection + '/' + shname + '/servers do not match');
                 } else {
                   var sortedPlan = (shard.servers).sort();
                   var sortedCurrent = (col.shards[shname]).sort();
-                  if (JSON.stringify(sortedPlan) == JSON.stringify(sortedCurrent)) {
+                  if (JSON.stringify(sortedPlan) === JSON.stringify(sortedCurrent)) {
                     WARN('/arango/Plan/Collections/' + database + '/' + collection + '/shards/'
                          + shname + ' and /arango/Current/Collections/' + database + '/'
                          + collection + '/' + shname + '/servers follower do not match in order');
@@ -243,8 +243,8 @@ function agencyDoctor(obj) {
   });
 
   report.servers = {};
-  INFO('Server health')
-  INFO('  DB Servers')
+  INFO('Server health');
+  INFO('  DB Servers');
   report.servers.dbservers = {};
   const supervision = agency.Supervision;
   const target = agency.Target;
@@ -259,17 +259,17 @@ function agencyDoctor(obj) {
       }
       servers[serverId] = supervision.Health[serverId];
       report.servers.dbservers[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName, status : servers[serverId].Status};
-      if (servers[serverId].Status == "BAD") {
+      if (servers[serverId].Status === "BAD") {
         WARN('bad db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
-      } else if (servers[serverId].Status == "FAILED") {
+      } else if (servers[serverId].Status === "FAILED") {
         WARN('*** FAILED *** db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
       }
     }
   });
 
-  INFO('  Coordinators')
+  INFO('  Coordinators');
   report.servers.coordinators = {};
-  var servers = plan.Coordinators;
+  servers = plan.Coordinators;
   Object.keys(servers).forEach(function(serverId) {
     if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
       WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
@@ -281,7 +281,7 @@ function agencyDoctor(obj) {
         WARN('planned coordinator ' + serverId + ' missing in supervision\'s health records.');
       }
       servers[serverId] = supervision.Health[serverId];
-      if (servers[serverId].Status != "GOOD") {
+      if (servers[serverId].Status !== "GOOD") {
         WARN('*** FAILED *** coordinator ' + serverId + '(' + servers[serverId].ShortName+ ')');
       }
     }
@@ -292,7 +292,7 @@ function agencyDoctor(obj) {
     Pending: target.Pending,
     Finished: target.Finished,
     Failed: target.Failed
-  }
+  };
   var njobs = [];
   var nall;
   Object.keys(jobs).forEach(function (state) {
@@ -572,7 +572,7 @@ function getServerData(arango) {
         const version = arango.GET('_api/version'); // version api
         const log = arango.GET('_admin/log').text;  // log api
         const statistics = arango.GET('_admin/statistics').text;  // log api
-        var agencyConfig = undefined;
+        var agencyConfig;
         if (server.startsWith("AGNT")) {
           agencyConfig = arango.GET('_api/agency/config');
         }
