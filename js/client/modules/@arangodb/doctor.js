@@ -28,6 +28,7 @@
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // /////////////////////////////////////////////////////////////////////////////
 
+
 var internal = require('internal');
 var fs = require('fs');
 
@@ -561,12 +562,21 @@ function getServerData(arango) {
   var report = {};
   INFO('Collecting diagnostics from all servers ... ');
   Object.keys(servers).forEach(
+
     function (server) {
+
       try {
+        
         arango.reconnect(servers[server].endpoint, '_system');
+        
         const version = arango.GET('_api/version'); // version api
         const log = arango.GET('_admin/log').text;  // log api
         const statistics = arango.GET('_admin/statistics').text;  // log api
+        var agencyConfig = undefined;
+        if (server.startsWith("AGNT")) {
+          agencyConfig = arango.GET('_api/agency/config');
+        }
+
         var tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'dmesg | tee /tmp/doctor-dmesg.out > /dev/null']);
         const dmesg = fs.readFileSync('/tmp/doctor-dmesg.out', 'utf8');
@@ -600,10 +610,14 @@ function getServerData(arango) {
           });});
         db._useDatabase('_system');
 
-        // Version, logs, dmesg, df, uptime, uname 
-        report[server] = { version: version, log: log, dmesg: dmesg,
-                           statistics: statistics, df: df, uptime: uptime,
-                           uname: uname, vmstat: vmstat, local: local};
+        // report this server
+        report[server] = {
+          version:version, log:log, dmesg:dmesg, statistics:statistics,
+          df:df, uptime:uptime, uname:uname, vmstat:vmstat, local:local};
+
+        if (agencyConfig !==  undefined) {
+          report[server].config = agencyConfig;
+        }
 
       } catch (e) {
         print(e);
@@ -676,9 +690,10 @@ exports.listServers = listServers;
     // Get all sorts of meta data from all servers
     healthRecord['servers'] = getServerData(arango);
 
-    require('fs').writeFileSync('arango-doctor.json', JSON.stringify(healthRecord));
+    const ofname = 'arango-doctor.json';
+    require('fs').writeFileSync(ofname, JSON.stringify(healthRecord));
 
-    INFO("Report written to arango-doctor.js.");
+    INFO("Report written to " + ofname + ".");
     
   } catch (e) {
     print(e);
