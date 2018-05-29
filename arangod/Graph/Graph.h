@@ -181,8 +181,8 @@ class GraphOperations {
       bool returnOld, bool returnNew, bool keepNull);
 
   ResultT<std::pair<OperationResult, Result>> createEdge(
-      const std::string& definitionName, const std::string& key,
-      VPackSlice document, bool waitForSync);
+      const std::string& definitionName,
+      VPackSlice document, bool waitForSync, bool returnNew);
 
   ResultT<std::pair<OperationResult, Result>> updateVertex(
       const std::string& collectionName, const std::string& key,
@@ -195,8 +195,8 @@ class GraphOperations {
       bool returnOld, bool returnNew, bool keepNull);
 
   ResultT<std::pair<OperationResult, Result>> createVertex(
-      const std::string& collectionName, const std::string& key,
-      VPackSlice document, bool waitForSync);
+      const std::string& collectionName,
+      VPackSlice document, bool waitForSync, bool returnNew);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
@@ -214,8 +214,8 @@ class GraphOperations {
       bool waitForSync, bool returnOld, bool returnNew, bool keepNull);
 
   ResultT<std::pair<OperationResult, Result>> _createDocument(
-      const std::string& collectionName, const std::string& key,
-      VPackSlice document, bool waitForSync);
+      const std::string& collectionName,
+      VPackSlice document, bool waitForSync, bool returnNew);
 };
 
 class GraphCache {

@@ -404,8 +404,30 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::_modifyDocument(
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::_createDocument(
-    std::string const& collectionName, std::string const& key,
-    VPackSlice document, bool waitForSync) {
+    std::string const& collectionName,
+    VPackSlice document, bool waitForSync, bool returnNew) {
+
+  OperationOptions options;
+  options.waitForSync = waitForSync;
+  options.returnNew = returnNew;
+
+  // find and load collection given by name or identifier
+  SingleCollectionTransaction trx(ctx(), collectionName,
+                                  AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return res;
+  }
+
+  OperationResult result;
+  result = trx.insert(collectionName, document, options);
+
+  res = trx.finish(result.result);
+
+  return std::make_pair(std::move(result), std::move(res));
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::updateEdge(
@@ -425,9 +447,9 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceEdge(
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
-    const std::string& definitionName, const std::string& key,
-    VPackSlice document, bool waitForSync) {
-  return _createDocument(definitionName, key, document, waitForSync);
+    const std::string& definitionName,
+    VPackSlice document, bool waitForSync, bool returnNew) {
+  return _createDocument(definitionName, document, waitForSync, returnNew);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::updateVertex(
@@ -447,9 +469,9 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceVertex(
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createVertex(
-    const std::string& collectionName, const std::string& key,
-    VPackSlice document, bool waitForSync) {
-  return _createDocument(collectionName, key, document, waitForSync);
+    const std::string& collectionName,
+    VPackSlice document, bool waitForSync, bool returnNew) {
+  return _createDocument(collectionName, document, waitForSync, returnNew);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(

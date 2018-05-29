@@ -117,8 +117,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   // POST /_api/gharial/{graph-name}/vertex/{collection-name}/{vertex-key}
   Result vertexActionCreate(std::shared_ptr<const graph::Graph> graph,
-                             const std::string& collectionName,
-                             const std::string& key);
+                             const std::string& collectionName);
 
   // GET /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
   Result edgeActionRead(std::shared_ptr<const graph::Graph> graph,
@@ -132,8 +131,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   
   // POST /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
   Result edgeActionCreate(std::shared_ptr<const graph::Graph> graph,
-                          const std::string& definitionName,
-                          const std::string& key);
+                          const std::string& definitionName);
 
   // PATCH /_api/gharial/{graph-name}/edge/{definition-name}/{edge-key}
   Result edgeActionUpdate(std::shared_ptr<const graph::Graph> graph,
@@ -168,6 +166,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                       const std::string& collectionName, const std::string& key,
                       bool isPatch);
 
+  Result vertexCreate(std::shared_ptr<const graph::Graph> graph,
+                      const std::string& collectionName);
+
   void generateVertexModified(bool wasSynchronous, VPackSlice resultSlice,
                               const velocypack::Options& options);
 
@@ -186,6 +187,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
                     const std::string& collectionName, const std::string& key,
                     bool isPatch);
 
+  Result edgeCreate(std::shared_ptr<const graph::Graph> graph,
+                    const std::string& collectionName);
+
   Result documentModify(std::shared_ptr<const graph::Graph> graph,
                         const std::string& collectionName,
                         const std::string& key, bool isPatch,
@@ -193,7 +197,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   Result documentCreate(
     std::shared_ptr<const graph::Graph> graph, const std::string &collectionName,
-    const std::string &key, TRI_col_type_e colType
+    TRI_col_type_e colType
   );
 
   void generateEdgeModified(

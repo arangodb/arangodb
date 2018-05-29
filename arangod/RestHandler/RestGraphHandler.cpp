@@ -249,6 +249,17 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
 boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
     const std::shared_ptr<const Graph> graph,
     const std::string& vertexCollectionName) {
+  LOG_TOPIC(WARN, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
+      << "vertexCollectionName = " << vertexCollectionName;
+
+
+  switch (request()->requestType()) {
+    case RequestType::POST:
+      vertexActionCreate(graph, vertexCollectionName);
+      return RestStatus::DONE;
+    default:;
+  }
   return boost::none;
 }
 
@@ -275,9 +286,6 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
       return RestStatus::DONE;
     case RequestType::DELETE_REQ:
       vertexActionRemove(graph, vertexCollectionName, vertexKey);
-      return RestStatus::DONE;
-    case RequestType::POST:
-      vertexActionCreate(graph, vertexCollectionName, vertexKey);
       return RestStatus::DONE;
     default:;
   }
@@ -308,7 +316,7 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
       edgeActionReplace(graph, edgeDefinitionName, edgeKey);
       return RestStatus::DONE;
     case RequestType::POST:
-      edgeActionCreate(graph, edgeDefinitionName, edgeKey);
+      edgeActionCreate(graph, edgeDefinitionName);
       return RestStatus::DONE;
     default:;
   }
@@ -484,7 +492,7 @@ void RestGraphHandler::generateCreated(TRI_col_type_e colType,
                                         const velocypack::Options& options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
   if (wasSynchronous) {
-    resetResponse(rest::ResponseCode::OK);
+    resetResponse(rest::ResponseCode::CREATED);
   } else {
     resetResponse(rest::ResponseCode::ACCEPTED);
   }
@@ -501,10 +509,14 @@ void RestGraphHandler::generateCreated(TRI_col_type_e colType,
       VelocyPackHelper::copyObjectWithout(resultSlice, {"old", "new"});
   // Note: This doesn't really contain the object, only _id, _key, _rev, _oldRev
   VPackSlice objectSlice = objectBuilder.slice();
+  VPackSlice newSlice = resultSlice.get("new");
 
   VPackBuilder obj;
   obj.add(VPackValue(VPackValueType::Object, true));
   obj.add(objectTypeName, objectSlice);
+  if (!newSlice.isNone()) {
+    obj.add("new", newSlice);
+  }
   obj.close();
   generateResultMergedWithObject(obj.slice(), options);
 }
@@ -693,8 +705,8 @@ Result RestGraphHandler::vertexActionReplace(
 
 Result RestGraphHandler::vertexActionCreate(
     std::shared_ptr<const graph::Graph> graph,
-    const std::string& collectionName, const std::string& key) {
-  return vertexModify(std::move(graph), collectionName, key, false);
+    const std::string& collectionName) {
+  return vertexCreate(std::move(graph), collectionName);
 }
 
 Result RestGraphHandler::edgeActionUpdate(
@@ -715,16 +727,28 @@ Result RestGraphHandler::edgeModify(std::shared_ptr<const graph::Graph> graph,
                         TRI_COL_TYPE_EDGE);
 }
 
+Result RestGraphHandler::edgeCreate(std::shared_ptr<const graph::Graph> graph,
+                                    const std::string& collectionName) {
+  return documentCreate(std::move(graph), collectionName,
+                        TRI_COL_TYPE_EDGE);
+}
+
 Result RestGraphHandler::edgeActionCreate(
     std::shared_ptr<const graph::Graph> graph,
-    const std::string& collectionName, const std::string& key) {
-  return edgeModify(std::move(graph), collectionName, key, true);
+    const std::string& collectionName) {
+  return edgeCreate(std::move(graph), collectionName);
 }
 
 Result RestGraphHandler::vertexModify(std::shared_ptr<const graph::Graph> graph,
                                       const std::string& collectionName,
                                       const std::string& key, bool isPatch) {
   return documentModify(std::move(graph), collectionName, key, isPatch,
+                        TRI_COL_TYPE_DOCUMENT);
+}
+
+Result RestGraphHandler::vertexCreate(std::shared_ptr<const graph::Graph> graph,
+                                      const std::string& collectionName) {
+  return documentCreate(std::move(graph), collectionName,
                         TRI_COL_TYPE_DOCUMENT);
 }
 
@@ -822,7 +846,7 @@ Result RestGraphHandler::documentModify(
 
 Result RestGraphHandler::documentCreate(
     std::shared_ptr<const graph::Graph> graph,
-    const std::string& collectionName, const std::string& key,
+    const std::string& collectionName,
     TRI_col_type_e colType) {
 
   bool parseSuccess = false;
@@ -833,6 +857,7 @@ Result RestGraphHandler::documentCreate(
 
   bool waitForSync =
     _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(_vocbase);
@@ -841,9 +866,9 @@ Result RestGraphHandler::documentCreate(
   ResultT<std::pair<OperationResult, Result>> resultT{
       Result(TRI_ERROR_INTERNAL)};
   if (colType == TRI_COL_TYPE_DOCUMENT) {
-    resultT = gops.createVertex(collectionName, key, body, waitForSync);
+    resultT = gops.createVertex(collectionName, body, waitForSync, returnNew);
   } else if (colType == TRI_COL_TYPE_EDGE) {
-    resultT = gops.createEdge(collectionName, key, body, waitForSync);
+    resultT = gops.createEdge(collectionName, body, waitForSync, returnNew);
   } else {
     TRI_ASSERT(false);
   }
@@ -863,7 +888,7 @@ Result RestGraphHandler::documentCreate(
   }
 
   if (!res.ok()) {
-    generateTransactionError(collectionName, res, key, 0);
+    generateTransactionError(collectionName, res, nullptr, 0);
     return false;
   }
 
