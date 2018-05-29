@@ -212,7 +212,7 @@
         * [Cluster: Processes](Deployment/Distributed.md)
         * [Cluster: Docker](Deployment/Docker.md)
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
-  * [Multiple Datacenters](Deployment/DC2DC/README.md)
+  * [Multiple Datacenters](Deployment/DC2DC.md)
     * [Cluster](Deployment/DC2DC/Cluster.md)
     * [Kafka & Zookeeper](Deployment/DC2DC/KafkaZookeeper.md)
     * [ArangoSync Master](Deployment/DC2DC/ArangoSyncMaster.md)
