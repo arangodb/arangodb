@@ -120,12 +120,12 @@ function readOnly (options) {
 
     // database with only collection access
     [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test', {}],
-    [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}],
+    [200, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test', {}],
     [403, 'post', '/_db/testdb2/_api/document/testcol2', 'test', {_key: 'wxyz'}],
     [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test', {_key: 'wxyz'}],
 
     [200, 'get', '/_db/testdb2/_api/document/testcol2/one', 'test2', {}],
-    [403, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test2', {}],
+    [200, 'get', '/_db/testdb2/_api/document/testcol3/one', 'test2', {}],
     [202, 'post', '/_db/testdb2/_api/document/testcol2', 'test2', {_key: 'wxyz'}],
     [403, 'post', '/_db/testdb2/_api/document/testcol3', 'test2', {_key: 'wxyz'}],
 
@@ -197,7 +197,8 @@ function readOnly (options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['readOnly'] = readOnly;
-
+  defaultFns.push('readOnly');
+  
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
