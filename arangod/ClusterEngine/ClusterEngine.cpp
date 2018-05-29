@@ -458,7 +458,3 @@ TRI_vocbase_t* ClusterEngine::openExistingDatabase(TRI_voc_tick_t id,
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
   return vocbase.release();
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

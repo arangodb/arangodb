@@ -41,9 +41,8 @@ struct ClusterTransactionData final : public TransactionData {};
 ClusterTransactionState::ClusterTransactionState(
     CollectionNameResolver const& resolver,
     TRI_voc_tid_t tid,
-    transaction::Options const& options
-): TransactionState(resolver, tid, options) {
-}
+    transaction::Options const& options)
+    : TransactionState(resolver, tid, options) {}
 
 /// @brief free a transaction container
 ClusterTransactionState::~ClusterTransactionState() {
@@ -81,7 +80,6 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   if (_nestingLevel == 0) {
-
     // register a protector (intentionally empty)
     auto data = std::make_unique<ClusterTransactionData>();
     TransactionManagerFeature::manager()->registerTransaction(_id, std::move(data));
@@ -126,13 +124,7 @@ Result ClusterTransactionState::abortTransaction(
   TRI_ASSERT(_status == transaction::Status::RUNNING);
   Result result;
   if (_nestingLevel == 0) {
-    
     updateStatus(transaction::Status::ABORTED);
-    /*if (hasOperations()) {
-      // must clean up the query cache because the transaction
-      // may have queried something via AQL that is now rolled back
-      clearQueryCache();
-    }*/
   }
 
   unuseCollections(_nestingLevel);
