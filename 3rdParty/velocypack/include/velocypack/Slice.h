@@ -384,7 +384,7 @@ class Slice {
       Slice first(_start + firstSubOffset);
       ValueLength s = first.byteSize();
       if (s == 0) {
-        throw Exception(Exception::InternalError);
+        throw Exception(Exception::InternalError, "Invalid data for Object");
       }
       return (end - firstSubOffset) / s;
     } else if (offsetSize < 8) {
@@ -646,6 +646,19 @@ class Slice {
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
+  
+  char const* getStringUnchecked(ValueLength& length) const noexcept {
+    uint8_t const h = head();
+    if (h >= 0x40 && h <= 0xbe) {
+      // short UTF-8 String
+      length = h - 0x40;
+      return reinterpret_cast<char const*>(_start + 1);
+    }
+
+    // long UTF-8 String
+    length = readIntegerFixed<ValueLength, 8>(_start + 1);
+    return reinterpret_cast<char const*>(_start + 1 + 8);
+  }
 
   // return the length of the String slice
   ValueLength getStringLength() const {
@@ -818,7 +831,7 @@ class Slice {
           }
 
           default: {
-            throw Exception(Exception::InternalError);
+            // fallthrough intentional
           }
         }
       }
@@ -827,7 +840,7 @@ class Slice {
       }
     }
 
-    throw Exception(Exception::InternalError);
+    throw Exception(Exception::InternalError, "Invalid type for byteSize()");
   }
   
   ValueLength findDataOffset(uint8_t head) const noexcept {
@@ -857,12 +870,14 @@ class Slice {
   Slice makeKey() const;
 
   int compareString(char const* value, size_t length) const;
+  int compareStringUnchecked(char const* value, size_t length) const noexcept;
   
   inline int compareString(std::string const& attribute) const {
     return compareString(attribute.data(), attribute.size());
   }
 
   bool isEqualString(std::string const& attribute) const;
+  bool isEqualStringUnchecked(std::string const& attribute) const noexcept;
 
   // check if two Slices are equal on the binary level
   bool equals(Slice const& other) const {
@@ -892,11 +907,15 @@ class Slice {
   std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;
   
-  int64_t getIntUnchecked() const;
+  int64_t getIntUnchecked() const noexcept;
 
   // return the value for a UInt object, without checks
   // returns 0 for invalid values/types
-  uint64_t getUIntUnchecked() const;
+  uint64_t getUIntUnchecked() const noexcept;
+
+  // return the value for a SmallInt object, without checks
+  // returns 0 for invalid values/types
+  int64_t getSmallIntUnchecked() const noexcept;
   
  private:
   // get the total byte size for a String slice, including the head byte

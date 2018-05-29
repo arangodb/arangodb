@@ -30,7 +30,9 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ShortestPathBlock.h"
 #include "Aql/Query.h"
+#include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
@@ -225,9 +227,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
   _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
 }
 
-void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                          bool verbose) const {
-  GraphNode::toVelocyPackHelper(nodes, verbose);  // call base class method
+void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  GraphNode::toVelocyPackHelper(nodes, flags);  // call base class method
   // In variables
   if (usesStartInVariable()) {
     nodes.add(VPackValue("startInVariable"));
@@ -246,11 +247,11 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
   // Filter Conditions
   TRI_ASSERT(_fromCondition != nullptr);
   nodes.add(VPackValue("fromCondition"));
-  _fromCondition->toVelocyPack(nodes, verbose);
+  _fromCondition->toVelocyPack(nodes, flags);
 
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
-  _toCondition->toVelocyPack(nodes, verbose);
+  _toCondition->toVelocyPack(nodes, flags);
 
   // And close it:
   nodes.close();

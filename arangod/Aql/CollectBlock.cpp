@@ -241,23 +241,10 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
       }
     }
   }
-}
-
-SortedCollectBlock::~SortedCollectBlock() {}
-
-/// @brief initialize
-int SortedCollectBlock::initialize() {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
+  
   // reserve space for the current row
   _currentGroup.initialize(_groupRegisters.size());
   _pos = 0;
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 int SortedCollectBlock::initializeCursor(AqlItemBlock* items,
@@ -604,8 +591,6 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
-HashedCollectBlock::~HashedCollectBlock() {}
-
 int HashedCollectBlock::getOrSkipSome(size_t atMost,
                                       bool skipping, AqlItemBlock*& result,
                                       size_t& skipped) {
@@ -872,17 +857,6 @@ DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
 
 DistinctCollectBlock::~DistinctCollectBlock() {
   clearValues();
-}
-
-/// @brief initialize
-int DistinctCollectBlock::initialize() {
-  int res = ExecutionBlock::initialize();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 int DistinctCollectBlock::initializeCursor(AqlItemBlock* items,

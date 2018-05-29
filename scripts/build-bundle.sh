@@ -22,6 +22,7 @@ fi
     --package Bundle \
     --buildDir build-${EP}bundle \
     --targetDir /var/tmp/ \
+    --prefix "/opt/arangodb" \
     --clang \
     --staticOpenSSL \
     "${MOREOPTS[@]}" \

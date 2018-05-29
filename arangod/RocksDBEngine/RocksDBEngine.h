@@ -105,7 +105,7 @@ class RocksDBEngine final : public StorageEngine {
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
-    TRI_vocbase_t& vocbase,
+    CollectionNameResolver const& resolver,
     transaction::Options const& options
   ) override;
   TransactionCollection* createTransactionCollection(
@@ -144,11 +144,11 @@ class RocksDBEngine final : public StorageEngine {
   ) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override {
+  std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
-  std::string collectionPath(TRI_vocbase_t const* vocbase,
-                             TRI_voc_cid_t id) const override {
+  std::string collectionPath(TRI_vocbase_t const* /*vocbase*/,
+                             TRI_voc_cid_t /*id*/) const override {
     return std::string(); // no path to be returned here
   }
 

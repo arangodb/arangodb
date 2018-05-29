@@ -37,17 +37,17 @@ using namespace arangodb;
 
 /// @brief transaction type
 TransactionState::TransactionState(
-    TRI_vocbase_t& vocbase,
+    CollectionNameResolver const& resolver,
+    TRI_voc_tid_t tid,
     transaction::Options const& options
-)
-    : _vocbase(vocbase),
-      _id(0),
+):
+      _id(tid),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
       _arena(),
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
-      _resolver(&vocbase),
+      _resolver(resolver),
       _hints(),
       _nestingLevel(0),
       _options(options) {}
@@ -335,7 +335,7 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
     }
 
     std::string const colName = _resolver.getCollectionNameCluster(cid);
-    auth::Level level = exec->collectionAuthLevel(_vocbase.name(), colName);
+    auto level = exec->collectionAuthLevel(_resolver.vocbase().name(), colName);
 
     TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
 
@@ -392,12 +392,14 @@ void TransactionState::clearQueryCache() {
     }
 
     if (!collections.empty()) {
-      arangodb::aql::QueryCache::instance()->invalidate(&_vocbase, collections);
+      arangodb::aql::QueryCache::instance()->invalidate(
+        &(_resolver.vocbase()), collections
+      );
     }
   } catch (...) {
     // in case something goes wrong, we have to remove all queries from the
     // cache
-    arangodb::aql::QueryCache::instance()->invalidate(&_vocbase);
+    arangodb::aql::QueryCache::instance()->invalidate(&(_resolver.vocbase()));
   }
 }
 

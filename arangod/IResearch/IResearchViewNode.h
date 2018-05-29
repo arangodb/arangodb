@@ -90,7 +90,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(
     arangodb::velocypack::Builder&,
-    bool
+    unsigned
   ) const override final;
 
   /// @brief clone ExecutionNode recursively
@@ -99,6 +99,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     bool withDependencies,
     bool withProperties
   ) const override final;
+
+  /// @returns the list of the linked collections + view itself
+  std::vector<std::reference_wrapper<aql::Collection const>> collections() const;
+
+  /// @returns true if underlying view has no links
+  bool empty() const noexcept;
 
   /// @brief the cost of an enumerate list node
   double estimateCost(size_t&) const override final;
@@ -123,7 +129,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief return the database
   TRI_vocbase_t& vocbase() const noexcept {
-    return *_vocbase;
+    return _vocbase;
   }
 
   /// @brief return the view
@@ -137,14 +143,19 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     return *_filterCondition;
   }
 
+  /// @brief return list of shards related to the view (cluster only)
+  std::vector<std::string> const& shards() const noexcept {
+    return _shards;
+  }
+
+  /// @brief return list of shards related to the view (cluster only)
+  std::vector<std::string>& shards() noexcept {
+    return _shards;
+  }
+
   /// @brief return the condition to pass to the view
   std::vector<IResearchSort> const& sortCondition() const noexcept {
     return _sortCondition;
-  }
-
-  /// @brief return the list of collections involved
-  std::deque<aql::Collection> const& collections() const noexcept {
-    return _collections;
   }
 
   /// @brief getVariablesUsedHere, returning a vector
@@ -178,7 +189,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
  private:
   /// @brief the database
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 
   /// @brief collection
   LogicalView const* _view;
@@ -192,10 +203,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief sortCondition to pass to the view
   std::vector<IResearchSort> _sortCondition;
 
-  /// @brief list of collections involved, need this for cluster
-  /// deque becuase aql::Collection can't be copied or moved
-  std::deque<aql::Collection> _collections;
-}; // EnumerateViewNode
+  /// @brief list of shards involved, need this for the cluster
+  std::vector<std::string> _shards;
+}; // IResearchViewNode
 
 /// @brief class IResearchScatterNode
 class IResearchViewScatterNode final : public aql::ExecutionNode {
@@ -220,7 +230,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(
     arangodb::velocypack::Builder&,
-    bool
+    unsigned
   ) const override final;
 
   /// @brief creates corresponding ExecutionBlock
@@ -237,7 +247,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
       bool withProperties
   ) const override final {
     auto node = std::make_unique<IResearchViewScatterNode>(
-      *plan, _id, *_vocbase, *_view
+      *plan, _id, _vocbase, *_view
     );
 
     cloneHelper(node.get(), withDependencies, withProperties);
@@ -250,7 +260,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
 
   /// @brief return the database
   TRI_vocbase_t& vocbase() const noexcept { 
-    return *_vocbase; 
+    return _vocbase;
   }
 
   LogicalView const& view() const noexcept {
@@ -259,7 +269,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
 
  private:
   /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 
   /// @brief the underlying view
   LogicalView const* _view;

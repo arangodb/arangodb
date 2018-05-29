@@ -55,7 +55,7 @@ RocksDBExportCursor::RocksDBExportCursor(
     bool hasCount
 ): Cursor(id, batchSize, ttl, hasCount),
    _guard(vocbase),
-   _resolver(&vocbase),
+   _resolver(vocbase),
    _restrictions(restrictions),
    _name(name),
    _trx(new SingleCollectionTransaction(

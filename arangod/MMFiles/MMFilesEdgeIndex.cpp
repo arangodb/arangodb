@@ -209,10 +209,13 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
 }
 
 /// @brief return a selectivity estimate for the index
-double MMFilesEdgeIndex::selectivityEstimateLocal(
+double MMFilesEdgeIndex::selectivityEstimate(
     arangodb::StringRef const* attribute) const {
-  if (_edgesFrom == nullptr || _edgesTo == nullptr ||
-      ServerState::instance()->isCoordinator()) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_unique) {
+    return 1.0;
+  }
+  if (_edgesFrom == nullptr || _edgesTo == nullptr) {
     // use hard-coded selectivity estimate in case of cluster coordinator
     return 0.1;
   }
@@ -461,41 +464,6 @@ arangodb::aql::AstNode* MMFilesEdgeIndex::specializeCondition(
     arangodb::aql::Variable const* reference) const {
   SimpleAttributeEqualityMatcher matcher(IndexAttributes);
   return matcher.specializeOne(this, node, reference);
-}
-
-/// @brief Transform the list of search slices to search values.
-///        This will multiply all IN entries and simply return all other
-///        entries.
-void MMFilesEdgeIndex::expandInSearchValues(VPackSlice const slice,
-                                            VPackBuilder& builder) const {
-  TRI_ASSERT(slice.isArray());
-  builder.openArray();
-  for (auto const& side : VPackArrayIterator(slice)) {
-    if (side.isNull()) {
-      builder.add(side);
-    } else {
-      TRI_ASSERT(side.isArray());
-      builder.openArray();
-      for (auto const& item : VPackArrayIterator(side)) {
-        TRI_ASSERT(item.isObject());
-        if (item.hasKey(StaticStrings::IndexEq)) {
-          TRI_ASSERT(!item.hasKey(StaticStrings::IndexIn));
-          builder.add(item);
-        } else {
-          TRI_ASSERT(item.hasKey(StaticStrings::IndexIn));
-          VPackSlice list = item.get(StaticStrings::IndexIn);
-          TRI_ASSERT(list.isArray());
-          for (auto const& it : VPackArrayIterator(list)) {
-            builder.openObject();
-            builder.add(StaticStrings::IndexEq, it);
-            builder.close();
-          }
-        }
-      }
-      builder.close();
-    }
-  }
-  builder.close();
 }
 
 /// @brief create the iterator

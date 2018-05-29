@@ -231,7 +231,6 @@ void AqlItemBlock::shrink(size_t nrItems) {
 
 void AqlItemBlock::rescale(size_t nrItems, RegisterId nrRegs) {
   TRI_ASSERT(_valueCount.empty());
-  TRI_ASSERT(nrRegs > 0);
   TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId);
 
   size_t const targetSize = nrItems * nrRegs;

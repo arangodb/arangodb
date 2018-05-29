@@ -181,6 +181,7 @@ ExecutionEngine::ExecutionEngine(Query* query)
       _root(nullptr),
       _query(query),
       _resultRegister(0),
+      _initializeCursorCalled(false),
       _wasShutdown(false),
       _previouslyLockedShards(nullptr),
       _lockedShards(nullptr) {
@@ -351,9 +352,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
  public:
 
   explicit CoordinatorInstanciator(Query* query)
-      : _dbserverParts(query), 
-        _isCoordinator(true), 
-        _lastClosed(0), 
+      : _dbserverParts(query),
+        _isCoordinator(true),
+        _lastClosed(0),
         _query(query) {
     TRI_ASSERT(_query);
   }
@@ -361,7 +362,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ~CoordinatorInstanciator() {}
 
   /// @brief before method for collection of pieces phase
-  ///        Collects all nodes on the path and devides them
+  ///        Collects all nodes on the path and divides them
   ///        into coordinator and dbserver parts
   bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
@@ -383,15 +384,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
       }
     } else {
-#ifdef USE_IRESEARCH
-      if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
-        return false;
-      }
-#endif
-
       // on dbserver
       _dbserverParts.addNode(en);
-      if (nodeType == ExecutionNode::REMOTE) {
+      if (ExecutionNode::REMOTE == nodeType) {
         _isCoordinator = true;
         _coordinatorParts.openSnippet(en->id());
       }
@@ -440,9 +435,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     bool needsErrorCleanup = true;
     auto cleanup = [&]() {
       if (needsErrorCleanup) {
-        _dbserverParts.cleanupEngines(ClusterComm::instance(),
-                                      TRI_ERROR_INTERNAL,
-                                      _query->vocbase()->name(), queryIds);
+        _dbserverParts.cleanupEngines(
+          ClusterComm::instance(),
+          TRI_ERROR_INTERNAL,
+          _query->vocbase().name(), queryIds
+        );
       }
     };
     TRI_DEFER(cleanup());
@@ -455,11 +452,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
     res = _coordinatorParts.buildEngines(
-        _query, registry, _query->vocbase()->name(),
-        _query->queryOptions().shardIds, queryIds, lockedShards);
+      _query,
+      registry,
+      _query->vocbase().name(),
+      _query->queryOptions().shardIds,
+      queryIds,
+      lockedShards
+    );
+
     if (res.ok()) {
       needsErrorCleanup = false;
     }
+
     return res;
   }
 };
@@ -555,7 +559,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       }
     } else {
       // instantiate the engine on a local server
-      engine = new ExecutionEngine(query); 
+      engine = new ExecutionEngine(query);
       Instanciator inst(engine);
       plan->root()->walk(inst);
       root = inst.root;
@@ -579,7 +583,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     engine->_root = root;
 
     if (plan->isResponsibleForInitialize()) {
-      root->initialize();
       root->initializeCursor(nullptr, 0);
     }
 

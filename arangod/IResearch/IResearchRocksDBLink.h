@@ -38,10 +38,6 @@ class IResearchRocksDBLink final
 
   virtual ~IResearchRocksDBLink();
 
-  virtual bool allowExpansion() const override {
-    return IResearchLink::allowExpansion();
-  }
-
   virtual void batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,

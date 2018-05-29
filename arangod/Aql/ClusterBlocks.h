@@ -63,9 +63,6 @@ class GatherBlock : public ExecutionBlock {
 
   ~GatherBlock();
 
-  /// @brief initialize
-  int initialize() override;
-
   /// @brief shutdown: need our own method since our _buffer is different
   int shutdown(int) override final;
 
@@ -203,8 +200,6 @@ class ScatterBlock : public BlockWithClients {
                std::vector<std::string> const& shardIds)
       : BlockWithClients(engine, ep, shardIds) {}
 
-  ~ScatterBlock() {}
-
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -229,8 +224,6 @@ class DistributeBlock : public BlockWithClients {
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                   std::vector<std::string> const& shardIds,
                   Collection const* collection);
-
-  ~DistributeBlock() {}
 
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
@@ -297,13 +290,8 @@ class RemoteBlock final : public ExecutionBlock {
               std::string const& server, std::string const& ownName,
               std::string const& queryId);
 
-  ~RemoteBlock();
-
   /// @brief timeout
   static double const defaultTimeOut;
-
-  /// @brief initialize
-  int initialize() override final;
 
   /// @brief initializeCursor, could be called multiple times
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
@@ -319,7 +307,7 @@ class RemoteBlock final : public ExecutionBlock {
 
   /// @brief hasMore
   bool hasMore() override final;
-
+  
  private:
   /// @brief internal method to send a request
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
@@ -327,14 +315,14 @@ class RemoteBlock final : public ExecutionBlock {
       std::string const& body) const;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
-  std::string _server;
+  std::string const _server;
 
   /// @brief our own identity, in case of the coordinator this is empty,
   /// in case of the DBservers, this is the shard ID as a string
-  std::string _ownName;
+  std::string const _ownName;
 
   /// @brief the ID of the query on the server as a string
-  std::string _queryId;
+  std::string const _queryId;
 
   /// @brief whether or not this block will forward initialize, 
   /// initializeCursor or shutDown requests

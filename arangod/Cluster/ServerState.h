@@ -254,7 +254,7 @@ class ServerState {
  private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
-    return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
+    return _role.load(std::memory_order_consume);
   }
 
   /// @brief validate a state transition for a primary server

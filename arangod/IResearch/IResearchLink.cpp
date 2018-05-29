@@ -86,10 +86,6 @@ bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
 }
 
-bool IResearchLink::allowExpansion() const {
-  return true; // maps to multivalued
-}
-
 void IResearchLink::batchInsert(
     transaction::Methods* trx,
     std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
@@ -133,10 +129,6 @@ void IResearchLink::batchInsert(
 
 bool IResearchLink::canBeDropped() const {
   return true; // valid for a link to be dropped from an iResearch view
-}
-
-LogicalCollection* IResearchLink::collection() const noexcept {
-  return _collection;
 }
 
 int IResearchLink::drop() {
@@ -208,7 +200,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false; // failed to parse metadata
   }
 
-  if (!collection()
+  if (!_collection
       || !definition.isObject()
       || !definition.get(StaticStrings::ViewIdField).isNumber<uint64_t>()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -220,7 +212,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   auto identifier = definition.get(StaticStrings::ViewIdField);
   auto viewId = identifier.getNumber<uint64_t>();
-      auto& vocbase = collection()->vocbase();
+  auto& vocbase = _collection->vocbase();
       auto logicalView = vocbase.lookupView(viewId);
 
       if (!logicalView
@@ -275,7 +267,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
-      _dropCollectionInDestructor = view->emplace(collection()->id()); // track if this is the instance that called emplace
+      _dropCollectionInDestructor = view->emplace(_collection->id()); // track if this is the instance that called emplace
       _meta = std::move(meta);
       _view = std::move(view);
       _wiew = std::move(wiew);
@@ -493,9 +485,7 @@ int IResearchLink::unload() {
 
   _defaultId = _wiew ? _wiew->id() : _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
 
-  auto* col = collection();
-
-  if (!col) {
+  if (!_collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed finding collection while unloading IResearch link '" << _id << "'";
 
@@ -505,7 +495,7 @@ int IResearchLink::unload() {
   // this code is used by the MMFilesEngine
   // if the collection is in the process of being removed then drop it from the view
   // FIXME TODO remove once LogicalCollection::drop(...) will drop its indexes explicitly
-  if (col->deleted()) {
+  if (_collection->deleted()) {
     auto res = drop();
 
     if (TRI_ERROR_NO_ERROR != res) {

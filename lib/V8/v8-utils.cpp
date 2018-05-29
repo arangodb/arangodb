@@ -3016,13 +3016,13 @@ static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha512
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA512(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3058,13 +3058,13 @@ static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha384
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA384(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3100,13 +3100,13 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha256
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA256(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3142,13 +3142,13 @@ static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha224
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA224(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);
@@ -3184,13 +3184,13 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha1
-  char* hash = 0;
+  char* hash = nullptr;
   size_t hashLen;
 
   SslInterface::sslSHA1(key.c_str(), key.size(), hash, hashLen);
 
   // as hex
-  char* hex = 0;
+  char* hex = nullptr;
   size_t hexLen;
 
   SslInterface::sslHEX(hash, hashLen, hex, hexLen);

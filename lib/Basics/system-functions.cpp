@@ -171,7 +171,7 @@ size_t TRI_numberProcessors() {
 }
 
 std::string arangodb::utilities::timeString(char sep, char fin) {
-  time_t tt = time(0);
+  time_t tt = time(nullptr);
   struct tm tb;
   TRI_gmtime(tt, &tb);
   char buffer[32];

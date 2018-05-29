@@ -64,8 +64,6 @@ class IResearchLink {
     return !(*this == meta);
   }
 
-  bool allowExpansion() const; // arangodb::Index override
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a set of ArangoDB documents into an iResearch View using
   ///        '_meta' params
@@ -77,11 +75,6 @@ class IResearchLink {
   ); // arangodb::Index override
 
   bool canBeDropped() const; // arangodb::Index override
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the collection of this link
-  ////////////////////////////////////////////////////////////////////////////////
-  LogicalCollection* collection() const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called when the iResearch Link is dropped
