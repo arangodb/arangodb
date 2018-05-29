@@ -99,7 +99,7 @@ function agencyInspector(obj) {
   INFO('Analysing agency dump ...');
   
   // Must be array with length 1
-  if (obj.length != 1) {
+  if (obj.length !== 1) {
     ERROR('agency dump must be an array with a single object inside');
     process.exit(1);
   }
@@ -131,7 +131,7 @@ function agencyInspector(obj) {
   INFO('Plan (version ' + plan.Version+ ')');
 
   // Planned databases check if also in collections and current
-  INFO("  Databases")
+  INFO("  Databases");
   report.Databases = {};
   if (!plan.hasOwnProperty('Databases')) {
     ERROR('no databases in plan');
@@ -148,7 +148,7 @@ function agencyInspector(obj) {
     }
   });
 
-  INFO("  Collections")
+  INFO("  Collections");
 
   // Planned collections
   if (!plan.hasOwnProperty('Collections')) {
@@ -175,23 +175,23 @@ function agencyInspector(obj) {
       const distributeShardsLike = col.distributeShardsLike;
       var myShardKeys = sortShardKeys(Object.keys(col.shards));
 
-      if (distributeShardsLike && distributeShardsLike != "") {      
+      if (distributeShardsLike && distributeShardsLike !== "") {      
         const prototype = plan.Collections[database][distributeShardsLike];
-        if (prototype.replicationFactor != col.replicationFactor) {
+        if (prototype.replicationFactor !== col.replicationFactor) {
           ERROR('distributeShardsLike: replicationFactor mismatch');
         }
-        if (prototype.numberOfShards != col.numberOfShards) {
+        if (prototype.numberOfShards !== col.numberOfShards) {
           ERROR('distributeShardsLike: numberOfShards mismatch');
         }      
         var prototypeShardKeys = sortShardKeys(Object.keys(prototype.shards));
         var ncshards = myShardKeys.length;
-        if (prototypeShardKeys.length != ncshards) {
+        if (prototypeShardKeys.length !== ncshards) {
           ERROR('distributeShardsLike: shard map mismatch');
         }
         for (var i = 0; i < ncshards; ++i) {
           const shname = myShardKeys[i];
           const ccul = current.Collections[database];     
-          if (JSON.stringify(col.shards[shname]) !=
+          if (JSON.stringify(col.shards[shname]) !==
               JSON.stringify(prototype.shards[prototypeShardKeys[i]])) {
             ERROR(
               'distributeShardsLike: planned shard map mismatch between "/arango/Plan/Collections/' +
@@ -215,15 +215,15 @@ function agencyInspector(obj) {
             }
             const shard = current.Collections[database][collection][shname];
             if (shard) {
-              if (JSON.stringify(shard.servers) != JSON.stringify(col.shards[shname])) {
-                if (shard.servers[0] != col.shards[shname][0]) {
+              if (JSON.stringify(shard.servers) !== JSON.stringify(col.shards[shname])) {
+                if (shard.servers[0] !== col.shards[shname][0]) {
                   ERROR('/arango/Plan/Collections/' + database + '/' + collection + '/shards/'
                         + shname + ' and /arango/Current/Collections/' + database + '/'
                         + collection + '/' + shname + '/servers do not match');
                 } else {
                   var sortedPlan = (shard.servers).sort();
                   var sortedCurrent = (col.shards[shname]).sort();
-                  if (JSON.stringify(sortedPlan) == JSON.stringify(sortedCurrent)) {
+                  if (JSON.stringify(sortedPlan) === JSON.stringify(sortedCurrent)) {
                     WARN('/arango/Plan/Collections/' + database + '/' + collection + '/shards/'
                          + shname + ' and /arango/Current/Collections/' + database + '/'
                          + collection + '/' + shname + '/servers follower do not match in order');
@@ -244,8 +244,8 @@ function agencyInspector(obj) {
   });
 
   report.servers = {};
-  INFO('Server health')
-  INFO('  DB Servers')
+  INFO('Server health');
+  INFO('  DB Servers');
   report.servers.dbservers = {};
   const supervision = agency.Supervision;
   const target = agency.Target;
@@ -260,17 +260,17 @@ function agencyInspector(obj) {
       }
       servers[serverId] = supervision.Health[serverId];
       report.servers.dbservers[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName, status : servers[serverId].Status};
-      if (servers[serverId].Status == "BAD") {
+      if (servers[serverId].Status === "BAD") {
         WARN('bad db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
-      } else if (servers[serverId].Status == "FAILED") {
+      } else if (servers[serverId].Status === "FAILED") {
         WARN('*** FAILED *** db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
       }
     }
   });
 
-  INFO('  Coordinators')
+  INFO('  Coordinators');
   report.servers.coordinators = {};
-  var servers = plan.Coordinators;
+  servers = plan.Coordinators;
   Object.keys(servers).forEach(function(serverId) {
     if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
       WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
@@ -282,7 +282,7 @@ function agencyInspector(obj) {
         WARN('planned coordinator ' + serverId + ' missing in supervision\'s health records.');
       }
       servers[serverId] = supervision.Health[serverId];
-      if (servers[serverId].Status != "GOOD") {
+      if (servers[serverId].Status !== "GOOD") {
         WARN('*** FAILED *** coordinator ' + serverId + '(' + servers[serverId].ShortName+ ')');
       }
     }
@@ -293,7 +293,7 @@ function agencyInspector(obj) {
     Pending: target.Pending,
     Finished: target.Finished,
     Failed: target.Failed
-  }
+  };
   var njobs = [];
   var nall;
   Object.keys(jobs).forEach(function (state) {
@@ -573,10 +573,12 @@ function getServerData(arango) {
         const version = arango.GET('_api/version'); // version api
         const log = arango.GET('_admin/log').text;  // log api
         const statistics = arango.GET('_admin/statistics').text;  // log api
-        var agencyConfig = undefined;
+        var agencyConfig;
         if (server.startsWith("AGNT")) {
           agencyConfig = arango.GET('_api/agency/config');
         }
+        const status = arango.GET('_admin/status');
+        
 
         var tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'dmesg | tee /tmp/inspector-dmesg.out > /dev/null']);
@@ -593,6 +595,9 @@ function getServerData(arango) {
         tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'uname -a | tee /tmp/inspector-uname.out > /dev/null']);
         const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8');
+        tmp = executeExternalAndWait(
+          '/bin/bash', ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee /tmp/inspector-top.out > /dev/null']);
+        const top = fs.readFileSync('/tmp/inspector-top.out', 'utf8');
 
         var local = {};
         var localDBs = db._databases();
@@ -614,7 +619,8 @@ function getServerData(arango) {
         // report this server
         report[server] = {
           version:version, log:log, dmesg:dmesg, statistics:statistics,
-          df:df, uptime:uptime, uname:uname, vmstat:vmstat, local:local};
+          status:status, df:df, uptime:uptime, uname:uname, vmstat:vmstat,
+          local:local, top:top};
 
         if (agencyConfig !==  undefined) {
           report[server].config = agencyConfig;

@@ -29,6 +29,8 @@
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // /////////////////////////////////////////////////////////////////////////////
 
+var arango;
+
 // global 'arango'
 global.arango = require('@arangodb').arango;
 
