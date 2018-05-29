@@ -579,11 +579,14 @@ bool IndexBlock::readIndex(size_t atMost,
   DEBUG_END_BLOCK();
 }
 
-int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -592,7 +595,7 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _pos = 0;
   _currentIndex = 0;
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

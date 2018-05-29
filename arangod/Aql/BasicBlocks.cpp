@@ -46,8 +46,9 @@ SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
   
 /// @brief initializeCursor, store a copy of the register values coming from
 /// above
-int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();  
+std::pair<ExecutionState, arangodb::Result> SingletonBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();
   // Create a deep copy of the register values given to us:
   if (items != nullptr) {
     // build a whitelist with all the registers that we will copy from above
@@ -55,7 +56,7 @@ int SingletonBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   }
 
   _done = false;
-  return TRI_ERROR_NO_ERROR;
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
@@ -276,15 +277,19 @@ int FilterBlock::getOrSkipSome(size_t atMost, bool skipping,
   DEBUG_END_BLOCK();  
 }
 
-int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
-  int res = ExecutionBlock::initializeCursor(items, pos);
-  if (res != TRI_ERROR_NO_ERROR) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
+
   _state = 0;
   _count = 0;
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
@@ -455,10 +460,11 @@ RegisterId ReturnBlock::returnInheritedResults() {
 }
 
 /// @brief initializeCursor, only call base
-int NoResultsBlock::initializeCursor(AqlItemBlock*, size_t) {
+std::pair<ExecutionState, arangodb::Result> NoResultsBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
   _done = true;
-  return TRI_ERROR_NO_ERROR;
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  

@@ -73,7 +73,7 @@ class ExecutionEngine {
     _initializeCursorCalled = true;
     // TODO FIXME
     auto res = _root->initializeCursor(items, pos);
-    return res.second.errorNum();
+    return res.second.errorNumber();
   }
   
   /// @brief shutdown, will be called exactly once for the whole query

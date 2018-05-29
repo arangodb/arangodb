@@ -60,10 +60,17 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
 
   for (size_t i = 0; i < res->size(); i++) {
     if (i == 0 || !_subqueryIsConst) {
-      int ret = _subquery->initializeCursor(res.get(), i);
+      // TODO React to waiting
+      auto ret = _subquery->initializeCursor(res.get(), i);
 
-      if (ret != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(ret);
+      if (ret.first == ExecutionState::WAITING) {
+        // TODO This does not work need to capture state!
+        return nullptr;
+      }
+
+      if (!ret.second.ok()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(ret.second.errorNumber(),
+                                       ret.second.errorMessage());
       }
     }
 

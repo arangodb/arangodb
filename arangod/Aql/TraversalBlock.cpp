@@ -168,13 +168,23 @@ void TraversalBlock::freeCaches() {
   _paths.clear();
 }
 
-int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> TraversalBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
+    return res;
+  }
+
   _pos = 0;
   _posInPaths = 0;
   _usedConstant = false;
   freeCaches();
   _traverser->done();
-  return ExecutionBlock::initializeCursor(items, pos);
+
+  return res;
 }
 
 /// @brief shutdown: Inform all traverser Engines to destroy themselves

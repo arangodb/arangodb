@@ -247,12 +247,14 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
   _pos = 0;
 }
 
-int SortedCollectBlock::initializeCursor(AqlItemBlock* items,
-                                         size_t pos) {
+std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -261,7 +263,7 @@ int SortedCollectBlock::initializeCursor(AqlItemBlock* items,
   _pos = 0;
   DEBUG_END_BLOCK();
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -859,12 +861,14 @@ DistinctCollectBlock::~DistinctCollectBlock() {
   clearValues();
 }
 
-int DistinctCollectBlock::initializeCursor(AqlItemBlock* items,
-                                           size_t pos) {
+std::pair<ExecutionState, arangodb::Result> DistinctCollectBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -873,7 +877,7 @@ int DistinctCollectBlock::initializeCursor(AqlItemBlock* items,
   clearValues();
   DEBUG_END_BLOCK();
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1034,16 +1038,18 @@ CountCollectBlock::CountCollectBlock(ExecutionEngine* engine,
              _collectRegister < ExecutionNode::MaxRegisterId);
 }
 
-int CountCollectBlock::initializeCursor(AqlItemBlock* items,
-                                        size_t pos) {
-  int res = ExecutionBlock::initializeCursor(items, pos);
+std::pair<ExecutionState, arangodb::Result> CountCollectBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   _count = 0;
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 int CountCollectBlock::getOrSkipSome(size_t atMost, bool skipping, AqlItemBlock*& result,

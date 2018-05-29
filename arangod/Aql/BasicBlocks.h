@@ -94,7 +94,7 @@ class LimitBlock final : public ExecutionBlock {
         _state(0),  // start in the beginning
         _fullCount(ep->_fullCount) {}
 
-  int initializeCursorOld(AqlItemBlock* items, size_t pos) override final;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) final override;
 
   int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;

@@ -99,7 +99,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   size_t skipSome(size_t atMost) override final;
 
   // here we release our docs from this collection
-  int initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
+  virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
 
  protected:
   bool readDocument(size_t segmentId, irs::doc_id_t docId);

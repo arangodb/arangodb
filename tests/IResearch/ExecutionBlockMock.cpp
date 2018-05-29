@@ -77,20 +77,21 @@ ExecutionBlockMock::ExecutionBlockMock(
     _data(&data) {
 }
 
-int ExecutionBlockMock::initializeCursor(
-    arangodb::aql::AqlItemBlock* items, size_t pos
-) {
+std::pair<arangodb::aql::ExecutionState, arangodb::Result>
+ExecutionBlockMock::initializeCursor(arangodb::aql::AqlItemBlock* items,
+                                     size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  const int res = ExecutionBlock::initializeCursor(items, pos);
+  const auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == arangodb::aql::ExecutionState::WAITING || !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   _pos_in_data = 0;
   DEBUG_END_BLOCK();
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(

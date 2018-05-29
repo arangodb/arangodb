@@ -96,12 +96,14 @@ void ExecutionBlock::throwIfKilled() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }
-  
-int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  for (auto& d : _dependencies) {
-    int res = d->initializeCursor(items, pos);
 
-    if (res != TRI_ERROR_NO_ERROR) {
+std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  for (auto& d : _dependencies) {
+    auto res = d->initializeCursor(items, pos);
+    if (res.first == ExecutionState::WAITING ||
+        !res.second.ok()) {
+      // If we need to wait or get an error we return as is.
       return res;
     }
   }
@@ -112,7 +114,7 @@ int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _buffer.clear();
 
   _done = false;
-  return TRI_ERROR_NO_ERROR;
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
 /// @brief shutdown, will be called exactly once for the whole query

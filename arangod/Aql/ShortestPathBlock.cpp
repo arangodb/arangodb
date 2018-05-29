@@ -119,11 +119,20 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   }
 }
 
-int ShortestPathBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> ShortestPathBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+  
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
+    return res;
+  }
   _posInPath = 0;
   _pathLength = 0;
   _usedConstant = false;
-  return ExecutionBlock::initializeCursor(items, pos);
+
+  return res;
 }
 
 /// @brief shutdown: Inform all traverser Engines to destroy themselves

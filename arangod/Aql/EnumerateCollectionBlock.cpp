@@ -88,12 +88,14 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
   }
 }
 
-int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
-                                               size_t pos) {
+std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -101,7 +103,7 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
   _cursor->reset();
   DEBUG_END_BLOCK();
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

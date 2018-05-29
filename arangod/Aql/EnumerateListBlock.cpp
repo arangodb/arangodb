@@ -48,18 +48,21 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
 
 EnumerateListBlock::~EnumerateListBlock() {}
 
-int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   // handle local data (if any)
   _index = 0;      // index in _inVariable for next run
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
   DEBUG_END_BLOCK();  
 }
 

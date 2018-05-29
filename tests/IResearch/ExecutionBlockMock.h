@@ -88,10 +88,8 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   );
 
   // here we release our docs from this collection
-  int initializeCursor(
-    arangodb::aql::AqlItemBlock* items,
-    size_t pos
-  ) override;
+  std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
+      arangodb::aql::AqlItemBlock* items, size_t pos) override;
 
   arangodb::aql::AqlItemBlock* getSome(
     size_t atMost

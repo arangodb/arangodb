@@ -124,11 +124,14 @@ int GatherBlock::shutdown(int errorCode) {
 }
 
 /// @brief initializeCursor
-int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> GatherBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -160,7 +163,7 @@ int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   } else {
     _done = false;
   }
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -514,12 +517,15 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine,
 }
 
 /// @brief initializeCursor: reset _doneForClient
-int BlockWithClients::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -530,7 +536,7 @@ int BlockWithClients::initializeCursor(AqlItemBlock* items, size_t pos) {
     _doneForClient.push_back(false);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -632,11 +638,14 @@ size_t BlockWithClients::getClientId(std::string const& shardId) {
 }
 
 /// @brief initializeCursor
-int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> ScatterBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
-  int res = BlockWithClients::initializeCursor(items, pos);
-  if (res != TRI_ERROR_NO_ERROR) {
+  auto res = BlockWithClients::initializeCursor(items, pos);
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -646,13 +655,13 @@ int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   for (size_t i = 0; i < _nrClients; i++) {
     _posForClient.emplace_back(std::make_pair(0, 0));
   }
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
-/// @brief initializeCursor
+/// @brief shutdown
 int ScatterBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
   int res = BlockWithClients::shutdown(errorCode);
@@ -801,12 +810,15 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
 }
 
 /// @brief initializeCursor
-int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> DistributeBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
-  int res = BlockWithClients::initializeCursor(items, pos);
+  auto res = BlockWithClients::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
@@ -818,7 +830,7 @@ int DistributeBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     _distBuffer.emplace_back();
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1237,19 +1249,20 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
 }
 
 /// @brief initializeCursor, could be called multiple times
-int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
 
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
   
   if (items == nullptr) {
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   } 
 
   VPackOptions options(VPackOptions::Defaults);
@@ -1271,6 +1284,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   std::string bodyString(builder.slice().toJson());
 
+  // TODO Make Async
   std::unique_ptr<ClusterCommResult> res = sendRequest(
       rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
   throwExceptionAfterBadSyncRequest(res.get(), false);
@@ -1285,9 +1299,9 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     VPackSlice slice = builder->slice();
   
     if (slice.hasKey("code")) {
-      return slice.get("code").getNumericValue<int>();
+      return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
     }
-    return TRI_ERROR_INTERNAL;
+    return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
 
   // cppcheck-suppress style

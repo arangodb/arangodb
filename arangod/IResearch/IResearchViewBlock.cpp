@@ -141,18 +141,21 @@ IResearchViewBlockBase::IResearchViewBlockBase(
   _filterCtx.emplace(_execCtx);
 }
 
-int IResearchViewBlockBase::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
-  const int res = ExecutionBlock::initializeCursor(items, pos);
+  const auto res = ExecutionBlock::initializeCursor(items, pos);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.first == ExecutionState::WAITING ||
+      !res.second.ok()) {
+    // If we need to wait or get an error we return as is.
     return res;
   }
 
   _hasMore = true; // has more data initially
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 
   DEBUG_END_BLOCK();
 }
