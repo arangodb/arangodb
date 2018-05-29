@@ -10,32 +10,33 @@ then a shortest path query from **A** to **C** may return the path `A -> B -> C`
 
 You can use the efficient shortest path algorithm however, to determine the shortest path length:
 
-```
-RETURN LENGTH(
-  FOR v IN OUTBOUND
-    SHORTEST_PATH "verts/A" TO "verts/C" edges
-    RETURN v
-)
-```
+
+    @startDocuBlockInline GRAPHTRAV_multiplePathSearch
+    @EXAMPLE_AQL{GRAPHTRAV_multiplePathSearch}
+    @DATASET{mps_graph}
+    RETURN LENGTH(
+      FOR v IN OUTBOUND
+        SHORTEST_PATH "verts/A" TO "verts/C" edges
+          RETURN v
+    )   
+    @END_EXAMPLE_AQL
+    @endDocuBlock GRAPHTRAV_multiplePathSearch
+
 
 The result is 3 for the example graph (includes the start vertex). Now, subtract 1 to get the edge count / traversal depth. You can run a pattern matching traversal to find all paths with this length (or longer ones by increasing the min and max depth). Starting point is **A** again, and a filter on the document ID of v (or p.vertices[-1]) ensures that we only retrieve paths that end at point **C**.
 
 The following query returns all parts with length 2, start vertex **A** and target vertex **C**:
 
-```
-FOR v, e, p IN 2..2 OUTBOUND "verts/A" edges
-  FILTER v._id == "verts/C"
-  RETURN CONCAT_SEPARATOR(" -> ", p.vertices[*]._key)
-```
 
-Output:
+    @startDocuBlockInline GRAPHTRAV_multiplePathSearch2
+    @EXAMPLE_AQL{GRAPHTRAV_multiplePathSearch2}
+    @DATASET{mps_graph}
+    FOR v, e, p IN 2..2 OUTBOUND "verts/A" edges
+       FILTER v._id == "verts/C"
+         RETURN CONCAT_SEPARATOR(" -> ", p.vertices[*]._key)
+    @END_EXAMPLE_AQL
+    @endDocuBlock GRAPHTRAV_multiplePathSearch2
 
-```
-[
-  "A -> B -> C",
-  "A -> D -> C"
-]
-```
 
 A traversal depth of `3..3` would return `A -> E -> F -> C` and `2..3` all three paths.
 
