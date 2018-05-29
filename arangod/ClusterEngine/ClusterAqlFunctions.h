@@ -23,8 +23,8 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_AQL_FUNCTIONS_H
 #define ARANGOD_CLUSTER_CLUSTER_AQL_FUNCTIONS_H 1
 
-#include "Aql/Functions.h"
 #include "Basics/Common.h"
+#include "Aql/Functions.h"
 
 namespace arangodb {
 namespace aql {
