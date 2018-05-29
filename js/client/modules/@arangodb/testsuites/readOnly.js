@@ -197,7 +197,8 @@ function readOnly (options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['readOnly'] = readOnly;
-
+  defaultFns.push('readOnly');
+  
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
