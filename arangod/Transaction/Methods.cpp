@@ -2758,7 +2758,7 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
 
   auto indexes = indexesForCollection(collectionName);
 
-  // Const cast is save here. Giving computeSpecialisation == false
+  // Const cast is save here. Giving computeSpecialization == false
   // Makes sure node is NOT modified.
   return findIndexHandleForAndNode(indexes, node, reference, itemsInCollection,
                                    usedIndex);

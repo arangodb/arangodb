@@ -160,7 +160,7 @@ var updateFishbowlFromZip = function (filename) {
         }
       });
 
-      require('console').debug('Updated local foxx repository with ' + toSave.length + ' service(s)');
+      require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
     }
   } catch (err) {
     if (tempPath !== undefined && tempPath !== '') {

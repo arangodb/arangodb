@@ -147,7 +147,7 @@ function FoxxmasterSuite() {
       assertTrue(continueExternal(instance.pid));
       // mop: currently supervision would run every 5s
       if (!ok) {
-        throw new Error('Supervision should have moved the foxxqueues and foxxqueues should have been started to run on a new coordinator');
+        throw new Error('Supervision should have moved the Foxx queues and Foxx queues should have been started to run on a new coordinator');
       }
     }
   };

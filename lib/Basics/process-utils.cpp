@@ -676,7 +676,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   ////////////////////////////////////////////////////////////////////////////////
   typedef struct process_state_s {
     pid_t pid;
-    /* size was choosen arbitrary */
+    /* size was chosen arbitrary */
     char comm[128];
     char state;
     int ppid;

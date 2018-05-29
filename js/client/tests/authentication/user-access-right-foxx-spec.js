@@ -96,7 +96,7 @@ describe('User Rights Management', () => {
             } catch (e) {}
           });
 
-          it('register a foxx service', () => {
+          it('register a Foxx service', () => {
             if (dbLevel['rw'].has(name)) {
               try {
                 foxxManager.install(fs.join(basePath, 'minimal-working-service'), mount);
@@ -112,8 +112,8 @@ describe('User Rights Management', () => {
               } catch (e) {
                 if (e.errorNum === errors.ERROR_ARANGO_READ_ONLY.code ||
                     e.errorNum === errors.ERROR_FORBIDDEN.code) {
-                  expect(false).to.be.equal(true, `${name} could not register foxx service with sufficient rights`);
-                } // FIXME: workarkound ignore all other errors for now
+                  expect(false).to.be.equal(true, `${name} could not register Foxx service with sufficient rights`);
+                } // FIXME: workaround ignore all other errors for now
               }
             } else {
               try {
@@ -128,7 +128,7 @@ describe('User Rights Management', () => {
                 FILTER service.mount == ${mount}
                 RETURN service.checksum
               `).toArray().length;
-              expect(size).to.equal(0, `${name} could register foxx service with insufficient rights`);
+              expect(size).to.equal(0, `${name} could register Foxx service with insufficient rights`);
             }
           });
         });

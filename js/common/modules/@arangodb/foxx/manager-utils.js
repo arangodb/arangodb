@@ -172,7 +172,7 @@ function validateMount (mount, internal) {
   if (mount[0] !== '/') {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
-      errorMessage: 'Mountpoint has to start with /.'
+      errorMessage: 'Mount point has to start with /.'
     });
   }
   if (!mountRegEx.test(mount)) {
@@ -180,7 +180,7 @@ function validateMount (mount, internal) {
     if (!internal || mount.length !== 1) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
-        errorMessage: 'Mountpoint can only contain a-z, A-Z, 0-9 or _.'
+        errorMessage: 'Mount point can only contain a-z, A-Z, 0-9 or _.'
       });
     }
   }
@@ -197,13 +197,13 @@ function validateMount (mount, internal) {
     if (mountNumberRegEx.test(mount)) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
-        errorMessage: 'Mointpoints are not allowed to start with a number, - or %.'
+        errorMessage: 'Mount points are not allowed to start with a number, - or %.'
       });
     }
     if (mountAppRegEx.test(mount)) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
-        errorMessage: 'Mountpoint is not allowed to contain /app/.'
+        errorMessage: 'Mount point is not allowed to contain /app/.'
       });
     }
   }
@@ -219,7 +219,7 @@ function getServiceDefinition (mount) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Update the app installed at this mountpoint with the new app
+// / @brief Update the app installed at this mount point with the new app
 // //////////////////////////////////////////////////////////////////////////////
 
 function updateService (mount, update) {
@@ -248,7 +248,7 @@ function joinLastPath (tempPath) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief creates a zip archive of a foxx app. Returns the absolute path
+// / @brief creates a zip archive of a Foxx app. Returns the absolute path
 // //////////////////////////////////////////////////////////////////////////////
 function zipDirectory (directory, zipFilename) {
   if (!fs.isDirectory(directory)) {

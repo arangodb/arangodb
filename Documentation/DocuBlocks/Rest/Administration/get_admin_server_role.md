@@ -22,10 +22,10 @@ Possible return values for *role* are:
 Is returned in all cases.
 
 @RESTREPLYBODY{error,boolean,required,}
-allways *false*
+always *false*
 
 @RESTREPLYBODY{code,integer,required,int64}
-the HTTP status code, allways 200
+the HTTP status code, always 200
 
 @RESTREPLYBODY{errorNum,integer,required,int64}
 the server error number

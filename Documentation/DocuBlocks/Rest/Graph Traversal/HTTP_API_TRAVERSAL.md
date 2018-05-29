@@ -18,7 +18,7 @@ name of the collection that contains the edges.
 @RESTBODYPARAM{graphName,string,optional,string}
 name of the graph that contains the edges.
 Either *edgeCollection* or *graphName* has to be given.
-In case both values are set the *graphName* is prefered.
+In case both values are set the *graphName* is preferred.
 
 @RESTBODYPARAM{filter,string,optional,string}
 default is to include all nodes:
@@ -29,7 +29,7 @@ can return four different string values:
 - *"prune"* -> the edges of this vertex will not be followed.
 - *""* or *undefined* -> visit the vertex and follow its edges.
 - *Array* -> containing any combination of the above.
-  If there is at least one *"exclude"* or *"prune"* respectivly
+  If there is at least one *"exclude"* or *"prune"* respectively
   is contained, it's effect will occur.
 
 @RESTBODYPARAM{minDepth,string,optional,string}

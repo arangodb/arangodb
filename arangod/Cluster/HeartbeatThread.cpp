@@ -918,7 +918,7 @@ void HeartbeatThread::runCoordinator() {
         updateServerMode(readOnlySlice);
       }
 
-      // the foxx stuff needs an updated list of coordinators
+      // the Foxx stuff needs an updated list of coordinators
       // and this is only updated when current version has changed
       if (invalidateCoordinators) {
         ClusterInfo::instance()->invalidateCurrentCoordinators();
@@ -1019,7 +1019,7 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
     }
   }
   if (doSleep) {
-    // Sleep a little longer, since this might be due to some synchronisation
+    // Sleep a little longer, since this might be due to some synchronization
     // of shards going on in the background
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
     std::this_thread::sleep_for(std::chrono::microseconds(500000));

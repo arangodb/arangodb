@@ -94,7 +94,7 @@ Let's dig in some deeper.
 
 ### Read API
 
-Let's start with the above initialised key-value store in the following. Let us visit the following read operations:
+Let's start with the above initialized key-value store in the following. Let us visit the following read operations:
 
 ```
 curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b"]]'
@@ -220,7 +220,7 @@ is a precondition specifying that the previous value of the key `"/a/b/c"` key m
 { "/a/b/c": [1, 2, 3] }
 ```
 
-Consider the agency in initialised as above let's review the responses from the agency as follows:
+Consider the agency in initialized as above let's review the responses from the agency as follows:
 
 ```
 curl -L http://$SERVER:$PORT/_api/agency/write -d '[[{"/a/b/c":{"op":"set","new":[1,2,3,4]},"/a/b/pi":{"op":"set","new":"some text"}},{"/a/b/c":{"old":[1,2,3]}}]]'

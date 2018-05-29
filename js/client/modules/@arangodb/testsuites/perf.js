@@ -33,19 +33,22 @@ const optionsDocumentation = [
 
 const tu = require('@arangodb/test-utils');
 
+const testPaths = {
+  'shell_server_perf': ['js/server/perftests']
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_server_perf
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellServerPerf (options) {
-  let testCases = tu.scanTestPath('js/server/perftests');
+  let testCases = tu.scanTestPath(testPaths.shell_server_perf[0]);
   return tu.performTests(options, testCases, 'shell_server_perf', tu.runThere);
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['shell_server_perf'] = shellServerPerf;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

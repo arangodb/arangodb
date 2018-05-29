@@ -1131,7 +1131,7 @@ Done:
   StrCmp $PURGE_DB "0" dontDeleteDatabases
   DetailPrint 'Removing database files from $DATADIR: '
   RMDir /r "$DATADIR"
-  DetailPrint 'Removing foxx services files from $APPDIR: '
+  DetailPrint 'Removing Foxx services files from $APPDIR: '
   RMDir /r "$APPDIR"
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"

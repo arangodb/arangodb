@@ -1173,7 +1173,7 @@ describe('Foxx service', () => {
     expect(service).to.have.property('legacy', false);
   });
 
-  it('informations should be returned', () => {
+  it('information should be returned', () => {
     FoxxManager.install(basePath, mount);
     const resp = request.get('/_api/foxx/service', {qs: {mount}});
     const service = resp.json;

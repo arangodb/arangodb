@@ -134,7 +134,7 @@ static int StringifyJson(TRI_string_buffer_t* buffer,
     case TRI_JSON_STRING:
     case TRI_JSON_STRING_REFERENCE: {
       if (object->_value._string.length > 0) {
-        // optimisation for the empty string
+        // optimization for the empty string
         res = TRI_AppendJsonEncodedStringStringBuffer(
             buffer, object->_value._string.data,
             object->_value._string.length - 1, false);

@@ -2,7 +2,7 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Spec for foxx manager
+// / @brief Spec for Foxx manager
 // /
 // / @file
 // /
@@ -61,7 +61,7 @@ describe('Foxx Manager', function () {
       db._dropDatabase('tmpFMDB2');
     });
 
-    it('should allow to install apps on same mountpoint', function () {
+    it('should allow to install apps on same mount point', function () {
       const download = require('internal').download;
       arango.reconnect(originalEndpoint, 'tmpFMDB', 'root', '');
       expect(function () {
