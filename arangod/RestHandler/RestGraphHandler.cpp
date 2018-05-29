@@ -676,7 +676,7 @@ Result RestGraphHandler::edgeActionRemove(
     return res;
   }
 
-  generateRemoved(true, result.wasSynchronous, result.slice().get("old"),
+  generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
                   *ctx->getVPackOptionsForDump());
 
   return Result();
@@ -830,11 +830,11 @@ Result RestGraphHandler::documentModify(
 
   switch (colType) {
     case TRI_COL_TYPE_DOCUMENT:
-      generateVertexModified(result.wasSynchronous, result.slice(),
+      generateVertexModified(result._options.waitForSync, result.slice(),
                              *ctx->getVPackOptionsForDump());
       break;
     case TRI_COL_TYPE_EDGE:
-      generateEdgeModified(result.wasSynchronous, result.slice(),
+      generateEdgeModified(result._options.waitForSync, result.slice(),
                            *ctx->getVPackOptionsForDump());
       break;
     default:
@@ -894,11 +894,11 @@ Result RestGraphHandler::documentCreate(
 
   switch (colType) {
     case TRI_COL_TYPE_DOCUMENT:
-      generateVertexCreated(result.wasSynchronous, result.slice(),
+      generateVertexCreated(result._options.waitForSync, result.slice(),
                              *ctx->getVPackOptionsForDump());
       break;
     case TRI_COL_TYPE_EDGE:
-      generateEdgeCreated(result.wasSynchronous, result.slice(),
+      generateEdgeCreated(result._options.waitForSync, result.slice(),
                            *ctx->getVPackOptionsForDump());
       break;
     default:
@@ -960,7 +960,7 @@ Result RestGraphHandler::vertexActionRemove(
     return res;
   }
 
-  generateRemoved(true, result.wasSynchronous, result.slice().get("old"),
+  generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
                   *ctx->getVPackOptionsForDump());
 
   return Result();
