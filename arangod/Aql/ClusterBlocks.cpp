@@ -99,7 +99,7 @@ bool OurLessThan::operator()(
 
   for (auto const& reg : _sortRegisters) {
     auto const& lhs = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
-    auto const& rhs = _gatherBlockBuffer[a.first].front()->getValueReference(b.second, reg.reg);
+    auto const& rhs = _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
     auto const& attributePath = reg.attributePath;
 
     // Fast path if there is no attributePath:
