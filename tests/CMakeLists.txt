@@ -139,6 +139,7 @@ add_executable(
 target_link_libraries(
   arangodbtests
   arangoserver
+  rocksdb
 )
 
 target_include_directories(arangodbtests PRIVATE

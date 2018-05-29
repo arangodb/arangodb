@@ -221,7 +221,14 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
+set(CURL_VERSION "7.57.0")
+set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
+set(CURL_SRC_DIR "%{CURL_SRC_DIR}" PARENT_SCOPE)
+add_subdirectory(CURL_SRC_DIR)
+
+set(CURL_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/curl/curl-${CURL_VERSION}")
+set(CURL_BIN_DIR "%{CURL_BIN_DIR}" PARENT_SCOPE)
+
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
@@ -229,6 +236,7 @@ set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 ################################################################################
 
 add_subdirectory(s2geometry)
+set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## SNAPPY
@@ -260,6 +268,7 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 include_directories(${ROCKSDB_INCLUDE_DIR})
+set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## ASIO
