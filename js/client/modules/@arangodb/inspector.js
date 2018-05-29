@@ -563,8 +563,6 @@ function getServerData(arango) {
   var report = {};
   INFO('Collecting diagnostics from all servers ... ');
 
-  console.warn(servers);
-  
   Object.keys(servers).forEach(
 
     function (server) {
@@ -584,7 +582,6 @@ function getServerData(arango) {
         }
         const status = arango.GET('_admin/status');
         
-
         var tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'dmesg | tee /tmp/inspector-dmesg.out > /dev/null']);
         const dmesg = fs.readFileSync('/tmp/inspector-dmesg.out', 'utf8');
@@ -592,17 +589,20 @@ function getServerData(arango) {
           '/bin/bash', ['-c', 'df -h | tee /tmp/inspector-df.out > /dev/null']);
         const df = fs.readFileSync('/tmp/inspector-df.out', 'utf8');
         tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'vmstat -s | tee /tmp/inspector-vmstat.out > /dev/null']);
-        const vmstat = fs.readFileSync('/tmp/inspector-vmstat.out', 'utf8');
+          '/bin/bash', ['-c', 'cat /proc/meminfo | tee /tmp/inspector-meminfo.out > /dev/null']);
+        const meminfo = fs.readFileSync('/tmp/inspector-meminfo.out', 'utf8');
         tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'uptime | tee /tmp/inspector-uptime.out > /dev/null']);
         const uptime = fs.readFileSync('/tmp/inspector-uptime.out', 'utf8');
         tmp = executeExternalAndWait(
           '/bin/bash', ['-c', 'uname -a | tee /tmp/inspector-uname.out > /dev/null']);
         const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8');
-        tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee /tmp/inspector-top.out > /dev/null']);
-        const top = fs.readFileSync('/tmp/inspector-top.out', 'utf8');
+        var top;
+        if (status.pid !== undefined) {
+          tmp = executeExternalAndWait(
+            '/bin/bash', ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee /tmp/inspector-top.out > /dev/null']);
+          top = fs.readFileSync('/tmp/inspector-top.out', 'utf8');
+        }
 
         var local = {};
         var localDBs = db._databases();
@@ -624,11 +624,14 @@ function getServerData(arango) {
         // report this server
         report[server] = {
           version:version, log:log, dmesg:dmesg, statistics:statistics,
-          status:status, df:df, uptime:uptime, uname:uname, vmstat:vmstat,
-          local:local, top:top};
+          status:status, df:df, uptime:uptime, uname:uname, meminfo:meminfo,
+          local:local};
 
         if (agencyConfig !==  undefined) {
           report[server].config = agencyConfig;
+        }
+        if (top !==  undefined) {
+          report[server].top = top;
         }
 
       } catch (e) {
