@@ -71,7 +71,9 @@ class ExecutionEngine {
   /// @brief initializeCursor, could be called multiple times
   int initializeCursor(AqlItemBlock* items, size_t pos) {
     _initializeCursorCalled = true;
-    return _root->initializeCursor(items, pos);
+    // TODO FIXME
+    auto res = _root->initializeCursor(items, pos);
+    return res.second.errorNum();
   }
   
   /// @brief shutdown, will be called exactly once for the whole query
@@ -80,6 +82,7 @@ class ExecutionEngine {
   /// @brief getSome
   AqlItemBlock* getSome(size_t atMost) {
     if (!_initializeCursorCalled) {
+      // TODO FIXME
       initializeCursor(nullptr, 0);
     }
     return _root->getSome(atMost);
@@ -88,6 +91,7 @@ class ExecutionEngine {
   /// @brief skipSome
   size_t skipSome(size_t atMost) {
     if (!_initializeCursorCalled) {
+      // TODO FIXME
       initializeCursor(nullptr, 0);
     }
     return _root->skipSome(atMost);

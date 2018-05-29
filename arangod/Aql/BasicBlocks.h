@@ -41,7 +41,7 @@ class SingletonBlock final : public ExecutionBlock {
 
   /// @brief initializeCursor, store a copy of the register values coming from
   /// above
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   int shutdown(int) override final;
 
@@ -94,7 +94,7 @@ class LimitBlock final : public ExecutionBlock {
         _state(0),  // start in the beginning
         _fullCount(ep->_fullCount) {}
 
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+  int initializeCursorOld(AqlItemBlock* items, size_t pos) override final;
 
   int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
@@ -144,7 +144,7 @@ class NoResultsBlock final : public ExecutionBlock {
 
   /// @brief initializeCursor, store a copy of the register values coming from
   /// above
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   bool hasMore() override final { return false; }
 

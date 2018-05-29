@@ -25,6 +25,8 @@
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/Variable.h"
 
 #include <deque>
@@ -116,7 +118,7 @@ class ExecutionBlock {
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
-  virtual int initializeCursor(AqlItemBlock* items, size_t pos);
+  virtual std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
 
   /// @brief shutdown, will be called exactly once for the whole query
   virtual int shutdown(int);

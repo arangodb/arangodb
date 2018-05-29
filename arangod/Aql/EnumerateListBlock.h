@@ -40,7 +40,7 @@ class EnumerateListBlock : public ExecutionBlock {
   ~EnumerateListBlock();
 
   // here we release our docs from this collection
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   AqlItemBlock* getSome(size_t atMost) override final;
 

@@ -46,7 +46,7 @@ class ShortestPathBlock : public ExecutionBlock {
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
 
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   int shutdown(int errorCode) override;
 

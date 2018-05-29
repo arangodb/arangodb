@@ -44,7 +44,7 @@ class TraversalBlock final : public ExecutionBlock {
   ~TraversalBlock();
 
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown send destroy to all engines.
   int shutdown(int errorCode) override final;

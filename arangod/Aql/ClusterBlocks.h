@@ -67,7 +67,7 @@ class GatherBlock : public ExecutionBlock {
   int shutdown(int) override final;
 
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
@@ -134,7 +134,7 @@ class BlockWithClients : public ExecutionBlock {
 
  public:
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown
   int shutdown(int) override;
@@ -201,7 +201,7 @@ class ScatterBlock : public BlockWithClients {
       : BlockWithClients(engine, ep, shardIds) {}
 
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown
   int shutdown(int) override;
@@ -226,7 +226,7 @@ class DistributeBlock : public BlockWithClients {
                   Collection const* collection);
 
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown
   int shutdown(int) override;
@@ -294,7 +294,7 @@ class RemoteBlock final : public ExecutionBlock {
   static double const defaultTimeOut;
 
   /// @brief initializeCursor, could be called multiple times
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief shutdown, will be called exactly once for the whole query
   int shutdown(int) override final;

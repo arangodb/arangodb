@@ -47,7 +47,7 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
                            EnumerateCollectionNode const* ep);
 
   /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief getSome
   AqlItemBlock* getSome(size_t atMost) override final;
