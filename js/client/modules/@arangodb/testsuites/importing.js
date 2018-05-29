@@ -211,7 +211,7 @@ function importing (options) {
 
   try {
     result.setup = tu.runInArangosh(options, instanceInfo,
-      tu.makePathUnix(testPaths.import[0]));
+      tu.makePathUnix(testPaths.importing[0]));
 
     result.setup.failed = 0;
     if (result.setup.status !== true) {
@@ -236,17 +236,18 @@ function importing (options) {
     result.check = tu.runInArangosh(
       options,
       instanceInfo,
-      tu.makePathUnix(testPaths.import[1]));
+      tu.makePathUnix(testPaths.importing[1]));
     result.check.failed = result.check.success ? 0 : 1;
 
     result.teardown = tu.runInArangosh(
       options,
       instanceInfo,
-      tu.makePathUnix(testPaths.import[2]));
+      tu.makePathUnix(testPaths.importing[2]));
     result.teardown.failed = result.teardown.success ? 0 : 1;
   } catch (banana) {
+    print(banana)
     print('An exceptions of the following form was caught:',
-      yaml.safeDump(banana));
+          yaml.safeDump(banana));
   }
 
   print('Shutting down...');
