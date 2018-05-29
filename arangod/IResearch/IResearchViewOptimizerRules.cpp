@@ -631,10 +631,6 @@ void scatterViewInClusterRule(
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
 
-//    if (!elements.empty()) {
-//      gatherNode->elements(elements);
-//    }
-
     // and now link the gather node with the rest of the plan
     if (parents.size() == 1) {
       parents[0]->replaceDependency(deps[0], gatherNode);

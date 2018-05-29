@@ -3783,13 +3783,17 @@ void arangodb::aql::distributeSortToClusterRule(
           if (thisSortNode->_reinsertInCluster) {
             plan->insertDependency(rn, inspectNode);
           }
-          // On SmartEdge collections we have 0 shards and we need the elements
-          // to be injected here as well. So do not replace it with > 1
+
           auto const* collection = GatherNode::findCollection(*gatherNode);
 
-          if (collection && collection->numberOfShards() != 1) {
+          // For views (when 'collection == nullptr') we don't need
+          // to check number of shards
+          // On SmartEdge collections we have 0 shards and we need the elements
+          // to be injected here as well. So do not replace it with > 1
+          if (!collection || collection->numberOfShards() != 1) {
             gatherNode->elements(thisSortNode->elements());
           }
+
           modified = true;
           // ready to rumble!
           break;
