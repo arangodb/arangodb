@@ -562,13 +562,18 @@ function getServerData(arango) {
   var servers = listServers();
   var report = {};
   INFO('Collecting diagnostics from all servers ... ');
+
+  console.warn(servers);
+  
   Object.keys(servers).forEach(
 
     function (server) {
 
       try {
-        
-        arango.reconnect(servers[server].endpoint, '_system');
+
+        if (server.endpoint !== undefined) {
+          arango.reconnect(servers[server].endpoint, '_system');
+        }
         
         const version = arango.GET('_api/version'); // version api
         const log = arango.GET('_admin/log').text;  // log api
@@ -630,7 +635,9 @@ function getServerData(arango) {
         print(e);
       }
     });
-  arango.reconnect(current, '_system');
+  if (Object.keys(servers).length > 1) {
+    arango.reconnect(current, '_system');
+  }
   INFO('... dignostics collected.');
   return report;
 }
@@ -646,53 +653,58 @@ exports.listServers = listServers;
   try {
     var type = serverBasics();
 
-    if (type !== 'AGENT') {
-      if (possibleAgent !== null) {
-        arango.reconnect(possibleAgent, "_system");
-        serverBasics();
-      }
-    }
-    
-    // Agency dump and analysis
-    var agencyConfig = loadAgencyConfig();
-    var agencyDump = {};
-    var tries = 0;
-    while (true) {
-      if (agencyDump.leaderId !== "") {
-        if (agencyConfig.configuration.pool.hasOwnProperty(agencyConfig.leaderId)) {
-          arango.reconnect(
-            agencyConfig.configuration.pool[agencyConfig.leaderId], "_system");
-          INFO(arango);
-          agencyDump = loadAgency(arango, {});
-          break;
-        } else { // Leader is not in pool? Fatal error;
-          console.error("Fatal error: " + agencyDump.leaderId +
-                        " is not a member of the agent pool " +
-                        JSON.stringify(agencyConfig.configuration.pool));
-          console.error("This deployment needs immediate administrative attention.");
-          possibleAgent = null;
-          return;
-        }
-      } else {
-        if (tries < 100) {
-          tries++;
-          internal.wait(1);
-        } else {
-          console.error("Error: Agency cannot elect a leader configured as " +
-                        JSON.stringify(agencyConfig));
-          console.error("This deployment needs immediate administrative attention.");
-          possibleAgent = null;
-          return;
-        }
-      }
-    }
-    
-    if (agencyDump !== null) {
-      locateServers(agencyDump);
-    }
+    console.log(type);
 
-    healthRecord['analysis'] = agencyInspector(agencyDump);
-    healthRecord['agency'] = agencyDump[0].arango;
+    if (type !== 'SINGLE') {
+
+      if (type !== 'AGENT') {
+        if (possibleAgent !== null) {
+          arango.reconnect(possibleAgent, "_system");
+          serverBasics();
+        }
+      }
+      
+      // Agency dump and analysis
+      var agencyConfig = loadAgencyConfig();
+      var agencyDump = {};
+      var tries = 0;
+      while (true) {
+        if (agencyDump.leaderId !== "") {
+          if (agencyConfig.configuration.pool.hasOwnProperty(agencyConfig.leaderId)) {
+            arango.reconnect(
+              agencyConfig.configuration.pool[agencyConfig.leaderId], "_system");
+            INFO(arango);
+            agencyDump = loadAgency(arango, {});
+            break;
+          } else { // Leader is not in pool? Fatal error;
+            console.error("Fatal error: " + agencyDump.leaderId +
+                          " is not a member of the agent pool " +
+                          JSON.stringify(agencyConfig.configuration.pool));
+            console.error("This deployment needs immediate administrative attention.");
+            possibleAgent = null;
+            return;
+          }
+        } else {
+          if (tries < 100) {
+            tries++;
+            internal.wait(1);
+          } else {
+            console.error("Error: Agency cannot elect a leader configured as " +
+                          JSON.stringify(agencyConfig));
+            console.error("This deployment needs immediate administrative attention.");
+            possibleAgent = null;
+            return;
+          }
+        }
+      }
+      
+      if (agencyDump !== null) {
+        locateServers(agencyDump);
+      }
+
+      healthRecord['analysis'] = agencyInspector(agencyDump);
+      healthRecord['agency'] = agencyDump[0].arango;
+    }
     
     // Get all sorts of meta data from all servers
     healthRecord['servers'] = getServerData(arango);
