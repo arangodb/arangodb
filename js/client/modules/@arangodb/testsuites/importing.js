@@ -245,7 +245,6 @@ function importing (options) {
       tu.makePathUnix(testPaths.importing[2]));
     result.teardown.failed = result.teardown.success ? 0 : 1;
   } catch (banana) {
-    print(banana)
     print('An exceptions of the following form was caught:',
           yaml.safeDump(banana));
   }
