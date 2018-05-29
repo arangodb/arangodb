@@ -1208,4 +1208,81 @@ describe('babies collection document', function () {
       expect(b7[0]._oldRev).to.be.a('string');
     });
   });
+
+  describe('overwrite', function () {
+    let base_url = '/_api/document/' + cn;
+    it('overwrite once', function () {
+      let url1 = base_url;
+      let req1 = request.post(url1, extend(endpoint, {
+        body: JSON.stringify([{
+          'Hallo': 12
+        }])
+      }));
+      let b1 = JSON.parse(req1.rawBody);
+      let res1 = b1[0];
+
+      let url2 = base_url + '?overwrite=true&returnOld=true';
+      let req2 = request.post(url2, extend(endpoint, {
+        body: JSON.stringify([{
+          '_key': res1._key,
+          'ulf': 42
+        }])
+      }));
+      let b2 = JSON.parse(req2.rawBody);
+      let res2 = b2[0];
+
+      expect(req2.statusCode).to.equal(202);
+      expect(res2._key).to.equal(res1._key);
+      expect(res2._oldRev).to.equal(res1._rev);
+      expect(res2.old.Hallo).to.equal(12);
+
+
+    });
+
+    it('overwrite multi', function () {
+      let url1 = base_url;
+      let req1 = request.post(url1, extend(endpoint, {
+        body: JSON.stringify([{
+          'Hallo': 12
+        }])
+      }));
+      let b1 = JSON.parse(req1.rawBody);
+      let res1 = b1[0];
+      let key1 = res1._key;
+
+      let url2 = base_url + '?overwrite=true&returnOld=true&returnNew=true';
+      let req2 = request.post(url2, extend(endpoint, {
+        body: JSON.stringify([
+          {
+            '_key': key1,
+            'ulf': 42
+          },{
+            '_key': key1,
+            'ulf': 32
+
+          },{
+            '_key': key1,
+            'ulfine': 23
+          }
+        ])
+      }));
+      expect(req2.statusCode).to.equal(202);
+      let b2 = JSON.parse(req2.rawBody);
+
+      expect(b2).to.be.instanceof(Array);
+      expect(b2).to.have.lengthOf(3);
+      expect(b2[0]).to.be.a('object');
+      expect(b2[1]).to.be.a('object');
+      expect(b2[2]).to.be.a('object');
+      expect(b2[0]._key).to.be.a('string');
+      expect(b2[0]._key).to.equal(key1);
+      expect(b2[1]._key).to.equal(key1);
+      expect(b2[2]._key).to.equal(key1);
+      expect(b2[1]._rev).to.equal(b2[2].old._rev);
+      expect(b2[2].old._rev).to.equal(b2[1].new._rev);
+      expect(b2[2].new.ulfine).to.equal(23);
+      expect(b2[2].new.ulf).to.equal(undefined);
+
+    });
+  }); // overwrite - end
 });

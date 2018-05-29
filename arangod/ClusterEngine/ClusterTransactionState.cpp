@@ -39,8 +39,11 @@ struct ClusterTransactionData final : public TransactionData {};
 
 /// @brief transaction type
 ClusterTransactionState::ClusterTransactionState(
-    TRI_vocbase_t& vocbase, TRI_voc_tid_t tid, transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {}
+    CollectionNameResolver const& resolver,
+    TRI_voc_tid_t tid,
+    transaction::Options const& options
+): TransactionState(resolver, tid, options) {
+}
 
 /// @brief free a transaction container
 ClusterTransactionState::~ClusterTransactionState() {
@@ -135,4 +138,3 @@ Result ClusterTransactionState::abortTransaction(
   unuseCollections(_nestingLevel);
   return result;
 }
-

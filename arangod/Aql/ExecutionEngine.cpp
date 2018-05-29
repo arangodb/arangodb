@@ -181,6 +181,7 @@ ExecutionEngine::ExecutionEngine(Query* query)
       _root(nullptr),
       _query(query),
       _resultRegister(0),
+      _initializeCursorCalled(false),
       _wasShutdown(false),
       _previouslyLockedShards(nullptr),
       _lockedShards(nullptr) {
@@ -582,7 +583,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     engine->_root = root;
 
     if (plan->isResponsibleForInitialize()) {
-      root->initialize();
       root->initializeCursor(nullptr, 0);
     }
 
