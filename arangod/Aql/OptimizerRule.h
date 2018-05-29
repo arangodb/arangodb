@@ -205,15 +205,15 @@ struct OptimizerRule {
     // distributed to the cluster nodes.
     distributeFilternCalcToClusterRule_pass10,
 
-    // move SortNodes into the distribution.
-    // adjust gathernode to also contain the sort criteria.
-    distributeSortToClusterRule_pass10,
-
 #ifdef USE_IRESEARCH
     // FIXME order-???
     // make operations on sharded IResearch views use scatter / gather / remote
     scatterIResearchViewInClusterRule_pass10,
 #endif
+
+    // move SortNodes into the distribution.
+    // adjust gathernode to also contain the sort criteria.
+    distributeSortToClusterRule_pass10,
 
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
