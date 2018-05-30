@@ -468,6 +468,19 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   }
 };
 
+int ExecutionEngine::initializeCursor(AqlItemBlock* items, size_t pos) {
+  _initializeCursorCalled = true;
+  // TODO FIXME remove this loop
+  while (true) {
+    auto res = _root->initializeCursor(items, pos);
+    if (res.first == ExecutionState::WAITING) {
+      _query->tempWaitForAsyncResponse();
+    } else {
+      return res.second.errorNumber();
+    }
+  }
+}
+
 /// @brief shutdown, will be called exactly once for the whole query
 int ExecutionEngine::shutdown(int errorCode) {
   int res = TRI_ERROR_NO_ERROR;
@@ -583,7 +596,15 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     engine->_root = root;
 
     if (plan->isResponsibleForInitialize()) {
-      root->initializeCursor(nullptr, 0);
+      // TODO REMOVE THIS LOOP
+      while (true) {
+        auto res = root->initializeCursor(nullptr, 0);
+        if (res.first == ExecutionState::WAITING) {
+          engine->getQuery()->tempWaitForAsyncResponse();
+        } else {
+          break;
+        }
+      }
     }
 
     return engine;

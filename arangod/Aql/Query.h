@@ -408,7 +408,7 @@ class Query {
     _tempWaitForAsyncResponse.notify_all();
   }
 
-  void tempWaitForAsyncRespone() {
+  void tempWaitForAsyncResponse() {
     std::unique_lock<std::mutex> lock;
     _tempWaitForAsyncResponse.wait(lock);
   }

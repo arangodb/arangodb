@@ -69,12 +69,7 @@ class ExecutionEngine {
   TEST_VIRTUAL Query* getQuery() const { return _query; }
 
   /// @brief initializeCursor, could be called multiple times
-  int initializeCursor(AqlItemBlock* items, size_t pos) {
-    _initializeCursorCalled = true;
-    // TODO FIXME
-    auto res = _root->initializeCursor(items, pos);
-    return res.second.errorNumber();
-  }
+  int initializeCursor(AqlItemBlock* items, size_t pos);
   
   /// @brief shutdown, will be called exactly once for the whole query
   int shutdown(int errorCode);
