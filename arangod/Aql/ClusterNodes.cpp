@@ -370,11 +370,7 @@ class SortingGatherBlock final : public ExecutionBlock {
       _heap->clear();
     }
 
-    if (_dependencies.empty()) {
-      _done = true;
-    } else {
-      _done = false;
-    }
+    _done = _dependencies.empty();
     return TRI_ERROR_NO_ERROR;
 
     // cppcheck-suppress style
