@@ -24,6 +24,7 @@
 #include "SubqueryBlock.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
@@ -62,18 +63,23 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
 
   for (; _subqueryPos < _result->size(); _subqueryPos++) {
     if (_subqueryIsConst == 0 || !_subqueryIsConst) {
-      auto ret = _subquery->initializeCursor(_result.get(), _subqueryPos);
+      // TODO REMOVE THIS LOOP!
+      while (true) {
+        auto ret = _subquery->initializeCursor(_result.get(), _subqueryPos);
 
-      if (ret.first == ExecutionState::WAITING) {
-        // TODO React to waiting
-        // TODO This does not work need to capture state!
-        // TODO Need to return WAITING here
-        return nullptr;
-      }
+        if (ret.first == ExecutionState::WAITING) {
+          _engine->getQuery()->tempWaitForAsyncResponse();
+          // TODO Need to return WAITING here instead
 
-      if (!ret.second.ok()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(ret.second.errorNumber(),
-                                       ret.second.errorMessage());
+          // try again
+          continue;
+        }
+
+        if (!ret.second.ok()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(ret.second.errorNumber(),
+                                         ret.second.errorMessage());
+        }
+        break;
       }
     }
 
