@@ -6,6 +6,10 @@
 
 cmake_minimum_required(VERSION 3.2)
 
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif ()
+
 if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
@@ -91,6 +95,7 @@ endif()
 
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
+project(ArangoDB LANGUAGES C CXX VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
@@ -492,7 +497,6 @@ else ()
 endif ()
 
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
-
 
 ################################################################################
 ## BACKTRACE
