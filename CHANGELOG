@@ -1,6 +1,9 @@
 v3.3.10 (XXXX-XX-XX)
 --------------------
 
+* fix cluster COLLECT optimization for attributes that were in "sorted" variant of
+  COLLECT and that were provided by a sorted index on the collected attribute
+
 * apply fulltext index optimization rule for multiple fulltext searches in
   the same query
 
