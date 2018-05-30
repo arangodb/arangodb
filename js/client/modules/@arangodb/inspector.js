@@ -569,7 +569,7 @@ function getServerData(arango) {
 
       try {
 
-        if (server.endpoint !== undefined) {
+        if (servers[server].endpoint !== undefined) {
           arango.reconnect(servers[server].endpoint, '_system');
         }
         
