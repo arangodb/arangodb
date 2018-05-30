@@ -59,6 +59,8 @@
 #endif
 
 namespace arangodb {
+struct ClusterCommResult;
+
 namespace transaction {
 class Methods;
 }
@@ -151,6 +153,16 @@ class ExecutionBlock {
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
   transaction::Methods* transaction() const { return _trx; }
+
+  // @brief Will be called on the querywakeup callback with the
+  // result collected over the network. Needs to be implemented
+  // on all nodes that use this mechanism.
+  virtual bool handleAsyncResult(ClusterCommResult* result) { 
+    // This indicates that a node uses async functionality
+    // but does not react to the response.
+    TRI_ASSERT(false);
+    return true;
+  }
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager

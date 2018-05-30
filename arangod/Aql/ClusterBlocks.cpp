@@ -31,6 +31,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/Query.h"
+#include "Aql/WakeupQueryCallback.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -41,6 +42,7 @@
 #include "Cluster/ServerState.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -1204,7 +1206,8 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _ownName(ownName),
       _queryId(queryId),
       _isResponsibleForInitializeCursor(
-          en->isResponsibleForInitializeCursor()) {
+          en->isResponsibleForInitializeCursor()),
+      _lastResponse(nullptr) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT(
       (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
@@ -1212,6 +1215,45 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
        !ownName.empty()));
 }
 
+Result RemoteBlock::sendAsyncRequest(
+    arangodb::rest::RequestType type, std::string const& urlPart,
+    std::shared_ptr<std::string const> body) {
+  DEBUG_BEGIN_BLOCK();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens on controlled shutdown
+    return {TRI_ERROR_SHUTTING_DOWN};
+  }
+
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = std::string("AQL");
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
+  if (!_ownName.empty()) {
+    headers.emplace("Shard-Id", _ownName);
+  }
+    
+  std::string url = std::string("/_db/") +
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    urlPart + _queryId;
+
+  ++_engine->_stats.requests;
+  std::shared_ptr<ClusterCommCallback> callback = std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
+  {
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.block();
+
+    // TODO Returns OperationID do we need it in any way?
+    cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
+                     std::move(url), body, headers, callback, defaultTimeOut,
+                     true);
+  }
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+
+  return {TRI_ERROR_NO_ERROR};
+}
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
@@ -1265,6 +1307,25 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   } 
 
+  if (_lastResponse != nullptr) {
+    // TODO check for timeout!
+    // We have an open result still.
+    // Result is the response which is an object containing the ErrorCode
+    StringBuffer const& responseBodyBuf(_lastResponse->getBody());
+    {
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+          responseBodyBuf.c_str(), responseBodyBuf.length());
+      _lastResponse.reset();
+
+      VPackSlice slice = builder->slice();
+    
+      if (slice.hasKey("code")) {
+        return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
+      }
+      return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
+    }
+  }
+
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -1282,31 +1343,21 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
   
   builder.close();
 
-  std::string bodyString(builder.slice().toJson());
+  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  // TODO Make Async
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
+  auto res = sendAsyncRequest(
       rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-        responseBodyBuf.c_str(), responseBodyBuf.length());
-
-    VPackSlice slice = builder->slice();
-  
-    if (slice.hasKey("code")) {
-      return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
-    }
-    return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
-  }
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
+  
+  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
+
+bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
+  _lastResponse = result->result;
+  return true;
+};
 
 /// @brief shutdown, will be called exactly once for the whole query
 int RemoteBlock::shutdown(int errorCode) {

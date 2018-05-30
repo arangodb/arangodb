@@ -396,6 +396,22 @@ class Query {
   /// once for this expression
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
+
+  /// Temporary Section only used during the development of
+  /// async AQL
+  /// TODO REMOVE
+ private:
+  std::condition_variable _tempWaitForAsyncResponse;
+
+ public:
+  void tempSignalAsyncResponse() {
+    _tempWaitForAsyncResponse.notify_all();
+  }
+
+  void tempWaitForAsyncRespone() {
+    std::unique_lock<std::mutex> lock;
+    _tempWaitForAsyncResponse.wait(lock);
+  }
 };
 
 }

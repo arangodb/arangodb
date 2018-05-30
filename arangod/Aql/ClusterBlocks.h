@@ -33,6 +33,11 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+
+namespace httpclient {
+class SimpleHttpResult;
+}
+
 namespace transaction {
 class Methods;
 }
@@ -307,12 +312,21 @@ class RemoteBlock final : public ExecutionBlock {
 
   /// @brief hasMore
   bool hasMore() override final;
+
+  /// @brief handleAsyncResult
+  bool handleAsyncResult(ClusterCommResult* result) override; 
   
  private:
-  /// @brief internal method to send a request
-  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-      rest::RequestType type, std::string const& urlPart,
-      std::string const& body) const;
+/// @brief internal method to send a request
+/// TODO:Deprecated!
+std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
+    rest::RequestType type, std::string const& urlPart,
+    std::string const& body) const;
+
+/// @brief internal method to send a request. Will register a callback to be reactivated
+arangodb::Result sendAsyncRequest(
+    rest::RequestType type, std::string const& urlPart,
+    std::shared_ptr<std::string const> body);
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;
@@ -327,6 +341,10 @@ class RemoteBlock final : public ExecutionBlock {
   /// @brief whether or not this block will forward initialize, 
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
+
+  /// @brief the last unprocessed result. Make sure to reset it
+  ///        after it is processed.
+  std::shared_ptr<httpclient::SimpleHttpResult> _lastResponse;
 };
 
 }  // namespace arangodb::aql
