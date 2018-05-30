@@ -29,8 +29,8 @@ if (WIN32)
 endif ()
 set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield better performance but break portability)")
 
-set(WITH_TESTS OFF)
-set(WITH_SNAPPY ON)
+set(WITH_TESTS OFF CACHE BOOL "disable tests")
+set(WITH_SNAPPY ON CACHE BOOL "force enable snappy")
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION} EXCLUDE_FROM_ALL)
 
