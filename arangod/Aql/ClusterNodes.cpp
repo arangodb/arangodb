@@ -231,9 +231,7 @@ class UnsortingGatherBlock : public ExecutionBlock {
     DEBUG_BEGIN_BLOCK();
     traceGetSomeBegin(atMost);
 
-    if (_dependencies.empty()) {
-      _done = true;
-    }
+    _done = _dependencies.empty();
 
     if (_done) {
       traceGetSomeEnd(nullptr);
@@ -248,9 +246,7 @@ class UnsortingGatherBlock : public ExecutionBlock {
       res = _dependencies[_atDep]->getSome(atMost);
     }
 
-    if (!res) {
-      _done = true;
-    }
+    _done = (nullptr == res);
 
     traceGetSomeEnd(res);
 
@@ -276,9 +272,7 @@ class UnsortingGatherBlock : public ExecutionBlock {
       skipped = _dependencies[_atDep]->skipSome(atMost);
     }
 
-    if (skipped == 0) {
-      _done = true;
-    }
+    _done = (skipped == 0);
 
     return skipped;
 
@@ -632,7 +626,7 @@ class SortingGatherBlock final : public ExecutionBlock {
     TRI_ASSERT(i < _dependencies.size());
 
     std::unique_ptr<AqlItemBlock> docs(_dependencies[i]->getSome(atMost));
-    if (docs != nullptr && docs->size() > 0) {
+    if (docs && docs->size() > 0) {
       _gatherBlockBuffer[i].emplace_back(docs.get());
       docs.release();
       return true;
