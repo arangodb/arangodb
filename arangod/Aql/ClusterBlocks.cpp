@@ -135,7 +135,7 @@ bool OurLessThan::operator()(
 
 class UnsortedGatherBlock : public ExecutionBlock {
  public:
-  UnsortedGatherBlock(ExecutionEngine* engine, GatherNode const* en)
+  UnsortedGatherBlock(ExecutionEngine* engine, GatherNode const* en) noexcept
     : ExecutionBlock(engine, en) {
     TRI_ASSERT(en->elements().empty());
   }
@@ -273,6 +273,19 @@ class SortedGatherBlock final : public ExecutionBlock {
   SortedGatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en) {
     TRI_ASSERT(!en->elements().empty());
+
+    if (en->sortMode() == GatherNode::SortMode::Heap) {
+      _heap.reset(new Heap());
+    }
+
+    // We know that planRegisters has been run, so
+    // getPlanNode()->_registerPlan is set up
+    SortRegister::fill(
+      *en->plan(),
+      *en->getRegisterPlan(),
+      en->elements(),
+      _sortRegisters
+    );
   }
 
   /// @brief shutdown: need our own method since our _buffer is different
@@ -336,8 +349,11 @@ class SortedGatherBlock final : public ExecutionBlock {
       _heap->clear();
     }
 
-    _done = _dependencies.empty();
-
+    if (_dependencies.empty()) {
+      _done = true;
+    } else {
+      _done = false;
+    }
     return TRI_ERROR_NO_ERROR;
 
     // cppcheck-suppress style
@@ -347,23 +363,6 @@ class SortedGatherBlock final : public ExecutionBlock {
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
   bool hasMore() override final {
-    DEBUG_BEGIN_BLOCK();
-    if (_done || _dependencies.empty()) {
-      return false;
-    }
-
-    for (auto* dependency : _dependencies) {
-      if (dependency->hasMore()) {
-        return true;
-      }
-    }
-
-    _done = true;
-    return false;
-
-    // cppcheck-suppress style
-    DEBUG_END_BLOCK();
-
     DEBUG_BEGIN_BLOCK();
     if (_done || _dependencies.empty()) {
       return false;
@@ -536,6 +535,7 @@ class SortedGatherBlock final : public ExecutionBlock {
 
     // cppcheck-suppress style
     DEBUG_END_BLOCK();
+
   }
 
   /// @brief skipSome
@@ -633,7 +633,7 @@ class SortedGatherBlock final : public ExecutionBlock {
 
   using Heap = std::vector<std::pair<std::size_t, std::size_t>>;
   std::unique_ptr<Heap> _heap;
-}; // UnsortedGatherBlock
+}; // SortedGatherBlock
 
 }
 
@@ -645,6 +645,7 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
   }
 
   return std::make_unique<SortedGatherBlock>(&engine, &node);
+//  return std::make_unique<GatherBlock>(&engine, &node);
 }
 
 //GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
@@ -766,16 +767,16 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
 //
 //  if (_isSimple) {
 //    for (size_t i = 0; i < _dependencies.size(); i++) {
-//      if (_dependencies.at(i)->hasMore()) {
+//      if (_dependencies[i]->hasMore()) {
 //        return true;
 //      }
 //    }
 //  } else {
 //    for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
-//      if (!_gatherBlockBuffer.at(i).empty()) {
+//      if (!_gatherBlockBuffer[i].empty()) {
 //        return true;
 //      } else if (getBlock(i, DefaultBatchSize())) {
-//        _gatherBlockPos.at(i) = std::make_pair(i, 0);
+//        _gatherBlockPos[i] = std::make_pair(i, 0);
 //        return true;
 //      }
 //    }
@@ -803,10 +804,10 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
 //
 //  // the simple case . . .
 //  if (_isSimple) {
-//    auto res = _dependencies.at(_atDep)->getSome(atMost);
+//    auto res = _dependencies[_atDep]->getSome(atMost);
 //    while (res == nullptr && _atDep < _dependencies.size() - 1) {
 //      _atDep++;
-//      res = _dependencies.at(_atDep)->getSome(atMost);
+//      res = _dependencies[_atDep]->getSome(atMost);
 //    }
 //    if (res == nullptr) {
 //      _done = true;
@@ -862,7 +863,7 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
 //  };
 //
 //  TRI_ASSERT(!_gatherBlockBuffer.at(index).empty());
-//  AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
+//  AqlItemBlock* example = _gatherBlockBuffer[index].front();
 //  size_t nrRegs = example->getNrRegs();
 //
 //  // automatically deleted if things go wrong
@@ -911,7 +912,7 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
 //      }
 //    }
 //
-//    _gatherBlockPos.at(val.first).second++;
+//    _gatherBlockPos[val.first].second++;
 //    if (_heap) {
 //      auto& heap = *_heap;
 //      std::pop_heap(heap.begin(), heap.end(), ourGreater); // remove element from heap but not from vector
@@ -919,7 +920,7 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
 //    }
 //
 //    // renew the _gatherBlockPos and clean up the buffer if necessary
-//    if (_gatherBlockPos.at(val.first).second == _gatherBlockBuffer.at(val.first).front()->size()) {
+//    if (_gatherBlockPos[val.first].second == _gatherBlockBuffer[val.first].front()->size()) {
 //      TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
 //      AqlItemBlock* cur = _gatherBlockBuffer[val.first].front();
 //      returnBlock(cur);
@@ -963,7 +964,7 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
 //
 //  // the simple case . . .
 //  if (_isSimple) {
-//    auto skipped = _dependencies.at(_atDep)->skipSome(atMost);
+//    auto skipped = _dependencies[_atDep]->skipSome(atMost);
 //    while (skipped == 0 && _atDep < _dependencies.size() - 1) {
 //      _atDep++;
 //      skipped = _dependencies[_atDep]->skipSome(atMost);
@@ -986,11 +987,11 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
 //      }
 //    }
 //
-//    auto cur = _gatherBlockBuffer.at(i);
+//    auto cur = _gatherBlockBuffer[i];
 //    if (!cur.empty()) {
-//      available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
+//      available += cur[0]->size() - _gatherBlockPos[i].second;
 //      for (size_t j = 1; j < cur.size(); j++) {
-//        available += cur.at(j)->size();
+//        available += cur[j]->size();
 //      }
 //    }
 //  }
@@ -1035,9 +1036,9 @@ std::unique_ptr<ExecutionBlock> arangodb::aql::createGatherBlock(
 //  TRI_ASSERT(i < _dependencies.size());
 //  TRI_ASSERT(!_isSimple);
 //
-//  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSome(atMost));
+//  std::unique_ptr<AqlItemBlock> docs(_dependencies[i]->getSome(atMost));
 //  if (docs != nullptr && docs->size() > 0) {
-//    _gatherBlockBuffer.at(i).emplace_back(docs.get());
+//    _gatherBlockBuffer[i].emplace_back(docs.get());
 //    docs.release();
 //    return true;
 //  }
