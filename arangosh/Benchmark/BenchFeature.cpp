@@ -154,7 +154,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--runs", "run test n times (and calculate statistics based on median)",
       new UInt64Parameter(&_runs));
 
-  options->addOption("--progress", "intermediate logging on every 20th request",
+  options->addOption("--progress", "log intermediate progress",
                      new BooleanParameter(&_progress));
 
   options->addOption("--verbose",
