@@ -108,7 +108,9 @@ class EngineInfoContainerDBServer {
       return _type;
     }
 
+#ifdef USE_IRESEARCH
     LogicalView const* view() const noexcept;
+#endif
 
    private:
     EngineInfo(EngineInfo&) = delete;
