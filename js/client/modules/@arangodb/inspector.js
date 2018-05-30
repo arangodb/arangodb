@@ -376,7 +376,11 @@ function loadAgency(conn, seen) {
 
         INFO("switching to " + leader);
 
-        conn.reconnect(leader, "_system");
+        console.log("http+" + leader);
+        console.log(conn.getEndpoint());
+        if ("http+" + leader != conn.getEndpoint()) {
+          conn.reconnect(leader, "_system");
+        }
 
         return loadAgencyConfig(conn, seen);
       }
@@ -501,7 +505,6 @@ function defineSingleFromStatus(status, endpoint) {
   defineServer('SINGLE', 'SINGLE', { status: endpoint });
   defineServerEndpoint('SINGLE', endpoint);
   if (status.hasOwnProperty('agency')) {
-    console.log('active faileover');
     let agentEndpoints = status.agency.agencyComm.endpoints;
     
     if (0 < agentEndpoints.length) {
@@ -521,19 +524,14 @@ function serverBasics(conn) {
   const role = status.serverInfo.role;
 
   if (role === 'AGENT') {
-    INFO("talking to an agent");
     defineAgentFromStatus(status, conn.getEndpoint());
   } else if (role === 'PRIMARY') {
-    INFO("talking to a primary db server");
     definePrimaryFromStatus(status, conn.getEndpoint());
   } else if (role === 'COORDINATOR') {
-    INFO("talking to a coordinator");
     defineCoordinatorFromStatus(status);
   } else if (role === 'SINGLE') {
-    INFO("talking to a single server");
     defineSingleFromStatus(status);
   } else {
-    INFO("talking to a unknown server, role: " + role);
     return "unknown";
   }
 
@@ -552,10 +550,14 @@ function locateServers(plan) {
       defineServerEndpoint(id, info.Endpoint);
       defineServerStatus(id, info.Status);
     } else if (type === "CRDN") {
-      defineServer('COORDINATOR', id, { supervision: cluster });
+      defineServer('SINGLE', id, { supervision: cluster });
       defineServerEndpoint(id, info.Endpoint);
       defineServerStatus(id, info.Status);
-    }
+    } else if (type === "SNGL") {
+      defineServer('SINGLE', id, { supervision: cluster });
+      defineServerEndpoint(id, info.Endpoint);
+      defineServerStatus(id, info.Status);
+    } 
   });
 }
 
@@ -568,84 +570,91 @@ function getServerData(arango) {
   var servers = listServers();
   var report = {};
   INFO('Collecting diagnostics from all servers ... ');
-
+  var nservers = Object.keys(servers).length;
   Object.keys(servers).forEach(
 
     function (server) {
 
-      try {
+      if (nservers == 1 || servers.lengthserver !== "SINGLE") {
+        try {
 
-        if (servers[server].endpoint !== undefined) {
-          arango.reconnect(servers[server].endpoint, '_system');
-        }
-        
-        const version = arango.GET('_api/version'); // version api
-        const log = arango.GET('_admin/log').text;  // log api
-        const statistics = arango.GET('_admin/statistics').text;  // log api
-        var agencyConfig;
-        if (server.startsWith("AGNT")) {
-          agencyConfig = arango.GET('_api/agency/config');
-        }
-        const status = arango.GET('_admin/status');
-        
-        var tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'dmesg | tee /tmp/inspector-dmesg.out > /dev/null']);
-        const dmesg = fs.readFileSync('/tmp/inspector-dmesg.out', 'utf8');
-        tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'df -h | tee /tmp/inspector-df.out > /dev/null']);
-        const df = fs.readFileSync('/tmp/inspector-df.out', 'utf8');
-        tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'cat /proc/meminfo | tee /tmp/inspector-meminfo.out > /dev/null']);
-        const meminfo = fs.readFileSync('/tmp/inspector-meminfo.out', 'utf8');
-        tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'uptime | tee /tmp/inspector-uptime.out > /dev/null']);
-        const uptime = fs.readFileSync('/tmp/inspector-uptime.out', 'utf8');
-        tmp = executeExternalAndWait(
-          '/bin/bash', ['-c', 'uname -a | tee /tmp/inspector-uname.out > /dev/null']);
-        const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8');
-        var top;
-        if (status.pid !== undefined) {
+          if (servers[server].endpoint !== undefined) {
+            if (arango.getEndpoint() != "http+" + servers[server].endpoint) {
+              arango.reconnect(servers[server].endpoint, '_system');
+            }
+          }
+          
+          const version = arango.GET('_api/version'); // version api
+          const log = arango.GET('_admin/log').text;  // log api
+          const statistics = arango.GET('_admin/statistics').text;  // log api
+          var agencyConfig;
+          if (server.startsWith("AGNT")) {
+            agencyConfig = arango.GET('_api/agency/config');
+          }
+          const status = arango.GET('_admin/status');
+          var tmp = executeExternalAndWait(
+            '/bin/bash', ['-c', 'dmesg | tee /tmp/inspector-dmesg.out > /dev/null']);
+          const dmesg = fs.readFileSync('/tmp/inspector-dmesg.out', 'utf8');
           tmp = executeExternalAndWait(
-            '/bin/bash', ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee /tmp/inspector-top.out > /dev/null']);
-          top = fs.readFileSync('/tmp/inspector-top.out', 'utf8');
+            '/bin/bash', ['-c', 'df -h | tee /tmp/inspector-df.out > /dev/null']);
+          const df = fs.readFileSync('/tmp/inspector-df.out', 'utf8');
+          tmp = executeExternalAndWait(
+            '/bin/bash', ['-c', 'cat /proc/meminfo | tee /tmp/inspector-meminfo.out > /dev/null']);
+          const meminfo = fs.readFileSync('/tmp/inspector-meminfo.out', 'utf8');
+          tmp = executeExternalAndWait(
+            '/bin/bash', ['-c', 'uptime | tee /tmp/inspector-uptime.out > /dev/null']);
+          const uptime = fs.readFileSync('/tmp/inspector-uptime.out', 'utf8');
+          tmp = executeExternalAndWait(
+            '/bin/bash', ['-c', 'uname -a | tee /tmp/inspector-uname.out > /dev/null']);
+          const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8');
+          var top;
+          if (status.pid !== undefined) {
+            tmp = executeExternalAndWait(
+              '/bin/bash', ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee /tmp/inspector-top.out > /dev/null']);
+            top = fs.readFileSync('/tmp/inspector-top.out', 'utf8');
+          }
+
+          var local = {};
+          try {
+            var localDBs = db._databases();
+            localDBs.forEach( function(localDB) {
+              db._useDatabase(localDB);
+              local[localDB] = {};
+              var localCols = db._collections();
+              localCols.forEach( function(localCol) {
+                var colName = localCol.name();
+                local[localDB][colName] = {};
+                Object.keys(localCol.properties()).forEach( function(property) {
+                  local[localDB][colName][property] = localCol.properties()[property];
+                });
+                local[localDB][colName].index = localCol.getIndexes();
+                local[localDB][colName].count = localCol.count();
+              });});
+            db._useDatabase('_system');
+          } catch (e) {}
+          
+          // report this server
+          report[server] = {
+            version:version, log:log, dmesg:dmesg, statistics:statistics,
+            status:status, df:df, uptime:uptime, uname:uname, meminfo:meminfo,
+            local:local};
+
+          if (agencyConfig !==  undefined) {
+            report[server].config = agencyConfig;
+          }
+          if (top !==  undefined) {
+            report[server].top = top;
+          }
+
+        } catch (e) {
+          print(e);
         }
-
-        var local = {};
-        var localDBs = db._databases();
-        localDBs.forEach( function(localDB) {
-          db._useDatabase(localDB);
-          local[localDB] = {};
-          var localCols = db._collections();
-          localCols.forEach( function(localCol) {
-            var colName = localCol.name();
-            local[localDB][colName] = {};
-            Object.keys(localCol.properties()).forEach( function(property) {
-              local[localDB][colName][property] = localCol.properties()[property];
-            });
-            local[localDB][colName].index = localCol.getIndexes();
-            local[localDB][colName].count = localCol.count();
-          });});
-        db._useDatabase('_system');
-
-        // report this server
-        report[server] = {
-          version:version, log:log, dmesg:dmesg, statistics:statistics,
-          status:status, df:df, uptime:uptime, uname:uname, meminfo:meminfo,
-          local:local};
-
-        if (agencyConfig !==  undefined) {
-          report[server].config = agencyConfig;
-        }
-        if (top !==  undefined) {
-          report[server].top = top;
-        }
-
-      } catch (e) {
-        print(e);
       }
     });
   if (Object.keys(servers).length > 1) {
-    arango.reconnect(current, '_system');
+    if (current != arango.getEndpoint()) {
+      arango.reconnect(current, '_system');
+    }
   }
   INFO('... dignostics collected.');
   return report;
@@ -662,16 +671,14 @@ exports.listServers = listServers;
   try {
     var type = serverBasics();
 
-    console.log(type);
-
-    if (type !== 'SINGLE') {
-
-      if (type !== 'AGENT') {
-        if (possibleAgent !== null) {
-          arango.reconnect(possibleAgent, "_system");
-          serverBasics();
-        }
+    if (type !== 'AGENT') {
+      if (possibleAgent !== null) {
+        arango.reconnect(possibleAgent, "_system");
+        serverBasics();
       }
+    }
+
+    if (possibleAgent !== null) {
       
       // Agency dump and analysis
       var agencyConfig = loadAgencyConfig();
@@ -680,9 +687,11 @@ exports.listServers = listServers;
       while (true) {
         if (agencyDump.leaderId !== "") {
           if (agencyConfig.configuration.pool.hasOwnProperty(agencyConfig.leaderId)) {
-            arango.reconnect(
-              agencyConfig.configuration.pool[agencyConfig.leaderId], "_system");
-            INFO(arango);
+            if ("http+" + agencyConfig.configuration.pool[agencyConfig.leaderId] !=
+                arango.getEndpoint()) {
+              arango.reconnect(
+                agencyConfig.configuration.pool[agencyConfig.leaderId], "_system");
+            }
             agencyDump = loadAgency(arango, {});
             break;
           } else { // Leader is not in pool? Fatal error;
@@ -713,8 +722,8 @@ exports.listServers = listServers;
 
       healthRecord['analysis'] = agencyInspector(agencyDump);
       healthRecord['agency'] = agencyDump[0].arango;
+
     }
-    
     // Get all sorts of meta data from all servers
     healthRecord['servers'] = getServerData(arango);
 
