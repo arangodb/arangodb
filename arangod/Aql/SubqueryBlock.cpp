@@ -34,7 +34,10 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
     : ExecutionBlock(engine, en),
       _outReg(ExecutionNode::MaxRegisterId),
       _subquery(subquery),
-      _subqueryIsConst(const_cast<SubqueryNode*>(en)->isConst()) {
+      _subqueryIsConst(const_cast<SubqueryNode*>(en)->isConst()),
+      _subqueryReturnsData(_subquery->getPlanNode()->getType() == ExecutionNode::RETURN),
+      _result(nullptr),
+      _subqueryPos(0) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
@@ -45,26 +48,26 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
 AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
-  std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+  if (_result.get() == nullptr) {
+    _result.reset(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
-  if (res.get() == nullptr) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+    if (_result.get() == nullptr) {
+      traceGetSomeEnd(nullptr);
+      return nullptr;
+    }
   }
 
-  bool const subqueryReturnsData =
-      (_subquery->getPlanNode()->getType() == ExecutionNode::RETURN);
   
   std::vector<AqlItemBlock*>* subqueryResults = nullptr;
 
-  for (size_t i = 0; i < res->size(); i++) {
-    if (i == 0 || !_subqueryIsConst) {
-      // TODO React to waiting
-      auto ret = _subquery->initializeCursor(res.get(), i);
+  for (; _subqueryPos < _result->size(); _subqueryPos++) {
+    if (_subqueryIsConst == 0 || !_subqueryIsConst) {
+      auto ret = _subquery->initializeCursor(_result.get(), _subqueryPos);
 
       if (ret.first == ExecutionState::WAITING) {
+        // TODO React to waiting
         // TODO This does not work need to capture state!
+        // TODO Need to return WAITING here
         return nullptr;
       }
 
@@ -74,10 +77,10 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
       }
     }
 
-    if (i > 0 && _subqueryIsConst) {
+    if (_subqueryIsConst > 0 && _subqueryIsConst) {
       // re-use already calculated subquery result
       TRI_ASSERT(subqueryResults != nullptr);
-      res->emplaceValue(i, _outReg, subqueryResults);
+      _result->emplaceValue(_subqueryIsConst, _outReg, subqueryResults);
     } else {
       // initial subquery execution or subquery is not constant
 
@@ -86,14 +89,14 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
 
       TRI_ASSERT(subqueryResults != nullptr);
 
-      if (!subqueryReturnsData) {
+      if (!_subqueryReturnsData) {
         // remove all data from subquery result so only an
         // empty array remains
         for (auto& x : *subqueryResults) {
           delete x;
         }
         subqueryResults->clear();
-        res->emplaceValue(i, _outReg, subqueryResults);
+        _result->emplaceValue(_subqueryIsConst, _outReg, subqueryResults);
         continue;
       }
 
@@ -101,7 +104,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
         TRI_IF_FAILURE("SubqueryBlock::getSome") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        res->emplaceValue(i, _outReg, subqueryResults);
+        _result->emplaceValue(_subqueryIsConst, _outReg, subqueryResults);
       } catch (...) {
         destroySubqueryResults(subqueryResults);
         throw;
@@ -111,10 +114,14 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
     throwIfKilled();  // check if we were aborted
   }
 
+  // Need to reset to position zero here
+  _subqueryPos = 0;
+
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
-  return res.release();
+  clearRegisters(_result.get());
+  traceGetSomeEnd(_result.get());
+  // Resets _result to nullptr
+  return _result.release();
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

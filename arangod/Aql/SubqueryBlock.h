@@ -64,6 +64,16 @@ class SubqueryBlock : public ExecutionBlock {
   /// @brief whether the subquery is const and will always return the same values
   /// when invoked multiple times
   bool const _subqueryIsConst;
+
+  /// @brief whether the subquery returns data
+  bool const _subqueryReturnsData;
+
+  /// @brief a unique_ptr to hold temporary results if thread gets suspended
+  ///        guaranteed to be cleared out after a DONE/HASMORE of get/skip-some
+  std::unique_ptr<AqlItemBlock> _result;
+
+  /// @brief the current subquery in process, used if this thread gets suspended.
+  size_t _subqueryPos;
 };
 
 }  // namespace arangodb::aql
