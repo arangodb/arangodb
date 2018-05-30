@@ -500,6 +500,16 @@ function defineCoordinatorFromStatus(status, endpoint) {
 function defineSingleFromStatus(status, endpoint) {
   defineServer('SINGLE', 'SINGLE', { status: endpoint });
   defineServerEndpoint('SINGLE', endpoint);
+  if (status.hasOwnProperty('agency')) {
+    console.log('active faileover');
+    let agentEndpoints = status.agency.agencyComm.endpoints;
+    
+    if (0 < agentEndpoints.length) {
+      possibleAgent = agentEndpoints[0];
+    } else {
+      console.error("Failed to find an agency endpoint");
+    }
+  }
 }
 
 function serverBasics(conn) {
