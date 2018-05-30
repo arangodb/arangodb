@@ -43,6 +43,9 @@
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
 
+
+// TODO remove
+#include <condition_variable>
 struct TRI_vocbase_t;
 
 namespace arangodb {
