@@ -49,7 +49,7 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::import;
 
-std::string V8ClientConnection::JWT_SECRET = "";
+std::shared_ptr<std::string> V8ClientConnection::JWT_SECRET = nullptr;
 
 std::string V8ClientConnection::jwtToken(std::string const& secret) {
   VPackBuilder headerBuilder;
@@ -106,8 +106,8 @@ void V8ClientConnection::init(
   params.setLocationRewriter(this, &rewriteLocation);
   params.setUserNamePassword("/", _username, _password);
 
-  if (!JWT_SECRET.empty()) {
-    params.setJwt(jwtToken(JWT_SECRET));
+  if (JWT_SECRET != nullptr) {
+    params.setJwt(jwtToken(*JWT_SECRET));
   }
 
   _client.reset(new SimpleHttpClient(connection, params));
@@ -434,10 +434,10 @@ static void ClientConnection_reconnect(
   std::string password;
 
   if (args.Length() < 4) {
-    if (V8ClientConnection::jwtSecret().empty()) {
+    if (V8ClientConnection::jwtSecret() == nullptr) {
       ConsoleFeature* console =
-          ApplicationServer::getFeature<ConsoleFeature>("Console");
-
+        ApplicationServer::getFeature<ConsoleFeature>("Console");
+      
       if (console->isEnabled()) {
         password = console->readPassword("Please specify a password: ");
       } else {
@@ -449,7 +449,7 @@ static void ClientConnection_reconnect(
   } else {
     password = TRI_ObjectToString(isolate, args[3]);
   }
-
+  
   bool warnConnect = true;
   if (args.Length() > 4) {
     warnConnect = TRI_ObjectToBoolean(args[4]);
