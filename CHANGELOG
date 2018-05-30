@@ -1,6 +1,11 @@
 v3.3.10 (XXXX-XX-XX)
 --------------------
 
+* make optimizer rule "remove-filter-covered-by-index" not stop after removing
+  a sub-condition from a FILTER statement, but pass the optimized FILTER
+  statement again into the optimizer rule for further optimizations.
+  This allows optimizing away some more FILTER conditions than before.
+
 * apply fulltext index optimization rule for multiple fulltext searches in
   the same query
 
@@ -10,7 +15,7 @@ v3.3.10 (XXXX-XX-XX)
 
 * fixed issue #5400: Unexpected AQL Result
 
-* fixe dissue #5429: Frequent 'updated local foxx repository' messages
+* fixed issue #5429: Frequent 'updated local foxx repository' messages
 
 * fixed issue #5252: Empty result if FULLTEXT() is used together with LIMIT offset
 
