@@ -2371,6 +2371,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
   std::unordered_set<ExecutionNode*> toUnlink;
   bool modified = false;
+  // this rule may modify the plan in place, but the new plan
+  // may not yet be optimal. so we may pass it into this same
+  // rule again. the default is to continue with the next rule
+  // however
+  int newLevel = 0;
 
   for (auto const& node : nodes) {
     auto fn = ExecutionNode::castTo<FilterNode const*>(node);
@@ -2441,6 +2446,8 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               plan->replaceNode(setter, cn);
               modified = true;
               handled = true;
+              // pass the new plan into this rule again, to optimize even further
+              newLevel = static_cast<int>(rule->level - 1);
             }
           }
         }
@@ -2463,7 +2470,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     plan->unlinkNodes(toUnlink);
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
+  opt->addPlan(std::move(plan), rule, modified, newLevel);
 }
 
 /// @brief helper to compute lots of permutation tuples
