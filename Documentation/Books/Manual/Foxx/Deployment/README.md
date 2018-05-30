@@ -1,7 +1,6 @@
 # Deployment
 
-Foxx services can be deployed in multiple ways to a single server instance
-or all the coordinators of a cluster:
+Foxx services can be deployed in multiple ways:
 
 - [Foxx CLI](../../Programs/FoxxCLI/README.md), a command line tool which
   requires Node.js
@@ -10,3 +9,6 @@ or all the coordinators of a cluster:
   e.g. with curl
 
 - [Web UI](../../Programs/WebInterface/README.md) under *SERVICES*
+
+See [Foxx in a cluster setup](../README.md#foxx-in-a-cluster-setup)
+for how Foxx services get distributed to coordinators.
