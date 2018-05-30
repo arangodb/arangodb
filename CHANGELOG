@@ -1,6 +1,8 @@
 v3.3.10 (XXXX-XX-XX)
 --------------------
 
+* allow accessing /_admin/status URL on followers too in active failover setup
+
 * apply fulltext index optimization rule for multiple fulltext searches in
   the same query
 
