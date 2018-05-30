@@ -99,61 +99,56 @@ AqlItemBlock* ModificationBlock::getSome(size_t atMost) {
     blocks.clear();
   };
 
+  TRI_DEFER_BLOCK(freeBlocks(blocks));
+  
   // loop over input until it is exhausted
-  try {
-    if (ExecutionNode::castTo<ModificationNode const*>(_exeNode)
-            ->_options.readCompleteInput) {
-      // read all input into a buffer first
-      while (true) {
-        std::unique_ptr<AqlItemBlock> res(
-            ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+  if (ExecutionNode::castTo<ModificationNode const*>(_exeNode)
+          ->_options.readCompleteInput) {
+    // read all input into a buffer first
+    while (true) {
+      std::unique_ptr<AqlItemBlock> res(
+          ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
-        if (res.get() == nullptr) {
-          break;
-        }
-
-        TRI_IF_FAILURE("ModificationBlock::getSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        blocks.emplace_back(res.get());
-        res.release();
+      if (res.get() == nullptr) {
+        break;
       }
 
-      // now apply the modifications for the complete input
+      TRI_IF_FAILURE("ModificationBlock::getSome") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      blocks.emplace_back(res.get());
+      res.release();
+    }
+
+    // now apply the modifications for the complete input
+    replyBlocks.reset(work(blocks));
+  } else {
+    // read input in chunks, and process it in chunks
+    // this reduces the amount of memory used for storing the input
+    while (true) {
+      freeBlocks(blocks);
+      std::unique_ptr<AqlItemBlock> res(
+          ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+
+      if (res == nullptr) {
+        break;
+      }
+
+      TRI_IF_FAILURE("ModificationBlock::getSome") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      blocks.emplace_back(res.get());
+      res.release();
+
       replyBlocks.reset(work(blocks));
-    } else {
-      // read input in chunks, and process it in chunks
-      // this reduces the amount of memory used for storing the input
-      while (true) {
-        freeBlocks(blocks);
-        std::unique_ptr<AqlItemBlock> res(
-            ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
-        if (res == nullptr) {
-          break;
-        }
-
-        TRI_IF_FAILURE("ModificationBlock::getSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        blocks.emplace_back(res.get());
-        res.release();
-
-        replyBlocks.reset(work(blocks));
-
-        if (replyBlocks != nullptr) {
-          break;
-        }
+      if (replyBlocks != nullptr) {
+        break;
       }
     }
-  } catch (...) {
-    freeBlocks(blocks);
-    throw;
   }
-
-  freeBlocks(blocks);
 
   traceGetSomeEnd(replyBlocks.get());
   return replyBlocks.release();

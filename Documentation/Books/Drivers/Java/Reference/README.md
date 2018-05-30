@@ -125,13 +125,21 @@ The second load balancing strategy allows to pick a random host from the configu
 
 ## Connection time to live
 
-Since version 4.4 the driver supports setting a TTL for connections managed by the internal connection pool. Setting a TTL helps when using load balancing strategy `ROUND_ROBIN`, because as soon as a coordinator goes down, every open connection to that host will be closed and opened again with another target coordinator. As long as the driver does not have to open new connections (all connections in the pool are used) it will use only the coordinators which never went down. To use the downed coordinator again, when it is running again, the connections in the connection pool have to be closed and opened again with the target host mentioned by the load balancing startegy. To achieve this you can manually call `ArangoDB.shutdown` in your client code or use the TTL for connection so that a downed coordinator (which is then brought up again) will be used again after a certain time.
+Since version 4.4 the driver supports setting a TTL for connections managed by the internal connection pool. Setting a TTL helps when using load balancing strategy `ROUND_ROBIN`, because as soon as a coordinator goes down, every open connection to that host will be closed and opened again with another target coordinator. As long as the driver does not have to open new connections (all connections in the pool are used) it will use only the coordinators which never went down. To use the downed coordinator again, when it is running again, the connections in the connection pool have to be closed and opened again with the target host mentioned by the load balancing strategy. To achieve this you can manually call `ArangoDB.shutdown` in your client code or use the TTL for connection so that a downed coordinator (which is then brought up again) will be used again after a certain time.
 
 ```Java
 ArangoDB arango = new ArangoDB.Builder().connectionTtl(5 * 60 * 1000).build();
 ```
 
 In this example all connections will be closed/reopened after 5 minutes.
+
+Connection TTL can be disabled setting it to `null`:
+
+```Java
+.connectionTtl(null)
+```
+
+The default TTL is `null` (no automatic connection closure).
 
 ## configure VelocyPack serialization
 

@@ -59,10 +59,12 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
   std::vector<AqlItemBlock*>* subqueryResults = nullptr;
 
   for (size_t i = 0; i < res->size(); i++) {
-    int ret = _subquery->initializeCursor(res.get(), i);
+    if (i == 0 || !_subqueryIsConst) {
+      int ret = _subquery->initializeCursor(res.get(), i);
 
-    if (ret != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(ret);
+      if (ret != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(ret);
+      }
     }
 
     if (i > 0 && _subqueryIsConst) {

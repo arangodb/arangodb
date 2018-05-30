@@ -143,9 +143,9 @@ void OptimizerRulesFeature::addRules() {
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
                OptimizerRule::removeRedundantSortsRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
   
-  // inline subqueries one level higher, after removing unecessary calculations
-  /*registerRule("inline-subqueries", inlineSubqueriesRule,
-               OptimizerRule::inlineSubqueriesRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);*/
+  // push limits into subqueries and simplify them
+  registerRule("optimize-subqueries", optimizeSubqueriesRule,
+               OptimizerRule::optimizeSubqueriesRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
@@ -205,7 +205,7 @@ void OptimizerRulesFeature::addRules() {
   // propagate constant attributes in FILTERs
   registerRule("propagate-constant-attributes", propagateConstantAttributesRule,
                OptimizerRule::propagateConstantAttributesRule_pass5, DoesNotCreateAdditionalPlans, CanBeDisabled);
-
+  
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   // try to replace simple OR conditions with IN
   registerRule("replace-or-with-in", replaceOrWithInRule,
@@ -214,7 +214,7 @@ void OptimizerRulesFeature::addRules() {
   // try to remove redundant OR conditions
   registerRule("remove-redundant-or", removeRedundantOrRule,
                OptimizerRule::removeRedundantOrRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-
+  
   // try to find a filter after an enumerate collection and find indexes
   registerRule("use-indexes", useIndexesRule, OptimizerRule::useIndexesRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
