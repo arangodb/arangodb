@@ -44,56 +44,60 @@ namespace aql {
 class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
+
+std::unique_ptr<ExecutionBlock> createGatherBlock(
+  ExecutionEngine& engine, GatherNode const& node
+);
   
-class GatherBlock : public ExecutionBlock {
- public:
-  GatherBlock(ExecutionEngine*, GatherNode const*);
-
-  ~GatherBlock();
-
-  /// @brief shutdown: need our own method since our _buffer is different
-  int shutdown(int) override final;
-
-  /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
-
-  /// @brief hasMore: true if any position of _buffer hasMore and false
-  /// otherwise.
-  bool hasMore() override final;
-
-  /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
-
-  /// @brief skipSome
-  size_t skipSome(size_t atMost) override final;
-
- protected:
-  /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
-  /// non-simple case only
-  bool getBlock(size_t i, size_t atMost);
-
-  /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
-  /// separately
-  std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer;
-
- private:
-  /// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
-  /// the usual _pos but one pair per dependency
-  std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
-
-  /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
-  /// simple case only
-  size_t _atDep = 0;
-
-  /// @brief sort elements for this block
-  std::vector<SortRegister> _sortRegisters;
-
-  /// @brief isSimple: the block is simple if we do not do merge sort . . .
-  bool const _isSimple;
-
-  using Heap = std::vector<std::pair<std::size_t, std::size_t>>;
-  std::unique_ptr<Heap> _heap;
-};
+//class GatherBlock : public ExecutionBlock {
+// public:
+//  GatherBlock(ExecutionEngine*, GatherNode const*);
+//
+//  ~GatherBlock();
+//
+//  /// @brief shutdown: need our own method since our _buffer is different
+//  int shutdown(int) override final;
+//
+//  /// @brief initializeCursor
+//  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+//
+//  /// @brief hasMore: true if any position of _buffer hasMore and false
+//  /// otherwise.
+//  bool hasMore() override final;
+//
+//  /// @brief getSome
+//  AqlItemBlock* getSome(size_t atMost) override final;
+//
+//  /// @brief skipSome
+//  size_t skipSome(size_t atMost) override final;
+//
+// protected:
+//  /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
+//  /// non-simple case only
+//  bool getBlock(size_t i, size_t atMost);
+//
+//  /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
+//  /// separately
+//  std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer;
+//
+// private:
+//  /// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
+//  /// the usual _pos but one pair per dependency
+//  std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
+//
+//  /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
+//  /// simple case only
+//  size_t _atDep = 0;
+//
+//  /// @brief sort elements for this block
+//  std::vector<SortRegister> _sortRegisters;
+//
+//  /// @brief isSimple: the block is simple if we do not do merge sort . . .
+//  bool const _isSimple;
+//
+//  using Heap = std::vector<std::pair<std::size_t, std::size_t>>;
+//  std::unique_ptr<Heap> _heap;
+//};
 
 class BlockWithClients : public ExecutionBlock {
  public:

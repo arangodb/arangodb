@@ -310,7 +310,6 @@ class DistributeNode : public ExecutionNode {
 /// @brief class GatherNode
 class GatherNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class GatherBlock;
   friend class RedundantCalculationsReplacer;
 
  public:

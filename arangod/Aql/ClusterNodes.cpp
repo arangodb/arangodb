@@ -339,7 +339,8 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
     std::unordered_set<std::string> const&
 ) const {
-  return std::make_unique<GatherBlock>(&engine, this);
+  return createGatherBlock(engine, *this);
+//  return std::make_unique<GatherBlock>(&engine, this);
 }
 
 /// @brief estimateCost
