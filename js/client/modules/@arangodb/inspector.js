@@ -477,10 +477,8 @@ function definePrimaryFromStatus(status, endpoint) {
 
   if (0 < agentEndpoints.length) {
     possibleAgent = agentEndpoints[0];
-    return agentEndpoints[0];
   } else {
     console.error("Failed to find an agency endpoint");
-    return "";
   }
 }
 
@@ -494,10 +492,8 @@ function defineCoordinatorFromStatus(status, endpoint) {
 
   if (0 < agentEndpoints.length) {
     possibleAgent = agentEndpoints[0];
-    return agentEndpoints[0];
   } else {
     console.error("Failed to find an agency endpoint");
-    return "";
   }
 }
 
