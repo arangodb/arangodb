@@ -565,7 +565,7 @@ void LogicalCollection::replicationFactor(int r) {
 }
 
 // SECTION: Sharding
-int LogicalCollection::numberOfShards() const {
+int LogicalCollection::numberOfShards() const noexcept {
   return static_cast<int>(_numberOfShards);
 }
 void LogicalCollection::numberOfShards(int n) {

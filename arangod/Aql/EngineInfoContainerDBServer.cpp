@@ -215,7 +215,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.setVarUsageComputed();
   // Always Verbose
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
-  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/true);
+  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/false);
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
