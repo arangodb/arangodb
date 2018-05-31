@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SenderThread.h"
+#include "quick_hist.h"
+
 #include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
@@ -37,6 +39,8 @@
 
 using namespace arangodb;
 using namespace arangodb::import;
+
+QuickHistogram histogram;
 
 SenderThread::SenderThread(
     std::unique_ptr<httpclient::SimpleHttpClient> client,
@@ -111,11 +115,14 @@ void SenderThread::run() {
       if (_data.length() > 0) {
         TRI_ASSERT(!_idle && !_url.empty());
 
-        std::unique_ptr<httpclient::SimpleHttpResult> result(
+        {
+          QuickHistogramTimer timer(histogram);
+          std::unique_ptr<httpclient::SimpleHttpResult> result(
             _client->request(rest::RequestType::POST, _url, _data.c_str(),
                              _data.length()));
 
-        handleResult(result.get());
+          handleResult(result.get());
+        }
 
         _url.clear();
         _data.reset();
@@ -131,7 +138,7 @@ void SenderThread::run() {
 
     _wakeup();
   }
-    
+
   CONDITION_LOCKER(guard, _condition);
   TRI_ASSERT(_idle);
 }
@@ -160,7 +167,7 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       }
     }
   }
-  
+
   {
     // first update all the statistics
     MUTEX_LOCKER(guard, _stats->_mutex);
@@ -168,17 +175,17 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     _stats->_numberCreated +=
     arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
                                                                 "created", 0);
-    
+
     // look up the "errors" flag
     _stats->_numberErrors +=
     arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
                                                                 "errors", 0);
-    
+
     // look up the "updated" flag
     _stats->_numberUpdated +=
     arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
                                                                 "updated", 0);
-    
+
     // look up the "ignored" flag
     _stats->_numberIgnored +=
     arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(body,
@@ -194,7 +201,7 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     if (errorMessage.isString()) {
       _errorMessage = errorMessage.copyString();
     }
-    
+
     // will trigger the waiting ImportHelper thread to cancel the import
     _hasError = true;
   }
