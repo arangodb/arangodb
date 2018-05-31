@@ -296,14 +296,17 @@ struct SortingStrategy {
 
   virtual ~SortingStrategy() = default;
 
-  /// @brief initializes strategy
-  virtual void initialize(std::vector<ValueType>& /*blockPos*/) { }
-
   /// @brief begins transaction and returns next value
   virtual ValueType nextValueBegin() = 0;
 
   /// @brief commits transaction started by 'nextValueBegin'
   virtual void nextValueCommit() { }
+
+  /// @brief prepare strategy before transaction
+  virtual void prepare(std::vector<ValueType>& /*blockPos*/) { }
+
+  /// @brief resets state
+  virtual void reset() = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -319,13 +322,6 @@ class HeapSorting final : public SortingStrategy, private OurLessThan  {
     : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
   }
 
-  virtual void initialize(std::vector<ValueType>& blockPos) override {
-    _heap.clear();
-    std::copy(blockPos.begin(), blockPos.end(), std::back_inserter(_heap));
-    std::make_heap(_heap.begin(), _heap.end(), *this);
-    TRI_ASSERT(!_heap.empty());
-  }
-
   virtual ValueType nextValueBegin() override {
     TRI_ASSERT(!_heap.empty());
     std::pop_heap(_heap.begin(), _heap.end(), *this); // remove element from _heap but not from vector
@@ -335,6 +331,21 @@ class HeapSorting final : public SortingStrategy, private OurLessThan  {
   virtual void nextValueCommit() override {
     TRI_ASSERT(!_heap.empty());
     std::push_heap(_heap.begin(), _heap.end(), *this); // re-insert element
+  }
+
+  virtual void prepare(std::vector<ValueType>& blockPos) override {
+    if (_heap.size() == blockPos.size()) {
+      return;
+    }
+
+    _heap.clear();
+    std::copy(blockPos.begin(), blockPos.end(), std::back_inserter(_heap));
+    std::make_heap(_heap.begin(), _heap.end(), *this);
+    TRI_ASSERT(!_heap.empty());
+  }
+
+  virtual void reset() noexcept override {
+    _heap.clear();
   }
 
   bool operator()(
@@ -361,13 +372,17 @@ class MinElementSorting final : public SortingStrategy, public OurLessThan {
     : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
   }
 
-  virtual void initialize(std::vector<ValueType>& blockPos) override {
-    _blockPos = &blockPos;
-  }
-
   virtual ValueType nextValueBegin() override {
     TRI_ASSERT(_blockPos);
     return *(std::min_element(_blockPos->begin(), _blockPos->end(), *this));
+  }
+
+  virtual void prepare(std::vector<ValueType>& blockPos) override {
+    _blockPos = &blockPos;
+  }
+
+  virtual void reset() noexcept override {
+    _blockPos = nullptr;
   }
 
  private:
@@ -467,8 +482,10 @@ class SortingGatherBlock final : public ExecutionBlock {
     _gatherBlockPos.reserve(_dependencies.size());
     for (size_t i = 0; i < _dependencies.size(); i++) {
       _gatherBlockBuffer.emplace_back();
-      _gatherBlockPos.emplace_back(std::make_pair(i, 0));
+      _gatherBlockPos.emplace_back(i, 0);
     }
+
+    _strategy->reset();
 
     _done = _dependencies.empty();
     return TRI_ERROR_NO_ERROR;
@@ -562,7 +579,7 @@ class SortingGatherBlock final : public ExecutionBlock {
     // automatically deleted if things go wrong
     std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
-    _strategy->initialize(_gatherBlockPos);
+    _strategy->prepare(_gatherBlockPos);
 
     for (size_t i = 0; i < toSend; i++) {
       // get the next smallest row from the buffer . . .
@@ -664,7 +681,7 @@ class SortingGatherBlock final : public ExecutionBlock {
 
     size_t const skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
-    _strategy->initialize(_gatherBlockPos);
+    _strategy->prepare(_gatherBlockPos);
 
     for (size_t i = 0; i < skipped; i++) {
       // get the next smallest row from the buffer . . .
