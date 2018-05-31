@@ -158,9 +158,9 @@ bool OurLessThan::operator()(
 ////////////////////////////////////////////////////////////////////////////////
 class UnsortingGatherBlock final : public ExecutionBlock {
  public:
-  UnsortingGatherBlock(ExecutionEngine* engine, GatherNode const* en) noexcept
-    : ExecutionBlock(engine, en) {
-    TRI_ASSERT(en->elements().empty());
+  UnsortingGatherBlock(ExecutionEngine& engine, GatherNode const& en) noexcept
+    : ExecutionBlock(&engine, &en) {
+    TRI_ASSERT(en.elements().empty());
   }
 
   /// @brief shutdown: need our own method since our _buffer is different
@@ -286,25 +286,129 @@ class UnsortingGatherBlock final : public ExecutionBlock {
 }; // UnsortingGatherBlock
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @struct SortingStrategy
+////////////////////////////////////////////////////////////////////////////////
+struct SortingStrategy {
+  typedef std::pair<
+    size_t, // dependecy index
+    size_t // position within a dependecy
+  > ValueType;
+
+  virtual ~SortingStrategy() = default;
+
+  /// @brief initializes strategy
+  virtual void initialize(std::vector<ValueType>& /*blockPos*/) { }
+
+  /// @brief begins transaction and returns next value
+  virtual ValueType nextValueBegin() = 0;
+
+  /// @brief commits transaction started by 'nextValueBegin'
+  virtual void nextValueCommit() { }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class HeapSorting
+/// @brief "Heap" sorting strategy
+////////////////////////////////////////////////////////////////////////////////
+class HeapSorting final : public SortingStrategy, private OurLessThan  {
+ public:
+  HeapSorting(
+      arangodb::transaction::Methods* trx,
+      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
+  }
+
+  virtual void initialize(std::vector<ValueType>& blockPos) override {
+    _heap.clear();
+    std::copy(blockPos.begin(), blockPos.end(), std::back_inserter(_heap));
+    std::make_heap(_heap.begin(), _heap.end(), *this);
+    TRI_ASSERT(!_heap.empty());
+  }
+
+  virtual ValueType nextValueBegin() override {
+    TRI_ASSERT(!_heap.empty());
+    std::pop_heap(_heap.begin(), _heap.end(), *this); // remove element from _heap but not from vector
+    return _heap.back();
+  }
+
+  virtual void nextValueCommit() override {
+    TRI_ASSERT(!_heap.empty());
+    std::push_heap(_heap.begin(), _heap.end(), *this); // re-insert element
+  }
+
+  bool operator()(
+      std::pair<size_t, size_t> const& lhs,
+      std::pair<size_t, size_t> const& rhs
+  ) const {
+    return OurLessThan::operator()(rhs, lhs);
+  }
+
+ private:
+  std::vector<std::reference_wrapper<ValueType>> _heap;
+}; // HeapSorting
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class MinElementSorting
+/// @brief "MinElement" sorting strategy
+////////////////////////////////////////////////////////////////////////////////
+class MinElementSorting final : public SortingStrategy, public OurLessThan {
+ public:
+  MinElementSorting(
+      arangodb::transaction::Methods* trx,
+      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
+  }
+
+  virtual void initialize(std::vector<ValueType>& blockPos) override {
+    _blockPos = &blockPos;
+  }
+
+  virtual ValueType nextValueBegin() override {
+    TRI_ASSERT(_blockPos);
+    return *(std::min_element(_blockPos->begin(), _blockPos->end(), *this));
+  }
+
+ private:
+  std::vector<ValueType> const* _blockPos;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @class SortingGatherBlock
 /// @brief Execution block for gathers with order
 ////////////////////////////////////////////////////////////////////////////////
 class SortingGatherBlock final : public ExecutionBlock {
  public:
-  SortingGatherBlock(ExecutionEngine* engine, GatherNode const* en)
-    : ExecutionBlock(engine, en) {
-    TRI_ASSERT(!en->elements().empty());
+  SortingGatherBlock(
+      ExecutionEngine& engine,
+      GatherNode const& en)
+    : ExecutionBlock(&engine, &en) {
+    TRI_ASSERT(!en.elements().empty());
 
-    if (en->sortMode() == GatherNode::SortMode::Heap) {
-      _heap.reset(new Heap());
+    switch (en.sortMode()) {
+      case GatherNode::SortMode::MinElement:
+        _strategy = std::make_unique<HeapSorting>(
+          _trx, _gatherBlockBuffer, _sortRegisters
+        );
+        break;
+      case GatherNode::SortMode::Heap:
+        _strategy = std::make_unique<MinElementSorting>(
+          _trx, _gatherBlockBuffer, _sortRegisters
+        );
+        break;
+      default:
+        TRI_ASSERT(false);
+        break;
     }
+    TRI_ASSERT(_strategy);
 
     // We know that planRegisters has been run, so
     // getPlanNode()->_registerPlan is set up
     SortRegister::fill(
-      *en->plan(),
-      *en->getRegisterPlan(),
-      en->elements(),
+      *en.plan(),
+      *en.getRegisterPlan(),
+      en.elements(),
       _sortRegisters
     );
   }
@@ -364,10 +468,6 @@ class SortingGatherBlock final : public ExecutionBlock {
     for (size_t i = 0; i < _dependencies.size(); i++) {
       _gatherBlockBuffer.emplace_back();
       _gatherBlockPos.emplace_back(std::make_pair(i, 0));
-    }
-
-    if (_heap) {
-      _heap->clear();
     }
 
     _done = _dependencies.empty();
@@ -455,12 +555,6 @@ class SortingGatherBlock final : public ExecutionBlock {
     std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
     cache.resize(_gatherBlockBuffer.size());
 
-    // comparison function
-    OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
-    auto ourGreater = [&ourLessThan](std::pair<std::size_t, std::size_t>& a, std::pair<std::size_t, std::size_t>& b) {
-      return ourLessThan(b, a);
-    };
-
     TRI_ASSERT(!_gatherBlockBuffer.at(index).empty());
     AqlItemBlock* example = _gatherBlockBuffer[index].front();
     size_t nrRegs = example->getNrRegs();
@@ -468,28 +562,18 @@ class SortingGatherBlock final : public ExecutionBlock {
     // automatically deleted if things go wrong
     std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
-    if (_heap && _heap->size() != _dependencies.size()) {
-      auto& heap = *_heap;
-      std::copy(_gatherBlockPos.begin(), _gatherBlockPos.end(), std::back_inserter(heap));
-      std::make_heap(heap.begin(), heap.end(), ourGreater);
-    }
+    _strategy->initialize(_gatherBlockPos);
 
     for (size_t i = 0; i < toSend; i++) {
       // get the next smallest row from the buffer . . .
-      std::pair<size_t, size_t> val;
-      if (_heap) {
-        auto& heap = *_heap;
-        val = heap.front();
-        std::pop_heap(heap.begin(), heap.end(), ourGreater); // remove element from heap but not from vector
-        heap.back().second++; //advance position in itemblock of removed element before it is re-inserted later
-      } else {
-        val = *(std::min_element(_gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
-      }
+      auto const val = _strategy->nextValueBegin();
+      auto& blocks = _gatherBlockBuffer[val.first];
+      auto& blocksPos = _gatherBlockPos[val.first];
 
       // copy the row in to the outgoing block . . .
       for (RegisterId col = 0; col < nrRegs; col++) {
-        TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
-        AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
+        TRI_ASSERT(!blocks.empty());
+        AqlValue const& x = blocks.front()->getValueReference(val.second, col);
         if (!x.isEmpty()) {
           if (x.requiresDestruction()) {
             // complex value, with ownership transfer
@@ -514,21 +598,15 @@ class SortingGatherBlock final : public ExecutionBlock {
         }
       }
 
-      _gatherBlockPos[val.first].second++;
-
       // renew the _gatherBlockPos and clean up the buffer if necessary
-      if (_gatherBlockPos[val.first].second == _gatherBlockBuffer[val.first].front()->size()) {
-        TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
-        AqlItemBlock* cur = _gatherBlockBuffer[val.first].front();
+      if (++blocksPos.second == blocks.front()->size()) {
+        TRI_ASSERT(!blocks.empty());
+        AqlItemBlock* cur = blocks.front();
         returnBlock(cur);
-        _gatherBlockBuffer[val.first].pop_front();
-        _gatherBlockPos[val.first] = {val.first, 0};
+        blocks.pop_front();
+        blocksPos.second = 0; // reset position within a dependency
 
-        if (_heap) {
-          _heap->back().second = 0;
-        }
-
-        if (_gatherBlockBuffer[val.first].empty()) {
+        if (blocks.empty()) {
           // if we pulled everything from the buffer, we need to fetch
           // more data for the shard for which we have no more local
           // values.
@@ -540,9 +618,7 @@ class SortingGatherBlock final : public ExecutionBlock {
         }
       }
 
-      if (_heap) {
-        std::push_heap(_heap->begin(), _heap->end(), ourGreater); //re-insert element
-      }
+      _strategy->nextValueCommit();
     }
 
     traceGetSomeEnd(res.get());
@@ -550,7 +626,6 @@ class SortingGatherBlock final : public ExecutionBlock {
 
     // cppcheck-suppress style
     DEBUG_END_BLOCK();
-
   }
 
   /// @brief skipSome
@@ -587,26 +662,26 @@ class SortingGatherBlock final : public ExecutionBlock {
       return 0;
     }
 
-    size_t skipped = (std::min)(available, atMost);  // nr rows in outgoing block
+    size_t const skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
-    // comparison function
-    OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
+    _strategy->initialize(_gatherBlockPos);
 
     for (size_t i = 0; i < skipped; i++) {
       // get the next smallest row from the buffer . . .
-      std::pair<size_t, size_t> val = *(std::min_element(
-          _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
+      auto const val = _strategy->nextValueBegin();
+      auto& blocks = _gatherBlockBuffer[val.first];
+      auto& blocksPos = _gatherBlockPos[val.first];
 
       // renew the _gatherBlockPos and clean up the buffer if necessary
-      _gatherBlockPos[val.first].second++;
-      if (_gatherBlockPos[val.first].second ==
-          _gatherBlockBuffer[val.first].front()->size()) {
-        TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
-        AqlItemBlock* cur = _gatherBlockBuffer[val.first].front();
+      if (++blocksPos.second == blocks.front()->size()) {
+        TRI_ASSERT(!blocks.empty());
+        AqlItemBlock* cur = blocks.front();
         returnBlock(cur);
-        _gatherBlockBuffer[val.first].pop_front();
-        _gatherBlockPos[val.first] = std::make_pair(val.first, 0);
+        blocks.pop_front();
+        blocksPos.second = 0; // reset position within a dependency
       }
+
+      _strategy->nextValueCommit();
     }
 
     return skipped;
@@ -615,6 +690,7 @@ class SortingGatherBlock final : public ExecutionBlock {
     DEBUG_END_BLOCK();
   }
 
+ private:
   /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
   /// non-simple case only
   bool getBlock(size_t i, size_t atMost) {
@@ -634,7 +710,6 @@ class SortingGatherBlock final : public ExecutionBlock {
     DEBUG_END_BLOCK();
   }
 
- private:
   /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
   /// separately
   std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer;
@@ -646,8 +721,8 @@ class SortingGatherBlock final : public ExecutionBlock {
   /// @brief sort elements for this block
   std::vector<SortRegister> _sortRegisters;
 
-  using Heap = std::vector<std::pair<std::size_t, std::size_t>>;
-  std::unique_ptr<Heap> _heap;
+  /// @brief sorting strategy
+  std::unique_ptr<SortingStrategy> _strategy;
 }; // SortingGatherBlock
 
 }
@@ -916,10 +991,10 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     std::unordered_set<std::string> const&
 ) const {
   if (elements().empty()) {
-    return std::make_unique<UnsortingGatherBlock>(&engine, this);
+    return std::make_unique<UnsortingGatherBlock>(engine, *this);
   }
 
-  return std::make_unique<SortingGatherBlock>(&engine, this);
+  return std::make_unique<SortingGatherBlock>(engine, *this);
 }
 
 /// @brief estimateCost
