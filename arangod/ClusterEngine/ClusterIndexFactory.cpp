@@ -38,10 +38,147 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
+namespace arangodb {
 
 ClusterIndexFactory::ClusterIndexFactory() {
-  reset(nullptr);
+  emplaceFactory(
+    "edge",
+    [](
+        LogicalCollection* collection,
+        velocypack::Slice const& definition,
+        TRI_idx_iid_t id,
+        bool isClusterConstructor
+    )->std::shared_ptr<Index> {
+      if (!isClusterConstructor) {
+        // this indexes cannot be created directly
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "cannot create edge index"
+        );
+      }
+
+      auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+      auto ct = ce->engineType();
+
+      return std::make_shared<ClusterIndex>(
+        id, collection, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, definition
+      );
+    }
+  );
+
+  emplaceNormalizer(
+    "edge",
+    [](
+       velocypack::Builder& normalized,
+       velocypack::Slice definition,
+       bool isCreation
+    ) -> Result {
+      if (isCreation) {
+        return TRI_ERROR_FORBIDDEN; // creating these indexes yourself is forbidden
+      }
+
+      if (!normalized.isOpenObject() || !definition.isObject()) {
+        return TRI_ERROR_INTERNAL;
+      }
+
+      normalized.add(velocypack::ObjectIterator(definition));
+
+      return TRI_ERROR_INTERNAL;
+    }
+  );
+
+  emplaceFactory(
+    "primary",
+    [](
+        LogicalCollection* collection,
+        velocypack::Slice const& definition,
+        TRI_idx_iid_t id,
+        bool isClusterConstructor
+    )->std::shared_ptr<Index> {
+      if (!isClusterConstructor) {
+        // this indexes cannot be created directly
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "cannot create primary index"
+        );
+      }
+
+      auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+      auto ct = ce->engineType();
+
+      return std::make_shared<ClusterIndex>(
+        0, collection, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, definition
+      );
+    }
+  );
+
+  emplaceNormalizer(
+    "primary",
+    [](
+       velocypack::Builder& normalized,
+       velocypack::Slice definition,
+       bool isCreation
+    ) -> Result {
+      if (isCreation) {
+        return TRI_ERROR_FORBIDDEN; // creating these indexes yourself is forbidden
+      }
+
+      if (!normalized.isOpenObject() || !definition.isObject()) {
+        return TRI_ERROR_INTERNAL;
+      }
+
+      normalized.add(velocypack::ObjectIterator(definition));
+
+      return TRI_ERROR_INTERNAL;
+    }
+  );
+
+  // both engines support all types right now
+  static const std::vector<std::string> supported = {
+    "fulltext",
+    "geo",
+    "geo1",
+    "geo2",
+    "hash",
+    "persistent",
+    "skiplist"
+  };
+
+  for (auto& typeStr: supported) {
+    auto type = Index::type(typeStr);
+
+    emplaceFactory(
+      typeStr,
+      [type](
+          LogicalCollection* collection,
+          velocypack::Slice const& definition,
+          TRI_idx_iid_t id,
+          bool isClusterConstructor
+      )->std::shared_ptr<Index> {
+        auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+        auto ct = ce->engineType();
+
+        return std::make_shared<ClusterIndex>(
+          id, collection, ct, type, definition
+        );
+      }
+    );
+
+    emplaceNormalizer(
+      typeStr,
+      [](
+         velocypack::Builder& normalized,
+         velocypack::Slice definition,
+         bool isCreation
+      ) -> Result {
+        if (!normalized.isOpenObject() || !definition.isObject()) {
+          return TRI_ERROR_INTERNAL;
+        }
+
+        normalized.add(velocypack::ObjectIterator(definition));
+
+        return TRI_ERROR_NO_ERROR;
+      }
+    );
+  }
 }
 
 void ClusterIndexFactory::fillSystemIndexes(
@@ -128,107 +265,7 @@ void ClusterIndexFactory::prepareIndexes(
   }
 }
 
-void ClusterIndexFactory::reset(IndexFactory const* other /*= nullptr*/) {
-  clear();
-
-  emplaceFactory(
-    "edge",
-    [](
-        LogicalCollection* collection,
-        velocypack::Slice const& definition,
-        TRI_idx_iid_t id,
-        bool isClusterConstructor
-    )->std::shared_ptr<Index> {
-      if (!isClusterConstructor) {
-        // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "cannot create edge index"
-        );
-      }
-
-      auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-      auto ct = ce->engineType();
-
-      return std::make_shared<ClusterIndex>(
-        id, collection, ct, Index::TRI_IDX_TYPE_EDGE_INDEX, definition
-      );
-    }
-  );
-
-  emplaceFactory(
-    "primary",
-    [](
-        LogicalCollection* collection,
-        velocypack::Slice const& definition,
-        TRI_idx_iid_t id,
-        bool isClusterConstructor
-    )->std::shared_ptr<Index> {
-      if (!isClusterConstructor) {
-        // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, "cannot create primary index"
-        );
-      }
-
-      auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-      auto ct = ce->engineType();
-
-      return std::make_shared<ClusterIndex>(
-        0, collection, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, definition
-      );
-    }
-  );
-
-  // both engines support all types right now
-  std::vector<std::string> supported = {
-    "fulltext",
-    "geo",
-    "geo1",
-    "geo2",
-    "hash",
-    "persistent",
-    "skiplist"
-  };
-
-  for (auto& typeStr: supported) {
-    auto type = Index::type(typeStr);
-
-    emplaceFactory(
-      typeStr,
-      [type](
-          LogicalCollection* collection,
-          velocypack::Slice const& definition,
-          TRI_idx_iid_t id,
-          bool isClusterConstructor
-      )->std::shared_ptr<Index> {
-        auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-        auto ct = ce->engineType();
-
-        return std::make_shared<ClusterIndex>(
-          id, collection, ct, type, definition
-        );
-      }
-    );
-  }
-
-  auto factoryVisitor = [this](
-      std::string const& type, IndexTypeFactory const& factory
-  )->bool {
-    emplaceFactory(type, factory); // may already be defined above
-    return true; // always continue
-  };
-  auto normalizerVisitor = [this](
-      std::string const& type, IndexNormalizer const& normalizer
-  )->bool {
-    emplaceNormalizer(type, normalizer); // may already be defined above
-    return true; // always continue
-  };
-
-  if (other) {
-    other->visitFactory(factoryVisitor);
-    other->visitNormalizer(normalizerVisitor);
-  }
-}
+} // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
