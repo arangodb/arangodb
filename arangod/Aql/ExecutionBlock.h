@@ -68,7 +68,7 @@ struct QueryProfile;
 
 class ExecutionBlock {
  public:
-  ExecutionBlock(ExecutionEngine*, ExecutionNode const*);
+  ExecutionBlock(ExecutionEngine*, ExecutionNode const*) noexcept;
 
   virtual ~ExecutionBlock();
 

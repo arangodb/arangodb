@@ -156,7 +156,7 @@ bool OurLessThan::operator()(
 /// @class UnsortingGatherBlock
 /// @brief Execution block for gathers without order
 ////////////////////////////////////////////////////////////////////////////////
-class UnsortingGatherBlock : public ExecutionBlock {
+class UnsortingGatherBlock final : public ExecutionBlock {
  public:
   UnsortingGatherBlock(ExecutionEngine* engine, GatherNode const* en) noexcept
     : ExecutionBlock(engine, en) {
