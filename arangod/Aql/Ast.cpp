@@ -1502,7 +1502,8 @@ void Ast::injectBindParameters(BindParameters& parameters) {
             bool isWriteCollection = false;
 
             for (auto const& it : _writeCollections) {
-              if (it->type == NODE_TYPE_PARAMETER && StringRef(param) == StringRef(it->getStringValue(), it->getStringLength())) {
+              auto const& c = it.first;
+              if (c->type == NODE_TYPE_PARAMETER && StringRef(param) == StringRef(c->getStringValue(), c->getStringLength())) {
                 isWriteCollection = true;
                 break;
               }
@@ -1516,9 +1517,10 @@ void Ast::injectBindParameters(BindParameters& parameters) {
               // must update AST info now for all nodes that contained this
               // parameter
               for (size_t i = 0; i < _writeCollections.size(); ++i) {
-                if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
-                    StringRef(param) == StringRef(_writeCollections[i]->getStringValue(), _writeCollections[i]->getStringLength())) {
-                  _writeCollections[i] = node;
+                auto& c = _writeCollections[i].first;
+                if (c->type == NODE_TYPE_PARAMETER &&
+                    StringRef(param) == StringRef(c->getStringValue(), c->getStringLength())) {
+                  c = node;
                   // no break here. replace all occurrences
                 }
               }
@@ -1675,11 +1677,11 @@ void Ast::injectBindParameters(BindParameters& parameters) {
 
   // add all collections used in data-modification statements
   for (auto& it : _writeCollections) {
-    if (it->type == NODE_TYPE_COLLECTION) {
-      std::string name = it->getString();
-
-      _query->collections()->add(name, AccessMode::Type::WRITE);
-
+    auto const& c = it.first;
+    bool isExclusive = it.second;
+    if (c->type == NODE_TYPE_COLLECTION) {
+      std::string name = c->getString();
+      _query->collections()->add(name, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
       if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
 
@@ -1690,7 +1692,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           auto names = coll->realNames();
 
           for (auto const& n : names) {
-            _query->collections()->add(n, AccessMode::Type::WRITE);
+            _query->collections()->add(n, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
           }
         } catch (...) {
         }

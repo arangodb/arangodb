@@ -276,35 +276,6 @@ int FilterBlock::getOrSkipSome(size_t atMost, bool skipping,
   DEBUG_END_BLOCK();  
 }
 
-bool FilterBlock::hasMore() {
-  DEBUG_BEGIN_BLOCK();  
-  if (_done) {
-    return false;
-  }
-
-  if (_buffer.empty()) {
-    // QUESTION: Is this sensible? Asking whether there is more might
-    // trigger an expensive fetching operation, even if later on only
-    // a single document is needed due to a LIMIT...
-    // However, how should we know this here?
-    if (!getBlock(DefaultBatchSize())) {
-      _done = true;
-      return false;
-    }
-    _pos = 0;
-  }
-
-  TRI_ASSERT(!_buffer.empty());
-
-  // Here, _buffer.size() is > 0 and _pos points to a valid place
-  // in it.
-
-  return true;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
-}
-
 int LimitBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
   int res = ExecutionBlock::initializeCursor(items, pos);
@@ -335,7 +306,7 @@ int LimitBlock::getOrSkipSome(size_t atMost, bool skipping,
 
     if (_offset > 0) {
       size_t numActuallySkipped = 0;
-      ExecutionBlock::_dependencies[0]->skip(_offset, numActuallySkipped);
+      _dependencies[0]->skip(_offset, numActuallySkipped);
       if (_fullCount) {
         _engine->_stats.fullCount += static_cast<int64_t>(numActuallySkipped);
       }

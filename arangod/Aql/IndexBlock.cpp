@@ -495,15 +495,10 @@ bool IndexBlock::skipIndex(size_t atMost) {
     }
 
     uint64_t returned = static_cast<uint64_t>(_returned);
-    int res = _cursor->skip(atMost - returned, returned);
+    _cursor->skip(atMost - returned, returned);
     _returned = static_cast<size_t>(returned);
 
-    if (res == TRI_ERROR_NO_ERROR) {
-      // We have skipped enough.
-      // And this index could return more.
-      // We are good.
-      return true;
-    }
+    return true;
   }
   return false;
 

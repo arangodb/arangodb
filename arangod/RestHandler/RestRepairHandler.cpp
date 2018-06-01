@@ -186,7 +186,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     clusterInfo->loadPlan();
 
     return RestStatus::DONE;
-  } catch (Exception& e) {
+  } catch (basics::Exception const& e) {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
         << "Caught exception: " << e.message();

@@ -352,9 +352,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
  public:
 
   explicit CoordinatorInstanciator(Query* query)
-      : _dbserverParts(query), 
-        _isCoordinator(true), 
-        _lastClosed(0), 
+      : _dbserverParts(query),
+        _isCoordinator(true),
+        _lastClosed(0),
         _query(query) {
     TRI_ASSERT(_query);
   }
@@ -362,7 +362,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ~CoordinatorInstanciator() {}
 
   /// @brief before method for collection of pieces phase
-  ///        Collects all nodes on the path and devides them
+  ///        Collects all nodes on the path and divides them
   ///        into coordinator and dbserver parts
   bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
@@ -559,7 +559,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       }
     } else {
       // instantiate the engine on a local server
-      engine = new ExecutionEngine(query); 
+      engine = new ExecutionEngine(query);
       Instanciator inst(engine);
       plan->root()->walk(inst);
       root = inst.root;

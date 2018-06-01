@@ -708,23 +708,19 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
     return result;
   }
 
+  auto guard = scopeGuard([&d]() { closedir(d); });
+
   struct dirent* de = readdir(d);
 
-  try {
-    while (de != nullptr) {
-      if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
-        // may throw
-        result.emplace_back(std::string(de->d_name));
-      }
-
-      de = readdir(d);
+  while (de != nullptr) {
+    if (strcmp(de->d_name, ".") != 0 && strcmp(de->d_name, "..") != 0) {
+      // may throw
+      result.emplace_back(std::string(de->d_name));
     }
-    closedir(d);
-    return result;
-  } catch (...) {
-    closedir(d);
-    throw;
+
+    de = readdir(d);
   }
+  return result;
 }
 
 #endif

@@ -243,11 +243,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atMost) {
     uint64_t skippedHere = 0;
 
     if (_cursor->hasMore()) {
-      int res = _cursor->skip(atMost - skipped, skippedHere);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+      _cursor->skip(atMost - skipped, skippedHere);
     }
 
     skipped += skippedHere;

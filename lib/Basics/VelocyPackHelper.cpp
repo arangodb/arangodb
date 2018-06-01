@@ -602,21 +602,17 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
 /// @brief parses a json file to VelocyPack
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder VelocyPackHelper::velocyPackFromFile(
-    std::string const& path) {
+VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
   size_t length;
   char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
+    auto guard = scopeGuard([&content]() {
+      TRI_Free(content);
+    });
     // The Parser might throw;
     VPackBuilder builder;
-    try {
-      VPackParser parser(builder);
-      parser.parse(reinterpret_cast<uint8_t const*>(content), length);
-      TRI_Free(content);
-    } catch (...) {
-      TRI_Free(content);
-      throw;
-    }
+    VPackParser parser(builder);
+    parser.parse(reinterpret_cast<uint8_t const*>(content), length);
     return builder;
   }
   THROW_ARANGO_EXCEPTION(TRI_errno());

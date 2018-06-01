@@ -121,10 +121,10 @@ function gatherBlocksTestSuite() {
         //s(int) shards
         //i(bool) index
         let tests = [
-          { test : "q1s3if", query: query1, bindvars: bindvars1, collection: colName1, gathernodes: 1, sortmode: 'minelement' , count: documents/2 , sorted: false },
-          { test : "q1s9if", query: query1, bindvars: bindvars1, collection: colName2, gathernodes: 1, sortmode: 'heap'       , count: documents/2 , sorted: false },
-          { test : "q2s3if", query: query2, bindvars: bindvars2, collection: colName1, gathernodes: 1, sortmode: 'minelement' , count: 1           , sorted: false },
-          { test : "q2s9if", query: query2, bindvars: bindvars2, collection: colName2, gathernodes: 1, sortmode: 'heap'       , count: 1           , sorted: false },
+          { test : "q1s3if", query: query1, bindvars: bindvars1, collection: colName1, gathernodes: 1, sortmode: 'unset', count: documents/2 , sorted: false },
+          { test : "q1s9if", query: query1, bindvars: bindvars1, collection: colName2, gathernodes: 1, sortmode: 'unset', count: documents/2 , sorted: false },
+          { test : "q2s3if", query: query2, bindvars: bindvars2, collection: colName1, gathernodes: 1, sortmode: 'unset', count: 1           , sorted: false },
+          { test : "q2s9if", query: query2, bindvars: bindvars2, collection: colName2, gathernodes: 1, sortmode: 'unset', count: 1           , sorted: false },
           { test : "q3s3if", query: query3, bindvars: bindvars3, collection: colName1, gathernodes: 1, sortmode: 'minelement' , count: 4000        , sorted: true },
           { test : "q3s9if", query: query3, bindvars: bindvars3, collection: colName2, gathernodes: 1, sortmode: 'heap'       , count: documents   , sorted: true },
         ];
