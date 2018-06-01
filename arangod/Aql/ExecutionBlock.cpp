@@ -34,7 +34,7 @@ using namespace arangodb::aql;
   
 ExecutionBlock::ExecutionBlock(
     ExecutionEngine* engine,
-    ExecutionNode const* ep) noexcept
+    ExecutionNode const* ep)
   : _engine(engine),
     _trx(engine->getQuery()->trx()),
     _exeNode(ep),

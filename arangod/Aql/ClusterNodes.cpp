@@ -158,7 +158,7 @@ bool OurLessThan::operator()(
 ////////////////////////////////////////////////////////////////////////////////
 class UnsortingGatherBlock final : public ExecutionBlock {
  public:
-  UnsortingGatherBlock(ExecutionEngine& engine, GatherNode const& en) noexcept
+  UnsortingGatherBlock(ExecutionEngine& engine, GatherNode const& en)
     : ExecutionBlock(&engine, &en) {
     TRI_ASSERT(en.elements().empty());
   }
