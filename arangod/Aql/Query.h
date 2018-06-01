@@ -405,14 +405,16 @@ class Query {
   /// TODO REMOVE
  private:
   std::condition_variable _tempWaitForAsyncResponse;
+  std::mutex _tempMutex;
 
  public:
   void tempSignalAsyncResponse() {
+    std::unique_lock<std::mutex> lock(_tempMutex);
     _tempWaitForAsyncResponse.notify_all();
   }
 
   void tempWaitForAsyncResponse() {
-    std::unique_lock<std::mutex> lock;
+    std::unique_lock<std::mutex> lock(_tempMutex);
     _tempWaitForAsyncResponse.wait(lock);
   }
 };
