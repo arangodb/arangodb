@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed internal issue #2160: fixed misplaced tooltips in indices view
+
 * added optimizer rule "optimize-subqueries", which makes qualifying subqueries
   return less data
   
