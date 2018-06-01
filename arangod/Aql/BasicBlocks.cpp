@@ -334,14 +334,7 @@ int LimitBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
       atMost = _limit - _count;
     }
 
-    while (true) {
-      auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
-      if (res.first == ExecutionState::WAITING) {
-        _engine->getQuery()->tempWaitForAsyncResponse();
-      } else { 
-        break;
-      }
-    }
+    ExecutionBlock::getOrSkipSomeOld(atMost, skipping, result, skipped);
 
     if (skipped == 0) {
       return TRI_ERROR_NO_ERROR;
@@ -365,14 +358,7 @@ int LimitBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
       while (true) {
         skipped = 0;
         AqlItemBlock* ignore = nullptr;
-        while (true) {
-          auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, ignore, skipped);
-          if (res.first == ExecutionState::WAITING) {
-            _engine->getQuery()->tempWaitForAsyncResponse();
-          } else { 
-            break;
-          }
-        }
+        ExecutionBlock::getOrSkipSomeOld(atMost, skipping, ignore, skipped);
 
         TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
         _engine->_stats.fullCount += skipped;
