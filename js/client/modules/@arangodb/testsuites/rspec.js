@@ -76,8 +76,7 @@ function serverHttp (options) {
 
 function httpReplication (options) {
   var opts = {
-    'replication': true,
-    'propagateInstanceInfo': true
+    'replication': true
   };
   _.defaults(opts, options);
   
@@ -92,8 +91,7 @@ function httpReplication (options) {
 
 function httpServer (options) {
   var opts = {
-    'httpTrustedOrigin': 'http://was-erlauben-strunz.it',
-    'propagateInstanceInfo': true
+    'httpTrustedOrigin': 'http://was-erlauben-strunz.it'
   };
   _.defaults(opts, options);
 
@@ -117,8 +115,7 @@ function sslServer (options) {
   }
   var opts = {
     'httpTrustedOrigin': 'http://was-erlauben-strunz.it',
-    'protocol': 'ssl',
-    'propagateInstanceInfo': true
+    'protocol': 'ssl'
   };
   _.defaults(opts, options);
 
