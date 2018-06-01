@@ -86,7 +86,7 @@ class IndexFactory {
     IndexNormalizer const& normalizer
   );
 
-  virtual Result enhanceIndexDefinition(
+  Result enhanceIndexDefinition(
     velocypack::Slice const definition,
     velocypack::Builder& normalized,
     bool isCreation,
@@ -99,10 +99,10 @@ class IndexFactory {
     LogicalCollection* collection,
     bool isClusterConstructor
   ) const;
-  
+
   /// @brief used to display storage engine capabilities
   virtual std::vector<std::string> supportedIndexes() const;
-  
+
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(arangodb::LogicalCollection*,
                                  std::vector<std::shared_ptr<arangodb::Index>>&) const = 0;
@@ -110,8 +110,22 @@ class IndexFactory {
   /// @brief create indexes from a list of index definitions
   virtual void prepareIndexes(LogicalCollection* col, velocypack::Slice const&,
                               std::vector<std::shared_ptr<arangodb::Index>>&) const = 0;
-  
+
+  /// @brief visit registered index factories
+  /// @return all available factories were visited
+  bool visitFactory(
+    std::function<bool(std::string const& type, IndexTypeFactory const& factory)> const& visitor
+  ) const;
+
+  /// @brief visit registered index normalizers
+  /// @return all available normalizers were visited
+  bool visitNormalizer(
+    std::function<bool(std::string const& type, IndexNormalizer const& normalizer)> const& visitor
+  ) const;
+
  protected:
+  /// @brief clear internal factory/normalizer maps
+  void clear();
 
   static TRI_idx_iid_t validateSlice(arangodb::velocypack::Slice info, 
                                      bool generateKey, 

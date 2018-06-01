@@ -28,6 +28,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/SortRegister.h"
 #include "Rest/GeneralRequest.h"
 
 #include <velocypack/Builder.h>
@@ -44,27 +45,11 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
   
-
-/// @brief sort element for block, consisting of register, sort direction,
-/// and a possible attribute path to dig into the document
-struct SortElementBlock {
-  RegisterId reg;
-  bool ascending;
-  std::vector<std::string> attributePath;
-  
-  SortElementBlock(RegisterId r, bool asc)
-  : reg(r), ascending(asc) {
-  }
-};
-
 class GatherBlock : public ExecutionBlock {
  public:
   GatherBlock(ExecutionEngine*, GatherNode const*);
 
   ~GatherBlock();
-
-  /// @brief initialize
-  int initialize() override;
 
   /// @brief shutdown: need our own method since our _buffer is different
   int shutdown(int) override final;
@@ -101,29 +86,11 @@ class GatherBlock : public ExecutionBlock {
   size_t _atDep = 0;
 
   /// @brief sort elements for this block
-  std::vector<SortElementBlock> _sortRegisters;
+  std::vector<SortRegister> _sortRegisters;
 
   /// @brief isSimple: the block is simple if we do not do merge sort . . .
   bool const _isSimple;
 
-  /// @brief OurLessThan: comparison method for elements of _gatherBlockPos
-  class OurLessThan {
-   public:
-    OurLessThan(transaction::Methods* trx,
-                std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
-                std::vector<SortElementBlock>& sortRegisters)
-        : _trx(trx),
-          _gatherBlockBuffer(gatherBlockBuffer),
-          _sortRegisters(sortRegisters) {}
-
-    bool operator()(std::pair<size_t, size_t> const& a,
-                    std::pair<size_t, size_t> const& b);
-
-   private:
-    transaction::Methods* _trx;
-    std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
-    std::vector<SortElementBlock>& _sortRegisters;
-  };
   using Heap = std::vector<std::pair<std::size_t, std::size_t>>;
   std::unique_ptr<Heap> _heap;
 };
@@ -203,8 +170,6 @@ class ScatterBlock : public BlockWithClients {
                std::vector<std::string> const& shardIds)
       : BlockWithClients(engine, ep, shardIds) {}
 
-  ~ScatterBlock() {}
-
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -229,8 +194,6 @@ class DistributeBlock : public BlockWithClients {
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                   std::vector<std::string> const& shardIds,
                   Collection const* collection);
-
-  ~DistributeBlock() {}
 
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
@@ -297,13 +260,8 @@ class RemoteBlock final : public ExecutionBlock {
               std::string const& server, std::string const& ownName,
               std::string const& queryId);
 
-  ~RemoteBlock();
-
   /// @brief timeout
   static double const defaultTimeOut;
-
-  /// @brief initialize
-  int initialize() override final;
 
   /// @brief initializeCursor, could be called multiple times
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
@@ -319,7 +277,7 @@ class RemoteBlock final : public ExecutionBlock {
 
   /// @brief hasMore
   bool hasMore() override final;
-
+  
  private:
   /// @brief internal method to send a request
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
@@ -327,14 +285,14 @@ class RemoteBlock final : public ExecutionBlock {
       std::string const& body) const;
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
-  std::string _server;
+  std::string const _server;
 
   /// @brief our own identity, in case of the coordinator this is empty,
   /// in case of the DBservers, this is the shard ID as a string
-  std::string _ownName;
+  std::string const _ownName;
 
   /// @brief the ID of the query on the server as a string
-  std::string _queryId;
+  std::string const _queryId;
 
   /// @brief whether or not this block will forward initialize, 
   /// initializeCursor or shutDown requests

@@ -1,14 +1,58 @@
 devel
 -----
 
-* Fixed issue #5035: fixed a vulnerability issue within the web ui's index view
+* added optimizer rule "optimize-subqueries", which makes qualifying subqueries
+  return less data
+  
+  The rule fires in the following situations: 
+  * in case only a few results are used from a non-modifying subquery, the rule
+    will add a LIMIT statement into the subquery. For example
+
+        LET docs = (
+          FOR doc IN collection 
+            FILTER ... 
+            RETURN doc
+        ) 
+        RETURN docs[0]
+
+    will be turned into
+        
+        LET docs = (
+          FOR doc IN collection 
+            FILTER ...
+            LIMIT 1 
+            RETURN doc
+        ) 
+        RETURN docs[0]
+
+    Another optimization performed by this rule is to modify the result value
+    of subqueries in case only the number of results is checked later. For example
+
+        RETURN LENGTH(
+          FOR doc IN collection 
+            FILTER ...
+            RETURN doc
+        ) 
+
+    will be turned into
+        
+        RETURN LENGTH(
+          FOR doc IN collection 
+            FILTER ... 
+            RETURN true
+        ) 
+
+  This saves copying the document data from the subquery to the outer scope and may
+  enable follow-up optimizations.
+
+* fixed issue #5035: fixed a vulnerability issue within the web ui's index view
 
 * fixed Foxx queues bug when queues are created in a request handler with an
   ArangoDB authentication header
 
 * abort startup when using SSLv2 for a server endpoint, or when connecting with
   a client tool via an SSLv2 connection.
-  
+
   SSLv2 has been disabled in the OpenSSL library by default in recent versions
   because of security vulnerabilities inherent in this protocol. 
 
@@ -16,6 +60,13 @@ devel
   been stopped in ArangoDB. End users that use SSLv2 for connecting to ArangoDB
   should change the protocol from SSLv2 to TLSv12 if possible, by adjusting
   the value of the `--ssl.protocol` startup option. 
+
+* added `overwrite` option to the `document rest-handler` to allow for easier syncing.
+
+  This implements almost the much inquired UPSERT. In reality it is a REPSERT
+  (replace/insert) because only replacement and not modification of documents
+  is possible. The option does not work in cluster collections with custom
+  sharding.
 
 * added startup option `--log.escape`
 

@@ -38,13 +38,26 @@
 using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
+namespace {
+/// @brief hard-coded vector of the index attributes
+/// note that the attribute names must be hard-coded here to avoid an init-order
+/// fiasco with StaticStrings::FromString etc.
+
+// The primary indexes do not have `_id` in the _fields instance variable
+std::vector<std::vector<arangodb::basics::AttributeName>> const
+    PrimaryIndexAttributes{{arangodb::basics::AttributeName("_id", false)},
+                           {arangodb::basics::AttributeName("_key", false)}};
+
+};
+
 ClusterIndex::ClusterIndex(TRI_idx_iid_t id, LogicalCollection* collection,
                            ClusterEngineType engineType, Index::IndexType itype,
                            VPackSlice const& info)
     : Index(id, collection, info),
       _engineType(engineType),
       _indexType(itype),
-      _info(info) {
+      _info(info),
+      _clusterSelectivity(/* default */0.1) {
   TRI_ASSERT(_info.slice().isObject());
 }
 
@@ -97,6 +110,22 @@ bool ClusterIndex::hasSelectivityEstimate() const {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unsupported cluster storage engine");
   return true;
+}
+
+/// @brief default implementation for selectivityEstimate
+double ClusterIndex::selectivityEstimate(StringRef const* extra) const {
+  TRI_ASSERT(hasSelectivityEstimate());
+  if (_unique) {
+    return 1.0;
+  }
+  
+  // floating-point tolerance
+  TRI_ASSERT(_clusterSelectivity >= 0.0 && _clusterSelectivity <= 1.00001);
+  return _clusterSelectivity;
+}
+
+void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
+  _clusterSelectivity = estimate;
 }
 
 bool ClusterIndex::isPersistent() const {
@@ -160,19 +189,9 @@ bool ClusterIndex::hasCoveringIterator() const {
 
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
-  // TODO implement fasrter version of this
+  // TODO implement faster version of this
   return Index::Compare(_info.slice(), info);
 }
-
-/// @brief hard-coded vector of the index attributes
-/// note that the attribute names must be hard-coded here to avoid an init-order
-/// fiasco with StaticStrings::FromString etc.
-
-// The primary indexes do not have `_id` in the _fields instance variable
-static std::vector<std::vector<arangodb::basics::AttributeName>> const
-    PrimaryIndexAttributes{{arangodb::basics::AttributeName("_id", false)},
-                           {arangodb::basics::AttributeName("_key", false)}};
-
 
 bool ClusterIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
@@ -212,7 +231,6 @@ bool ClusterIndex::supportsFilterCondition(
       SimpleAttributeEqualityMatcher matcher(this->_fields);
       return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems,
                                 estimatedCost);
-      break;
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX: {
@@ -229,7 +247,6 @@ bool ClusterIndex::supportsFilterCondition(
       // same for both engines
       return PersistentIndexAttributeMatcher::supportsFilterCondition(this, node, reference, itemsInIndex,
                                                                       estimatedItems, estimatedCost);
-      break;
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -270,7 +287,6 @@ bool ClusterIndex::supportsSortCondition(
     case TRI_IDX_TYPE_EDGE_INDEX: {
       return Index::supportsSortCondition(sortCondition, reference, itemsInIndex,
                                           estimatedCost, coveredAttributes);
-      break;
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:{
@@ -287,7 +303,6 @@ bool ClusterIndex::supportsSortCondition(
       // same for both indexes
       return PersistentIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex,
                                                                     estimatedCost, coveredAttributes);
-      break;
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -341,7 +356,6 @@ aql::AstNode* ClusterIndex::specializeCondition(
     }
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       return PersistentIndexAttributeMatcher::specializeCondition(this, node, reference);
-      break;
     }
 
     case TRI_IDX_TYPE_UNKNOWN:

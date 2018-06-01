@@ -34,6 +34,7 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
+#include "Statistics/RequestStatistics.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -504,7 +505,7 @@ void Scheduler::initializeSignalHandlers() {
   // ignore broken pipes
   action.sa_handler = SIG_IGN;
 
-  int res = sigaction(SIGPIPE, &action, 0);
+  int res = sigaction(SIGPIPE, &action, nullptr);
 
   if (res < 0) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot initialize signal handlers for pipe";

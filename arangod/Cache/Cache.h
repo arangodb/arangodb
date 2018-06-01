@@ -152,7 +152,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   static constexpr uint64_t triesGuarantee = UINT64_MAX;
 
  protected:
-  basics::ReadWriteSpinLock<64> _taskLock;
+  basics::ReadWriteSpinLock _taskLock;
 
   bool _shutdown;
 
