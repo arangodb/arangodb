@@ -264,17 +264,17 @@ std::ostream& Graph::operator<<(std::ostream& ostream) {
 ResultT<std::pair<OperationResult, Result>> GraphOperations::getVertex(
     std::string const& collectionName, std::string const& key,
     boost::optional<TRI_voc_rid_t> rev) {
-  return _getDocument(collectionName, key, std::move(rev));
+  return getDocument(collectionName, key, std::move(rev));
 };
 
 // TODO check if definitionName is an edge collection in _graph?
 ResultT<std::pair<OperationResult, Result>> GraphOperations::getEdge(
     const std::string& definitionName, const std::string& key,
     boost::optional<TRI_voc_rid_t> rev) {
-  return _getDocument(definitionName, key, std::move(rev));
+  return getDocument(definitionName, key, std::move(rev));
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::_getDocument(
+ResultT<std::pair<OperationResult, Result>> GraphOperations::getDocument(
     std::string const& collectionName, std::string const& key,
     boost::optional<TRI_voc_rid_t> rev) {
   OperationOptions options;
@@ -344,7 +344,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdge(
   return std::make_pair(std::move(result), std::move(res));
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::_modifyDocument(
+ResultT<std::pair<OperationResult, Result>> GraphOperations::modifyDocument(
     std::string const& collectionName, std::string const& key,
     VPackSlice document, bool isPatch, boost::optional<TRI_voc_rid_t> rev,
     bool waitForSync, bool returnOld, bool returnNew, bool keepNull) {
@@ -403,29 +403,22 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::_modifyDocument(
   return std::make_pair(std::move(result), std::move(res));
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::_createDocument(
-    std::string const& collectionName,
+ResultT<std::pair<OperationResult, Result>> GraphOperations::createDocument(
+    transaction::Methods* trx, std::string const& collectionName,
     VPackSlice document, bool waitForSync, bool returnNew) {
 
   OperationOptions options;
   options.waitForSync = waitForSync;
   options.returnNew = returnNew;
 
-  // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(ctx(), collectionName,
-                                  AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    return res;
-  }
-
   OperationResult result;
-  result = trx.insert(collectionName, document, options);
+  result = trx->insert(collectionName, document, options);
 
-  res = trx.finish(result.result);
+  if (!result.ok()) {
+    trx->finish(result.result);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+  }
+  Result res = trx->finish(result.result);
 
   return std::make_pair(std::move(result), std::move(res));
 }
@@ -434,7 +427,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::updateEdge(
     const std::string& definitionName, const std::string& key,
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
-  return _modifyDocument(definitionName, key, document, true, std::move(rev),
+  return modifyDocument(definitionName, key, document, true, std::move(rev),
                          waitForSync, returnOld, returnNew, keepNull);
 }
 
@@ -442,21 +435,97 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceEdge(
     const std::string& definitionName, const std::string& key,
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
-  return _modifyDocument(definitionName, key, document, false, std::move(rev),
+  return modifyDocument(definitionName, key, document, false, std::move(rev),
                          waitForSync, returnOld, returnNew, keepNull);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
     const std::string& definitionName,
     VPackSlice document, bool waitForSync, bool returnNew) {
-  return _createDocument(definitionName, document, waitForSync, returnNew);
+
+  // TODO create edge only if vertices id's are existent
+  auto const& vertexCollections = _graph.vertexCollections();
+
+  VPackSlice fromStringSlice = document.get(StaticStrings::FromString);
+  VPackSlice toStringSlice = document.get(StaticStrings::ToString);
+
+  if (fromStringSlice.isNone() || toStringSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "not found");
+  }
+  std::string fromString = fromStringSlice.copyString();
+  std::string toString = toStringSlice.copyString();
+
+  size_t pos = fromString.find('/');
+  std::string fromCollectionName;
+  std::string fromCollectionKey;
+  if (pos != std::string::npos) {
+    fromCollectionName = fromString.substr(0, pos);
+    fromCollectionKey = fromString.substr(pos + 1, fromString.length());
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "not found");
+  }
+
+  pos = toString.find('/');
+  std::string toCollectionName;
+  std::string toCollectionKey;
+  if (pos != std::string::npos) {
+    toCollectionName = toString.substr(0, pos);
+    toCollectionKey = toString.substr(pos + 1, toString.length());
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "not found");
+  }
+
+  OperationOptions options;
+  VPackSlice search;
+
+  VPackBuilder bT;
+  {
+    VPackObjectBuilder guard(&bT);
+    bT.add(StaticStrings::KeyString, VPackValue(toCollectionKey));
+  }
+
+  VPackBuilder bF;
+  {
+    VPackObjectBuilder guard(&bF);
+    bF.add(StaticStrings::KeyString, VPackValue(fromCollectionKey));
+  }
+
+  std::vector<std::string> trxCollections;
+  std::vector<std::string> writeCollections;
+  trxCollections.emplace_back(fromCollectionName);
+  trxCollections.emplace_back(toCollectionName);
+  writeCollections.emplace_back(definitionName);
+
+  transaction::Options trxOptions;
+  trxOptions.waitForSync = returnNew;
+  trxOptions.waitForSync = waitForSync;
+
+  std::unique_ptr<transaction::Methods> trx(
+    new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+
+  Result res = trx->begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+  }
+  OperationResult resultFrom = trx->document(fromCollectionName, bF.slice(), options);
+  OperationResult resultTo = trx->document(toCollectionName, bT.slice(), options);
+
+  if (!resultFrom.ok()) {
+    trx->finish(resultFrom.result);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+  }
+  if (!resultTo.ok()) {
+    trx->finish(resultTo.result);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+  }
+  return createDocument(trx.get(), definitionName, document, waitForSync, returnNew);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::updateVertex(
     const std::string& collectionName, const std::string& key,
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
-  return _modifyDocument(collectionName, key, document, true, std::move(rev),
+  return modifyDocument(collectionName, key, document, true, std::move(rev),
                          waitForSync, returnOld, returnNew, keepNull);
 }
 
@@ -464,14 +533,28 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceVertex(
     const std::string& collectionName, const std::string& key,
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
-  return _modifyDocument(collectionName, key, document, false, std::move(rev),
+  return modifyDocument(collectionName, key, document, false, std::move(rev),
                          waitForSync, returnOld, returnNew, keepNull);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createVertex(
     const std::string& collectionName,
     VPackSlice document, bool waitForSync, bool returnNew) {
-  return _createDocument(collectionName, document, waitForSync, returnNew);
+
+    transaction::Options trxOptions;
+
+    std::vector<std::string> writeCollections;
+    writeCollections.emplace_back(collectionName);
+    std::unique_ptr<transaction::Methods> trx(
+      new transaction::UserTransaction(ctx(), {}, writeCollections, {}, trxOptions));
+
+    Result res = trx->begin();
+
+    if (!res.ok()) {
+      return res;
+    }
+
+  return createDocument(trx.get(), collectionName, document, waitForSync, returnNew);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(

@@ -30,6 +30,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ResultT.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/UserTransaction.h"
 #include "Utils/OperationResult.h"
 
 namespace arangodb {
@@ -201,20 +202,20 @@ class GraphOperations {
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-  ResultT<std::pair<OperationResult, Result>> _getDocument(
+  ResultT<std::pair<OperationResult, Result>> getDocument(
       const std::string& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev);
 
   VPackBufferPtr _getSearchSlice(const std::string& key,
                                  boost::optional<TRI_voc_rid_t>& rev) const;
 
-  ResultT<std::pair<OperationResult, Result>> _modifyDocument(
+  ResultT<std::pair<OperationResult, Result>> modifyDocument(
       const std::string& collectionName, const std::string& key,
       VPackSlice document, bool isPatch, boost::optional<TRI_voc_rid_t> rev,
       bool waitForSync, bool returnOld, bool returnNew, bool keepNull);
 
-  ResultT<std::pair<OperationResult, Result>> _createDocument(
-      const std::string& collectionName,
+  ResultT<std::pair<OperationResult, Result>> createDocument(
+      transaction::Methods* trx, const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
 };
 

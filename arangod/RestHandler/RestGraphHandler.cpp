@@ -243,6 +243,16 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetsAction(
 boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
     const std::shared_ptr<const Graph> graph,
     const std::string& edgeDefinitionName) {
+  LOG_TOPIC(WARN, Logger::GRAPHS)
+      << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
+      << "edgeDefinitionName = " << edgeDefinitionName;
+
+  switch (request()->requestType()) {
+    case RequestType::POST:
+      edgeActionCreate(graph, edgeDefinitionName);
+      return RestStatus::DONE;
+    default:;
+  }
   return boost::none;
 }
 
@@ -252,7 +262,6 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
   LOG_TOPIC(WARN, Logger::GRAPHS)
       << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
       << "vertexCollectionName = " << vertexCollectionName;
-
 
   switch (request()->requestType()) {
     case RequestType::POST:
