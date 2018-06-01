@@ -42,9 +42,9 @@ if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
 endif ()
 
 if (WIN32)
-  project(arangodb3 CXX C)
+  project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 else ()
-  project(arangodb3 CXX C ASM)
+  project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
 # required for clang completion in editors
@@ -95,7 +95,6 @@ endif()
 
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
-project(ArangoDB LANGUAGES C CXX VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
