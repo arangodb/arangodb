@@ -36,7 +36,8 @@ ClusterTransactionCollection::ClusterTransactionCollection(
     int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
       _lockType(AccessMode::Type::NONE),
-      _nestingLevel(nestingLevel) {}
+      _nestingLevel(nestingLevel),
+      _usageLocked(false) {}
 
 ClusterTransactionCollection::~ClusterTransactionCollection() {}
 
@@ -162,8 +163,6 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool doSetup = false;
-
   if (_collection == nullptr) {
     // open the collection
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
@@ -191,8 +190,6 @@ int ClusterTransactionCollection::use(int nestingLevel) {
       }
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
-
-    doSetup = true;
   }
 
   TRI_ASSERT(_collection != nullptr);

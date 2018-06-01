@@ -42,7 +42,6 @@
   * [Document / Object](Functions/Document.md)
   * [Fulltext](Functions/Fulltext.md)
   * [Geo](Functions/Geo.md)
-  * [Geo-Constructors](Functions/GeoConstructors.md)
   * [Miscellaneous](Functions/Miscellaneous.md)
   * [Numeric](Functions/Numeric.md)
   * [String](Functions/String.md)

@@ -388,7 +388,8 @@ SECTION("test_query") {
     REQUIRE((false == !logicalView));
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = wiewImpl->snapshot(*state, true);
     CHECK(0 == snapshot->docs_count());
   }
@@ -426,7 +427,8 @@ SECTION("test_query") {
       viewImpl->sync();
     }
 
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = wiewImpl->snapshot(*state, true);
     CHECK(12 == snapshot->docs_count());
   }
@@ -473,7 +475,8 @@ SECTION("test_query") {
 
     arangodb::transaction::Options trxOptions;
     trxOptions.waitForSync = true;
-    auto state0 = s.engine.createTransactionState(vocbase, trxOptions);
+    arangodb::CollectionNameResolver resolver0(vocbase);
+    auto state0 = s.engine.createTransactionState(resolver0, trxOptions);
     auto* snapshot0 = wiewImpl->snapshot(*state0, true);
     CHECK(12 == snapshot0->docs_count());
 
@@ -502,7 +505,8 @@ SECTION("test_query") {
     // old reader sees same data as before
     CHECK(12 == snapshot0->docs_count());
     // new reader sees new data
-    auto state1 = s.engine.createTransactionState(vocbase, trxOptions);
+    arangodb::CollectionNameResolver resolver1(vocbase);
+    auto state1 = s.engine.createTransactionState(resolver1, trxOptions);
     auto* snapshot1 = wiewImpl->snapshot(*state1, true);
     CHECK(24 == snapshot1->docs_count());
   }
@@ -564,7 +568,8 @@ SECTION("test_query") {
 
       // query
       {
-        auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+        arangodb::CollectionNameResolver resolver(vocbase);
+        auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
         auto* snapshot = wiewImpl->snapshot(*state, true);
         CHECK(i == snapshot->docs_count());
       }
@@ -775,14 +780,16 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == false, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = wiewImpl->snapshot(*state);
     CHECK((nullptr == snapshot));
   }
 
   // no snapshot in TransactionState (force == true, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = wiewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
     CHECK((0 == snapshot->live_docs_count()));
@@ -790,7 +797,8 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == false, waitForSync = true)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     state->waitForSync(true);
     auto* snapshot = wiewImpl->snapshot(*state);
     CHECK((nullptr == snapshot));
@@ -798,8 +806,8 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == true, waitForSync = true)
   {
-    arangodb::transaction::Options options;
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     state->waitForSync(true);
     auto* snapshot = wiewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
@@ -825,7 +833,8 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == false, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     wiewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     auto* snapshot = wiewImpl->snapshot(*state);
@@ -836,7 +845,8 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     wiewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     auto* snapshot = wiewImpl->snapshot(*state, true);
@@ -847,7 +857,8 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = false during updateStatus(), true during snapshot())
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     wiewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     state->waitForSync(true);
@@ -859,7 +870,8 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = true during updateStatus(), false during snapshot())
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::CollectionNameResolver resolver(vocbase);
+    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     state->waitForSync(true);
     wiewImpl->apply(*state);
     state->updateStatus(arangodb::transaction::Status::RUNNING);

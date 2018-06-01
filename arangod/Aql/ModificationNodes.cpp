@@ -43,7 +43,7 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
       _outVariableOld(
           Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
-          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)), 
+          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)),
       _countStats(base.get("countStats").getBool()),
       _restrictedTo("") {
   TRI_ASSERT(_vocbase != nullptr);
@@ -59,7 +59,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
                                           unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
-  
+
   // Now put info about vocbase and cid in there
   builder.add("database", VPackValue(_vocbase->name()));
   builder.add("collection", VPackValue(_collection->getName()));
@@ -173,6 +173,7 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
 /// @brief clone ExecutionNode recursively
 ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
+  auto outVariableOld = _outVariableOld;
   auto outVariableNew = _outVariableNew;
   auto inVariable = _inVariable;
 
@@ -181,11 +182,15 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
       outVariableNew =
           plan->getAst()->variables()->createVariable(outVariableNew);
     }
+    if (_outVariableOld != nullptr) {
+      outVariableOld =
+          plan->getAst()->variables()->createVariable(outVariableOld);
+    }
     inVariable = plan->getAst()->variables()->createVariable(inVariable);
   }
 
   auto c = std::make_unique<InsertNode>(plan, _id, _vocbase, _collection, _options,
-                          inVariable, outVariableNew);
+                          inVariable, outVariableOld, outVariableNew);
   if (!_countStats) {
     c->disableStatistics();
   }
@@ -204,7 +209,7 @@ UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief toVelocyPack
 void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   ModificationNode::toVelocyPackHelper(nodes, flags);
-  
+
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
 

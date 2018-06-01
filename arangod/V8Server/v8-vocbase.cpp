@@ -356,7 +356,7 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int64_t datetime = TRI_ObjectToInt64(args[0]);
   v8::String::Value pattern(args[1]);
 
-  TimeZone* tz = 0;
+  TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(args[2]);
 
@@ -416,7 +416,7 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value datetimeString(args[0]);
   v8::String::Value pattern(args[1]);
 
-  TimeZone* tz = 0;
+  TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(args[2]);
 

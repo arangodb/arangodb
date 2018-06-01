@@ -34,6 +34,9 @@ namespace arangodb {
 namespace aql {
 class Query;
 
+/*inline if 17*/
+const double QueryInsertTTL = 600.0;
+
 class QueryRegistry {
  public:
   QueryRegistry() {}
@@ -45,7 +48,7 @@ class QueryRegistry {
   /// a query for this <vocbase> and <id> combination and an exception will
   /// be thrown in that case. The time to live <ttl> is in seconds and the
   /// query will be deleted if it is not opened for that amount of time.
-  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl = 600.0);
+  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl, bool isPrepare);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -85,7 +88,7 @@ class QueryRegistry {
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {
-    QueryInfo(QueryId id, Query* query, double ttl);
+    QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared);
     ~QueryInfo();
 
     TRI_vocbase_t* _vocbase;  // the vocbase
@@ -93,6 +96,7 @@ class QueryRegistry {
     Query* _query;            // the actual query pointer
     bool _isOpen;             // flag indicating whether or not the query
                               // is in use
+    bool _isPrepared;
     double _timeToLive;       // in seconds
     double _expires;          // UNIX UTC timestamp of expiration
   };
