@@ -125,7 +125,7 @@ fi
 
 echo == Starting agency ...
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
-    sleep 1
+    [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
     $ARANGOD \
@@ -173,7 +173,7 @@ start() {
     PORT=$2
     mkdir -p cluster/data$PORT cluster/apps$PORT
     echo == Starting $TYPE on port $PORT
-    sleep 1
+    [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     $CMD \
         -c none \
         --database.directory cluster/data$PORT \
