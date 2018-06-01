@@ -1249,7 +1249,8 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
 
   let instanceInfo = {
     rootDir,
-    arangods: []
+    arangods: [],
+    protocol: protocol
   };
 
   const startTime = time();
