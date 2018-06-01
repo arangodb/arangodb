@@ -314,6 +314,100 @@ describe('_api/gharial', () => {
     expect(db._collection(vName)).to.not.be.null;
   });
 
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - invalid from', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'peter',
+      _to: 'xxx/charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - invalid to', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'xxx/peter',
+      _to: 'charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - invalid from and to attributes', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'peter',
+      _to: 'charlie'
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing from and to attributes', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+    };
+    let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
+      body: JSON.stringify(edgeDef)
+    });
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
   it('should check if incident edges are deleted with a vertex', () => {
     const examples = require('@arangodb/graph-examples/example-graph');
     const exampleGraphName = 'knows_graph';
