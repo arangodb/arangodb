@@ -353,7 +353,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
 }
 
 /// @brief getSome
-AqlItemBlock* TraversalBlock::getSome(size_t atMost) {
+AqlItemBlock* TraversalBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   while (true) {
@@ -456,7 +456,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t atMost) {
 }
 
 /// @brief skipSome
-size_t TraversalBlock::skipSome(size_t atMost) {
+size_t TraversalBlock::skipSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
 

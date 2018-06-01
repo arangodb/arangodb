@@ -110,7 +110,7 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
 }
 
 /// @brief getSome
-AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atMost) {
+AqlItemBlock* EnumerateCollectionBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
@@ -220,7 +220,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-size_t EnumerateCollectionBlock::skipSome(size_t atMost) {
+size_t EnumerateCollectionBlock::skipSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
   TRI_ASSERT(_cursor != nullptr);

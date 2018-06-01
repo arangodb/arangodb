@@ -75,25 +75,13 @@ class ExecutionEngine {
   int shutdown(int errorCode);
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) {
-    if (!_initializeCursorCalled) {
-      // TODO FIXME
-      initializeCursor(nullptr, 0);
-    }
-    return _root->getSome(atMost);
-  }
+  AqlItemBlock* getSome(size_t atMost);
 
   /// @brief skipSome
-  size_t skipSome(size_t atMost) {
-    if (!_initializeCursorCalled) {
-      // TODO FIXME
-      initializeCursor(nullptr, 0);
-    }
-    return _root->skipSome(atMost);
-  }
+  size_t skipSome(size_t atMost);
 
   /// @brief getOne
-  AqlItemBlock* getOne() { return _root->getSome(1); }
+  AqlItemBlock* getOne() { return getSome(1); }
 
   /// @brief hasMore
   inline bool hasMore() const { return _root->hasMore(); }

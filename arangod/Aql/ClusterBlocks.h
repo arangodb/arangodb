@@ -79,10 +79,10 @@ class GatherBlock : public ExecutionBlock {
   bool hasMore() override final;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  AqlItemBlock* getSomeOld(size_t atMost) override final;
 
   /// @brief skipSome
-  size_t skipSome(size_t atMost) override final;
+  size_t skipSomeOld(size_t atMost) override final;
 
  protected:
   /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
@@ -145,13 +145,13 @@ class BlockWithClients : public ExecutionBlock {
   int shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  AqlItemBlock* getSome(size_t atMost) override final {
+  AqlItemBlock* getSomeOld(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   /// @brief skipSome: shouldn't be used, use skipSomeForShard
-  size_t skipSome(size_t atMost) override final {
+  size_t skipSomeOld(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -305,10 +305,10 @@ class RemoteBlock final : public ExecutionBlock {
   int shutdown(int) override final;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  AqlItemBlock* getSomeOld(size_t atMost) override final;
 
   /// @brief skipSome
-  size_t skipSome(size_t atMost) override final;
+  size_t skipSomeOld(size_t atMost) override final;
 
   /// @brief hasMore
   bool hasMore() override final;

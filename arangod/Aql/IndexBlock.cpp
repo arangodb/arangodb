@@ -602,7 +602,7 @@ std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
 }
 
 /// @brief getSome
-AqlItemBlock* IndexBlock::getSome(size_t atMost) {
+AqlItemBlock* IndexBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   if (_done) {
@@ -734,7 +734,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atMost) {
 }
 
 /// @brief skipSome
-size_t IndexBlock::skipSome(size_t atMost) {
+size_t IndexBlock::skipSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
     return 0;

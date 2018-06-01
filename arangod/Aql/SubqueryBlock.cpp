@@ -46,11 +46,11 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
 }
 
 /// @brief getSome
-AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
+AqlItemBlock* SubqueryBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   if (_result.get() == nullptr) {
-    _result.reset(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+    _result.reset(ExecutionBlock::getSomeWithoutRegisterClearoutOld(atMost));
 
     if (_result.get() == nullptr) {
       traceGetSomeEnd(nullptr);
@@ -62,7 +62,7 @@ AqlItemBlock* SubqueryBlock::getSome(size_t atMost) {
   std::vector<AqlItemBlock*>* subqueryResults = nullptr;
 
   for (; _subqueryPos < _result->size(); _subqueryPos++) {
-    if (_subqueryIsConst == 0 || !_subqueryIsConst) {
+    if (_subqueryPos == 0 || !_subqueryIsConst) {
       // TODO REMOVE THIS LOOP!
       while (true) {
         auto ret = _subquery->initializeCursor(_result.get(), _subqueryPos);
@@ -152,7 +152,7 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery() {
   try {
     do {
       std::unique_ptr<AqlItemBlock> tmp(
-          _subquery->getSome(DefaultBatchSize()));
+          _subquery->getSomeOld(DefaultBatchSize()));
 
       if (tmp.get() == nullptr) {
         break;

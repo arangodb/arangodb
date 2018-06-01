@@ -269,7 +269,7 @@ std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor
   DEBUG_END_BLOCK();
 }
 
-int SortedCollectBlock::getOrSkipSome(size_t atMost,
+int SortedCollectBlock::getOrSkipSomeOld(size_t atMost,
                                       bool skipping, AqlItemBlock*& result,
                                       size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -311,7 +311,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atMost,
 
   while (skipped < atMost) {
     // read the next input row
-    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
+    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuterOld") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -593,7 +593,7 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
-int HashedCollectBlock::getOrSkipSome(size_t atMost,
+int HashedCollectBlock::getOrSkipSomeOld(size_t atMost,
                                       bool skipping, AqlItemBlock*& result,
                                       size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -894,7 +894,7 @@ void DistinctCollectBlock::clearValues() {
   }
 }
 
-int DistinctCollectBlock::getOrSkipSome(size_t atMost,
+int DistinctCollectBlock::getOrSkipSomeOld(size_t atMost,
                                         bool skipping, AqlItemBlock*& result,
                                         size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -1052,7 +1052,7 @@ std::pair<ExecutionState, arangodb::Result> CountCollectBlock::initializeCursor(
   return res;
 }
 
-int CountCollectBlock::getOrSkipSome(size_t atMost, bool skipping, AqlItemBlock*& result,
+int CountCollectBlock::getOrSkipSomeOld(size_t atMost, bool skipping, AqlItemBlock*& result,
                                      size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
 

@@ -68,7 +68,7 @@ int SingletonBlock::shutdown(int errorCode) {
   return ExecutionBlock::shutdown(errorCode);
 }
 
-int SingletonBlock::getOrSkipSome(size_t atMost, bool skipping,
+int SingletonBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
                                   AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -192,7 +192,7 @@ bool FilterBlock::getBlock(size_t atMost) {
   DEBUG_END_BLOCK();  
 }
 
-int FilterBlock::getOrSkipSome(size_t atMost, bool skipping,
+int FilterBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
                                AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -295,7 +295,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
   DEBUG_END_BLOCK();  
 }
 
-int LimitBlock::getOrSkipSome(size_t atMost, bool skipping,
+int LimitBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
                               AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -331,7 +331,7 @@ int LimitBlock::getOrSkipSome(size_t atMost, bool skipping,
       atMost = _limit - _count;
     }
 
-    ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
+    ExecutionBlock::getOrSkipSomeOld(atMost, skipping, result, skipped);
 
     if (skipped == 0) {
       return TRI_ERROR_NO_ERROR;
@@ -355,7 +355,7 @@ int LimitBlock::getOrSkipSome(size_t atMost, bool skipping,
       while (true) {
         skipped = 0;
         AqlItemBlock* ignore = nullptr;
-        ExecutionBlock::getOrSkipSome(atMost, skipping, ignore, skipped);
+        ExecutionBlock::getOrSkipSomeOld(atMost, skipping, ignore, skipped);
 
         TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
         _engine->_stats.fullCount += skipped;
@@ -374,14 +374,14 @@ int LimitBlock::getOrSkipSome(size_t atMost, bool skipping,
   DEBUG_END_BLOCK();
 }
 
-AqlItemBlock* ReturnBlock::getSome(size_t atMost) {
+AqlItemBlock* ReturnBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   
   auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
 
   std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+      ExecutionBlock::getSomeWithoutRegisterClearoutOld(atMost));
 
   if (res == nullptr) {
     traceGetSomeEnd(nullptr);
@@ -470,7 +470,7 @@ std::pair<ExecutionState, arangodb::Result> NoResultsBlock::initializeCursor(
   DEBUG_END_BLOCK();  
 }
 
-int NoResultsBlock::getOrSkipSome(size_t,  // atMost
+int NoResultsBlock::getOrSkipSomeOld(size_t,  // atMost
                                   bool,    // skipping
                                   AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);

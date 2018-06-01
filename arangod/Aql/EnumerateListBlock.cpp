@@ -66,7 +66,7 @@ std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor
   DEBUG_END_BLOCK();  
 }
 
-AqlItemBlock* EnumerateListBlock::getSome(size_t atMost) {
+AqlItemBlock* EnumerateListBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   traceGetSomeBegin(atMost);
   if (_done) {
@@ -165,7 +165,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t atMost) {
   DEBUG_END_BLOCK();  
 }
 
-size_t EnumerateListBlock::skipSome(size_t atMost) {
+size_t EnumerateListBlock::skipSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   if (_done) {
     return 0;

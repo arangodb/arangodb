@@ -125,25 +125,30 @@ class ExecutionBlock {
   /// @brief shutdown, will be called exactly once for the whole query
   virtual int shutdown(int);
 
-  /// @brief getOne, gets one more item
-  virtual AqlItemBlock* getOne() { return getSome(1); }
-
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to
   /// return a block of at most atMost items, however, it may return
   /// less (for example if there are not enough items to come). However,
   /// if it returns an actual block, it must contain at least one item.
-  virtual AqlItemBlock* getSome(size_t atMost);
+  virtual std::pair<ExecutionState, AqlItemBlock*> getSome(size_t atMost);
+
+  // TODO DELETE!
+  virtual AqlItemBlock* getSomeOld(size_t atMost);
+
+
 
   void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*) const;
  
-  /// @brief getSome, skips some more items, semantic is as follows: not
+  /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
   /// skip a block of at most atMost items, however, it may skip
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
-  virtual size_t skipSome(size_t atMost);
+  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
+
+  // TODO DELETE
+  virtual size_t skipSomeOld(size_t atMost);
 
   virtual bool hasMore();
   
@@ -188,15 +193,20 @@ class ExecutionBlock {
   /// the idea is that somebody who wants to call the generic functionality
   /// in a derived class but wants to modify the results before the register
   /// cleanup can use this method, internal use only
-  AqlItemBlock* getSomeWithoutRegisterClearout(size_t atMost);
+  std::pair<ExecutionState, AqlItemBlock*> getSomeWithoutRegisterClearout(size_t atMost);
+  AqlItemBlock* getSomeWithoutRegisterClearoutOld(size_t atMost);
 
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
   void clearRegisters(AqlItemBlock* result);
   
+
   /// @brief generic method to get or skip some
-  virtual int getOrSkipSome(size_t atMost, bool skipping,
-                            AqlItemBlock*& result, size_t& skipped);
+  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                          AqlItemBlock*& result, size_t& skipped);
+  // TODO DELETE
+  virtual int getOrSkipSomeOld(size_t atMost, bool skipping,
+                              AqlItemBlock*& result, size_t& skipped);
 
  protected:
   /// @brief the execution engine

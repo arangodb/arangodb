@@ -201,11 +201,21 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
 /// return a block of at most atMost items, however, it may return
 /// less (for example if there are not enough items to come). However,
 /// if it returns an actual block, it must contain at least one item.
-AqlItemBlock* ExecutionBlock::getSome(size_t atMost) {
+
+std::pair<ExecutionState, AqlItemBlock*> ExecutionBlock::getSome(size_t atMost) {
+  // TODO Auto wrapper for backwards compatibility
+  auto blk = getSomeOld(atMost);
+  if (blk == nullptr) {
+    return {ExecutionState::DONE, nullptr};
+  }
+  return {ExecutionState::HASMORE, blk};
+}
+
+AqlItemBlock* ExecutionBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   std::unique_ptr<AqlItemBlock> result(
-      getSomeWithoutRegisterClearout(atMost));
+      getSomeWithoutRegisterClearoutOld(atMost));
   clearRegisters(result.get());
   traceGetSomeEnd(result.get());
   return result.release();
@@ -284,7 +294,7 @@ bool ExecutionBlock::getBlock(size_t atMost) {
   throwIfKilled();  // check if we were aborted
 
   std::unique_ptr<AqlItemBlock> docs(
-      _dependencies[0]->getSome(atMost));
+      _dependencies[0]->getSomeOld(atMost));
 
   if (docs == nullptr) {
     return false;
@@ -306,13 +316,20 @@ bool ExecutionBlock::getBlock(size_t atMost) {
 /// the idea is that somebody who wants to call the generic functionality
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
-AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
+std::pair<ExecutionState, AqlItemBlock*> ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
+  auto blk = getSomeWithoutRegisterClearoutOld(atMost);
+  if (blk == nullptr) {
+    return {ExecutionState::DONE, nullptr};
+  }
+  return {ExecutionState::HASMORE, blk};
+}
+AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(atMost > 0);
   size_t skipped = 0;
 
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSome(atMost, false, result, skipped);
+  int out = getOrSkipSomeOld(atMost, false, result, skipped);
 
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
@@ -331,10 +348,18 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
   DEBUG_END_BLOCK();
 }
 
-size_t ExecutionBlock::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
+  size_t skipped = skipSomeOld(atMost);
+  if (skipped == 0) {
+    return {ExecutionState::DONE, skipped};
+  }
+  return {ExecutionState::HASMORE, skipped};
+}
+
+size_t ExecutionBlock::skipSomeOld(size_t atMost) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSome(atMost, true, result, skipped);
+  int out = getOrSkipSomeOld(atMost, true, result, skipped);
 
   TRI_ASSERT(result == nullptr);
 
@@ -347,10 +372,11 @@ size_t ExecutionBlock::skipSome(size_t atMost) {
 
 // skip exactly atMost outputs
 void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
-  size_t skipped = skipSome(atMost);
+  // TODO FIXME
+  size_t skipped = skipSomeOld(atMost);
   size_t nr = skipped;
   while (nr != 0 && skipped < atMost) {
-    nr = skipSome(atMost - skipped);
+    nr = skipSomeOld(atMost - skipped);
     skipped += nr;
   }
   numActuallySkipped = skipped;
@@ -371,8 +397,20 @@ bool ExecutionBlock::hasMore() {
   return false;
 }
 
-int ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
-                                  AqlItemBlock*& result, size_t& skipped) {
+std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
+                                                                          AqlItemBlock*& result, size_t& skipped) {
+  int errCode = getOrSkipSomeOld(atMost, skipping, result, skipped);
+  if (skipping && skipped == 0) {
+    return {ExecutionState::DONE, errCode};
+  }
+  if (!skipping && result == nullptr) {
+    return {ExecutionState::DONE, errCode};
+  }
+  return {ExecutionState::HASMORE, errCode};
+}
+
+int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
+                                     AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 

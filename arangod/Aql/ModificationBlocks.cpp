@@ -76,7 +76,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
 ModificationBlock::~ModificationBlock() {}
 
 /// @brief get some - this accumulates all input and calls the work() method
-AqlItemBlock* ModificationBlock::getSome(size_t atMost) {
+AqlItemBlock* ModificationBlock::getSomeOld(size_t atMost) {
   // for UPSERT operations, we read and write data in the same collection
   // we cannot use any batching here because if the search document is not
   // found, the UPSERTs INSERT operation may create it. after that, the
@@ -107,7 +107,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atMost) {
     // read all input into a buffer first
     while (true) {
       std::unique_ptr<AqlItemBlock> res(
-          ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+          ExecutionBlock::getSomeWithoutRegisterClearoutOld(atMost));
 
       if (res.get() == nullptr) {
         break;
@@ -129,7 +129,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atMost) {
     while (true) {
       freeBlocks(blocks);
       std::unique_ptr<AqlItemBlock> res(
-          ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+          ExecutionBlock::getSomeWithoutRegisterClearoutOld(atMost));
 
       if (res == nullptr) {
         break;

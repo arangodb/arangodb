@@ -50,10 +50,10 @@ class TraversalBlock final : public ExecutionBlock {
   int shutdown(int errorCode) override final;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  AqlItemBlock* getSomeOld(size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
-  size_t skipSome(size_t atMost) override final;
+  size_t skipSomeOld(size_t atMost) override final;
 
  private:
   /// @brief cleanup, here we clean up all internally generated values

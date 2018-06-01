@@ -51,12 +51,12 @@ class ShortestPathBlock : public ExecutionBlock {
   int shutdown(int errorCode) override;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  AqlItemBlock* getSomeOld(size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
   // will only return less than atMost if there aren't atMost many
   // things to skip overall.
-  size_t skipSome(size_t atMost) override final;
+  size_t skipSomeOld(size_t atMost) override final;
   
  private:
   /// @brief Compute the next shortest path

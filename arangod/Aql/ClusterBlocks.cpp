@@ -203,7 +203,7 @@ bool GatherBlock::hasMore() {
 }
 
 /// @brief getSome
-AqlItemBlock* GatherBlock::getSome(size_t atMost) {
+AqlItemBlock* GatherBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
@@ -218,10 +218,10 @@ AqlItemBlock* GatherBlock::getSome(size_t atMost) {
 
   // the simple case . . .
   if (_isSimple) {
-    auto res = _dependencies.at(_atDep)->getSome(atMost);
+    auto res = _dependencies.at(_atDep)->getSomeOld(atMost);
     while (res == nullptr && _atDep < _dependencies.size() - 1) {
       _atDep++;
-      res = _dependencies.at(_atDep)->getSome(atMost);
+      res = _dependencies.at(_atDep)->getSomeOld(atMost);
     }
     if (res == nullptr) {
       _done = true;
@@ -370,7 +370,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atMost) {
 }
 
 /// @brief skipSome
-size_t GatherBlock::skipSome(size_t atMost) {
+size_t GatherBlock::skipSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
     return 0;
@@ -378,10 +378,10 @@ size_t GatherBlock::skipSome(size_t atMost) {
 
   // the simple case . . .
   if (_isSimple) {
-    auto skipped = _dependencies.at(_atDep)->skipSome(atMost);
+    auto skipped = _dependencies.at(_atDep)->skipSomeOld(atMost);
     while (skipped == 0 && _atDep < _dependencies.size() - 1) {
       _atDep++;
-      skipped = _dependencies[_atDep]->skipSome(atMost);
+      skipped = _dependencies[_atDep]->skipSomeOld(atMost);
     }
     if (skipped == 0) {
       _done = true;
@@ -450,7 +450,7 @@ bool GatherBlock::getBlock(size_t i, size_t atMost) {
   TRI_ASSERT(i < _dependencies.size());
   TRI_ASSERT(!_isSimple);
 
-  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSome(atMost));
+  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSomeOld(atMost));
   if (docs != nullptr && docs->size() > 0) {
     _gatherBlockBuffer.at(i).emplace_back(docs.get());
     docs.release();
@@ -1418,7 +1418,7 @@ int RemoteBlock::shutdown(int errorCode) {
 }
 
 /// @brief getSome
-AqlItemBlock* RemoteBlock::getSome(size_t atMost) {
+AqlItemBlock* RemoteBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   
@@ -1454,7 +1454,7 @@ AqlItemBlock* RemoteBlock::getSome(size_t atMost) {
 }
 
 /// @brief skipSome
-size_t RemoteBlock::skipSome(size_t atMost) {
+size_t RemoteBlock::skipSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
 

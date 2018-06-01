@@ -48,7 +48,7 @@ class SingletonBlock final : public ExecutionBlock {
   bool hasMore() override final { return !_done; }
 
  private:
-  int getOrSkipSome(size_t atMost, bool skipping,
+  int getOrSkipSomeOld(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief _inputRegisterValues
@@ -70,7 +70,7 @@ class FilterBlock final : public ExecutionBlock {
   /// @brief internal function to get another block
   bool getBlock(size_t atMost);
 
-  int getOrSkipSome(size_t atMost, bool skipping,
+  int getOrSkipSomeOld(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
  private:
@@ -96,7 +96,7 @@ class LimitBlock final : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) final override;
 
-  int getOrSkipSome(size_t atMost, bool skipping,
+  int getOrSkipSomeOld(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
  
  private:
@@ -122,7 +122,7 @@ class ReturnBlock final : public ExecutionBlock {
       : ExecutionBlock(engine, ep), _returnInheritedResults(false) {}
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
+  AqlItemBlock* getSomeOld(size_t atMost) override final;
 
   /// @brief make the return block return the results inherited from above,
   /// without creating new blocks
@@ -149,7 +149,7 @@ class NoResultsBlock final : public ExecutionBlock {
   bool hasMore() override final { return false; }
 
  private:
-  int getOrSkipSome(size_t atMost, bool skipping,
+  int getOrSkipSomeOld(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 };
 

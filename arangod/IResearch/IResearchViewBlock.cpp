@@ -246,7 +246,7 @@ bool IResearchViewBlockBase::readDocument(
   );
 }
 
-AqlItemBlock* IResearchViewBlockBase::getSome(size_t atMost) {
+AqlItemBlock* IResearchViewBlockBase::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
@@ -338,7 +338,7 @@ AqlItemBlock* IResearchViewBlockBase::getSome(size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-size_t IResearchViewBlockBase::skipSome(size_t atMost) {
+size_t IResearchViewBlockBase::skipSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
 

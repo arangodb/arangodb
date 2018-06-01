@@ -89,7 +89,7 @@ class SortedCollectBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  int getOrSkipSome(size_t atMost, bool skipping,
+  int getOrSkipSomeOld(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief writes the current group data into the result
@@ -130,7 +130,7 @@ class HashedCollectBlock : public ExecutionBlock {
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
 
  private:
-  int getOrSkipSome(size_t atMost, bool skipping,
+  int getOrSkipSomeOld(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
  private:
@@ -156,7 +156,7 @@ class DistinctCollectBlock : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  int getOrSkipSome(size_t atMost, bool skipping,
+  int getOrSkipSomeOld(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   void clearValues();
@@ -175,7 +175,7 @@ class CountCollectBlock : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  int getOrSkipSome(size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) override;
+  int getOrSkipSomeOld(size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) override;
 
  private:
   RegisterId _collectRegister;

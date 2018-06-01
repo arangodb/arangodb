@@ -94,7 +94,7 @@ ExecutionBlockMock::initializeCursor(arangodb::aql::AqlItemBlock* items,
   return res;
 }
 
-arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
+arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSomeOld(
     size_t atMost
 ) {
   DEBUG_BEGIN_BLOCK();
@@ -169,7 +169,7 @@ arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
   DEBUG_END_BLOCK();
 }
 
-size_t ExecutionBlockMock::skipSome(size_t atMost) {
+size_t ExecutionBlockMock::skipSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_done) {

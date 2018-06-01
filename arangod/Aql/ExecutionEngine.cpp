@@ -481,6 +481,39 @@ int ExecutionEngine::initializeCursor(AqlItemBlock* items, size_t pos) {
   }
 }
 
+AqlItemBlock* ExecutionEngine::getSome(size_t atMost) {
+  if (!_initializeCursorCalled) {
+    // TODO FIXME
+    initializeCursor(nullptr, 0);
+  }
+  // TODO FIXME remove this loop
+  while (true) {
+    auto res = _root->getSome(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      _query->tempWaitForAsyncResponse();
+    } else {
+      return res.second;
+    }
+  }
+}
+
+size_t ExecutionEngine::skipSome(size_t atMost) {
+  if (!_initializeCursorCalled) {
+    // TODO FIXME
+    initializeCursor(nullptr, 0);
+  }
+  // TODO FIXME remove this loop
+  while (true) {
+    auto res = _root->skipSome(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      _query->tempWaitForAsyncResponse();
+    } else {
+      return res.second;
+    }
+  }
+}
+
+
 /// @brief shutdown, will be called exactly once for the whole query
 int ExecutionEngine::shutdown(int errorCode) {
   int res = TRI_ERROR_NO_ERROR;

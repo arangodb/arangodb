@@ -42,10 +42,10 @@ class EnumerateListBlock : public ExecutionBlock {
   // here we release our docs from this collection
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  AqlItemBlock* getSome(size_t atMost) override final;
+  AqlItemBlock* getSomeOld(size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
-  size_t skipSome(size_t atMost) override final;
+  size_t skipSomeOld(size_t atMost) override final;
 
  private:
   // cppcheck-suppress *

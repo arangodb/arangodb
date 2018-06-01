@@ -201,7 +201,9 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10));
+      auto pair = block.getSome(10);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != res);
       CHECK(10 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -209,7 +211,9 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     // retrieve last 90 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(100));
+      auto pair = block.getSome(100);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr != res);
       CHECK(90 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -217,7 +221,9 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1));
+      auto pair = block.getSome(1);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr == res);
     }
   }
@@ -250,18 +256,25 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10));
+      auto pair = block.getSome(10);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != res);
       CHECK(10 == res->size());
       CHECK(4 == res->getNrRegs());
     }
-
-    // skip last 90 items
-    CHECK(90 == block.skipSome(90));
+    {
+      // skip last 90 items
+      auto pair = block.skipSome(90);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(90 == pair.second);
+    }
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1));
+      auto pair = block.getSome(1);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr == res);
     }
   }
@@ -292,12 +305,18 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     ExecutionBlockMock block(data, *query.engine(), node);
     block.addDependency(&rootBlock);
 
-    // skip last 90 items
-    CHECK(90 == block.skipSome(90));
+    {
+      // skip last 90 items
+      auto pair = block.skipSome(90);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(90 == pair.second);
+    }
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10));
+      auto pair = block.getSome(10);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr != res);
       CHECK(10 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -305,7 +324,9 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1));
+      auto pair = block.getSome(1);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr == res);
     }
   }
@@ -350,7 +371,9 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10));
+      auto pair = block1.getSome(10);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != res);
       CHECK(10 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -358,7 +381,9 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // retrieve 90 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100));
+      auto pair = block1.getSome(100);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr != res);
       CHECK(90 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -366,7 +391,9 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // retrieve last 100 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100));
+      auto pair = block1.getSome(100);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr != res);
       CHECK(100 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -374,7 +401,9 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1));
+      auto pair = block1.getSome(1);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr == res);
     }
   }
@@ -411,18 +440,26 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10));
+      auto pair = block1.getSome(10);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != res);
       CHECK(10 == res->size());
       CHECK(4 == res->getNrRegs());
     }
 
-    // skip 90 items
-    CHECK(90 == block1.skipSome(90));
+    {
+      // skip 90 items
+      auto pair = block1.skipSome(90);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(90 == pair.second);
+    }
 
     // retrieve last 100 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100));
+      auto pair = block1.getSome(100);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr != res);
       CHECK(100 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -430,7 +467,9 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1));
+      auto pair = block1.getSome(1);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr == res);
     }
   }
@@ -465,12 +504,18 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     ExecutionBlockMock block1(data1, *query.engine(), node1);
     block1.addDependency(&block0);
 
-    // skip 90 items
-    CHECK(90 == block1.skipSome(90));
+    {
+      // skip 90 items
+      auto pair = block1.skipSome(90);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
+      CHECK(90 == pair.second);
+    }
 
     // retrieve 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10));
+      auto pair = block1.getSome(10);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != res);
       CHECK(10 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -478,7 +523,9 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // retrieve last 100 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100));
+      auto pair = block1.getSome(100);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr != res);
       CHECK(100 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -486,7 +533,9 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1));
+      auto pair = block1.getSome(1);
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(pair.second);
+      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
       CHECK(nullptr == res);
     }
   }
