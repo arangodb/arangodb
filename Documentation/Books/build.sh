@@ -529,6 +529,7 @@ function check-docublocks()
 {
     grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v '@startDocuBlockInline' |\
+        grep -v stash |\
         grep -v ppbook |\
         grep -v allComments.txt |\
         grep -v Makefile |\
@@ -538,6 +539,7 @@ function check-docublocks()
 
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
+        grep -v stash |\
         grep -v allComments.txt |\
         grep -v Makefile |\
         grep -v '.*~:.*' |\
@@ -551,6 +553,7 @@ function check-docublocks()
     # searching the Inline docublocks needs some more blacklisting:
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
+        grep -v stash |\
         grep -v allComments.txt |\
         grep -v build.sh |\
         grep -v '.*~:.*' |\

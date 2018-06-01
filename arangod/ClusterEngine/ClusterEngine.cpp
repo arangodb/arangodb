@@ -139,8 +139,12 @@ transaction::ContextData* ClusterEngine::createTransactionContextData() {
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, transaction::Options const& options) {
-  return std::make_unique<ClusterTransactionState>(vocbase, TRI_NewTickServer(), options);
+    CollectionNameResolver const& resolver,
+    transaction::Options const& options
+) {
+  return std::make_unique<ClusterTransactionState>(
+    resolver, TRI_NewTickServer(), options
+  );
 }
 
 TransactionCollection* ClusterEngine::createTransactionCollection(
@@ -454,7 +458,3 @@ TRI_vocbase_t* ClusterEngine::openExistingDatabase(TRI_voc_tick_t id,
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
   return vocbase.release();
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -100,14 +100,7 @@ ShortestPathBlock::ShortestPathBlock(ExecutionEngine* engine,
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _engines = ep->engines();
   }
-}
-
-ShortestPathBlock::~ShortestPathBlock() {
-}
-
-int ShortestPathBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initialize();
+  
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
   if (usesVertexOutput()) {
@@ -124,11 +117,6 @@ int ShortestPathBlock::initialize() {
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _edgeReg = it->second.registerId;
   }
-
-  return res;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 int ShortestPathBlock::initializeCursor(AqlItemBlock* items, size_t pos) {

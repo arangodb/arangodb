@@ -51,7 +51,6 @@ class ClusterCollection final : public PhysicalCollection {
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
  public:
- public:
   explicit ClusterCollection(LogicalCollection*, ClusterEngineType sengineType,
                              velocypack::Slice const& info);
   ClusterCollection(LogicalCollection*,

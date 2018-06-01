@@ -79,9 +79,11 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase,
-                   TRI_voc_tid_t,
-                   transaction::Options const& options);
+  TransactionState(
+    CollectionNameResolver const& resolver,
+    TRI_voc_tid_t tid,
+    transaction::Options const& options
+  );
   virtual ~TransactionState();
 
   /// @brief add a callback to be called for state change events
@@ -102,7 +104,7 @@ class TransactionState {
 
   transaction::Options& options() { return _options; }
   transaction::Options const& options() const { return _options; }
-  TRI_vocbase_t& vocbase() const { return _vocbase; }
+  TRI_vocbase_t& vocbase() const { return _resolver.vocbase(); }
   TRI_voc_tid_t id() const { return _id; }
   transaction::Status status() const { return _status; }
   bool isRunning() const { return _status == transaction::Status::RUNNING; }
@@ -208,8 +210,6 @@ class TransactionState {
   /// the transaction
   void clearQueryCache();
 
-  /// @brief vocbase
-  TRI_vocbase_t& _vocbase;
   /// @brief local trx id
   TRI_voc_tid_t const _id;
   /// @brief access type (read|write)
@@ -224,7 +224,7 @@ class TransactionState {
 
   ServerState::RoleEnum const _serverRole;  // role of the server
 
-  CollectionNameResolver _resolver;
+  CollectionNameResolver const& _resolver;
 
   transaction::Hints _hints;  // hints;
   int _nestingLevel;

@@ -24,7 +24,6 @@
 #ifndef ARANGOD_UTILS_CURSOR_H
 #define ARANGOD_UTILS_CURSOR_H 1
 
-#include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
@@ -32,6 +31,10 @@
 #include <velocypack/Iterator.h>
 
 namespace arangodb {
+namespace transaction {
+class Context;
+}
+
 namespace velocypack {
 class Builder;
 class Slice;

@@ -56,24 +56,103 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
+namespace {
+
+/// @brief OurLessThan: comparison method for elements of _gatherBlockPos
+class OurLessThan {
+ public:
+  OurLessThan(
+      transaction::Methods* trx,
+      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : _trx(trx),
+      _gatherBlockBuffer(gatherBlockBuffer),
+      _sortRegisters(sortRegisters) {
+  }
+
+  bool operator()(
+    std::pair<size_t, size_t> const& a,
+    std::pair<size_t, size_t> const& b
+  ) const;
+
+ private:
+  transaction::Methods* _trx;
+  std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
+  std::vector<SortRegister>& _sortRegisters;
+}; // OurLessThan
+
+bool OurLessThan::operator()(
+    std::pair<size_t, size_t> const& a,
+    std::pair<size_t, size_t> const& b
+) const {
+  // nothing in the buffer is maximum!
+  if (_gatherBlockBuffer[a.first].empty()) {
+    return false;
+  }
+
+  if (_gatherBlockBuffer[b.first].empty()) {
+    return true;
+  }
+
+  TRI_ASSERT(!_gatherBlockBuffer[a.first].empty());
+  TRI_ASSERT(!_gatherBlockBuffer[b.first].empty());
+
+  for (auto const& reg : _sortRegisters) {
+    auto const& lhs = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
+    auto const& rhs = _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
+    auto const& attributePath = reg.attributePath;
+
+    // Fast path if there is no attributePath:
+    int cmp;
+
+    if (attributePath.empty()) {
+#ifdef USE_IRESEARCH
+      TRI_ASSERT(reg.comparator);
+      cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
+#else
+      cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+#endif
+    } else {
+      // Take attributePath into consideration:
+      bool mustDestroyA;
+      AqlValue aa = lhs.get(_trx, attributePath, mustDestroyA, false);
+      AqlValueGuard guardA(aa, mustDestroyA);
+      bool mustDestroyB;
+      AqlValue bb = rhs.get(_trx, attributePath, mustDestroyB, false);
+      AqlValueGuard guardB(bb, mustDestroyB);
+      cmp = AqlValue::Compare(_trx, aa, bb, true);
+    }
+
+    if (cmp == -1) {
+      return reg.asc;
+    } else if (cmp == 1) {
+      return !reg.asc;
+    }
+  }
+
+  return false;
+}
+
+}
+
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
-      _sortRegisters(),
-      _isSimple(en->elements().empty()),
-      _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
+      _isSimple(en->elements().empty()) {
+  TRI_ASSERT(en && en->plan() && en->getRegisterPlan());
 
   if (!_isSimple) {
-    for (auto const& p : en->elements()) {
-      // We know that planRegisters has been run, so
-      // getPlanNode()->_registerPlan is set up
-      auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
-      TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      _sortRegisters.emplace_back(it->second.registerId, p.ascending);
-      if (!p.attributePath.empty()) {
-        _sortRegisters.back().attributePath = p.attributePath;
-      }
+    if (en->_sortmode == GatherNode::SortMode::Heap) {
+      _heap.reset(new Heap());
     }
+
+    // We know that planRegisters has been run, so
+    // getPlanNode()->_registerPlan is set up
+    SortRegister::fill(
+      *en->plan(),
+      *en->getRegisterPlan(),
+      en->elements(),
+      _sortRegisters
+    );
   }
 }
 
@@ -85,16 +164,6 @@ GatherBlock::~GatherBlock() {
     x.clear();
   }
   _gatherBlockBuffer.clear();
-}
-
-/// @brief initialize
-int GatherBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  _atDep = 0;
-  return ExecutionBlock::initialize();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief shutdown: need our own method since our _buffer is different
@@ -465,51 +534,6 @@ bool GatherBlock::getBlock(size_t i, size_t atMost) {
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
-}
-
-/// @brief OurLessThan: comparison method for elements of _gatherBlockPos
-bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
-                                          std::pair<size_t, size_t> const& b) {
-  // nothing in the buffer is maximum!
-  if (_gatherBlockBuffer[a.first].empty()) {
-    return false;
-  }
-  if (_gatherBlockBuffer[b.first].empty()) {
-    return true;
-  }
-  TRI_ASSERT(!_gatherBlockBuffer[a.first].empty());
-  TRI_ASSERT(!_gatherBlockBuffer[b.first].empty());
-
-  for (auto const& reg : _sortRegisters) {
-    // Fast path if there is no attributePath:
-    int cmp;
-    if (reg.attributePath.empty()) {
-      cmp = AqlValue::Compare(
-          _trx,
-          _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg),
-          _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg),
-          true);
-    } else {
-      // Take attributePath into consideration:
-      AqlValue const& topA = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
-      AqlValue const& topB = _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
-      bool mustDestroyA;
-      AqlValue aa = topA.get(_trx, reg.attributePath, mustDestroyA, false);
-      AqlValueGuard guardA(aa, mustDestroyA);
-      bool mustDestroyB;
-      AqlValue bb = topB.get(_trx, reg.attributePath, mustDestroyB, false);
-      AqlValueGuard guardB(bb, mustDestroyB);
-      cmp = AqlValue::Compare(_trx, aa, bb, true);
-    }
-
-    if (cmp == -1) {
-      return reg.ascending;
-    } else if (cmp == 1) {
-      return !reg.ascending;
-    }
-  }
-
-  return false;
 }
 
 BlockWithClients::BlockWithClients(ExecutionEngine* engine,
@@ -1209,71 +1233,37 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
        !ownName.empty()));
 }
 
-RemoteBlock::~RemoteBlock() {}
-
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
     std::string const& body) const {
   DEBUG_BEGIN_BLOCK();
   auto cc = ClusterComm::instance();
-  if (cc != nullptr) {
+  if (cc == nullptr) {
     // nullptr only happens on controlled shutdown
-
-    // Later, we probably want to set these sensibly:
-    ClientTransactionID const clientTransactionId = std::string("AQL");
-    CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-    std::unordered_map<std::string, std::string> headers;
-    if (!_ownName.empty()) {
-      headers.emplace("Shard-Id", _ownName);
-    }
-
-    ++_engine->_stats.httpRequests;
-    {
-      JobGuard guard(SchedulerFeature::SCHEDULER);
-      guard.block();
-
-      std::string const url = std::string("/_db/") +
-      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
-      urlPart + _queryId;
-      auto result =
-          cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                          std::move(url), body, headers, defaultTimeOut);
-      
-      return result;
-    }
-  }
-  return std::make_unique<ClusterCommResult>();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief initialize
-int RemoteBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-
-  if (!_isResponsibleForInitializeCursor) {
-    // do nothing...
-    return TRI_ERROR_NO_ERROR;
+    return std::make_unique<ClusterCommResult>();
   }
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/initialize/", "{}");
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (slice.hasKey("code")) {
-    return slice.get("code").getNumericValue<int>();
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = std::string("AQL");
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
+  if (!_ownName.empty()) {
+    headers.emplace("Shard-Id", _ownName);
   }
-  return TRI_ERROR_INTERNAL;
+    
+  std::string url = std::string("/_db/") +
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    urlPart + _queryId;
+
+  ++_engine->_stats.requests;
+  {
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.block();
+
+    return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                           std::move(url), body, headers, defaultTimeOut);
+  }
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1288,6 +1278,12 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
   }
+  
+  if (items == nullptr) {
+    // we simply ignore the initialCursor request, as the remote side
+    // will initialize the cursor lazily
+    return TRI_ERROR_NO_ERROR;
+  } 
 
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
@@ -1295,21 +1291,15 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   VPackBuilder builder(&options);
   builder.openObject();
-
-  if (items == nullptr) {
-    // first call, items is still a nullptr
-    builder.add("exhausted", VPackValue(true));
-    builder.add("error", VPackValue(false));
-  } else {
-    builder.add("exhausted", VPackValue(false));
-    builder.add("error", VPackValue(false));
-    builder.add("pos", VPackValue(pos));
-    builder.add(VPackValue("items"));
-    builder.openObject();
-    items->toVelocyPack(_engine->getQuery()->trx(), builder);
-    builder.close();
-  }
-
+ 
+  builder.add("exhausted", VPackValue(false));
+  builder.add("error", VPackValue(false));
+  builder.add("pos", VPackValue(pos));
+  builder.add(VPackValue("items"));
+  builder.openObject();
+  items->toVelocyPack(_engine->getQuery()->trx(), builder);
+  builder.close();
+  
   builder.close();
 
   std::string bodyString(builder.slice().toJson());
