@@ -1,6 +1,8 @@
 v3.3.10 (XXXX-XX-XX)
 --------------------
 
+* fixed internal issue #2160: fixed misplaced tooltips in indices view
+
 * fix cluster COLLECT optimization for attributes that were in "sorted" variant of
   COLLECT and that were provided by a sorted index on the collected attribute
 
