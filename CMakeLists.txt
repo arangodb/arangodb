@@ -6,6 +6,10 @@
 
 cmake_minimum_required(VERSION 3.2)
 
+if (POLICY CMP0048)
+  cmake_policy(SET CMP0048 NEW)
+endif ()
+
 if (POLICY CMP0037)
   cmake_policy(SET CMP0037 NEW)
 endif ()
@@ -37,12 +41,6 @@ if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
   set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
 endif ()
 
-if (WIN32)
-  project(arangodb3 CXX C)
-else ()
-  project(arangodb3 CXX C ASM)
-endif ()
-
 # required for clang completion in editors
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -57,20 +55,6 @@ endif()
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
-
-# enable enterprise features
-set(ENTERPRISE_INCLUDE_DIR "enterprise")
-option(USE_ENTERPRISE "enable enterprise build" OFF)
-
-if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  add_subdirectory(enterprise)
-endif ()
-
-option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
-if (DEBUG_SYNC_REPLICATION)
-  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
-endif ()
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -92,6 +76,26 @@ endif()
 set(ARANGODB_VERSION
     "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.${ARANGODB_VERSION_REVISION}")
 
+if (WIN32)
+  project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
+else ()
+  project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
+endif ()
+
+# enable enterprise features
+set(ENTERPRISE_INCLUDE_DIR "enterprise")
+option(USE_ENTERPRISE "enable enterprise build" OFF)
+
+if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
+  add_subdirectory(enterprise)
+endif ()
+
+option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
+if (DEBUG_SYNC_REPLICATION)
+  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
+endif ()
+
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
@@ -112,7 +116,7 @@ set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 
 # libraries
 set(LIB_ARANGO        arango)
-set(LIB_ARANGO_GEO     arango_geo)
+set(LIB_ARANGO_GEO    arango_geo)
 set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
@@ -492,7 +496,6 @@ else ()
 endif ()
 
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
-
 
 ################################################################################
 ## BACKTRACE

@@ -111,7 +111,7 @@ struct IResearchViewCoordinatorSetup {
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
     indexFactory.emplaceFactory(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles
+      arangodb::iresearch::IResearchLinkCoordinator::make
     );
     indexFactory.emplaceNormalizer(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
@@ -3155,4 +3155,12 @@ SECTION("IResearchViewNode::createBlock") {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate tests
+////////////////////////////////////////////////////////////////////////////////
+
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
