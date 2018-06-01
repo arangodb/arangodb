@@ -476,13 +476,16 @@ function doOnePathInner (path) {
     }).sort();
 }
 
-function scanTestPath (path) {
-  var community = doOnePathInner(path);
-  if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
-    return community.concat(doOnePathInner('enterprise/' + path));
-  } else {
-    return community;
+function scanTestPaths (paths) {
+  let allTestCases = [];
+  for (let i = 0; i < paths.length; i++) {
+    var community = doOnePathInner(paths[i]);
+    if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+      community.concat(doOnePathInner('enterprise/' + paths[i]));
+    }
+    allTestCases = allTestCases.concat(community);
   }
+  return allTestCases;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -644,6 +647,6 @@ exports.performTests = performTests;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
 exports.splitBuckets = splitBuckets;
 exports.doOnePathInner = doOnePathInner;
-exports.scanTestPath = scanTestPath;
+exports.scanTestPaths = scanTestPaths;
 exports.makeResults = makeResults;
 exports.diffArray = diffArray;

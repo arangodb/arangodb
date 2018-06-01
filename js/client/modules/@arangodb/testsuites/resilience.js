@@ -48,7 +48,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function resilience (options) {
-  let testCases = tu.scanTestPath(testPaths.resilience[0]);
+  let testCases = tu.scanTestPaths(testPaths.resilience);
   options.cluster = true;
   options.propagateInstanceInfo = true;
   if (options.dbServers < 5) {
@@ -62,7 +62,7 @@ function resilience (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPath(testPaths.cluster_sync[0]);
+  let testCases = tu.scanTestPaths(testPaths.cluster_sync);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
@@ -87,7 +87,7 @@ function clusterSync (options) {
       }
     };
   }
-  let testCases = tu.scanTestPath(testPaths.cluster_sync[0]);
+  let testCases = tu.scanTestPaths(testPaths.cluster_sync);
   options.propagateInstanceInfo = true;
 
   return tu.performTests(options, testCases, 'cluster_sync', tu.runThere);
@@ -108,7 +108,7 @@ function activeFailover (options) {
     };
   }
 
-  let testCases = tu.scanTestPath(testPaths.active_failover[0]);
+  let testCases = tu.scanTestPaths(testPaths.active_failover);
   options.activefailover = true;
   options.singles = 4;
   return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {

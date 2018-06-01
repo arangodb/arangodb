@@ -1,3 +1,4 @@
+
 /* jshint strict: false, sub: true */
 /* global */
 'use strict';
@@ -42,7 +43,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function agency (options) {
-  let testCases = tu.scanTestPath(testPaths.agency[0]);
+  let testCases = tu.scanTestPaths(testPaths.agency);
 
   let saveAgency = options.agency;
   let saveCluster = options.cluster;

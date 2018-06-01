@@ -70,7 +70,7 @@ function authenticationClient (options) {
   }
 
   print(CYAN + 'Client Authentication tests...' + RESET);
-  let testCases = tu.scanTestPath(testPaths.authentication[0]);
+  let testCases = tu.scanTestPaths(testPaths.authentication);
 
   return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
     'server.authentication': 'true',
@@ -80,7 +80,7 @@ function authenticationClient (options) {
 }
 
 function authenticationServer (options) {
-  let testCases = tu.scanTestPath(testPaths.authentication_server[0]);
+  let testCases = tu.scanTestPaths(testPaths.authentication_server);
   if ((testCases.length === 0) || (options.skipAuthentication === true)) {
     print('skipping Authentication tests!');
     return {

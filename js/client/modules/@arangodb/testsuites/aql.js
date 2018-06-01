@@ -51,9 +51,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClient (options) {
-  let testCases = tu.scanTestPath(testPaths.shell_client[0]);
-  testCases = testCases.concat(tu.scanTestPath(testPaths.shell_client[1]));
-  testCases = testCases.concat(tu.scanTestPath(testPaths.shell_client[2]));
+  let testCases = tu.scanTestPaths(testPaths.shell_client);
 
   return tu.performTests(options, testCases, 'shell_client', tu.runInArangosh);
 }
@@ -65,8 +63,7 @@ function shellClient (options) {
 function shellServer (options) {
   options.propagateInstanceInfo = true;
 
-  let testCases = tu.scanTestPath(testPaths.shell_server[0]);
-  testCases = testCases.concat(tu.scanTestPath(testPaths.shell_server[1]));
+  let testCases = tu.scanTestPaths(testPaths.shell_server);
 
   return tu.performTests(options, testCases, 'shell_server', tu.runThere);
 }
@@ -76,7 +73,7 @@ function shellServer (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellServerOnly (options) {
-  let testCases = tu.scanTestPath(testPaths.shell_server_only[0]);
+  let testCases = tu.scanTestPaths(testPaths.shell_server_only);
 
   return tu.performTests(options, testCases, 'shell_server_only', tu.runThere);
 }
@@ -90,7 +87,7 @@ function shellServerAql (options) {
   let name = 'shell_server_aql';
 
   if (!options.skipAql) {
-    testCases = tu.scanTestPath(testPaths.shell_server_aql[0]);
+    testCases = tu.scanTestPaths(testPaths.shell_server_aql);
     if (options.skipRanges) {
       testCases = _.filter(testCases,
                            function (p) { return p.indexOf('ranges-combined') === -1; });

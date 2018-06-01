@@ -65,7 +65,7 @@ const testPaths = {
 
 function serverHttp (options) {
   // first starts to replace rspec:
-  let testCases = tu.scanTestPath(testPaths.server_http[0]);
+  let testCases = tu.scanTestPaths(testPaths.server_http);
 
   return tu.performTests(options, testCases, 'server_http', tu.runThere);
 }
@@ -125,10 +125,10 @@ function rubyTests (options, ssl) {
   let files = [];
   if (ssl) {
     print(testPaths.http_server[0])
-    files = tu.scanTestPath(testPaths.ssl_server[0]);
+    files = tu.scanTestPaths(testPaths.ssl_server);
   } else {
     print(testPaths.http_server[0])
-    files = tu.scanTestPath(testPaths.http_server[0]);
+    files = tu.scanTestPaths(testPaths.http_server);
   }
   let continueTesting = true;
   let filtered = {};

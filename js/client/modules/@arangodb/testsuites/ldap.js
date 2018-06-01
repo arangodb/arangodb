@@ -151,7 +151,7 @@ function authenticationLdapSearchModePrefixSuffix (options) {
   }
 
   print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
-  let testCases = tu.scanTestPath(testPaths.ldapsearchsimple[0]);
+  let testCases = tu.scanTestPaths(testPaths.ldapsearchsimple);
 
   print('Performing #4 Test: Search Mode - Simple Login Mode');
   print(opts.ldapModeSearchPrefixSuffix.conf);
@@ -175,7 +175,7 @@ function authenticationLdapSearchMode (options) {
   }
 
   print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
-  let testCases = tu.scanTestPath(testPaths.ldapsearch[0]);
+  let testCases = tu.scanTestPaths(testPaths.ldapsearch);
 
   print('Performing #2 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
@@ -199,7 +199,7 @@ function authenticationLdapRolesModePrefixSuffix (options) {
   }
 
   print(CYAN + 'Client LDAP Permission tests...' + RESET);
-  let testCases = tu.scanTestPath(testPaths.ldaprolesimple[0]);
+  let testCases = tu.scanTestPaths(testPaths.ldaprolesimple);
 
   print('Performing #3 Test: Role Mode - Simple Login Mode');
   print(opts.ldapModeRolesPrefixSuffix.conf);
@@ -223,7 +223,7 @@ function authenticationLdapRolesMode (options) {
   }
 
   print(CYAN + 'Client LDAP Permission tests...' + RESET);
-  let testCases = tu.scanTestPath(testPaths.ldaprole[0]);
+  let testCases = tu.scanTestPaths(testPaths.ldaprole);
 
   print('Performing #1 Test: Role Mode');
   print(opts.ldapModeRoles.conf);

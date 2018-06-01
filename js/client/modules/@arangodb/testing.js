@@ -419,23 +419,20 @@ function findTestCases(options) {
   let allTestFiles = {};
   for (let testSuiteName in allTestPaths) {
     var myList = [];
-    for (let i = 0; i < allTestPaths[testSuiteName].length; i++) {
-      let files =  tu.scanTestPath(allTestPaths[testSuiteName][i]);
-      if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
-        for (let j = 0; j < files.length; j++) {
-          let foo = {};
-          // print(files[j])
-          if (tu.filterTestcaseByOptions(files[j], options, foo)) {
-            myList.push(files[j]);
-            found = true;
-          }
+    let files =  tu.scanTestPaths(allTestPaths[testSuiteName]);
+    if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+      for (let j = 0; j < files.length; j++) {
+        let foo = {};
+        if (tu.filterTestcaseByOptions(files[j], options, foo)) {
+          myList.push(files[j]);
+          found = true;
         }
-      } else {
-        myList = myList.concat(files);
       }
-      if (!filterTestcases || (myList.length > 0)) {
-        allTestFiles[testSuiteName] = myList;
-      }
+    } else {
+      myList = myList.concat(files);
+    }
+    if (!filterTestcases || (myList.length > 0)) {
+      allTestFiles[testSuiteName] = myList;
     }
   }
   // print(allTestPaths)

@@ -42,7 +42,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellServerPerf (options) {
-  let testCases = tu.scanTestPath(testPaths.shell_server_perf[0]);
+  let testCases = tu.scanTestPaths(testPaths.shell_server_perf);
   return tu.performTests(options, testCases, 'shell_server_perf', tu.runThere);
 }
 
