@@ -52,13 +52,20 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testPaths = {
+  'http_replication': [fs.join('UnitTests', 'HttpInterface')],
+  'http_server': [fs.join('UnitTests', 'HttpInterface')],
+  'server_http': ['js/common/tests/http'],
+  'ssl_server': [fs.join('UnitTests', 'HttpInterface')]
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_http
 // //////////////////////////////////////////////////////////////////////////////
 
 function serverHttp (options) {
   // first starts to replace rspec:
-  let testCases = tu.scanTestPath('js/common/tests/http');
+  let testCases = tu.scanTestPaths(testPaths.server_http);
 
   return tu.performTests(options, testCases, 'server_http', tu.runThere);
 }
@@ -115,8 +122,14 @@ function rubyTests (options, ssl) {
     fs.makeDirectory(pu.LOGS_DIR);
   } catch (err) {}
 
-  let files = fs.list(fs.join('UnitTests', 'HttpInterface'));
-
+  let files = [];
+  if (ssl) {
+    print(testPaths.http_server[0])
+    files = tu.scanTestPaths(testPaths.ssl_server);
+  } else {
+    print(testPaths.http_server[0])
+    files = tu.scanTestPaths(testPaths.http_server);
+  }
   let continueTesting = true;
   let filtered = {};
   let results = {};
@@ -165,8 +178,8 @@ function rubyTests (options, ssl) {
   for (let i = 0; i < files.length; i++) {
     const te = files[i];
 
-    if (te.substr(0, 4) === 'api-' && te.substr(-3) === '.rb') {
-      let tfn = fs.join('UnitTests', 'HttpInterface', te);
+    if ((te.search('api-') !== -1) && te.substr(-3) === '.rb') {
+      let tfn = te;
       if (tu.filterTestcaseByOptions(tfn, options, filtered)) {
         count += 1;
         if (!continueTesting) {
@@ -245,7 +258,7 @@ function rubyTests (options, ssl) {
           db._collections().forEach(collection => {
             collectionsAfter.push(collection._name);
           });
-          let delta = tu.diffArray(collectionsBefore, collectionsAfter, _.isEqual).filter(function(name) {
+          let delta = tu.diffArray(collectionsBefore, collectionsAfter, _.isEqual).filter(function (name) {
             return (name[0] !== '_'); // exclude system collections from the comparison
           });
           if (delta.length !== 0) {
@@ -341,7 +354,8 @@ function sslServer (options) {
   return rubyTests(opts, true);
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['http_replication'] = httpReplication;
   testFns['http_server'] = httpServer;
   testFns['server_http'] = serverHttp;
@@ -363,6 +377,4 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

@@ -35,6 +35,11 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 
+const testPaths = {
+  'fail': [],
+  'success': []
+};
+
 function fail (options) {
   const tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
@@ -114,12 +119,11 @@ function success (options) {
   };
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['fail'] = fail;
   testFns['success'] = success;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};
