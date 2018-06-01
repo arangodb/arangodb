@@ -273,6 +273,37 @@ function optimizerCollectMethodsTestSuite () {
         assertEqual(query[1], results.json.length);
       });
     },
+    
+    testSortedIndex2 : function () {
+      c.ensureIndex({ type: "skiplist", fields: [ "group", "value" ] }); 
+
+      var queries = [
+        [ "FOR j IN " + c.name() + " COLLECT value = 1 RETURN value", 1 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j RETURN 1", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.value RETURN value", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.value WITH COUNT INTO l RETURN [ value, l ]", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10 ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", 1500 ]
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+
+        let aggregateNodes = 0;
+        plan.nodes.map(function(node) {
+          if (node.type === "CollectNode") {
+            ++aggregateNodes;
+          }
+        });
+       
+        assertEqual(isCluster ? 2 : 1, aggregateNodes);
+
+        let results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length);
+      });
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief expect hash COLLECT w/ sort node removed

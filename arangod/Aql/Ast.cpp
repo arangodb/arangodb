@@ -789,6 +789,7 @@ AstNode* Ast::createNodeTernaryOperator(AstNode const* condition,
 }
 
 /// @brief create an AST attribute access node
+/// note that the caller must make sure that char* data remains valid!
 AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed,
                                         char const* attributeName,
                                         size_t nameLength) {
