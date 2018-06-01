@@ -42,6 +42,9 @@ class StandaloneContext;
 class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
  private:
   graph::GraphCache& _graphCache;
+  enum class GraphProperty {
+    VERTICES, EDGES
+  };
 
  public:
   RestGraphHandler(GeneralRequest* request, GeneralResponse* response,
@@ -153,6 +156,8 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   void generateRemoved(bool removed, bool wasSynchronous, VPackSlice old,
                        VPackOptions const& options);
 
+  void generateGraphConfig(VPackSlice slice, VPackOptions const& options);
+
   // TODO maybe cleanup the generate* zoo a little?
   void generateResultWithField(std::string const& key, VPackSlice value,
                                VPackOptions const& options);
@@ -200,14 +205,19 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     TRI_col_type_e colType
   );
 
+  Result graphActionReadConfig(
+    std::shared_ptr<const graph::Graph> graph,
+    TRI_col_type_e colType, GraphProperty property
+  );
+
   void generateEdgeModified(
     bool wasSynchronous, VPackSlice resultSlice,
-    const velocypack::Options &options
+    velocypack::Options const& options
   );
 
   void generateEdgeCreated(
     bool wasSynchronous, VPackSlice resultSlice,
-    const velocypack::Options &options
+    velocypack::Options const& options
   );
 
   };

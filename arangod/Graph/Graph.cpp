@@ -65,11 +65,11 @@ std::unordered_set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
 }
 
-void Graph::addEdgeCollection(std::string const& name) {
+void Graph::addEdgeCollection(std::string&& name) {
   _edgeColls.insert(name);
 }
 
-void Graph::addVertexCollection(std::string const& name) {
+void Graph::addVertexCollection(std::string&& name) {
   _vertexColls.insert(name);
 }
 
@@ -116,7 +116,7 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
       try {
         std::string eCol =
             basics::VelocyPackHelper::getStringValue(def, "collection", "");
-        addEdgeCollection(eCol);
+        addEdgeCollection(std::move(eCol));
       } catch (...) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_GRAPH_INVALID_GRAPH,
@@ -497,7 +497,6 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
   writeCollections.emplace_back(definitionName);
 
   transaction::Options trxOptions;
-  trxOptions.waitForSync = returnNew;
   trxOptions.waitForSync = waitForSync;
 
   std::unique_ptr<transaction::Methods> trx(
@@ -624,6 +623,32 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
   return std::make_pair(std::move(result), std::move(res));
 }
 
+void GraphOperations::readEdges(VPackBuilder& builder) {
+  builder.add(VPackValue(VPackValueType::Object));
+  builder.add("collections", VPackValue(VPackValueType::Array));
+
+  for (auto const& edgeCollection : _graph.edgeCollections()) {
+    builder.add(VPackValue(edgeCollection));
+  }
+  builder.close();
+
+  builder.close();
+}
+
+void GraphOperations::readVertices(VPackBuilder& builder) {
+  auto const& vertexCollections = _graph.vertexCollections();
+
+  builder.add(VPackValue(VPackValueType::Object));
+  builder.add("collections", VPackValue(VPackValueType::Array));
+
+  for (auto const& vertexCollection : vertexCollections) {
+    builder.add(VPackValue(vertexCollection));
+  }
+  builder.close();
+
+  builder.close();
+}
+
 namespace getGraphFromCacheResult {
 struct Success {
   std::shared_ptr<Graph const> graph;
@@ -685,6 +710,7 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
     cacheResult = _getGraphFromCache(_cache, name, maxAge);
   }
 
+  /*
   if (typeid(Success) == cacheResult.type()) {
     LOG_TOPIC(TRACE, Logger::GRAPHS) << "GraphCache::getGraph('" << name
                                      << "'): Found entry in cache";
@@ -706,7 +732,7 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
                                      << cacheResult.type().name();
 
     return nullptr;
-  }
+  }*/
 
   // if the graph wasn't found in the cache, lookup the graph and insert or
   // replace the entry. if the graph doesn't exist, erase a possible entry from

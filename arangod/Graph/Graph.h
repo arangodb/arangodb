@@ -116,10 +116,10 @@ class Graph {
   Result addEdgeDefinition(velocypack::Slice const& edgeDefinition);
 
   /// @brief Add an edge collection to this graphs definition
-  void addEdgeCollection(std::string const&);
+  void addEdgeCollection(std::string&&);
 
   /// @brief Add a vertex collection to this graphs definition
-  void addVertexCollection(std::string const&);
+  void addVertexCollection(std::string&&);
 
   /// @brief Add Collections to the object
   void insertVertexCollections(velocypack::Slice& arr);
@@ -199,11 +199,14 @@ class GraphOperations {
       const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
 
+  void readEdges(VPackBuilder& builder);
+  void readVertices(VPackBuilder& builder);
+
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
   ResultT<std::pair<OperationResult, Result>> getDocument(
-      const std::string& collectionName, const std::string& key,
+      std::string const& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev);
 
   VPackBufferPtr _getSearchSlice(const std::string& key,
@@ -217,6 +220,7 @@ class GraphOperations {
   ResultT<std::pair<OperationResult, Result>> createDocument(
       transaction::Methods* trx, const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
+
 };
 
 class GraphCache {
@@ -226,6 +230,7 @@ class GraphCache {
                               std::shared_ptr<const Graph>>;
   using CacheType = std::unordered_map<std::string, EntryType>;
 
+  // TODO HEIKO: DB is missing
   const std::shared_ptr<const Graph> getGraph(
       std::shared_ptr<transaction::Context> ctx, std::string const& name,
       std::chrono::seconds maxAge = std::chrono::seconds(60));

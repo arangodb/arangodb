@@ -237,6 +237,13 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetsAction(
 
 boost::optional<RestStatus> RestGraphHandler::edgeSetsAction(
     const std::shared_ptr<const Graph> graph) {
+
+  switch (request()->requestType()) {
+    case RequestType::GET:
+      graphActionReadConfig(graph, TRI_COL_TYPE_EDGE, GraphProperty::EDGES);
+      return RestStatus::DONE;
+    default:;
+  }
   return boost::none;
 }
 
@@ -420,6 +427,12 @@ void RestGraphHandler::generateRemoved(bool removed, bool wasSynchronous,
   }
   obj.close();
   generateResultMergedWithObject(obj.slice(), options);
+}
+
+void RestGraphHandler::generateGraphConfig(VPackSlice slice,
+                                           VPackOptions const& options) {
+  resetResponse(rest::ResponseCode::OK);
+  generateResultMergedWithObject(slice, options);
 }
 
 /// @brief generate response object: { error, code, vertex, old?, new? }
@@ -617,9 +630,7 @@ Result RestGraphHandler::edgeActionRead(
 
 std::shared_ptr<Graph const> RestGraphHandler::getGraph(
     std::shared_ptr<transaction::Context> ctx, const std::string& graphName) {
-  std::shared_ptr<Graph const> graph;
-
-  graph = _graphCache.getGraph(std::move(ctx), graphName);
+  std::shared_ptr<Graph const> graph = _graphCache.getGraph(std::move(ctx), graphName);
 
   // TODO remove exception, handle return value instead
   if (graph == nullptr) {
@@ -971,6 +982,29 @@ Result RestGraphHandler::vertexActionRemove(
 
   generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
                   *ctx->getVPackOptionsForDump());
+
+  return Result();
+}
+
+Result RestGraphHandler::graphActionReadConfig(
+    const std::shared_ptr<const graph::Graph> graph,
+    TRI_col_type_e colType, GraphProperty property) {
+
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(_vocbase);
+  GraphOperations gops{*graph, ctx};
+  VPackBuilder builder;
+
+  velocypack::Slice slice;
+  if (colType == TRI_COL_TYPE_DOCUMENT && property == GraphProperty::VERTICES) {
+    gops.readVertices(builder);
+  } else if (colType == TRI_COL_TYPE_EDGE && property == GraphProperty::EDGES) {
+    gops.readEdges(builder);
+  } else {
+    TRI_ASSERT(false);
+  }
+
+  generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
   return Result();
 }
