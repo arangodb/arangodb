@@ -93,6 +93,18 @@ struct SortElement {
   SortElement(Variable const* v, bool asc, std::vector<std::string> const& path)
     : var(v), ascending(asc), attributePath(path) {
   }
+
+  /// @brief stringify a sort element. note: the output of this should match the
+  /// stringification output of an AstNode for an attribute access
+  /// (e.g. foo.bar => $0.bar)
+  std::string toString() const {
+    std::string result("$");
+    result += std::to_string(var->id);
+    for (auto const& it : attributePath) {
+      result += "." + it;
+    }
+    return result;
+  }
 };
 
 typedef std::vector<SortElement> SortElementVector;
