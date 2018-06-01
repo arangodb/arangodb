@@ -24,6 +24,7 @@
 #include "ExecutionEngine.h"
 
 #include "Aql/AqlResult.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/Collection.h"
@@ -481,7 +482,7 @@ int ExecutionEngine::initializeCursor(AqlItemBlock* items, size_t pos) {
   }
 }
 
-AqlItemBlock* ExecutionEngine::getSome(size_t atMost) {
+std::unique_ptr<AqlItemBlock> ExecutionEngine::getSome(size_t atMost) {
   if (!_initializeCursorCalled) {
     // TODO FIXME
     initializeCursor(nullptr, 0);
@@ -492,7 +493,7 @@ AqlItemBlock* ExecutionEngine::getSome(size_t atMost) {
     if (res.first == ExecutionState::WAITING) {
       _query->tempWaitForAsyncResponse();
     } else {
-      return res.second;
+      return std::move(res.second);
     }
   }
 }

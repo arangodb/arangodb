@@ -202,13 +202,14 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
 /// less (for example if there are not enough items to come). However,
 /// if it returns an actual block, it must contain at least one item.
 
-std::pair<ExecutionState, AqlItemBlock*> ExecutionBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome(size_t atMost) {
   // TODO Auto wrapper for backwards compatibility
-  auto blk = getSomeOld(atMost);
+  std::unique_ptr<AqlItemBlock> blk;
+  blk.reset(getSomeOld(atMost));
   if (blk == nullptr) {
     return {ExecutionState::DONE, nullptr};
   }
-  return {ExecutionState::HASMORE, blk};
+  return {ExecutionState::HASMORE, std::move(blk)};
 }
 
 AqlItemBlock* ExecutionBlock::getSomeOld(size_t atMost) {
@@ -316,12 +317,14 @@ bool ExecutionBlock::getBlock(size_t atMost) {
 /// the idea is that somebody who wants to call the generic functionality
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
-std::pair<ExecutionState, AqlItemBlock*> ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
-  auto blk = getSomeWithoutRegisterClearoutOld(atMost);
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+  ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
+  std::unique_ptr<AqlItemBlock> blk;
+  blk.reset(getSomeWithoutRegisterClearoutOld(atMost));
   if (blk == nullptr) {
     return {ExecutionState::DONE, nullptr};
   }
-  return {ExecutionState::HASMORE, blk};
+  return {ExecutionState::HASMORE, std::move(blk)};
 }
 AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();

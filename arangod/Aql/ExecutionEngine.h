@@ -75,13 +75,10 @@ class ExecutionEngine {
   int shutdown(int errorCode);
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost);
+  std::unique_ptr<AqlItemBlock> getSome(size_t atMost);
 
   /// @brief skipSome
   size_t skipSome(size_t atMost);
-
-  /// @brief getOne
-  AqlItemBlock* getOne() { return getSome(1); }
 
   /// @brief hasMore
   inline bool hasMore() const { return _root->hasMore(); }

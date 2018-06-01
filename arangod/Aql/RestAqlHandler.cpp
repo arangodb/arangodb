@@ -794,7 +794,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         std::unique_ptr<AqlItemBlock> items;
         if (shardId.empty()) {
-          items.reset(query->engine()->getSome(atMost));
+          items = query->engine()->getSome(atMost);
         } else {
           auto block = static_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&

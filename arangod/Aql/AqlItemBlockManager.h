@@ -50,6 +50,9 @@ class AqlItemBlockManager {
   /// @brief return a block to the manager
   void returnBlock(AqlItemBlock*& block);
 
+  /// @brief return a block to the manager
+  void returnBlock(std::unique_ptr<AqlItemBlock> block);
+
   ResourceMonitor* resourceMonitor() const { return _resourceMonitor; }
 
  private:

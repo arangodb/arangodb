@@ -602,48 +602,43 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     // this is the RegisterId our results can be found in
     RegisterId const resultRegister = _engine->resultRegister();
-    AqlItemBlock* value = nullptr;
+    std::unique_ptr<AqlItemBlock> value;
 
-    try {
-      resultBuilder->openArray();
+    resultBuilder->openArray();
 
-      // iterate over result, return it and store it in query cache
-      while (nullptr != (value = _engine->getSome(ExecutionBlock::DefaultBatchSize()))) {
-        size_t const n = value->size();
+    // iterate over result, return it and store it in query cache
+    while (nullptr != (value = _engine->getSome(ExecutionBlock::DefaultBatchSize()))) {
+      size_t const n = value->size();
 
-        for (size_t i = 0; i < n; ++i) {
-          AqlValue const& val = value->getValueReference(i, resultRegister);
+      for (size_t i = 0; i < n; ++i) {
+        AqlValue const& val = value->getValueReference(i, resultRegister);
 
-          if (!val.isEmpty()) {
-            val.toVelocyPack(_trx, *resultBuilder, useQueryCache);
-          }
-        }
-        _engine->_itemBlockManager.returnBlock(value);
-      }
-
-      // must close result array here because it must be passed as a closed
-      // array to the query cache
-      resultBuilder->close();
-
-      if (useQueryCache) {
-        if (_warnings.empty()) {
-          // finally store the generated result in the query cache
-          auto result = QueryCache::instance()->store(
-            &_vocbase,
-            queryHash,
-            _queryString,
-            resultBuilder,
-            _trx->state()->collectionNames()
-          );
-
-          if (result == nullptr) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
+        if (!val.isEmpty()) {
+          val.toVelocyPack(_trx, *resultBuilder, useQueryCache);
         }
       }
-    } catch (...) {
-      delete value;
-      throw;
+      _engine->_itemBlockManager.returnBlock(std::move(value));
+    }
+
+    // must close result array here because it must be passed as a closed
+    // array to the query cache
+    resultBuilder->close();
+
+    if (useQueryCache) {
+      if (_warnings.empty()) {
+        // finally store the generated result in the query cache
+        auto result = QueryCache::instance()->store(
+          &_vocbase,
+          queryHash,
+          _queryString,
+          resultBuilder,
+          _trx->state()->collectionNames()
+        );
+
+        if (result == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+      }
     }
 
     QueryResult result;
@@ -736,7 +731,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
 
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
-    AqlItemBlock* value = nullptr;
+    std::unique_ptr<AqlItemBlock> value;
 
     try {
       if (useQueryCache) {
@@ -760,7 +755,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               val.toVelocyPack(_trx, *builder, true);
             }
           }
-          _engine->_itemBlockManager.returnBlock(value);
+          _engine->_itemBlockManager.returnBlock(std::move(value));
         }
 
         builder->close();
@@ -794,14 +789,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               }
             }
           }
-          _engine->_itemBlockManager.returnBlock(value);
+          _engine->_itemBlockManager.returnBlock(std::move(value));
         }
       }
     } catch (...) {
       LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                         << "got an exception executing "
                                         << " this: " << (uintptr_t) this;
-      delete value;
       throw;
     }
 

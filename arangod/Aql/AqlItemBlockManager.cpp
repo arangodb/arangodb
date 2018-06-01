@@ -93,6 +93,27 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) {
   block = nullptr;
 }
 
+/// @brief return a block to the manager
+void AqlItemBlockManager::returnBlock(std::unique_ptr<AqlItemBlock> block) {
+  TRI_ASSERT(block != nullptr);
+
+  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of dimensions " << block->size() << " x " << block->getNrRegs();
+  
+  size_t const targetSize = block->size() * block->getNrRegs();
+  size_t const i = Bucket::getId(targetSize);
+  TRI_ASSERT(i < NumBuckets);
+
+  if (!_buckets[i].full()) {
+    // recycle the block
+    block->destroy();
+    // store block in bucket (this will not fail)
+    _buckets[i].push(block.release());
+  }
+  block.reset();
+}
+
+
+
 AqlItemBlockManager::Bucket::Bucket() {
   for (size_t i = 0; i < NumBlocks; ++i) {
     blocks[i] = nullptr;

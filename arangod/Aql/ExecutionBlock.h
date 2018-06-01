@@ -130,7 +130,8 @@ class ExecutionBlock {
   /// return a block of at most atMost items, however, it may return
   /// less (for example if there are not enough items to come). However,
   /// if it returns an actual block, it must contain at least one item.
-  virtual std::pair<ExecutionState, AqlItemBlock*> getSome(size_t atMost);
+  virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost);
 
   // TODO DELETE!
   virtual AqlItemBlock* getSomeOld(size_t atMost);
@@ -193,7 +194,8 @@ class ExecutionBlock {
   /// the idea is that somebody who wants to call the generic functionality
   /// in a derived class but wants to modify the results before the register
   /// cleanup can use this method, internal use only
-  std::pair<ExecutionState, AqlItemBlock*> getSomeWithoutRegisterClearout(size_t atMost);
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+    getSomeWithoutRegisterClearout(size_t atMost);
   AqlItemBlock* getSomeWithoutRegisterClearoutOld(size_t atMost);
 
   /// @brief clearRegisters, clears out registers holding values that are no

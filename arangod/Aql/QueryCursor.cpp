@@ -211,42 +211,38 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
 
     // this is the RegisterId our results can be found in
     RegisterId const resultRegister = engine->resultRegister();
-    AqlItemBlock* value = nullptr;
+    std::unique_ptr<AqlItemBlock> value;
 
     bool hasMore = true;
-    try {
-      // reserve some space in Builder to avoid frequent reallocs
-      builder.reserve(16 * 1024);
-      builder.add("result", VPackValue(VPackValueType::Array, true));
 
-      // get one batch
-      if ((value = engine->getSome(batchSize())) != nullptr) {
-        size_t const n = value->size();
-        for (size_t i = 0; i < n; ++i) {
-          AqlValue const& val = value->getValueReference(i, resultRegister);
+    // reserve some space in Builder to avoid frequent reallocs
+    builder.reserve(16 * 1024);
+    builder.add("result", VPackValue(VPackValueType::Array, true));
 
-          if (!val.isEmpty()) {
-            val.toVelocyPack(_query->trx(), builder, false);
-          }
+    // get one batch
+    if ((value = engine->getSome(batchSize())) != nullptr) {
+      size_t const n = value->size();
+      for (size_t i = 0; i < n; ++i) {
+        AqlValue const& val = value->getValueReference(i, resultRegister);
+
+        if (!val.isEmpty()) {
+          val.toVelocyPack(_query->trx(), builder, false);
         }
-        // return used block: this will reset value to a nullptr
-        engine->_itemBlockManager.returnBlock(value); 
-        hasMore = engine->hasMore();
-      } else {
-        hasMore = false;
       }
-      builder.close();  // result
-
-      builder.add("hasMore", VPackValue(hasMore));
-      if (hasMore) {
-        builder.add("id", VPackValue(std::to_string(id())));
-      }
-
-      builder.add("cached", VPackValue(false));
-    } catch (...) {
-      delete value;
-      throw;  // rethrow, is caught below
+      // return used block: this will reset value to a nullptr
+      engine->_itemBlockManager.returnBlock(std::move(value)); 
+      hasMore = engine->hasMore();
+    } else {
+      hasMore = false;
     }
+    builder.close();  // result
+
+    builder.add("hasMore", VPackValue(hasMore));
+    if (hasMore) {
+      builder.add("id", VPackValue(std::to_string(id())));
+    }
+
+    builder.add("cached", VPackValue(false));
 
     if (!hasMore) {
       QueryResult result;
