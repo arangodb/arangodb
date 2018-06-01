@@ -197,9 +197,9 @@ pregel.start("pagerank", "graphname", {maxGSS: 100, threshold:0.00000001, result
 
 #### Seeded PageRank
 
-It is possible to specify an initial distribution the document in your graph. To define these
+It is possible to specify an initial distribution for the vertex-documents in your graph. To define these
 seed ranks / centralities you can specify a `sourceField` in the properties for this algorithm.
-If this field is set on a given vertex-document _and_ is a numeric value then this will be
+If the specified field is set on a document _and_ the value is numeric, then it will be
 used instead of the default initial rank of `1 / numVertices`.
 
 ```javascript
