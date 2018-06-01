@@ -215,8 +215,16 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome
 AqlItemBlock* ExecutionBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
-  std::unique_ptr<AqlItemBlock> result(
-      getSomeWithoutRegisterClearoutOld(atMost));
+  std::unique_ptr<AqlItemBlock> result;
+  while (true) {
+    auto res = getSomeWithoutRegisterClearout(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      _engine->getQuery()->tempWaitForAsyncResponse();
+    } else { 
+      result.swap(res.second);
+      break;
+    }
+  }
   clearRegisters(result.get());
   traceGetSomeEnd(result.get());
   return result.release();
@@ -294,8 +302,16 @@ bool ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   throwIfKilled();  // check if we were aborted
 
-  std::unique_ptr<AqlItemBlock> docs(
-      _dependencies[0]->getSomeOld(atMost));
+  std::unique_ptr<AqlItemBlock> docs;
+  while(true) {
+    auto res = _dependencies[0]->getSome(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      _engine->getQuery()->tempWaitForAsyncResponse();
+    } else { 
+      docs.swap(res.second);
+      break;
+    }
+  }
 
   if (docs == nullptr) {
     return false;
@@ -319,8 +335,7 @@ bool ExecutionBlock::getBlock(size_t atMost) {
 /// cleanup can use this method, internal use only
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
   ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
-  std::unique_ptr<AqlItemBlock> blk;
-  blk.reset(getSomeWithoutRegisterClearoutOld(atMost));
+  std::unique_ptr<AqlItemBlock> blk(getSomeWithoutRegisterClearoutOld(atMost));
   if (blk == nullptr) {
     return {ExecutionState::DONE, nullptr};
   }
@@ -332,7 +347,16 @@ AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
   size_t skipped = 0;
 
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSomeOld(atMost, false, result, skipped);
+  int out = TRI_ERROR_INTERNAL;
+  while (true) {
+    auto res = getOrSkipSome(atMost, false, result, skipped);
+    if (res.first == ExecutionState::WAITING) {
+      _engine->getQuery()->tempWaitForAsyncResponse();
+    } else { 
+      out = res.second.errorNumber();
+      break;
+    }
+  }
 
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
@@ -362,7 +386,16 @@ std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
 size_t ExecutionBlock::skipSomeOld(size_t atMost) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
-  int out = getOrSkipSomeOld(atMost, true, result, skipped);
+  int out = TRI_ERROR_INTERNAL;
+  while (true) {
+    auto res = getOrSkipSome(atMost, true, result, skipped);
+    if (res.first == ExecutionState::WAITING) {
+      _engine->getQuery()->tempWaitForAsyncResponse();
+    } else { 
+      out = res.second.errorNumber();
+      break;
+    }
+  }
 
   TRI_ASSERT(result == nullptr);
 
@@ -376,10 +409,29 @@ size_t ExecutionBlock::skipSomeOld(size_t atMost) {
 // skip exactly atMost outputs
 void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
   // TODO FIXME
-  size_t skipped = skipSomeOld(atMost);
+  size_t skipped = 0;
+  
+  while (true) {
+    auto res = skipSome(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      _engine->getQuery()->tempWaitForAsyncResponse();
+    } else { 
+      skipped = res.second;
+      break;
+    }
+  }
+
   size_t nr = skipped;
   while (nr != 0 && skipped < atMost) {
-    nr = skipSomeOld(atMost - skipped);
+    while (true) {
+      auto res = skipSome(atMost - skipped);
+      if (res.first == ExecutionState::WAITING) {
+        _engine->getQuery()->tempWaitForAsyncResponse();
+      } else { 
+        nr = res.second;
+        break;
+      }
+    }
     skipped += nr;
   }
   numActuallySkipped = skipped;

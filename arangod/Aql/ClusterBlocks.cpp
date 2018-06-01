@@ -218,22 +218,39 @@ AqlItemBlock* GatherBlock::getSomeOld(size_t atMost) {
 
   // the simple case . . .
   if (_isSimple) {
-    auto res = _dependencies.at(_atDep)->getSomeOld(atMost);
-    while (res == nullptr && _atDep < _dependencies.size() - 1) {
-      _atDep++;
-      res = _dependencies.at(_atDep)->getSomeOld(atMost);
+    std::unique_ptr<AqlItemBlock> val;
+    while (true) {
+      auto res = _dependencies.at(_atDep)->getSome(atMost);
+      if (res.first == ExecutionState::WAITING) {
+        _engine->getQuery()->tempWaitForAsyncResponse();
+      } else { 
+        val.swap(res.second);
+        break;
+      }
     }
-    if (res == nullptr) {
+    while (val == nullptr && _atDep < _dependencies.size() - 1) {
+      _atDep++;
+      while (true) {
+        auto res = _dependencies.at(_atDep)->getSome(atMost);
+        if (res.first == ExecutionState::WAITING) {
+          _engine->getQuery()->tempWaitForAsyncResponse();
+        } else { 
+          val.swap(res.second);
+          break;
+        }
+      }
+    }
+    if (val == nullptr) {
       _done = true;
     }
-    traceGetSomeEnd(res);
-    return res;
+    traceGetSomeEnd(val.get());
+    return val.release();
   }
 
   // the non-simple case . . .
   size_t available = 0;  // nr of available rows
   size_t index = 0;      // an index of a non-empty buffer
-	  
+
   // pull more blocks from dependencies . . .
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
@@ -450,7 +467,16 @@ bool GatherBlock::getBlock(size_t i, size_t atMost) {
   TRI_ASSERT(i < _dependencies.size());
   TRI_ASSERT(!_isSimple);
 
-  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSomeOld(atMost));
+  std::unique_ptr<AqlItemBlock> docs;
+  while (true) {
+    auto res = _dependencies.at(i)->getSome(atMost);
+    if (res.first == ExecutionState::WAITING) {
+      _engine->getQuery()->tempWaitForAsyncResponse();
+    } else { 
+      docs.swap(res.second);
+      break;
+    }
+  }
   if (docs != nullptr && docs->size() > 0) {
     _gatherBlockBuffer.at(i).emplace_back(docs.get());
     docs.release();

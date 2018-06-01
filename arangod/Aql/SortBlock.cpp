@@ -27,6 +27,8 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
+// TODO REMOVE ME, JUST FOR TEMP LOCKING
+#include "Aql/Query.h"
 using namespace arangodb::aql;
 
 #ifdef USE_IRESEARCH
@@ -254,8 +256,14 @@ int SortBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
     }
   }
 
-  return ExecutionBlock::getOrSkipSomeOld(atMost, skipping, result, skipped);
-  
+  while (true) {
+    auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
+    if (res.first == ExecutionState::WAITING) {
+      _engine->getQuery()->tempWaitForAsyncResponse();
+    } else { 
+      return res.second.errorNumber();
+    }
+  }
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }

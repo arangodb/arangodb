@@ -27,6 +27,9 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
+// TODO REMOVE ME, JUST FOR TEMP LOCKING
+#include "Aql/Query.h"
+
 using namespace arangodb::aql;
 
 SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
@@ -331,7 +334,14 @@ int LimitBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
       atMost = _limit - _count;
     }
 
-    ExecutionBlock::getOrSkipSomeOld(atMost, skipping, result, skipped);
+    while (true) {
+      auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
+      if (res.first == ExecutionState::WAITING) {
+        _engine->getQuery()->tempWaitForAsyncResponse();
+      } else { 
+        break;
+      }
+    }
 
     if (skipped == 0) {
       return TRI_ERROR_NO_ERROR;
@@ -355,7 +365,14 @@ int LimitBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
       while (true) {
         skipped = 0;
         AqlItemBlock* ignore = nullptr;
-        ExecutionBlock::getOrSkipSomeOld(atMost, skipping, ignore, skipped);
+        while (true) {
+          auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, ignore, skipped);
+          if (res.first == ExecutionState::WAITING) {
+            _engine->getQuery()->tempWaitForAsyncResponse();
+          } else { 
+            break;
+          }
+        }
 
         TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
         _engine->_stats.fullCount += skipped;
