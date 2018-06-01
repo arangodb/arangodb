@@ -146,10 +146,12 @@ Collection const* EngineInfoContainerDBServer::EngineInfo::collection() const no
   return _collection;
 }
 
+#ifdef USE_IRESEARCH
 LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcept {
   TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == _type);
   return _view;
 }
+#endif
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     Query* query,
@@ -215,7 +217,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.setVarUsageComputed();
   // Always Verbose
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
-  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/true);
+  plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/false);
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(

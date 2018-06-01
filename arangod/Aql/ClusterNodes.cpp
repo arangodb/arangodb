@@ -47,7 +47,6 @@ bool toSortMode(
 ) noexcept {
   // std::map ~25-30% faster than std::unordered_map for small number of elements
   static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue {
-    { SortModeUnset, GatherNode::SortMode::Unset },
     { SortModeMinElement, GatherNode::SortMode::MinElement},
     { SortModeHeap, GatherNode::SortMode::Heap}
   };
@@ -65,8 +64,6 @@ bool toSortMode(
 
 arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
   switch (mode) {
-    case GatherNode::SortMode::Unset:
-      return SortModeUnset;
     case GatherNode::SortMode::MinElement:
       return SortModeMinElement;
     case GatherNode::SortMode::Heap:
@@ -266,7 +263,9 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
       case SHORTEST_PATH:
         return castTo<GraphNode const*>(node)->collection();
       case SCATTER:
+#ifdef USE_IRESEARCH
       case SCATTER_IRESEARCH_VIEW:
+#endif
         return nullptr; // diamond boundary
       default:
         node = node->getFirstDependency();
@@ -277,17 +276,6 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
   return nullptr;
 }
 
-/*static*/ GatherNode::SortMode GatherNode::getSortMode(
-    Collection const* collection,
-    std::size_t shardsRequiredForHeapMerge /*= 5*/
-) {
-  return collection
-    ? (collection->numberOfShards() >= shardsRequiredForHeapMerge
-       ? SortMode::Heap
-       : SortMode::MinElement)
-    : SortMode::Unset;
-}
-
 /// @brief construct a gather node
 GatherNode::GatherNode(
     ExecutionPlan* plan,
@@ -295,12 +283,14 @@ GatherNode::GatherNode(
     SortElementVector const& elements)
   : ExecutionNode(plan, base),
     _elements(elements),
-    _sortmode(SortMode::Unset) {
-  auto const sortModeSlice = base.get("sortmode");
+    _sortmode(SortMode::MinElement) {
+  if (!_elements.empty()) {
+    auto const sortModeSlice = base.get("sortmode");
 
-  if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
-    LOG_TOPIC(ERR, Logger::AQL)
-      << "invalid sort mode detected while creating 'GatherNode' from vpack";
+    if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
+      LOG_TOPIC(ERR, Logger::AQL)
+          << "invalid sort mode detected while creating 'GatherNode' from vpack";
+    }
   }
 }
 
@@ -317,7 +307,11 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
-  nodes.add("sortmode", VPackValue(toString(_sortmode).data()));
+  if (_elements.empty()) {
+    nodes.add("sortmode", VPackValue(SortModeUnset.data()));
+  } else {
+    nodes.add("sortmode", VPackValue(toString(_sortmode).data()));
+  }
 
   nodes.add(VPackValue("elements"));
   {
