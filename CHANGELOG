@@ -1,6 +1,8 @@
 v3.3.10 (XXXX-XX-XX)
 --------------------
 
+* fixed internal issue #2256: ui, document id not showing up when deleting a document
+
 * fix cluster COLLECT optimization for attributes that were in "sorted" variant of
   COLLECT and that were provided by a sorted index on the collected attribute
 
