@@ -75,7 +75,6 @@ class ClusterTransactionCollection final : public TransactionCollection {
   void unuse(int nestingLevel) override;
   void release() override;
 
-
  private:
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired

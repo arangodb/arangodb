@@ -206,7 +206,7 @@ class Methods {
   /// @brief finish a transaction (commit or abort), based on the previous state
   Result finish(int errorNum);
   Result finish(Result const& res);
-  
+
   /// @brief return the transaction id
   TRI_voc_tid_t tid() const;
 
@@ -414,6 +414,8 @@ class Methods {
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
+
+  //SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              VPackBuilder& builder, TRI_voc_cid_t cid,
                              StringRef const& key, TRI_voc_rid_t rid,
@@ -528,6 +530,7 @@ class Methods {
   OperationResult clusterResultInsert(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      OperationOptions const& options,
       std::unordered_map<int, size_t> const& errorCounter) const;
 
 /// @brief Helper create a Cluster Communication modify result

@@ -36,7 +36,8 @@ ClusterTransactionCollection::ClusterTransactionCollection(
     int nestingLevel)
     : TransactionCollection(trx, cid, accessType),
       _lockType(AccessMode::Type::NONE),
-      _nestingLevel(nestingLevel) {}
+      _nestingLevel(nestingLevel),
+      _usageLocked(false) {}
 
 ClusterTransactionCollection::~ClusterTransactionCollection() {}
 

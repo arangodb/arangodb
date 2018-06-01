@@ -123,30 +123,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
   if (arangodb::ServerState::instance()->isCoordinator()) {
     _engines = ep->engines();
   }
-}
-
-TraversalBlock::~TraversalBlock() {
-  freeCaches();
-}
-
-void TraversalBlock::freeCaches() {
-  for (auto& v : _vertices) {
-    v.destroy();
-  }
-  _vertices.clear();
-  for (auto& e : _edges) {
-    e.destroy();
-  }
-  _edges.clear();
-  for (auto& p : _paths) {
-    p.destroy();
-  }
-  _paths.clear();
-}
-
-int TraversalBlock::initialize() {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initialize();
+  
   auto varInfo = getPlanNode()->getRegisterPlan()->varInfo;
 
   if (usesVertexOutput()) {
@@ -170,11 +147,25 @@ int TraversalBlock::initialize() {
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _pathReg = it->second.registerId;
   }
+}
 
-  return res;
+TraversalBlock::~TraversalBlock() {
+  freeCaches();
+}
 
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
+void TraversalBlock::freeCaches() {
+  for (auto& v : _vertices) {
+    v.destroy();
+  }
+  _vertices.clear();
+  for (auto& e : _edges) {
+    e.destroy();
+  }
+  _edges.clear();
+  for (auto& p : _paths) {
+    p.destroy();
+  }
+  _paths.clear();
 }
 
 int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {

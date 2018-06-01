@@ -145,8 +145,8 @@ const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> dbServerIn
 /// @brief Coordinator index factories
 ////////////////////////////////////////////////////////////////////////////////
 const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> coordinatorIndexFactories = {
-  //{ "MMFilesEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles },
-  { "ClusterEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkRocksDB }
+  { "MMFilesEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles },
+  { "RocksDBEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkRocksDB }
 };
 
 void registerIndexFactory() {

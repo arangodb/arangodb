@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterAqlFunctions.h"
-
 #include "Aql/AqlFunctionFeature.h"
 
 using namespace arangodb;

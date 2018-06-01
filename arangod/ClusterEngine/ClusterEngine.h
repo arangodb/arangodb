@@ -52,21 +52,19 @@ class ClusterEngine final : public StorageEngine {
   // create the storage engine
   explicit ClusterEngine(application_features::ApplicationServer*);
   ~ClusterEngine();
-  
-public:
-  
-  void setActualEngine(StorageEngine* e) { _actualEngine = e; }
+
+  void setActualEngine(StorageEngine* e);
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
   ClusterEngineType engineType() const;
-  
+
   // storage engine overrides
   // ------------------------
-  
-  char const* typeName() const override { return _actualEngine->typeName(); }
 
-public:
+  char const* typeName() const override {
+    return _actualEngine ? _actualEngine->typeName() : nullptr;
+  }
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -84,8 +82,10 @@ public:
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t&,
-                                                           transaction::Options const&) override;
+  std::unique_ptr<TransactionState> createTransactionState(
+    CollectionNameResolver const& resolver,
+    transaction::Options const& options
+  ) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -98,7 +98,7 @@ public:
 
   // inventory functionality
   // -----------------------
-  
+
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
   void getCollectionInfo(
@@ -342,5 +342,7 @@ public:
   std::string _basePath;
   StorageEngine* _actualEngine;
 };
+
 }  // namespace arangodb
+
 #endif

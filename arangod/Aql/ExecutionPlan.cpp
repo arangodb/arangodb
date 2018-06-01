@@ -60,7 +60,7 @@ using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 namespace {
-   
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
 struct NodeCounter final : public WalkerWorker<ExecutionNode> {
@@ -234,7 +234,7 @@ ExecutionPlan::~ExecutionPlan() {
       ::NodeCounter counter;
       _root->walk(counter);
 
-        
+
       // and compare it to the number of nodes we have in our counters array
       size_t j = 0;
       for (auto const& it : _typeCounts) {
@@ -269,7 +269,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
       ast->query()->queryOptions().fullCount) {
     ExecutionNode::castTo<LimitNode*>(plan->_lastLimitNode)->setFullCount();
   }
-  
+
   // set count flag for final RETURN node
   if (plan->_root->getType() == ExecutionNode::RETURN) {
     static_cast<ReturnNode*>(plan->_root)->setCount();
@@ -279,7 +279,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   return plan.release();
 }
-  
+
 /// @brief whether or not the plan contains at least one node of this type
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
   TRI_ASSERT(_varUsageComputed);
@@ -370,7 +370,8 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   unsigned flags = ExecutionNode::SERIALIZE_ESTIMATES;
   if (verbose) {
     flags |= ExecutionNode::SERIALIZE_PARENTS |
-             ExecutionNode::SERIALIZE_DETAILS;
+             ExecutionNode::SERIALIZE_DETAILS |
+             ExecutionNode::SERIALIZE_FUNCTIONS;
   }
   // keeps top level of built object open
   _root->toVelocyPack(builder, flags, true);
@@ -441,7 +442,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
     TRI_ASSERT(expression->numMembers() == 1);
     expression = expression->getMember(0);
   }
- 
+
   bool containsCollection = false;
   // replace occurrences of collection names used as function call arguments
   // (that are of type NODE_TYPE_COLLECTION) with their string equivalents
@@ -469,7 +470,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
     } else if (node->type == NODE_TYPE_COLLECTION) {
       containsCollection = true;
     }
-      
+
     return node;
   };
 
@@ -478,7 +479,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
 
   if (containsCollection) {
     // we found at least one occurence of NODE_TYPE_COLLECTION
-    // now replace them with proper (FOR doc IN collection RETURN doc) 
+    // now replace them with proper (FOR doc IN collection RETURN doc)
     // subqueries
     auto visitor = [this, &previous](AstNode* node) {
       if (node->type == NODE_TYPE_COLLECTION) {
@@ -490,12 +491,12 @@ ExecutionNode* ExecutionPlan::createCalculation(
         AstNode* forNode = _ast->createNodeFor(v, node);
         // RETURN part
         AstNode* returnNode = _ast->createNodeReturn(_ast->createNodeReference(v));
-        
+
         // add both nodes to subquery
         rootNode->addMember(forNode);
         rootNode->addMember(returnNode);
 
-        // produce the proper ExecutionNodes from the subquery AST 
+        // produce the proper ExecutionNodes from the subquery AST
         auto subquery = fromNode(rootNode);
         if (subquery == nullptr) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -509,11 +510,11 @@ ExecutionNode* ExecutionPlan::createCalculation(
         previous = en;
         return _ast->createNodeReference(v);
       }
-      
+
       return node;
     };
 
-    // replace remaining NODE_TYPE_COLLECTION occurrences in the expression 
+    // replace remaining NODE_TYPE_COLLECTION occurrences in the expression
     node = Ast::traverseAndModify(node, visitor);
   }
 
@@ -642,8 +643,33 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
   return en;
 }
 
+bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
+  // parse the modification options we got
+  if (node == nullptr || node->type != NODE_TYPE_OBJECT) {
+    return false;
+  }
+
+  size_t n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      std::string const name = member->getString();
+      auto value = member->getMember(0);
+
+      TRI_ASSERT(value->isConstant());
+      if (name == "exclusive") {
+        return value->isTrue();
+      }
+    }
+  }
+
+  return false;
+}
+
 /// @brief create modification options from an AST node
-ModificationOptions ExecutionPlan::createModificationOptions(
+ModificationOptions ExecutionPlan::parseModificationOptions(
     AstNode const* node) {
   ModificationOptions options;
 
@@ -669,10 +695,21 @@ ModificationOptions ExecutionPlan::createModificationOptions(
           options.nullMeansRemove = value->isFalse();
         } else if (name == "mergeObjects") {
           options.mergeObjects = value->isTrue();
+        } else if (name == "exclusive") {
+          options.exclusive = value->isTrue();
+        } else if (name == "overwrite") {
+          options.overwrite = value->isTrue();
         }
       }
     }
   }
+  return options;
+}
+
+/// @brief create modification options from an AST node
+ModificationOptions ExecutionPlan::createModificationOptions(
+    AstNode const* node) {
+  ModificationOptions options = parseModificationOptions(node);
 
   // this means a data-modification query must first read the entire input data
   // before starting with the modifications
@@ -1498,10 +1535,12 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "no collection for RemoveNode");
   }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
 
   auto expression = node->getMember(2);
   ExecutionNode* en = nullptr;
-
   auto returnVarNode = node->getMember(3);
   Variable const* outVariableOld =
       static_cast<Variable*>(returnVarNode->getData());
@@ -1543,17 +1582,32 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
                                              AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() == 4);
+  TRI_ASSERT(node->numMembers() > 3);
+  TRI_ASSERT(node->numMembers() < 6);
 
   auto options = createModificationOptions(node->getMember(0));
   std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
-  auto expression = node->getMember(2);
 
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no collection for InsertNode");
+  }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
+
+  auto expression = node->getMember(2);
   auto returnVarNode = node->getMember(3);
   Variable const* outVariableNew =
       static_cast<Variable*>(returnVarNode->getData());
+
+  Variable const* outVariableOld = nullptr;
+  if(node->numMembers() == 5) {
+    returnVarNode = node->getMember(4);
+    outVariableOld = static_cast<Variable*>(returnVarNode->getData());
+  }
 
   ExecutionNode* en = nullptr;
 
@@ -1569,6 +1623,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
       collection,
       options,
       v,
+      outVariableOld,
       outVariableNew
     ));
   } else {
@@ -1582,6 +1637,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
       collection,
       options,
       getOutVariable(calc),
+      outVariableOld,
       outVariableNew
     ));
     previous = calc;
@@ -1600,9 +1656,17 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
   std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
+
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no collection for UpdateNode");
+  }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
+
   auto docExpression = node->getMember(2);
   auto keyExpression = node->getMember(3);
-
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
@@ -1676,9 +1740,17 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
   std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
+
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no collection for ReplaceNode");
+  }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
+
   auto docExpression = node->getMember(2);
   auto keyExpression = node->getMember(3);
-
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
@@ -1752,10 +1824,18 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   std::string const collectionName = node->getMember(1)->getString();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
+
+  if (collection == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no collection for UpsertNode");
+  }
+  if (options.exclusive) {
+    collection->setExclusiveAccess();
+  }
+
   auto docExpression = node->getMember(2);
   auto insertExpression = node->getMember(3);
   auto updateExpression = node->getMember(4);
-
   Variable const* outVariableNew =
       static_cast<Variable*>(node->getMember(6)->getData());
 
@@ -1933,15 +2013,15 @@ void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
 void ExecutionPlan::findNodesOfType(
     SmallVector<ExecutionNode*>& result,
     std::vector<ExecutionNode::NodeType> const& types, bool enterSubqueries) {
- 
-  // check if any of the node types is actually present in the plan 
+
+  // check if any of the node types is actually present in the plan
   for (auto const& type : types) {
     if (contains(type)) {
       // found a node type that is in the plan
       NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, result,
                                                               enterSubqueries);
       root()->walk(finder);
-      // abort, because we were lookig for all nodes at the same type
+      // abort, because we were looking for all nodes at the same type
       return;
     }
   }
@@ -1981,7 +2061,7 @@ struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
   bool before(ExecutionNode* en) override final {
     // count the type of node found
     en->plan()->increaseCounter(en->getType());
-     
+
     en->invalidateVarUsage();
     en->setVarsUsedLater(_usedLater);
     // Add variables used here to _usedLater:
@@ -2173,7 +2253,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");
   }
-    
+
   ExecutionNode* ret = nullptr;
 
   // first, re-create all nodes from the Slice, using the node ids
