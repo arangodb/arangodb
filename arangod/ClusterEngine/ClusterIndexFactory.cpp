@@ -65,27 +65,6 @@ ClusterIndexFactory::ClusterIndexFactory() {
     }
   );
 
-  emplaceNormalizer(
-    "edge",
-    [](
-       velocypack::Builder& normalized,
-       velocypack::Slice definition,
-       bool isCreation
-    ) -> Result {
-      if (isCreation) {
-        return TRI_ERROR_FORBIDDEN; // creating these indexes yourself is forbidden
-      }
-
-      if (!normalized.isOpenObject() || !definition.isObject()) {
-        return TRI_ERROR_INTERNAL;
-      }
-
-      normalized.add(velocypack::ObjectIterator(definition));
-
-      return TRI_ERROR_INTERNAL;
-    }
-  );
-
   emplaceFactory(
     "primary",
     [](
@@ -107,27 +86,6 @@ ClusterIndexFactory::ClusterIndexFactory() {
       return std::make_shared<ClusterIndex>(
         0, collection, ct, Index::TRI_IDX_TYPE_PRIMARY_INDEX, definition
       );
-    }
-  );
-
-  emplaceNormalizer(
-    "primary",
-    [](
-       velocypack::Builder& normalized,
-       velocypack::Slice definition,
-       bool isCreation
-    ) -> Result {
-      if (isCreation) {
-        return TRI_ERROR_FORBIDDEN; // creating these indexes yourself is forbidden
-      }
-
-      if (!normalized.isOpenObject() || !definition.isObject()) {
-        return TRI_ERROR_INTERNAL;
-      }
-
-      normalized.add(velocypack::ObjectIterator(definition));
-
-      return TRI_ERROR_INTERNAL;
     }
   );
 
@@ -161,7 +119,24 @@ ClusterIndexFactory::ClusterIndexFactory() {
         );
       }
     );
+  }
 
+  // both engines support all types right now
+  static const std::vector<std::string> supported_norm = {
+    "edge",
+    "fulltext",
+    "geo",
+    "geo1",
+    "geo2",
+    "hash",
+    "persistent",
+    "primary",
+    "skiplist"
+  };
+
+  // delegate normalization to the 'actualEngine'
+  // FIXME TODO is it actually correct to tie the definition in the Agency to the DBServer engine?
+  for (auto& typeStr: supported_norm) {
     emplaceNormalizer(
       typeStr,
       [](
@@ -169,13 +144,23 @@ ClusterIndexFactory::ClusterIndexFactory() {
          velocypack::Slice definition,
          bool isCreation
       ) -> Result {
-        if (!normalized.isOpenObject() || !definition.isObject()) {
+        auto* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
+
+        if (!ce) {
           return TRI_ERROR_INTERNAL;
         }
 
-        normalized.add(velocypack::ObjectIterator(definition));
+        auto* ae = ce->actualEngine();
 
-        return TRI_ERROR_NO_ERROR;
+        if (!ae) {
+          return TRI_ERROR_INTERNAL;
+        }
+
+        normalized.clear(); // enhanceIndexDefinition(...) expects an empty open object
+
+        return ae->indexFactory().enhanceIndexDefinition(
+          definition, normalized, isCreation, true
+        );
       }
     );
   }
