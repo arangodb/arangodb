@@ -296,8 +296,11 @@ struct SortingStrategy {
 
   virtual ~SortingStrategy() = default;
 
-  /// @brief returns next value
-  virtual ValueType nextValue() = 0;
+  /// @brief begins transaction and returns next value
+  virtual ValueType nextValueBegin() = 0;
+
+  /// @brief commits transaction started by 'nextValueBegin'
+  virtual void nextValueCommit() { }
 
   /// @brief prepare strategy before transaction
   virtual void prepare(std::vector<ValueType>& /*blockPos*/) { }
@@ -319,23 +322,25 @@ class HeapSorting final : public SortingStrategy, private OurLessThan  {
     : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
   }
 
-  virtual ValueType nextValue() override {
+  virtual ValueType nextValueBegin() override {
     TRI_ASSERT(!_heap.empty());
-    std::push_heap(_heap.begin(), _heap.end(), *this); // re-insert element
     std::pop_heap(_heap.begin(), _heap.end(), *this); // remove element from _heap but not from vector
     return _heap.back();
   }
 
-  virtual void prepare(std::vector<ValueType>& blockPos) override {
-    TRI_ASSERT(!blockPos.empty());
+  virtual void nextValueCommit() override {
+    TRI_ASSERT(!_heap.empty());
+    std::push_heap(_heap.begin(), _heap.end(), *this); // re-insert element
+  }
 
+  virtual void prepare(std::vector<ValueType>& blockPos) override {
     if (_heap.size() == blockPos.size()) {
       return;
     }
 
     _heap.clear();
     std::copy(blockPos.begin(), blockPos.end(), std::back_inserter(_heap));
-    std::make_heap(_heap.begin(), _heap.end()-1, *this); // remain last element out of heap to maintain invariant
+    std::make_heap(_heap.begin(), _heap.end(), *this);
     TRI_ASSERT(!_heap.empty());
   }
 
@@ -367,7 +372,7 @@ class MinElementSorting final : public SortingStrategy, public OurLessThan {
     : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
   }
 
-  virtual ValueType nextValue() override {
+  virtual ValueType nextValueBegin() override {
     TRI_ASSERT(_blockPos);
     return *(std::min_element(_blockPos->begin(), _blockPos->end(), *this));
   }
@@ -578,7 +583,7 @@ class SortingGatherBlock final : public ExecutionBlock {
 
     for (size_t i = 0; i < toSend; i++) {
       // get the next smallest row from the buffer . . .
-      auto const val = _strategy->nextValue();
+      auto const val = _strategy->nextValueBegin();
       auto& blocks = _gatherBlockBuffer[val.first];
       auto& blocksPos = _gatherBlockPos[val.first];
 
@@ -629,6 +634,8 @@ class SortingGatherBlock final : public ExecutionBlock {
           // this
         }
       }
+
+      _strategy->nextValueCommit();
     }
 
     traceGetSomeEnd(res.get());
@@ -678,7 +685,7 @@ class SortingGatherBlock final : public ExecutionBlock {
 
     for (size_t i = 0; i < skipped; i++) {
       // get the next smallest row from the buffer . . .
-      auto const val = _strategy->nextValue();
+      auto const val = _strategy->nextValueBegin();
       auto& blocks = _gatherBlockBuffer[val.first];
       auto& blocksPos = _gatherBlockPos[val.first];
 
@@ -690,6 +697,8 @@ class SortingGatherBlock final : public ExecutionBlock {
         blocks.pop_front();
         blocksPos.second = 0; // reset position within a dependency
       }
+
+      _strategy->nextValueCommit();
     }
 
     return skipped;
