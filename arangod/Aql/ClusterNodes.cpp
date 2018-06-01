@@ -299,12 +299,12 @@ struct SortingStrategy {
   /// @brief returns next value
   virtual ValueType nextValue() = 0;
 
-  /// @brief prepare strategy before transaction
+  /// @brief prepare strategy fetching values
   virtual void prepare(std::vector<ValueType>& /*blockPos*/) { }
 
-  /// @brief resets state
+  /// @brief resets strategy state
   virtual void reset() = 0;
-};
+}; // SortingStrategy
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class HeapSorting
