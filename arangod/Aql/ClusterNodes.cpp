@@ -23,12 +23,14 @@
 
 #include "ClusterNodes.h"
 #include "Aql/Ast.h"
+#include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/IndexNode.h"
 #include "Aql/GraphNode.h"
+#include "Transaction/Methods.h"
 
 #include <type_traits>
 
@@ -341,7 +343,11 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
     std::unordered_set<std::string> const&
 ) const {
-  return std::make_unique<GatherBlock>(&engine, this);
+  if (elements().empty()) {
+    return std::make_unique<UnsortingGatherBlock>(engine, *this);
+  }
+
+  return std::make_unique<SortingGatherBlock>(engine, *this);
 }
 
 /// @brief estimateCost
