@@ -2978,7 +2978,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     plan->registerNode(remoteNode);
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
-
+    
     // insert a gather node
     GatherNode* gatherNode =
         new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
@@ -3462,14 +3462,52 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             // in case we need to keep the sortedness of the GatherNode,
             // we may need to replace some variable references in it due
             // to the changes we made to the COLLECT node
-            SortElementVector& elements = gatherNode->elements();
-            if (!removeGatherNodeSort && gatherNode != nullptr && !replacements.empty() && !elements.empty()) {
-              TRI_ASSERT(elements.size() >= replacements.size());
-              auto r = replacements.begin();
-              for (auto& it : elements) {
-                it.var = (*r).second;
-                it.attributePath.clear();
-                ++r;
+            if (gatherNode != nullptr) {
+              SortElementVector& elements = gatherNode->elements();
+              if (!removeGatherNodeSort && !replacements.empty() && !elements.empty()) {
+                std::string cmp;
+                std::string other;
+                basics::StringBuffer buffer(128, false);
+
+                // look for all sort elements in the GatherNode and replace them if they
+                // match what we have changed
+                for (auto& it : elements) {
+                  // replace variables
+                  auto it2 = replacements.find(it.var);
+
+                  if (it2 != replacements.end()) {
+                    // match with our replacement table
+                    it.var = (*it2).second;
+                    it.attributePath.clear();
+                  } else {
+                    // no match. now check all our replacements and compare how their
+                    // sources are actually calculated (e.g. #2 may mean "foo.bar")
+                    cmp = it.toString();
+                    for (auto const& it3 : replacements) {
+                      auto setter = plan->getVarSetBy(it3.first->id);
+                      if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+                        continue;
+                      }
+                      auto* expr = static_cast<CalculationNode const*>(setter)->expression();
+                      if (expr == nullptr) {
+                        continue;
+                      }
+                      other.clear();
+                      try {
+                        buffer.clear();
+                        expr->stringify(&buffer);
+                        other = std::string(buffer.c_str(), buffer.size());
+                      } catch (...) {
+                      }
+                      if (other == cmp) {
+                        // finally a match!
+                        it.var = it3.second;
+                        it.attributePath.clear();
+                        break;
+                      }
+                    }
+                  }
+                }
               }
             }
           } else {
