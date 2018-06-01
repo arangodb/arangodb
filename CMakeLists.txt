@@ -56,20 +56,6 @@ endif()
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
-# enable enterprise features
-set(ENTERPRISE_INCLUDE_DIR "enterprise")
-option(USE_ENTERPRISE "enable enterprise build" OFF)
-
-if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  add_subdirectory(enterprise)
-endif ()
-
-option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
-if (DEBUG_SYNC_REPLICATION)
-  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
-endif ()
-
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
@@ -96,6 +82,20 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
+# enable enterprise features
+set(ENTERPRISE_INCLUDE_DIR "enterprise")
+option(USE_ENTERPRISE "enable enterprise build" OFF)
+
+if (USE_ENTERPRISE)
+  add_definitions("-DUSE_ENTERPRISE=1")
+  add_subdirectory(enterprise)
+endif ()
+
+option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
+if (DEBUG_SYNC_REPLICATION)
+  add_definitions("-DDEBUG_SYNC_REPLICATION=1")
+endif ()
+
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
 set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
@@ -116,7 +116,7 @@ set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
 
 # libraries
 set(LIB_ARANGO        arango)
-set(LIB_ARANGO_GEO     arango_geo)
+set(LIB_ARANGO_GEO    arango_geo)
 set(LIB_ARANGO_V8     arango_v8)
 
 # binaries
