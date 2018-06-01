@@ -124,10 +124,8 @@ function rubyTests (options, ssl) {
 
   let files = [];
   if (ssl) {
-    print(testPaths.http_server[0])
     files = tu.scanTestPaths(testPaths.ssl_server);
   } else {
-    print(testPaths.http_server[0])
     files = tu.scanTestPaths(testPaths.http_server);
   }
   let continueTesting = true;
