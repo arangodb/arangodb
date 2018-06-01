@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added exclusive option for rocksdb collections. Modifying AQL queries can
+  now set the exclusive option as well as it can be set on JavaScript transactions.
+
 * added optimizer rule "optimize-subqueries", which makes qualifying subqueries
   return less data
   
