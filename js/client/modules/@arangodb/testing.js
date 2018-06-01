@@ -451,11 +451,11 @@ function findTest(options) {
         status: true,
         total: 1,
         message: 'we have found a test. see above.',
-        duration: 2,
+        duration: 0,
         failed: [],
         found: {
           status: true,
-          duration: 1,
+          duration: 0,
           message: 'we have found a test.'
         }
       }
@@ -467,10 +467,10 @@ function findTest(options) {
         total: 1,
         failed: 1,
         message: 'we haven\'t found a test.',
-        duration: 2,
+        duration: 0,
         found: {
           status: false,
-          duration: 1,
+          duration: 0,
           message: 'we haven\'t found a test.'
         }
       }
@@ -487,10 +487,10 @@ function autoTest(options) {
         total: 1,
         failed: 1,
         message: 'you must specify a --test filter.',
-        duration: 2,
+        duration: 0,
         found: {
           status: false,
-          duration: 1,
+          duration: 0,
           message: 'you must specify a --test filter.'
         }
       }
@@ -507,10 +507,10 @@ function autoTest(options) {
         total: 1,
         failed: 1,
         message: 'we haven\'t found a test.',
-        duration: 2,
+        duration: 0,
         found: {
           status: false,
-          duration: 1,
+          duration: 0,
           message: 'we haven\'t found a test.'
         }
       }

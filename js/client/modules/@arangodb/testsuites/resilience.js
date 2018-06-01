@@ -48,7 +48,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function resilience (options) {
-  let testCases = tu.scanTestPath(testPaths.resilience);
+  let testCases = tu.scanTestPath(testPaths.resilience[0]);
   options.cluster = true;
   options.propagateInstanceInfo = true;
   if (options.dbServers < 5) {
