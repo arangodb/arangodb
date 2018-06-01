@@ -106,17 +106,71 @@ void toVelocyPack(
     std::vector<arangodb::iresearch::IResearchSort> const& sorts,
     bool verbose
 ) {
-  builder.openObject();
-  // FIXME todo
-  builder.close();
+  VPackArrayBuilder arrayScope(&builder);
+  for (auto const sort : sorts) {
+    VPackObjectBuilder objectScope(&builder);
+    builder.add("varId", VPackValue(sort.var->id));
+    builder.add("asc", VPackValue(sort.asc));
+    builder.add(VPackValue("node"));
+    sort.node->toVelocyPack(builder, verbose);
+  }
 }
 
 std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
-    arangodb::aql::ExecutionPlan* plan,
+    arangodb::aql::ExecutionPlan& plan,
     arangodb::velocypack::Slice const& slice
 ) {
-  // FIXME todo
-  return {};
+  if (!slice.isArray()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "invalid json format detected while building IResearchViewNode sorting from velocy pack, array expected";
+    return {};
+  }
+
+  auto* ast = plan.getAst();
+  TRI_ASSERT(ast);
+  auto const* vars = plan.getAst()->variables();
+  TRI_ASSERT(vars);
+
+  std::vector<arangodb::iresearch::IResearchSort> sorts;
+
+  size_t i = 0;
+  for (auto const sortSlice : velocypack::ArrayIterator(slice)) {
+    auto const varIdSlice = sortSlice.get("varId");
+
+    if (!varIdSlice.isNumber()) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "malformed variable identifier at line '" << i << "', number expected";
+      return {};
+    }
+
+    auto const varId = varIdSlice.getNumber<aql::VariableId>();
+    auto const* var = vars->getVariable(varId);
+
+    if (!var) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "unable to find variable '" << varId << "' at line '" << i
+        << "' while building IResearchViewNode sorting from velocy pack";
+      return {};
+    }
+
+    auto const ascSlice = sortSlice.get("asc");
+
+    if (!ascSlice.isBoolean()) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "malformed order mark at line " << i << "', boolean expected";
+      return {};
+    }
+
+    bool const asc = ascSlice.getBoolean();
+
+    // will be owned by Ast
+    auto* node = new aql::AstNode(ast, sortSlice.get("node"));
+
+    sorts.emplace_back(var, node, asc);
+    ++i;
+  }
+
+  return sorts;
 }
 
 }
@@ -157,7 +211,7 @@ IResearchViewNode::IResearchViewNode(
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(&ALL),
-    _sortCondition(fromVelocyPack(&plan, base.get("sortCondition"))) {
+    _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
   // FIXME how to check properly
   auto view = _vocbase.lookupView(
     basics::StringUtils::uint64(base.get("viewId").copyString())

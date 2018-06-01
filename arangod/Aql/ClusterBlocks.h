@@ -28,6 +28,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/SortRegister.h"
 #include "Rest/GeneralRequest.h"
 
 #include <velocypack/Builder.h>
@@ -44,19 +45,6 @@ class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
   
-
-/// @brief sort element for block, consisting of register, sort direction,
-/// and a possible attribute path to dig into the document
-struct SortElementBlock {
-  RegisterId reg;
-  bool ascending;
-  std::vector<std::string> attributePath;
-  
-  SortElementBlock(RegisterId r, bool asc)
-  : reg(r), ascending(asc) {
-  }
-};
-
 class GatherBlock : public ExecutionBlock {
  public:
   GatherBlock(ExecutionEngine*, GatherNode const*);
@@ -98,29 +86,11 @@ class GatherBlock : public ExecutionBlock {
   size_t _atDep = 0;
 
   /// @brief sort elements for this block
-  std::vector<SortElementBlock> _sortRegisters;
+  std::vector<SortRegister> _sortRegisters;
 
   /// @brief isSimple: the block is simple if we do not do merge sort . . .
   bool const _isSimple;
 
-  /// @brief OurLessThan: comparison method for elements of _gatherBlockPos
-  class OurLessThan {
-   public:
-    OurLessThan(transaction::Methods* trx,
-                std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
-                std::vector<SortElementBlock>& sortRegisters)
-        : _trx(trx),
-          _gatherBlockBuffer(gatherBlockBuffer),
-          _sortRegisters(sortRegisters) {}
-
-    bool operator()(std::pair<size_t, size_t> const& a,
-                    std::pair<size_t, size_t> const& b);
-
-   private:
-    transaction::Methods* _trx;
-    std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
-    std::vector<SortElementBlock>& _sortRegisters;
-  };
   using Heap = std::vector<std::pair<std::size_t, std::size_t>>;
   std::unique_ptr<Heap> _heap;
 };
