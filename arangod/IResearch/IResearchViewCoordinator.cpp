@@ -304,7 +304,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
   auto& impl = reinterpret_cast<IResearchViewCoordinator&>(*view);
   auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   auto props = json.get(StaticStrings::PropertiesField);
-  auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
+  auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'props' then assume defaults
   std::string error;
 
   if (!impl._meta.init(properties, error)) {
