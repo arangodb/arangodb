@@ -121,7 +121,7 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
     ExecutionState res = ExecutionState::HASMORE;
     // suck all blocks into _buffer
     while (res != ExecutionState::DONE) {
-      res = getBlock(DefaultBatchSize());
+      res = getBlock(DefaultBatchSize()).first;
       if (res == ExecutionState::WAITING) {
         return {res, TRI_ERROR_NO_ERROR};
       }
