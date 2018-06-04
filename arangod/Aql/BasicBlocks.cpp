@@ -290,7 +290,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
     return res;
   }
 
-  _state = 0;
+  _state = INITFULLCOUNT;
   _count = 0;
   return res;
 
@@ -298,80 +298,94 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
   DEBUG_END_BLOCK();  
 }
 
-int LimitBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
-                              AqlItemBlock*& result, size_t& skipped) {
+std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 
-  if (_state == 2) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (_state == 0) {
-    if (_fullCount) {
-      _engine->_stats.fullCount = 0;
-    }
-
-    if (_offset > 0) {
-      size_t numActuallySkipped = 0;
-      _dependencies[0]->skip(_offset, numActuallySkipped);
+  switch (_state) {
+    case DONE:
+      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+    case INITFULLCOUNT: {
       if (_fullCount) {
-        _engine->_stats.fullCount += static_cast<int64_t>(numActuallySkipped);
+        _engine->_stats.fullCount = 0;
       }
+      _state = SKIPPING;
+      // Fallthrough intententional
     }
-    _state = 1;
-    _count = 0;
-    if (_limit == 0 && !_fullCount) {
-      // quick exit for limit == 0
-      _state = 2;
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  // If we get to here, _state == 1 and _count < _limit
-  if (_limit > 0) {
-    if (atMost > _limit - _count) {
-      atMost = _limit - _count;
-    }
-
-    ExecutionBlock::getOrSkipSomeOld(atMost, skipping, result, skipped);
-
-    if (skipped == 0) {
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    _count += skipped;
-    if (_fullCount) {
-      _engine->_stats.fullCount += static_cast<int64_t>(skipped);
-    }
-  }
-
-  if (_count >= _limit) {
-    _state = 2;
-
-    if (_fullCount) {
-      // if fullCount is set, we must fetch all elements from the
-      // dependency. we'll use the default batch size for this
-      atMost = DefaultBatchSize();
-
-      // suck out all data from the dependencies
-      while (true) {
-        skipped = 0;
-        AqlItemBlock* ignore = nullptr;
-        ExecutionBlock::getOrSkipSomeOld(atMost, skipping, ignore, skipped);
-
-        TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
-        _engine->_stats.fullCount += skipped;
-        delete ignore;
-
-        if (skipped == 0) {
-          break;
+    case SKIPPING: {
+      if (_offset > 0) {
+        size_t numActuallySkipped = 0;
+        _dependencies[0]->skip(_offset, numActuallySkipped);
+        if (_fullCount) {
+          _engine->_stats.fullCount += static_cast<int64_t>(numActuallySkipped);
         }
       }
+      _count = 0;
+      if (_limit == 0 && !_fullCount) {
+        // quick exit for limit == 0
+        _state = DONE;
+        return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+      }
+      _state = RETURNING;
+      // Fallthrough intententional
+    }
+    case RETURNING: {
+      if (_count < _limit) {
+        if (atMost > _limit - _count) {
+          atMost = _limit - _count;
+        }
+        auto state = ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
+        if (state.first == ExecutionState::WAITING) {
+          // On WAITING we will continue here, on error we bail out
+          return state;
+        }
+
+        if (skipped == 0) {
+          _state = DONE;
+          return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+        }
+
+        _count += skipped;
+        if (_fullCount) {
+          _engine->_stats.fullCount += static_cast<int64_t>(skipped);
+        }
+      }
+      if (_count >= _limit && _fullCount) {
+        // if fullCount is set, we must fetch all elements from the
+        // dependency. we'll use the default batch size for this
+        atMost = DefaultBatchSize();
+
+        // suck out all data from the dependencies
+        while (true) {
+          skipped = 0;
+          AqlItemBlock* ignore = nullptr;
+          auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, ignore, skipped);
+          if (res.first == ExecutionState::WAITING || !res.second.ok()) {
+            TRI_ASSERT(ignore == nullptr);
+            // On WAITING we will continue here, on error we bail out
+            return res;
+          }
+
+          TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
+          delete ignore;
+          _engine->_stats.fullCount += skipped;
+
+          if (skipped == 0) {
+            _state = DONE;
+            break;
+          }
+        }
+      } else {
+        _state = DONE;
+      }
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  if (_state == DONE) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

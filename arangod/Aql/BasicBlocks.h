@@ -85,20 +85,25 @@ class FilterBlock final : public ExecutionBlock {
 };
 
 class LimitBlock final : public ExecutionBlock {
+ private:
+
+   enum State { INITFULLCOUNT, SKIPPING, RETURNING, DONE };
+
  public:
   LimitBlock(ExecutionEngine* engine, LimitNode const* ep)
       : ExecutionBlock(engine, ep),
         _offset(ep->_offset),
         _limit(ep->_limit),
         _count(0),
-        _state(0),  // start in the beginning
+        _state(INITFULLCOUNT),  // start in the beginning
         _fullCount(ep->_fullCount) {}
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) final override;
 
-  int getOrSkipSomeOld(size_t atMost, bool skipping,
-                    AqlItemBlock*& result, size_t& skipped) override;
- 
+  std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                  AqlItemBlock*& result,
+                                                  size_t& skipped) override;
+
  private:
   /// @brief _offset
   size_t _offset;
@@ -110,7 +115,7 @@ class LimitBlock final : public ExecutionBlock {
   size_t _count;
 
   /// @brief _state, 0 is beginning, 1 is after offset, 2 is done
-  int _state;
+  State _state;
 
   /// @brief whether or not the block should count what it limits
   bool const _fullCount;
