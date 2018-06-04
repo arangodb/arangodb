@@ -124,8 +124,7 @@ void CollectNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::HASH:

@@ -183,8 +183,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
     aql::ExecutionEngine& engine,
-    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&
   ) const override;
 
  private:
@@ -236,8 +235,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
     aql::ExecutionEngine& engine,
-    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&
   ) const override final;
 
   /// @brief clone ExecutionNode recursively

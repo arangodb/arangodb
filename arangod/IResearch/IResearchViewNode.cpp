@@ -428,8 +428,7 @@ void IResearchViewNode::getVariablesUsedHere(
 
 std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     aql::ExecutionEngine& engine,
-    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&
 ) const {
   if (ServerState::instance()->isCoordinator()) {
     // coordinator in a cluster: empty view case
@@ -525,8 +524,7 @@ IResearchViewScatterNode::IResearchViewScatterNode(
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<aql::ExecutionBlock> IResearchViewScatterNode::createBlock(
     aql::ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, aql::ExecutionBlock*> const&,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<ExecutionNode*, aql::ExecutionBlock*> const&
 ) const {
   if (!ServerState::instance()->isCoordinator()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

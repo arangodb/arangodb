@@ -260,8 +260,7 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) c
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<ShortestPathBlock>(&engine, this);
 }

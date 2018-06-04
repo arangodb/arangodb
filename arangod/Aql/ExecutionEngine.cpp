@@ -98,13 +98,10 @@ Result ExecutionEngine::createBlocks(
       continue;
     }
 
-
     // for all node types but REMOTEs, we create blocks
-    std::unordered_set<std::string> const includedShards{};
-    std::unique_ptr<ExecutionBlock> uptrEb(
-        en->createBlock(*this, cache, includedShards));
+    auto uptrEb = en->createBlock(*this, cache);
 
-    if (uptrEb == nullptr) {
+    if (!uptrEb) {
       return {TRI_ERROR_INTERNAL, "illegal node type"};
     }
 
@@ -233,8 +230,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
       }
 
-      static const std::unordered_set<std::string> EMPTY;
-      block = engine->addBlock(en->createBlock(*engine, cache, EMPTY));
+      block = engine->addBlock(en->createBlock(*engine, cache));
 
       if (!en->hasParent()) {
         // yes. found a new root!
