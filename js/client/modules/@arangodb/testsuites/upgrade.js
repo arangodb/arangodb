@@ -36,6 +36,10 @@ const toArgv = require('internal').toArgv;
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 
+const testPaths = {
+  'upgrade': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: upgrade
 // //////////////////////////////////////////////////////////////////////////////
@@ -103,11 +107,10 @@ function upgrade (options) {
   return result;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['upgrade'] = upgrade;
   defaultFns.push('upgrade');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};
