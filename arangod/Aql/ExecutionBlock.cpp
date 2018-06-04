@@ -309,8 +309,7 @@ bool ExecutionBlock::getBlockOld(size_t atMost) {
       _engine->getQuery()->tempWaitForAsyncResponse();
     } else {
       if (res.second != nullptr) {
-        _buffer.emplace_back(res.second.get());
-        res.second.release();
+        _buffer.emplace_back(res.second.release());
         return true;
       }
       return false;
@@ -322,13 +321,13 @@ bool ExecutionBlock::getBlockOld(size_t atMost) {
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
 /// the dependent node is exhausted.
-ExecutionState ExecutionBlock::getBlock(size_t atMost) {
+std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   throwIfKilled();  // check if we were aborted
 
   auto res = _dependencies[0]->getSome(atMost);
   if (res.first == ExecutionState::WAITING) {
-    return res.first;
+    return {res.first, false};
   }
 
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
@@ -336,11 +335,11 @@ ExecutionState ExecutionBlock::getBlock(size_t atMost) {
   }
 
   if (res.second != nullptr) {
-    _buffer.emplace_back(res.second.get());
-    res.second.release();
+    _buffer.emplace_back(res.second.release());
+    return {res.first, true};
   }
 
-  return res.first;
+  return {res.first, false};
   DEBUG_END_BLOCK();
 }
 

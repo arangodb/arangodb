@@ -187,7 +187,7 @@ class ExecutionBlock {
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if
   /// the dependent node is exhausted.
-  ExecutionState getBlock(size_t atMost);
+  std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
   // TODO DEPRECATED REMOVE
   bool getBlockOld(size_t atMost);
