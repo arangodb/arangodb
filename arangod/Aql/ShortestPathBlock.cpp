@@ -285,7 +285,7 @@ AqlItemBlock* ShortestPathBlock::getSomeOld(size_t atMost) {
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch)) {
+      if (!ExecutionBlock::getBlockOld(toFetch)) {
         _done = true;
         traceGetSomeEnd(nullptr);
         return nullptr;

@@ -246,8 +246,13 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_mustFetchAll) {
+    ExecutionState res = ExecutionState::HASMORE;
     // suck all blocks into _buffer
-    while (getBlock(DefaultBatchSize())) {
+    while (res != ExecutionState::DONE) {
+      res = getBlock(DefaultBatchSize());
+      if (res == ExecutionState::WAITING) {
+        return {res, TRI_ERROR_NO_ERROR};
+      }
     }
 
     _mustFetchAll = false;

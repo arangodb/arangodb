@@ -26,7 +26,7 @@
 namespace arangodb {
 namespace aql {
 
-enum ExecutionState { DONE, HASMORE, WAITING };
+enum class ExecutionState { DONE, HASMORE, WAITING };
 
 } // aql
 } // arangodb

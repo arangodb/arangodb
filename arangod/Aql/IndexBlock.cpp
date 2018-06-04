@@ -656,7 +656,7 @@ AqlItemBlock* IndexBlock::getSomeOld(size_t atMost) {
   do {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch) || (!initIndexes())) {
+      if (!ExecutionBlock::getBlockOld(toFetch) || (!initIndexes())) {
         _done = true;
         break;
       }
@@ -670,7 +670,7 @@ AqlItemBlock* IndexBlock::getSomeOld(size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
+        if (!ExecutionBlock::getBlockOld(DefaultBatchSize())) {
           _done = true;
           break;
         }
@@ -745,7 +745,7 @@ size_t IndexBlock::skipSomeOld(size_t atMost) {
   while (_returned < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch) || (!initIndexes())) {
+      if (!ExecutionBlock::getBlockOld(toFetch) || (!initIndexes())) {
         _done = true;
         break;
       }
@@ -760,7 +760,7 @@ size_t IndexBlock::skipSomeOld(size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
+        if (!ExecutionBlock::getBlockOld(DefaultBatchSize())) {
           _done = true;
           break;
         }

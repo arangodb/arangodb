@@ -282,7 +282,7 @@ int SortedCollectBlock::getOrSkipSomeOld(size_t atMost,
   std::unique_ptr<AqlItemBlock> res;
 
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlock(atMost)) {
+    if (!ExecutionBlock::getBlockOld(atMost)) {
       // done
       _done = true;
 
@@ -387,7 +387,7 @@ int SortedCollectBlock::getOrSkipSomeOld(size_t atMost,
           TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          hasMore = ExecutionBlock::getBlock(atMost);
+          hasMore = ExecutionBlock::getBlockOld(atMost);
         } catch (...) {
           // prevent leak
           returnBlock(cur);
@@ -603,7 +603,7 @@ int HashedCollectBlock::getOrSkipSomeOld(size_t atMost,
   }
 
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlock(atMost)) {
+    if (!ExecutionBlock::getBlockOld(atMost)) {
       // done
       _done = true;
 
@@ -776,7 +776,7 @@ int HashedCollectBlock::getOrSkipSomeOld(size_t atMost,
         bool hasMore = !_buffer.empty();
 
         if (!hasMore) {
-          hasMore = ExecutionBlock::getBlock(atMost);
+          hasMore = ExecutionBlock::getBlockOld(atMost);
         }
 
         if (!hasMore) {
@@ -909,7 +909,7 @@ int DistinctCollectBlock::getOrSkipSomeOld(size_t atMost,
   std::unique_ptr<AqlItemBlock> res;
 
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlock(atMost)) {
+    if (!ExecutionBlock::getBlockOld(atMost)) {
       // done
       _done = true;
       return TRI_ERROR_NO_ERROR;
@@ -976,7 +976,7 @@ int DistinctCollectBlock::getOrSkipSomeOld(size_t atMost,
           TRI_IF_FAILURE("DistinctCollectBlock::hasMore") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          hasMore = ExecutionBlock::getBlock(atMost);
+          hasMore = ExecutionBlock::getBlockOld(atMost);
         } catch (...) {
           // prevent leak
           returnBlock(cur);
@@ -1062,7 +1062,7 @@ int CountCollectBlock::getOrSkipSomeOld(size_t atMost, bool skipping, AqlItemBlo
 
   std::unique_ptr<AqlItemBlock> res;
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlock(atMost)) {
+    if (!ExecutionBlock::getBlockOld(atMost)) {
       // done
       _done = true;
       if (!skipping) {
@@ -1107,7 +1107,7 @@ int CountCollectBlock::getOrSkipSomeOld(size_t atMost, bool skipping, AqlItemBlo
           TRI_IF_FAILURE("CountCollectBlock::hasMore") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          hasMore = ExecutionBlock::getBlock(atMost);
+          hasMore = ExecutionBlock::getBlockOld(atMost);
         } catch (...) {
           // prevent leak
           returnBlock(cur);

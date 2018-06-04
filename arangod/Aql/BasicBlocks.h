@@ -68,7 +68,7 @@ class FilterBlock final : public ExecutionBlock {
   bool takeItem(AqlItemBlock* items, size_t index) const;
 
   /// @brief internal function to get another block
-  bool getBlock(size_t atMost);
+  bool getBlockOld(size_t atMost);
 
   int getOrSkipSomeOld(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;

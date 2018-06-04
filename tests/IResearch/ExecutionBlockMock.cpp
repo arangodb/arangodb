@@ -114,7 +114,7 @@ arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSomeOld(
 
     if (_buffer.empty()) {
       size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch)) {
+      if (!ExecutionBlock::getBlockOld(toFetch)) {
         _done = true;
         return nullptr;
       }
@@ -181,7 +181,7 @@ size_t ExecutionBlockMock::skipSomeOld(size_t atMost) {
   while (skipped < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch)) {
+      if (!getBlockOld(toFetch)) {
         _done = true;
         return skipped;
       }

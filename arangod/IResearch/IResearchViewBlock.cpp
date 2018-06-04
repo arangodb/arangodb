@@ -268,7 +268,7 @@ AqlItemBlock* IResearchViewBlockBase::getSomeOld(size_t atMost) {
 
       if (_buffer.empty()) {
         size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlock(toFetch)) {
+        if (!ExecutionBlock::getBlockOld(toFetch)) {
           _done = true;
           return nullptr;
         }
@@ -349,7 +349,7 @@ size_t IResearchViewBlockBase::skipSomeOld(size_t atMost) {
   while (skipped < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch)) {
+      if (!getBlockOld(toFetch)) {
         _done = true;
         return skipped;
       }

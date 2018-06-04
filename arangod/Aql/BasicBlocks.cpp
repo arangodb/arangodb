@@ -151,10 +151,10 @@ bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
 }
 
 /// @brief internal function to get another block
-bool FilterBlock::getBlock(size_t atMost) {
+bool FilterBlock::getBlockOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   while (true) {  // will be left by break or return
-    if (!ExecutionBlock::getBlock(atMost)) {
+    if (!ExecutionBlock::getBlockOld(atMost)) {
       return false;
     }
 
@@ -209,7 +209,7 @@ int FilterBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
 
   while (skipped < atMost) {
     if (_buffer.empty()) {
-      if (!getBlock(atMost - skipped)) {
+      if (!getBlockOld(atMost - skipped)) {
         _done = true;
         break;
       }

@@ -295,6 +295,30 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
   DEBUG_END_BLOCK();
 }
 
+// TODO DEPRECATED DELETE!
+bool ExecutionBlock::getBlockOld(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+  throwIfKilled();  // check if we were aborted
+
+  while (true) {
+    auto res = _dependencies[0]->getSome(atMost);
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    if (res.first == ExecutionState::WAITING) {
+      _engine->getQuery()->tempWaitForAsyncResponse();
+    } else {
+      if (res.second != nullptr) {
+        _buffer.emplace_back(res.second.get());
+        res.second.release();
+        return true;
+      }
+      return false;
+    }
+  }
+  DEBUG_END_BLOCK();
+}
+
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
 /// the dependent node is exhausted.
@@ -436,7 +460,7 @@ bool ExecutionBlock::hasMore() {
   if (!_buffer.empty()) {
     return true;
   }
-  if (getBlock(DefaultBatchSize())) {
+  if (getBlockOld(DefaultBatchSize())) {
     _pos = 0;
     return true;
   }
@@ -476,7 +500,7 @@ int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
         skipped += numActuallySkipped;
         return TRI_ERROR_NO_ERROR;
       } else {
-        if (!getBlock(atMost - skipped)) {
+        if (!getBlockOld(atMost - skipped)) {
           _done = true;
           break;  // must still put things in the result from the collector .
                   // . .

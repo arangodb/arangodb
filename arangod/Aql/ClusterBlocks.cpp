@@ -724,7 +724,7 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   // _buffer.at(i) we are sending to <clientId>
 
   if (pos.first > _buffer.size()) {
-    if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
+    if (!ExecutionBlock::getBlockOld(DefaultBatchSize())) {
       _doneForClient.at(clientId) = true;
       return false;
     }
@@ -756,7 +756,7 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
 
   // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
-    if (!getBlock(atMost)) {
+    if (!getBlockOld(atMost)) {
       _doneForClient.at(clientId) = true;
       return TRI_ERROR_NO_ERROR;
     }
@@ -997,7 +997,7 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
 
   while (buf.at(clientId).size() < atMost) {
     if (_index == _buffer.size()) {
-      if (!ExecutionBlock::getBlock(atMost)) {
+      if (!ExecutionBlock::getBlockOld(atMost)) {
         if (buf.at(clientId).size() == 0) {
           _doneForClient.at(clientId) = true;
           return false;
