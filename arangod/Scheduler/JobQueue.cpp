@@ -54,7 +54,7 @@ class JobQueueThread final
 
     // We hold the Mutex throughout, but give it up when we work and when
     // we wait.
-    CONDITION_LOCKER(guard, _queueCondition);
+    CONDITION_LOCKER(guard, _jobQueue->_queueCondition);
     // iterate until we are shutting down
     while (!isStopping()) {
       ++idleTries;
@@ -146,6 +146,6 @@ void JobQueue::waitForWork() {
   // returns false, otherwise we run the risk of going to sleep for a
   // second despite the fact that there are available worker threads!
   static uint64_t WAIT_TIME = 1000 * 1000;
-  guard.wait(WAIT_TIME);
+  _queueCondition.wait(WAIT_TIME);
 }
 
