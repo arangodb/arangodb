@@ -41,8 +41,8 @@ class Result;
 namespace aql {
 
 struct Collection;
-//class ExecutionNode;
 class GraphNode;
+class ScatterNode;
 class Query;
 
 class EngineInfoContainerDBServer {
@@ -167,6 +167,7 @@ class EngineInfoContainerDBServer {
     std::vector<std::shared_ptr<EngineInfo>> engines;
     std::vector<LogicalView const*> views;
     std::unordered_set<ShardID> usedShards;
+    std::vector<ExecutionNode*> scatters; // corresponding scatters
   };
 
  public:
@@ -228,10 +229,12 @@ class EngineInfoContainerDBServer {
   * @param col The collection that should be used
   * @param accessType The lock-type of this collection
   * @param restrictedShards The list of shards that can be relevant in this query (a subset of the collection shards)
+  * @param scatter The corresponding scatter node, nullptr means no scatter
   */
   CollectionInfo& handleCollection(
     Collection const* col,
     AccessMode::Type const& accessType,
+    ScatterNode* scatter = nullptr,
     std::unordered_set<std::string> const& restrictedShards = {}
   );
 

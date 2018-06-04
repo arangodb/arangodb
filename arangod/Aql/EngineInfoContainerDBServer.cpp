@@ -45,9 +45,12 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-static const double SETUP_TIMEOUT = 25.0;
 
-static Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
+namespace {
+
+const double SETUP_TIMEOUT = 25.0;
+
+Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
   StringRef key(keySlice);
   size_t p = key.find(':');
@@ -67,6 +70,31 @@ static Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::
       "Unexpected response from DBServer during setup"};
   }
   return {TRI_ERROR_NO_ERROR};
+}
+
+ScatterNode* findFirstScatter(ExecutionNode const& root) {
+  ExecutionNode* node = root.getFirstDependency();
+
+  while (node) {
+    switch (node->getType()) {
+      case ExecutionNode::REMOTE:
+        node = node->getFirstDependency();
+
+        if (node->getType() != ExecutionNode::SCATTER
+            && node->getType() != ExecutionNode::DISTRIBUTE) {
+          return nullptr;
+        }
+
+        return ExecutionNode::castTo<ScatterNode*>(node);
+      default:
+        node = node->getFirstDependency();
+        break;
+    }
+  }
+
+  return nullptr;
+}
+
 }
 
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(size_t idOfRemoteNode) noexcept
@@ -301,37 +329,50 @@ EngineInfoContainerDBServer::EngineInfoContainerDBServer(Query* query) noexcept
 }
 
 void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
+  TRI_ASSERT(node);
   TRI_ASSERT(!_engineStack.empty());
   _engineStack.top()->addNode(node);
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
       {
+        CollectionInfo* info;
+        auto* scatter = findFirstScatter(*node);
+
         auto ecNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
         auto col = ecNode->collection();
         if (ecNode->isRestricted()) {
           std::unordered_set<std::string> restrict{ecNode->restrictedShard()};
-          handleCollection(col, AccessMode::Type::READ, restrict);
+          info = &handleCollection(col, AccessMode::Type::READ, scatter, restrict);
         } else {
-          handleCollection(col, AccessMode::Type::READ);
+          info = &handleCollection(col, AccessMode::Type::READ, scatter);
         }
+        TRI_ASSERT(info);
+
         updateCollection(col);
         break;
       }
     case ExecutionNode::INDEX:
       {
+        CollectionInfo* info;
+        auto* scatter = findFirstScatter(*node);
+
         auto idxNode = ExecutionNode::castTo<IndexNode*>(node);
         auto col = idxNode->collection();
         if (idxNode->isRestricted()) {
           std::unordered_set<std::string> restrict{idxNode->restrictedShard()};
-          handleCollection(col, AccessMode::Type::READ, restrict);
+          info = &handleCollection(col, AccessMode::Type::READ, scatter, restrict);
         } else {
-          handleCollection(col, AccessMode::Type::READ);
+          info = &handleCollection(col, AccessMode::Type::READ, scatter);
         }
+        TRI_ASSERT(info);
+
         updateCollection(col);
         break;
       }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      auto* scatter = findFirstScatter(*node);
+
       auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
       TRI_ASSERT(viewNode);
 
@@ -339,6 +380,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         auto& info = handleCollection(&col, AccessMode::Type::READ);
         info.views.push_back(&viewNode->view());
       }
+
       break;
     }
 #endif
@@ -352,7 +394,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         auto col = modNode->collection();
         if (modNode->isRestricted()) {
           std::unordered_set<std::string> restrict{modNode->restrictedShard()};
-          handleCollection(col, AccessMode::Type::WRITE, restrict);
+          handleCollection(col, AccessMode::Type::WRITE, nullptr, restrict);
         } else {
           handleCollection(col, AccessMode::Type::WRITE);
         }
@@ -414,6 +456,7 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handleCollection(
     Collection const* col,
     AccessMode::Type const& accessType,
+    ScatterNode* scatter /* = nullptr */,
     std::unordered_set<std::string> const& restrictedShards /*= {}*/
 ) {
   auto const shards = col->shardIds(
@@ -433,6 +476,12 @@ EngineInfoContainerDBServer::CollectionInfo& EngineInfoContainerDBServer::handle
   // We need to upgrade the lock
   info.lockType = std::max(info.lockType, accessType);
   info.mergeShards(shards);
+
+  if (scatter) {
+    auto& clients = scatter->clients();
+    clients.reserve(clients.size() + shards->size());
+    std::copy(shards->begin(), shards->end(), std::back_inserter(clients));
+  }
 
   return info;
 }

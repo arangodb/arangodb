@@ -129,12 +129,12 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief construct a scatter node
-ScatterNode::ScatterNode(ExecutionPlan* plan,
-                         arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())) {}
+ScatterNode::ScatterNode(
+    ExecutionPlan* plan,
+    arangodb::velocypack::Slice const& base
+) : ExecutionNode(plan, base) {
+  // FIXME clients
+}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
@@ -142,10 +142,8 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
     std::unordered_set<std::string> const& includedShards
 ) const {
-  auto const shardIds = collection()->shardIds(includedShards);
-
   return std::make_unique<ScatterBlock>(
-    &engine, this, *shardIds
+    &engine, this, _clients
   );
 }
 
@@ -154,8 +152,7 @@ void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
+  // FIXME clients
 
   // And close it:
   nodes.close();
@@ -163,16 +160,14 @@ void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
 
 /// @brief estimateCost
 double ScatterNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies[0]->getCost(nrItems);
-  auto shardIds = _collection->shardIds();
-  size_t nrShards = shardIds->size();
-  return depCost + nrItems * nrShards;
+  double const depCost = _dependencies[0]->getCost(nrItems);
+  return depCost + nrItems * _clients.size();
 }
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan,
                                arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
+    : ScatterNode(plan, base),
       _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
@@ -196,10 +191,8 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
     std::unordered_set<std::string> const& includedShards
 ) const {
-  auto const shardIds = collection()->shardIds(includedShards);
-
   return std::make_unique<DistributeBlock>(
-    &engine, this, *shardIds, collection()
+    &engine, this, clients(), collection()
   );
 }
 

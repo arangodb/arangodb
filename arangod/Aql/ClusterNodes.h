@@ -144,24 +144,23 @@ class RemoteNode final : public ExecutionNode {
 };
 
 /// @brief class ScatterNode
-class ScatterNode : public ExecutionNode {
-  friend class ExecutionBlock;
-  friend class ScatterBlock;
-
-  /// @brief constructor with an id
+class ScatterNode : public ExecutionNode{
  public:
-  ScatterNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-              Collection const* collection)
-      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
+  /// @brief constructor with an id
+  ScatterNode(ExecutionPlan* plan, size_t id)
+      : ExecutionNode(plan, id) {
+  }
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return SCATTER; }
+  NodeType getType() const override { return SCATTER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          unsigned flags) const override final;
+  void toVelocyPackHelper(
+   arangodb::velocypack::Builder&,
+   unsigned flags
+  ) const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -171,37 +170,30 @@ class ScatterNode : public ExecutionNode {
   ) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
-    auto c = new ScatterNode(plan, _id, _vocbase, _collection);
+  ExecutionNode* clone(
+      ExecutionPlan* plan, bool withDependencies,
+      bool withProperties
+  ) const override {
+    auto c = std::make_unique<ScatterNode>(plan, _id);
+    c->clients() = clients();
 
-    cloneHelper(c, withDependencies, withProperties);
+    cloneHelper(c.get(), withDependencies, withProperties);
 
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c.release());
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  double estimateCost(size_t&) const override;
 
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  /// @brief set collection
-  void setCollection(Collection const* collection) { _collection = collection; }
+  std::vector<std::string> const& clients() const noexcept { return _clients; }
+  std::vector<std::string>& clients() noexcept { return _clients; }
 
  private:
-  /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief the underlying collection
-  Collection const* _collection;
+  std::vector<std::string> _clients;
 };
 
 /// @brief class DistributeNode
-class DistributeNode : public ExecutionNode {
+class DistributeNode final : public ScatterNode {
   friend class ExecutionBlock;
   friend class DistributeBlock;
   friend class RedundantCalculationsReplacer;
@@ -212,7 +204,7 @@ class DistributeNode : public ExecutionNode {
                  Collection const* collection, Variable const* variable,
                  Variable const* alternativeVariable, bool createKeys,
                  bool allowKeyConversionToObject)
-      : ExecutionNode(plan, id),
+      : ScatterNode(plan, id),
         _vocbase(vocbase),
         _collection(collection),
         _variable(variable),
@@ -358,11 +350,11 @@ class GatherNode final : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new GatherNode(plan, _id, _sortmode);
+    auto c = std::make_unique<GatherNode>(plan, _id, _sortmode);
 
-    cloneHelper(c, withDependencies, withProperties);
+    cloneHelper(c.get(), withDependencies, withProperties);
 
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c.release());
   }
 
   /// @brief creates corresponding ExecutionBlock

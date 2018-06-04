@@ -3045,8 +3045,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     }
 
     // insert a scatter node
-    ExecutionNode* scatterNode =
-        new ScatterNode(plan.get(), plan->nextId(), vocbase, collection);
+    auto* scatterNode = new ScatterNode(plan.get(), plan->nextId());
     plan->registerNode(scatterNode);
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
