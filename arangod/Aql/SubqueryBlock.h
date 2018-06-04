@@ -90,6 +90,7 @@ class SubqueryBlock : public ExecutionBlock {
   std::unique_ptr<AqlItemBlock> _result;
 
   /// @brief the list of results from a single subquery
+  ///        NOTE: Responsibilty here is a bit tricky, it is handed over to the result
   std::unique_ptr<std::vector<std::unique_ptr<AqlItemBlock>>> _subqueryResults;
 
   /// @brief the current subquery in process, used if this thread gets suspended.

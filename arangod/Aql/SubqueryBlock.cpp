@@ -93,15 +93,21 @@ ExecutionState SubqueryBlock::getSomeConstSubquery(size_t atMost) {
   // We have exactly one constant result just reuse it.
   TRI_ASSERT(_subqueryCompleted);
   TRI_ASSERT(_subqueryResults != nullptr);
+  auto subResult = _subqueryResults.get();
 
   for (; _subqueryPos < _result->size(); _subqueryPos++) {
     TRI_IF_FAILURE("SubqueryBlock::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    _result->emplaceValue(_subqueryPos, _outReg, _subqueryResults.get());
+    _result->emplaceValue(_subqueryPos, _outReg, subResult);
+    // From now on we need to forget this query as only this one block
+    // is responible. Unfortunately we need to recompute the subquery
+    // next time again, otherwise the memory management is broken
+    // and creates double-free or even worse use-after-free.
     _subqueryResults.release();
     throwIfKilled();
   }
+
   // We are done for this _result. Fetch next _result from upstream
   // to determine if we are DONE or HASMORE
   return ExecutionState::DONE;
@@ -192,6 +198,13 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
   // Clear out registers no longer needed later:
   clearRegisters(_result.get());
   traceGetSomeEnd(_result.get());
+  // If we get here, we have handed over responsibilty for all subquery results
+  // computed here to this specific result. We cannot reuse them in the next
+  // getSome call, hence we need to reset it.
+  _subqueryInitialized = false;
+  _subqueryCompleted = false;
+  _subqueryResults.release();
+
   // Resets _result to nullptr
   return {_upstreamState, std::move(_result)};
   // cppcheck-suppress style
