@@ -143,7 +143,7 @@ ExecutionState SubqueryBlock::getSomeNonConstSubquery(size_t atMost) {
     }
     _result->emplaceValue(_subqueryPos, _outReg, _subqueryResults.get());
     // Responsibility is handed over
-    _subqueryResults.reset();
+    _subqueryResults.release();
     TRI_ASSERT(_subqueryResults == nullptr);
     _subqueryCompleted = false;
     _subqueryInitialized = false;
@@ -237,9 +237,6 @@ ExecutionState SubqueryBlock::executeSubquery() {
       _subqueryCompleted = true;
       return ExecutionState::DONE;
     }
-    // If this ASSERTION kicks in one Block has a logic bug
-    // and returns no results in conjunction with HASMORE.
-    TRI_ASSERT(res.second != nullptr);
   } while (true);
   DEBUG_END_BLOCK();
 }
