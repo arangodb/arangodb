@@ -9,6 +9,13 @@ include(ExternalProject)
 remove_definitions("-DUSE_ENTERPRISE=1")
 
 ################################################################################
+## ZLIB
+################################################################################
+
+set(SKIP_INSTALL_ALL ON)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
+
+################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -91,6 +98,13 @@ else ()
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
   set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 endif ()
+
+################################################################################
+## Google S2
+################################################################################
+
+add_subdirectory(s2geometry)
+set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## IResearch
@@ -201,12 +215,6 @@ if (USE_IRESEARCH)
   endif()
 endif()
 
-################################################################################
-## ZLIB
-################################################################################
-
-set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 
 ################################################################################
 ## cURL
@@ -223,12 +231,6 @@ set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
-
-################################################################################
-## Google S2
-################################################################################
-
-add_subdirectory(s2geometry)
 
 ################################################################################
 ## SNAPPY

@@ -29,7 +29,7 @@ const functionsDocumentation = {
   'dump_encrypted': 'encrypted dump tests'
 };
 const optionsDocumentation = [
-  '   - `skipEncrypted` : if set to true the encryption tests are skipped',
+  '   - `skipEncrypted` : if set to true the encryption tests are skipped'
 ];
 
 const pu = require('@arangodb/process-utils');
@@ -40,7 +40,11 @@ const _ = require('lodash');
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 
-function dumpEncrypted(options) {
+const testPaths = {
+  'dump_encrypted': ['js/server/tests/dump/'] // we have to be fuzzy here...
+};
+
+function dumpEncrypted (options) {
   let cluster;
 
   if (options.cluster) {
@@ -48,7 +52,7 @@ function dumpEncrypted(options) {
   } else {
     cluster = '';
   }
-  
+
   if (options.skipEncrypted === true) {
     print('skipping encryption tests!');
     return {
@@ -145,7 +149,8 @@ function dumpEncrypted(options) {
   return results;
 }
 
-function setup(testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   // turn off encryption tests by default. only enable them in enterprise version
   opts['skipEncrypted'] = true;
   let version = {};
@@ -159,6 +164,4 @@ function setup(testFns, defaultFns, opts, fnDocs, optionsDoc) {
   defaultFns.push('dump_encrypted');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};
