@@ -73,6 +73,8 @@ function catchRunner (options) {
   if (!options.skipCatch) {
     if (run !== '') {
       let argv = [
+        '--log.line-number',
+        options.extremeVerbosity ? "true" : "false",
         '[exclude:longRunning][exclude:cache]'
       ];
       results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir);
@@ -92,12 +94,15 @@ function catchRunner (options) {
 
   if (!options.skipCache) {
     if (run !== '') {
-      let argv = ['[cache][exclude:longRunning]',
-                  '-r',
-                  'junit',
-                  '-o',
-                  fs.join(options.testOutputDirectory, 'catch-cache.xml')
-                 ];
+      let argv = [
+        '--log.line-number',
+        options.extremeVerbosity ? "true" : "false",
+        '[cache][exclude:longRunning]',
+        '-r',
+        'junit',
+        '-o',
+        fs.join(options.testOutputDirectory, 'catch-cache.xml')
+      ];
       results.cache_suite = pu.executeAndWait(run, argv, options,
                                            'cache_suite', rootDir);
       results.cache_suite.failed = results.cache_suite.status ? 0 : 1;
@@ -116,12 +121,15 @@ function catchRunner (options) {
 
   if (!options.skipGeo) {
     if (run !== '') {
-      let argv = ['[geo][exclude:longRunning]',
-                  '-r',
-                  'junit',
-                  '-o',
-                  fs.join(options.testOutputDirectory, 'catch-geo.xml')
-                 ];
+      let argv = [
+        '--log.line-number',
+        options.extremeVerbosity ? "true" : "false",
+        '[geo][exclude:longRunning]',
+        '-r',
+        'junit',
+        '-o',
+        fs.join(options.testOutputDirectory, 'catch-geo.xml')
+      ];
       results.geo_suite = pu.executeAndWait(run, argv, options, 'geo_suite', rootDir);
       results.geo_suite.failed = results.geo_suite.status ? 0 : 1;
       if (!results.geo_suite.status) {

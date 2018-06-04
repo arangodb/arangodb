@@ -50,7 +50,7 @@ const download = require('internal').download;
 
 const testPaths = {
   'authentication': ['js/client/tests/authentication'],
-  'authentication_server': ['js/client/tests/authentication'],
+  'authentication_server': ['js/server/tests/authentication'],
   'authentication_parameters': []
 };
 

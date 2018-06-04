@@ -30,6 +30,7 @@
 #include "catch.hpp"
 
 #include <iomanip>
+#include <sstream>
 
 #include "Basics/directories.h"
 #include "Basics/StringUtils.h"
