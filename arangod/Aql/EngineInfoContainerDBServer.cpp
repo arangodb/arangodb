@@ -390,13 +390,15 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
     case ExecutionNode::REPLACE:
     case ExecutionNode::UPSERT:
       {
+        auto* scatter = findFirstScatter(*node);
+
         auto modNode = ExecutionNode::castTo<ModificationNode*>(node);
         auto col = modNode->collection();
         if (modNode->isRestricted()) {
           std::unordered_set<std::string> restrict{modNode->restrictedShard()};
-          handleCollection(col, AccessMode::Type::WRITE, nullptr, restrict);
+          handleCollection(col, AccessMode::Type::WRITE, scatter, restrict);
         } else {
-          handleCollection(col, AccessMode::Type::WRITE);
+          handleCollection(col, AccessMode::Type::WRITE, scatter);
         }
         updateCollection(col);
         break;
