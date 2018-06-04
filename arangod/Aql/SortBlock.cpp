@@ -239,10 +239,10 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::initializeCursor(
   DEBUG_END_BLOCK();  
 }
 
-int SortBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
-                               AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK(); 
-  
+std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();
+
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_mustFetchAll) {
@@ -256,14 +256,7 @@ int SortBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
     }
   }
 
-  while (true) {
-    auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else { 
-      return res.second.errorNumber();
-    }
-  }
+  return ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
