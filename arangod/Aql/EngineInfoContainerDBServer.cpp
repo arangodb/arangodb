@@ -50,6 +50,14 @@ namespace {
 
 const double SETUP_TIMEOUT = 25.0;
 
+void injectQueryOptions(
+    Query& query,
+    VPackBuilder& infoBuilder
+) {
+  // the toVelocyPack will open & close the "options" object
+  query.queryOptions().toVelocyPack(infoBuilder, true);
+}
+
 Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string& shardId) {
   TRI_ASSERT(keySlice.isString()); // used as  a key in Json
   StringRef key(keySlice);
@@ -664,14 +672,6 @@ void EngineInfoContainerDBServer::DBServerInfo::combineTraverserEngines(
 void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(
     GraphNode* node, TraverserEngineShardLists&& shards) {
   _traverserEngineInfos.push_back(std::make_pair(node, std::move(shards)));
-}
-
-void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
-    Query& query,
-    VPackBuilder& infoBuilder
-) const {
-  // the toVelocyPack will open & close the "options" object
-  query.queryOptions().toVelocyPack(infoBuilder, true);
 }
 
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>

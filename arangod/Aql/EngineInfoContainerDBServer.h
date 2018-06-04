@@ -150,10 +150,6 @@ class EngineInfoContainerDBServer {
    private:
     void injectTraverserEngines(VPackBuilder& infoBuilder) const;
 
-    void injectQueryOptions(Query* query,
-                            velocypack::Builder& infoBuilder) const;
-
-   private:
     // @brief Map of LockType to ShardId
     std::unordered_map<AccessMode::Type, std::vector<ShardID>> _shardLocking;
 
