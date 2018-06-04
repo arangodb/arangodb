@@ -602,8 +602,8 @@ std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
 }
 
 /// @brief getSome
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-IndexBlock::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
+    size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   if (_done) {
@@ -657,7 +657,14 @@ IndexBlock::getSome(size_t atMost) {
   do {
     if (_buffer.empty()) {
       size_t toFetch = std::min(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlockOld(toFetch) || !initIndexes()) {
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!blockAppended);
+        return {ExecutionState::WAITING, nullptr};
+      }
+      if (!blockAppended || !initIndexes()) {
         _done = true;
         break;
       }
@@ -671,7 +678,15 @@ IndexBlock::getSome(size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlockOld(DefaultBatchSize())) {
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) =
+            ExecutionBlock::getBlock(DefaultBatchSize());
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          return {ExecutionState::WAITING, nullptr};
+        }
+        if (!blockAppended) {
           _done = true;
           break;
         }
