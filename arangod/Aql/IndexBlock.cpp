@@ -745,8 +745,15 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
 
   while (_returned < atMost) {
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlockOld(toFetch) || (!initIndexes())) {
+      size_t toFetch = std::min(DefaultBatchSize(), atMost);
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!blockAppended);
+        return {ExecutionState::WAITING, 0};
+      }
+      if (!blockAppended || !initIndexes()) {
         _done = true;
         break;
       }
@@ -761,7 +768,14 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlockOld(DefaultBatchSize())) {
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) = ExecutionBlock::getBlock(DefaultBatchSize());
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          return {ExecutionState::WAITING, 0};
+        }
+        if (!blockAppended) {
           _done = true;
           break;
         }
