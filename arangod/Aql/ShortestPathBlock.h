@@ -51,12 +51,13 @@ class ShortestPathBlock : public ExecutionBlock {
   int shutdown(int errorCode) override;
 
   /// @brief getSome
-  AqlItemBlock* getSomeOld(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) final;
 
   // skip atMost documents, returns the number actually skipped . . .
   // will only return less than atMost if there aren't atMost many
   // things to skip overall.
-  size_t skipSomeOld(size_t atMost) override final;
+  size_t skipSomeOld(size_t atMost) final;
   
  private:
   /// @brief Compute the next shortest path

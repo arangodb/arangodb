@@ -649,7 +649,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
   } else {
     // No uniqueness checks
     callback = [&](LocalDocumentId const&, VPackSlice slice) {
-      TRI_ASSERT(res.get() != nullptr);
+      TRI_ASSERT(res != nullptr);
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
   }

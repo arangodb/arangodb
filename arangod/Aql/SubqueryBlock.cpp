@@ -101,7 +101,7 @@ ExecutionState SubqueryBlock::getSomeConstSubquery(size_t atMost) {
     }
     _result->emplaceValue(_subqueryPos, _outReg, subResult);
     // From now on we need to forget this query as only this one block
-    // is responible. Unfortunately we need to recompute the subquery
+    // is responsible. Unfortunately we need to recompute the subquery
     // next time again, otherwise the memory management is broken
     // and creates double-free or even worse use-after-free.
     _subqueryResults.release();

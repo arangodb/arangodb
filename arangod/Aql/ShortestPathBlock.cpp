@@ -274,21 +274,28 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   return hasPath;
 }
 
-AqlItemBlock* ShortestPathBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ShortestPathBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   while (true) {
     if (_done) {
       traceGetSomeEnd(nullptr);
-      return nullptr;
+      return {ExecutionState::DONE, nullptr};
     }
 
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlockOld(toFetch)) {
+      size_t toFetch = std::min(DefaultBatchSize(), atMost);
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
+      if (state == ExecutionState::WAITING) {
+        return {ExecutionState::WAITING, nullptr};
+      }
+      if (!blockAppended) {
         _done = true;
         traceGetSomeEnd(nullptr);
-        return nullptr;
+        return {ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
     }
@@ -312,7 +319,7 @@ AqlItemBlock* ShortestPathBlock::getSomeOld(size_t atMost) {
     }
 
     size_t available = _pathLength - _posInPath;
-    size_t toSend = (std::min)(atMost, available);
+    size_t toSend = std::min(atMost, available);
 
     RegisterId nrRegs =
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
@@ -351,7 +358,7 @@ AqlItemBlock* ShortestPathBlock::getSomeOld(size_t atMost) {
     // Clear out registers no longer needed later:
     clearRegisters(res.get());
     traceGetSomeEnd(res.get());
-    return res.release();
+    return {ExecutionState::HASMORE, std::move(res)};
   }
 
   // cppcheck-suppress style
@@ -359,6 +366,7 @@ AqlItemBlock* ShortestPathBlock::getSomeOld(size_t atMost) {
 }
 
 size_t ShortestPathBlock::skipSomeOld(size_t atMost) {
-  // TODO IMPLEMENT!!
+  // TODO IMPLEMENT!! There is a regression test for this:
+  // testShortestPathDijkstraOutboundSkipFirst in aql-graph.js
   return 0;
 }
