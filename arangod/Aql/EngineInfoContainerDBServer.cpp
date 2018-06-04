@@ -379,6 +379,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         info.views.push_back(view);
       }
 
+      // find and register corresponding view scatter, if present
       auto* scatter = findFirstScatter(*node);
 
       if (scatter) {
@@ -534,7 +535,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   }
   infoBuilder.close();  // lockInfo
   infoBuilder.add(VPackValue("options"));
-  injectQueryOptions(&query, infoBuilder);
+  injectQueryOptions(query, infoBuilder);
   infoBuilder.add(VPackValue("variables"));
   // This will open and close an Object.
   query.ast()->variables()->toVelocyPack(infoBuilder);
@@ -569,9 +570,9 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
       isResponsibleForInit = false;
     }
   }
-  infoBuilder.close();  // snippets
+  infoBuilder.close(); // snippets
   injectTraverserEngines(infoBuilder);
-  infoBuilder.close();  // Object
+  infoBuilder.close(); // Object
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
@@ -666,9 +667,11 @@ void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
-    Query* query, VPackBuilder& infoBuilder) const {
+    Query& query,
+    VPackBuilder& infoBuilder
+) const {
   // the toVelocyPack will open & close the "options" object
-  query->queryOptions().toVelocyPack(infoBuilder, true);
+  query.queryOptions().toVelocyPack(infoBuilder, true);
 }
 
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
