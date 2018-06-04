@@ -71,7 +71,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     aql::ExecutionPlan& plan,
     size_t id,
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
+    arangodb::LogicalView const& view, // FIXME use std::shared_ptr instead to ensure that view is valid
     aql::Variable const& outVariable,
     aql::AstNode* filterCondition,
     std::vector<IResearchSort>&& sortCondition

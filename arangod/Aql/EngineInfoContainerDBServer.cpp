@@ -120,6 +120,7 @@ EngineInfoContainerDBServer::EngineInfo::EngineInfo(EngineInfo&& other) noexcept
 }
 
 void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
+  TRI_ASSERT(node);
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
@@ -128,6 +129,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = ecNode->restrictedShard();
       }
+      _type = ExecutionNode::ENUMERATE_COLLECTION;
       break;
     }
     case ExecutionNode::INDEX: {
@@ -137,15 +139,15 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = idxNode->restrictedShard();
       }
+      _type = ExecutionNode::INDEX;
       break;
     }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:{
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
-      auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
-      TRI_ASSERT(viewNode);
+      auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
       _type = ExecutionNode::ENUMERATE_IRESEARCH_VIEW;
-      _view = &viewNode->view();
+      _view = &viewNode.view();
       break;
     }
 #endif
@@ -160,6 +162,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = modNode->restrictedShard();
       }
+      _type = node->getType();
       break;
     }
     default:
@@ -170,7 +173,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
 }
 
 Collection const* EngineInfoContainerDBServer::EngineInfo::collection() const noexcept {
-  TRI_ASSERT(ExecutionNode::MAX_NODE_TYPE_VALUE == _type);
+  TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW != _type);
   return _collection;
 }
 
@@ -182,16 +185,17 @@ LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcep
 #endif
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    Query* query,
+    ServerID const& serverId,
+    Query& query,
     std::vector<ShardID> const& shards,
     VPackBuilder& infoBuilder
 ) const {
   // The Key is required to build up the queryId mapping later
+  // We're using serverId as queryId for the snippet since currently
+  // it's impossible to have more than one view per engine
   std::string id = arangodb::basics::StringUtils::itoa(_idOfRemoteNode);
-  for (auto const& shard : shards) {
-    id += ':';
-    id += shard;
-  }
+  id += ':';
+  id += serverId;
   infoBuilder.add(VPackValue(id));
 
   TRI_ASSERT(!_nodes.empty());
@@ -199,7 +203,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   // Note that in these parts of the query there are no SubqueryNodes,
   // since they are all on the coordinator!
 
-  ExecutionPlan plan(query->ast());
+  ExecutionPlan plan(query.ast());
   ExecutionNode* previous = nullptr;
 
   for (auto enIt = _nodes.rbegin(), end = _nodes.rend(); enIt != end; ++enIt) {
@@ -221,7 +225,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       auto rem = ExecutionNode::castTo<RemoteNode*>(clone);
       // update the remote node with the information about the query
       rem->server("server:" + arangodb::ServerState::instance()->getId());
-      rem->ownName(id);
+      rem->ownName(serverId);
       rem->queryId(_otherId);
 
       // only one of the remote blocks is responsible for forwarding the
@@ -249,7 +253,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    Query* query,
+    Query& query,
     ShardID id,
     VPackBuilder& infoBuilder,
     bool isResponsibleForInit
@@ -275,7 +279,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 
   _collection->setCurrentShard(id);
 
-  ExecutionPlan plan(query->ast());
+  ExecutionPlan plan(query.ast());
   ExecutionNode* previous = nullptr;
 
   for (auto enIt = _nodes.rbegin(), end = _nodes.rend(); enIt != end; ++enIt) {
@@ -367,12 +371,18 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto* scatter = findFirstScatter(*node);
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
+      auto* view = &viewNode.view();
 
       for (aql::Collection const& col : viewNode.collections()) {
         auto& info = handleCollection(&col, AccessMode::Type::READ);
-        info.views.push_back(&viewNode.view());
+        info.views.push_back(view);
+      }
+
+      auto* scatter = findFirstScatter(*node);
+
+      if (scatter) {
+        _viewInfos[view].scatters.push_back(scatter);
       }
 
       break;
@@ -423,7 +433,7 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 
 #ifdef USE_IRESEARCH
   if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == e->type()) {
-    _viewInfos[e->view()].emplace_back(std::move(e));
+    _viewInfos[e->view()].engines.emplace_back(std::move(e));
   } else
 #endif
   {
@@ -505,7 +515,10 @@ void EngineInfoContainerDBServer::DBServerInfo::addEngine(
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
-    Query* query, VPackBuilder& infoBuilder) const {
+    ServerID const& serverId,
+    EngineInfoContainerDBServer const& context,
+    Query& query,
+    VPackBuilder& infoBuilder) const {
   TRI_ASSERT(infoBuilder.isEmpty());
 
   infoBuilder.openObject();
@@ -521,10 +534,10 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   }
   infoBuilder.close();  // lockInfo
   infoBuilder.add(VPackValue("options"));
-  injectQueryOptions(query, infoBuilder);
+  injectQueryOptions(&query, infoBuilder);
   infoBuilder.add(VPackValue("variables"));
   // This will open and close an Object.
-  query->ast()->variables()->toVelocyPack(infoBuilder);
+  query.ast()->variables()->toVelocyPack(infoBuilder);
   infoBuilder.add(VPackValue("snippets"));
   infoBuilder.openObject();
 
@@ -536,7 +549,16 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 #ifdef USE_IRESEARCH
     // serialize for the list of shards
     if (it.first->type() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
-      engine.serializeSnippet(query, shards, infoBuilder);
+      engine.serializeSnippet(serverId, query, shards, infoBuilder);
+
+      // register current DBServer for each scatter associated with the view
+      auto const viewInfo = context._viewInfos.find(engine.view());
+
+      if (viewInfo != context._viewInfos.end()) {
+        for (auto* scatter : viewInfo->second.scatters) {
+          scatter->clients().emplace_back(serverId);
+        }
+      }
       continue;
     }
 #endif
@@ -692,7 +714,7 @@ EngineInfoContainerDBServer::createDBServerMapping(
           continue;
         }
 
-        for (auto const& viewEngine : viewInfo->second) {
+        for (auto const& viewEngine : viewInfo->second.engines) {
           mapping.addEngine(viewEngine, s);
         }
       }
@@ -909,7 +931,7 @@ Result EngineInfoContainerDBServer::buildEngines(
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for "
                                             << it.first;
     infoBuilder.clear();
-    it.second.buildMessage(_query, infoBuilder);
+    it.second.buildMessage(it.first, *this, *_query, infoBuilder);
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Sending the Engine info: "
                                             << infoBuilder.toJson();
 
@@ -958,6 +980,8 @@ Result EngineInfoContainerDBServer::buildEngines(
       std::string shardId = "";
       auto res = ExtractRemoteAndShard(resEntry.key, remoteId, shardId);
       if (!res.ok()) {
+        // FIXME in case if that fails, there will
+        // be a segfault somewhere in 'cleanup'
         return res;
       }
       TRI_ASSERT(remoteId != 0);

@@ -92,14 +92,15 @@ class EngineInfoContainerDBServer {
     void collection(Collection* col) noexcept { _collection = col; }
 
     void serializeSnippet(
-      Query* query,
+      Query& query,
       ShardID id,
       velocypack::Builder& infoBuilder,
       bool isResponsibleForInit
     ) const;
 
     void serializeSnippet(
-      Query* query,
+      ServerID const& serverId,
+      Query& query,
       std::vector<ShardID> const& shards,
       velocypack::Builder& infoBuilder
     ) const;
@@ -121,10 +122,10 @@ class EngineInfoContainerDBServer {
     QueryId _otherId;         // Id of query engine before this one
     union {
       Collection* _collection;  // The collection used to connect to this engine
-      LogicalView const* _view;
+      LogicalView const* _view; // The view used to connect to this engine
     };
     ShardID _restrictedShard; // The shard this snippet is restricted to
-    ExecutionNode::NodeType _type{ ExecutionNode::MAX_NODE_TYPE_VALUE };
+    ExecutionNode::NodeType _type{ ExecutionNode::MAX_NODE_TYPE_VALUE }; // type of the "main node"
   };
 
   struct DBServerInfo {
@@ -133,7 +134,12 @@ class EngineInfoContainerDBServer {
 
     void addEngine(std::shared_ptr<EngineInfo> info, ShardID const& id);
 
-    void buildMessage(Query* query, velocypack::Builder& infoBuilder) const;
+    void buildMessage(
+      ServerID const& serverId,
+      EngineInfoContainerDBServer const& context,
+      Query& query,
+      velocypack::Builder& infoBuilder
+    ) const;
 
     void addTraverserEngine(GraphNode* node,
                             TraverserEngineShardLists&& shards);
@@ -262,6 +268,11 @@ class EngineInfoContainerDBServer {
 #endif
 
  private:
+  struct ViewInfo {
+    std::vector<std::shared_ptr<EngineInfo>> engines; // list of the engines associated with a view
+    std::vector<ScatterNode*> scatters; // list of the scatters associated with a view
+  };
+
   // @brief The query that is executed. We are not responsible for it
   Query* _query;
 
@@ -272,7 +283,9 @@ class EngineInfoContainerDBServer {
   // @brief A map of Collection => Info required for distribution
   std::unordered_map<Collection const*, CollectionInfo> _collectionInfos;
 
-  std::unordered_map<LogicalView const*, std::vector<std::shared_ptr<EngineInfo>>> _viewInfos;
+  // @brief A map of LogicalView => Info required for distribution
+  // std::map ~25-30% is faster than std::unordered_map for small number of elements
+  std::map<LogicalView const*, ViewInfo> _viewInfos;
 
 #ifdef USE_ENTERPRISE
   // @brief List of all satellite collections
