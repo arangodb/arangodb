@@ -636,12 +636,10 @@ void GraphOperations::readEdges(VPackBuilder& builder) {
 }
 
 void GraphOperations::readVertices(VPackBuilder& builder) {
-  auto const& vertexCollections = _graph.vertexCollections();
-
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("collections", VPackValue(VPackValueType::Array));
 
-  for (auto const& vertexCollection : vertexCollections) {
+  for (auto const& vertexCollection : _graph.vertexCollections()) {
     builder.add(VPackValue(vertexCollection));
   }
   builder.close();

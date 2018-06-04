@@ -232,6 +232,13 @@ boost::optional<RestStatus> RestGraphHandler::graphAction(
 
 boost::optional<RestStatus> RestGraphHandler::vertexSetsAction(
     const std::shared_ptr<const Graph> graph) {
+
+  switch (request()->requestType()) {
+    case RequestType::GET:
+      graphActionReadConfig(graph, TRI_COL_TYPE_DOCUMENT, GraphProperty::VERTICES);
+      return RestStatus::DONE;
+    default:;
+  }
   return boost::none;
 }
 
