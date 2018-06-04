@@ -95,15 +95,6 @@ ClusterEngineType ClusterEngine::engineType() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-void ClusterEngine::setActualEngine(StorageEngine* e) {
-  auto& idxFactory = static_cast<ClusterIndexFactory&>(
-    const_cast<IndexFactory&>(indexFactory())
-  );
-
-  idxFactory.reset(e ? &(e->indexFactory()) : nullptr);
-  _actualEngine = e;
-}
-
 // inherited from ApplicationFeature
 // ---------------------------------
 
@@ -124,10 +115,6 @@ void ClusterEngine::prepare() {
 
 void ClusterEngine::start() {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-
-  // reload settings from actual engine becausesome features might prepare()
-  // after ClusterEngine causing the actual engine state to be incorrect
-  setActualEngine(actualEngine());
 }
 
 TransactionManager* ClusterEngine::createTransactionManager() {
@@ -458,3 +445,7 @@ TRI_vocbase_t* ClusterEngine::openExistingDatabase(TRI_voc_tick_t id,
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
   return vocbase.release();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
