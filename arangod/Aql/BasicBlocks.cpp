@@ -351,33 +351,35 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
           _engine->_stats.fullCount += static_cast<int64_t>(skipped);
         }
       }
-      if (_count >= _limit && _fullCount) {
-        // if fullCount is set, we must fetch all elements from the
-        // dependency. we'll use the default batch size for this
-        atMost = DefaultBatchSize();
+      if (_count >= _limit) {
+        if (_fullCount) {
+          // if fullCount is set, we must fetch all elements from the
+          // dependency. we'll use the default batch size for this
+          atMost = DefaultBatchSize();
 
-        // suck out all data from the dependencies
-        while (true) {
-          skipped = 0;
-          AqlItemBlock* ignore = nullptr;
-          auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, ignore, skipped);
-          if (res.first == ExecutionState::WAITING || !res.second.ok()) {
-            TRI_ASSERT(ignore == nullptr);
-            // On WAITING we will continue here, on error we bail out
-            return res;
+          // suck out all data from the dependencies
+          while (true) {
+            skipped = 0;
+            AqlItemBlock* ignore = nullptr;
+            auto res = ExecutionBlock::getOrSkipSome(atMost, skipping, ignore, skipped);
+            if (res.first == ExecutionState::WAITING || !res.second.ok()) {
+              TRI_ASSERT(ignore == nullptr);
+              // On WAITING we will continue here, on error we bail out
+              return res;
+            }
+
+            TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
+            delete ignore;
+            _engine->_stats.fullCount += skipped;
+
+            if (skipped == 0) {
+              _state = DONE;
+              break;
+            }
           }
-
-          TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
-          delete ignore;
-          _engine->_stats.fullCount += skipped;
-
-          if (skipped == 0) {
-            _state = DONE;
-            break;
-          }
+        } else {
+          _state = DONE;
         }
-      } else {
-        _state = DONE;
       }
     }
   }
