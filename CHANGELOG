@@ -1,4 +1,4 @@
-v3.3.10 (XXXX-XX-XX)
+v3.3.10 (2018-06-04)
 --------------------
 
 * make optimizer rule "remove-filter-covered-by-index" not stop after removing
