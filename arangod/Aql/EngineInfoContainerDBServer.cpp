@@ -335,50 +335,44 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
       {
-        CollectionInfo* info;
         auto* scatter = findFirstScatter(*node);
+        auto const& colNode = *ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+        auto const* col = colNode.collection();
 
-        auto ecNode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
-        auto col = ecNode->collection();
-        if (ecNode->isRestricted()) {
-          std::unordered_set<std::string> restrict{ecNode->restrictedShard()};
-          info = &handleCollection(col, AccessMode::Type::READ, scatter, restrict);
-        } else {
-          info = &handleCollection(col, AccessMode::Type::READ, scatter);
-        }
-        TRI_ASSERT(info);
+        std::unordered_set<std::string> const restrictedShard(
+          colNode.isRestricted()
+            ? std::initializer_list<std::string>{ colNode.restrictedShard() }
+            : std::initializer_list<std::string>{ }
+        );
 
+        handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
         updateCollection(col);
         break;
       }
     case ExecutionNode::INDEX:
       {
-        CollectionInfo* info;
         auto* scatter = findFirstScatter(*node);
+        auto const& idxNode = *ExecutionNode::castTo<IndexNode const*>(node);
+        auto const* col = idxNode.collection();
 
-        auto idxNode = ExecutionNode::castTo<IndexNode*>(node);
-        auto col = idxNode->collection();
-        if (idxNode->isRestricted()) {
-          std::unordered_set<std::string> restrict{idxNode->restrictedShard()};
-          info = &handleCollection(col, AccessMode::Type::READ, scatter, restrict);
-        } else {
-          info = &handleCollection(col, AccessMode::Type::READ, scatter);
-        }
-        TRI_ASSERT(info);
+        std::unordered_set<std::string> const restrictedShard(
+          idxNode.isRestricted()
+            ? std::initializer_list<std::string>{ idxNode.restrictedShard() }
+            : std::initializer_list<std::string>{ }
+        );
 
+        handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
         updateCollection(col);
         break;
       }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto* scatter = findFirstScatter(*node);
+      auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
 
-      auto* viewNode = ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
-      TRI_ASSERT(viewNode);
-
-      for (aql::Collection const& col : viewNode->collections()) {
+      for (aql::Collection const& col : viewNode.collections()) {
         auto& info = handleCollection(&col, AccessMode::Type::READ);
-        info.views.push_back(&viewNode->view());
+        info.views.push_back(&viewNode.view());
       }
 
       break;
@@ -391,15 +385,16 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT:
       {
         auto* scatter = findFirstScatter(*node);
+        auto const& modNode = *ExecutionNode::castTo<ModificationNode const*>(node);
+        auto const* col = modNode.collection();
 
-        auto modNode = ExecutionNode::castTo<ModificationNode*>(node);
-        auto col = modNode->collection();
-        if (modNode->isRestricted()) {
-          std::unordered_set<std::string> restrict{modNode->restrictedShard()};
-          handleCollection(col, AccessMode::Type::WRITE, scatter, restrict);
-        } else {
-          handleCollection(col, AccessMode::Type::WRITE, scatter);
-        }
+        std::unordered_set<std::string> const restrictedShard(
+          modNode.isRestricted()
+            ? std::initializer_list<std::string>{ modNode.restrictedShard() }
+            : std::initializer_list<std::string>{ }
+        );
+
+        handleCollection(col, AccessMode::Type::WRITE, scatter, restrictedShard);
         updateCollection(col);
         break;
       }

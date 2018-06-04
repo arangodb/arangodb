@@ -186,6 +186,10 @@ class ScatterNode : public ExecutionNode{
   std::vector<std::string> const& clients() const noexcept { return _clients; }
   std::vector<std::string>& clients() noexcept { return _clients; }
 
+ protected:
+  void writeClientsToVelocyPack(VPackBuilder& builder) const;
+  bool readClientsFromVelocyPack(VPackSlice base);
+
  private:
   std::vector<std::string> _clients;
 };
@@ -229,13 +233,21 @@ class DistributeNode final : public ScatterNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new DistributeNode(plan, _id, _vocbase, _collection, _variable,
-                                _alternativeVariable, _createKeys,
-                                _allowKeyConversionToObject);
+    auto c = std::make_unique<DistributeNode>(
+      plan,
+      _id,
+      _vocbase,
+      _collection,
+      _variable,
+      _alternativeVariable,
+      _createKeys,
+      _allowKeyConversionToObject
+    );
+    c->clients() = clients();
 
-    cloneHelper(c, withDependencies, withProperties);
+    cloneHelper(c.get(), withDependencies, withProperties);
 
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return ExecutionNode::castTo<ExecutionNode*>(c.release());
   }
   
   /// @brief getVariablesUsedHere, returning a vector

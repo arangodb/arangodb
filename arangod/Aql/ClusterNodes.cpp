@@ -132,7 +132,7 @@ ScatterNode::ScatterNode(
     ExecutionPlan* plan,
     arangodb::velocypack::Slice const& base
 ) : ExecutionNode(plan, base) {
-  // FIXME clients
+  readClientsFromVelocyPack(base);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -150,10 +150,43 @@ void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
-  // FIXME clients
+  // serialize clients
+  writeClientsToVelocyPack(nodes);
 
   // And close it:
   nodes.close();
+}
+
+bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
+  auto const clientsSlice = base.get("clients");
+
+  if (!clientsSlice.isArray()) {
+    LOG_TOPIC(ERR, Logger::AQL)
+      << "invalid serialized ScatterNode definition, 'clients' attribute is expected to be an array of string";
+    return false;
+  }
+
+  size_t pos = 0;
+  for (auto const clientSlice : velocypack::ArrayIterator(clientsSlice)) {
+    if (!clientSlice.isString()) {
+      LOG_TOPIC(ERR, Logger::AQL)
+        << "invalid serialized ScatterNode definition, 'clients' attribute is expected to be an array of string but got not a string at line " << pos;
+      _clients.clear(); // clear malformed node
+      return false;
+    }
+
+    _clients.emplace_back(clientSlice.copyString());
+    ++pos;
+  }
+
+  return true;
+}
+
+void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder arrayScope(&builder, "clients");
+  for (auto const& client : _clients) {
+    builder.add(VPackValue(client));
+  }
 }
 
 /// @brief estimateCost
@@ -181,6 +214,8 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
     _variable = plan->getAst()->variables()->getVariable(base.get("varId").getNumericValue<VariableId>());
     _alternativeVariable = plan->getAst()->variables()->getVariable(base.get("alternativeVarId").getNumericValue<VariableId>());
   }
+
+  readClientsFromVelocyPack(base);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -198,6 +233,9 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
                                         unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+
+  // serialize clients
+  writeClientsToVelocyPack(nodes);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));

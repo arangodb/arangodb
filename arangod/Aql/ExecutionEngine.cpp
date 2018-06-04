@@ -200,13 +200,12 @@ ExecutionEngine::~ExecutionEngine() {
 
 struct Instanciator final : public WalkerWorker<ExecutionNode> {
   ExecutionEngine* engine;
-  ExecutionBlock* root;
+  ExecutionBlock* root{};
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
 
-  explicit Instanciator(ExecutionEngine* engine)
-      : engine(engine), root(nullptr) {}
-
-  ~Instanciator() {}
+  explicit Instanciator(ExecutionEngine* engine) noexcept
+    : engine(engine) {
+  }
 
   virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
@@ -334,7 +333,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 // of them the nodes from left to right in these lists. In the end, we have
 // a proper instantiation of the whole thing.
 
-struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
+struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
  private:
   EngineInfoContainerCoordinator _coordinatorParts;
   EngineInfoContainerDBServer _dbserverParts;
@@ -343,16 +342,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   Query* _query;
 
  public:
-
-  explicit CoordinatorInstanciator(Query* query)
+  explicit CoordinatorInstanciator(Query* query) noexcept
       : _dbserverParts(query),
         _isCoordinator(true),
         _lastClosed(0),
         _query(query) {
     TRI_ASSERT(_query);
   }
-
-  ~CoordinatorInstanciator() {}
 
   /// @brief before method for collection of pieces phase
   ///        Collects all nodes on the path and divides them
