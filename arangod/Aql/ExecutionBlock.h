@@ -187,7 +187,7 @@ class ExecutionBlock {
   /// @brief the following is internal to pull one more block and append it to
   /// our _buffer deque. Returns true if a new block was appended and false if
   /// the dependent node is exhausted.
-  bool getBlock(size_t atMost);
+  ExecutionState getBlock(size_t atMost);
 
   /// @brief getSomeWithoutRegisterClearout, same as above, however, this
   /// is the actual worker which does not clear out registers at the end

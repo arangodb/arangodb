@@ -298,33 +298,25 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
 /// the dependent node is exhausted.
-bool ExecutionBlock::getBlock(size_t atMost) {
+ExecutionState ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   throwIfKilled();  // check if we were aborted
 
-  std::unique_ptr<AqlItemBlock> docs;
-  while(true) {
-    auto res = _dependencies[0]->getSome(atMost);
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else { 
-      docs.swap(res.second);
-      break;
-    }
-  }
-
-  if (docs == nullptr) {
-    return false;
+  auto res = _dependencies[0]->getSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return res.first;
   }
 
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  _buffer.emplace_back(docs.get());
-  docs.release();
+  if (res.second != nullptr) {
+    _buffer.emplace_back(res.second.get());
+    res.second.release();
+  }
 
-  return true;
+  return res.first;
   DEBUG_END_BLOCK();
 }
 
