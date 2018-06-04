@@ -255,9 +255,6 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
       case SHORTEST_PATH:
         return castTo<GraphNode const*>(node)->collection();
       case SCATTER:
-#ifdef USE_IRESEARCH
-      case SCATTER_IRESEARCH_VIEW:
-#endif
         return nullptr; // diamond boundary
       default:
         node = node->getFirstDependency();

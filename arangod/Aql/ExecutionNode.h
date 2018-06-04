@@ -134,7 +134,6 @@ class ExecutionNode {
     SHORTEST_PATH = 24,
 #ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
-    SCATTER_IRESEARCH_VIEW,
 #endif
     MAX_NODE_TYPE_VALUE
   };

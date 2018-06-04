@@ -2280,7 +2280,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::ENUMERATE_LIST:
 #ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
-      case EN::SCATTER_IRESEARCH_VIEW:
 #endif
       case EN::SUBQUERY:
       case EN::FILTER:
@@ -3658,7 +3657,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SUBQUERY:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-        case EN::SCATTER_IRESEARCH_VIEW:
 #endif
           // do break
           stopSearching = true;
@@ -3788,7 +3786,6 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::SHORTEST_PATH:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-        case EN::SCATTER_IRESEARCH_VIEW: 
 #endif
 
           // For all these, we do not want to pull a SortNode further down
@@ -3862,11 +3859,7 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     }
 
     auto const dep = n->getFirstDependency();
-    if (dep->getType() != EN::SCATTER
-#ifdef USE_IRESEARCH
-        && dep->getType() != EN::SCATTER_IRESEARCH_VIEW
-#endif
-        ) {
+    if (dep->getType() != EN::SCATTER) {
       continue;
     }
 
@@ -4237,9 +4230,6 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       }
       case EN::DISTRIBUTE:
       case EN::SCATTER:
-#ifdef USE_IRESEARCH
-      case EN::SCATTER_IRESEARCH_VIEW: // FIXME check
-#endif
       {
         if (_scatter) {  // met more than one scatter node
           break;         // abort . . .

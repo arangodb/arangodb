@@ -589,8 +589,8 @@ void scatterViewInClusterRule(
 
     // insert a scatter node
     auto scatterNode = plan->registerNode(
-      std::make_unique<IResearchViewScatterNode>(
-        *plan, plan->nextId(), vocbase, view
+      std::make_unique<ScatterNode>(
+        plan.get(), plan->nextId()
     ));
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);

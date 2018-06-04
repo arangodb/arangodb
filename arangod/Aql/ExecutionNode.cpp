@@ -87,7 +87,6 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
 #ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
-    {static_cast<int>(ExecutionNode::SCATTER_IRESEARCH_VIEW), "ScatterViewNode"}
 #endif
 };
 
@@ -293,8 +292,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
 #ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
-    case SCATTER_IRESEARCH_VIEW:
-      return new iresearch::IResearchViewScatterNode(*plan, slice);
 #endif
     default: {
       // should not reach this point
@@ -1152,10 +1149,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
-
-    case ExecutionNode::SCATTER_IRESEARCH_VIEW:
-      // these node type does not produce any new registers
-      break;
 #endif
 
     default: {
