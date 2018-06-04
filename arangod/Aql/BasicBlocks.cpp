@@ -71,13 +71,13 @@ int SingletonBlock::shutdown(int errorCode) {
   return ExecutionBlock::shutdown(errorCode);
 }
 
-int SingletonBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
-                                  AqlItemBlock*& result, size_t& skipped) {
+std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
   if (!skipping) {
@@ -126,7 +126,7 @@ int SingletonBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
   }
 
   _done = true;
-  return TRI_ERROR_NO_ERROR;
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  

@@ -48,8 +48,8 @@ class SingletonBlock final : public ExecutionBlock {
   bool hasMore() override final { return !_done; }
 
  private:
-  int getOrSkipSomeOld(size_t atMost, bool skipping,
-                    AqlItemBlock*& result, size_t& skipped) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                            AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief _inputRegisterValues
   std::unique_ptr<AqlItemBlock> _inputRegisterValues;
