@@ -38,7 +38,11 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
       _subqueryIsConst(const_cast<SubqueryNode*>(en)->isConst()),
       _subqueryReturnsData(_subquery->getPlanNode()->getType() == ExecutionNode::RETURN),
       _result(nullptr),
-      _subqueryPos(0) {
+      _subqueryResults(nullptr),
+      _subqueryPos(0),
+      _subqueryInitialized(false),
+      _subqueryCompleted(false),
+      _upstreamState(ExecutionState::WAITING) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
@@ -46,6 +50,7 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
 }
 
 ExecutionState SubqueryBlock::initSubquery(size_t position) {
+  TRI_ASSERT(!_subqueryInitialized);
   auto ret = _subquery->initializeCursor(_result.get(), position);
   if (ret.first == ExecutionState::WAITING) {
     // Position is captured, we can continue from here again
@@ -207,10 +212,10 @@ int SubqueryBlock::shutdown(int errorCode) {
 /// @brief execute the subquery and store it's results in _subqueryResults
 ExecutionState SubqueryBlock::executeSubquery() {
   DEBUG_BEGIN_BLOCK();
+  TRI_ASSERT(!_subqueryCompleted);
   if (_subqueryResults == nullptr) {
     _subqueryResults = std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
   }
-  TRI_ASSERT(!_subqueryCompleted);
 
   TRI_ASSERT(_subqueryResults != nullptr);
   do {
