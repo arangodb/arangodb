@@ -78,7 +78,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _hasMultipleExpansions(false),
       _returned(0) {
   _mmdr.reset(new ManagedDocumentResult);
-    
+
   TRI_ASSERT(!_indexes.empty());
 
   if (_condition != nullptr) {
@@ -95,7 +95,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
         } else if (leaf->numMembers() != 2) {
           continue; // Otherwise we only support binary conditions
         }
-        
+
         TRI_ASSERT(leaf->numMembers() == 2);
         AstNode* lhs = leaf->getMemberUnchecked(0);
         AstNode* rhs = leaf->getMemberUnchecked(1);
@@ -114,7 +114,7 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
-  
+
   // count how many attributes in the index are expanded (array index)
   // if more than a single attribute, we always need to deduplicate the
   // result later on
@@ -132,9 +132,9 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       }
     }
   }
- 
+
   // build the _documentProducer callback for extracting
-  // documents from the index 
+  // documents from the index
   buildCallback();
 
   initializeOnce();
@@ -185,7 +185,7 @@ void IndexBlock::executeExpressions() {
   AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
   _condition = newCondition;
   TRI_DEFER(FINALIZE_SUBTREE(newCondition));
-  
+
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
     NonConstExpression* toReplace = _nonConstExpressions[posInExpressions];
@@ -200,7 +200,7 @@ void IndexBlock::executeExpressions() {
     AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
-    
+
     AstNode* tmp = newCondition;
     for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
       size_t idx = toReplace->indexPath[x];
@@ -275,7 +275,7 @@ void IndexBlock::initializeOnce() {
 
     return accessedInSubtree;
   };
-  
+
   auto instFCallArgExpressions = [&](AstNode* fcall,
                                      std::vector<size_t>&& indexPath) {
     TRI_ASSERT(1 == fcall->numMembers());
@@ -287,7 +287,7 @@ void IndexBlock::initializeOnce() {
         std::vector<size_t> idx = indexPath;
         idx.emplace_back(k);
         instantiateExpression(child, std::move(idx));
-        
+
         TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -550,12 +550,12 @@ bool IndexBlock::readIndex(size_t atMost,
         callback(id, VPackSlice::nullSlice());
       }, atMost - _returned);
     } else {
-      // check if the *current* cursor supports covering index queries or not 
+      // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
       // DocumentProducingBlock can access the flag
       _allowCoveringIndexOptimization = _cursor->hasCovering();
-      
-      if (_allowCoveringIndexOptimization && 
+
+      if (_allowCoveringIndexOptimization &&
           !ExecutionNode::castTo<IndexNode const*>(_exeNode)->coveringIndexAttributePositions().empty()) {
         // index covers all projections
         res = _cursor->nextCovering(callback, atMost - _returned);
@@ -602,12 +602,13 @@ std::pair<ExecutionState, Result> IndexBlock::initializeCursor(
 }
 
 /// @brief getSome
-AqlItemBlock* IndexBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+IndexBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   if (_done) {
     traceGetSomeEnd(nullptr);
-    return nullptr;
+    return {ExecutionState::DONE, nullptr};
   }
 
   TRI_ASSERT(atMost > 0);
@@ -655,8 +656,8 @@ AqlItemBlock* IndexBlock::getSomeOld(size_t atMost) {
 
   do {
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlockOld(toFetch) || (!initIndexes())) {
+      size_t toFetch = std::min(DefaultBatchSize(), atMost);
+      if (!ExecutionBlock::getBlockOld(toFetch) || !initIndexes()) {
         _done = true;
         break;
       }
@@ -717,7 +718,7 @@ AqlItemBlock* IndexBlock::getSomeOld(size_t atMost) {
   if (_returned == 0) {
     AqlItemBlock* dummy = res.release();
     returnBlock(dummy);
-    return nullptr;
+    return {ExecutionState::DONE, nullptr};
   }
   if (_returned < atMost) {
     res->shrink(_returned);
@@ -727,17 +728,17 @@ AqlItemBlock* IndexBlock::getSomeOld(size_t atMost) {
   clearRegisters(res.get());
   traceGetSomeEnd(res.get());
 
-  return res.release();
+  return {ExecutionState::HASMORE, std::move(res)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
-size_t IndexBlock::skipSomeOld(size_t atMost) {
+std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
-    return 0;
+    return {ExecutionState::DONE, 0};
   }
 
   _returned = 0;
@@ -780,7 +781,7 @@ size_t IndexBlock::skipSomeOld(size_t atMost) {
     _indexesExhausted = !skipIndex(atMost);
   }
 
-  return _returned;
+  return {ExecutionState::DONE, _returned};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
