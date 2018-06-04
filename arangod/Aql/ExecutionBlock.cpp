@@ -32,14 +32,16 @@
 
 using namespace arangodb::aql;
   
-ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
-    : _engine(engine),
-      _trx(engine->getQuery()->trx()),
-      _exeNode(ep),
-      _pos(0),
-      _done(false),
-      _profile(engine->getQuery()->queryOptions().profile),
-      _getSomeBegin(0) {
+ExecutionBlock::ExecutionBlock(
+    ExecutionEngine* engine,
+    ExecutionNode const* ep)
+  : _engine(engine),
+    _trx(engine->getQuery()->trx()),
+    _exeNode(ep),
+    _pos(0),
+    _done(false),
+    _profile(engine->getQuery()->queryOptions().profile),
+    _getSomeBegin(0) {
   TRI_ASSERT(_trx != nullptr);
 }
 

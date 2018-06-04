@@ -27,34 +27,14 @@
 #include "Basics/Common.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/SortNode.h"
-
-#ifdef USE_IRESEARCH
-#include "search/sort.hpp"
-#endif // USE_IRESEARCH
+#include "Aql/SortRegister.h"
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
-
 namespace aql {
 
 class AqlItemBlock;
 
 class ExecutionEngine;
-
-#ifdef USE_IRESEARCH
-  typedef int(*CompareFunc)(
-    irs::sort::prepared const* comparer,
-    transaction::Methods* trx,
-    AqlValue const& lhs,
-    AqlValue const& rhs
-  );
-
-  typedef std::tuple<RegisterId, bool, irs::sort::prepared::ptr, CompareFunc> SortRegister;
-#else
-  typedef std::tuple<RegisterId, bool> SortRegister;
-#endif
 
 class SortBlock final : public ExecutionBlock {
  public:

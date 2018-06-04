@@ -6791,11 +6791,21 @@ AqlValue Functions::Apply(
 
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   VPackFunctionParameters invokeParams{arena};
+  AqlValue rawParamArray;
   std::vector<bool> mustFree;
+
+  auto guard = scopeGuard([&mustFree, &invokeParams]() {
+    for (size_t i = 0; i < mustFree.size(); ++i) {
+      if (mustFree[i]) {
+        invokeParams[i].destroy();
+      }
+    }
+  });
+
   if (parameters.size() == 2) {
     // We have a parameter that should be an array, whichs content we need to make
     // the sub functions parameters.
-    AqlValue rawParamArray = ExtractFunctionParameterValue(parameters, 1);
+    rawParamArray = ExtractFunctionParameterValue(parameters, 1);
 
     if (!rawParamArray.isArray()) {
       ::registerWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -6810,14 +6820,6 @@ AqlValue Functions::Apply(
       mustFree.push_back(f);
     }
   }
-
-  auto guard = scopeGuard([&mustFree, &invokeParams]() {
-    for (size_t i = 0; i < mustFree.size(); ++i) {
-      if (mustFree[i]) {
-        invokeParams[i].destroy();
-      }
-    }
-  });
 
   return CallApplyBackend(query, trx, parameters, AFN, invokeFN, invokeParams);
 }
