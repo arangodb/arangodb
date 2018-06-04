@@ -56,7 +56,7 @@ constexpr double MIN_SECONDS = 30.0;
 namespace {
 class SchedulerManagerThread final : public Thread {
  public:
-  SchedulerManagerThread(Scheduler* scheduler, asio::io_context* service)
+  SchedulerManagerThread(Scheduler* scheduler, asio_ns::io_context* service)
       : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerManagerThread() { shutdown(); }
@@ -75,7 +75,7 @@ class SchedulerManagerThread final : public Thread {
 
  private:
   Scheduler* _scheduler;
-  asio::io_context* _service;
+  asio_ns::io_context* _service;
 };
 }
 
@@ -86,7 +86,7 @@ class SchedulerManagerThread final : public Thread {
 namespace {
 class SchedulerThread : public Thread {
  public:
-  SchedulerThread(Scheduler* scheduler, asio::io_context* service)
+  SchedulerThread(Scheduler* scheduler, asio_ns::io_context* service)
     : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
@@ -153,7 +153,7 @@ class SchedulerThread : public Thread {
 
  private:
   Scheduler* _scheduler;
-  asio::io_context* _service;
+  asio_ns::io_context* _service;
 };
 }
 
@@ -230,18 +230,18 @@ bool Scheduler::start() {
 }
 
 void Scheduler::startIoService() {
-  _ioContext.reset(new asio::io_context());
-  _serviceGuard.reset(new asio::io_context::work(*_ioContext));
+  _ioContext.reset(new asio_ns::io_context());
+  _serviceGuard.reset(new asio_ns::io_context::work(*_ioContext));
 
-  _managerService.reset(new asio::io_context());
-  _managerGuard.reset(new asio::io_context::work(*_managerService));
+  _managerService.reset(new asio_ns::io_context());
+  _managerGuard.reset(new asio_ns::io_context::work(*_managerService));
 }
 
 void Scheduler::startRebalancer() {
   std::chrono::milliseconds interval(100);
-  _threadManager.reset(new asio::steady_timer(*_managerService));
+  _threadManager.reset(new asio_ns::steady_timer(*_managerService));
 
-  _threadHandler = [this, interval](const asio::error_code& error) {
+  _threadHandler = [this, interval](const asio_ns::error_code& error) {
     if (error || isStopping()) {
       return;
     }

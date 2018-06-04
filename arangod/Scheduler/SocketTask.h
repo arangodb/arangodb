@@ -186,7 +186,7 @@ protected:
   std::list<WriteBuffer> _writeBuffers;
 
   boost::posix_time::milliseconds _keepAliveTimeout;
-  asio::deadline_timer _keepAliveTimer;
+  asio_ns::deadline_timer _keepAliveTimer;
   bool const _useKeepAliveTimer;
   
   std::atomic<bool> _keepAliveTimerActive;

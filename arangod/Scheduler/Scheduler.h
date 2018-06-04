@@ -27,14 +27,11 @@
 
 #include "Basics/Common.h"
 
-#include <asio/steady_timer.hpp>
-#include <asio/io_context.hpp>
-
 #include "Basics/Mutex.h"
-//#include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/Job.h"
+#include "Scheduler/Socket.h"
 
 namespace arangodb {
 class JobQueue;
@@ -66,8 +63,8 @@ class Scheduler {
   virtual ~Scheduler();
 
  public:
-  asio::io_context* ioContext() const { return _ioContext.get(); }
-  asio::io_context* managerService() const {
+  asio_ns::io_context* ioContext() const { return _ioContext.get(); }
+  asio_ns::io_context* managerService() const {
     return _managerService.get();
   }
 
@@ -176,14 +173,14 @@ class Scheduler {
 
   std::unique_ptr<JobQueue> _jobQueue;
 
-  std::shared_ptr<asio::io_context::work> _serviceGuard;
-  std::unique_ptr<asio::io_context> _ioContext;
+  std::shared_ptr<asio_ns::io_context::work> _serviceGuard;
+  std::unique_ptr<asio_ns::io_context> _ioContext;
 
-  std::shared_ptr<asio::io_context::work> _managerGuard;
-  std::unique_ptr<asio::io_context> _managerService;
+  std::shared_ptr<asio_ns::io_context::work> _managerGuard;
+  std::unique_ptr<asio_ns::io_context> _managerService;
 
-  std::unique_ptr<asio::steady_timer> _threadManager;
-  std::function<void(const asio::error_code&)> _threadHandler;
+  std::unique_ptr<asio_ns::steady_timer> _threadManager;
+  std::function<void(const asio_ns::error_code&)> _threadHandler;
 
   mutable Mutex _threadCreateLock;
   double _lastAllBusyStamp;

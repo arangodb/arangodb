@@ -36,7 +36,7 @@ class StringBuffer;
 class SocketUnixDomain final : public Socket {
   friend class AcceptorUnixDomain;
   public:
-    SocketUnixDomain(asio::io_context& ioService)
+    SocketUnixDomain(asio_ns::io_context& ioService)
         : Socket(ioService, false), _socket(ioService) {}
 
     SocketUnixDomain(SocketUnixDomain&& that) = default;
@@ -46,25 +46,25 @@ class SocketUnixDomain final : public Socket {
   
     void setNonBlocking(bool v) override { _socket.non_blocking(v); }
     
-    size_t writeSome(basics::StringBuffer* buffer, asio::error_code& ec) override;
+    size_t writeSome(basics::StringBuffer* buffer, asio_ns::error_code& ec) override;
     
-    void asyncWrite(asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
+    void asyncWrite(asio_ns::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
     
-    size_t readSome(asio::mutable_buffers_1 const& buffer, asio::error_code& ec) override;
+    size_t readSome(asio_ns::mutable_buffers_1 const& buffer, asio_ns::error_code& ec) override;
     
-    std::size_t available(asio::error_code& ec) override;
+    std::size_t available(asio_ns::error_code& ec) override;
   
-    void asyncRead(asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
+    void asyncRead(asio_ns::mutable_buffers_1 const& buffer, AsyncHandler const& handler) override;
 
   protected:
     bool sslHandshake() override { return false; }
-    void shutdownReceive(asio::error_code& ec) override;
-    void shutdownSend(asio::error_code& ec) override;
-    void close(asio::error_code& ec) override;
+    void shutdownReceive(asio_ns::error_code& ec) override;
+    void shutdownSend(asio_ns::error_code& ec) override;
+    void close(asio_ns::error_code& ec) override;
 
 private:
-    asio::local::stream_protocol::socket _socket;
-    asio::local::stream_protocol::acceptor::endpoint_type _peerEndpoint;
+    asio_ns::local::stream_protocol::socket _socket;
+    asio_ns::local::stream_protocol::acceptor::endpoint_type _peerEndpoint;
 };
 }
 
