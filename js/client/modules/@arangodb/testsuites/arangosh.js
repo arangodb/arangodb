@@ -50,6 +50,10 @@ const optionsDocumentation = [
   '   - `skipShebang`: if set, the shebang tests are skipped.'
 ];
 
+const testPaths = {
+  'arangosh': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: arangosh
 // //////////////////////////////////////////////////////////////////////////////
@@ -235,7 +239,8 @@ function arangosh (options) {
   return ret;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['arangosh'] = arangosh;
 
   defaultFns.push('arangosh');
@@ -244,6 +249,4 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

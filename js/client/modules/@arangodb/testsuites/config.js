@@ -46,6 +46,10 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const time = require('internal').time;
 const toArgv = require('internal').toArgv;
 
+const testPaths = {
+  'config': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: config
 // //////////////////////////////////////////////////////////////////////////////
@@ -173,11 +177,10 @@ function config (options) {
   return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['config'] = config;
   defaultFns.push('config');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

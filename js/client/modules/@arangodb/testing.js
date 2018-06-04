@@ -26,7 +26,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 let functionsDocumentation = {
-  'all': 'run all tests (marked with [x])'
+  'all': 'run all tests (marked with [x])',
+  'find': 'searches all testcases, and eventually filters them by `--test`, ' +
+    'will dump testcases associated to testsuites.',
+  'auto': 'uses find; if the testsuite for the testcase is located, ' +
+    'runs the suite with the filter applied'
 };
 
 let optionsDocumentation = [
@@ -160,6 +164,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/process-utils');
 const cu = require('@arangodb/crash-utils');
+const tu = require('@arangodb/test-utils');
 
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -406,6 +411,112 @@ function printUsage () {
   }
 }
 
+
+
+let allTestPaths = {};
+
+function findTestCases(options) {
+  let filterTestcases = (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined'));
+  let found = !filterTestcases;
+  let allTestFiles = {};
+  for (let testSuiteName in allTestPaths) {
+    var myList = [];
+    let files =  tu.scanTestPaths(allTestPaths[testSuiteName]);
+    if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
+      for (let j = 0; j < files.length; j++) {
+        let foo = {};
+        if (tu.filterTestcaseByOptions(files[j], options, foo)) {
+          myList.push(files[j]);
+          found = true;
+        }
+      }
+    } else {
+      myList = myList.concat(files);
+    }
+    if (!filterTestcases || (myList.length > 0)) {
+      allTestFiles[testSuiteName] = myList;
+    }
+  }
+  // print(allTestPaths)
+  return [found, allTestFiles];
+}
+
+function findTest(options) {
+  let rc = findTestCases(options);
+  if (rc[0]) {
+    print(rc[1]);
+    return {
+      findTest: {
+        status: true,
+        total: 1,
+        message: 'we have found a test. see above.',
+        duration: 0,
+        failed: [],
+        found: {
+          status: true,
+          duration: 0,
+          message: 'we have found a test.'
+        }
+      }
+    };
+  } else {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'we haven\'t found a test.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'we haven\'t found a test.'
+        }
+      }
+    };
+  }
+}
+
+
+function autoTest(options) {
+  if (!options.hasOwnProperty('test') || (typeof (options.test) === 'undefined')) {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'you must specify a --test filter.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'you must specify a --test filter.'
+        }
+      }
+    };
+  }
+  let rc = findTestCases(options);
+  if (rc[0]) {
+    let testSuites = Object.keys(rc[1]);
+    return iterateTests(testSuites, options, true);
+  } else {
+    return {
+      findTest: {
+        status: false,
+        total: 1,
+        failed: 1,
+        message: 'we haven\'t found a test.',
+        duration: 0,
+        found: {
+          status: false,
+          duration: 0,
+          message: 'we haven\'t found a test.'
+        }
+      }
+    };
+  }
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief load the available testsuites
 // //////////////////////////////////////////////////////////////////////////////
@@ -421,45 +532,20 @@ function loadTestSuites () {
                                                              allTests,
                                                              optionsDefaults,
                                                              functionsDocumentation,
-                                                             optionsDocumentation);
+                                                             optionsDocumentation,
+                                                             allTestPaths);
     } catch (x) {
       print('failed to load module ' + testSuites[j]);
       throw x;
     }
   }
+  testFuncs['find'] = findTest;
+  testFuncs['auto'] = autoTest;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief framework to perform unittests
-// /
-// / This function gets one or two arguments, the first describes which tests
-// / to perform and the second is an options object. For `which` the following
-// / values are allowed:
-// /  Empty will give you a complete list.
-// //////////////////////////////////////////////////////////////////////////////
+let globalStatus = true;
 
-function unitTest (cases, options) {
-  if (typeof options !== 'object') {
-    options = {};
-  }
-  loadTestSuites();
-  _.defaults(options, optionsDefaults);
-
-  if (cases === undefined || cases.length === 0) {
-    printUsage();
-
-    print('FATAL: "which" is undefined\n');
-
-    return {
-      status: false,
-      crashed: false
-    };
-  }
-
-  pu.setupBinaries(options.build, options.buildType, options.configDir);
-  const jsonReply = options.jsonReply;
-  delete options.jsonReply;
-
+function iterateTests(cases, options, jsonReply) {
   // tests to run
   let caselist = [];
 
@@ -483,7 +569,6 @@ function unitTest (cases, options) {
     }
   }
 
-  let globalStatus = true;
   let results = {};
   let cleanup = true;
     
@@ -558,7 +643,41 @@ function unitTest (cases, options) {
       print(RED + require('internal').inspect(results) + RESET);
     }
   }
+  return results;
+}
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief framework to perform unittests
+// /
+// / This function gets one or two arguments, the first describes which tests
+// / to perform and the second is an options object. For `which` the following
+// / values are allowed:
+// /  Empty will give you a complete list.
+// //////////////////////////////////////////////////////////////////////////////
+
+function unitTest (cases, options) {
+  if (typeof options !== 'object') {
+    options = {};
+  }
+  loadTestSuites();
+  _.defaults(options, optionsDefaults);
+
+  if (cases === undefined || cases.length === 0) {
+    printUsage();
+
+    print('FATAL: "which" is undefined\n');
+
+    return {
+      status: false,
+      crashed: false
+    };
+  }
+
+  pu.setupBinaries(options.build, options.buildType, options.configDir);
+  const jsonReply = options.jsonReply;
+  delete options.jsonReply;
+
+  let results = iterateTests(cases, options, jsonReply);
   if (jsonReply === true) {
     return results;
   } else {

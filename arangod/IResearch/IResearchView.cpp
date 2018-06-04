@@ -1307,7 +1307,7 @@ int IResearchView::insert(
     store = &(storeItr.first->second._store);
   }
 
-  TRI_ASSERT(store);
+  TRI_ASSERT(store && false == !store);
 
   FieldIterator body(doc, meta);
 
@@ -1375,7 +1375,7 @@ int IResearchView::insert(
     store = &(storeItr.first->second._store);
   }
 
-  TRI_ASSERT(store);
+  TRI_ASSERT(store && false == !store);
 
   auto begin = batch.begin();
   auto const end = batch.end();
@@ -1621,7 +1621,7 @@ int IResearchView::remove(
     store = &(storeItr.first->second);
   }
 
-  TRI_ASSERT(store);
+  TRI_ASSERT(store && false == !store);
 
   // ...........................................................................
   // if an exception occurs below than the transaction is droped including all

@@ -45,6 +45,10 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const toArgv = require('internal').toArgv;
 
+const testPaths = {
+  'export': ['js/server/tests/export/'] // we have to be fuzzy...
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: export
 // //////////////////////////////////////////////////////////////////////////////
@@ -211,11 +215,10 @@ function exportTest (options) {
   return shutdown();
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['export'] = exportTest;
   defaultFns.push('export');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

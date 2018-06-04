@@ -386,7 +386,6 @@ SECTION("test_query") {
     REQUIRE((false == !wiewImpl));
     auto logicalView = wiewImpl->ensure(42);
     REQUIRE((false == !logicalView));
-    auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 
     arangodb::CollectionNameResolver resolver(vocbase);
     auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
@@ -892,7 +891,7 @@ SECTION("test_updateProperties") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    vocbase.createCollection(collectionJson->slice());
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
@@ -953,7 +952,7 @@ SECTION("test_updateProperties") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    vocbase.createCollection(collectionJson->slice());
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
@@ -1014,7 +1013,7 @@ SECTION("test_updateProperties") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    vocbase.createCollection(collectionJson->slice());
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
@@ -1077,7 +1076,7 @@ SECTION("test_updateProperties") {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    vocbase.createCollection(collectionJson->slice());
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
