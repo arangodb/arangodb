@@ -52,6 +52,9 @@ class JobQueueThread final
 
     auto self = shared_from_this();
 
+    // We hold the Mutex throughout, but give it up when we work and when
+    // we wait.
+    CONDITION_LOCKER(guard, _queueCondition);
     // iterate until we are shutting down
     while (!isStopping()) {
       ++idleTries;
@@ -60,6 +63,7 @@ class JobQueueThread final
           << "size of job queue: " << _jobQueue->queueSize();
 
       while (_scheduler->shouldQueueMore()) {
+        guard.unlock();
         Job* jobPtr = nullptr;
 
         if (!_jobQueue->pop(jobPtr)) {
@@ -86,6 +90,7 @@ class JobQueueThread final
 
           this->_jobQueue->wakeup();
         });
+        guard.lock();
       }
 
       if (idleTries >= 2) {
@@ -136,10 +141,11 @@ void JobQueue::wakeup() {
 }
 
 void JobQueue::waitForWork() {
-  //static uint64_t WAIT_TIME = 1000 * 1000;
-  static uint64_t WAIT_TIME = 10;
-
-  CONDITION_LOCKER(guard, _queueCondition);
+  // One must have the mutex of the ConditionVariable _queueCondition
+  // and have checked under the Mutex that _scheduler->shouldQueueMore()
+  // returns false, otherwise we run the risk of going to sleep for a
+  // second despite the fact that there are available worker threads!
+  static uint64_t WAIT_TIME = 1000 * 1000;
   guard.wait(WAIT_TIME);
 }
 
