@@ -73,6 +73,9 @@ class Graph {
   /// @brief the cids of all vertexCollections
   std::unordered_set<std::string> _vertexColls;
 
+  /// @brief the cids of all orphanCollections
+  std::unordered_set<std::string> _orphanColls;
+
   /// @brief the cids of all edgeCollections
   std::unordered_set<std::string> _edgeColls;
 
@@ -84,6 +87,17 @@ class Graph {
 
   /// @brief Graph collection orphan list arribute name
   static char const* _attrOrphans;
+  static char const* _attrIsSmart;
+  static char const* _attrNumberOfShards;
+  static char const* _attrReplicationFactor;
+  static char const* _attrSmartGraphAttribute;
+
+  bool _isSmart;
+  int _numberOfShards;
+  int _replicationFactor;
+  std::string _smartGraphAttribute;
+  std::string _id;
+  std::string _rev;
 
  public:
   /// @brief Graph collection name
@@ -93,8 +107,21 @@ class Graph {
   /// @brief get the cids of all vertexCollections
   std::unordered_set<std::string> const& vertexCollections() const;
 
+  /// @brief get the cids of all orphanCollections
+  std::unordered_set<std::string> const& orphanCollections() const;
+
   /// @brief get the cids of all edgeCollections
   std::unordered_set<std::string> const& edgeCollections() const;
+
+  /// @brief get the cids of all edgeCollections
+  std::unordered_map<std::string, EdgeDefinition> const& edgeDefinitions() const;
+
+  bool const& isSmart() const;
+  int const& numberOfShards() const;
+  int const& replicationFactor() const;
+  std::string const& smartGraphAttribute() const;
+  std::string const& id() const;
+  std::string const& rev() const;
 
   std::string const& name() const { return _graphName; }
 
@@ -121,8 +148,32 @@ class Graph {
   /// @brief Add a vertex collection to this graphs definition
   void addVertexCollection(std::string&&);
 
+  /// @brief Add an oprha nvertex collection to this graphs definition
+  void addOrphanCollection(std::string&&);
+
   /// @brief Add Collections to the object
   void insertVertexCollections(velocypack::Slice& arr);
+
+  /// @brief Add orphanCollections to the object
+  void insertOrphanCollections(velocypack::Slice& arr);
+
+  /// @brief Set isSmart to the graph definition
+  void setSmartState(bool&& state);
+
+  /// @brief Set numberOfShards to the graph definition
+  void setNumberOfShards(int&& numberOfShards);
+
+  /// @brief Set replicationFactor to the graph definition
+  void setReplicationFactor(int&& setReplicationFactor);
+
+  /// @brief Set smartGraphAttribute to the graph definition
+  void setSmartGraphAttribute(std::string&& smartGraphAttribute);
+
+  /// @brief Set id to the graph definition
+  void setId(std::string&& id);
+
+  /// @brief Set rev to the graph definition
+  void setRev(std::string&& rev);
 };
 
 class GraphOperations {
@@ -199,6 +250,7 @@ class GraphOperations {
       const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
 
+  void readGraph(VPackBuilder& builder);
   void readEdges(VPackBuilder& builder);
   void readVertices(VPackBuilder& builder);
 

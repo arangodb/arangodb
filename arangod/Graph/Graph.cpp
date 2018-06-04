@@ -48,6 +48,10 @@ using UserTransaction = transaction::UserTransaction;
 
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
+char const* Graph::_attrIsSmart = "isSmart";
+char const* Graph::_attrNumberOfShards = "numberOfShards";
+char const* Graph::_attrReplicationFactor = "replicationFactor";
+char const* Graph::_attrSmartGraphAttribute = "smartGraphAttribute";
 
 void Graph::insertVertexCollections(VPackSlice& arr) {
   TRI_ASSERT(arr.isArray());
@@ -57,12 +61,52 @@ void Graph::insertVertexCollections(VPackSlice& arr) {
   }
 }
 
+void Graph::insertOrphanCollections(VPackSlice& arr) {
+  TRI_ASSERT(arr.isArray());
+  for (auto const& c : VPackArrayIterator(arr)) {
+    TRI_ASSERT(c.isString());
+    addOrphanCollection(c.copyString());
+  }
+}
+
 std::unordered_set<std::string> const& Graph::vertexCollections() const {
   return _vertexColls;
 }
 
+std::unordered_set<std::string> const& Graph::orphanCollections() const {
+  return _orphanColls;
+}
+
 std::unordered_set<std::string> const& Graph::edgeCollections() const {
   return _edgeColls;
+}
+
+std::unordered_map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
+  return _edgeDefs;
+}
+
+bool const& Graph::isSmart() const {
+  return _isSmart;
+}
+
+int const& Graph::numberOfShards() const {
+  return _numberOfShards;
+}
+
+int const& Graph::replicationFactor() const {
+  return _replicationFactor;
+}
+
+std::string const& Graph::smartGraphAttribute() const {
+  return _smartGraphAttribute;
+}
+
+std::string const& Graph::id() const {
+  return _id;
+}
+
+std::string const& Graph::rev() const {
+  return _rev;
 }
 
 void Graph::addEdgeCollection(std::string&& name) {
@@ -71,6 +115,34 @@ void Graph::addEdgeCollection(std::string&& name) {
 
 void Graph::addVertexCollection(std::string&& name) {
   _vertexColls.insert(name);
+}
+
+void Graph::addOrphanCollection(std::string&& name) {
+  _orphanColls.insert(name);
+}
+
+void Graph::setSmartState(bool&& state) {
+  _isSmart = state;
+}
+
+void Graph::setNumberOfShards(int&& numberOfShards) {
+  _numberOfShards = numberOfShards;
+}
+
+void Graph::setReplicationFactor(int&& replicationFactor) {
+  _replicationFactor = replicationFactor;
+}
+
+void Graph::setSmartGraphAttribute(std::string&& smartGraphAttribute) {
+  _smartGraphAttribute = smartGraphAttribute;
+}
+
+void Graph::setId(std::string&& id) {
+  _id = id;
+}
+
+void Graph::setRev(std::string&& rev) {
+  _rev = rev;
 }
 
 void Graph::toVelocyPack(VPackBuilder& builder) const {
@@ -95,6 +167,7 @@ void Graph::toVelocyPack(VPackBuilder& builder) const {
 
 Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
     : _graphName(graphName_), _vertexColls(), _edgeColls() {
+
   if (slice.hasKey(_attrEdgeDefs)) {
     VPackSlice edgeDefs = slice.get(_attrEdgeDefs);
     TRI_ASSERT(edgeDefs.isArray());
@@ -144,7 +217,22 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
   if (slice.hasKey(_attrOrphans)) {
     auto orphans = slice.get(_attrOrphans);
     insertVertexCollections(orphans);
+    insertOrphanCollections(orphans);
   }
+  if (slice.hasKey(_attrIsSmart)) {
+    setSmartState(slice.get(_attrIsSmart).getBool());
+  }
+  if (slice.hasKey(_attrNumberOfShards)) {
+    setNumberOfShards(slice.get(_attrNumberOfShards).getInt());
+  }
+  if (slice.hasKey(_attrReplicationFactor)) {
+    setReplicationFactor(slice.get(_attrReplicationFactor).getInt());
+  }
+  if (slice.hasKey(_attrSmartGraphAttribute)) {
+    setSmartGraphAttribute(slice.get(_attrSmartGraphAttribute).copyString());
+  }
+  setId("_graphs/" + graphName_); // TODO: how to fetch id properly?
+  setRev(slice.get(StaticStrings::RevString).copyString());
 }
 
 void Graph::enhanceEngineInfo(VPackBuilder&) const {}
@@ -621,6 +709,48 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
   res = trx.finish(result.result);
 
   return std::make_pair(std::move(result), std::move(res));
+}
+
+void GraphOperations::readGraph(VPackBuilder& builder) {
+  builder.add(VPackValue(VPackValueType::Object));
+  builder.add("graph", VPackValue(VPackValueType::Object));
+
+  builder.add("name", VPackValue(_graph.name()));
+
+  builder.add("edgeDefinitions", VPackValue(VPackValueType::Array));
+  for (auto const& it : _graph.edgeDefinitions()) {
+    EdgeDefinition const& def = it.second;
+    builder.add(VPackValue(VPackValueType::Object));
+    builder.add("collection", VPackValue(def.getName()));
+    builder.add("from", VPackValue(VPackValueType::Array));
+    for (auto const& from : def.getFrom()) {
+      builder.add(VPackValue(from));
+    }
+    builder.close(); // array from
+    builder.add("to", VPackValue(VPackValueType::Array));
+    for (auto const& to : def.getTo()) {
+      builder.add(VPackValue(to));
+    }
+    builder.close(); // array to
+    builder.close(); // object
+  }
+  builder.close(); // object edgedefs
+
+  builder.add("orphanCollections", VPackValue(VPackValueType::Array));
+  for (auto const& orphan : _graph.orphanCollections()) {
+    builder.add(VPackValue(orphan));
+  }
+  builder.close(); // orphan array
+
+  builder.add("isSmart", VPackValue(_graph.isSmart()));
+  builder.add("numberOfShards", VPackValue(_graph.numberOfShards()));
+  builder.add("replicationFactor", VPackValue(_graph.replicationFactor()));
+  builder.add("smartGraphAttribute", VPackValue(_graph.smartGraphAttribute()));
+  builder.add(StaticStrings::RevString, VPackValue(_graph.rev()));
+  builder.add(StaticStrings::IdString, VPackValue(_graph.id()));
+
+  builder.close(); // object
+  builder.close(); // object
 }
 
 void GraphOperations::readEdges(VPackBuilder& builder) {

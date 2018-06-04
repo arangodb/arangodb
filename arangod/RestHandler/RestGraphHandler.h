@@ -205,6 +205,10 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     TRI_col_type_e colType
   );
 
+  Result graphActionReadGraphConfig(
+    std::shared_ptr<const graph::Graph> graph
+  );
+
   Result graphActionReadConfig(
     std::shared_ptr<const graph::Graph> graph,
     TRI_col_type_e colType, GraphProperty property

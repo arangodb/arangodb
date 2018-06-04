@@ -227,6 +227,13 @@ boost::optional<RestStatus> RestGraphHandler::graphsAction() {
 
 boost::optional<RestStatus> RestGraphHandler::graphAction(
     const std::shared_ptr<const Graph> graph) {
+
+  switch (request()->requestType()) {
+    case RequestType::GET:
+      graphActionReadGraphConfig(graph);
+      return RestStatus::DONE;
+    default:;
+  }
   return boost::none;
 }
 
@@ -993,6 +1000,19 @@ Result RestGraphHandler::vertexActionRemove(
   return Result();
 }
 
+Result RestGraphHandler::graphActionReadGraphConfig(
+    const std::shared_ptr<const graph::Graph> graph) {
+
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(_vocbase);
+  GraphOperations gops{*graph, ctx};
+  VPackBuilder builder;
+  gops.readGraph(builder);
+  generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
+
+  return Result();
+}
+
 Result RestGraphHandler::graphActionReadConfig(
     const std::shared_ptr<const graph::Graph> graph,
     TRI_col_type_e colType, GraphProperty property) {
@@ -1002,7 +1022,6 @@ Result RestGraphHandler::graphActionReadConfig(
   GraphOperations gops{*graph, ctx};
   VPackBuilder builder;
 
-  velocypack::Slice slice;
   if (colType == TRI_COL_TYPE_DOCUMENT && property == GraphProperty::VERTICES) {
     gops.readVertices(builder);
   } else if (colType == TRI_COL_TYPE_EDGE && property == GraphProperty::EDGES) {
