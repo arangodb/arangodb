@@ -44,7 +44,7 @@
 #include "Logger/Logger.h"
 
 namespace arangodb {
-
+  /*
 ////////////////////////////////////////////////////////////////////////////////
 /// AdjustThreadPriority() below uses the Linux setpriority() function to dynamically
 ///  lower and raise a given thread's scheduling priority.  The Linux default is
@@ -545,5 +545,5 @@ void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
 #endif   // WIN32
 } // RocksDBThrottle::AdjustThreadPriority
 
-
+  */
 } // namespace arangodb

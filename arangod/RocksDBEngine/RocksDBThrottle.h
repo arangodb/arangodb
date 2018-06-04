@@ -62,7 +62,7 @@ using namespace rocksdb;
 #include <db/write_controller.h>
 
 namespace arangodb {
-
+  /*
 ////////////////////////////////////////////////////////////////////////////////
 /// If these values change, make sure to reflect the changes in
 /// RocksDBPrefixExtractor as well.
@@ -155,7 +155,7 @@ protected:
   std::vector<rocksdb::ColumnFamilyHandle *> _families;
 
 };// class RocksDBThrottle
-
+  */
 } // namespace arangodb
 
 #endif

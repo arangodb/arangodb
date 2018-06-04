@@ -55,7 +55,7 @@ class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
-class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
+// class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
 class TransactionCollection;
@@ -440,7 +440,7 @@ class RocksDBEngine final : public StorageEngine {
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
-  std::shared_ptr<RocksDBThrottle> _listener;
+  // std::shared_ptr<RocksDBThrottle> _listener;
 };
 
 }  // namespace arangodb
