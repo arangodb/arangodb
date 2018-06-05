@@ -471,9 +471,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief the cost of a traversal node

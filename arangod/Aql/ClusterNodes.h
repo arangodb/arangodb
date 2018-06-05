@@ -87,11 +87,13 @@ class RemoteNode final : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new RemoteNode(plan, _id, _vocbase, _server, _ownName, _queryId);
-
-    cloneHelper(c, withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return cloneHelper(
+      std::make_unique<RemoteNode>(
+        plan, _id, _vocbase, _server, _ownName, _queryId
+      ),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief estimateCost
@@ -175,9 +177,7 @@ class ScatterNode : public ExecutionNode{
     auto c = std::make_unique<ScatterNode>(plan, _id);
     c->clients() = clients();
 
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c.release());
+    return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
   /// @brief estimateCost
@@ -245,9 +245,7 @@ class DistributeNode final : public ScatterNode {
     );
     c->clients() = clients();
 
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c.release());
+    return cloneHelper(std::move(c), withDependencies, withProperties);
   }
   
   /// @brief getVariablesUsedHere, returning a vector
@@ -359,11 +357,11 @@ class GatherNode final : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<GatherNode>(plan, _id, _sortmode);
-
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c.release());
+    return cloneHelper(
+      std::make_unique<GatherNode>(plan, _id, _sortmode),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief creates corresponding ExecutionBlock

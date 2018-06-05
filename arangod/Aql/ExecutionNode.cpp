@@ -429,9 +429,12 @@ void ExecutionNode::toVelocyPack(VPackBuilder& builder,
 }
 
 /// @brief execution Node clone utility to be called by derived classes
-void ExecutionNode::cloneHelper(ExecutionNode* other,
-                                bool withDependencies,
-                                bool withProperties) const {
+/// @return pointer to a registered node owned by a plan
+ExecutionNode* ExecutionNode::cloneHelper(
+    std::unique_ptr<ExecutionNode> other,
+    bool withDependencies,
+    bool withProperties
+) const {
   ExecutionPlan* plan = other->plan();
 
   if (plan == _plan) {
@@ -440,8 +443,6 @@ void ExecutionNode::cloneHelper(ExecutionNode* other,
     // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
   }
-
-  plan->registerNode(other);
 
   if (withProperties) {
     other->_regsToClear = _regsToClear;
@@ -480,9 +481,13 @@ void ExecutionNode::cloneHelper(ExecutionNode* other,
     other->_registerPlan = _registerPlan;
   }
 
+  auto* registeredNode = plan->registerNode(std::move(other));
+
   if (withDependencies) {
-    cloneDependencies(plan, other, withProperties);
+    cloneDependencies(plan, registeredNode, withProperties);
   }
+
+  return registeredNode;
 }
 
 /// @brief helper for cloning, use virtual clone methods for dependencies
@@ -1373,9 +1378,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 
   c->projections(_projections);
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -1440,9 +1443,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
   auto c = std::make_unique<EnumerateListNode>(plan, _id, inVariable, outVariable);
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief the cost of an enumerate list node
@@ -1631,9 +1632,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief estimateCost
@@ -1757,9 +1756,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = std::make_unique<SubqueryNode>(
       plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief whether or not the subquery is a data-modification operation
@@ -1956,9 +1953,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = std::make_unique<FilterNode>(plan, _id, inVariable);
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief estimateCost
@@ -2018,9 +2013,7 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->setCount();
   }
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief estimateCost

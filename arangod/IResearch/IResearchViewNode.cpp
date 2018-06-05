@@ -395,9 +395,7 @@ aql::ExecutionNode* IResearchViewNode::clone(
   );
   node->_shards = _shards;
 
-  cloneHelper(node.get(), withDependencies, withProperties);
-
-  return node.release();
+  return cloneHelper(std::move(node), withDependencies, withProperties);
 }
 
 bool IResearchViewNode::empty() const noexcept {

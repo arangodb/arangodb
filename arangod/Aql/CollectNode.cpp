@@ -190,9 +190,7 @@ ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->specialized();
   }
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief helper struct for finding variables

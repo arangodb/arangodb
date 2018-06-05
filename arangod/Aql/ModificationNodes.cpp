@@ -139,9 +139,7 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->disableStatistics();
   }
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -193,9 +191,7 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->disableStatistics();
   }
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -259,9 +255,7 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->disableStatistics();
   }
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
@@ -326,9 +320,7 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->disableStatistics();
   }
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -389,7 +381,5 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->disableStatistics();
   }
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }

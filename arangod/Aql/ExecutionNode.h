@@ -305,7 +305,12 @@ class ExecutionNode {
                                bool withProperties) const = 0;
 
   /// @brief execution Node clone utility to be called by derives
-  void cloneHelper(ExecutionNode* Other, bool withDependencies, bool withProperties) const;
+  /// @return pointer to a registered node owned by a plan
+  ExecutionNode* cloneHelper(
+    std::unique_ptr<ExecutionNode> Other,
+    bool withDependencies,
+    bool withProperties
+  ) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
@@ -636,11 +641,11 @@ class SingletonNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<SingletonNode>(plan, _id);
-
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(
+      std::make_unique<SingletonNode>(plan, _id),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief the cost of a singleton is 1
@@ -854,9 +859,7 @@ class LimitNode : public ExecutionNode {
       c->setFullCount();
     }
 
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
   /// @brief estimateCost
@@ -1289,11 +1292,11 @@ class NoResultsNode : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<NoResultsNode>(plan, _id);
-
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(
+      std::make_unique<NoResultsNode>(plan, _id),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief the cost of a NoResults is 0
