@@ -3,7 +3,7 @@
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
-// @brief ArangoDB Doctor
+// @brief ArangoDB Inspector
 // 
 // @file
 // 
@@ -29,6 +29,8 @@
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // /////////////////////////////////////////////////////////////////////////////
 
+var arango;
+
 // global 'arango'
 global.arango = require('@arangodb').arango;
 
@@ -46,14 +48,12 @@ delete global.IS_JS_LINT;
 (function() {
   const internal = require('internal');
 
-  internal.print("  ___                               ______           _             ");
-  internal.print(" / _ \\                              |  _  \\         | |            ");
-  internal.print("/ /_\\ \\_ __ __ _ _ __   __ _  ___   | | | |___   ___| |_ ___  _ __ ");
-  internal.print("|  _  | '__/ _` | '_ \\ / _` |/ _ \\  | | | / _ \\ / __| __/ _ \\| '__|");
-  internal.print("| | | | | | (_| | | | | (_| | (_) | | |/ / (_) | (__| || (_) | |   ");
-  internal.print("\\_| |_/_|  \\__,_|_| |_|\\__, |\\___/  |___/ \\___/ \\___|\\__\\___/|_|   ");
-  internal.print("                        __/ |                                      ");
-  internal.print("                       |___/                                       ");
+  internal.print("    _                                  ___                           _");
+  internal.print("   / \\   _ __ __ _ _ __   __ _  ___   |_ _|_ __  ___ _ __   ___  ___| |_ ___  _ __");
+  internal.print("  / _ \\ | '__/ _` | '_ \\ / _` |/ _ \\   | || '_ \\/ __| '_ \\ / _ \\/ __| __/ _ \\| '__|");
+  internal.print(" / ___ \\| | | (_| | | | | (_| | (_) |  | || | | \\__ \\ |_) |  __/ (__| || (_) | |");
+  internal.print("/_/   \\_\\_|  \\__,_|_| |_|\\__, |\\___/  |___|_| |_|___/ .__/ \\___|\\___|\\__\\___/|_|");
+  internal.print("                         |___/                      |_|                         ");
   internal.print("");
 })();
 
@@ -61,7 +61,7 @@ delete global.IS_JS_LINT;
 try {
   // this will not work from within a browser
   const __fs__ = require('fs');
-  const __rcf__ = __fs__.join(__fs__.home(), '.arangodoc.rc');
+  const __rcf__ = __fs__.join(__fs__.home(), '.arangoinspect.rc');
 
   if (__fs__.exists(__rcf__)) {
     /* jshint evil: true */
@@ -69,7 +69,7 @@ try {
     eval(__content__);
   }
 } catch (e) {
-  require('console').warn('arangodoc.rc: %s', String(e));
+  require('console').warn('arangoinspect.rc: %s', String(e));
 }
 
 // check connection success
@@ -86,4 +86,7 @@ if (arango.lastErrorMessage()) {
   require("process").exit(1);
 }
 
-// require("@arangodb/doctor").serverBasics();
+require("@arangodb/inspector");
+require("internal").exit();
+
+
