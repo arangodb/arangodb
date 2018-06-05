@@ -94,7 +94,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   // the engine and will clean up. We do not keep track of it seperately
   if (_id != 0) {
     try {
-      queryRegistry->insert(_id, query, 600.0);
+      queryRegistry->insert(_id, query, QueryInsertTTL, true);
     } catch (basics::Exception const& e) {
       return {e.code(), e.message()};
     } catch (std::exception const& e) {

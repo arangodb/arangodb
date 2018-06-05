@@ -39,14 +39,19 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const tu = require('@arangodb/test-utils');
 
+const testPaths = {
+  'shell_client': [ 'js/common/tests/shell', 'js/client/tests/http', 'js/client/tests/shell' ],
+  'shell_server': [ 'js/common/tests/shell', 'js/server/tests/shell' ],
+  'shell_server_only': [ 'js/server/tests/shell' ],
+  'shell_server_aql': [ 'js/server/tests/aql' ]
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClient (options) {
-  let testCases = tu.scanTestPath('js/common/tests/shell');
-  testCases = testCases.concat(tu.scanTestPath('js/client/tests/http'));
-  testCases = testCases.concat(tu.scanTestPath('js/client/tests/shell'));
+  let testCases = tu.scanTestPaths(testPaths.shell_client);
 
   return tu.performTests(options, testCases, 'shell_client', tu.runInArangosh);
 }
@@ -58,8 +63,7 @@ function shellClient (options) {
 function shellServer (options) {
   options.propagateInstanceInfo = true;
 
-  let testCases = tu.scanTestPath('js/common/tests/shell');
-  testCases = testCases.concat(tu.scanTestPath('js/server/tests/shell'));
+  let testCases = tu.scanTestPaths(testPaths.shell_server);
 
   return tu.performTests(options, testCases, 'shell_server', tu.runThere);
 }
@@ -69,7 +73,7 @@ function shellServer (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellServerOnly (options) {
-  let testCases = tu.scanTestPath('js/server/tests/shell');
+  let testCases = tu.scanTestPaths(testPaths.shell_server_only);
 
   return tu.performTests(options, testCases, 'shell_server_only', tu.runThere);
 }
@@ -83,7 +87,7 @@ function shellServerAql (options) {
   let name = 'shell_server_aql';
 
   if (!options.skipAql) {
-    testCases = tu.scanTestPath('js/server/tests/aql');
+    testCases = tu.scanTestPaths(testPaths.shell_server_aql);
     if (options.skipRanges) {
       testCases = _.filter(testCases,
                            function (p) { return p.indexOf('ranges-combined') === -1; });
@@ -103,7 +107,8 @@ function shellServerAql (options) {
   };
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['shell_client'] = shellClient;
   testFns['shell_server'] = shellServer;
   testFns['shell_server_aql'] = shellServerAql;
@@ -118,6 +123,4 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

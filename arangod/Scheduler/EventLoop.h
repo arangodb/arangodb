@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,8 +26,6 @@
 #define ARANGOD_SCHEDULER_EVENTS_H 1
 
 #include "Basics/Common.h"
-
-//#include "Basics/asio-helper.h"
 #include <asio/io_context.hpp>
 
 namespace arangodb {

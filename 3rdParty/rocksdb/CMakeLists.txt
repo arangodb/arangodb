@@ -25,8 +25,8 @@ endif ()
 
 if (WIN32)
   set(WITH_MD_LIBRARY OFF CACHE BOOL "override option in rocksdb lib" FORCE) #libraries should not touch this (/MD /MT) at all!
-  set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield better performance but break portability)")
 endif ()
+set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield better performance but break portability)")
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION})
 

@@ -205,7 +205,7 @@ class LogicalCollection: public LogicalDataSource {
   bool isSatellite() const;
 
   // SECTION: Sharding
-  int numberOfShards() const;
+  int numberOfShards() const noexcept;
   void numberOfShards(int);
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;

@@ -407,8 +407,8 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   int createViewCoordinator(std::string const& databaseName,
+                            std::string const& viewID,
                             arangodb::velocypack::Slice json,
-                            ViewID& viewID,
                             std::string& errorMsg);
 
   //////////////////////////////////////////////////////////////////////////////

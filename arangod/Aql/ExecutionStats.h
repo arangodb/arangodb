@@ -73,7 +73,7 @@ struct ExecutionStats {
     scannedFull = 0;
     scannedIndex = 0;
     filtered = 0;
-    httpRequests = 0;
+    requests = 0;
     fullCount = 0;
     count = 0;
     executionTime = 0.0;
@@ -93,9 +93,9 @@ struct ExecutionStats {
 
   /// @brief number of documents filtered away
   int64_t filtered;
-  /// @brief total number of HTTP requests made
-
-  int64_t httpRequests;
+  
+  /// @brief total number of requests made
+  int64_t requests;
 
   /// @brief total number of results, before applying last limit
   int64_t fullCount;

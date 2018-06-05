@@ -46,6 +46,7 @@ struct ModificationOptions {
         readCompleteInput(true),
         useIsRestore(false),
         consultAqlWriteFilter(false),
+        exclusive(false),
         overwrite(false)
         {}
 
@@ -59,6 +60,7 @@ struct ModificationOptions {
   bool readCompleteInput;
   bool useIsRestore;
   bool consultAqlWriteFilter;
+  bool exclusive;
   bool overwrite;
 };
 

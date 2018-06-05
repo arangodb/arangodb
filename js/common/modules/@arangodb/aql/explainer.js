@@ -3,6 +3,7 @@
 
 var db = require('@arangodb').db,
   internal = require('internal'),
+  _ = require('lodash'),
   systemColors = internal.COLORS,
   print = internal.print,
   colors = { };
@@ -622,15 +623,22 @@ function processQuery (query, explain) {
     }
   }
 
-  var recursiveWalk = function (n, level) {
+  var recursiveWalk = function (partNodes, level, site) {
+    let n = _.clone(partNodes);
+    n.reverse();
     n.forEach(function (node) {
+      // set location of execution node in cluster
+      node.site = site;
+
       nodes[node.id] = node;
       if (level === 0 && node.dependencies.length === 0) {
         rootNode = node.id;
       }
       if (node.type === 'SubqueryNode') {
         // enter subquery
-        recursiveWalk(node.subquery.nodes, level + 1);
+        recursiveWalk(node.subquery.nodes, level + 1, site);
+      } else if (node.type === 'RemoteNode') {
+        site = (site === 'COOR' ? 'DBS' : 'COOR');
       }
       node.dependencies.forEach(function (d) {
         if (!parents.hasOwnProperty(d)) {
@@ -654,20 +662,8 @@ function processQuery (query, explain) {
         }
       }
     });
-
-    var count = n.length, site = 'COOR';
-    while (count > 0) {
-      --count;
-      var node = n[count];
-      // get location of execution node in cluster
-      node.site = site;
-
-      if (node.type === 'RemoteNode') {
-        site = (site === 'COOR' ? 'DBS' : 'COOR');
-      }
-    }
   };
-  recursiveWalk(plan.nodes, 0);
+  recursiveWalk(plan.nodes, 0, 'COOR');
 
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {

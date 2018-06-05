@@ -53,7 +53,7 @@ class ClusterEngine final : public StorageEngine {
   explicit ClusterEngine(application_features::ApplicationServer*);
   ~ClusterEngine();
 
-  void setActualEngine(StorageEngine* e);
+  void setActualEngine(StorageEngine* e) { _actualEngine = e; }
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
@@ -82,8 +82,10 @@ class ClusterEngine final : public StorageEngine {
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t&,
-                                                           transaction::Options const&) override;
+  std::unique_ptr<TransactionState> createTransactionState(
+    CollectionNameResolver const& resolver,
+    transaction::Options const& options
+  ) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -325,7 +327,7 @@ class ClusterEngine final : public StorageEngine {
   }
 
  private:
-  
+
   /// @brief open an existing database. internal function
   TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id,
                                       std::string const& name,
