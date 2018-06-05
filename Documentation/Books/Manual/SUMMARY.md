@@ -189,6 +189,7 @@
     * [Applicability](Scalability/DC2DC/Applicability.md)
     * [Requirements](Scalability/DC2DC/Requirements.md)
     * [Limitations](Scalability/DC2DC/Limitations.md)
+* [Satellite Collections](Administration/Satellites.md)
 
 ## OPERATIONS
 
@@ -249,12 +250,7 @@
     * [RocksDB Engine Options](Administration/Configuration/RocksDB.md)
     * [Hash Cache Options](Administration/Configuration/Cache.md)
     * [Asynchronous Tasks](Administration/Configuration/Asynchronous.md)
-  * [Durability](Administration/Durability.md)
-  * [Encryption](Administration/Encryption/README.md)
-  * [Auditing](Administration/Auditing/README.md)
-    * [Configuration](Administration/Auditing/AuditConfiguration.md)
-    * [Events](Administration/Auditing/AuditEvents.md)
-  * [Satellite Collections](Administration/Satellites.md)
+    * [Durability](Administration/Durability.md)
   * [Master/Slave](Administration/MasterSlave/README.md)
     * [Setting up](Administration/MasterSlave/SettingUp.md)
       * [Replication Applier](Administration/MasterSlave/ReplicationApplier.md)
@@ -277,6 +273,10 @@
     * [Upgrading to 2.3](Administration/Upgrading/Upgrading23.md)
     * [Upgrading to 2.2](Administration/Upgrading/Upgrading22.md)
 * [Security](Security/README.md)
+  * [Encryption](Administration/Encryption/README.md)
+  * [Auditing](Administration/Auditing/README.md)
+    * [Configuration](Administration/Auditing/AuditConfiguration.md)
+    * [Events](Administration/Auditing/AuditEvents.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
