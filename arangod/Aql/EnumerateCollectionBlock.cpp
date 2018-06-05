@@ -103,6 +103,7 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
 
   DEBUG_BEGIN_BLOCK();
   _cursor->reset();
+  _upstreamState = ExecutionState::HASMORE;
   DEBUG_END_BLOCK();
 
   return res;

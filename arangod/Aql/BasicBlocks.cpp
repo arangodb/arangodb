@@ -146,6 +146,17 @@ FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
 }
 
 FilterBlock::~FilterBlock() {}
+
+std::pair<ExecutionState, arangodb::Result> FilterBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
+  }
+  _upstreamState = ExecutionState::HASMORE;
+  _inflight = 0;
+  return res;
+}
   
 /// @brief internal function to actually decide if the document should be used
 bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {

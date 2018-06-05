@@ -63,6 +63,9 @@ class FilterBlock final : public ExecutionBlock {
 
   ~FilterBlock();
 
+  std::pair<ExecutionState, arangodb::Result> initializeCursor(
+      AqlItemBlock* items, size_t pos) override final;
+
  private:
   /// @brief internal function to actually decide if the document should be used
   bool takeItem(AqlItemBlock* items, size_t index) const;
@@ -87,6 +90,7 @@ class FilterBlock final : public ExecutionBlock {
   /// @brief counter for documents inflight during WAITING
   size_t _inflight;
 
+  /// @brief State of the upstream node, used during get or skipSome
   ExecutionState _upstreamState;
 };
 
