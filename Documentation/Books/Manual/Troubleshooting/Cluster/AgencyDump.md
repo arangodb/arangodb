@@ -1,5 +1,5 @@
 How to produce an Agency Dump
-====+========================
+=============================
 
 One can read out all information of an _Agency_ in the following way:
 
@@ -7,7 +7,7 @@ One can read out all information of an _Agency_ in the following way:
 curl -L http://<server>:<port>/_api/agency/read -d '[["/"]]'
 ```
 
-Please make sure to use the _IP_ (or hostname) and _PORT_ of one _Agent_
+Please make sure to use the _IP_ (or hostname) and _PORT_ of one _Agent_.
 
 The `-L` means that the _curl_ request follows redirections in case one talks to a _follower_ instead of the _leader_ of the _Agency_.
 
@@ -40,7 +40,7 @@ The generated token is then used in the following way with `curl`, to produce th
 curl -L http://<server>:<port>/_api/agency/read -d '[["/"]]' -H "Authorization: bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpYXQiOjE1Mjc2ODYzMDAsInNlcnZlcl9pZCI6InNldHVwIiwiaXNzIjoiYXJhbmdvZGIifQ.dBUhmxY3Q7rLHHDQc9FL4ghOfGiNJRFws_U2ZX4H-58"
 ```
 
-Please make sure to use the _IP_ (or hostname) and _PORT_ of one _Agent_
+Please make sure to use the _IP_ (or hostname) and _PORT_ of one _Agent_.
 
 The two commands above can be easily executed in a single command in the following way:
 
