@@ -68,10 +68,11 @@ class FilterBlock final : public ExecutionBlock {
   bool takeItem(AqlItemBlock* items, size_t index) const;
 
   /// @brief internal function to get another block
-  bool getBlockOld(size_t atMost);
+  std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
-  int getOrSkipSomeOld(size_t atMost, bool skipping,
-                    AqlItemBlock*& result, size_t& skipped) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(
+      size_t atMost, bool skipping, AqlItemBlock*& result,
+      size_t& skipped) override;
 
  private:
   /// @brief input register
@@ -82,6 +83,11 @@ class FilterBlock final : public ExecutionBlock {
   std::vector<size_t> _chosen;
 
   BlockCollector _collector;
+
+  /// @brief counter for documents inflight during WAITING
+  size_t _inflight;
+
+  ExecutionState _upstreamState;
 };
 
 class LimitBlock final : public ExecutionBlock {
@@ -127,7 +133,7 @@ class ReturnBlock final : public ExecutionBlock {
       : ExecutionBlock(engine, ep), _returnInheritedResults(false) {}
 
   /// @brief getSome
-  AqlItemBlock* getSomeOld(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   /// @brief make the return block return the results inherited from above,
   /// without creating new blocks

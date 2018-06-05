@@ -135,7 +135,9 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
 FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
     : ExecutionBlock(engine, en), 
       _inReg(ExecutionNode::MaxRegisterId),
-      _collector(&engine->_itemBlockManager) {
+      _collector(&engine->_itemBlockManager),
+      _inflight(0),
+      _upstreamState(ExecutionState::HASMORE) {
 
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
@@ -151,12 +153,15 @@ bool FilterBlock::takeItem(AqlItemBlock* items, size_t index) const {
 }
 
 /// @brief internal function to get another block
-bool FilterBlock::getBlockOld(size_t atMost) {
+std::pair<ExecutionState, bool> FilterBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   while (true) {  // will be left by break or return
-    if (!ExecutionBlock::getBlockOld(atMost)) {
-      return false;
+    auto res = ExecutionBlock::getBlock(atMost);
+    if (res.first == ExecutionState::WAITING ||
+        !res.second) {
+      return res;
     }
+    _upstreamState = res.first;
 
     if (_buffer.size() > 1) {
       break;  // Already have a current block
@@ -189,27 +194,32 @@ bool FilterBlock::getBlockOld(size_t atMost) {
     throwIfKilled();  // check if we were aborted
   }
 
-  return true;
+  return {_upstreamState, true};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
 }
 
-int FilterBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
-                               AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();  
+std::pair<ExecutionState, arangodb::Result> FilterBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-  // if _buffer.size() is > 0 then _pos is valid
-  _collector.clear();
-
-  while (skipped < atMost) {
+  while (_inflight < atMost) {
     if (_buffer.empty()) {
-      if (!getBlockOld(atMost - skipped)) {
+      auto upstreamRes = getBlock(atMost - _inflight);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        // We have not modified result or skipped up to now.
+        // Make sure the caller does not have to retain it.
+        TRI_ASSERT(result == nullptr && skipped == 0);
+        return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+      }
+
+      if (!upstreamRes.second) {
         _done = true;
         break;
       }
@@ -219,11 +229,11 @@ int FilterBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
     // If we get here, then _buffer.size() > 0 and _pos points to a
     // valid place in it.
     AqlItemBlock* cur = _buffer.front();
-    if (_chosen.size() - _pos + skipped > atMost) {
+    if (_chosen.size() - _pos + _inflight > atMost) {
       // The current block of chosen ones is too large for atMost:
       if (!skipping) {
         std::unique_ptr<AqlItemBlock> more(
-            cur->slice(_chosen, _pos, _pos + (atMost - skipped)));
+            cur->slice(_chosen, _pos, _pos + (atMost - _inflight)));
 
         TRI_IF_FAILURE("FilterBlock::getOrSkipSome1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -231,8 +241,8 @@ int FilterBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
 
         _collector.add(std::move(more));
       }
-      _pos += atMost - skipped;
-      skipped = atMost;
+      _pos += atMost - _inflight;
+      _inflight = atMost;
     } else if (_pos > 0 || _chosen.size() < cur->size()) {
       // The current block fits into our result, but it is already
       // half-eaten or needs to be copied anyway:
@@ -246,7 +256,7 @@ int FilterBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
 
         _collector.add(std::move(more));
       }
-      skipped += _chosen.size() - _pos;
+      _inflight += _chosen.size() - _pos;
       returnBlock(cur);
       _buffer.pop_front();
       _chosen.clear();
@@ -254,7 +264,7 @@ int FilterBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
     } else {
       // The current block fits into our result and is fresh and
       // takes them all, so we can just hand it on:
-      skipped += cur->size();
+      _inflight += cur->size();
       if (!skipping) {
         // if any of the following statements throw, then cur is not lost,
         // as it is still contained in _buffer
@@ -274,7 +284,16 @@ int FilterBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
   if (!skipping) {
     result = _collector.steal();
   }
-  return TRI_ERROR_NO_ERROR;
+  skipped = _inflight;
+
+  // if _buffer.size() is > 0 then _pos is valid
+  _collector.clear();
+  _inflight = 0;
+
+  if (_chosen.empty() && _upstreamState == ExecutionState::DONE) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
@@ -393,29 +412,32 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
   DEBUG_END_BLOCK();
 }
 
-AqlItemBlock* ReturnBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
+    size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   
   auto ep = ExecutionNode::castTo<ReturnNode const*>(getPlanNode());
 
-  std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearoutOld(atMost));
+  auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
+  }
 
-  if (res == nullptr) {
+  if (res.second == nullptr) {
     traceGetSomeEnd(nullptr);
-    return nullptr;
+    return {ExecutionState::DONE, nullptr};
   }
 
   if (_returnInheritedResults) {
     if (ep->_count) {
-    _engine->_stats.count += static_cast<int64_t>(res->size());
+    _engine->_stats.count += static_cast<int64_t>(res.second->size());
     }
-    traceGetSomeEnd(res.get());
-    return res.release();
+    traceGetSomeEnd(res.second.get());
+    return res;
   }
 
-  size_t const n = res->size();
+  size_t const n = res.second->size();
 
   // Let's steal the actual result and throw away the vars:
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
@@ -425,11 +447,11 @@ AqlItemBlock* ReturnBlock::getSomeOld(size_t atMost) {
   std::unique_ptr<AqlItemBlock> stripped(requestBlock(n, 1));
 
   for (size_t i = 0; i < n; i++) {
-    auto a = res->getValueReference(i, registerId);
+    auto a = res.second->getValueReference(i, registerId);
 
     if (!a.isEmpty()) {
       if (a.requiresDestruction()) {
-        res->steal(a);
+        res.second->steal(a);
 
         try {
           TRI_IF_FAILURE("ReturnBlock::getSome") {
@@ -443,7 +465,7 @@ AqlItemBlock* ReturnBlock::getSomeOld(size_t atMost) {
         }
         // If the following does not go well, we do not care, since
         // the value is already stolen and installed in stripped
-        res->eraseValue(i, registerId);
+        res.second->eraseValue(i, registerId);
       } else {
         stripped->setValue(i, 0, a);
       }
@@ -455,7 +477,7 @@ AqlItemBlock* ReturnBlock::getSomeOld(size_t atMost) {
   }
 
   traceGetSomeEnd(stripped.get());
-  return stripped.release();
+  return {res.first, std::move(stripped)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
