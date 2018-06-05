@@ -185,22 +185,25 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
   DEBUG_END_BLOCK();
 }
 
-AqlItemBlock* CalculationBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+CalculationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
-  std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearoutOld(atMost));
-
-  if (res.get() == nullptr) {
+  auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
+  }
+  if (res.second.get() == nullptr) {
+    TRI_ASSERT(res.first == ExecutionState::DONE);
     traceGetSomeEnd(nullptr);
-    return nullptr;
+    return res;
   }
 
-  doEvaluation(res.get());
+  doEvaluation(res.second.get());
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
-  return res.release();
+  clearRegisters(res.second.get());
+  traceGetSomeEnd(res.second.get());
+  return res;
 
   // cppcheck-suppress *
   DEBUG_END_BLOCK();
