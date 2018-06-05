@@ -898,7 +898,7 @@ describe ArangoDB do
 
         newrev = newdoc.parsed_response['_rev']
         newrev.should be_kind_of(String)
-        newrev.should !eq(rev)
+        newrev.should_not eq(rev)
 
         newoldrev = newdoc.parsed_response['_oldRev']
         newoldrev.should be_kind_of(String)
@@ -953,7 +953,7 @@ describe ArangoDB do
 
         newrev = newdoc.parsed_response['_rev']
         newrev.should be_kind_of(String)
-        newrev.should !eq(rev)
+        newrev.should_not eq(rev)
 
         newoldrev = newdoc.parsed_response['_oldRev']
         newoldrev.should be_kind_of(String)
@@ -1018,7 +1018,7 @@ describe ArangoDB do
 
         newrev = newdoc.parsed_response[0]['_rev']
         newrev.should be_kind_of(String)
-        newrev.should !eq(rev)
+        newrev.should_not eq(rev)
 
         newoldrev = newdoc.parsed_response[0]['_oldRev']
         newoldrev.should be_kind_of(String)
@@ -1039,7 +1039,7 @@ describe ArangoDB do
 
         newrev = newdoc.parsed_response[1]['_rev']
         newrev.should be_kind_of(String)
-        newrev.should !eq(rev)
+        newrev.should_not eq(rev)
 
         newdoc.parsed_response[1]['new']['Hallo'].should eq("ULFINE")
         newdoc.parsed_response[1]['old']['Hallo'].should eq("ULF")

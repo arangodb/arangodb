@@ -624,7 +624,7 @@ multiple documents with one call.
       db.example.insert({ _key : "666", Hello : "Universe" }, {overwrite: true, returnOld: true});
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
-    @endDocuBlock documentsCollectionInsertSingle
+    @endDocuBlock documentsCollectionInsertSingleOverwrite
 
 
 Replace

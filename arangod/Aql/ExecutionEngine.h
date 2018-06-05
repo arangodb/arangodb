@@ -96,14 +96,6 @@ class ExecutionEngine {
   /// @brief getOne
   AqlItemBlock* getOne() { return _root->getSome(1); }
 
-  /// @brief skip
-  bool skip(size_t number, size_t& actuallySkipped) { 
-    if (!_initializeCursorCalled) {
-      initializeCursor(nullptr, 0);
-    }
-    return _root->skip(number, actuallySkipped); 
-  }
-
   /// @brief hasMore
   inline bool hasMore() const { return _root->hasMore(); }
 

@@ -52,6 +52,28 @@ var createTraversalExample = function () {
   return g;
 };
 
+// we create a graph with 'edges' pointing from 'verts' to 'verts'
+var createMpsTraversal = function () {
+  var g = Graph._create('mps_graph',
+    [Graph._relation('edges', 'verts', 'verts')]
+  );  
+  var a = g.verts.save({_key: 'A'});
+  var b = g.verts.save({_key: 'B'});
+  var c = g.verts.save({_key: 'C'});
+  var d = g.verts.save({_key: 'D'});
+  var e = g.verts.save({_key: 'E'});
+  var f = g.verts.save({_key: 'F'});
+  g.edges.save(a._id, b._id, {vertex:a._key});
+  g.edges.save(a._id, e._id, {vertex:a._key});
+  g.edges.save(a._id, d._id, {vertex:a._key});
+  g.edges.save(b._id, c._id, {vertex:b._key});
+  g.edges.save(d._id, c._id, {vertex:d._key});
+  g.edges.save(e._id, f._id, {vertex:e._key});
+  g.edges.save(f._id, c._id, {vertex:f._key});
+  return g;
+};
+
+
 // we create a graph with 'relation' pointing from 'female' to 'male' and 'male
 var createSocialGraph = function () {
   db._create("female");
@@ -374,6 +396,9 @@ var createTraversalGraph = function () {
 var knownGraphs = {
   'knows_graph': {create: createTraversalExample, dependencies: [
       'knows', 'persons'
+  ]},
+  'mps_graph': {create: createMpsTraversal, dependencies: [
+      'edges', 'verts'
   ]},
   'routeplanner': {create: createRoutePlannerGraph, dependencies: [
       'frenchHighway', 'frenchCity', 'germanCity', 'germanHighway', 'internationalHighway'

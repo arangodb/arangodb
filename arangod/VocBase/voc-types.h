@@ -70,12 +70,6 @@ enum TRI_voc_document_operation_e : uint8_t {
   TRI_VOC_DOCUMENT_OPERATION_REMOVE
 };
 
-/// @brief server operation modes
-enum TRI_vocbase_operationmode_e {
-  TRI_VOCBASE_MODE_NORMAL = 1,     // CRUD is allowed
-  TRI_VOCBASE_MODE_NO_CREATE = 2,  // C & U not allowed RD allowed
-};
-
 /// @brief edge direction
 enum TRI_edge_direction_e {
   TRI_EDGE_ANY = 0,  // can only be used for searching

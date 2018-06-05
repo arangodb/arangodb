@@ -63,7 +63,7 @@ class SubqueryBlock : public ExecutionBlock {
 
   /// @brief whether the subquery is const and will always return the same values
   /// when invoked multiple times
-  bool _subqueryIsConst;
+  bool const _subqueryIsConst;
 };
 
 }  // namespace arangodb::aql

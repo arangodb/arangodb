@@ -310,12 +310,10 @@ class DistributeNode : public ExecutionNode {
 /// @brief class GatherNode
 class GatherNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class GatherBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
   enum class SortMode : uint32_t {
-    Unset = 0, // FIXME do we really 'Unset' value?
     MinElement,
     Heap
   };
@@ -327,11 +325,15 @@ class GatherNode final : public ExecutionNode {
     GatherNode const& node
   ) noexcept;
 
-  /// @returns sort mode for the specified collection
-  static SortMode getSortMode(
-    Collection const* collection,
-    std::size_t shardsRequiredForHeapMerge = 5
-  );
+  /// @returns sort mode for the specified number of shards
+  static SortMode evaluateSortMode(
+      size_t numberOfShards,
+      size_t shardsRequiredForHeapMerge = 5
+  ) noexcept {
+    return numberOfShards >= shardsRequiredForHeapMerge
+      ? SortMode::Heap
+      : SortMode::MinElement;
+  }
 
   /// @brief constructor with an id
   GatherNode(

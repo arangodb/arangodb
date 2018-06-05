@@ -220,28 +220,4 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   return iid;
 }
 
-bool IndexFactory::visitFactory(
-  std::function<bool(std::string const& type, IndexTypeFactory const& factory)> const& visitor
-) const {
-  for (auto& entry: _factories) {
-    if (!visitor(entry.first, entry.second)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool IndexFactory::visitNormalizer(
-  std::function<bool(std::string const& type, IndexNormalizer const& normalizer)> const& visitor
-) const {
-  for (auto& entry: _normalizers) {
-    if (!visitor(entry.first, entry.second)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 } // arangodb

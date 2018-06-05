@@ -41,6 +41,10 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testPaths = {
+  'dump': 'js/server/tests/dump/' // we have to be fuzzy here...
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: dump
 // //////////////////////////////////////////////////////////////////////////////
@@ -160,11 +164,10 @@ function dump (options) {
   return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['dump'] = dump;
   defaultFns.push('dump');
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

@@ -369,7 +369,7 @@ struct ClusterCommRequest {
 
   ClusterCommRequest(std::string const& dest, rest::RequestType type,
                      std::string const& path,
-                     std::shared_ptr<std::string const> body,
+                     std::shared_ptr<std::string const> const& body,
                      std::unique_ptr<std::unordered_map<std::string, std::string>> headers)
       : destination(dest),
         requestType(type),

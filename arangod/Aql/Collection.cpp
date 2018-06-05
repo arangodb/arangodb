@@ -51,6 +51,12 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
   TRI_ASSERT(vocbase != nullptr);
 }
 
+/// @brief upgrade the access type to exclusive
+void Collection::setExclusiveAccess() {
+  TRI_ASSERT(AccessMode::isWriteOrExclusive(accessType));
+  accessType = AccessMode::Type::EXCLUSIVE;
+}
+
 /// @brief get the collection id
 TRI_voc_cid_t Collection::cid() const {
   return getCollection()->id();

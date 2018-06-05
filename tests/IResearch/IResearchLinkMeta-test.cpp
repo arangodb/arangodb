@@ -406,7 +406,6 @@ SECTION("test_writeCustomizedValues") {
   meta._fields["c"]->_fields["some"] = meta._fields["c"]; // initialize with parent, override below
   meta._fields["c"]->_fields["none"] = meta._fields["c"]; // initialize with parent
 
-  auto& overrideDefault = *(meta._fields["c"]->_fields["default"]);
   auto& overrideAll = *(meta._fields["c"]->_fields["all"]);
   auto& overrideSome = *(meta._fields["c"]->_fields["some"]);
   auto& overrideNone = *(meta._fields["c"]->_fields["none"]);

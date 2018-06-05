@@ -319,7 +319,7 @@ SECTION("clone") {
       );
       otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
 
-      auto const nextId = node.plan()->nextId();
+      node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
         *node.clone(otherQuery.plan(), true, false)
       );
@@ -455,7 +455,7 @@ SECTION("clone") {
       );
       otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
 
-      auto const nextId = node.plan()->nextId();
+      node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
         *node.clone(otherQuery.plan(), true, false)
       );
@@ -797,7 +797,7 @@ SECTION("clone") {
       );
       otherQuery.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
 
-      auto const nextId = node.plan()->nextId();
+      node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewScatterNode&>(
         *node.clone(otherQuery.plan(), true, false)
       );

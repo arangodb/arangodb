@@ -731,6 +731,28 @@ AstNode* Ast::createNodeParameter(
   return node;
 }
 
+AstNode* Ast::createNodeParameterCollection(char const* name, size_t length) {
+  auto node = createNodeParameter(name, length);
+
+  if (node) {
+    node->reserve(1);
+    node->addMember(createNode(NODE_TYPE_COLLECTION));
+  }
+
+  return node;
+}
+
+AstNode* Ast::createNodeParameterView(char const* name, size_t length) {
+  auto node = createNodeParameter(name, length);
+
+  if (node) {
+    node->reserve(1);
+    node->addMember(createNode(NODE_TYPE_VIEW));
+  }
+
+  return node;
+}
+
 /// @brief create an AST quantifier node
 AstNode* Ast::createNodeQuantifier(int64_t type) {
   AstNode* node = createNode(NODE_TYPE_QUANTIFIER);
@@ -1467,69 +1489,90 @@ void Ast::injectBindParameters(BindParameters& parameters) {
       TRI_ASSERT(!param.empty());
 
       if ('@' == param[0]) {
-          // bound data source parameter
-          TRI_ASSERT(value.isString());
+        // bound data source parameter
+        TRI_ASSERT(value.isString());
 
-          char const* name = nullptr;
-          VPackValueLength length;
-          char const* stringValue = value.getString(length);
+        // should have arrived here via createNodeParameterCollection(...) or createNodeParameterView(...)
+        if (1 != node->numMembers() || !node->getMemberUnchecked(0)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, "missing data source category"
+          );
+        }
 
-          // FIXME use external resolver
-          arangodb::CollectionNameResolver resolver(_query->vocbase());
-          std::shared_ptr<LogicalDataSource> dataSource;
+        // FIXME use external resolver
+        arangodb::CollectionNameResolver resolver(_query->vocbase());
 
-          if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
-            dataSource = resolver.getDataSource(basics::StringUtils::uint64(stringValue, length));
-          } else {
-            dataSource = resolver.getDataSource(std::string(stringValue, length));
-          }
+        switch (node->getMemberUnchecked(0)->type) {
+         case NODE_TYPE_COLLECTION: {
+          auto dataSource = resolver.getCollection(value.copyString());
 
           if (!dataSource) {
             THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "%s",
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              "collection: %s",
               value.copyString().c_str()
             );
           }
 
           // TODO: can we get away without registering the string value here?
-          auto& dataSourceName = dataSource->name();
+          auto* name = _query->registerString(dataSource->name());
 
-          name = _query->registerString(dataSourceName.c_str(), dataSourceName.size());
+          // check if the collection was used in a data-modification query
+          bool isWriteCollection = false;
 
-          if (LogicalCollection::category() == dataSource->category()) {
-            // check if the collection was used in a data-modification query
-            bool isWriteCollection = false;
+          arangodb::StringRef paramRef(param);
 
-            for (auto const& it : _writeCollections) {
-              if (it->type == NODE_TYPE_PARAMETER && StringRef(param) == StringRef(it->getStringValue(), it->getStringLength())) {
-                isWriteCollection = true;
-                break;
+
+          for (auto const& it : _writeCollections) {
+            auto const& c = it.first;
+
+            if (c->type == NODE_TYPE_PARAMETER
+                && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
+              isWriteCollection = true;
+              break;
+            }
+          }
+
+          node = createNodeCollection(name, isWriteCollection
+                                    ? AccessMode::Type::WRITE
+                                    : AccessMode::Type::READ);
+
+          if (isWriteCollection) {
+            // must update AST info now for all nodes that contained this parameter
+            for (size_t i = 0; i < _writeCollections.size(); ++i) {
+              auto& c = _writeCollections[i].first;
+
+              if (c->type == NODE_TYPE_PARAMETER
+                  && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
+                c = node;
+                // no break here. replace all occurrences
               }
             }
+          }
 
-            node = createNodeCollection(name, isWriteCollection
-                                      ? AccessMode::Type::WRITE
-                                      : AccessMode::Type::READ);
+          break;
+         }
+         case NODE_TYPE_VIEW: {
+          auto dataSource = resolver.getView(value.copyString());
 
-            if (isWriteCollection) {
-              // must update AST info now for all nodes that contained this
-              // parameter
-              for (size_t i = 0; i < _writeCollections.size(); ++i) {
-                if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
-                    StringRef(param) == StringRef(_writeCollections[i]->getStringValue(), _writeCollections[i]->getStringLength())) {
-                  _writeCollections[i] = node;
-                  // no break here. replace all occurrences
-                }
-              }
-            }
-          } else if (LogicalView::category() == dataSource->category()) {
-            node = createNodeView(name);
-          } else {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              "unexpected data source category"
+          if (!dataSource) {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              "view: %s",
+              value.copyString().c_str()
             );
           }
+
+          // TODO: can we get away without registering the string value here?
+          node = createNodeView(_query->registerString(dataSource->name()));
+
+          break;
+         }
+         default:
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, "unexpected data source category"
+          );
+        }
       } else {
          // regular bound parameter
          node = nodeFromVPack(value, true);
@@ -1674,11 +1717,11 @@ void Ast::injectBindParameters(BindParameters& parameters) {
 
   // add all collections used in data-modification statements
   for (auto& it : _writeCollections) {
-    if (it->type == NODE_TYPE_COLLECTION) {
-      std::string name = it->getString();
-
-      _query->collections()->add(name, AccessMode::Type::WRITE);
-
+    auto const& c = it.first;
+    bool isExclusive = it.second;
+    if (c->type == NODE_TYPE_COLLECTION) {
+      std::string name = c->getString();
+      _query->collections()->add(name, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
       if (ServerState::instance()->isCoordinator()) {
         auto ci = ClusterInfo::instance();
 
@@ -1689,7 +1732,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           auto names = coll->realNames();
 
           for (auto const& n : names) {
-            _query->collections()->add(n, AccessMode::Type::WRITE);
+            _query->collections()->add(n, isExclusive ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE);
           }
         } catch (...) {
         }
