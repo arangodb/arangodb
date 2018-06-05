@@ -45,6 +45,10 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testPaths = {
+  'endpoints': ['js/client/tests/endpoint-spec.js']
+};
+
 function endpoints (options) {
   print(CYAN + 'Endpoints tests...' + RESET);
 
@@ -92,7 +96,7 @@ function endpoints (options) {
           };
         }
 
-        let result = tu.runInArangosh(options, instanceInfo, 'js/client/tests/endpoint-spec.js');
+        let result = tu.runInArangosh(options, instanceInfo, testPaths.endpoints[0]);
 
         print(CYAN + 'Shutting down...' + RESET);
         // mop: mehhh...when launched with a socket we can't use download :S
@@ -111,7 +115,8 @@ function endpoints (options) {
   }, {});
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['endpoints'] = endpoints;
 
   opts['skipEndpoints'] = false;
@@ -120,6 +125,4 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

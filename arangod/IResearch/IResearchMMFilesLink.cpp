@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 
@@ -35,6 +36,7 @@ IResearchMMFilesLink::IResearchMMFilesLink(
     arangodb::LogicalCollection* collection
 ): Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
    IResearchLink(iid, collection) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false; // cannot be unique since multiple fields are indexed
   _sparse = true;  // always sparse
 }
