@@ -354,7 +354,7 @@ int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _posForClient.clear();
 
   for (size_t i = 0; i < _nrClients; i++) {
-    _posForClient.emplace_back(std::make_pair(0, 0));
+    _posForClient.emplace_back(0, 0);
   }
   return TRI_ERROR_NO_ERROR;
 
@@ -385,20 +385,23 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   
   TRI_ASSERT(_nrClients != 0);
 
-  size_t clientId = getClientId(shardId);
-
+  size_t const clientId = getClientId(shardId);
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+
+  // reference to "a finish mark" for a client
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return false;
   }
 
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
+  auto const& pos = _posForClient[clientId];
   // (i, j) where i is the position in _buffer, and j is the position in
-  // _buffer.at(i) we are sending to <clientId>
+  // _buffer[i] we are sending to <clientId>
 
   if (pos.first > _buffer.size()) {
     if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       return false;
     }
   }
@@ -417,46 +420,50 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t clientId = getClientId(shardId);
-
+  size_t const clientId = getClientId(shardId);
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+
+  // reference to "a finish mark" for a client
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(_posForClient.size() > clientId);
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
+  auto& pos = _posForClient[clientId];
 
   // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
     if (!getBlock(atMost)) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       return TRI_ERROR_NO_ERROR;
     }
   }
 
-  size_t available = _buffer.at(pos.first)->size() - pos.second;
+  auto& blockForClient = _buffer[pos.first];
+
+  size_t available = blockForClient->size() - pos.second;
   // available should be non-zero
 
   skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   if (!skipping) {
-    result = _buffer.at(pos.first)->slice(pos.second, pos.second + skipped);
+    result = blockForClient->slice(pos.second, pos.second + skipped);
   }
 
   // increment the position . . .
-  _posForClient.at(clientId).second += skipped;
+  pos.second += skipped;
 
   // check if we're done at current block in buffer . . .
-  if (_posForClient.at(clientId).second ==
-      _buffer.at(_posForClient.at(clientId).first)->size()) {
-    _posForClient.at(clientId).first++;
-    _posForClient.at(clientId).second = 0;
+  if (pos.second == blockForClient->size()) {
+    pos.first++; // next block
+    pos.second = 0; // reset the position within a block
 
     // check if we can pop the front of the buffer . . .
     bool popit = true;
     for (size_t i = 0; i < _nrClients; i++) {
-      if (_posForClient.at(i).first == 0) {
+      if (_posForClient[i].first == 0) {
         popit = false;
         break;
       }
@@ -466,7 +473,7 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
       _buffer.pop_front();
       // update the values in first coord of _posForClient
       for (size_t i = 0; i < _nrClients; i++) {
-        _posForClient.at(i).first--;
+        _posForClient[i].first--;
       }
     }
   }
