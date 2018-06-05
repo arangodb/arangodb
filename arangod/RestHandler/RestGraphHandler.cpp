@@ -1024,43 +1024,9 @@ Result RestGraphHandler::graphActionReadGraphs() {
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(_vocbase);
 
-  std::string const queryStr("FOR g IN _graphs RETURN g");
-  auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(
-    false,
-    _vocbase,
-    arangodb::aql::QueryString(queryStr),
-    emptyBuilder,
-    emptyBuilder,
-    arangodb::aql::PART_MAIN
-  );
-
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-      << "starting to load graphs information";
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
-
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
-    }
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        queryResult.code, "Error executing graphs query: " + queryResult.details);
-  }
-
-  VPackSlice graphsSlice = queryResult.result->slice();
-
-  if (graphsSlice.isNone()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  } else if (!graphsSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot read users from _graphs collection";
-  }
-
+  GraphManager gmngr{ctx};
   VPackBuilder builder;
-  builder.add(VPackValue(VPackValueType::Object));
-  builder.add("graphs", graphsSlice);
-  builder.close();
+  gmngr.readGraphs(builder);
 
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 

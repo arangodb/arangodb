@@ -275,6 +275,18 @@ class GraphOperations {
 
 };
 
+class GraphManager {
+  private:
+   std::shared_ptr<transaction::Context> _ctx;
+   std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
+  public:
+   GraphManager() = delete;
+   GraphManager(std::shared_ptr<transaction::Context> ctx_)
+        : _ctx(std::move(ctx_)) {}
+   void readGraphs(velocypack::Builder& builder);
+};
+
+
 class GraphCache {
  public:
   // save now() along with the graph
