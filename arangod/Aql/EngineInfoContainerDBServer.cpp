@@ -170,7 +170,6 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = modNode->restrictedShard();
       }
-      _type = node->getType();
       break;
     }
     default:
