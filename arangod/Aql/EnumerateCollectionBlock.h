@@ -50,10 +50,19 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   /// @brief getSome
-  AqlItemBlock* getSomeOld(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
-  size_t skipSomeOld(size_t atMost) override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
+
+ private:
+  /**
+   * @brief Compute the ExecutionState to be returned by getSome or skipSome
+   * SideEffect: can update _done
+   *
+   * @return Either HASMORE or DONE. Cannot return WAITING
+   */
+  ExecutionState computeExecutionState();
 
  private:
   /// @brief collection
@@ -61,6 +70,14 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;
+
+  /// @brief the execution state of the dependency
+  ///        used to determine HASMORE or DONE better
+  ExecutionState _upstreamState;
+
+  /// @brief Persistent counter of elements that are in flight during WAITING
+  ///        has to be resetted as soon as we return with DONE/HASMORE
+  size_t _inflight;
 };
 
 }  // namespace arangodb::aql

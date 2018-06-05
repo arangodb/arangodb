@@ -46,7 +46,9 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
       _cursor(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
-                                       : transaction::Methods::CursorType::ALL))) {
+                                       : transaction::Methods::CursorType::ALL))),
+      _upstreamState(ExecutionState::HASMORE),
+      _inflight(0) {
   TRI_ASSERT(_cursor->ok());
 
   buildCallback();
@@ -110,7 +112,8 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
 }
 
 /// @brief getSome
-AqlItemBlock* EnumerateCollectionBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+EnumerateCollectionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
@@ -121,13 +124,13 @@ AqlItemBlock* EnumerateCollectionBlock::getSomeOld(size_t atMost) {
   //   either empty (at the beginning, with _posInDocuments == 0)
   //   or is non-empty and _posInDocuments < _documents.size()
   if (_done) {
+    TRI_ASSERT(_inflight == 0);
     traceGetSomeEnd(nullptr);
-    return nullptr;
+    return {ExecutionState::DONE, nullptr};
   }
     
-  bool needMore;
+  bool needMore = false;
   AqlItemBlock* cur = nullptr;
-  size_t send = 0;
   std::unique_ptr<AqlItemBlock> res;
   do {
     do {
@@ -135,10 +138,16 @@ AqlItemBlock* EnumerateCollectionBlock::getSomeOld(size_t atMost) {
 
       if (_buffer.empty()) {
         size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlockOld(toFetch)) {
+        auto upstreamRes = ExecutionBlock::getBlock(toFetch);
+        if (upstreamRes.first == ExecutionState::WAITING) {
+          return {ExecutionState::WAITING, nullptr};
+        }
+        _upstreamState = upstreamRes.first;
+        if (!upstreamRes.second) {
+          TRI_ASSERT(_inflight == 0);
           _done = true;
           traceGetSomeEnd(nullptr);
-          return nullptr;
+          return {ExecutionState::DONE, nullptr};
         }
         _pos = 0;  // this is in the first block
         _cursor->reset();
@@ -186,13 +195,13 @@ AqlItemBlock* EnumerateCollectionBlock::getSomeOld(size_t atMost) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
       tmp = _cursor->nextDocument([&](LocalDocumentId const&, VPackSlice slice) {
-        _documentProducer(res.get(), slice, curRegs, send, 0);
+        _documentProducer(res.get(), slice, curRegs, _inflight, 0);
       }, atMost);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
       tmp = _cursor->next([&](LocalDocumentId const&) {
-        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send, 0);
+        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, _inflight, 0);
       }, atMost);
     }
     if (!tmp) {
@@ -200,41 +209,49 @@ AqlItemBlock* EnumerateCollectionBlock::getSomeOld(size_t atMost) {
     }
 
     // If the collection is actually empty we cannot forward an empty block
-  } while (send == 0);
-  _engine->_stats.scannedFull += static_cast<int64_t>(send);
+  } while (_inflight == 0);
+  _engine->_stats.scannedFull += static_cast<int64_t>(_inflight);
   TRI_ASSERT(res != nullptr);
 
-  if (send < atMost) {
+  if (_inflight < atMost) {
     // The collection did not have enough results
-    res->shrink(send);
+    res->shrink(_inflight);
   }
 
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
 
   traceGetSomeEnd(res.get());
-
-  return res.release();
+  _inflight = 0;
+  return {computeExecutionState(), std::move(res)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
-size_t EnumerateCollectionBlock::skipSomeOld(size_t atMost) {
+std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  size_t skipped = 0;
-  TRI_ASSERT(_cursor != nullptr);
 
   if (_done) {
-    return skipped;
+    TRI_ASSERT(_inflight == 0);
+    return {ExecutionState::DONE, _inflight};
   }
 
-  while (skipped < atMost) {
+  TRI_ASSERT(_cursor != nullptr);
+
+  while (_inflight < atMost) {
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlockOld(toFetch)) {
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
+      auto upstreamRes = getBlock(toFetch);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        return {ExecutionState::WAITING, 0};
+      }
+      _upstreamState = upstreamRes.first;
+      if (!upstreamRes.second) {
         _done = true;
-        return skipped;
+        size_t skipped = _inflight;
+        _inflight = 0;
+        return {ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block
       _cursor->reset();
@@ -245,12 +262,12 @@ size_t EnumerateCollectionBlock::skipSomeOld(size_t atMost) {
     uint64_t skippedHere = 0;
 
     if (_cursor->hasMore()) {
-      _cursor->skip(atMost - skipped, skippedHere);
+      _cursor->skip(atMost - _inflight, skippedHere);
     }
 
-    skipped += skippedHere;
+    _inflight += skippedHere;
 
-    if (skipped < atMost) {
+    if (_inflight < atMost) {
       TRI_ASSERT(!_cursor->hasMore());
       // not skipped enough re-initialize fetching of documents
       _cursor->reset();
@@ -262,9 +279,31 @@ size_t EnumerateCollectionBlock::skipSomeOld(size_t atMost) {
     }
   }
 
-  _engine->_stats.scannedFull += static_cast<int64_t>(skipped);
-  return skipped;
+  _engine->_stats.scannedFull += static_cast<int64_t>(_inflight);
+  size_t skipped = _inflight;
+  _inflight = 0;
+  return {computeExecutionState(), skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
+}
+
+/**
+ * @brief Compute the ExecutionState to be returned by getSome or skipSome
+ * SideEffect: can update _done
+ *
+ * @return Either HASMORE or DONE. Cannot return WAITING
+ */
+ExecutionState EnumerateCollectionBlock::computeExecutionState() {
+  if (_done) {
+    return ExecutionState::DONE;
+  }
+  if (_upstreamState == ExecutionState::HASMORE ||
+      !_buffer.empty() ||
+      _cursor->hasMore()) {
+    return ExecutionState::HASMORE;
+  }
+  _done = true;
+  return ExecutionState::DONE;
+
 }
