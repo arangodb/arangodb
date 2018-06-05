@@ -374,30 +374,32 @@ int ScatterBlock::shutdown(int errorCode) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief hasMoreForShard: any more for shard <shardId>?
-bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
+bool ScatterBlock::hasMoreForClientId(size_t clientId) {
   DEBUG_BEGIN_BLOCK();
-  
+
   TRI_ASSERT(_nrClients != 0);
 
-  size_t clientId = getClientId(shardId);
-
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
-    return false;
-  }
-
+  TRI_ASSERT(clientId < _posForClient.size());
   std::pair<size_t, size_t> pos = _posForClient.at(clientId);
   // (i, j) where i is the position in _buffer, and j is the position in
   // _buffer.at(i) we are sending to <clientId>
 
-  if (pos.first > _buffer.size()) {
-    if (!ExecutionBlock::getBlockOld(DefaultBatchSize())) {
-      _doneForClient.at(clientId) = true;
-      return false;
-    }
+  if (pos.first <= _buffer.size()) {
+    return true;
   }
-  return true;
+
+  TRI_ASSERT(_doneForClient.size() > clientId);
+  return _doneForClient.at(clientId);
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief hasMoreForShard: any more for shard <shardId>?
+bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
+  DEBUG_BEGIN_BLOCK();
+  
+  return hasMoreForClientId(getClientId(shardId));
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -413,8 +415,7 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
 
   size_t clientId = getClientId(shardId);
 
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+  if (!hasMoreForClientId(clientId)) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
@@ -427,8 +428,10 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     if (res.first == ExecutionState::WAITING) {
       return {res.first, TRI_ERROR_NO_ERROR};
     }
+    if (res.first == ExecutionState::DONE) {
+      _doneForClient[clientId] = true;
+    }
     if (!res.second) {
-      _doneForClient.at(clientId) = true;
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
   }
@@ -469,8 +472,10 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     }
   }
 
-  // TODO check if we can get better in HASMORE vs DONE
-  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+  if (hasMoreForClientId(clientId)) {
+    return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+  }
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -553,26 +558,26 @@ int DistributeBlock::shutdown(int errorCode) {
   DEBUG_END_BLOCK();
 }
 
-/// @brief hasMore: any more for any shard?
-bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
+bool DistributeBlock::hasMoreForClientId(size_t clientId) {
   DEBUG_BEGIN_BLOCK();
-
-  size_t clientId = getClientId(shardId);
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
-    return false;
-  }
 
   TRI_ASSERT(_distBuffer.size() > clientId);
   if (!_distBuffer.at(clientId).empty()) {
     return true;
   }
 
-  if (!getBlockForClient(DefaultBatchSize(), clientId)) {
-    _doneForClient.at(clientId) = true;
-    return false;
-  }
-  return true;
+  TRI_ASSERT(_doneForClient.size() > clientId);
+  return _doneForClient.at(clientId);
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief hasMore: any more for any shard?
+bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
+  DEBUG_BEGIN_BLOCK();
+
+  return hasMoreForClientId(getClientId(shardId));
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -591,19 +596,26 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
 
   size_t clientId = getClientId(shardId);
 
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+  if (!hasMoreForClientId(clientId)) {
     traceGetSomeEnd(nullptr);
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
+
   std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
   if (buf.empty()) {
-    if (!getBlockForClient(atMost, clientId)) {
-      _doneForClient.at(clientId) = true;
+    auto res = getBlockForClient(atMost, clientId);
+    if (res.first == ExecutionState::WAITING) {
+      return {res.first, TRI_ERROR_NO_ERROR};
+    }
+    if (!res.second) {
       traceGetSomeEnd(nullptr);
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+    }
+    if (res.first == ExecutionState::DONE) {
+      // Do not ask again, but we still have some stuff to process
+      _doneForClient.at(clientId) = true;
     }
   }
 
@@ -614,8 +626,10 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
       buf.pop_front();
     }
     traceGetSomeEnd(nullptr);
-    // TODO check if we can get any better for DONE/MORE
-    return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+    if (hasMoreForClientId(clientId)) {
+      return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+    }
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
   
   BlockCollector collector(&_engine->_itemBlockManager);
@@ -648,7 +662,11 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
   // _buffer is left intact, deleted and cleared at shutdown
 
   traceGetSomeEnd(result.get());
-  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+
+  if (hasMoreForClientId(clientId)) {
+    return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+  }
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -659,7 +677,8 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
 /// incoming blocks until they run out or we find enough rows for clientId. We
 /// also keep track of blocks which should be sent to other clients than the
 /// current one.
-bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
+std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
+    size_t atMost, size_t clientId) {
   DEBUG_BEGIN_BLOCK();
   if (_buffer.empty()) {
     _index = 0;  // position in _buffer
@@ -671,10 +690,16 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
 
   while (buf.at(clientId).size() < atMost) {
     if (_index == _buffer.size()) {
-      if (!ExecutionBlock::getBlockOld(atMost)) {
+      auto res = ExecutionBlock::getBlock(atMost);
+      if (res.first == ExecutionState::WAITING) {
+        return {res.first, false};
+      }
+      if (res.first == ExecutionState::DONE) {
+        _doneForClient.at(clientId) = true;
+      }
+      if (!res.second) {
         if (buf.at(clientId).size() == 0) {
-          _doneForClient.at(clientId) = true;
-          return false;
+          return {ExecutionState::DONE, false};
         }
         break;
       }
@@ -697,7 +722,10 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
     }
   }
 
-  return true;
+  if (hasMoreForClientId(clientId)) {
+    return {ExecutionState::HASMORE, true};
+  }
+  return {ExecutionState::DONE, true};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

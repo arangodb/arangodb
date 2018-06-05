@@ -133,6 +133,10 @@ class ScatterBlock : public BlockWithClients {
   bool hasMoreForShard(std::string const& shardId) override;
 
  private:
+
+  /// @brief hasMoreForClientId: any more for client <cliendIt>?
+  bool hasMoreForClientId(size_t clientId);
+
   /// @brief getOrSkipSomeForShard
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
       size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
@@ -158,6 +162,10 @@ class DistributeBlock : public BlockWithClients {
   bool hasMoreForShard(std::string const& shardId) override;
 
  private:
+
+  /// @brief hasMoreForClientId: any more for client <cliendIt>?
+  bool hasMoreForClientId(size_t clientId);
+
   /// @brief getOrSkipSomeForShard
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
       size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
@@ -165,7 +173,7 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief getBlockForClient: try to get at atMost pairs into
   /// _distBuffer.at(clientId).
-  bool getBlockForClient(size_t atMost, size_t clientId);
+  std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
 
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
