@@ -414,11 +414,11 @@ install_command_alias(${BIN_ARANGOSH}
 install_config(foxx-manager)
 
 ################################################################################
-## arangodoc
+## arangoinsoect
 ################################################################################
 
 install_command_alias(${BIN_ARANGOSH}
   ${CMAKE_INSTALL_BINDIR}
-  arangodoc)
+  arangoinspect)
 
-install_config(arangodoc)
+install_config(arangoinspect)
