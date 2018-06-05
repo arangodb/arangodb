@@ -3133,7 +3133,7 @@ SECTION("IResearchViewNode::createBlock") {
       *query.plan(),
       42, // id
       *vocbase, // database
-      *view, // view
+      view, // view
       outVariable,
       nullptr, // no filter condition
       {} // no sort condition

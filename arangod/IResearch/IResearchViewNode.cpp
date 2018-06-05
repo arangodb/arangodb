@@ -186,18 +186,19 @@ IResearchViewNode::IResearchViewNode(
     aql::ExecutionPlan& plan,
     size_t id,
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view,
+    std::shared_ptr<const arangodb::LogicalView> const& view,
     arangodb::aql::Variable const& outVariable,
     arangodb::aql::AstNode* filterCondition,
     std::vector<IResearchSort>&& sortCondition)
   : arangodb::aql::ExecutionNode(&plan, id),
     _vocbase(vocbase),
-    _view(&view),
+    _view(view),
     _outVariable(&outVariable),
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(filterCondition ? filterCondition : &ALL),
     _sortCondition(std::move(sortCondition)) {
+  TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
 }
 
@@ -206,18 +207,16 @@ IResearchViewNode::IResearchViewNode(
     velocypack::Slice const& base)
   : aql::ExecutionNode(&plan, base),
     _vocbase(plan.getAst()->query()->vocbase()),
-    _view(nullptr),
     _outVariable(aql::Variable::varFromVPack(plan.getAst(), base, "outVariable")),
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(&ALL),
     _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
   // FIXME how to check properly
-  auto view = _vocbase.lookupView(
+  _view = _vocbase.lookupView(
     basics::StringUtils::uint64(base.get("viewId").copyString())
   );
-  TRI_ASSERT(view && iresearch::DATA_SOURCE_TYPE == view->type());
-  _view = view.get();
+  TRI_ASSERT(_view && iresearch::DATA_SOURCE_TYPE == _view->type());
 
   auto const filterSlice = base.get("condition");
 
@@ -389,7 +388,7 @@ aql::ExecutionNode* IResearchViewNode::clone(
     *plan,
     _id,
     _vocbase,
-    *_view,
+    _view,
     *outVariable,
     const_cast<aql::AstNode*>(_filterCondition),
     decltype(_sortCondition)(_sortCondition)
@@ -458,14 +457,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   if (ServerState::instance()->isDBServer()) {
     // FIXME pass list of the shards involved
     // FIXME cache snapshot in transaction state when transaction starts
-    reader = LogicalView::cast<IResearchViewDBServer>(this->view()).snapshot(state, true);
+    reader = LogicalView::cast<IResearchViewDBServer>(*this->view()).snapshot(state, true);
   } else {
-    reader = LogicalView::cast<IResearchView>(this->view()).snapshot(state);
+    reader = LogicalView::cast<IResearchView>(*this->view()).snapshot(state);
   }
 
   if (!reader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view().name() << "' tid '" << state.id() << "'";
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view()->name() << "' tid '" << state.id() << "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,

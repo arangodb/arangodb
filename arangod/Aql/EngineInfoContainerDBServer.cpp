@@ -155,7 +155,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
       _type = ExecutionNode::ENUMERATE_IRESEARCH_VIEW;
-      _view = &viewNode.view();
+      _view = viewNode.view().get();
       break;
     }
 #endif
@@ -379,7 +379,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
-      auto* view = &viewNode.view();
+      auto* view = viewNode.view().get();
 
       for (aql::Collection const& col : viewNode.collections()) {
         auto& info = handleCollection(&col, AccessMode::Type::READ);

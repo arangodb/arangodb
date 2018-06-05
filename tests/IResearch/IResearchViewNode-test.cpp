@@ -174,7 +174,7 @@ SECTION("construct") {
     *query.plan(), // plan
     42, // id
     vocbase, // database
-    *logicalView, // view
+    logicalView, // view
     outVariable, // out variable
     nullptr, // no filter condition
     {} // no sort condition
@@ -188,7 +188,7 @@ SECTION("construct") {
   CHECK(&outVariable == &node.outVariable());
   CHECK(query.plan() == node.plan());
   CHECK(42 == node.id());
-  CHECK(logicalView.get() == &node.view());
+  CHECK(logicalView == node.view());
   CHECK(node.sortCondition().empty());
   CHECK(!node.volatile_filter());
   CHECK(!node.volatile_sort());
@@ -222,7 +222,7 @@ SECTION("clone") {
       *query.plan(),
       42, // id
       vocbase, // database
-      *logicalView, // view
+      logicalView, // view
       outVariable,
       nullptr, // no filter condition
       {} // no sort condition
@@ -245,7 +245,7 @@ SECTION("clone") {
       CHECK(node.plan() == cloned.plan());
       CHECK(nextId + 1 == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(&node.view() == &cloned.view());
+      CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -267,7 +267,7 @@ SECTION("clone") {
       CHECK(node.plan() == cloned.plan());
       CHECK(nextId + 1 == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(&node.view() == &cloned.view());
+      CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -298,7 +298,7 @@ SECTION("clone") {
       CHECK(otherQuery.plan() == cloned.plan());
       CHECK(node.id() == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(&node.view() == &cloned.view());
+      CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -328,7 +328,7 @@ SECTION("clone") {
       CHECK(otherQuery.plan() == cloned.plan());
       CHECK(node.id() == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(&node.view() == &cloned.view());
+      CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -346,7 +346,7 @@ SECTION("clone") {
       *query.plan(),
       42, // id
       vocbase, // database
-      *logicalView, // view
+      logicalView, // view
       outVariable,
       nullptr, // no filter condition
       {} // no sort condition
@@ -375,7 +375,7 @@ SECTION("clone") {
       CHECK(node.plan() == cloned.plan());
       CHECK(nextId + 1 == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(&node.view() == &cloned.view());
+      CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -400,7 +400,7 @@ SECTION("clone") {
       CHECK(node.plan() == cloned.plan());
       CHECK(nextId + 1 == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(&node.view() == &cloned.view());
+      CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -434,7 +434,7 @@ SECTION("clone") {
       CHECK(otherQuery.plan() == cloned.plan());
       CHECK(node.id() == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(&node.view() == &cloned.view());
+      CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -467,7 +467,7 @@ SECTION("clone") {
       CHECK(otherQuery.plan() == cloned.plan());
       CHECK(node.id() == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(&node.view() == &cloned.view());
+      CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -503,7 +503,7 @@ SECTION("serialize") {
       *query.plan(),
       42, // id
       vocbase, // database
-      *logicalView, // view
+      logicalView, // view
       outVariable,
       nullptr, // no filter condition
       {} // no sort condition
@@ -539,7 +539,7 @@ SECTION("serialize") {
       CHECK(node.plan() == deserialized.plan());
       CHECK(node.id() == deserialized.id());
       CHECK(&node.vocbase() == &deserialized.vocbase());
-      CHECK(&node.view() == &deserialized.view());
+      CHECK(node.view() == deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
       CHECK(node.sortCondition() == deserialized.sortCondition());
       CHECK(node.volatile_filter() == deserialized.volatile_filter());
@@ -565,7 +565,7 @@ SECTION("serialize") {
       CHECK(node.plan() == deserialized.plan());
       CHECK(node.id() == deserialized.id());
       CHECK(&node.vocbase() == &deserialized.vocbase());
-      CHECK(&node.view() == &deserialized.view());
+      CHECK(node.view() == deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
       CHECK(node.sortCondition() == deserialized.sortCondition());
       CHECK(node.volatile_filter() == deserialized.volatile_filter());
@@ -640,7 +640,7 @@ SECTION("collections") {
     *query.plan(),
     42, // id
     vocbase, // database
-    *logicalView, // view
+    logicalView, // view
     outVariable,
     nullptr, // no filter condition
     {} // no sort condition

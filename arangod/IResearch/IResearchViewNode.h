@@ -61,9 +61,6 @@ struct IResearchSort {
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
-  friend class arangodb::aql::ExecutionNode;
-  friend class arangodb::aql::ExecutionBlock;
-  friend class EnumerateViewBlock;
   friend class arangodb::aql::RedundantCalculationsReplacer;
 
  public:
@@ -71,7 +68,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     aql::ExecutionPlan& plan,
     size_t id,
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalView const& view, // FIXME use std::shared_ptr instead to ensure that view is valid
+    std::shared_ptr<const arangodb::LogicalView> const& view,
     aql::Variable const& outVariable,
     aql::AstNode* filterCondition,
     std::vector<IResearchSort>&& sortCondition
@@ -133,8 +130,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief return the view
-  arangodb::LogicalView const& view() const noexcept {
-    return *_view;
+  std::shared_ptr<const arangodb::LogicalView> const& view() const noexcept {
+    return _view;
   }
 
   /// @brief return the filter condition to pass to the view
@@ -190,8 +187,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief the database
   TRI_vocbase_t& _vocbase;
 
-  /// @brief collection
-  LogicalView const* _view;
+  /// @brief view
+  /// @note need shared_ptr to ensure view validity
+  std::shared_ptr<const LogicalView> _view;
 
   /// @brief output variable to write to
   aql::Variable const* _outVariable;

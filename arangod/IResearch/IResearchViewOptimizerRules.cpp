@@ -216,13 +216,14 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
 
     case EN::ENUMERATE_IRESEARCH_VIEW: {
       auto node = EN::castTo<IResearchViewNode const*>(en);
+      auto& view = *node->view();
 
       // add view and linked collections to the query
       TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
-      if (!addView(node->view(), *_plan->getAst()->query())) {
+      if (!addView(view, *_plan->getAst()->query())) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_PARSE,
-          "failed to process all collections linked with the view '" + node->view().name() + "'"
+          "failed to process all collections linked with the view '" + view.name() + "'"
         );
       }
 
@@ -582,7 +583,7 @@ void scatterViewInClusterRule(
     }
 
     auto& vocbase = viewNode.vocbase();
-    auto& view = viewNode.view();
+    auto& view = *viewNode.view();
 
     bool const isRootNode = plan->isRoot(node);
     plan->unlinkNode(node, true);
