@@ -214,8 +214,6 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
     _variable = plan->getAst()->variables()->getVariable(base.get("varId").getNumericValue<VariableId>());
     _alternativeVariable = plan->getAst()->variables()->getVariable(base.get("alternativeVarId").getNumericValue<VariableId>());
   }
-
-  readClientsFromVelocyPack(base);
 }
 
 /// @brief creates corresponding ExecutionBlock
