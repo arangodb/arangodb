@@ -146,10 +146,12 @@ Collection const* EngineInfoContainerDBServer::EngineInfo::collection() const no
   return _collection;
 }
 
+#ifdef USE_IRESEARCH
 LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcept {
   TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == _type);
   return _view;
 }
+#endif
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     Query* query,

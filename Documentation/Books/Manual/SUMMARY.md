@@ -61,6 +61,9 @@
     * [Options](Programs/Arangobench/Options.md)
   * [Datafile Debugger](Programs/Arango-dfdb/README.md)
     * [Examples](Programs/Arango-dfdb/Examples.md)
+#   https://@github.com/arangodb/foxx-cli.git;foxx-cli;docs/Manual;;/
+  * [Foxx CLI](Programs/FoxxCLI/README.md)
+    * [Details](Programs/FoxxCLI/Details.md)
 
 ## CORE TOPICS
 
@@ -153,9 +156,7 @@
       * [Authentication](Foxx/Reference/Modules/Auth.md)
       * [OAuth 1.0a](Foxx/Reference/Modules/OAuth1.md)
       * [OAuth 2.0](Foxx/Reference/Modules/OAuth2.md)
-  * [Deployment](Foxx/Deployment/README.md)
-#   https://@github.com/arangodb/foxx-cli.git;foxx-cli;docs/Manual;;/
-    * [Foxx CLI](Foxx/Deployment/FoxxCLI/README.md)
+  * [Deployment](Foxx/Deployment.md)
   * [Migrating 2.x services](Foxx/Migrating2x/README.md)
     * [Migrating from pre-2.8](Foxx/Migrating2x/Wayback.md)
     * [manifest.json](Foxx/Migrating2x/Manifest.md)
@@ -188,6 +189,7 @@
     * [Applicability](Scalability/DC2DC/Applicability.md)
     * [Requirements](Scalability/DC2DC/Requirements.md)
     * [Limitations](Scalability/DC2DC/Limitations.md)
+* [Satellite Collections](Administration/Satellites.md)
 
 ## OPERATIONS
 
@@ -212,7 +214,7 @@
         * [Cluster: Processes](Deployment/Distributed.md)
         * [Cluster: Docker](Deployment/Docker.md)
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
-  * [Multiple Datacenters](Deployment/DC2DC.md)
+  * [Multiple Datacenters](Deployment/DC2DC/README.md)
     * [Cluster](Deployment/DC2DC/Cluster.md)
     * [Kafka & Zookeeper](Deployment/DC2DC/KafkaZookeeper.md)
     * [ArangoSync Master](Deployment/DC2DC/ArangoSyncMaster.md)
@@ -248,12 +250,7 @@
     * [RocksDB Engine Options](Administration/Configuration/RocksDB.md)
     * [Hash Cache Options](Administration/Configuration/Cache.md)
     * [Asynchronous Tasks](Administration/Configuration/Asynchronous.md)
-  * [Durability](Administration/Durability.md)
-  * [Encryption](Administration/Encryption/README.md)
-  * [Auditing](Administration/Auditing/README.md)
-    * [Configuration](Administration/Auditing/AuditConfiguration.md)
-    * [Events](Administration/Auditing/AuditEvents.md)
-  * [Satellite Collections](Administration/Satellites.md)
+    * [Durability](Administration/Durability.md)
   * [Master/Slave](Administration/MasterSlave/README.md)
     * [Setting up](Administration/MasterSlave/SettingUp.md)
       * [Replication Applier](Administration/MasterSlave/ReplicationApplier.md)
@@ -276,6 +273,10 @@
     * [Upgrading to 2.3](Administration/Upgrading/Upgrading23.md)
     * [Upgrading to 2.2](Administration/Upgrading/Upgrading22.md)
 * [Security](Security/README.md)
+  * [Encryption](Administration/Encryption/README.md)
+  * [Auditing](Administration/Auditing/README.md)
+    * [Configuration](Administration/Auditing/AuditConfiguration.md)
+    * [Events](Administration/Auditing/AuditEvents.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
@@ -284,7 +285,8 @@
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
-  * [Cluster](Troubleshooting/Cluster/README.md)  
+  * [Cluster](Troubleshooting/Cluster/README.md)
+    * [Agency Dump](Troubleshooting/Cluster/AgencyDump.md) 
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)  
 

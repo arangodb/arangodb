@@ -44,56 +44,6 @@ namespace aql {
 class AqlItemBlock;
 struct Collection;
 class ExecutionEngine;
-  
-class GatherBlock : public ExecutionBlock {
- public:
-  GatherBlock(ExecutionEngine*, GatherNode const*);
-
-  ~GatherBlock();
-
-  /// @brief shutdown: need our own method since our _buffer is different
-  int shutdown(int) override final;
-
-  /// @brief initializeCursor
-  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
-
-  /// @brief hasMore: true if any position of _buffer hasMore and false
-  /// otherwise.
-  bool hasMore() override final;
-
-  /// @brief getSome
-  AqlItemBlock* getSome(size_t atMost) override final;
-
-  /// @brief skipSome
-  size_t skipSome(size_t atMost) override final;
-
- protected:
-  /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
-  /// non-simple case only
-  bool getBlock(size_t i, size_t atMost);
-
-  /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
-  /// separately
-  std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer;
-
- private:
-  /// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
-  /// the usual _pos but one pair per dependency
-  std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
-
-  /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
-  /// simple case only
-  size_t _atDep = 0;
-
-  /// @brief sort elements for this block
-  std::vector<SortRegister> _sortRegisters;
-
-  /// @brief isSimple: the block is simple if we do not do merge sort . . .
-  bool const _isSimple;
-
-  using Heap = std::vector<std::pair<std::size_t, std::size_t>>;
-  std::unique_ptr<Heap> _heap;
-};
 
 class BlockWithClients : public ExecutionBlock {
  public:
@@ -298,6 +248,106 @@ class RemoteBlock final : public ExecutionBlock {
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class UnsortingGatherBlock
+/// @brief Execution block for gathers without order
+////////////////////////////////////////////////////////////////////////////////
+class UnsortingGatherBlock final : public ExecutionBlock {
+ public:
+  UnsortingGatherBlock(ExecutionEngine& engine, GatherNode const& en)
+    : ExecutionBlock(&engine, &en) {
+    TRI_ASSERT(en.elements().empty());
+  }
+
+  /// @brief shutdown: need our own method since our _buffer is different
+  int shutdown(int errorCode) override final;
+
+  /// @brief initializeCursor
+  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+
+  /// @brief hasMore: true if any position of _buffer hasMore and false
+  /// otherwise.
+  bool hasMore() override final;
+
+  /// @brief getSome
+  AqlItemBlock* getSome(size_t atMost) override final;
+
+  /// @brief skipSome
+  size_t skipSome(size_t atMost) override final;
+
+ private:
+  /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
+  size_t _atDep{};
+}; // UnsortingGatherBlock
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct SortingStrategy
+////////////////////////////////////////////////////////////////////////////////
+struct SortingStrategy {
+  typedef std::pair<
+    size_t, // dependency index
+    size_t // position within a dependecy
+  > ValueType;
+
+  virtual ~SortingStrategy() = default;
+
+  /// @brief returns next value
+  virtual ValueType nextValue() = 0;
+
+  /// @brief prepare strategy fetching values
+  virtual void prepare(std::vector<ValueType>& /*blockPos*/) { }
+
+  /// @brief resets strategy state
+  virtual void reset() = 0;
+}; // SortingStrategy
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class SortingGatherBlock
+/// @brief Execution block for gathers with order
+////////////////////////////////////////////////////////////////////////////////
+class SortingGatherBlock final : public ExecutionBlock {
+ public:
+  SortingGatherBlock(
+    ExecutionEngine& engine,
+    GatherNode const& en
+  );
+
+  /// @brief shutdown: need our own method since our _buffer is different
+  int shutdown(int errorCode) override final;
+
+  /// @brief initializeCursor
+  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+
+  /// @brief hasMore: true if any position of _buffer hasMore and false
+  /// otherwise.
+  bool hasMore() override final;
+
+  /// @brief getSome
+  AqlItemBlock* getSome(size_t atMost) override final;
+
+  /// @brief skipSome
+  size_t skipSome(size_t atMost) override final;
+
+ private:
+  /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
+  /// non-simple case only
+  bool getBlock(size_t i, size_t atMost);
+
+  /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
+  /// separately
+  std::vector<std::deque<AqlItemBlock*>> _gatherBlockBuffer;
+
+  /// @brief _gatherBlockPos: pairs (i, _pos in _buffer.at(i)), i.e. the same as
+  /// the usual _pos but one pair per dependency
+  std::vector<std::pair<size_t, size_t>> _gatherBlockPos;
+
+  /// @brief sort elements for this block
+  std::vector<SortRegister> _sortRegisters;
+
+  /// @brief sorting strategy
+  std::unique_ptr<SortingStrategy> _strategy;
+}; // SortingGatherBlock
 
 }  // namespace arangodb::aql
 }  // namespace arangodb
