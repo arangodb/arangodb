@@ -8,7 +8,7 @@ The resulting JSON file contains the names of existing databases, their
 collections, indexes, shards and some other potentially useful data about
 the system to diagnose problems.
 
-{% hint 'danger' %}
+{% hint 'warning' %}
 Please open the file locally and check if it contains anything that you are
 not allowed/willing to share and obfuscate it before sharing (user names,
 files paths etc.).
