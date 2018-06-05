@@ -65,13 +65,13 @@ class BlockWithClients : public ExecutionBlock {
   int shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  AqlItemBlock* getSomeOld(size_t atMost) override final {
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   /// @brief skipSome: shouldn't be used, use skipSomeForShard
-  size_t skipSomeOld(size_t atMost) override final {
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -83,23 +83,21 @@ class BlockWithClients : public ExecutionBlock {
   }
 
   /// @brief getSomeForShard
-  AqlItemBlock* getSomeForShard(size_t atMost, std::string const& shardId);
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeForShard(
+      size_t atMost, std::string const& shardId);
 
   /// @brief skipSomeForShard
-  size_t skipSomeForShard(size_t atMost, std::string const& shardId);
-
-  /// @brief skipForShard
-  bool skipForShard(size_t number, std::string const& shardId);
+  std::pair<ExecutionState, size_t> skipSomeForShard(
+      size_t atMost, std::string const& shardId);
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   virtual bool hasMoreForShard(std::string const& shardId) = 0;
 
  protected:
   /// @brief getOrSkipSomeForShard
-  virtual int getOrSkipSomeForShard(size_t atMost,
-                                    bool skipping, AqlItemBlock*& result,
-                                    size_t& skipped,
-                                    std::string const& shardId) = 0;
+  virtual std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
+      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t& skipped, std::string const& shardId) = 0;
 
   /// @brief getClientId: get the number <clientId> (used internally)
   /// corresponding to <shardId>
@@ -136,9 +134,9 @@ class ScatterBlock : public BlockWithClients {
 
  private:
   /// @brief getOrSkipSomeForShard
-  int getOrSkipSomeForShard(size_t atMost, bool skipping,
-                            AqlItemBlock*& result, size_t& skipped,
-                            std::string const& shardId) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
+      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t& skipped, std::string const& shardId) override final;
 
   /// @brief _posForClient:
   std::vector<std::pair<size_t, size_t>> _posForClient;
@@ -161,9 +159,9 @@ class DistributeBlock : public BlockWithClients {
 
  private:
   /// @brief getOrSkipSomeForShard
-  int getOrSkipSomeForShard(size_t atMost, bool skipping,
-                            AqlItemBlock*& result, size_t& skipped,
-                            std::string const& shardId) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
+      size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result,
+      size_t& skipped, std::string const& shardId) override final;
 
   /// @brief getBlockForClient: try to get at atMost pairs into
   /// _distBuffer.at(clientId).

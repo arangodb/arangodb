@@ -802,7 +802,17 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "unexpected node type");
           }
-          items.reset(block->getSomeForShard(atMost, shardId));
+          while (true) {
+            // TODO MAX: Handle Thread Sleep / Wakeup here! 
+            auto tmpRes = block->getSomeForShard(atMost, shardId);
+            if (tmpRes.first == ExecutionState::WAITING) {
+              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are now actively blocking a thread. Needs to be fixed";
+              query->tempWaitForAsyncResponse();
+            } else {
+              items.swap(tmpRes.second);
+              break;
+            }
+          }
         }
         if (items.get() == nullptr) {
           answerBuilder.add("exhausted", VPackValue(true));
@@ -824,7 +834,18 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                             "unexpected node type");
           }
-          skipped = block->skipSomeForShard(atMost, shardId);
+
+          while (true) {
+            // TODO MAX: Handle Thread Sleep / Wakeup here! 
+            auto tmpRes = block->skipSomeForShard(atMost, shardId);
+            if (tmpRes.first == ExecutionState::WAITING) {
+              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are now actively blocking a thread. Needs to be fixed";
+              query->tempWaitForAsyncResponse();
+            } else {
+              skipped = tmpRes.second;
+              break;
+            }
+          }
         }
         answerBuilder.add("skipped", VPackValue(skipped));
         answerBuilder.add("error", VPackValue(false));
