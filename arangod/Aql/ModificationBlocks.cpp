@@ -48,7 +48,8 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _collection(ep->_collection),
       _isDBServer(false),
       _usesDefaultSharding(true),
-      _countStats(ep->countStats()) {
+      _countStats(ep->countStats()),
+      _upstreamState(ExecutionState::HASMORE) {
 
   _trx->pinData(_collection->cid());
 
@@ -75,8 +76,18 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
 
 ModificationBlock::~ModificationBlock() {}
 
+/// @brief determine the number of rows in a vector of blocks
+size_t ModificationBlock::countBlocksRows() const {
+  size_t count = 0;
+  for (auto const& it : _blocks) {
+    count += it->size();
+  }
+  return count;
+}
+
 /// @brief get some - this accumulates all input and calls the work() method
-AqlItemBlock* ModificationBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ModificationBlock::getSome(size_t atMost) {
   // for UPSERT operations, we read and write data in the same collection
   // we cannot use any batching here because if the search document is not
   // found, the UPSERTs INSERT operation may create it. after that, the
@@ -87,71 +98,71 @@ AqlItemBlock* ModificationBlock::getSomeOld(size_t atMost) {
     atMost = 1;
   }
 
-  std::vector<AqlItemBlock*> blocks;
   std::unique_ptr<AqlItemBlock> replyBlocks;
 
-  auto freeBlocks = [](std::vector<AqlItemBlock*>& blocks) {
-    for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      if ((*it) != nullptr) {
-        delete (*it);
-      }
-    }
-    blocks.clear();
-  };
-
-  TRI_DEFER_BLOCK(freeBlocks(blocks));
-  
   // loop over input until it is exhausted
   if (ExecutionNode::castTo<ModificationNode const*>(_exeNode)
           ->_options.readCompleteInput) {
     // read all input into a buffer first
-    while (true) {
-      std::unique_ptr<AqlItemBlock> res(
-          ExecutionBlock::getSomeWithoutRegisterClearoutOld(atMost));
-
-      if (res.get() == nullptr) {
-        break;
+    while (_upstreamState == ExecutionState::HASMORE) {
+      auto upstreamRes = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        return upstreamRes;
       }
 
+      _upstreamState = upstreamRes.first;
+      if (upstreamRes.second != nullptr) {
+        _blocks.emplace_back(std::move(upstreamRes.second));
+      } else {
+        TRI_ASSERT(_upstreamState == ExecutionState::DONE);
+      }
       TRI_IF_FAILURE("ModificationBlock::getSome") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-
-      blocks.emplace_back(res.get());
-      res.release();
     }
 
     // now apply the modifications for the complete input
-    replyBlocks.reset(work(blocks));
+    replyBlocks = work();
+    _blocks.clear();
   } else {
     // read input in chunks, and process it in chunks
     // this reduces the amount of memory used for storing the input
-    while (true) {
-      freeBlocks(blocks);
-      std::unique_ptr<AqlItemBlock> res(
-          ExecutionBlock::getSomeWithoutRegisterClearoutOld(atMost));
-
-      if (res == nullptr) {
-        break;
+    while (_upstreamState == ExecutionState::HASMORE) {
+      _blocks.clear();
+      auto upstreamRes = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        return upstreamRes;
       }
 
-      TRI_IF_FAILURE("ModificationBlock::getSome") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
+      _upstreamState = upstreamRes.first;
 
-      blocks.emplace_back(res.get());
-      res.release();
-
-      replyBlocks.reset(work(blocks));
-
-      if (replyBlocks != nullptr) {
-        break;
+      if (upstreamRes.second != nullptr) {
+        _blocks.emplace_back(std::move(upstreamRes.second));
+        TRI_IF_FAILURE("ModificationBlock::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        replyBlocks = work();
+        if (replyBlocks != nullptr) {
+          break;
+        }
       }
     }
   }
 
   traceGetSomeEnd(replyBlocks.get());
-  return replyBlocks.release();
+  
+  return {_upstreamState, std::move(replyBlocks)};
+}
+
+std::pair<ExecutionState, arangodb::Result> ModificationBlock::initializeCursor(
+    AqlItemBlock* items, size_t pos) {
+  auto res = ExecutionBlock::initializeCursor(items, pos);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
+  }
+  _upstreamState = ExecutionState::HASMORE;
+  _blocks.clear();
+  return res;
 }
 
 /// @brief extract a key from the AqlValue passed
@@ -261,8 +272,8 @@ RemoveBlock::RemoveBlock(ExecutionEngine* engine, RemoveNode const* ep)
     : ModificationBlock(engine, ep) {}
 
 /// @brief the actual work horse for removing data
-AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
-  size_t const count = countBlocksRows(blocks);
+std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
+  size_t const count = countBlocksRows();
 
   if (count == 0) {
     return nullptr;
@@ -289,8 +300,8 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   // loop over all blocks
   size_t dstRow = 0;
-  for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-    auto* res = (*it);
+  for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
+    auto* res = it->get();
 
     throwIfKilled();  // check if we were aborted
 
@@ -412,19 +423,19 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     // done with block. now unlink it and return it to block manager
-    (*it) = nullptr;
+    it->release();
     returnBlock(res);
   }
 
-  return result.release();
+  return result;
 }
 
 InsertBlock::InsertBlock(ExecutionEngine* engine, InsertNode const* ep)
     : ModificationBlock(engine, ep) {}
 
 /// @brief the actual work horse for inserting data
-AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
-  size_t const count = countBlocksRows(blocks);
+std::unique_ptr<AqlItemBlock> InsertBlock::work() {
+  size_t const count = countBlocksRows();
 
   if (count == 0) {
     return nullptr;
@@ -455,8 +466,8 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   // loop over all blocks
   size_t dstRow = 0;
-  for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-    auto* res = (*it);
+  for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
+    auto* res = it->get();
     size_t const n = res->size();
 
     throwIfKilled();  // check if we were aborted
@@ -571,19 +582,19 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     } // single / many - case
 
     // done with block. now unlink it and return it to block manager
-    (*it) = nullptr;
+    it->release();
     returnBlock(res);
   }
 
-  return result.release();
+  return result;
 }
 
 UpdateBlock::UpdateBlock(ExecutionEngine* engine, UpdateNode const* ep)
     : ModificationBlock(engine, ep) {}
 
 /// @brief the actual work horse for inserting data
-AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
-  size_t const count = countBlocksRows(blocks);
+std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
+  size_t const count = countBlocksRows();
 
   if (count == 0) {
     return nullptr;
@@ -628,8 +639,8 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   // loop over all blocks
   size_t dstRow = 0;
-  for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-    auto* res = (*it);  // This is intentionally a copy!
+  for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
+    auto* res = it->get();
 
     throwIfKilled();  // check if we were aborted
 
@@ -776,7 +787,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     // done with block. now unlink it and return it to block manager
-    (*it) = nullptr;
+    it->release();
     returnBlock(res);
   }
 
@@ -788,15 +799,15 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
   }
 
-  return result.release();
+  return result;
 }
 
 UpsertBlock::UpsertBlock(ExecutionEngine* engine, UpsertNode const* ep)
     : ModificationBlock(engine, ep) {}
 
 /// @brief the actual work horse for inserting data
-AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
-  size_t const count = countBlocksRows(blocks);
+std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
+  size_t const count = countBlocksRows();
 
   if (count == 0) {
     return nullptr;
@@ -840,8 +851,8 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   size_t dstRow = 0;
   std::vector<size_t> insRows;
   std::vector<size_t> upRows;
-  for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-    auto* res = *it;
+  for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
+    auto* res = it->get();
 
     throwIfKilled();  // check if we were aborted
 
@@ -1036,19 +1047,19 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     // done with block. now unlink it and return it to block manager
-    (*it) = nullptr;
+    it->release();
     returnBlock(res);
   }
 
-  return result.release();
+  return result;
 }
 
 ReplaceBlock::ReplaceBlock(ExecutionEngine* engine, ReplaceNode const* ep)
     : ModificationBlock(engine, ep) {}
 
 /// @brief the actual work horse for replacing data
-AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
-  size_t const count = countBlocksRows(blocks);
+std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
+  size_t const count = countBlocksRows();
 
   if (count == 0) {
     return nullptr;
@@ -1093,8 +1104,8 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   // loop over all blocks
   size_t dstRow = 0;
-  for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-    auto* res = (*it);  // This is intentionally a copy!
+  for (auto it = _blocks.begin(); it != _blocks.end(); ++it) {
+    auto* res = it->get();
 
     throwIfKilled();  // check if we were aborted
 
@@ -1238,7 +1249,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     // done with block. now unlink it and return it to block manager
-    (*it) = nullptr;
+    it->release();
     returnBlock(res);
   }
 
@@ -1250,5 +1261,5 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
   }
 
-  return result.release();
+  return result;
 }

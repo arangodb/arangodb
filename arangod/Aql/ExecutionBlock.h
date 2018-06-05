@@ -85,9 +85,6 @@ class ExecutionBlock {
   RegisterId getRegister(VariableId id) const;
   RegisterId getRegister(Variable const* variable) const;
 
-  /// @brief determine the number of rows in a vector of blocks
-  size_t countBlocksRows(std::vector<AqlItemBlock*> const&) const;
-
   /// @brief whether or not the query was killed
   bool isKilled() const;
 

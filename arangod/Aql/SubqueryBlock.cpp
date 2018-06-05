@@ -42,7 +42,7 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
       _subqueryPos(0),
       _subqueryInitialized(false),
       _subqueryCompleted(false),
-      _upstreamState(ExecutionState::WAITING) {
+      _upstreamState(ExecutionState::HASMORE) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
@@ -171,13 +171,14 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
       // NOTE: _result stays a nullptr! We end up in here again!
       return res;
     }
+
     _result.swap(res.second);
+    _upstreamState = res.first;
 
     if (_result.get() == nullptr) {
       traceGetSomeEnd(nullptr);
       return {ExecutionState::DONE, nullptr};
     }
-    _upstreamState = res.first;
   }
 
   ExecutionState state;

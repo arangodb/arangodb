@@ -67,16 +67,6 @@ RegisterId ExecutionBlock::getRegister(Variable const* variable) const {
   return getRegister(variable->id);
 }
 
-/// @brief determine the number of rows in a vector of blocks
-size_t ExecutionBlock::countBlocksRows(
-    std::vector<AqlItemBlock*> const& blocks) const {
-  size_t count = 0;
-  for (auto const& it : blocks) {
-    count += it->size();
-  }
-  return count;
-}
-
 bool ExecutionBlock::removeDependency(ExecutionBlock* ep) {
   auto it = _dependencies.begin();
   while (it != _dependencies.end()) {
