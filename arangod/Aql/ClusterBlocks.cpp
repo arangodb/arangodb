@@ -694,9 +694,9 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
 
     while (_pos < cur->size() && buf.size() < atMost) {
       // this may modify the input item buffer in place
-      sendToClient(cur);
+      size_t const id = sendToClient(cur);
 
-      buf.emplace_back(_index, _pos++);
+      _distBuffer[id].emplace_back(_index, _pos++);
     }
 
     if (_pos == cur->size()) {
