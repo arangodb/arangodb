@@ -48,14 +48,14 @@ class V8Context final : public Context {
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler>
   orderCustomTypeHandler() override final;
 
-  /// @brief return the resolver
-  CollectionNameResolver const* getResolver() override final;
-
   /// @brief get parent transaction (if any)
   TransactionState* getParentTransaction() const override;
 
   /// @brief register the transaction in the context
   void registerTransaction(TransactionState* trx) override;
+
+  /// @brief return the resolver
+  CollectionNameResolver const& resolver() override final;
 
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;

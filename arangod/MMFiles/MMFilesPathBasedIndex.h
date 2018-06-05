@@ -103,9 +103,6 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
   /// @brief whether or not array indexes will de-duplicate their input values
   bool _deduplicate;
 
-  /// @brief whether or not at least one attribute is expanded
-  bool _useExpansion;
-
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;
 };

@@ -44,36 +44,47 @@
   #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
 
-
 namespace arangodb {
 
 namespace basics {
+
 struct AttributeName;
 class StringBuffer;
+
 }
 
 namespace velocypack {
+
 class Builder;
+
 }
 
 namespace aql {
+
 class Ast;
 struct AstNode;
 class SortCondition;
 struct Variable;
+
 }
 
 namespace rest {
+
 enum class ResponseCode;
+
 }
 
 namespace traverser {
+
 class BaseEngine;
+
 }
 
 namespace transaction {
+
 class Context;
 struct Options;
+
 }
 
 /// @brief forward declarations
@@ -128,14 +139,13 @@ class Methods {
  protected:
 
   /// @brief create the transaction
-  Methods(std::shared_ptr<transaction::Context> const& transactionContext, transaction::Options const& options = transaction::Options());
+  Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+          transaction::Options const& options = transaction::Options());
 
  public:
 
   /// @brief destroy the transaction
   virtual ~Methods();
-
- public:
 
   typedef Result(*StateRegistrationCallback)(LogicalDataSource& dataSource, TransactionState& state);
 
@@ -155,7 +165,6 @@ class Methods {
 
   /// @brief return database of transaction
   TRI_vocbase_t& vocbase() const;
-  inline std::string const& databaseName() const { return vocbase().name(); }
 
   /// @brief return internals of transaction
   inline TransactionState* state() const { return _state; }
@@ -197,7 +206,7 @@ class Methods {
   /// @brief finish a transaction (commit or abort), based on the previous state
   Result finish(int errorNum);
   Result finish(Result const& res);
-  
+
   /// @brief return the transaction id
   TRI_voc_tid_t tid() const;
 
@@ -396,8 +405,8 @@ class Methods {
   CollectionNameResolver const* resolver() const;
 
 #ifdef USE_ENTERPRISE
-  virtual bool isInaccessibleCollectionId(TRI_voc_cid_t cid) { return false; }
-  virtual bool isInaccessibleCollection(std::string const& cid) { return false; }
+  virtual bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) { return false; }
+  virtual bool isInaccessibleCollection(std::string const& /*cid*/) { return false; }
 #endif
 
  private:
@@ -405,6 +414,8 @@ class Methods {
   /// @brief build a VPack object with _id, _key and _rev and possibly
   /// oldRef (if given), the result is added to the builder in the
   /// argument as a single object.
+
+  //SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              VPackBuilder& builder, TRI_voc_cid_t cid,
                              StringRef const& key, TRI_voc_rid_t rid,
@@ -519,6 +530,7 @@ class Methods {
   OperationResult clusterResultInsert(
       rest::ResponseCode const& responseCode,
       std::shared_ptr<arangodb::velocypack::Builder> const& resultBody,
+      OperationOptions const& options,
       std::unordered_map<int, size_t> const& errorCounter) const;
 
 /// @brief Helper create a Cluster Communication modify result
@@ -571,15 +583,6 @@ class Methods {
 
   /// @brief add a collection to a top-level transaction
   Result addCollectionToplevel(TRI_voc_cid_t, char const* name, AccessMode::Type);
-
-  /// @brief set up an embedded transaction
-  void setupEmbedded(TRI_vocbase_t*);
-
-  /// @brief set up a top-level transaction
-  void setupToplevel(
-    TRI_vocbase_t& vocbase,
-    transaction::Options const& options
-  );
 
  protected:
   /// @brief the state

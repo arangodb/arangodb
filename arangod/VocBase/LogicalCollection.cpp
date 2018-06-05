@@ -565,7 +565,7 @@ void LogicalCollection::replicationFactor(int r) {
 }
 
 // SECTION: Sharding
-int LogicalCollection::numberOfShards() const {
+int LogicalCollection::numberOfShards() const noexcept {
   return static_cast<int>(_numberOfShards);
 }
 void LogicalCollection::numberOfShards(int n) {
@@ -732,12 +732,15 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                              "distributeShardsLike", "objectId"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
+
     for (auto const& p : VPackObjectIterator(params.slice())) {
       result.add(p.key);
       result.add(p.value);
     }
+
     if (!_distributeShardsLike.empty()) {
-      CollectionNameResolver resolver(&vocbase());
+      CollectionNameResolver resolver(vocbase());
+
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
@@ -813,14 +816,18 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   result.add(VPackValue("shards"));
   result.openObject();
   auto tmpShards = _shardIds;
+
   for (auto const& shards : *tmpShards) {
     result.add(VPackValue(shards.first));
     result.openArray();
+
     for (auto const& servers : shards.second) {
       result.add(VPackValue(servers));
     }
+
     result.close();  // server array
   }
+
   result.close();  // shards
 
   if (isSatellite()) {
@@ -828,10 +835,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(
   } else {
     result.add("replicationFactor", VPackValue(_replicationFactor));
   }
+
   if (!_distributeShardsLike.empty() &&
       ServerState::instance()->isCoordinator()) {
+
     if (translateCids) {
-      CollectionNameResolver resolver(&vocbase());
+      CollectionNameResolver resolver(vocbase());
+
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
@@ -843,9 +853,11 @@ arangodb::Result LogicalCollection::appendVelocyPack(
 
   result.add(VPackValue("shardKeys"));
   result.openArray();
+
   for (auto const& key : _shardKeys) {
     result.add(VPackValue(key));
   }
+
   result.close();  // shardKeys
 
   if (!_avoidServers.empty()) {
@@ -984,20 +996,6 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
 /// @brief return the figures for a collection
 std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() const {
-  if (ServerState::instance()->isCoordinator()) {
-    auto builder = std::make_shared<VPackBuilder>();
-
-    builder->openObject();
-    builder->close();
-
-    int res =
-      figuresOnCoordinator(vocbase().name(), std::to_string(id()), builder);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    return builder;
-  }
   return getPhysical()->figures();
 }
 
@@ -1155,23 +1153,8 @@ Result LogicalCollection::replace(transaction::Methods* trx,
   }
 
   prevRev = 0;
-  VPackSlice fromSlice;
-  VPackSlice toSlice;
-
-  if (type() == TRI_COL_TYPE_EDGE) {
-    fromSlice = newSlice.get(StaticStrings::FromString);
-    if (!fromSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-    toSlice = newSlice.get(StaticStrings::ToString);
-    if (!toSlice.isString()) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
-    }
-  }
-
   return getPhysical()->replace(trx, newSlice, result, options,
-                                resultMarkerTick, lock, prevRev, previous,
-                                fromSlice, toSlice);
+                                resultMarkerTick, lock, prevRev, previous);
 }
 
 /// @brief removes a document or edge

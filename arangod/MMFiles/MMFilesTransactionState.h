@@ -61,7 +61,8 @@ class TransactionCollection;
 class MMFilesTransactionState final : public TransactionState {
  public:
   MMFilesTransactionState(
-    TRI_vocbase_t& vocbase,
+    CollectionNameResolver const& resolver,
+    TRI_voc_tid_t tid,
     transaction::Options const& options
   );
   ~MMFilesTransactionState();

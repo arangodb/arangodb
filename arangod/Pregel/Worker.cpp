@@ -695,6 +695,11 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     std::unique_ptr<VertexCompensation<V, E, M>> vCompensate(
         _algorithm->createCompensation(&_config));
     _initializeVertexContext(vCompensate.get());
+    if (!vCompensate) {
+      _state = WorkerState::DONE;
+      LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      return;
+    }
     vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;

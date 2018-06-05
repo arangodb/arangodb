@@ -45,6 +45,10 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
+const testPaths = {
+  'arangobench': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: arangobench
 // //////////////////////////////////////////////////////////////////////////////
@@ -233,7 +237,8 @@ function arangobench (options) {
   return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['arangobench'] = arangobench;
 
   defaultFns.push('arangobench');
@@ -243,6 +248,4 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

@@ -24,6 +24,7 @@
 #include "RestSimpleHandler.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
@@ -164,7 +165,7 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       if (!collectionName.empty() && collectionName[0] >= '0' &&
           collectionName[0] <= '9') {
         // If we have a numeric name we probably have to translate it.
-        CollectionNameResolver resolver(&_vocbase);
+        CollectionNameResolver resolver(_vocbase);
 
         collectionName = resolver.getCollectionName(collectionName);
       }

@@ -91,8 +91,9 @@ struct OptimizerRule {
     // remove redundant sort blocks
     removeRedundantSortsRule_pass2,
     
-    // try to inline subqueries after removing unecessary calculations
-    //inlineSubqueriesRule_pass2,
+    // push limits into subqueries and simplify them
+    optimizeSubqueriesRule_pass2,
+
 
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher
@@ -132,7 +133,7 @@ struct OptimizerRule {
 
     // remove unused out variables for data-modification queries
     removeDataModificationOutVariablesRule_pass5,
-
+    
     /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
     // ======================================================
 
@@ -200,6 +201,12 @@ struct OptimizerRule {
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule_pass10,
     
+#ifdef USE_IRESEARCH
+    // FIXME order-???
+    // make operations on sharded IResearch views use scatter / gather / remote
+    scatterIResearchViewInClusterRule_pass10,
+#endif
+
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
@@ -208,12 +215,6 @@ struct OptimizerRule {
     // move SortNodes into the distribution.
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule_pass10,
-
-#ifdef USE_IRESEARCH
-    // FIXME order-???
-    // make operations on sharded IResearch views use scatter / gather / remote
-    scatterIResearchViewInClusterRule_pass10,
-#endif
 
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies

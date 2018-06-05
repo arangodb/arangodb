@@ -243,6 +243,7 @@ SET(ARANGOD_SOURCES
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
   Aql/SortNode.cpp
+  Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
@@ -330,7 +331,9 @@ SET(ARANGOD_SOURCES
   Indexes/IndexFactory.cpp
   Indexes/IndexIterator.cpp
   Indexes/IndexLookupContext.cpp
+  Indexes/PersistentIndexAttributeMatcher.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
+  Indexes/SkiplistIndexAttributeMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Pregel/AggregatorHandler.cpp
   Pregel/AlgoRegistry.cpp
@@ -513,10 +516,11 @@ if (NOT MSVC)
   set(ARANGOD_SOURCES ${ARANGOD_SOURCES} Scheduler/AcceptorUnixDomain.cpp Scheduler/SocketUnixDomain.cpp)
 endif()
 
+include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
+add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}

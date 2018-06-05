@@ -189,7 +189,7 @@ class Table : public std::enable_shared_from_this<Table> {
   uint32_t idealSize();
 
  private:
-  basics::ReadWriteSpinLock<64> _lock;
+  basics::ReadWriteSpinLock _lock;
   bool _disabled;
   bool _evictions;
 

@@ -1220,7 +1220,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
     v8::Handle<v8::ObjectTemplate> global = v8::ObjectTemplate::New(isolate);
 
     v8::Persistent<v8::Context> persistentContext;
-    persistentContext.Reset(isolate, v8::Context::New(isolate, 0, global));
+    persistentContext.Reset(isolate, v8::Context::New(isolate, nullptr, global));
     auto localContext = v8::Local<v8::Context>::New(isolate, persistentContext);
 
     localContext->Enter();
@@ -1259,10 +1259,10 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       }
       TRI_InitV8UserFunctions(isolate, localContext);
       TRI_InitV8UserStructures(isolate, localContext);
-      TRI_InitV8Buffer(isolate, localContext);
+      TRI_InitV8Buffer(isolate);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
       TRI_InitV8DebugUtils(isolate, localContext);
-      TRI_InitV8Shell(isolate, localContext);
+      TRI_InitV8Shell(isolate);
 
       {
         v8::HandleScope scope(isolate);

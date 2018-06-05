@@ -23,18 +23,65 @@
 
 #include "ClusterNodes.h"
 #include "Aql/Ast.h"
+#include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Aql/IndexNode.h"
+#include "Aql/GraphNode.h"
+#include "Transaction/Methods.h"
+
+#include <type_traits>
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
+namespace {
+
+arangodb::velocypack::StringRef const SortModeUnset("unset");
+arangodb::velocypack::StringRef const SortModeMinElement("minelement");
+arangodb::velocypack::StringRef const SortModeHeap("heap");
+
+bool toSortMode(
+    arangodb::velocypack::StringRef const& str,
+    GatherNode::SortMode& mode
+) noexcept {
+  // std::map ~25-30% faster than std::unordered_map for small number of elements
+  static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue {
+    { SortModeMinElement, GatherNode::SortMode::MinElement},
+    { SortModeHeap, GatherNode::SortMode::Heap}
+  };
+
+  auto const it = NameToValue.find(str);
+
+  if (it == NameToValue.end()) {
+    TRI_ASSERT(false);
+    return false;
+  }
+
+  mode = it->second;
+  return true;
+}
+
+arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
+  switch (mode) {
+    case GatherNode::SortMode::MinElement:
+      return SortModeMinElement;
+    case GatherNode::SortMode::Heap:
+      return SortModeHeap;
+    default:
+      TRI_ASSERT(false);
+      return {};
+  }
+}
+
+}
+
 /// @brief constructor for RemoteNode 
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _server(base.get("server").copyString()),
       _ownName(base.get("ownName").copyString()),
       _queryId(base.get("queryId").copyString()),
@@ -52,9 +99,9 @@ std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
 }
 
 /// @brief toVelocyPack, for RemoteNode
-void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("server", VPackValue(_server));
@@ -85,7 +132,7 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
 ScatterNode::ScatterNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())) {}
 
@@ -103,8 +150,9 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
 }
 
 /// @brief toVelocyPack, for ScatterNode
-void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
+void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
@@ -125,7 +173,7 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
 DistributeNode::DistributeNode(ExecutionPlan* plan,
                                arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _vocbase(plan->getAst()->query()->vocbase()),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
       _variable(nullptr),
@@ -133,7 +181,6 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _createKeys(base.get("createKeys").getBoolean()),
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
       _allowSpecifiedKeys(false) {
- 
   if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {     
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
@@ -158,9 +205,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 
 /// @brief toVelocyPack, for DistributedNode
 void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
-                                        bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+                                        unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
@@ -203,41 +250,69 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-/// @brief construct a gather node
-GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-                       SortElementVector const& elements, std::size_t shardsRequiredForHeapMerge)
-    : ExecutionNode(plan, base),
-      _elements(elements),
-      _vocbase(plan->getAst()->query()->vocbase()),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
-      _sortmode( _collection ? ( _collection->numberOfShards() >= shardsRequiredForHeapMerge ? 'h' : 'm') : 'u')
-      {}
-  
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-             Collection const* collection, std::size_t shardsRequiredForHeapMerge)
-      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection),
-        _auxiliaryCollections(),
-        _sortmode( _collection ? ( _collection->numberOfShards() >= shardsRequiredForHeapMerge ? 'h' : 'm') : 'u')
-        {}
+/*static*/ Collection const* GatherNode::findCollection(
+    GatherNode const& root
+) noexcept {
+  ExecutionNode const* node = root.getFirstDependency();
 
-/// @brief toVelocyPack, for GatherNode
-void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
-
-  nodes.add("database", VPackValue(_vocbase->name()));
-  if (_collection) {
-    // FIXME why do we need collection
-    nodes.add("collection", VPackValue(_collection->getName()));
+  while (node) {
+    switch (node->getType()) {
+      case ENUMERATE_COLLECTION:
+        return castTo<EnumerateCollectionNode const*>(node)->collection();
+      case INDEX:
+        return castTo<IndexNode const*>(node)->collection();
+      case TRAVERSAL:
+      case SHORTEST_PATH:
+        return castTo<GraphNode const*>(node)->collection();
+      case SCATTER:
+#ifdef USE_IRESEARCH
+      case SCATTER_IRESEARCH_VIEW:
+#endif
+        return nullptr; // diamond boundary
+      default:
+        node = node->getFirstDependency();
+        break;
+    }
   }
 
-  if(_sortmode == 'h'){
-    nodes.add("sortmode", VPackValue("heap"));
-  } else if (_sortmode == 'm') {
-    nodes.add("sortmode", VPackValue("minelement"));
+  return nullptr;
+}
+
+/// @brief construct a gather node
+GatherNode::GatherNode(
+    ExecutionPlan* plan,
+    arangodb::velocypack::Slice const& base,
+    SortElementVector const& elements)
+  : ExecutionNode(plan, base),
+    _elements(elements),
+    _sortmode(SortMode::MinElement) {
+  if (!_elements.empty()) {
+    auto const sortModeSlice = base.get("sortmode");
+
+    if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
+      LOG_TOPIC(ERR, Logger::AQL)
+          << "invalid sort mode detected while creating 'GatherNode' from vpack";
+    }
+  }
+}
+
+GatherNode::GatherNode(
+    ExecutionPlan* plan,
+    size_t id,
+    SortMode sortMode) noexcept
+  : ExecutionNode(plan, id),
+    _sortmode(sortMode) {
+}
+
+/// @brief toVelocyPack, for GatherNode
+void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+
+  if (_elements.empty()) {
+    nodes.add("sortmode", VPackValue(SortModeUnset.data()));
   } else {
-    nodes.add("sortmode", VPackValue("unset"));
+    nodes.add("sortmode", VPackValue(toString(_sortmode).data()));
   }
 
   nodes.add(VPackValue("elements"));
@@ -268,7 +343,11 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
     std::unordered_set<std::string> const&
 ) const {
-  return std::make_unique<GatherBlock>(&engine, this);
+  if (elements().empty()) {
+    return std::make_unique<UnsortingGatherBlock>(engine, *this);
+  }
+
+  return std::make_unique<SortingGatherBlock>(engine, *this);
 }
 
 /// @brief estimateCost

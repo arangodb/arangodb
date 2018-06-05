@@ -1602,20 +1602,24 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 
   if (ServerState::instance()->isCoordinator()) {
     auto* ci = ClusterInfo::instance();
-    std::string errorMsg;
-    ViewID viewId;
 
-    int const res = ci->createViewCoordinator(
-      name(), parameters, viewId, errorMsg
-    );
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      view = ci->getView(name(), viewId);
-    } else {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-        << "Could not create view in agency, error: " << errorMsg
-        << ", errorCode: " << res;
+    if (!ci) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("failed to find ClusterInfo while creating view")
+      );
     }
+
+    view = LogicalView::create(*this, parameters, true);
+
+    if (!view) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failed to instantiate view in agency'")
+      );
+    }
+
+    view = ci->getView(name(), std::to_string(view->id())); // refresh view from Agency
   } else {
     std::shared_ptr<arangodb::LogicalView> registeredView;
     auto callback = [this, &registeredView](
@@ -1881,8 +1885,8 @@ bool TRI_vocbase_t::IsAllowedName(
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
+  TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
   auto* applier = DatabaseReplicationApplier::create(*this);
-
   _replicationApplier.reset(applier);
 }
 

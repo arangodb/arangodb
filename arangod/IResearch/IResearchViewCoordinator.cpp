@@ -113,8 +113,7 @@ arangodb::Result updateLinks(
     newLinks = VPackSlice::emptyObjectSlice();
   }
 
-  arangodb::CollectionNameResolver resolver(&view.vocbase());
-
+  arangodb::CollectionNameResolver resolver(view.vocbase());
   arangodb::Result res;
   std::string error;
   VPackBuilder builder;
@@ -295,26 +294,20 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& info,
-    bool /*isNew*/,
+    bool isNew,
     uint64_t planVersion,
-    LogicalView::PreCommitCallback const& /*preCommit*/
+    LogicalView::PreCommitCallback const& preCommit
 ) {
-  auto view = std::shared_ptr<IResearchViewCoordinator>(
+  auto view = std::shared_ptr<LogicalView>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
   );
-
+  auto& impl = reinterpret_cast<IResearchViewCoordinator&>(*view);
+  auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
+  auto props = json.get(StaticStrings::PropertiesField);
+  auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'props' then assume defaults
   std::string error;
 
-  auto properties = info.get(StaticStrings::PropertiesField);
-
-  if (!properties.isObject()) {
-    // set to defaults
-    properties = VPackSlice::emptyObjectSlice();
-  }
-
-  auto& meta = view->_meta;
-
-  if (!meta.init(properties, error)) {
+  if (!impl._meta.init(properties, error)) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
         << "failed to initialize IResearch view from definition, error: " << error;
 
@@ -325,7 +318,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
   IResearchLinkMeta linkMeta;
 
   if (links.isObject()) {
-    auto& builder = view->_links;
+    auto& builder = impl._links;
     VPackObjectBuilder guard(&builder);
 
     size_t idx = 0;
@@ -357,6 +350,49 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
         linkMeta.json(builder);
         builder.close();
       }
+    }
+  }
+
+  if (preCommit && !preCommit(view)) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
+
+    return nullptr;
+  }
+
+  if (isNew) {
+    arangodb::velocypack::Builder builder;
+    auto* ci = ClusterInfo::instance();
+
+    if (!ci) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "Failure to find ClusterInfo instance while constructing IResearch View in database '" << vocbase.id() << "'";
+
+      return nullptr;
+    }
+
+    builder.openObject();
+
+    auto res = impl.toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
+
+    if (!res.ok()) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "Failure to generate definitionf created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
+
+      return nullptr;
+    }
+
+    builder.close();
+
+    auto resNum = ci->createViewCoordinator(
+      vocbase.name(), std::to_string(view->id()), builder.slice(), error
+    );
+
+    if (TRI_ERROR_NO_ERROR != resNum) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << error;
+
+      return nullptr;
     }
   }
 
@@ -525,3 +561,6 @@ Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
 } // iresearch
 } // arangodb
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
