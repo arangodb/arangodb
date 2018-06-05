@@ -26,7 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/asio-helper.h"
+#include "Scheduler/Socket.h"
 
 namespace arangodb {
 namespace rest {
@@ -59,9 +59,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t _queueSize = 0;
 
  public:
-  size_t concurrency() const {
-    return static_cast<size_t>(_nrServerThreads);
-  }
+  size_t concurrency() const { return static_cast<size_t>(_nrServerThreads); }
   void buildControlCHandler();
   void buildHangupHandler();
 
@@ -71,12 +69,12 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
  private:
   std::unique_ptr<rest::Scheduler> _scheduler;
 
-  std::function<void(const boost::system::error_code&, int)> _signalHandler;
-  std::function<void(const boost::system::error_code&, int)> _exitHandler;
-  std::shared_ptr<boost::asio::signal_set> _exitSignals;
-  
-  std::function<void(const boost::system::error_code&, int)> _hangupHandler;
-  std::shared_ptr<boost::asio::signal_set> _hangupSignals;
+  std::function<void(const asio_ns::error_code&, int)> _signalHandler;
+  std::function<void(const asio_ns::error_code&, int)> _exitHandler;
+  std::shared_ptr<asio_ns::signal_set> _exitSignals;
+
+  std::function<void(const asio_ns::error_code&, int)> _hangupHandler;
+  std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 }
 

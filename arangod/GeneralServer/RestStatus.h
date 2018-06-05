@@ -36,7 +36,7 @@ class RestStatusElement {
   friend class RestStatus;
 
  public:
-  enum class State { DONE, FAIL, QUEUED, THEN, WAIT_FOR };
+  enum class State { DONE, FAIL, QUEUED_OLD, THEN, WAIT_FOR };
 
  public:
   explicit RestStatusElement(State status)
@@ -80,7 +80,7 @@ class RestStatus {
  public:
   static RestStatus const DONE;
   static RestStatus const FAIL;
-  static RestStatus const QUEUE;
+  static RestStatus const QUEUE_OLD;
 
   static RestStatus WAIT_FOR(
       std::function<void(std::function<void()>)> callback) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,27 +17,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Scheduler/Socket.h"
+#ifndef ARANGOD_LIB_ASIO_NS_H
+#define ARANGOD_LIB_ASIO_NS_H 1
 
-using namespace arangodb;
+#if ARANGODB_STANDALONE_ASIO
 
-bool Socket::handshake() {
-  if (!_encrypted) {
-    return true;
-  }
+#include <asio/buffer.hpp>
+#include <asio/error.hpp>
+#include <asio/io_context.hpp>
+#include <asio/io_context_strand.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
+#include <asio/signal_set.hpp>
+#include <asio/ssl.hpp>
+#include <asio/steady_timer.hpp>
 
-  if (_handshakeDone) {
-    return true;
-  }
-  
-  bool ok = sslHandshake();
+namespace asio_ns = asio;
 
-  if (ok) {
-    _handshakeDone = true;
-  }
+#else
 
-  return ok;
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/asio/steady_timer.hpp>
+
+namespace boost {
+namespace asio {
+using error_code = boost::system::error_code;
+using io_context = boost::asio::io_service;
+using system_error = boost::system::system_error;
 }
+}
+
+namespace asio_ns = boost::asio;
+
+#endif
+
+#endif

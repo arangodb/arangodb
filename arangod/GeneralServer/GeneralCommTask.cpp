@@ -238,7 +238,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   if (handler->isDirect()) {
     isDirect = true;
-  } else if (_loop._scheduler->hasQueueCapacity()) {
+  } else if (_loop.scheduler->shouldExecuteDirect()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
@@ -271,7 +271,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   // ok, we need to queue the request
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _loop._scheduler->infoStatus();
+                                    << _loop.scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
 
   std::unique_ptr<Job> job(new Job(
@@ -293,18 +293,26 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
 void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
-  if (!doLock) {
-    _lock.assertLockedByCurrentThread();
-  }
+  TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
 
   auto self = shared_from_this();
-  handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
+  handler->initEngine(_loop, [self, this, handler, doLock](RestHandler* h) {
     RequestStatistics* stat = h->stealStatistics();
 
-    CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock);
-    _lock.assertLockedByCurrentThread();
-
-    addResponse(h->response(), stat);
+    if (doLock) {
+      auto self = shared_from_this();
+      auto h = handler->shared_from_this();
+      _loop.scheduler->_nrQueued++;
+      _peer->strand.post([self, this, stat, h]() {
+        _loop.scheduler->_nrQueued--;
+        JobGuard guard(_loop);
+        guard.work();
+        addResponse(h->response(), stat);
+      });
+    } else {
+      TRI_ASSERT(_peer->strand.running_in_this_thread());
+      addResponse(handler->response(), stat);
+    }
   });
 
   HandlerWorkStack monitor(handler);
@@ -379,8 +387,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     }
 #endif
 
-    if (result != rest::ResponseCode::OK &&
-        _auth->authenticationSystemOnly()) {
+    if (result != rest::ResponseCode::OK && _auth->authenticationSystemOnly()) {
       // authentication required, but only for /_api, /_admin etc.
 
       if (!path.empty()) {
@@ -390,7 +397,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
           // simon: upgrade rights for Foxx apps. FIXME
           result = rest::ResponseCode::OK;
           vc->forceSuperuser();
-          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
+          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for "
+                                                  << path;
         }
       }
     }

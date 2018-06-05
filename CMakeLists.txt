@@ -66,10 +66,15 @@ if (USE_ENTERPRISE)
   add_subdirectory(enterprise)
 endif ()
 
+# debug synchronous replication
 option(DEBUG_SYNC_REPLICATION "Enable debug code to enable synchronous replication debugging" OFF)
+
 if (DEBUG_SYNC_REPLICATION)
   add_definitions("-DDEBUG_SYNC_REPLICATION=1")
 endif ()
+
+# do not use standalone boost asio
+add_definitions("-DARANGODB_STANDALONE_ASIO=0")
 
 # ------------------------------------------------------------------------------
 # VERSION information

@@ -36,8 +36,8 @@ RestStatus const RestStatus::DONE(
 RestStatus const RestStatus::FAIL(
     new RestStatusElement(RestStatusElement::State::FAIL));
 
-RestStatus const RestStatus::QUEUE(
-    new RestStatusElement(RestStatusElement::State::QUEUED));
+RestStatus const RestStatus::QUEUE_OLD(
+    new RestStatusElement(RestStatusElement::State::QUEUED_OLD));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -64,7 +64,7 @@ void RestStatusElement::printTree() const {
         s += "WAIT_FOR";
         break;
 
-      case State::QUEUED:
+      case State::QUEUED_OLD:
         s += "QUEUED";
         break;
 

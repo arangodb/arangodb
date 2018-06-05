@@ -53,10 +53,6 @@ class RestEngine {
   void setState(State state) { _state = state; }
   void appendRestStatus(std::shared_ptr<RestStatusElement>);
 
-  void queue(std::function<void()> callback) {
-    _loop._scheduler->post(callback);
-  }
-
   bool hasSteps() { return !_elements.empty(); }
 
   std::shared_ptr<RestStatusElement> popStep() {

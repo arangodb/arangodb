@@ -266,13 +266,8 @@ int RestHandler::runEngine(bool synchron) {
 
           return TRI_ERROR_INTERNAL;
 
-        case RestStatusElement::State::QUEUED:
-          if (!synchron) {
-            std::shared_ptr<RestHandler> self = shared_from_this();
-            _engine.queue([self, this]() { _engine.asyncRun(self); });
-            return TRI_ERROR_NO_ERROR;
-          }
-          break;
+        case RestStatusElement::State::QUEUED_OLD:
+          return TRI_ERROR_INTERNAL;
 
         case RestStatusElement::State::THEN: {
           auto status = result->callThen();

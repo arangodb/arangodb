@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/asio-helper.h"
+#include "Scheduler/Socket.h"
 
 namespace arangodb {
 namespace rest {
@@ -35,13 +35,13 @@ class Scheduler;
 }
 
 struct EventLoop {
-  EventLoop(boost::asio::io_service* ioService, rest::Scheduler* scheduler)
-      : _ioService(ioService), _scheduler(scheduler) {}
+  EventLoop(asio_ns::io_context* service, rest::Scheduler* schdlr)
+      : ioContext(service), scheduler(schdlr) {}
 
   EventLoop() : EventLoop(nullptr, nullptr) {}
 
-  boost::asio::io_service* _ioService;
-  rest::Scheduler* _scheduler;
+  asio_ns::io_context* ioContext;
+  rest::Scheduler* scheduler;
 };
 }
 

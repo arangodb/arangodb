@@ -37,12 +37,15 @@ RestDemoHandler::RestDemoHandler(GeneralRequest* request,
     : RestBaseHandler(request, response) {}
 
 RestStatus RestDemoHandler::execute() {
+  return RestStatus::FAIL;
+  /*
   return RestStatus::QUEUE
       .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler going to sleep"; })
       .then([]() { sleep(5); })
       .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler done sleeping"; })
       .then([this]() { doSomeMoreWork(); })
       .then([this]() { return evenMoreWork(); });
+  */
 }
 
 void RestDemoHandler::doSomeMoreWork() {
