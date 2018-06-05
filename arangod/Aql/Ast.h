@@ -244,6 +244,8 @@ class Ast {
     char const* name,
     size_t length
   );
+  AstNode* createNodeParameterCollection(char const* name, size_t length);
+  AstNode* createNodeParameterView(char const* name, size_t length);
 
   /// @brief create an AST quantifier node
   AstNode* createNodeQuantifier(int64_t);
@@ -588,6 +590,7 @@ public:
   /// @brief a singleton empty string node instance
   static AstNode const EmptyStringNode;
 };
+
 }
 }
 
