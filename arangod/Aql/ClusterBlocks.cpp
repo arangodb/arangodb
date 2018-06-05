@@ -562,19 +562,23 @@ int DistributeBlock::shutdown(int errorCode) {
 bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
 
-  size_t clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+
+  // reference to "a finish mark" for a client
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return false;
   }
 
   TRI_ASSERT(_distBuffer.size() > clientId);
-  if (!_distBuffer.at(clientId).empty()) {
+  if (!_distBuffer[clientId].empty()) {
     return true;
   }
 
   if (!getBlockForClient(DefaultBatchSize(), clientId)) {
-    _doneForClient.at(clientId) = true;
+    doneForClient = true;
     return false;
   }
   return true;
@@ -593,19 +597,22 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t clientId = getClientId(shardId);
-
+  size_t const clientId = getClientId(shardId);
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+
+  // reference to "a finish mark" for a client
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
+  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer[clientId];
 
   if (buf.empty()) {
     if (!getBlockForClient(atMost, clientId)) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       traceGetSomeEnd(result);
       return TRI_ERROR_NO_ERROR;
     }
@@ -638,7 +645,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
       }
     }
 
-    std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+    std::unique_ptr<AqlItemBlock> more(_buffer[n]->slice(chosen, 0, chosen.size()));
     collector.add(std::move(more));
 
     chosen.clear();
@@ -669,27 +676,27 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
     _pos = 0;    // position in _buffer.at(_index)
   }
 
-  std::vector<std::deque<std::pair<size_t, size_t>>>& buf = _distBuffer;
   // it should be the case that buf.at(clientId) is empty
+  auto& buf = _distBuffer[clientId];
 
-  while (buf.at(clientId).size() < atMost) {
+  while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
       if (!ExecutionBlock::getBlock(atMost)) {
-        if (buf.at(clientId).size() == 0) {
-          _doneForClient.at(clientId) = true;
+        if (buf.size() == 0) {
+          _doneForClient[clientId] = true;
           return false;
         }
         break;
       }
     }
 
-    AqlItemBlock* cur = _buffer.at(_index);
+    AqlItemBlock* cur = _buffer[_index];
 
-    while (_pos < cur->size() && buf.at(clientId).size() < atMost) {
+    while (_pos < cur->size() && buf.size() < atMost) {
       // this may modify the input item buffer in place
-      size_t id = sendToClient(cur);
+      sendToClient(cur);
 
-      buf.at(id).emplace_back(std::make_pair(_index, _pos++));
+      buf.emplace_back(_index, _pos++);
     }
 
     if (_pos == cur->size()) {
