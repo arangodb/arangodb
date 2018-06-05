@@ -202,18 +202,21 @@ class DistributeNode final : public ScatterNode {
 
   /// @brief constructor with an id
  public:
-  DistributeNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                 Collection const* collection, Variable const* variable,
-                 Variable const* alternativeVariable, bool createKeys,
-                 bool allowKeyConversionToObject)
-      : ScatterNode(plan, id),
-        _vocbase(vocbase),
-        _collection(collection),
-        _variable(variable),
-        _alternativeVariable(alternativeVariable),
-        _createKeys(createKeys),
-        _allowKeyConversionToObject(allowKeyConversionToObject),
-        _allowSpecifiedKeys(false) {}
+  DistributeNode(
+      ExecutionPlan* plan, size_t id,
+      Collection const* collection,
+      Variable const* variable,
+      Variable const* alternativeVariable,
+      bool createKeys,
+      bool allowKeyConversionToObject)
+    : ScatterNode(plan, id),
+      _collection(collection),
+      _variable(variable),
+      _alternativeVariable(alternativeVariable),
+      _createKeys(createKeys),
+      _allowKeyConversionToObject(allowKeyConversionToObject),
+      _allowSpecifiedKeys(false) {
+  }
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -236,7 +239,6 @@ class DistributeNode final : public ScatterNode {
     auto c = std::make_unique<DistributeNode>(
       plan,
       _id,
-      _vocbase,
       _collection,
       _variable,
       _alternativeVariable,
@@ -257,9 +259,6 @@ class DistributeNode final : public ScatterNode {
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
-
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   /// @brief return the collection
   Collection const* collection() const { return _collection; }
@@ -283,9 +282,6 @@ class DistributeNode final : public ScatterNode {
   void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
 
  private:
-  /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
-
   /// @brief the underlying collection
   Collection const* _collection;
 

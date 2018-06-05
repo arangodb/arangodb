@@ -196,17 +196,17 @@ double ScatterNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief construct a distribute node
-DistributeNode::DistributeNode(ExecutionPlan* plan,
-                               arangodb::velocypack::Slice const& base)
-    : ScatterNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
-      _variable(nullptr),
-      _alternativeVariable(nullptr),
-      _createKeys(base.get("createKeys").getBoolean()),
-      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-      _allowSpecifiedKeys(false) {
+DistributeNode::DistributeNode(
+    ExecutionPlan* plan,
+    arangodb::velocypack::Slice const& base)
+  : ScatterNode(plan, base),
+    _collection(plan->getAst()->query()->collections()->get(
+        base.get("collection").copyString())),
+    _variable(nullptr),
+    _alternativeVariable(nullptr),
+    _createKeys(base.get("createKeys").getBoolean()),
+    _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
+    _allowSpecifiedKeys(false) {
   if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {     
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
@@ -235,7 +235,6 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
   // serialize clients
   writeClientsToVelocyPack(nodes);
 
-  nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("createKeys", VPackValue(_createKeys));
   nodes.add("allowKeyConversionToObject",

@@ -3268,9 +3268,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // keys if none present
       bool const createKeys = (nodeType == ExecutionNode::INSERT);
       inputVariable = node->getVariablesUsedHere()[0];
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, createKeys, true);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        createKeys,
+        true
+      );
     } else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
@@ -3280,9 +3286,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // We only look into _inDocVariable
         inputVariable = v[0];
       }
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, false, v.size() > 1);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        false,
+        v.size() > 1
+      );
     } else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (v.size() > 1) {
@@ -3294,16 +3306,23 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // was only UPDATE <doc> IN <collection>
         inputVariable = v[0];
       }
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, false, v.size() > 1);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        false,
+        v.size() > 1
+      );
     } else if (nodeType == ExecutionNode::UPSERT) {
       // an UPSERT node has two input variables!
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 
-      auto d = new DistributeNode(plan.get(), plan->nextId(), vocbase,
-                                  collection, v[0], v[1], true, true);
+      auto d = new DistributeNode(
+        plan.get(), plan->nextId(), collection, v[0], v[1], true, true
+      );
       d->setAllowSpecifiedKeys(true);
       distNode = ExecutionNode::castTo<ExecutionNode*>(d);
     } else {
