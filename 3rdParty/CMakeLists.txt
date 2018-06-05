@@ -219,6 +219,7 @@ endif()
 ################################################################################
 ## cURL
 ################################################################################
+add_definitions(-DCURL_STATICLIB=1)
 
 set(ENABLE_MANUAL OFF CACHE type BOOL)
 set(BUILD_CURL_EXE OFF CACHE type BOOL)
@@ -240,11 +241,13 @@ set(CURL_SRC_DIR "${CURL_SRC_DIR}" PARENT_SCOPE)
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
-
 ## SNAPPY
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-d53de18)
+set(SNAPPY_VERSION "d53de18")
+set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/google-snappy-${SNAPPY_VERSION}")
+set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/google-snappy-${SNAPPY_VERSION}")
+add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## JEMALLOC
