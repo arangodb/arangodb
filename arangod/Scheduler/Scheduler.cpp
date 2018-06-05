@@ -24,6 +24,11 @@
 
 #include "Scheduler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <thread>
+
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -35,11 +40,6 @@
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
 #include "Statistics/RequestStatistics.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::basics;

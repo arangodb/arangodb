@@ -45,9 +45,9 @@ class ListenTask;
 
 namespace rest {
 
-  class GeneralCommTask;
-  class SocketTask;
-  
+class GeneralCommTask;
+class SocketTask;
+
 class Scheduler {
   Scheduler(Scheduler const&) = delete;
   Scheduler& operator=(Scheduler const&) = delete;
@@ -64,13 +64,12 @@ class Scheduler {
 
  public:
   asio_ns::io_context* ioContext() const { return _ioContext.get(); }
-  asio_ns::io_context* managerService() const {
-    return _managerService.get();
-  }
+  asio_ns::io_context* managerService() const { return _managerService.get(); }
 
   EventLoop eventLoop() {
-    // return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
-    // windows complains ...
+    // cannot use
+    //   return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
+    // because windows complains ...
     return EventLoop{_ioContext.get(), this};
   }
 
@@ -96,58 +95,83 @@ class Scheduler {
   bool shouldQueueMore() const;
   bool shouldExecuteDirect() const;
 
-  /// queue processing of an async rest job
+  // queue processing of an async rest job
   bool queue(std::unique_ptr<Job> job);
-  
+
   std::string infoStatus();
 
   uint64_t minimum() const { return _nrMinimum; }
-  /// number of queued handlers
-  inline uint64_t numQueued() const noexcept { return  _nrQueued; };
-  inline uint64_t getCounters() const noexcept { return _counters; }
-  /// Number of running threads
-  static uint64_t numRunning(uint64_t value) noexcept { return value & 0xFFFFULL; }
-  /// Number of working threads
-  static uint64_t numWorking(uint64_t value) noexcept { return (value >> 16) & 0xFFFFULL; }
-  /// Number of blocked threads
-  static uint64_t numBlocked(uint64_t value) noexcept { return (value >> 32) & 0xFFFFULL; }
 
-  inline void queueJob() noexcept { ++_nrQueued; } 
-  inline void unqueueJob() noexcept { 
+  // number of queued handlers
+  inline uint64_t numQueued() const noexcept { return _nrQueued; };
+  inline uint64_t getCounters() const noexcept { return _counters; }
+
+  // number of running threads
+  static uint64_t numRunning(uint64_t value) noexcept {
+    return value & 0xFFFFULL;
+  }
+
+  // number of working threads
+  static uint64_t numWorking(uint64_t value) noexcept {
+    return (value >> 16) & 0xFFFFULL;
+  }
+
+  // number of blocked threads
+  static uint64_t numBlocked(uint64_t value) noexcept {
+    return (value >> 32) & 0xFFFFULL;
+  }
+
+  inline void queueJob() noexcept { ++_nrQueued; }
+
+  inline void unqueueJob() noexcept {
     if (--_nrQueued == UINT64_MAX) {
       TRI_ASSERT(false);
     }
   }
- 
+
  private:
   void startNewThread();
- 
+
   static void initializeSignalHandlers();
 
  private:
   // we store most of the threads status info in a single atomic uint64_t
   // the encoding of the values inside this variable is (left to right means
   // high to low bytes):
-  // 
+  //
   //   AA BB CC DD
-  // 
+  //
   // we use the lowest 2 bytes (DD) to store the number of running threads
-  // the next lowest bytes (CC) are used to store the number of currently working threads
-  // the next bytes (BB) are used to store the number of currently blocked threads
-  // the highest bytes (AA) are used only to encode a stopping bit. when this bit is
+  // the next lowest bytes (CC) are used to store the number of currently
+  // working threads
+  // the next bytes (BB) are used to store the number of currently blocked
+  // threads
+  // the highest bytes (AA) are used only to encode a stopping bit. when this
+  // bit is
   // set, the scheduler is stopping (or already stopped)
   inline void setStopping() noexcept { _counters |= (1ULL << 63); }
 
   inline void incRunning() noexcept { _counters += 1ULL << 0; }
-  inline void decRunning() noexcept { TRI_ASSERT((_counters & 0xFFFFUL) > 0); _counters -= 1ULL << 0; }
+  inline void decRunning() noexcept {
+    TRI_ASSERT((_counters & 0xFFFFUL) > 0);
+    _counters -= 1ULL << 0;
+  }
 
-  inline void workThread() noexcept { _counters += 1ULL << 16; } 
-  inline void unworkThread() noexcept { TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0); _counters -= 1ULL << 16; }
+  inline void workThread() noexcept { _counters += 1ULL << 16; }
+  inline void unworkThread() noexcept {
+    TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0);
+    _counters -= 1ULL << 16;
+  }
 
   inline void blockThread() noexcept { _counters += 1ULL << 32; }
-  inline void unblockThread() noexcept { TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0); _counters -= 1ULL << 32; }
+  inline void unblockThread() noexcept {
+    TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0);
+    _counters -= 1ULL << 32;
+  }
 
-  inline bool isStopping(uint64_t value) const noexcept { return (value & (1ULL << 63)) != 0; }
+  inline bool isStopping(uint64_t value) const noexcept {
+    return (value & (1ULL << 63)) != 0;
+  }
 
   void startIoService();
   void startRebalancer();
@@ -164,7 +188,7 @@ class Scheduler {
   // maximal number of outstanding user requests
   uint64_t const _nrMaximum;
 
-  // current counters. refer to the above description of the 
+  // current counters. refer to the above description of the
   // meaning of its individual bits
   std::atomic<uint64_t> _counters;
 

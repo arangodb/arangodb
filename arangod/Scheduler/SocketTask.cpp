@@ -24,6 +24,8 @@
 
 #include "SocketTask.h"
 
+#include <thread>
+
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/socket-utils.h"
@@ -35,8 +37,6 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/StatisticsFeature.h"
-
-#include <thread>
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;

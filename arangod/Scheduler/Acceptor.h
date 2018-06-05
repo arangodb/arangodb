@@ -23,6 +23,8 @@
 #ifndef ARANGOD_SCHEDULER_ACCEPTOR_H
 #define ARANGOD_SCHEDULER_ACCEPTOR_H 1
 
+#include "Basics/Common.h"
+
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Scheduler/Socket.h"
@@ -33,9 +35,11 @@ class Acceptor {
  public:
   typedef std::function<void(asio_ns::error_code const&)> AcceptHandler;
 
+ public:
   Acceptor(asio_ns::io_context& ioService, Endpoint* endpoint);
   virtual ~Acceptor() {}
 
+ public:
   virtual void open() = 0;
   virtual void close() = 0;
   virtual void asyncAccept(AcceptHandler const& handler) = 0;

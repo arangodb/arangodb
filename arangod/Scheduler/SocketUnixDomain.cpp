@@ -22,7 +22,6 @@
 
 #include "Scheduler/SocketUnixDomain.h"
 
-#include <asio/write.hpp>
 #include "Basics/StringBuffer.h"
 
 using namespace arangodb;

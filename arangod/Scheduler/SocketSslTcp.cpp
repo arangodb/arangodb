@@ -22,18 +22,11 @@
 
 #include "Scheduler/SocketSslTcp.h"
 
-#include <asio/ip/tcp.hpp>
-#include <asio/ssl.hpp>
-
 #include <thread>
-
-#include "Logger/Logger.h"
 
 using namespace arangodb;
 
-namespace {
-template <typename T>
-bool doSslHandshake(T& socket) {
+bool SocketSslTcp::sslHandshake() {
   asio_ns::error_code ec;
 
   uint64_t tries = 0;
@@ -41,7 +34,7 @@ bool doSslHandshake(T& socket) {
 
   while (true) {
     ec.clear();
-    socket.handshake(asio_ns::ssl::stream_base::handshake_type::server, ec);
+    _sslSocket.handshake(asio_ns::ssl::stream_base::handshake_type::server, ec);
 
     if (ec.value() != asio_ns::error::would_block) {
       break;
@@ -67,7 +60,12 @@ bool doSslHandshake(T& socket) {
       TRI_ASSERT(start != 0.0);
 
       if (TRI_microtime() - start >= 3) {
+#if ARANGODB_STANDALONE_ASIO
         ec.assign(asio_ns::error::connection_reset, std::generic_category());
+#else
+        ec.assign(boost::asio::error::connection_reset,
+                  boost::system::generic_category());
+#endif
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "forcefully shutting down connection after wait time";
         break;
@@ -89,25 +87,4 @@ bool doSslHandshake(T& socket) {
     return false;
   }
   return true;
-}
-}
-
-bool SocketSslTcp::sslHandshake() { return ::doSslHandshake(_sslSocket); }
-
-void SocketSslTcp::close(asio_ns::error_code& ec) {
-  if (_socket.is_open()) {
-    _socket.close(ec);
-    if (ec && ec != asio_ns::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing socket failed with: "
-                                              << ec.message();
-    }
-  }
-}
-
-void SocketSslTcp::shutdownReceive(asio_ns::error_code& ec) {
-  _socket.shutdown(asio_ns::ip::tcp::socket::shutdown_receive, ec);
-}
-
-void SocketSslTcp::shutdownSend(asio_ns::error_code& ec) {
-  _socket.shutdown(asio_ns::ip::tcp::socket::shutdown_send, ec);
 }

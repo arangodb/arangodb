@@ -26,8 +26,7 @@
 
 #include "Scheduler/Socket.h"
 
-#include <asio/ip/tcp.hpp>
-#include <asio/ssl.hpp>
+#include "Logger/Logger.h"
 
 namespace arangodb {
 class SocketSslTcp final : public Socket {
@@ -42,8 +41,10 @@ class SocketSslTcp final : public Socket {
         _peerEndpoint() {}
 
   SocketSslTcp(SocketSslTcp const& that) = delete;
+
   SocketSslTcp(SocketSslTcp&& that) = delete;
 
+ public:
   std::string peerAddress() const override {
     return _peerEndpoint.address().to_string();
   }
@@ -77,12 +78,26 @@ class SocketSslTcp final : public Socket {
     return static_cast<size_t>(_socket.available(ec));
   }
 
-  void close(asio_ns::error_code& ec) override;
+  void close(asio_ns::error_code& ec) override {
+    if (_socket.is_open()) {
+      _socket.close(ec);
+      if (ec && ec != asio_ns::error::not_connected) {
+        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+            << "closing socket failed with: " << ec.message();
+      }
+    }
+  }
 
  protected:
   bool sslHandshake() override;
-  void shutdownReceive(asio_ns::error_code& ec) override;
-  void shutdownSend(asio_ns::error_code& ec) override;
+
+  void shutdownReceive(asio_ns::error_code& ec) override {
+    _socket.shutdown(asio_ns::ip::tcp::socket::shutdown_receive, ec);
+  }
+
+  void shutdownSend(asio_ns::error_code& ec) override {
+    _socket.shutdown(asio_ns::ip::tcp::socket::shutdown_send, ec);
+  }
 
  private:
   asio_ns::ssl::context _sslContext;
