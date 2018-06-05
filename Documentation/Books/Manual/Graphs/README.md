@@ -265,6 +265,8 @@ Circles have unique numeric labels. Edges have two boolean attributes (*theFalse
 
 ### The World Graph
 
+![world graph](world_graph.png)
+
 The world country graph structures its nodes like that: world → continent → country → capital. In some cases edge directions aren't forward (therefore it will be displayed disjunct in the graph viewer). It has two ways of creating it. One using the named graph utilities (*worldCountry*), one without (*worldCountryUnManaged*). 
 It is used to demonstrate raw traversal operations.
 
@@ -279,6 +281,26 @@ It is used to demonstrate raw traversal operations.
     examples.dropGraph("worldCountryUnManaged");
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_world_sample
+
+### The Mps Graph
+
+This graph was created to demonstrate a use case of the shortest path algorithm. Even though the algorithm can only determine one shortest path, it is possible to return multiple shortest paths with two seperate queries.
+
+![mps graph](mps_graph.png)
+
+The example graph consists of *vertices* in the `mps_verts` collection and *edges* in the `mps_edges` collection. It is a simple traversal graph with start node *A* and end node *C*.
+
+This is how we create it, inspect its *vertices* and *edges*, and drop it again:
+
+    @startDocuBlockInline graph_create_mps_sample
+    @EXAMPLE_ARANGOSH_OUTPUT{graph_create_mps_sample}
+    var examples = require("@arangodb/graph-examples/example-graph.js");
+    var g = examples.loadGraph("mps_graph");
+    db.mps_verts.toArray();
+    db.mps_edges.toArray();
+    examples.dropGraph("mps_graph");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock graph_create_mps_sample
 
 ### Higher volume graph examples
 

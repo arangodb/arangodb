@@ -1,5 +1,3 @@
-/* jshint maxlen:160 */
-'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Graph Data for Example
@@ -52,24 +50,24 @@ var createTraversalExample = function () {
   return g;
 };
 
-// we create a graph with 'edges' pointing from 'verts' to 'verts'
+// we create a graph with 'edges2' pointing from 'verts' to 'verts'
 var createMpsTraversal = function () {
   var g = Graph._create('mps_graph',
-    [Graph._relation('edges', 'verts', 'verts')]
+    [Graph._relation('mps_edges', 'mps_verts', 'mps_verts')]
   );  
-  var a = g.verts.save({_key: 'A'});
-  var b = g.verts.save({_key: 'B'});
-  var c = g.verts.save({_key: 'C'});
-  var d = g.verts.save({_key: 'D'});
-  var e = g.verts.save({_key: 'E'});
-  var f = g.verts.save({_key: 'F'});
-  g.edges.save(a._id, b._id, {vertex:a._key});
-  g.edges.save(a._id, e._id, {vertex:a._key});
-  g.edges.save(a._id, d._id, {vertex:a._key});
-  g.edges.save(b._id, c._id, {vertex:b._key});
-  g.edges.save(d._id, c._id, {vertex:d._key});
-  g.edges.save(e._id, f._id, {vertex:e._key});
-  g.edges.save(f._id, c._id, {vertex:f._key});
+  var a = g.mps_verts.save({_key: 'A'});
+  var b = g.mps_verts.save({_key: 'B'});
+  var c = g.mps_verts.save({_key: 'C'});
+  var d = g.mps_verts.save({_key: 'D'});
+  var e = g.mps_verts.save({_key: 'E'});
+  var f = g.mps_verts.save({_key: 'F'});
+  g.mps_edges.save(a._id, b._id, {vertex:a._key});
+  g.mps_edges.save(a._id, e._id, {vertex:a._key});
+  g.mps_edges.save(a._id, d._id, {vertex:a._key});
+  g.mps_edges.save(b._id, c._id, {vertex:b._key});
+  g.mps_edges.save(d._id, c._id, {vertex:d._key});
+  g.mps_edges.save(e._id, f._id, {vertex:e._key});
+  g.mps_edges.save(f._id, c._id, {vertex:f._key});
   return g;
 };
 
@@ -398,7 +396,7 @@ var knownGraphs = {
       'knows', 'persons'
   ]},
   'mps_graph': {create: createMpsTraversal, dependencies: [
-      'edges', 'verts'
+      'mps_edges', 'mps_verts'
   ]},
   'routeplanner': {create: createRoutePlannerGraph, dependencies: [
       'frenchHighway', 'frenchCity', 'germanCity', 'germanHighway', 'internationalHighway'
