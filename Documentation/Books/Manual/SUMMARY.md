@@ -285,7 +285,8 @@
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
-  * [Cluster](Troubleshooting/Cluster/README.md)  
+  * [Cluster](Troubleshooting/Cluster/README.md)
+    * [Agency Dump](Troubleshooting/Cluster/AgencyDump.md) 
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)  
 
