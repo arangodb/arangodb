@@ -63,6 +63,7 @@ TraversalBlock::TraversalBlock(ExecutionEngine* engine, TraversalNode const* ep)
       _edgeReg(0),
       _pathVar(nullptr),
       _pathReg(0),
+      _inflight(0),
       _engines(nullptr) {
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
   ep->getConditionVariables(_inVars);
@@ -183,6 +184,7 @@ std::pair<ExecutionState, arangodb::Result> TraversalBlock::initializeCursor(
   _usedConstant = false;
   freeCaches();
   _traverser->done();
+  _inflight = 0;
 
   return res;
 }
@@ -353,21 +355,26 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
 }
 
 /// @brief getSome
-AqlItemBlock* TraversalBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+TraversalBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   while (true) {
     if (_done) {
       traceGetSomeEnd(nullptr);
-      return nullptr;
+      return {ExecutionState::DONE, nullptr};
     }
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlockOld(toFetch)) {
+      auto res = ExecutionBlock::getBlock(toFetch);
+      if (res.first == ExecutionState::WAITING) {
+        return {res.first, nullptr};
+      }
+      if (!res.second) {
         _done = true;
         traceGetSomeEnd(nullptr);
-        return nullptr;
+        return {ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
     }
@@ -448,7 +455,8 @@ AqlItemBlock* TraversalBlock::getSomeOld(size_t atMost) {
     // Clear out registers no longer needed later:
     clearRegisters(res.get());
     traceGetSomeEnd(res.get());
-    return res.release();
+    // TODO Check if we can improve here on HASMORE vs DONE.
+    return {ExecutionState::HASMORE, std::move(res)};
   }
 
   // cppcheck-suppress style
@@ -456,25 +464,31 @@ AqlItemBlock* TraversalBlock::getSomeOld(size_t atMost) {
 }
 
 /// @brief skipSome
-size_t TraversalBlock::skipSomeOld(size_t atMost) {
+std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  size_t skipped = 0;
 
   if (_done) {
-    return skipped;
+    return {ExecutionState::DONE, 0};
   }
 
   if (_posInPaths < _vertices.size()) {
-    skipped += (std::min)(atMost, _vertices.size() - _posInPaths);
-    _posInPaths += skipped;
+    _inflight += (std::min)(atMost, _vertices.size() - _posInPaths);
+    _posInPaths += _inflight;
   }
 
-  while (skipped < atMost) {
+  while (_inflight < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlockOld(toFetch)) {
+      auto res = ExecutionBlock::getBlock(toFetch);
+      if (res.first == ExecutionState::WAITING) {
+        return {res.first, 0};
+      }
+      if (!res.second) {
         _done = true;
-        return skipped;
+        size_t skipped = _inflight;
+        _inflight = 0;
+        TRI_ASSERT(res.first == ExecutionState::DONE);
+        return {res.first, skipped};
       }
       _pos = 0;  // this is in the first block
     }
@@ -483,9 +497,9 @@ size_t TraversalBlock::skipSomeOld(size_t atMost) {
     AqlItemBlock* cur = _buffer.front();
     initializePaths(cur, _pos);
   
-    while (atMost > skipped) {
-      TRI_ASSERT(atMost >= skipped);
-      skipped += skipPaths(atMost - skipped);
+    while (_inflight < atMost) {
+      TRI_ASSERT(atMost >= _inflight);
+      _inflight += skipPaths(atMost - _inflight);
   
       if (_traverser->hasMore()) {
         continue;
@@ -502,7 +516,10 @@ size_t TraversalBlock::skipSomeOld(size_t atMost) {
     }
   }
   
-  return skipped;
+  size_t skipped = _inflight;
+  _inflight = 0;
+  // TODO Check if we can be better for HASMORE/DONE.
+  return {ExecutionState::HASMORE, skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

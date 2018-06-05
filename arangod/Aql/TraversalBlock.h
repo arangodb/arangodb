@@ -50,10 +50,10 @@ class TraversalBlock final : public ExecutionBlock {
   int shutdown(int errorCode) override final;
 
   /// @brief getSome
-  AqlItemBlock* getSomeOld(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip atMost documents, returns the number actually skipped . . .
-  size_t skipSomeOld(size_t atMost) override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
   /// @brief cleanup, here we clean up all internally generated values
@@ -143,6 +143,9 @@ class TraversalBlock final : public ExecutionBlock {
   /// @brief _inRegs, a vector containing for each expression above
   /// a vector of RegisterId, used to execute the expression
   std::vector<RegisterId> _inRegs;
+
+  /// @brief Remember how many documents were inflight when we kick in WAITING
+  size_t _inflight;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 };
