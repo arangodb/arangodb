@@ -1,7 +1,18 @@
-v3.3.10 (XXXX-XX-XX)
+v3.3.11 (2018-XX-XX)
 --------------------
 
 * fixed internal issue #2256: ui, document id not showing up when deleting a document
+
+
+v3.3.10 (2018-06-04)
+--------------------
+
+* make optimizer rule "remove-filter-covered-by-index" not stop after removing
+  a sub-condition from a FILTER statement, but pass the optimized FILTER
+  statement again into the optimizer rule for further optimizations.
+  This allows optimizing away some more FILTER conditions than before.
+
+* allow accessing /_admin/status URL on followers too in active failover setup
 
 * fix cluster COLLECT optimization for attributes that were in "sorted" variant of
   COLLECT and that were provided by a sorted index on the collected attribute
@@ -15,7 +26,7 @@ v3.3.10 (XXXX-XX-XX)
 
 * fixed issue #5400: Unexpected AQL Result
 
-* fixe dissue #5429: Frequent 'updated local foxx repository' messages
+* fixed issue #5429: Frequent 'updated local foxx repository' messages
 
 * fixed issue #5252: Empty result if FULLTEXT() is used together with LIMIT offset
 
