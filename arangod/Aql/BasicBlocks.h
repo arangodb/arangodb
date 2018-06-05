@@ -160,8 +160,9 @@ class NoResultsBlock final : public ExecutionBlock {
   bool hasMore() override final { return false; }
 
  private:
-  int getOrSkipSomeOld(size_t atMost, bool skipping,
-                    AqlItemBlock*& result, size_t& skipped) override;
+  std::pair<ExecutionState, arangodb::Result> getOrSkipSome(
+      size_t atMost, bool skipping, AqlItemBlock*& result,
+      size_t& skipped) override;
 };
 
 }  // namespace arangodb::aql

@@ -511,9 +511,10 @@ std::pair<ExecutionState, arangodb::Result> NoResultsBlock::initializeCursor(
   DEBUG_END_BLOCK();  
 }
 
-int NoResultsBlock::getOrSkipSomeOld(size_t,  // atMost
-                                  bool,    // skipping
-                                  AqlItemBlock*& result, size_t& skipped) {
+std::pair<ExecutionState, arangodb::Result> NoResultsBlock::getOrSkipSome(
+    size_t,  // atMost
+    bool,    // skipping
+    AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
-  return TRI_ERROR_NO_ERROR;
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
