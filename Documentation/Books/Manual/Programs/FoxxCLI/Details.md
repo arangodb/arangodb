@@ -1,7 +1,5 @@
 <!-- don't edit here, its from https://@github.com/arangodb/foxx-cli.git / docs/Manual/ -->
-# Foxx CLI
-
-CLI for managing and developing ArangoDB Foxx services.
+# Foxx CLI Details
 
 ## Install
 

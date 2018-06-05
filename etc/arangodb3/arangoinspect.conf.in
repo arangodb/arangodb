@@ -1,0 +1,14 @@
+[console]
+pretty-print = true
+
+[log]
+@COMMENT_LOGFILE@file = -
+
+[server]
+endpoint = tcp://127.0.0.1:8529
+authentication = false
+ask-jwt-secret = true
+
+[javascript]
+startup-directory = @PKGDATADIR@/js
+client-module = inspector.js

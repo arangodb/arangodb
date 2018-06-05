@@ -1,0 +1,11 @@
+@Q:
+  RETURN LENGTH(
+    FOR v IN OUTBOUND
+      SHORTEST_PATH <span class="hljs-string">"verts/A"</span> TO <span class="hljs-string">"verts/C"</span> edges
+        RETURN v
+  )   
+
+@R
+[
+  <span class="hljs-number">3</span>
+]

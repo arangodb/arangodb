@@ -154,6 +154,12 @@ class Methods {
   /// @note not thread-safe on the assumption of static factory registration
   static void addStateRegistrationCallback(StateRegistrationCallback callback);
 
+  /// @brief clear all called for state instance association events
+  /// @note not thread-safe on the assumption of static factory registration
+  /// @note FOR USE IN TESTS ONLY to reset test state
+  /// FIXME TODO StateRegistrationCallback logic should be moved into its own feature
+  static void clearStateRegistrationCallbacks();
+
   /// @brief default batch size for index and other operations
   static constexpr uint64_t defaultBatchSize() { return 1000; }
 
