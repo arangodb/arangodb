@@ -660,13 +660,6 @@ function getServerData(arango) {
   return report;
 }
 
-exports.loadAgencyConfig = loadAgencyConfig;
-exports.serverBasics = serverBasics;
-
-exports.loadAgency = loadAgency;
-exports.locateServers = locateServers;
-exports.listServers = listServers;
-
 (function() {
   try {
     var type = serverBasics();
