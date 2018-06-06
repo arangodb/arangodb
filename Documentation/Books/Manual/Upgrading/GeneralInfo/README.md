@@ -12,7 +12,7 @@ Recommended major upgrade procedure
 -----------------------------------
 
 To upgrade an existing ArangoDB 2.x to 3.0 please use the procedure described
-in [Upgrading to 3.0](Upgrading30.md).
+in [Upgrading to 3.0](../VersionSpecific/Upgrading30.md).
 
 Recommended minor upgrade procedure
 -----------------------------------
