@@ -38,7 +38,6 @@ newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 isCygwin=0
 if test "$(uname -o||true)" == "Cygwin"; then
     isCygwin=1
-    OSNAME=windows
 fi
 
 declare -A ALL_GSEARCH_ID
