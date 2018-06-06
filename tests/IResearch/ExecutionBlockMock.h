@@ -91,20 +91,22 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
       arangodb::aql::AqlItemBlock* items, size_t pos) override;
 
-  arangodb::aql::AqlItemBlock* getSomeOld(
-    size_t atMost
-  ) override;
+  std::pair<arangodb::aql::ExecutionState,
+            std::unique_ptr<arangodb::aql::AqlItemBlock>>
+  getSome(size_t atMost) override;
 
   // skip between atLeast and atMost returns the number actually skipped . . .
   // will only return less than atLeast if there aren't atLeast many
   // things to skip overall.
-  size_t skipSomeOld(
+  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(
     size_t atMost
   ) override;
 
  private:
   arangodb::aql::AqlItemBlock const* _data;
   size_t _pos_in_data{};
+  arangodb::aql::ExecutionState _upstreamState;
+  size_t _inflight;
 }; // ExecutionBlockMock
 
 #endif // ARANGODB_IRESEARCH__IRESEARCH_EXECUTION_BLOCK_MOCK_H

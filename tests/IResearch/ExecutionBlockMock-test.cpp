@@ -211,7 +211,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // retrieve last 90 items
     {
       auto pair = block.getSome(100);
-      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != pair.second);
       CHECK(90 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
@@ -262,7 +262,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     {
       // skip last 90 items
       auto pair = block.skipSome(90);
-      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(90 == pair.second);
     }
 
@@ -310,7 +310,7 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
     // retrieve first 10 items
     {
       auto pair = block.getSome(10);
-      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != pair.second);
       CHECK(10 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
@@ -374,7 +374,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // retrieve 90 items
     {
       auto pair = block1.getSome(100);
-      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != pair.second);
       CHECK(90 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
@@ -383,7 +383,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // retrieve last 100 items
     {
       auto pair = block1.getSome(100);
-      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != pair.second);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
@@ -446,7 +446,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // retrieve last 100 items
     {
       auto pair = block1.getSome(100);
-      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != pair.second);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
@@ -509,7 +509,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     // retrieve last 100 items
     {
       auto pair = block1.getSome(100);
-      CHECK(arangodb::aql::ExecutionState::DONE == pair.first);
+      CHECK(arangodb::aql::ExecutionState::HASMORE == pair.first);
       CHECK(nullptr != pair.second);
       CHECK(100 == pair.second->size());
       CHECK(4 == pair.second->getNrRegs());
