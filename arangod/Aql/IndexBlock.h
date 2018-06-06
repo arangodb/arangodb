@@ -158,8 +158,17 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   bool _hasMultipleExpansions;
   
   /// @brief Counter how many documents have been returned/skipped
-  ///        during one call.
+  ///        during one call. Retained during WAITING situations.
+  ///        Needs to be 0 after we return a result.
   size_t _returned;
+
+  /// @brief Capture from which row variables can be copied. Retained during WAITING
+  ///        Needs to be 0 after we return a result.
+  size_t _copyFromRow;
+
+  /// @brief Capture of all results that are produced before the last WAITING call.
+  ///        Needs to be nullptr after it got returned.
+  std::unique_ptr<AqlItemBlock> _resultInFlight;
 };
 
 }  // namespace aql
