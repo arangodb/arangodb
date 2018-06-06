@@ -333,7 +333,10 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<LogicalView> getView(
-      DatabaseID const& vocbase, ViewID const& viewID);
+      DatabaseID const& vocbase,
+      ViewID const& viewID,
+      bool reloadPlan = true
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about all views of a database

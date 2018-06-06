@@ -1033,11 +1033,13 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 //////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<LogicalView> ClusterInfo::getView(
-    DatabaseID const& databaseID, ViewID const& viewID) {
-
+    DatabaseID const& databaseID,
+    ViewID const& viewID,
+    bool reloadPlan
+) {
   int tries = 0;
 
-  if (!_planProt.isValid) {
+  if (!_planProt.isValid && reloadPlan) {
     loadPlan();
     ++tries;
   }
@@ -1062,7 +1064,10 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
     }
 
     // must load plan outside the lock
-    loadPlan();
+
+    if (reloadPlan) {
+      loadPlan();
+    }
   }
 
   LOG_TOPIC(INFO, Logger::CLUSTER)

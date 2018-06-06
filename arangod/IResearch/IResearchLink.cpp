@@ -184,6 +184,9 @@ TRI_idx_iid_t IResearchLink::id() const noexcept {
 }
 
 bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
+  // IResearchLink is not intended to be used on a coordinator
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
   // disassociate from view if it has not been done yet
   if (TRI_ERROR_NO_ERROR != unload()) {
     return false;
@@ -213,76 +216,74 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   auto identifier = definition.get(StaticStrings::ViewIdField);
   auto viewId = identifier.getNumber<uint64_t>();
   auto& vocbase = _collection->vocbase();
-      auto logicalView = vocbase.lookupView(viewId);
 
-      if (!logicalView
-          || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "error looking up view '" << viewId << "': no such view";
-        return false; // no such view
-      }
+  std::shared_ptr<arangodb::LogicalView> logicalView;
+  std::shared_ptr<arangodb::LogicalView> wiew;
 
-      std::shared_ptr<arangodb::LogicalView> wiew;
+  // create the IResearchView for the specific collection (on DBServer)
+  if (arangodb::ServerState::instance()->isDBServer()) {
+    TRI_ASSERT(ClusterInfo::instance());
+    logicalView = ClusterInfo::instance()->getView(
+      vocbase.name(),
+      basics::StringUtils::itoa(viewId),
+      false
+    );
 
-      // create the IResearchView for the specific collection (on DBServer)
-      if (arangodb::ServerState::instance()->isDBServer()) {
-        // TODO FIXME find a better way to look up an iResearch View
-        auto* view = LogicalView::cast<IResearchViewDBServer>(logicalView.get());
+    if (logicalView) {
+      wiew = logicalView; // remeber the DBServer view instance
 
-        if (view) {
-          wiew = logicalView; // remeber the DBServer view instance
-          logicalView = view->ensure(_collection->id()); // repoint LogicalView at the per-cid instance
-        } else {
-          logicalView = nullptr;
-        }
-      }
+      auto& viewImpl = LogicalView::cast<IResearchViewDBServer>(*logicalView);
+      logicalView = viewImpl.ensure(_collection->id()); // repoint LogicalView at the per-cid instance
+    }
+  } else {
+    logicalView = vocbase.lookupView(viewId);
+  }
 
-      // TODO FIXME find a better way to look up an iResearch View
-      auto* view = LogicalView::cast<IResearchView>(logicalView.get());
+  if (!logicalView
+      || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "error finding view: '" << viewId << "' for link '" << _id << "' : no such view";
 
-      if (!view) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "error finding view: '" << viewId << "' for link '" << _id << "'";
+    return false; // no such view
+  }
 
-        return false;
-      }
+  auto& view = LogicalView::cast<IResearchView>(*logicalView);
+  auto viewSelf = view.self();
 
-      auto viewSelf = view->self();
+  if (!viewSelf) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "error read-locking view: '" << viewId
+      << "' for link '" << _id << "'";
 
-      if (!viewSelf) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "error read-locking view: '" << viewId
-          << "' for link '" << _id << "'";
+    return false;
+  }
 
-        return false;
-      }
+  _viewLock = std::unique_lock<ReadMutex>(viewSelf->mutex()); // aquire read-lock before checking view
 
-      _viewLock = std::unique_lock<ReadMutex>(viewSelf->mutex()); // aquire read-lock before checking view
+  if (!viewSelf->get()) {
+    _viewLock.unlock();
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "error getting view: '" << viewId << "' for link '" << _id << "'";
 
-      if (!viewSelf->get()) {
-        _viewLock.unlock();
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "error getting view: '" << viewId << "' for link '" << _id << "'";
+    return false;
+  }
 
-        return false;
-      }
+  _dropCollectionInDestructor = view.emplace(_collection->id()); // track if this is the instance that called emplace
+  _meta = std::move(meta);
+  _view = &view;
+  _wiew = std::move(wiew);
 
-      _dropCollectionInDestructor = view->emplace(_collection->id()); // track if this is the instance that called emplace
-      _meta = std::move(meta);
-      _view = std::move(view);
-      _wiew = std::move(wiew);
+  // FIXME TODO remove once View::updateProperties(...) will be fixed to write
+  // the update delta into the WAL marker instead of the full persisted state
+  {
+    auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
-      // FIXME TODO remove once View::updateProperties(...) will be fixed to write
-      // the update delta into the WAL marker instead of the full persisted state
-      {
-        auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+    if (engine && engine->inRecovery()) {
+      _defaultId = _wiew ? _wiew->id() : _view->id();
+    }
+  }
 
-        if (engine && engine->inRecovery()) {
-          _defaultId = _wiew ? _wiew->id() : _view->id();
-        }
-      }
-
-    return true;
+  return true;
 }
 
 Result IResearchLink::insert(

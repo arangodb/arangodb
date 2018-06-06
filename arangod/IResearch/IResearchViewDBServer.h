@@ -25,20 +25,19 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_DBSERVER_H 1
 
 #include "utils/async_utils.hpp"
-#include "utils/memory.hpp"
 #include "utils/utf8_path.hpp"
 #include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
 class DatabasePathFeature; // forward declaration
 class TransactionState; // forward declaration
 
-NS_END // arangodb
+} // arangodb
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 class PrimaryKeyIndexReader; // forward declaration
 
@@ -110,8 +109,6 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ) const override;
 
  private:
-  DECLARE_SPTR(LogicalView);
-
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
   arangodb::velocypack::Builder _meta; // the view definition
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
@@ -126,7 +123,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   );
 };
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif

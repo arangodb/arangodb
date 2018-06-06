@@ -36,6 +36,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionEngine.h"
+#include "Cluster/ClusterInfo.h"
 #include "StorageEngine/TransactionState.h"
 #include "Basics/StringUtils.h"
 
@@ -212,10 +213,16 @@ IResearchViewNode::IResearchViewNode(
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(&ALL),
     _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
+  auto const viewId = base.get("viewId").copyString();
+
+  if (ServerState::instance()->isSingleServer()) {
+    _view = _vocbase.lookupView(basics::StringUtils::uint64(viewId));
+  } else {
+    TRI_ASSERT(ClusterInfo::instance());
+    _view = ClusterInfo::instance()->getView(_vocbase.name(), viewId);
+  }
+
   // FIXME how to check properly
-  _view = _vocbase.lookupView(
-    basics::StringUtils::uint64(base.get("viewId").copyString())
-  );
   TRI_ASSERT(_view && iresearch::DATA_SOURCE_TYPE == _view->type());
 
   auto const filterSlice = base.get("condition");
