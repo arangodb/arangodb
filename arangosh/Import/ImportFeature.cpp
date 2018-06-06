@@ -64,7 +64,8 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _ignoreMissing(false),
       _onDuplicateAction("error"),
       _rowsToSkip(0),
-      _result(result) {
+      _result(result),
+      _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter("Client");
@@ -178,6 +179,9 @@ void ImportFeature::collectOptions(
                          actionsJoined,
                      new DiscreteValuesParameter<StringParameter>(
                          &_onDuplicateAction, actions));
+
+  options->addOption("--latency", "show 10 second latency statistics",
+                     new BooleanParameter(&_latencyStats));
 }
 
 void ImportFeature::validateOptions(
@@ -469,6 +473,11 @@ void ImportFeature::start() {
   // progress
   if (_progress) {
     ih.setProgress(true);
+  }
+
+  // progress
+  if (_latencyStats) {
+    ih.startHistogram();
   }
 
   if (_onDuplicateAction != "error" && _onDuplicateAction != "update" &&
