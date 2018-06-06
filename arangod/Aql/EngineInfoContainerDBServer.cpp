@@ -180,7 +180,9 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
 }
 
 Collection const* EngineInfoContainerDBServer::EngineInfo::collection() const noexcept {
+#ifdef USE_IRESEARCH
   TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW != _type);
+#endif
   return _collection;
 }
 
