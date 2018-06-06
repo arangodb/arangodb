@@ -284,7 +284,7 @@ It is used to demonstrate raw traversal operations.
 
 ### The Mps Graph
 
-This graph was created to demonstrate a use case of the shortest path algorithm. Even though the algorithm can only determine one shortest path, it is possible to return multiple shortest paths with two seperate queries. Therefore the graph is named after the [**m**(multiple)**p**(path)**s**(search)](../../AQL/Examples/MultiplePaths.html) use case.
+This graph was created to demonstrate a use case of the shortest path algorithm. Even though the algorithm can only determine one shortest path, it is possible to return multiple shortest paths with two separate queries. Therefore the graph is named after the [**m**(multiple)**p**(path)**s**(search)](../../AQL/Examples/MultiplePaths.html) use case.
 
 ![mps graph](mps_graph.png)
 
