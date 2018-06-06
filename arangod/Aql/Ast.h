@@ -384,7 +384,10 @@ class Ast {
   AstNode* createNodeNaryOperator(AstNodeType, AstNode const*);
 
   /// @brief injects bind parameters into the AST
-  void injectBindParameters(BindParameters&);
+  void injectBindParameters(
+    BindParameters& parameters,
+    arangodb::CollectionNameResolver const& resolver
+  );
 
   /// @brief replace variables
   AstNode* replaceVariables(
