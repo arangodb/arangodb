@@ -31,49 +31,76 @@
 #include <numeric>
 #include <vector>
 
+#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Thread.h"
+#include "Logger/Logger.h"
+
 namespace arangodb {
 namespace import {
 //
-// quickly written histogram class for debugging.  Too awkward for
-//  production
+// quickly written histogram class for debugging
 //
-class QuickHistogram {
+  class QuickHistogram : public arangodb::Thread {
  private:
   QuickHistogram(QuickHistogram const&) = delete;
   QuickHistogram& operator=(QuickHistogram const&) = delete;
 
  public:
   QuickHistogram()
-  {
-    _interval_start=std::chrono::steady_clock::now();
-    _measuring_start = _interval_start;
-    printf(R"("elapsed","window","n","min","mean","median","95th","99th","99.9th","max","unused1","clock")" "\n");
-
-    _writingLatencies = &_vectors[0];
-    _readingLatencies = &_vectors[1];
-    _threadRunning.store(true);
-    _threadFuture = std::async(std::launch::async, &QuickHistogram::ThreadLoop, this);
-  }
-
+    : Thread("QuickHistogram"), _threadRunning(false)
+  {};
 
   ~QuickHistogram()
   {
-    {
-      std::unique_lock<std::mutex> lg(_mutex);
-      _threadRunning.store(false);
-      _condvar.notify_one();
-    }
-    _threadFuture.wait();
+    shutdown();
+  }
+
+  void beginShutdown() override {
+    Thread::beginShutdown();
+
+    // wake up the thread that may be waiting in run()
+    CONDITION_LOCKER(guard, _condvar);
+    guard.broadcast();
   }
 
 
   void post_latency(std::chrono::microseconds latency) {
-    {
-      std::unique_lock<std::mutex> lg(_mutex);
+    if (_threadRunning.load()) {
+      CONDITION_LOCKER(guard, _condvar);
 
       _writingLatencies->push_back(latency);
     }
   }
+
+protected:
+  void run() override
+  {
+    _interval_start=std::chrono::steady_clock::now();
+    _measuring_start = _interval_start;
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      << R"("elapsed","window","n","min","mean","median","95th","99th","99.9th","max","unused1","clock")";
+
+    _writingLatencies = &_vectors[0];
+    _readingLatencies = &_vectors[1];
+    _threadRunning.store(true);
+
+    while(_threadRunning.load()) {
+      CONDITION_LOCKER(guard, _condvar);
+
+      std::chrono::seconds ten_sec(10);
+      _condvar.wait(ten_sec);
+
+      LatencyVec_t * temp;
+      temp = _writingLatencies;
+      _writingLatencies = _readingLatencies;
+      _readingLatencies = temp;
+
+      print_interval();
+    }
+
+  } // run
+
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief
@@ -85,35 +112,14 @@ class QuickHistogram {
   LatencyVec_t _vectors[2];
   LatencyVec_t * _writingLatencies, * _readingLatencies;
 
-  std::mutex _mutex;
-  std::condition_variable _condvar;
-  std::future<void> _threadFuture;
+  basics::ConditionVariable _condvar;
   std::atomic<bool> _threadRunning;
 
  protected:
-  void ThreadLoop() {
-    while(_threadRunning.load()) {
-      std::unique_lock<std::mutex> lg(_mutex);
-
-      std::chrono::seconds ten_sec(10);
-      _condvar.wait_for(lg, ten_sec);
-
-      LatencyVec_t * temp;
-      temp = _writingLatencies;
-      _writingLatencies = _readingLatencies;
-      _readingLatencies = temp;
-
-      print_interval();
-    }
-
-  } // ThreadLoop
-
-
   void print_interval(bool force=false) {
     std::chrono::steady_clock::time_point interval_end;
     std::chrono::milliseconds interval_diff, measuring_diff;
     std::chrono::microseconds sum, zero_micros;
-
 
     zero_micros = std::chrono::microseconds(0);
     interval_end=std::chrono::steady_clock::now();
@@ -164,17 +170,23 @@ class QuickHistogram {
         auto t = std::time(nullptr);
         auto tm = *std::localtime(&t);
 
+        // new age string buffering & formatting
         std::ostringstream oss;
         oss << std::put_time(&tm, "%m-%d-%Y %H:%M:%S");
         auto str = oss.str();
 
-        printf("%.3f,%.3f,%zd,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%s\n",
+        // old age string buffering & formatting
+        char buffer[133];
+        snprintf(buffer, sizeof(buffer), "%.3f,%.3f,%zd,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%d,%s",
                fp_measuring, fp_interval, num,
                (0!=num) ? _readingLatencies->at(0).count() : 0,
                mean.count(),median.count(),
                per95.count(), per99.count(), per99_9.count(),
                (0!=num) ? _readingLatencies->at(num-1).count() : 0,
                0, str.c_str());
+        LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << buffer;
+
         _readingLatencies->clear();
         _interval_start=interval_end;
       }
