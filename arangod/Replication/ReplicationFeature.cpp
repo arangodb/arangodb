@@ -189,6 +189,22 @@ static void writeError(int code, GeneralResponse* response) {
   response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
 }
 
+/// @brief set the x-arango-endpoint header
+void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
+                                           arangodb::ServerState::Mode mode) {
+  std::string endpoint;
+  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+  if (replication != nullptr && replication->isActiveFailoverEnabled()) {
+    GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+    if (applier != nullptr) {
+      endpoint = applier->endpoint();
+      // replace tcp:// with http://, and ssl:// with https://
+      endpoint = FixEndpointProto(endpoint);
+    }
+  }
+  res->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
+}
+
 /// @brief fill a response object with correct response for a follower
 void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
                                                  arangodb::ServerState::Mode mode) {

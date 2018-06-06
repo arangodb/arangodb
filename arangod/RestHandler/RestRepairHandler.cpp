@@ -30,6 +30,8 @@
 
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;

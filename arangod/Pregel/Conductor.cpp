@@ -402,7 +402,7 @@ void Conductor::startRecovery() {
   _statistics.reset();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioContext();
   TRI_ASSERT(ioService != nullptr);
 
   // let's wait for a final state in the cluster

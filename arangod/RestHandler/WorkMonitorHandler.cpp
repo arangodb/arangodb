@@ -23,6 +23,7 @@
 #include "WorkMonitorHandler.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/WorkMonitor.h"
 #include "GeneralServer/RestHandler.h"
 #include "Rest/HttpRequest.h"
 #include "velocypack/Builder.h"
@@ -56,9 +57,15 @@ RestStatus WorkMonitorHandler::execute() {
 
     std::shared_ptr<RestHandler> self = shared_from_this();
 
-    return RestStatus::WAIT_FOR([self](std::function<void()> next) {
-        WorkMonitor::requestWorkOverview(self, next);
-      }).done();
+    ConditionVariable waiting;
+    waiting.lock();
+
+    WorkMonitor::requestWorkOverview(self, [self, &waiting] {
+      waiting.broadcast();
+    });
+
+    waiting.wait();
+    return RestStatus::DONE;
   }
 
   if (type == rest::RequestType::DELETE_REQ) {

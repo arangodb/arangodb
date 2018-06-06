@@ -43,10 +43,10 @@ class VstResponse : public GeneralResponse {
   friend class rest::VstCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
-  VstResponse(ResponseCode code, uint64_t id);
-
  public:
   static bool HIDE_PRODUCT_HEADER;
+
+  VstResponse(ResponseCode code, uint64_t id);
 
   // required by base
   uint64_t messageId() const override { return _messageId; }

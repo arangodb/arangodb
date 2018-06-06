@@ -335,7 +335,7 @@ void V8Task::start() {
              ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
   
-  auto ioService = SchedulerFeature::SCHEDULER->ioService();
+  auto ioService = SchedulerFeature::SCHEDULER->ioContext();
   _timer.reset(new boost::asio::steady_timer(*ioService));
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);

@@ -34,6 +34,7 @@
 #include "Rest/HttpRequest.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

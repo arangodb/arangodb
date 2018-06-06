@@ -566,7 +566,7 @@ void Worker<V, E, M>::_continueAsync() {
   }
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioContext();
   TRI_ASSERT(ioService != nullptr);
 
   // wait for new messages before beginning to process
