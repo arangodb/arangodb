@@ -98,13 +98,10 @@ Result ExecutionEngine::createBlocks(
       continue;
     }
 
-
     // for all node types but REMOTEs, we create blocks
-    std::unordered_set<std::string> const includedShards{};
-    std::unique_ptr<ExecutionBlock> uptrEb(
-        en->createBlock(*this, cache, includedShards));
+    auto uptrEb = en->createBlock(*this, cache);
 
-    if (uptrEb == nullptr) {
+    if (!uptrEb) {
       return {TRI_ERROR_INTERNAL, "illegal node type"};
     }
 
@@ -203,13 +200,12 @@ ExecutionEngine::~ExecutionEngine() {
 
 struct Instanciator final : public WalkerWorker<ExecutionNode> {
   ExecutionEngine* engine;
-  ExecutionBlock* root;
+  ExecutionBlock* root{};
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
 
-  explicit Instanciator(ExecutionEngine* engine)
-      : engine(engine), root(nullptr) {}
-
-  ~Instanciator() {}
+  explicit Instanciator(ExecutionEngine* engine) noexcept
+    : engine(engine) {
+  }
 
   virtual void after(ExecutionNode* en) override final {
     ExecutionBlock* block = nullptr;
@@ -225,16 +221,12 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 
       if (nodeType == ExecutionNode::DISTRIBUTE ||
           nodeType == ExecutionNode::SCATTER ||
-#ifdef USE_IRESEARCH
-          nodeType == ExecutionNode::SCATTER_IRESEARCH_VIEW ||
-#endif
           nodeType == ExecutionNode::GATHER) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
       }
 
-      static const std::unordered_set<std::string> EMPTY;
-      block = engine->addBlock(en->createBlock(*engine, cache, EMPTY));
+      block = engine->addBlock(en->createBlock(*engine, cache));
 
       if (!en->hasParent()) {
         // yes. found a new root!
@@ -341,7 +333,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 // of them the nodes from left to right in these lists. In the end, we have
 // a proper instantiation of the whole thing.
 
-struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
+struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
  private:
   EngineInfoContainerCoordinator _coordinatorParts;
   EngineInfoContainerDBServer _dbserverParts;
@@ -350,16 +342,13 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   Query* _query;
 
  public:
-
-  explicit CoordinatorInstanciator(Query* query)
+  explicit CoordinatorInstanciator(Query* query) noexcept
       : _dbserverParts(query),
         _isCoordinator(true),
         _lastClosed(0),
         _query(query) {
     TRI_ASSERT(_query);
   }
-
-  ~CoordinatorInstanciator() {}
 
   /// @brief before method for collection of pieces phase
   ///        Collects all nodes on the path and divides them
