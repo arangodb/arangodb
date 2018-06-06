@@ -35,6 +35,12 @@ RESET="${C[RESET]}"
 
 newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
+isCygwin=0
+if test "$(uname -o||true)" == "Cygwin"; then
+    isCygwin=1
+    OSNAME=windows
+fi
+
 declare -A ALL_GSEARCH_ID
 for book in ${ALLBOOKS}; do
     ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:_-]*\)".*;\1;')
@@ -653,7 +659,7 @@ function build-dist-books()
     set -e
     rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
-    if test -z "${DISPLAY}"; then
+    if test "${isCygwin}" -eq 0 -a -z "${DISPLAY}"; then
         DISPLAY=:20.0
         start_X11_display "${PIDFILE}" "${DISP}"
         trap 'stop_X11_display "${PIDFILE}"' 0
