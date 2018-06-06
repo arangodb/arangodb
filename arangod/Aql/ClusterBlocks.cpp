@@ -386,16 +386,17 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   TRI_ASSERT(_nrClients != 0);
 
   size_t const clientId = getClientId(shardId);
-  TRI_ASSERT(_doneForClient.size() > clientId);
 
   // reference to "a finish mark" for a client
+  TRI_ASSERT(_doneForClient.size() > clientId);
   std::vector<bool>::reference doneForClient = _doneForClient[clientId];
 
   if (doneForClient) {
     return false;
   }
 
-  auto const& pos = _posForClient[clientId];
+  TRI_ASSERT(_posForClient.size() > clientId);
+  std::pair<size_t, size_t> const& pos = _posForClient[clientId];
   // (i, j) where i is the position in _buffer, and j is the position in
   // _buffer[i] we are sending to <clientId>
 
@@ -421,9 +422,9 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
   TRI_ASSERT(atMost > 0);
 
   size_t const clientId = getClientId(shardId);
-  TRI_ASSERT(_doneForClient.size() > clientId);
 
   // reference to "a finish mark" for a client
+  TRI_ASSERT(_doneForClient.size() > clientId);
   std::vector<bool>::reference doneForClient = _doneForClient[clientId];
 
   if (doneForClient) {
@@ -431,7 +432,7 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
   }
 
   TRI_ASSERT(_posForClient.size() > clientId);
-  auto& pos = _posForClient[clientId];
+  std::pair<size_t, size_t>& pos = _posForClient[clientId];
 
   // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
@@ -563,9 +564,9 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
 
   size_t const clientId = getClientId(shardId);
-  TRI_ASSERT(_doneForClient.size() > clientId);
 
   // reference to "a finish mark" for a client
+  TRI_ASSERT(_doneForClient.size() > clientId);
   std::vector<bool>::reference doneForClient = _doneForClient[clientId];
 
   if (doneForClient) {
