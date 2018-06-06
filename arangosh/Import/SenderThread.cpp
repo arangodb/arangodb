@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SenderThread.h"
-#include "quick_hist.h"
 
 #include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
@@ -116,7 +115,7 @@ void SenderThread::run() {
         TRI_ASSERT(!_idle && !_url.empty());
 
         {
-          QuickHistogramTimer timer(histogram);
+          QuickHistogramTimer timer(_stats->_histogram);
           std::unique_ptr<httpclient::SimpleHttpResult> result(
             _client->request(rest::RequestType::POST, _url, _data.c_str(),
                              _data.length()));
