@@ -56,6 +56,10 @@ RestStatus RestStatusHandler::execute() {
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
+#if defined(TRI_HAVE_POSIX_THREADS)
+  result.add("pid", VPackValue(getpid()));
+#endif  
+
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
 #else
