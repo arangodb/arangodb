@@ -154,11 +154,11 @@ static void createBabiesError(VPackBuilder& builder,
   }
 }
 
-static OperationResult emptyResult(bool waitForSync) {
+static OperationResult emptyResult(OperationOptions const& options) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   resultBuilder.close();
-  return OperationResult(Result(), resultBuilder.steal(), nullptr, waitForSync);
+  return OperationResult(Result(), resultBuilder.steal(), nullptr, options);
 }
 }  // namespace
 
@@ -166,6 +166,10 @@ static OperationResult emptyResult(bool waitForSync) {
     StateRegistrationCallback callback
 ) {
   getStateRegistrationCallbacks().emplace_back(callback);
+}
+
+/*static*/ void transaction::Methods::clearStateRegistrationCallbacks() {
+  getStateRegistrationCallbacks().clear();
 }
 
 /// @brief Get the field names of the used index
@@ -512,7 +516,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     if (!supportsFilter && !supportsSort) {
       continue;
     }
-    
+
     double totalCost = filterCost;
     if (!sortCondition->isEmpty()) {
       // only take into account the costs for sorting if there is actually something to sort
@@ -619,19 +623,20 @@ transaction::Methods::Methods(
       // we are embedded but this is disallowed...
       THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_NESTED);
     }
-    
+
     _state = parent;
-    
+
     TRI_ASSERT(_state != nullptr);
     _state->increaseNesting();
   } else { // non-embedded
-    TRI_vocbase_t& vocbase = _transactionContextPtr->vocbase();
-    
     // now start our own transaction
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    _state = engine->createTransactionState(vocbase, options).release();
+
+    _state = engine->createTransactionState(
+       _transactionContextPtr->resolver(), options
+    ).release();
     TRI_ASSERT(_state != nullptr);
-    
+
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
   }
@@ -668,7 +673,7 @@ transaction::Methods::~Methods() {
 
 /// @brief return the collection name resolver
 CollectionNameResolver const* transaction::Methods::resolver() const {
-  return _transactionContextPtr->getResolver();
+  return &(_transactionContextPtr->resolver());
 }
 
 /// @brief return the transaction collection for a document collection
@@ -713,6 +718,7 @@ void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, TRI_voc_cid_t cid,
     StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
+
   std::string temp; // TODO: pass a string into this function
   temp.reserve(64);
 
@@ -881,7 +887,7 @@ OperationResult transaction::Methods::anyLocal(
   if (cid == 0) {
     throwCollectionNotFound(collectionName.c_str());
   }
-  
+
   pinData(cid);  // will throw when it fails
 
   VPackBuilder resultBuilder;
@@ -907,10 +913,10 @@ OperationResult transaction::Methods::anyLocal(
       return OperationResult(res);
     }
   }
-  
+
   resultBuilder.close();
 
-  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
+  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler());
 }
 
 TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
@@ -1018,7 +1024,7 @@ void transaction::Methods::invokeOnAllElements(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     THROW_ARANGO_EXCEPTION(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   collection->invokeOnAllElements(this, callback);
@@ -1156,7 +1162,7 @@ OperationResult transaction::Methods::clusterResultDocument(
     case rest::ResponseCode::PRECONDITION_FAILED:
       return OperationResult(Result(responseCode == rest::ResponseCode::OK
                                  ? TRI_ERROR_NO_ERROR
-                                 : TRI_ERROR_ARANGO_CONFLICT), resultBody->steal(), nullptr, false, errorCounter);
+                                 : TRI_ERROR_ARANGO_CONFLICT), resultBody->steal(), nullptr, OperationOptions{}, errorCounter);
     case rest::ResponseCode::NOT_FOUND:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
@@ -1168,11 +1174,16 @@ OperationResult transaction::Methods::clusterResultDocument(
 OperationResult transaction::Methods::clusterResultInsert(
     rest::ResponseCode const& responseCode,
     std::shared_ptr<VPackBuilder> const& resultBody,
+    OperationOptions const& options,
     std::unordered_map<int, size_t> const& errorCounter) const {
   switch (responseCode) {
     case rest::ResponseCode::ACCEPTED:
-    case rest::ResponseCode::CREATED:
-      return OperationResult(Result(), resultBody->steal(), nullptr, responseCode == rest::ResponseCode::CREATED, errorCounter);
+    case rest::ResponseCode::CREATED: {
+      OperationOptions copy = options;
+      copy.waitForSync = (responseCode == rest::ResponseCode::CREATED); // wait for sync is abused herea
+                                                                        // operationResult should get a return code.
+      return OperationResult(Result(), resultBody->steal(), nullptr, copy, errorCounter);
+    }
     case rest::ResponseCode::PRECONDITION_FAILED:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_CONFLICT);
     case rest::ResponseCode::BAD:
@@ -1202,10 +1213,11 @@ OperationResult transaction::Methods::clusterResultModify(
       }
     // Fall through
     case rest::ResponseCode::ACCEPTED:
-    case rest::ResponseCode::CREATED:
-      return OperationResult(Result(errorCode), resultBody->steal(), nullptr,
-                             responseCode == rest::ResponseCode::CREATED,
-                             errorCounter);
+    case rest::ResponseCode::CREATED: {
+      OperationOptions options;
+      options.waitForSync = (responseCode == rest::ResponseCode::CREATED);
+      return OperationResult(Result(errorCode), resultBody->steal(), nullptr, options, errorCounter);
+    }
     case rest::ResponseCode::BAD:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
@@ -1223,13 +1235,16 @@ OperationResult transaction::Methods::clusterResultRemove(
   switch (responseCode) {
     case rest::ResponseCode::OK:
     case rest::ResponseCode::ACCEPTED:
-    case rest::ResponseCode::PRECONDITION_FAILED:
+    case rest::ResponseCode::PRECONDITION_FAILED: {
+      OperationOptions options;
+      options.waitForSync = (responseCode != rest::ResponseCode::ACCEPTED);
       return OperationResult(
           Result(responseCode == rest::ResponseCode::PRECONDITION_FAILED
               ? TRI_ERROR_ARANGO_CONFLICT
               : TRI_ERROR_NO_ERROR),
           resultBody->steal(), nullptr,
-          responseCode != rest::ResponseCode::ACCEPTED, errorCounter);
+          options, errorCounter);
+    }
     case rest::ResponseCode::BAD:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
@@ -1370,7 +1385,7 @@ OperationResult transaction::Methods::documentLocal(
 
   return OperationResult(std::move(res), resultBuilder.steal(),
                          _transactionContextPtr->orderCustomTypeHandler(),
-                         options.waitForSync, countErrorCodes);
+                         options, countErrorCodes);
 }
 
 /// @brief create one or multiple documents in a collection
@@ -1386,7 +1401,7 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    return emptyResult(options.waitForSync);
+    return emptyResult(options);
   }
 
   // Validate Edges
@@ -1412,21 +1427,15 @@ OperationResult transaction::Methods::insertCoordinator(
   rest::ResponseCode responseCode;
   std::unordered_map<int, size_t> errorCounter;
   auto resultBody = std::make_shared<VPackBuilder>();
-  int res = arangodb::createDocumentOnCoordinator(
-    vocbase().name(),
-    collectionName,
-    options,
-    value,
-    responseCode,
-    errorCounter,
-    resultBody
-  );
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    return clusterResultInsert(responseCode, resultBody, errorCounter);
+  Result res = arangodb::createDocumentOnCoordinator(
+      vocbase().name(), collectionName, options, value, responseCode,
+      errorCounter, resultBody);
+
+  if (res.ok()) {
+    return clusterResultInsert(responseCode, resultBody, options, errorCounter);
   }
-
-  return OperationResult(res);
+  return OperationResult(res, options);
 }
 #endif
 
@@ -1464,18 +1473,18 @@ OperationResult transaction::Methods::insertLocal(
     std::string theLeader = collection->followers()->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
     } else {  // we are a follower following theLeader
       isFollower = true;
       if (options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
       }
     }
-  }
+  } // isDBServer - early block
 
   if (options.returnNew) {
     pinData(cid);  // will throw when it fails
@@ -1489,13 +1498,28 @@ OperationResult transaction::Methods::insertLocal(
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
 
-    ManagedDocumentResult result;
+    ManagedDocumentResult documentResult;
     TRI_voc_tick_t resultMarkerTick = 0;
     TRI_voc_rid_t revisionId = 0;
 
-    Result res =
-        collection->insert(this, value, result, options, resultMarkerTick,
-                           !isLocked(collection, AccessMode::Type::WRITE), revisionId);
+    auto const needsLock = !isLocked(collection, AccessMode::Type::WRITE);
+
+    Result res = collection->insert( this, value, documentResult, options
+                                   , resultMarkerTick, needsLock, revisionId
+                                   );
+
+    ManagedDocumentResult previousDocumentResult; // return OLD
+    TRI_voc_rid_t previousRevisionId = 0;
+    if(options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)){
+      // RepSert Case - unique_constraint violated -> maxTick has not changed -> try replace
+      resultMarkerTick = 0;
+      res = collection->replace( this, value, documentResult, options
+                               , resultMarkerTick, needsLock, previousRevisionId
+                               , previousDocumentResult);
+      if(res.ok()){
+         revisionId = TRI_ExtractRevisionId(VPackSlice(documentResult.vpack()));
+      }
+    }
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -1507,16 +1531,28 @@ OperationResult transaction::Methods::insertLocal(
       return res;
     }
 
+
+
     if (!options.silent || _state->isDBServer()) {
-      TRI_ASSERT(!result.empty());
+      TRI_ASSERT(!documentResult.empty());
 
-      StringRef keyString(transaction::helpers::extractKeyFromDocument(
-          VPackSlice(result.vpack())));
+        StringRef keyString(transaction::helpers::extractKeyFromDocument(
+        VPackSlice(documentResult.vpack())));
 
-      buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
-                            0, nullptr, options.returnNew ? &result : nullptr);
+        bool showReplaced = false;
+        if(options.returnOld && previousRevisionId){
+          showReplaced = true;
+        }
+
+        if(showReplaced){
+          TRI_ASSERT(!previousDocumentResult.empty());
+        }
+
+        buildDocumentIdentity(collection, resultBuilder
+                             ,cid, keyString, revisionId ,previousRevisionId
+                             ,showReplaced ? &previousDocumentResult : nullptr
+                             ,options.returnNew ? &documentResult : nullptr);
     }
-
     return Result();
   };
 
@@ -1557,12 +1593,10 @@ OperationResult transaction::Methods::insertLocal(
 
       // Now replicate the good operations on all followers:
       std::string path =
-        "/_db/" +
-        arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
-        "/_api/document/" +
-        arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true&isSynchronousReplication=" +
-        ServerState::instance()->getId();
+        "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
+        "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
+        "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId();
+        "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
 
       VPackBuilder payload;
 
@@ -1618,7 +1652,7 @@ OperationResult transaction::Methods::insertLocal(
             // error (note that we use the follower version, since we have
             // lost leadership):
             if (findRefusal(requests)) {
-              return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+              return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
             }
 
             // Otherwise we drop all followers that were not successful:
@@ -1660,7 +1694,7 @@ OperationResult transaction::Methods::insertLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, countErrorCodes);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -1676,7 +1710,7 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    return emptyResult(options.waitForSync);
+    return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
@@ -1737,7 +1771,7 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    return emptyResult(options.waitForSync);
+    return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
@@ -1824,7 +1858,7 @@ OperationResult transaction::Methods::modifyLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   VPackBuilder resultBuilder;  // building the complete result
   TRI_voc_tick_t maxTick = 0;
 
@@ -1857,7 +1891,7 @@ OperationResult transaction::Methods::modifyLocal(
       maxTick = resultMarkerTick;
     }
 
-    if (res.errorNumber() == TRI_ERROR_ARANGO_CONFLICT) {
+    if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
       // still return
       if (!isBabies) {
         StringRef key(newVal.get(StaticStrings::KeyString));
@@ -1882,7 +1916,7 @@ OperationResult transaction::Methods::modifyLocal(
     }
 
     return res;  // must be ok!
-  };
+  }; // workForOneDocument
   ///////////////////////
 
   bool multiCase = newValue.isArray();
@@ -2033,7 +2067,7 @@ OperationResult transaction::Methods::modifyLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, errorCounter);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, errorCounter);
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -2049,7 +2083,7 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    return emptyResult(options.waitForSync);
+    return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
@@ -2162,7 +2196,7 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     if (!res.ok()) {
-      if (res.errorNumber() == TRI_ERROR_ARANGO_CONFLICT && !isBabies) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         buildDocumentIdentity(collection, resultBuilder, cid, key,
                               actualRevision, 0,
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -2321,7 +2355,7 @@ OperationResult transaction::Methods::removeLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, countErrorCodes);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
 
 /// @brief fetches all documents in a collection
@@ -2353,7 +2387,7 @@ OperationResult transaction::Methods::allLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
 
   pinData(cid);  // will throw when it fails
-  
+
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
@@ -2382,10 +2416,10 @@ OperationResult transaction::Methods::allLocal(
       return OperationResult(res);
     }
   }
-  
+
   resultBuilder.close();
 
-  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
+  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler());
 }
 
 /// @brief remove all documents in a collection
@@ -2449,7 +2483,7 @@ OperationResult transaction::Methods::truncateLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   try {
@@ -2612,7 +2646,6 @@ OperationResult transaction::Methods::countCoordinator(
   if (res != TRI_ERROR_NO_ERROR) {
     return OperationResult(res);
   }
-
   return buildCountResult(count, aggregate);
 }
 #endif
@@ -2628,7 +2661,7 @@ OperationResult transaction::Methods::countLocal(
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
     return OperationResult(lockResult);
   }
-  
+
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this);
@@ -2644,7 +2677,7 @@ OperationResult transaction::Methods::countLocal(
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
 
-  return OperationResult(Result(), resultBuilder.steal(), nullptr, false);
+  return OperationResult(Result(), resultBuilder.steal(), nullptr);
 }
 
 /// @brief Gets the best fitting index for an AQL condition.

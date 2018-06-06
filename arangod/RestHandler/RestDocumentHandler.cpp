@@ -116,6 +116,8 @@ bool RestDocumentHandler::createDocument() {
   opOptions.waitForSync = _request->parsedValue(StaticStrings::WaitForSyncString, false);
   opOptions.returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   opOptions.silent = _request->parsedValue(StaticStrings::SilentString, false);
+  opOptions.overwrite = _request->parsedValue(StaticStrings::OverWrite, false);
+  opOptions.returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false) && opOptions.overwrite;
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
@@ -124,7 +126,7 @@ bool RestDocumentHandler::createDocument() {
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
 
-  if (!isMultiple) {
+  if (!isMultiple && !opOptions.overwrite) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 

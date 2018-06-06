@@ -167,6 +167,8 @@ VERBOSE=0
 MSVC=
 ENTERPRISE_GIT_URL=
 
+ARCH="-DTARGET_ARCHITECTURE=nehalem"
+
 case "$1" in
     standard)
         CFLAGS="${CFLAGS} -O3"
@@ -253,7 +255,7 @@ while [ $# -gt 0 ];  do
             ;;
 
         --noopt)
-            CONFIGURE_OPTIONS+=(-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off)
+            ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
             shift
             ;;
 
@@ -275,6 +277,8 @@ while [ $# -gt 0 ];  do
              CONFIGURE_OPTIONS+=("v140,host=x64")
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
+             # MSVC doesn't know howto do our assembler in first place.
+             ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
              export _IsNativeEnvironment=true
              ;;
 
@@ -467,7 +471,7 @@ elif [ "$CLANG36" == 1 ]; then
     CXXFLAGS="${CXXFLAGS} -std=c++11"
 elif [ "${XCGCC}" = 1 ]; then
     USE_JEMALLOC=0
-    
+    ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
     BUILD_DIR="${BUILD_DIR}-$(basename "${TOOL_PREFIX}")"
 
     # tell cmake we're cross compiling:
@@ -537,9 +541,7 @@ if [ -n "$CXX" ]; then
     CONFIGURE_OPTIONS+=("-DCMAKE_CXX_COMPILER=${CXX}")
 fi
 
-if [ -z "${MSVC}" ]; then
-    # MSVC doesn't know howto do assembler in first place.
-    CONFIGURE_OPTIONS+=(-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off)
+if [ "${MSVC}" != "1" ]; then
     # on all other system cmake tends to be sluggish on finding strip.
     # workaround by presetting it:
     if test -z "${STRIP}"; then
@@ -575,6 +577,7 @@ if [ -z "${MSVC}" ]; then
 fi
 
 CONFIGURE_OPTIONS+=("${MAINTAINER_MODE}")
+CONFIGURE_OPTIONS+=("${ARCH}")
 
 if [ "${VERBOSE}" == 1 ];  then
     CONFIGURE_OPTIONS+=(-DVERBOSE=ON)

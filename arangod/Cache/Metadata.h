@@ -171,7 +171,7 @@ struct Metadata {
   void toggleResizing() noexcept { _resizing = !_resizing; }
 
  private:
-  mutable basics::ReadWriteSpinLock<64> _lock;
+  mutable basics::ReadWriteSpinLock _lock;
   bool _migrating;
   bool _resizing;
 };

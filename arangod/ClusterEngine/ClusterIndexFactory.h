@@ -40,9 +40,6 @@ class ClusterIndexFactory final : public IndexFactory {
   void prepareIndexes(
       LogicalCollection* col, velocypack::Slice const&,
       std::vector<std::shared_ptr<arangodb::Index>>&) const override;
-
-  // reset registered index factories/normalizers
-  void reset(IndexFactory const* other = nullptr);
 };
 
 }

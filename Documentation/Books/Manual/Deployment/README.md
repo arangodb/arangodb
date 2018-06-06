@@ -7,4 +7,4 @@ This _Chapter_ describes various possibilities to deploy ArangoDB:
 - [Master/Slave](MasterSlave/README.md)
 - [Active Failover](ActiveFailover/README.md)
 - [Cluster](Cluster/README.md)
-- [Multiple Datacenters](DC2DC.md) 
+- [Multiple Datacenters](DC2DC/README.md) 

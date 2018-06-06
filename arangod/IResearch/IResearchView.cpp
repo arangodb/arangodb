@@ -1307,7 +1307,7 @@ int IResearchView::insert(
     store = &(storeItr.first->second._store);
   }
 
-  TRI_ASSERT(store);
+  TRI_ASSERT(store && false == !store);
 
   FieldIterator body(doc, meta);
 
@@ -1375,7 +1375,7 @@ int IResearchView::insert(
     store = &(storeItr.first->second._store);
   }
 
-  TRI_ASSERT(store);
+  TRI_ASSERT(store && false == !store);
 
   auto begin = batch.begin();
   auto const end = batch.end();
@@ -1621,7 +1621,7 @@ int IResearchView::remove(
     store = &(storeItr.first->second);
   }
 
-  TRI_ASSERT(store);
+  TRI_ASSERT(store && false == !store);
 
   // ...........................................................................
   // if an exception occurs below than the transaction is droped including all
@@ -1922,8 +1922,8 @@ void IResearchView::verifyKnownCollections() {
   {
     static const arangodb::transaction::Options defaults;
     struct State final: public arangodb::TransactionState {
-      State(TRI_vocbase_t& vocbase)
-        : arangodb::TransactionState(vocbase, 0, defaults) {}
+      State(arangodb::CollectionNameResolver const& resolver)
+        : arangodb::TransactionState(resolver, 0, defaults) {}
       virtual arangodb::Result abortTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
@@ -1936,7 +1936,8 @@ void IResearchView::verifyKnownCollections() {
       virtual bool hasFailedOperations() const override { return false; }
     };
 
-    State state(vocbase());
+    arangodb::CollectionNameResolver resolver(vocbase());
+    State state(resolver);
 
     if (!appendKnownCollections(cids, *snapshot(state, true))) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)

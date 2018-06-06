@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionNode.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/BasicBlocks.h"
 #include "Aql/CalculationBlock.h"
@@ -33,8 +34,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
+#include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -109,7 +112,7 @@ void ExecutionNode::validateType(int type) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
 }
-  
+
 /// @brief add a dependency
 void ExecutionNode::addDependency(ExecutionNode* ep) {
   TRI_ASSERT(ep != nullptr);
@@ -428,7 +431,7 @@ void ExecutionNode::toVelocyPack(VPackBuilder& builder,
   }
 }
 
-/// @brief execution Node clone utility to be called by derives
+/// @brief execution Node clone utility to be called by derived classes
 void ExecutionNode::cloneHelper(ExecutionNode* other,
                                 bool withDependencies,
                                 bool withProperties) const {
@@ -436,8 +439,8 @@ void ExecutionNode::cloneHelper(ExecutionNode* other,
 
   if (plan == _plan) {
     // same execution plan for source and target
-    // now assign a new id to the cloned node, otherwise it will leak
-    // upon node registration and its meaning is ambiguous
+    // now assign a new id to the cloned node, otherwise it will fail
+    // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
   }
 
@@ -997,6 +1000,13 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       nrRegs.emplace_back(registerId);
 
       auto ep = ExecutionNode::castTo<InsertNode const*>(en);
+      if (ep->getOutVariableOld() != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.emplace(ep->getOutVariableOld()->id,
+                        VarInfo(depth, totalNrRegs));
+        totalNrRegs++;
+      }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -1189,7 +1199,7 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     en->setRegsToClear(std::move(regsToClear));
   }
 }
-  
+
 /// @brief replace a dependency, returns true if the pointer was found and
 /// replaced, please note that this does not delete oldNode!
 bool ExecutionNode::replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
@@ -1226,7 +1236,7 @@ bool ExecutionNode::replaceDependency(ExecutionNode* oldNode, ExecutionNode* new
   }
   return false;
 }
-  
+
 /// @brief remove a dependency, returns true if the pointer was found and
 /// removed, please note that this does not delete ep!
 bool ExecutionNode::removeDependency(ExecutionNode* ep) {
@@ -1260,7 +1270,7 @@ bool ExecutionNode::removeDependency(ExecutionNode* ep) {
 
   return false;
 }
-  
+
 /// @brief remove all dependencies for the given node
 void ExecutionNode::removeDependencies() {
   for (auto& x : _dependencies) {
@@ -1562,6 +1572,45 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
   }
 
   nodes.add("expressionType", VPackValue(_expression->typeString()));
+  
+  if ((flags & SERIALIZE_FUNCTIONS) &&
+      _expression->node() != nullptr) {
+    auto root = _expression->node();
+    if (root != nullptr) {
+      // enumerate all used functions, but report each function only once
+      std::unordered_set<std::string> functionsSeen;
+      nodes.add("functions", VPackValue(VPackValueType::Array));
+
+      Ast::traverseReadOnly(root, [&functionsSeen, &nodes](AstNode const* node) -> bool {
+        if (node->type == NODE_TYPE_FCALL) {
+          auto func = static_cast<Function const*>(node->getData());
+          if (functionsSeen.emplace(func->name).second) {
+            // built-in function, not seen before
+            nodes.openObject();
+            nodes.add("name", VPackValue(func->name));
+            nodes.add("isDeterministic", VPackValue(func->isDeterministic));
+            nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
+            nodes.add("usesV8", VPackValue(func->implementation == nullptr || (func->condition && !func->condition())));
+            nodes.close();
+          }
+        } else if (node->type == NODE_TYPE_FCALL_USER) {
+          auto func = node->getString();
+          if (functionsSeen.emplace(func).second) {
+            // user defined function, not seen before
+            nodes.openObject();
+            nodes.add("name", VPackValue(func));
+            nodes.add("isDeterministic", VPackValue(false));
+            nodes.add("canRunOnDBServer", VPackValue(false));
+            nodes.add("usesV8", VPackValue(true));
+            nodes.close();
+          }
+        }
+        return true;
+      });
+
+      nodes.close();
+    }
+  }
 
   // And close it
   nodes.close();
@@ -1629,7 +1678,14 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const
 }
 
 bool SubqueryNode::isConst() {
-  if (isModificationQuery() || !isDeterministic()) {
+  if (isModificationSubquery() || !isDeterministic()) {
+    return false;
+  }
+
+  if (mayAccessCollections() && _plan->getAst()->query()->isModificationQuery()) {
+    // a subquery that accesses data from a collection may not be const,
+    // even if itself does not modify any data. it is possible that the
+    // subquery is embedded into some outer loop that is modifying data
     return false;
   }
 
@@ -1651,6 +1707,45 @@ bool SubqueryNode::isConst() {
   }
 
   return true;
+}
+
+bool SubqueryNode::mayAccessCollections() {
+  if (_plan->getAst()->functionsMayAccessDocuments()) {
+    // if the query contains any calls to functions that MAY access any
+    // document, then we count this as a "yes"
+    return true;
+  }
+  
+  TRI_ASSERT(_subquery != nullptr);
+
+  // if the subquery contains any of these nodes, it may access data from
+  // a collection
+  std::vector<ExecutionNode::NodeType> const types = {
+#ifdef USE_IRESEARCH
+      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+#endif
+      ExecutionNode::ENUMERATE_COLLECTION,
+      ExecutionNode::INDEX,
+      ExecutionNode::INSERT,
+      ExecutionNode::UPDATE,
+      ExecutionNode::REPLACE,
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT,
+      ExecutionNode::TRAVERSAL,
+      ExecutionNode::SHORTEST_PATH
+  };
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+     
+  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
+  _subquery->walk(finder);
+  
+  if (!nodes.empty()) {
+    return true;
+  }
+
+  return false;
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1681,7 +1776,7 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
 }
 
 /// @brief whether or not the subquery is a data-modification operation
-bool SubqueryNode::isModificationQuery() const {
+bool SubqueryNode::isModificationSubquery() const {
   std::vector<ExecutionNode*> stack({_subquery});
 
   while (!stack.empty()) {
@@ -1954,7 +2049,7 @@ double ReturnNode::estimateCost(size_t& nrItems) const {
 void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
-  
+
   //And close it
   nodes.close();
 }

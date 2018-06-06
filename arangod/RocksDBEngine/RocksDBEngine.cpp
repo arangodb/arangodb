@@ -652,11 +652,11 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
 }
 
 std::unique_ptr<TransactionState> RocksDBEngine::createTransactionState(
-    TRI_vocbase_t& vocbase,
+    CollectionNameResolver const& resolver,
     transaction::Options const& options
 ) {
   return std::unique_ptr<TransactionState>(
-    new RocksDBTransactionState(vocbase, TRI_NewTickServer(), options)
+    new RocksDBTransactionState(resolver, TRI_NewTickServer(), options)
   );
 }
 

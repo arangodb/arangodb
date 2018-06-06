@@ -486,7 +486,7 @@ SECTION("BinaryIn") {
   // empty array
   {
     irs::Or expected;
-    auto& root = expected.add<irs::empty>();
+    expected.add<irs::empty>();
 
     assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox in [] RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['quick'].brown.fox in [] RETURN d", expected);
@@ -1819,7 +1819,7 @@ SECTION("BinaryIn") {
     irs::numeric_token_stream stream;
     stream.reset(2.);
     CHECK(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    stream.attributes().get<irs::term_attribute>();
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(1,3));
@@ -1946,7 +1946,7 @@ SECTION("BinaryNotIn") {
   // empty array
   {
     irs::Or expected;
-    auto& root = expected.add<irs::all>();
+    expected.add<irs::all>();
 
     assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox not in [] RETURN d", expected);
   }
@@ -3308,7 +3308,6 @@ SECTION("BinaryNotIn") {
     irs::numeric_token_stream stream;
     stream.reset(2.);
     CHECK(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(1,3));

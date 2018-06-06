@@ -255,7 +255,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
 
       addResponse(*response, nullptr);
     } else {
-      addErrorResponse(rest::ResponseCode::SERVER_ERROR, request->contentTypeResponse(),
+      addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, request->contentTypeResponse(),
                        messageId, TRI_ERROR_QUEUE_FULL, TRI_errno_string(TRI_ERROR_QUEUE_FULL));
     }
   } else {
