@@ -168,6 +168,10 @@ static OperationResult emptyResult(OperationOptions const& options) {
   getStateRegistrationCallbacks().emplace_back(callback);
 }
 
+/*static*/ void transaction::Methods::clearStateRegistrationCallbacks() {
+  getStateRegistrationCallbacks().clear();
+}
+
 /// @brief Get the field names of the used index
 std::vector<std::vector<std::string>>
 transaction::Methods::IndexHandle::fieldNames() const {
