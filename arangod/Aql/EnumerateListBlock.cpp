@@ -35,7 +35,9 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
     : ExecutionBlock(engine, en),
       _index(0),
       _docVecSize(0),
-      _inVarRegId(ExecutionNode::MaxRegisterId) {
+      _inVarRegId(ExecutionNode::MaxRegisterId),
+      _upstreamState(ExecutionState::HASMORE),
+      _inflight(0) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
 
   if (it == en->getRegisterPlan()->varInfo.end()) {
@@ -61,17 +63,20 @@ std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor
 
   // handle local data (if any)
   _index = 0;      // index in _inVariable for next run
+  _upstreamState = ExecutionState::HASMORE;
+  _inflight = 0;
 
   return res;
   DEBUG_END_BLOCK();  
 }
 
-AqlItemBlock* EnumerateListBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+EnumerateListBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   traceGetSomeBegin(atMost);
   if (_done) {
     traceGetSomeEnd(nullptr);
-    return nullptr;
+    return {ExecutionState::DONE, nullptr};
   }
 
   std::unique_ptr<AqlItemBlock> res;
@@ -84,14 +89,20 @@ AqlItemBlock* EnumerateListBlock::getSomeOld(size_t atMost) {
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlockOld(toFetch)) {
+      auto upstreamRes = ExecutionBlock::getBlock(toFetch);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        return {upstreamRes.first, nullptr};
+      }
+      _upstreamState = upstreamRes.first;
+      if (!upstreamRes.second) {
         _done = true;
         traceGetSomeEnd(nullptr);
-        return nullptr;
+        return {ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
     }
 
+    TRI_ASSERT(!_buffer.empty());
     // if we make it here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
 
@@ -161,24 +172,36 @@ AqlItemBlock* EnumerateListBlock::getSomeOld(size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
   traceGetSomeEnd(res.get());
-  return res.release();
+  _inflight = 0;
+  if (_upstreamState == ExecutionState::DONE && _buffer.empty()) {
+    _done = true;
+    return {ExecutionState::DONE, std::move(res)};
+  }
+  return {ExecutionState::HASMORE, std::move(res)};
   DEBUG_END_BLOCK();  
 }
 
-size_t EnumerateListBlock::skipSomeOld(size_t atMost) {
+std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   if (_done) {
-    return 0;
+    size_t skipped = _inflight;
+    _inflight = 0;
+    return {ExecutionState::DONE, skipped};
   }
 
-  size_t skipped = 0;
-
-  while (skipped < atMost) {
+  while (_inflight < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlockOld(toFetch)) {
+      auto upstreamRes = ExecutionBlock::getBlock(toFetch);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        return {upstreamRes.first, 0};
+      }
+      _upstreamState = upstreamRes.first;
+      if (!upstreamRes.second) {
         _done = true;
-        return skipped;
+        size_t skipped = _inflight;
+        _inflight = 0;
+        return {ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block
     }
@@ -209,10 +232,10 @@ size_t EnumerateListBlock::skipSomeOld(size_t atMost) {
     if (atMost < sizeInVar - _index) {
       // eat just enough of inVariable . . .
       _index += atMost;
-      skipped += atMost;
+      _inflight += atMost;
     } else {
       // eat the whole of the current inVariable and proceed . . .
-      skipped += (sizeInVar - _index);
+      _inflight += (sizeInVar - _index);
       _index = 0;
       if (++_pos == cur->size()) {
         returnBlock(cur);
@@ -221,7 +244,14 @@ size_t EnumerateListBlock::skipSomeOld(size_t atMost) {
       }
     }
   }
-  return skipped;
+
+  size_t skipped = _inflight;
+  _inflight = 0;
+  if (_upstreamState == ExecutionState::DONE && _buffer.empty()) {
+    _done = true;
+    return {ExecutionState::DONE, skipped};
+  }
+  return {ExecutionState::HASMORE, skipped};
   DEBUG_END_BLOCK();  
 }
 
