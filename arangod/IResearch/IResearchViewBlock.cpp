@@ -134,7 +134,9 @@ IResearchViewBlockBase::IResearchViewBlockBase(
     _execCtx(*_trx, _ctx),
     _hasMore(true), // has more data initially
     _volatileSort(true),
-    _volatileFilter(true) {
+    _volatileFilter(true),
+    _upstreamState(ExecutionState::HASMORE),
+    _inflight(0) {
   TRI_ASSERT(_trx);
 
   // add expression execution context
@@ -154,6 +156,8 @@ std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(
   }
 
   _hasMore = true; // has more data initially
+  _upstreamState = ExecutionState::HASMORE;
+  _inflight = 0;
 
   return res;
 
@@ -246,13 +250,14 @@ bool IResearchViewBlockBase::readDocument(
   );
 }
 
-AqlItemBlock* IResearchViewBlockBase::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+IResearchViewBlockBase::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
   if (_done) {
     traceGetSomeEnd(nullptr);
-    return nullptr;
+    return {ExecutionState::DONE, nullptr};
   }
 
   bool needMore;
@@ -268,9 +273,14 @@ AqlItemBlock* IResearchViewBlockBase::getSomeOld(size_t atMost) {
 
       if (_buffer.empty()) {
         size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlockOld(toFetch)) {
+        auto upstreamRes = ExecutionBlock::getBlock(toFetch);
+        if (upstreamRes.first == ExecutionState::WAITING) {
+          return {upstreamRes.first, nullptr};
+        }
+        _upstreamState = upstreamRes.first;
+        if (!upstreamRes.second) {
           _done = true;
-          return nullptr;
+          return {ExecutionState::DONE, nullptr};
         }
         _pos = 0;  // this is in the first block
         reset();
@@ -333,25 +343,37 @@ AqlItemBlock* IResearchViewBlockBase::getSomeOld(size_t atMost) {
 
   traceGetSomeEnd(res.get());
 
-  return res.release();
+  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
+    _done = true;
+    return {ExecutionState::DONE, std::move(res)};
+  }
+  return {ExecutionState::HASMORE, std::move(res)};
 
   DEBUG_END_BLOCK();
 }
 
-size_t IResearchViewBlockBase::skipSomeOld(size_t atMost) {
+std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  size_t skipped = 0;
 
   if (_done) {
-    return skipped;
+    size_t skipped = _inflight;
+    _inflight = 0;
+    return {ExecutionState::DONE, skipped};
   }
 
-  while (skipped < atMost) {
+  while (_inflight < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlockOld(toFetch)) {
+      auto upstreamRes = getBlock(toFetch);
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        return {upstreamRes.first, 0};
+      }
+      _upstreamState = upstreamRes.first;
+      if (!upstreamRes.second) {
         _done = true;
-        return skipped;
+        size_t skipped = _inflight;
+        _inflight = 0;
+        return {ExecutionState::DONE, skipped};
       }
       _pos = 0;  // this is in the first block
       reset();
@@ -360,9 +382,9 @@ size_t IResearchViewBlockBase::skipSomeOld(size_t atMost) {
     // if we get here, then _buffer.front() exists
     AqlItemBlock* cur = _buffer.front();
 
-    skipped += skip(atMost - skipped);
+    _inflight += skip(atMost - _inflight);
 
-    if (skipped < atMost) {
+    if (_inflight < atMost) {
       // not skipped enough re-initialize fetching of documents
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
@@ -377,10 +399,17 @@ size_t IResearchViewBlockBase::skipSomeOld(size_t atMost) {
   }
 
   // aggregate stats
-  _engine->_stats.scannedIndex += static_cast<int64_t>(skipped);
+  _engine->_stats.scannedIndex += static_cast<int64_t>(_inflight);
 
   // We skipped atLeast documents
-  return skipped;
+
+  size_t skipped = _inflight;
+  _inflight = 0;
+  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
+    _done = true;
+    return {ExecutionState::DONE, skipped};
+  }
+  return {ExecutionState::HASMORE, skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

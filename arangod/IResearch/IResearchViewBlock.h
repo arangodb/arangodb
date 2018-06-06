@@ -91,12 +91,10 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
     IResearchViewNode const&
   );
 
-  aql::AqlItemBlock* getSomeOld(size_t atMost) override final;
+  std::pair<aql::ExecutionState, std::unique_ptr<aql::AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip between atLeast and atMost returns the number actually skipped . . .
-  // will only return less than atLeast if there aren't atLeast many
-  // things to skip overall.
-  size_t skipSomeOld(size_t atMost) override final;
+  std::pair<aql::ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   // here we release our docs from this collection
   virtual std::pair<aql::ExecutionState, Result> initializeCursor(aql::AqlItemBlock* items, size_t pos) override;
@@ -125,6 +123,12 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   bool _hasMore;
   bool _volatileSort;
   bool _volatileFilter;
+
+  /// @brief The last returned state from a dependent node.
+  arangodb::aql::ExecutionState _upstreamState;
+
+  /// @brief The number of documents inflight if we hit a WAITING state.
+  size_t _inflight;
 }; // IResearchViewBlockBase
 
 ///////////////////////////////////////////////////////////////////////////////
