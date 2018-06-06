@@ -94,3 +94,42 @@ router.get('/users', function (req, res) {
   res.send(users);
 })
 ```
+
+<!--
+
+# Queries
+
+Use `query` helper to execute queries and automatically escape bindvars.
+
+Collection objects can be passed directly so you don't have to worry about collection names.
+
+Dynamic snippets can be escaped with `aql.literal` but create injection risk.
+
+## Don't repeat yourself
+
+Stick `query` calls in helper functions, e.g.:
+```js
+'use strict';
+const users = module.context.collection('users');
+exports.getUserEmails = (activeOnly = true) => query`
+  FOR u IN ${users}
+  ${aql.literal(activeOnly ? 'FILTER u.active' : '')}
+  RETURN u.email
+`.toArray();
+```
+
+Easier to create tests this way. Can also create folder for them:
+```
+api/
+  index.js
+  ...
+queries/
+  getUserEmails.js
+```
+
+## Low-level query access
+
+Use `aql` template string to create query objects, use `db._query` to execute.
+Almost never necessary. Avoid if possible.
+
+-->

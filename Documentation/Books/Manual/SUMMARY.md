@@ -136,7 +136,7 @@
     * [Access from browser](Foxx/Guides/Browser.md)
     * [Writing tests](Foxx/Guides/Testing.md)
     * [User management](Foxx/Guides/Users.md)
-    * [Accessing files](Foxx/Guides/Files.md)
+    * [Working with files](Foxx/Guides/Files.md)
   * [Reference](Foxx/Reference/README.md)
     * [Service manifest](Foxx/Reference/Manifest.md)
     * [Service context](Foxx/Reference/Context.md)

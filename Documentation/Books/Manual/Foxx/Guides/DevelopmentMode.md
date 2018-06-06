@@ -12,3 +12,14 @@ Once enabled the service's source files and manifest will be re-evaluated, and t
 Also note that if you are serving static files as part of your service, accessing these files from a browser may also trigger a re-deployment of the service. Finally, making HTTP requests to a service running in development mode from within the service (i.e. using the `@arangodb/request` module to access the service itself) is probably not a good idea either.
 
 Beware of deleting the database the service is deployed on: it will erase the source files of the service along with the collections. You should backup the code you worked on in development before doing that to avoid losing your progress.
+
+<!--
+# Development mode
+
+Enable if you want service to reload from disk every time you access it. Consider using foxx-cli instead. Keep in mind it's a bad idea to use the service folder as your workspace as you should consider it extremely volatile (cluster will hurt you).
+
+## In a cluster
+
+Service will propagate from coordinator devmode was disabled on. Beware.
+
+-->

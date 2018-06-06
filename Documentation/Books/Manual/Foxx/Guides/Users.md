@@ -132,3 +132,39 @@ router.post('/signup', function (req, res) {
 }).required(), 'Credentials')
 .description('Creates a new user and logs them in.');
 ```
+
+<!--
+# Auth
+
+Naive solution: use `@arangodb/foxx/auth` for simple hashing.
+
+Alternative: [OAuth]() or [OAuth 2]() for e.g. GitHub/Facebook.
+
+Use [sessions]() to track active user
+```js
+router.post('/login', (req, res) => {
+  const user = verifyCredentials(req.body.username, req.body.password)
+  if (user) {
+    req.session.uid = user._key;
+    req.json({success: true});
+  } else {
+    res.throw('unauthorized');
+  }
+})
+.body(joi.object().keys({
+  username: joi.string(),
+  password: joi.string()
+}));
+```
+
+Stronger crypto: PBKDF2
+
+Or use `request` to delegate
+
+## Use ArangoDB auth
+
+Probably a bad idea unless already giving users direct low-level access via ArangoDB permissions.
+
+Use `req.arangoUser` to see if logged in and who.
+
+-->
