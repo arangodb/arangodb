@@ -32,8 +32,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-ShellFeature::ShellFeature(
-    application_features::ApplicationServer* server, int* result)
+ShellFeature::ShellFeature(application_features::ApplicationServer* server,
+                           int* result)
     : ApplicationFeature(server, "Shell"),
       _jslint(),
       _result(result),
@@ -123,15 +123,18 @@ void ShellFeature::validateOptions(
   }
 
   if (1 < n) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "you cannot specify more than one type ("
-             << "jslint, execute, execute-string, check-syntax, unit-tests)";
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "you cannot specify more than one type ("
+        << "jslint, execute, execute-string, check-syntax, unit-tests)";
   }
 }
 
 void ShellFeature::start() {
   *_result = EXIT_FAILURE;
 
-  V8ShellFeature* shell = application_features::ApplicationServer::getFeature<V8ShellFeature>("V8Shell");
+  V8ShellFeature* shell =
+      application_features::ApplicationServer::getFeature<V8ShellFeature>(
+          "V8Shell");
 
   bool ok = false;
 

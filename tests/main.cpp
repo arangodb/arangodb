@@ -73,6 +73,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  ARGV0 = subargv[0];
   arangodb::Logger::setShowLineNumber(logLineNumbers);
   arangodb::Logger::initialize(false);
   arangodb::LogAppender::addAppender("-"); 
