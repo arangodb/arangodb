@@ -231,10 +231,10 @@ class RemoteBlock final : public ExecutionBlock {
   int shutdown(int) override final;
 
   /// @brief getSome
-  AqlItemBlock* getSomeOld(size_t atMost) override final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   /// @brief skipSome
-  size_t skipSomeOld(size_t atMost) override final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   /// @brief hasMore
   bool hasMore() override final;

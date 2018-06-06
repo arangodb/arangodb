@@ -1039,19 +1039,14 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
     // TODO check for timeout!
     // We have an open result still.
     // Result is the response which is an object containing the ErrorCode
-    StringBuffer const& responseBodyBuf(_lastResponse->getBody());
-    {
-      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-          responseBodyBuf.c_str(), responseBodyBuf.length());
-      _lastResponse.reset();
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
+    _lastResponse.reset();
 
-      VPackSlice slice = builder->slice();
-    
-      if (slice.hasKey("code")) {
-        return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
-      }
-      return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
+    VPackSlice slice = responseBodyBuilder->slice();
+    if (slice.hasKey("code")) {
+      return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
     }
+    return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
 
   VPackOptions options(VPackOptions::Defaults);
@@ -1076,10 +1071,16 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
   auto res = sendAsyncRequest(
       rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
 
+  // TODO Check if we need to enhance this response!
+  // throwExceptionAfterBadSyncRequest(res.get(), false);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+  }
+
+  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
-  
-  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
 bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
@@ -1146,44 +1147,81 @@ int RemoteBlock::shutdown(int errorCode) {
 }
 
 /// @brief getSome
-AqlItemBlock* RemoteBlock::getSomeOld(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   
   traceGetSomeBegin(atMost);
+
+  if (_lastResponse != nullptr) {
+    // TODO check for timeout!
+    // We have an open result still.
+    // Result is the response which will be a serialized AqlItemBlock
+
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
+    _lastResponse.reset();
+    VPackSlice responseBody = responseBodyBuilder->slice();
+
+    if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
+      traceGetSomeEnd(nullptr);
+      return {ExecutionState::DONE, nullptr};
+    }
+
+    auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
+    traceGetSomeEnd(r.get());
+    return {ExecutionState::HASMORE, std::move(r)};
+  }
+  
+  // We need to send a request here
   VPackBuilder builder;
   builder.openObject();
   builder.add("atMost", VPackValue(atMost));
   builder.close();
 
-  std::string bodyString(builder.slice().toJson());
+  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  std::shared_ptr<VPackBuilder> responseBodyBuilder =
-      res->result->getBodyVelocyPack();
-  VPackSlice responseBody = responseBodyBuilder->slice();
-
-  if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
+  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/getSome/",
+                              bodyString);
+  // TODO Check if we need to enhance this response!
+  // throwExceptionAfterBadSyncRequest(res.get(), false);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
 
-  auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
-  traceGetSomeEnd(r.get());
-  return r.release();
+  return {ExecutionState::WAITING, nullptr};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
 /// @brief skipSome
-size_t RemoteBlock::skipSomeOld(size_t atMost) {
+std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+
+  if (_lastResponse != nullptr) {
+    // TODO check for timeout!
+    // We have an open result still.
+    // Result is the response which will be a serialized AqlItemBlock
+
+    std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
+    _lastResponse.reset();
+    VPackSlice slice = responseBodyBuilder->slice();
+
+    if (!slice.hasKey(StaticStrings::Error) ||
+        slice.get(StaticStrings::Error).getBoolean()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+    }
+    size_t skipped = 0;
+    if (slice.hasKey("skipped")) {
+      skipped = slice.get("skipped").getNumericValue<size_t>();
+    }
+    // TODO Check if we can get better with HASMORE/DONE
+    if (skipped == 0) {
+      return {ExecutionState::DONE, skipped};
+    }
+    return {ExecutionState::HASMORE, skipped};
+  }
+
   // For every call we simply forward via HTTP
 
   VPackBuilder builder;
@@ -1191,29 +1229,19 @@ size_t RemoteBlock::skipSomeOld(size_t atMost) {
   builder.add("atMost", VPackValue(atMost));
   builder.close();
 
-  std::string bodyString(builder.slice().toJson());
+  auto bodyString = std::make_shared<std::string const>(builder.slice().toJson());
 
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-        responseBodyBuf.c_str(), responseBodyBuf.length());
-    VPackSlice slice = builder->slice();
-
-    if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-    }
-    size_t skipped = 0;
-    if (slice.hasKey("skipped")) {
-      skipped = slice.get("skipped").getNumericValue<size_t>();
-    }
-    return skipped;
+  auto res = sendAsyncRequest(rest::RequestType::PUT, "/_api/aql/skipSome/",
+                              bodyString);
+  // TODO Check if we need to enhance this response!
+  // throwExceptionAfterBadSyncRequest(res.get(), false);
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
+
+  return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+
+
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
