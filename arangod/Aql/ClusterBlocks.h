@@ -356,9 +356,25 @@ class SortingGatherBlock final : public ExecutionBlock {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
+
+  /**
+   * @brief Fills all _gatherBlockBuffer entries. Is repeatable during WAITING.
+   *
+   *
+   * @param atMost The amount of data requested per block.
+   * @param nonEmptyIndex an index of a non-empty GatherBlock buffer
+   *
+   * @return Will return {WAITING, 0} if it had to request new data from upstream.
+   *         If everything is in place: all buffers are either filled, or the upstream
+   *         block is DONE. Will return {DONE, SUM(_gatherBlockBuffer)} on success.
+   */
+  std::pair<ExecutionState, size_t> fillBuffers(size_t atMost, size_t& nonEmptyIndex);
+ 
   /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
   /// non-simple case only
   std::pair<ExecutionState, bool> getBlock(size_t i, size_t atMost);
+
+ private:
 
   /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
   /// separately
@@ -373,16 +389,6 @@ class SortingGatherBlock final : public ExecutionBlock {
 
   /// @brief sorting strategy
   std::unique_ptr<SortingStrategy> _strategy;
-
-  /// @brief capture available rows across waiting steps
-  size_t _available;
-
-  /// @brief capture the index of a non-empty buffer
-  size_t _index;
-
-  /// @brief capture dependency position
-  size_t _atDep;
-
 }; // SortingGatherBlock
 
 }  // namespace arangodb::aql

@@ -1418,10 +1418,7 @@ std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) 
 SortingGatherBlock::SortingGatherBlock(
     ExecutionEngine& engine,
     GatherNode const& en)
-  : ExecutionBlock(&engine, &en),
-    _available(0),
-    _index(0),
-    _atDep(0) {
+  : ExecutionBlock(&engine, &en) {
   TRI_ASSERT(!en.elements().empty());
 
   switch (en.sortMode()) {
@@ -1512,9 +1509,6 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _strategy->reset();
 
   _done = _dependencies.empty();
-  _available = 0;
-  _index = 0;
-  _atDep = 0;
 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
@@ -1558,6 +1552,46 @@ bool SortingGatherBlock::hasMore() {
   DEBUG_END_BLOCK();
 }
 
+/**
+ * @brief Fills all _gatherBlockBuffer entries. Is repeatable during WAITING.
+ *
+ *
+ * @param atMost The amount of data requested per block.
+ * @param nonEmptyIndex an index of a non-empty GatherBlock buffer
+ *
+ * @return Will return {WAITING, 0} if it had to request new data from upstream.
+ *         If everything is in place: all buffers are either filled, or the upstream
+ *         block is DONE. Will return {DONE, SUM(_gatherBlockBuffer)} on success.
+ */
+std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(size_t atMost, size_t& nonEmptyIndex) {
+  size_t available = 0;
+  
+  ExecutionState state;
+  bool foundBlock;
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    if (_gatherBlockBuffer[i].empty()) {
+      std::tie(state, foundBlock) = getBlock(i, atMost);
+      if (state == ExecutionState::WAITING) {
+        return {ExecutionState::WAITING, 0};
+      }
+      if (foundBlock) {
+        _gatherBlockPos[i] = std::make_pair(i, 0);
+      }
+    }
+
+    auto const& cur = _gatherBlockBuffer[i];
+    if (!cur.empty()) {
+      nonEmptyIndex = i;
+      TRI_ASSERT(cur[0]->size() >= _gatherBlockPos[i].second);
+      available += cur[0]->size() - _gatherBlockPos[i].second;
+      for (size_t j = 1; j < cur.size(); ++j) {
+        available += cur[j]->size();
+      }
+    }
+  }
+  return {ExecutionState::DONE, available};
+}
+
 /// @brief getSome
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 SortingGatherBlock::getSome(size_t atMost) {
@@ -1578,45 +1612,31 @@ SortingGatherBlock::getSome(size_t atMost) {
   // pull more blocks from dependencies . . .
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
-
-  for (; _atDep < _dependencies.size(); _atDep++) {
-    if (_gatherBlockBuffer[_atDep].empty()) {
-      auto resPair = getBlock(_atDep, atMost);
-      if (resPair.first == ExecutionState::WAITING) {
-        return {resPair.first, nullptr};
-      }
-      if (resPair.second) {
-        _index = _atDep;
-        _gatherBlockPos[_atDep] = std::make_pair(_atDep, 0);
-      }
-    } else {
-      _index = _atDep;
-    }
-
-    auto const& cur = _gatherBlockBuffer[_atDep];
-    if (!cur.empty()) {
-      TRI_ASSERT(cur[0]->size() >= _gatherBlockPos[_atDep].second);
-      _available += cur[0]->size() - _gatherBlockPos[_atDep].second;
-      for (size_t j = 1; j < cur.size(); ++j) {
-        _available += cur[j]->size();
-      }
+  
+  size_t available = 0;
+  size_t nonEmptyIndex = 0;
+  {
+    ExecutionState blockState;
+    std::tie(blockState, available) = fillBuffers(atMost, nonEmptyIndex);
+    if (blockState == ExecutionState::WAITING) {
+      return {blockState, nullptr};
     }
   }
 
-  if (_available == 0) {
+  if (available == 0) {
     _done = true;
     traceGetSomeEnd(nullptr);
     return {ExecutionState::DONE, nullptr};
   }
 
-  size_t toSend = (std::min)(_available, atMost);  // nr rows in outgoing block
+  size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
 
   // the following is similar to AqlItemBlock's slice method . . .
   std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
   cache.resize(_gatherBlockBuffer.size());
 
-  TRI_ASSERT(!_gatherBlockBuffer.at(_index).empty());
-  AqlItemBlock* example = _gatherBlockBuffer[_index].front();
+  TRI_ASSERT(!_gatherBlockBuffer.at(nonEmptyIndex).empty());
+  AqlItemBlock* example = _gatherBlockBuffer[nonEmptyIndex].front();
   size_t nrRegs = example->getNrRegs();
 
   // automatically deleted if things go wrong
@@ -1675,6 +1695,7 @@ SortingGatherBlock::getSome(size_t atMost) {
         while(true) {
           auto res = getBlock(val.first, atMost);
           if (res.first == ExecutionState::WAITING) {
+            LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are actively blocking a thread, needs to be fixed";
             _engine->getQuery()->tempWaitForAsyncResponse();
           } else { 
             cache[val.first].clear();
@@ -1689,6 +1710,7 @@ SortingGatherBlock::getSome(size_t atMost) {
   }
 
   traceGetSomeEnd(res.get());
+  // Maybe we can optimize here DONE/HASMORE
   return {ExecutionState::HASMORE, std::move(res)};
 
   // cppcheck-suppress style
@@ -1706,33 +1728,22 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
   // the non-simple case . . .
   TRI_ASSERT(_dependencies.size() != 0);
 
-  // pull more blocks from dependencies . . .
-  for (; _atDep < _dependencies.size(); _atDep++) {
-    if (_gatherBlockBuffer[_atDep].empty()) {
-      auto res = getBlock(_atDep, atMost);
-      if (res.first == ExecutionState::WAITING) {
-        return {ExecutionState::WAITING, 0};
-      }
-      if (res.second) {
-        _gatherBlockPos[_atDep] = std::make_pair(_atDep, 0);
-      }
-    }
-
-    auto cur = _gatherBlockBuffer[_atDep];
-    if (!cur.empty()) {
-      _available += cur[0]->size() - _gatherBlockPos[_atDep].second;
-      for (size_t j = 1; j < cur.size(); j++) {
-        _available += cur[j]->size();
-      }
+  size_t available = 0;
+  size_t nonEmptyIndex = 0; // Unused
+  {
+    ExecutionState blockState;
+    std::tie(blockState, available) = fillBuffers(atMost, nonEmptyIndex);
+    if (blockState == ExecutionState::WAITING) {
+      return {blockState, 0};
     }
   }
 
-  if (_available == 0) {
+  if (available == 0) {
     _done = true;
     return {ExecutionState::DONE, 0};
   }
 
-  size_t const skipped = (std::min)(_available, atMost);  // nr rows in outgoing block
+  size_t const skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   _strategy->prepare(_gatherBlockPos);
 
@@ -1752,6 +1763,7 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
     }
   }
 
+  // Maybe we can optimize here DONE/HASMORE
   return {ExecutionState::HASMORE, skipped};
 
   // cppcheck-suppress style
