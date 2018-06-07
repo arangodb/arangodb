@@ -25,9 +25,9 @@
 
 #include "Basics/Common.h"
 
+#include <asio/buffer.hpp>
 #include <asio/io_context.hpp>
 #include <asio/io_context_strand.hpp>
-#include <asio/buffer.hpp>
 
 #include "Basics/StringBuffer.h"
 //#include "Basics/asio-helper.h"
@@ -35,8 +35,7 @@
 
 namespace arangodb {
 
-typedef std::function<void(const asio::error_code& ec,
-                           std::size_t transferred)>
+typedef std::function<void(const asio::error_code& ec, std::size_t transferred)>
     AsyncHandler;
 
 class Socket {
@@ -46,9 +45,9 @@ class Socket {
   Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
   virtual ~Socket() {}
-  
+
   bool isEncrypted() const { return _encrypted; }
-  bool handshake()  {
+  bool handshake() {
     if (!_encrypted || _handshakeDone) {
       return true;
     } else if (sslHandshake()) {
@@ -57,13 +56,13 @@ class Socket {
     }
     return false;
   }
-  
+
   virtual std::string peerAddress() const = 0;
   virtual int peerPort() const = 0;
-  
+
   /// Enable non-blocking mode
   virtual void setNonBlocking(bool) = 0;
-  
+
   virtual size_t writeSome(basics::StringBuffer* buffer,
                            asio::error_code& ec) = 0;
   virtual void asyncWrite(asio::mutable_buffers_1 const& buffer,
@@ -75,8 +74,9 @@ class Socket {
                          AsyncHandler const& handler) = 0;
 
   virtual void close(asio::error_code& ec) = 0;
-  
-  void shutdown(asio::error_code& ec, bool mustCloseSend, bool mustCloseReceive) {
+
+  void shutdown(asio::error_code& ec, bool mustCloseSend,
+                bool mustCloseReceive) {
     if (mustCloseSend) {
       this->shutdownSend(ec);
       if (ec && ec != asio::error::not_connected) {
@@ -102,8 +102,8 @@ class Socket {
  private:
   bool const _encrypted;
   bool _handshakeDone = false;
-  
-public:
+
+ public:
   /// Strand to ensure the connection's handlers are not called concurrently.
   asio::io_context::strand strand;
 };

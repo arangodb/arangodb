@@ -1459,7 +1459,10 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 }
 
 /// @brief injects bind parameters into the AST
-void Ast::injectBindParameters(BindParameters& parameters) {
+void Ast::injectBindParameters(
+    BindParameters& parameters,
+    arangodb::CollectionNameResolver const& resolver
+) {
   auto& p = parameters.get();
 
   auto func = [&](AstNode* node) -> AstNode* {
@@ -1499,9 +1502,6 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           );
         }
 
-        // FIXME use external resolver
-        arangodb::CollectionNameResolver resolver(_query->vocbase());
-
         switch (node->getMemberUnchecked(0)->type) {
          case NODE_TYPE_COLLECTION: {
           auto dataSource = resolver.getCollection(value.copyString());
@@ -1522,20 +1522,21 @@ void Ast::injectBindParameters(BindParameters& parameters) {
 
           arangodb::StringRef paramRef(param);
 
-
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER
                 && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
               isWriteCollection = true;
+
               break;
             }
           }
 
-          node = createNodeCollection(name, isWriteCollection
-                                    ? AccessMode::Type::WRITE
-                                    : AccessMode::Type::READ);
+          node = createNodeCollection(
+            name,
+            isWriteCollection ? AccessMode::Type::WRITE : AccessMode::Type::READ
+          );
 
           if (isWriteCollection) {
             // must update AST info now for all nodes that contained this parameter
