@@ -145,7 +145,7 @@ class RemoteNode final : public ExecutionNode {
 };
 
 /// @brief class ScatterNode
-class ScatterNode : public ExecutionNode{
+class ScatterNode : public ExecutionNode {
  public:
   /// @brief constructor with an id
   ScatterNode(ExecutionPlan* plan, size_t id)

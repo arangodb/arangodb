@@ -272,7 +272,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   // set count flag for final RETURN node
   if (plan->_root->getType() == ExecutionNode::RETURN) {
-    static_cast<ReturnNode*>(plan->_root)->setCount();
+    ExecutionNode::castTo<ReturnNode*>(plan->_root)->setCount();
   }
 
   plan->findVarUsage();
