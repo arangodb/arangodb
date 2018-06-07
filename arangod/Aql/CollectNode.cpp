@@ -227,9 +227,7 @@ void CollectNode::getVariablesUsedHere(
     vars.emplace(p.second);
   }
   for (auto const& p : _aggregateVariables) {
-    if (Aggregator::requiresInput(p.second.second)) {
-      vars.emplace(p.second.first);
-    }
+    vars.emplace(p.second.first);
   }
 
   if (_expressionVariable != nullptr) {

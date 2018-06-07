@@ -702,6 +702,7 @@ AstNode* Ast::createNodeTernaryOperator(AstNode const* condition,
 }
 
 /// @brief create an AST attribute access node
+/// note that the caller must make sure that char* data remains valid!
 AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed,
                                         char const* attributeName,
                                         size_t nameLength) {
@@ -2029,8 +2030,7 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
       if (attributeName == nullptr) {
         // we haven't seen an attribute access directly before...
         // this may have been an access to an indexed property, e.g value[0] or
-        // a
-        // reference to the complete value, e.g. FUNC(value)
+        // a reference to the complete value, e.g. FUNC(value)
         // note that this is unsafe to optimize this away
         isSafeForOptimization = false;
         return;
@@ -2066,128 +2066,55 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
 
   return result;
 }
-
-bool Ast::populateSingleAttributeAccess(AstNode const* node,
-                                        Variable const* variable,
-                                        std::vector<std::string>& attributeName) {
-  bool result = true;
-
-  auto doNothingVisitor = [](AstNode const* node, void* data) -> void {};
-
-  attributeName.clear();
-  std::vector<std::string> attributePath;
-          
-  auto visitor = [&](AstNode const* node, void* data) -> void {
-    if (node == nullptr || !result) {
-      return;
-    }
-
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attributePath.emplace_back(node->getString());
-      return;
-    }
-
-    if (node->type == NODE_TYPE_REFERENCE) {
-      // reference to a variable
-      auto v = static_cast<Variable const*>(node->getData());
-
-      if (v == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      if (v->id == variable->id) {
-        // the variable we are looking for
-        if (attributeName.empty()) {
-          // haven't seen an attribute before. so store the attribute we got
-          attributeName = std::move(attributePath);
-        } else {
-          // have seen some attribute before. now check if it's the same attribute
-          size_t const n = attributeName.size(); 
-          if (n != attributePath.size()) {
-            // different attributes
-            result = false;
-          } else {
-            for (size_t i = 0; i < n; ++i) {
-              if (attributePath[i] != attributeName[i]) {
-                // different attributes
-                result = false;
-                break;
-              }
-            }
-          }
-        }
-      }
-      // fall-through
-    }
-
-    attributePath.clear();
-  };
-
-  traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr);
-  if (attributeName.empty()) {
-    return false;
-  }
-
-  return result;
-}
-
-/// @brief checks if the only references to the specified variable are
-/// attribute accesses to the specified attribute. all other variables
-/// used in the expression are ignored and will not influence the result!
-bool Ast::variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
-                                                   Variable const* variable,
-                                                   std::vector<std::string> const& attributeName) {
-  bool result = true;
-
+  
+/// @brief determines the top-level attributes referenced in an expression for the
+/// specified out variable
+bool Ast::getReferencedAttributes(AstNode const* node, 
+                                  Variable const* variable,
+                                  std::unordered_set<std::string>& vars) {
   auto doNothingVisitor = [](AstNode const* node, void* data) -> void {};
 
   // traversal state
-  std::vector<std::string> attributePath;
-          
+  char const* attributeName = nullptr;
+  size_t nameLength = 0;
+  bool isSafeForOptimization = true;
+
   auto visitor = [&](AstNode const* node, void* data) -> void {
-    if (node == nullptr || !result) {
+    if (node == nullptr || !isSafeForOptimization) {
       return;
     }
 
     if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attributePath.emplace_back(node->getString());
+      attributeName = node->getStringValue();
+      nameLength = node->getStringLength();
       return;
     }
 
     if (node->type == NODE_TYPE_REFERENCE) {
       // reference to a variable
       auto v = static_cast<Variable const*>(node->getData());
-
-      if (v == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      if (v->id == variable->id) {
-        // the variable we are looking for
-        if (attributePath.size() != attributeName.size()) {
-          // different attribute
-          result = false;
-        } else {
-          size_t const n = attributeName.size(); 
-          TRI_ASSERT(n == attributePath.size());
-          for (size_t i = 0; i < n; ++i) {
-            if (attributePath[i] != attributeName[i]) {
-              // different attributes
-              result = false;
-              break;
-            }
-          }
+      if (v == variable) {
+        if (attributeName == nullptr) {
+          // we haven't seen an attribute access directly before...
+          // this may have been an access to an indexed property, e.g value[0] or
+          // a reference to the complete value, e.g. FUNC(value)
+          // note that this is unsafe to optimize this away
+          isSafeForOptimization = false;
+          return;
         }
+        // insert attributeName only
+        vars.emplace(std::string(attributeName, nameLength));
       }
+
       // fall-through
     }
 
-    attributePath.clear();
+    attributeName = nullptr;
+    nameLength = 0;
   };
 
   traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr);
-
-  return result;
+  return isSafeForOptimization;
 }
 
 /// @brief recursively clone a node

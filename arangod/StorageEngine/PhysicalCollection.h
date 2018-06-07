@@ -179,9 +179,7 @@ class PhysicalCollection {
                          OperationOptions& options,
                          TRI_voc_tick_t& resultMarkerTick, bool lock,
                          TRI_voc_rid_t& prevRev,
-                         ManagedDocumentResult& previous,
-                         arangodb::velocypack::Slice const fromSlice,
-                         arangodb::velocypack::Slice const toSlice) = 0;
+                         ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice const slice,
@@ -203,17 +201,17 @@ class PhysicalCollection {
   virtual void figuresSpecific(
       std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
 
+  bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
+
   // SECTION: Document pre commit preperation
 
   /// @brief new object for insert, value must have _key set correctly.
-  int newObjectForInsert(transaction::Methods* trx,
-                         velocypack::Slice const& value,
-                         velocypack::Slice const& fromSlice,
-                         velocypack::Slice const& toSlice,
-                         LocalDocumentId const& documentId,
-                         bool isEdgeCollection, velocypack::Builder& builder,
-                         bool isRestore,
-                         TRI_voc_rid_t& revisionId) const;
+  Result newObjectForInsert(transaction::Methods* trx,
+                            velocypack::Slice const& value,
+                            LocalDocumentId const& documentId,
+                            bool isEdgeCollection, velocypack::Builder& builder,
+                            bool isRestore,
+                            TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
@@ -223,23 +221,21 @@ class PhysicalCollection {
                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief merge two objects for update
-  void mergeObjectsForUpdate(transaction::Methods* trx,
+  Result mergeObjectsForUpdate(transaction::Methods* trx,
+                               velocypack::Slice const& oldValue,
+                               velocypack::Slice const& newValue,
+                               bool isEdgeCollection, LocalDocumentId const& documentId,
+                               bool mergeObjects, bool keepNull,
+                               velocypack::Builder& builder,
+                               bool isRestore, TRI_voc_rid_t& revisionId) const;
+
+  /// @brief new object for replace
+  Result newObjectForReplace(transaction::Methods* trx,
                              velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
                              bool isEdgeCollection, LocalDocumentId const& documentId,
-                             bool mergeObjects, bool keepNull,
                              velocypack::Builder& builder,
                              bool isRestore, TRI_voc_rid_t& revisionId) const;
-
-  /// @brief new object for replace
-  void newObjectForReplace(transaction::Methods* trx,
-                           velocypack::Slice const& oldValue,
-                           velocypack::Slice const& newValue,
-                           velocypack::Slice const& fromSlice,
-                           velocypack::Slice const& toSlice,
-                           bool isEdgeCollection, LocalDocumentId const& documentId,
-                           velocypack::Builder& builder,
-                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found) const;

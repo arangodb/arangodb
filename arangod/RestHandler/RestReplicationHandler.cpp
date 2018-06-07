@@ -586,7 +586,7 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN,
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN,
                   "shutting down server");
     return;
   }
@@ -2284,7 +2284,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   if (stopping) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_SHUTTING_DOWN);
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return;
   }
 

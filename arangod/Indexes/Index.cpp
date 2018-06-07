@@ -852,24 +852,23 @@ void Index::warmup(arangodb::transaction::Methods*,
   // it has to explicitly implement it.
 }
 
-std::pair<bool,double> Index::updateClusterEstimate(double defaultValue) {
-  // try to receive an selectivity estimate for the index
+std::pair<bool, double> Index::updateClusterEstimate(double defaultValue) {
+  // try to receive a selectivity estimate for the index
   // from indexEstimates stored in the logical collection.
   // the caller has to guarantee that the _collection is valid.
   // on the coordinator _collection is not always vaild!
+  std::pair<bool, double> rv(false, defaultValue);
 
-  std::pair<bool,double> rv(false,defaultValue);
-
-  auto estimates = _collection->clusterIndexEstimates();
+  auto estimates = _collection->clusterIndexEstimates(true);
   auto found = estimates.find(std::to_string(_iid));
 
-  if( found != estimates.end()){
+  if ( found != estimates.end()) {
     rv.first = true;
     rv.second = found->second;
     _clusterSelectivity = rv.second;
   }
   return rv;
-};
+}
 
 /// @brief append the index description to an output stream
 std::ostream& operator<<(std::ostream& stream, arangodb::Index const* index) {

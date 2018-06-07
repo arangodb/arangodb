@@ -52,28 +52,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // "options" for the options, all exactly as in AQL_EXECUTEJSON.
   void createQueryFromVelocyPack();
 
-  // POST method for /_api/aql/parse
-  // The body is a Json with attributes "query" for the query string,
-  // "parameters" for the query parameters and "options" for the options.
-  // This does the same as AQL_PARSE with exactly these parameters and
-  // does not keep the query hanging around.
-  void parseQuery();
-
-  // POST method for /_api/aql/explain
-  // The body is a Json with attributes "query" for the query string,
-  // "parameters" for the query parameters and "options" for the options.
-  // This does the same as AQL_EXPLAIN with exactly these parameters and
-  // does not keep the query hanging around.
-  void explainQuery();
-
-  // POST method for /_api/aql/query
-  // The body is a Json with attributes "query" for the query string,
-  // "parameters" for the query parameters and "options" for the options.
-  // This sets up the query as as AQL_EXECUTE would, but does not use
-  // the cursor API yet. Rather, the query is stored in the query registry
-  // for later use by PUT requests.
-  void createQueryFromString();
-
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "getSome" or "skip".

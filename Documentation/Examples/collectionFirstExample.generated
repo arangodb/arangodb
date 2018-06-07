@@ -2,6 +2,6 @@ arangosh&gt; db.users.firstExample(<span class="hljs-string">"name"</span>, <spa
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"15547"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/15547"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WtculJS--_"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_W6lFZ3O--D"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
 }
