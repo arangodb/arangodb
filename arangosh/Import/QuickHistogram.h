@@ -69,7 +69,12 @@ class QuickHistogram : public arangodb::Thread {
     if (_threadRunning.load()) {
       CONDITION_LOCKER(guard, _condvar);
 
-      _writingLatencies->push_back(latency);
+      // initial case has this called in a destructor ... block exception
+      try {
+        _writingLatencies->push_back(latency);
+      } catch (...) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "QuickHistogram::postLatency() had exception doing a push_back (out of ram)";
+      }
     }
   }
 
@@ -160,9 +165,9 @@ protected:
         sort(_readingLatencies->begin(), _readingLatencies->end());
 
         // close but not exact math for percentiles
-        per95 = CalcPercentile(*_readingLatencies, 950);
-        per99 = CalcPercentile(*_readingLatencies, 990);
-        per99_9 = CalcPercentile(*_readingLatencies, 999);
+        per95 = calcPercentile(*_readingLatencies, 950);
+        per99 = calcPercentile(*_readingLatencies, 990);
+        per99_9 = calcPercentile(*_readingLatencies, 999);
 
         // timestamp to help match to other logs ...
         auto t = std::time(nullptr);
@@ -194,7 +199,7 @@ protected:
   //
   // calculation taken from http://www.dummies.com/education/math/statistics/how-to-calculate-percentiles-in-statistics
   //  (zero and one size vector calculations not included in that link)
-  std::chrono::microseconds CalcPercentile(std::vector<std::chrono::microseconds> &SortedLatencies, int Percentile) {
+  std::chrono::microseconds calcPercentile(std::vector<std::chrono::microseconds> & SortedLatencies, int Percentile) {
     size_t index, remainder, nextIndex;
     std::chrono::microseconds retVal;
 
@@ -235,18 +240,16 @@ protected:
     } // else
 
     return retVal;
-  } // CalcPercentile
+  } // calcPercentile
 
- private:
 };
 
 
 class QuickHistogramTimer {
 public:
   QuickHistogramTimer(QuickHistogram & histo)
-    : _histogram(histo) {
-    _intervalStart=std::chrono::steady_clock::now();
-  }
+    : _intervalStart(std::chrono::steady_clock::now()), _histogram(histo)
+  {}
 
   ~QuickHistogramTimer() {
     std::chrono::microseconds latency;
