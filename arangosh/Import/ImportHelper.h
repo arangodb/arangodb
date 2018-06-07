@@ -28,7 +28,7 @@
 #include <atomic>
 
 #include "AutoTuneThread.h"
-#include "quick_hist.h"
+#include "QuickHistogram.h"
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
