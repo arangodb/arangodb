@@ -87,6 +87,6 @@ if (arango.lastErrorMessage()) {
 }
 
 require("@arangodb/inspector");
-require("internal").exit();
+require("process").exit();
 
 
