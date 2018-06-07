@@ -60,9 +60,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t _queueSize = 0;
 
  public:
-  size_t concurrency() const {
-    return static_cast<size_t>(_nrServerThreads);
-  }
+  size_t concurrency() const { return static_cast<size_t>(_nrServerThreads); }
   void buildControlCHandler();
   void buildHangupHandler();
 
@@ -75,7 +73,7 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   std::function<void(const asio::error_code&, int)> _signalHandler;
   std::function<void(const asio::error_code&, int)> _exitHandler;
   std::shared_ptr<asio::signal_set> _exitSignals;
-  
+
   std::function<void(const asio::error_code&, int)> _hangupHandler;
   std::shared_ptr<asio::signal_set> _hangupSignals;
 };
