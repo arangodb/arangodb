@@ -57,6 +57,7 @@ namespace import {
   }
 
   void beginShutdown() override {
+    _threadRunning=false;
     Thread::beginShutdown();
 
     // wake up the thread that may be waiting in run()
@@ -96,9 +97,8 @@ protected:
       _writingLatencies = _readingLatencies;
       _readingLatencies = temp;
 
-      print_interval();
+      print_interval(!_threadRunning.load());
     }
-
   } // run
 
 
