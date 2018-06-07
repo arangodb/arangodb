@@ -2280,7 +2280,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::ENUMERATE_LIST:
 #ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
-      case EN::SCATTER_IRESEARCH_VIEW:
 #endif
       case EN::SUBQUERY:
       case EN::FILTER:
@@ -3045,8 +3044,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     }
 
     // insert a scatter node
-    ExecutionNode* scatterNode =
-        new ScatterNode(plan.get(), plan->nextId(), vocbase, collection);
+    auto* scatterNode = new ScatterNode(plan.get(), plan->nextId());
     plan->registerNode(scatterNode);
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
@@ -3270,9 +3268,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // keys if none present
       bool const createKeys = (nodeType == ExecutionNode::INSERT);
       inputVariable = node->getVariablesUsedHere()[0];
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, createKeys, true);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        createKeys,
+        true
+      );
     } else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
@@ -3282,9 +3286,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // We only look into _inDocVariable
         inputVariable = v[0];
       }
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, false, v.size() > 1);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        false,
+        v.size() > 1
+      );
     } else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (v.size() > 1) {
@@ -3296,16 +3306,23 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // was only UPDATE <doc> IN <collection>
         inputVariable = v[0];
       }
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, false, v.size() > 1);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        false,
+        v.size() > 1
+      );
     } else if (nodeType == ExecutionNode::UPSERT) {
       // an UPSERT node has two input variables!
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 
-      auto d = new DistributeNode(plan.get(), plan->nextId(), vocbase,
-                                  collection, v[0], v[1], true, true);
+      auto d = new DistributeNode(
+        plan.get(), plan->nextId(), collection, v[0], v[1], true, true
+      );
       d->setAllowSpecifiedKeys(true);
       distNode = ExecutionNode::castTo<ExecutionNode*>(d);
     } else {
@@ -3659,7 +3676,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SUBQUERY:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-        case EN::SCATTER_IRESEARCH_VIEW:
 #endif
           // do break
           stopSearching = true;
@@ -3789,7 +3805,6 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::SHORTEST_PATH:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-        case EN::SCATTER_IRESEARCH_VIEW: 
 #endif
 
           // For all these, we do not want to pull a SortNode further down
@@ -3863,11 +3878,7 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     }
 
     auto const dep = n->getFirstDependency();
-    if (dep->getType() != EN::SCATTER
-#ifdef USE_IRESEARCH
-        && dep->getType() != EN::SCATTER_IRESEARCH_VIEW
-#endif
-        ) {
+    if (dep->getType() != EN::SCATTER) {
       continue;
     }
 
@@ -4238,9 +4249,6 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       }
       case EN::DISTRIBUTE:
       case EN::SCATTER:
-#ifdef USE_IRESEARCH
-      case EN::SCATTER_IRESEARCH_VIEW: // FIXME check
-#endif
       {
         if (_scatter) {  // met more than one scatter node
           break;         // abort . . .

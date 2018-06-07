@@ -1,6 +1,11 @@
 devel
 -----
 
+* fixed internal issue #2256: ui, document id not showing up when deleting a document
+
+* fixed internal issue #2163: wrong labels within foxx validation of service
+  input parameters
+
 * fixed internal issue #2160: fixed misplaced tooltips in indices view
 
 * Added exclusive option for rocksdb collections. Modifying AQL queries can
