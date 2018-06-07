@@ -57,6 +57,11 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
             std::vector<transaction::Methods::IndexHandle> const& indexes,
             Condition* condition, IndexIteratorOptions const&);
 
+  IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+            Collection const* collection, Variable const* outVariable,
+            std::vector<transaction::Methods::IndexHandle> const& indexes,
+            std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
+
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   ~IndexNode();
@@ -144,7 +149,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief called to build up the matching positions of the index values for
   /// the projection attributes (if any)
   void initIndexCoversProjections();
-  
+
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
@@ -163,7 +168,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief A shard this node is restricted to, may be empty
   std::string _restrictedTo;
-  
+
   /// @brief the index iterator options - same for all indexes
   IndexIteratorOptions _options;
 };

@@ -60,6 +60,26 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
   initIndexCoversProjections();
 }
 
+IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+            Collection const* collection, Variable const* outVariable,
+            std::vector<transaction::Methods::IndexHandle> const& indexes,
+            std::unique_ptr<Condition> condition, IndexIteratorOptions const& opts)
+      : ExecutionNode(plan, id),
+        DocumentProducingNode(outVariable),
+        _vocbase(vocbase),
+        _collection(collection),
+        _indexes(indexes),
+        _condition(condition.release()),
+        _needsGatherNodeSort(false),
+        _restrictedTo(""),
+        _options(opts) {
+  TRI_ASSERT(_vocbase != nullptr);
+  TRI_ASSERT(_collection != nullptr);
+  TRI_ASSERT(_condition != nullptr);
+
+  initIndexCoversProjections();
+}
+
 /// @brief constructor for IndexNode
 IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -159,7 +179,7 @@ void IndexNode::initIndexCoversProjections() {
     // we will not be able to satisfy all requested projections with this index
     return;
   }
-  
+
   std::vector<size_t> coveringAttributePositions;
   // test if the index fields are the same fields as used in the projection
   std::string result;
@@ -180,7 +200,7 @@ void IndexNode::initIndexCoversProjections() {
     }
     ++i;
   }
- 
+
   _coveringIndexAttributePositions = std::move(coveringAttributePositions);
 }
 

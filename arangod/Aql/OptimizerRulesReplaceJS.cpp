@@ -116,8 +116,6 @@ namespace {
     return nullptr;
   }
 
-
-
   AstNode* replaceNear(AstNode* funAstNode, ExecutionPlan* plan){
     auto* ast = plan->getAst();
     auto* query = ast->query();
@@ -214,11 +212,10 @@ namespace {
         std::vector<transaction::Methods::IndexHandle> {
 					transaction::Methods::IndexHandle{index}
         },
-        condition.get(),
+        std::move(condition),
         IndexIteratorOptions()
       )
     );
-    condition.release();
 
     /// singleton
     ExecutionNode* eSingleton = plan->registerNode(
@@ -295,18 +292,16 @@ void arangodb::aql::replaceJSFunctions(Optimizer* opt
     };
 
     // replace root node if it was modified
-    // traverse and modify has no access to roots parent
+    // TraverseAndModify has no access to roots parent
     CalculationNode* calc = static_cast<CalculationNode*>(node);
-    auto* root = Ast::traverseAndModify(getAstNode(calc),visitor);
-    if (root != getAstNode(calc)) {
-      calc->expression()->replaceNode(root);
+    auto* original = getAstNode(calc);
+    auto* replacement = Ast::traverseAndModify(original,visitor);
+
+    if (replacement != original) {
+      calc->expression()->replaceNode(replacement);
     }
   }
 
   opt->addPlan(std::move(plan), rule, modified);
 
 }; // replaceJSFunctions
-
-
-
-
