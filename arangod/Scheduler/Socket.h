@@ -45,7 +45,6 @@ class Socket {
 
   virtual ~Socket() {}
 
- public:
   bool isEncrypted() const { return _encrypted; }
 
   bool handshake() {
