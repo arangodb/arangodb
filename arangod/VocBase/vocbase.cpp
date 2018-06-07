@@ -1666,7 +1666,12 @@ TRI_vocbase_t::getReplicationClients() {
 
   for (auto& it : _replicationClients) {
     result.emplace_back(
-        std::make_tuple(std::get<0>(it), std::get<0>(std::get<1>(it)), std::get<1>(std::get<1>(it)), std::get<2>(std::get<1>(it)))); // TODO
+        std::make_tuple(it.first,
+                        std::get<0>(it.second),
+                        std::get<1>(it.second),
+                        std::get<2>(it.second)
+                        )
+    );
   }
   return result;
 }

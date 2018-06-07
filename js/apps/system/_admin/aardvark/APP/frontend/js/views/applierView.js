@@ -80,9 +80,7 @@
         url: arangoHelper.databaseUrl('/_admin/aardvark/replication/mode'),
         contentType: 'application/json',
         success: function (data) {
-          if (data.mode === 3) {
-            self.getApplierState(this.endpoint, true);
-          } else if (data.mode === 2) {
+          if (data.mode === 3 || data.mode === 2) {
             self.getApplierState(this.endpoint, true);
           } else {
             self.getApplierState(this.endpoint, false);

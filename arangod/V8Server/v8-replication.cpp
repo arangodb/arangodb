@@ -615,17 +615,15 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    VPackBuilder tmpBuilder;
-    tmpBuilder.openObject();
+    builder.add(name, VPackValue(VPackValueType::Object));
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     ReplicationApplier* applier = vocbase->replicationApplier();
 
     if (applier == nullptr) {
       return;
     }
-    applier->toVelocyPack(tmpBuilder);
-    tmpBuilder.close();
-    builder.add(name, tmpBuilder.slice());
+    applier->toVelocyPack(builder);
+    builder.close();
   }
   builder.close();
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
