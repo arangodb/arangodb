@@ -480,41 +480,39 @@ void SocketTask::asyncWriteSome() {
   TRI_ASSERT(!_abandoned);
   TRI_ASSERT(_peer != nullptr);
 
-  if (!_peer->isEncrypted()) {
-    asio_ns::error_code err;
-    err.clear();
-    while (true) {
-      RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
-      written = _peer->writeSome(_writeBuffer._buffer, err);
+  asio_ns::error_code err;
+  err.clear();
+  while (true) {
+    RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
+    written = _peer->writeSome(_writeBuffer._buffer, err);
 
-      if (err) {
-        break;
-      }
-
-      RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, written);
-
-      if (written != total) {
-        // unable to write everything at once, might be a lot of data
-        // above code does not update the buffer positon
-        break;
-      }
-
-      if (!completedWriteBuffer()) {
-        return;
-      }
-
-      // try to send next buffer
-      total = _writeBuffer._buffer->length();
-      written = 0;
+    if (err) {
+      break;
     }
 
-    // write could have blocked which is the only acceptable error
-    if (err && err != ::asio_ns::error::would_block) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync write on failed with: "
-                                              << err.message();
-      closeStreamNoLock();
+    RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, written);
+
+    if (written != total) {
+      // unable to write everything at once, might be a lot of data
+      // above code does not update the buffer positon
+      break;
+    }
+
+    if (!completedWriteBuffer()) {
       return;
     }
+
+    // try to send next buffer
+    total = _writeBuffer._buffer->length();
+    written = 0;
+  }
+
+  // write could have blocked which is the only acceptable error
+  if (err && err != ::asio_ns::error::would_block) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync write on failed with: "
+                                            << err.message();
+    closeStreamNoLock();
+    return;
   }
 
   if (_abandoned.load(std::memory_order_acquire)) {
