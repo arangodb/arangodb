@@ -200,8 +200,7 @@ DistributeNode::DistributeNode(
     ExecutionPlan* plan,
     arangodb::velocypack::Slice const& base)
   : ScatterNode(plan, base),
-    _collection(plan->getAst()->query()->collections()->get(
-        base.get("collection").copyString())),
+    CollectionAccessingNode(plan, base),
     _variable(nullptr),
     _alternativeVariable(nullptr),
     _createKeys(base.get("createKeys").getBoolean()),
@@ -227,30 +226,32 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 }
 
 /// @brief toVelocyPack, for DistributedNode
-void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
+void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
                                         unsigned flags) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(builder);
 
   // serialize clients
-  writeClientsToVelocyPack(nodes);
+  writeClientsToVelocyPack(builder);
 
-  nodes.add("collection", VPackValue(_collection->getName()));
-  nodes.add("createKeys", VPackValue(_createKeys));
-  nodes.add("allowKeyConversionToObject",
-            VPackValue(_allowKeyConversionToObject));
-  nodes.add(VPackValue("variable"));
-  _variable->toVelocyPack(nodes);
-  nodes.add(VPackValue("alternativeVariable"));
-  _alternativeVariable->toVelocyPack(nodes);
+  builder.add("createKeys", VPackValue(_createKeys));
+  builder.add("allowKeyConversionToObject",
+              VPackValue(_allowKeyConversionToObject));
+  builder.add(VPackValue("variable"));
+  _variable->toVelocyPack(builder);
+  builder.add(VPackValue("alternativeVariable"));
+  _alternativeVariable->toVelocyPack(builder);
   
   // legacy format, remove in 3.4
-  nodes.add("varId", VPackValue(static_cast<int>(_variable->id)));
-  nodes.add("alternativeVarId",
-            VPackValue(static_cast<int>(_alternativeVariable->id)));
+  builder.add("varId", VPackValue(static_cast<int>(_variable->id)));
+  builder.add("alternativeVarId",
+              VPackValue(static_cast<int>(_alternativeVariable->id)));
 
   // And close it:
-  nodes.close();
+  builder.close();
 }
   
 /// @brief getVariablesUsedHere, returning a vector

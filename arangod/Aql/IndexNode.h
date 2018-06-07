@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/types.h"
@@ -47,13 +48,13 @@ class ExecutionEngine;
 class ExecutionPlan;
 
 /// @brief class IndexNode
-class IndexNode : public ExecutionNode, public DocumentProducingNode {
+class IndexNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class IndexBlock;
 
  public:
-  IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            Collection const* collection, Variable const* outVariable,
+  IndexNode(ExecutionPlan* plan, size_t id,
+            aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
             Condition* condition, IndexIteratorOptions const&);
 
@@ -63,12 +64,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return INDEX; }
-
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
 
   /// @brief return the condition for the node
   Condition* condition() const { return _condition; }
@@ -145,12 +140,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   void initIndexCoversProjections();
   
  private:
-  /// @brief the database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief collection
-  Collection const* _collection;
-
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
 
