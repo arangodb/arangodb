@@ -43,6 +43,8 @@ namespace {
         return "WAITING";
     }
   }
+  TRI_ASSERT(false);
+  return "unkown";
 }
 
 ExecutionBlock::ExecutionBlock(
