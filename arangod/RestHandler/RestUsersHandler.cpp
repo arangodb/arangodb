@@ -289,7 +289,7 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     if (s.isString()) {
       password = s.copyString();
     }
-    if (um->checkPassword(user, password)) {
+    if (um->checkPassword(user, password).ok()) {
       generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);

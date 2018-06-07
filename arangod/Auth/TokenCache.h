@@ -59,6 +59,7 @@ class TokenCache {
 
     std::string const& username() const { return _username; }
     bool authenticated() const { return _authenticated; }
+    bool bootstrapped() const { return _bootstrapped; }
     void setExpiry(double expiry) { _expiry = expiry; }
     bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
 
@@ -67,6 +68,8 @@ class TokenCache {
     std::string _username;
     /// User exists and password was checked
     bool _authenticated;
+    /// _users collection has been bootstrapped
+    bool _bootstrapped;
     /// expiration time (in seconds since epoch) of this entry
     double _expiry;
   };

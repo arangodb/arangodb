@@ -131,7 +131,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   std::string username = up.substr(0, n);
   std::string password = up.substr(n + 1);
 
-  bool authorized = _userManager->checkPassword(username, password);
+  auto authorized = _userManager->checkPassword(username, password).ok();
   double expiry = _authTimeout;
   if (expiry > 0) {
     expiry += TRI_microtime();

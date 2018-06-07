@@ -69,6 +69,7 @@ auth::UserManager::UserManager()
 
 auth::UserManager::UserManager(std::unique_ptr<auth::Handler> handler)
     : _outdated(true),
+      _ready(true),
       _queryRegistry(nullptr),
       _authHandler(std::move(handler)) {}
 #endif
@@ -162,20 +163,20 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 
 // private, will acquire _userCacheLock in write-mode and release it.
 // will also aquire _loadFromDBLock and release it
-void auth::UserManager::loadFromDB() {
+Result auth::UserManager::loadFromDB() {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   if (!ServerState::instance()->isSingleServerOrCoordinator()) {
     _outdated = false;  // should not get here
-    return;
+    return Result(TRI_ERROR_FAILED, "Available only on singles and coordinators");
   }
 
   if (!_outdated) {
-    return;
+    return Result();
   }
   MUTEX_LOCKER(guard, _loadFromDBLock);  // must be first
   if (!_outdated) {                      // double check after we got the lock
-    return;
+    return Result();
   }
 
   try {
@@ -211,11 +212,15 @@ void auth::UserManager::loadFromDB() {
         << "Exception when loading users from db: " << ex.what();
     _outdated = true;
     AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
+    _ready = false;
+    return Result(TRI_ERROR_FAILED, ex.what());
   } catch (...) {
     LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
     _outdated = true;
     AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
+    _ready = false;
+    return Result(TRI_ERROR_FAILED);
   }
 }
 
@@ -652,14 +657,18 @@ Result auth::UserManager::removeAllUsers() {
   return res;
 }
 
-bool auth::UserManager::checkPassword(std::string const& username,
-                                      std::string const& password) {
+Result auth::UserManager::checkPassword(std::string const& username,
+                                        std::string const& password) {
   // AuthResult result(username);
   if (username.empty() || IsRole(username)) {
-    return false;
+    return Result(TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 
-  loadFromDB();
+  auto result = loadFromDB();
+
+  if (!result.ok()) {
+    return Result(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+  }
 
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator it = _userCache.find(username);
@@ -669,13 +678,14 @@ bool auth::UserManager::checkPassword(std::string const& username,
   if (it != _userCache.end() && (it->second.source() == auth::Source::LOCAL) &&
       af != nullptr && !af->localAuthentication()) {
     LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
-    return false;
+    return Result(TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 
   if (it != _userCache.end() && it->second.source() == auth::Source::LOCAL) {
     auth::User const& user = it->second;
     if (user.isActive()) {
-      return user.checkPassword(password);
+      return user.checkPassword(password) ?
+        Result() : Result(TRI_ERROR_HTTP_UNAUTHORIZED);
     }
   }
 
@@ -683,15 +693,16 @@ bool auth::UserManager::checkPassword(std::string const& username,
   bool userCached = it != _userCache.end();
   if (!userCached && _authHandler == nullptr) {
     // nothing more to do here
-    return false;
+    return Result(TRI_ERROR_HTTP_UNAUTHORIZED);
   }
   // handle authentication with external system
   if (!userCached || (it->second.source() != auth::Source::LOCAL)) {
-    return checkPasswordExt(username, password, userCached, readGuard);
+    return checkPasswordExt(username, password, userCached, readGuard) ?
+      Result() : Result(TRI_ERROR_HTTP_UNAUTHORIZED);
   }
 #endif
 
-  return false;
+  return Result(TRI_ERROR_HTTP_UNAUTHORIZED);
 }
 
 auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
