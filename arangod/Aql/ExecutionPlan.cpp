@@ -2224,6 +2224,7 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
   TRI_ASSERT(newNode != nullptr);
   TRI_ASSERT(previous->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
+
   std::vector<ExecutionNode*> parents = previous->getParents(); // Intentional copy
   for (ExecutionNode* parent : parents) {
     if (!parent->replaceDependency(previous, newNode)) {
@@ -2232,6 +2233,21 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
     }
   }
   newNode->addDependency(previous);
+}
+
+/// @brief insert note directly before current
+void ExecutionPlan::insertBefore(ExecutionNode* current, ExecutionNode* newNode) {
+  TRI_ASSERT(newNode != nullptr);
+  TRI_ASSERT(current->id() != newNode->id());
+  TRI_ASSERT(newNode->getDependencies().empty());
+
+  std::vector<ExecutionNode*> dependencies = current->getDependencies(); // Intentional copy
+  for (auto* dep : dependencies){
+    if (!current->replaceDependency(dep, newNode)){
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not replace dependencies of an old node");
+    }
+    newNode->addDependency(dep);
+  }
 }
 
 /// @brief create a plan from VPack

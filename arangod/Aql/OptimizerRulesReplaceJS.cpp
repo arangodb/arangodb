@@ -246,9 +246,7 @@ namespace {
         new SubqueryNode(plan, plan->nextId(), eReturn, subqueryOutVariable)
     );
 
-    auto* dep = calcNode->getFirstDependency();
-    calcNode->replaceDependency(dep, eSubquery);
-    eSubquery->addDependency(dep);
+    plan->insertBefore(calcNode, eSubquery);
 
     // this replaces the FunctionCall-AstNode in the
     // expression of the calculation node.
@@ -272,7 +270,6 @@ void arangodb::aql::replaceJSFunctions(Optimizer* opt
       auto* fun = getFunction(astnode);
       AstNode* replacement = nullptr;
       if(fun){
-        LOG_DEVEL << "loop " << fun->name;
         if (fun->name == std::string("NEAR")){
           replacement = replaceNear(astnode,plan.get());
         }
@@ -284,7 +281,6 @@ void arangodb::aql::replaceJSFunctions(Optimizer* opt
         }
       }
       if (replacement) {
-        LOG_DEVEL << "replace";
         modified = true;
         return replacement;
       }

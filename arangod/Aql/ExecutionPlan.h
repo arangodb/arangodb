@@ -221,6 +221,9 @@ class ExecutionPlan {
   /// add newNode as a dependency. <newNode> must be registered with the plan
   void insertAfter(ExecutionNode* previous, ExecutionNode* newNode);
 
+  /// @brief insert note directly before current
+  void insertBefore(ExecutionNode* current, ExecutionNode* newNode);
+
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
 
