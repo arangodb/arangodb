@@ -11,10 +11,11 @@ elif [[ $# == 1 ]]; then
 fi
 
 if [ -f $filename ]; then
+
     # check json validity
     if jq -e . >/dev/null 2>&1 <<<"$json_string"; then
         mkdir arango-inspector
-        if [[ $? -ne 0 ]]; then
+        if [[ $? -ne 0 ]]; then #target directory exists
             echo "**Error** - failed to create directory structure"
             exit 1
         fi
@@ -43,7 +44,7 @@ if [ -f $filename ]; then
         done
         echo "  ... done "  
         
-    else
+    else #invalid json
         echo "**Error** - failed to parse JSON, or got false/null"
     fi
 else
