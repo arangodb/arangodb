@@ -383,39 +383,37 @@ void SocketTask::asyncReadSome() {
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
 
-  if (!_peer->isEncrypted()) {
-    try {
-      size_t const MAX_DIRECT_TRIES = 2;
-      size_t n = 0;
+  try {
+    size_t const MAX_DIRECT_TRIES = 2;
+    size_t n = 0;
 
-      while (++n <= MAX_DIRECT_TRIES &&
-             !_abandoned.load(std::memory_order_acquire)) {
-        if (!trySyncRead()) {
-          if (n < MAX_DIRECT_TRIES) {
-            std::this_thread::yield();
-          }
-          continue;
+    while (++n <= MAX_DIRECT_TRIES &&
+           !_abandoned.load(std::memory_order_acquire)) {
+      if (!trySyncRead()) {
+        if (n < MAX_DIRECT_TRIES) {
+          std::this_thread::yield();
         }
-
-        if (_abandoned.load(std::memory_order_acquire)) {
-          return;
-        }
-
-        // ignore the result of processAll, try to read more bytes down below
-        processAll();
-        compactify();
+        continue;
       }
-    } catch (asio_ns::system_error const& err) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: "
-                                              << err.what();
-      closeStreamNoLock();
-      return;
-    } catch (...) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
 
-      closeStreamNoLock();
-      return;
+      if (_abandoned.load(std::memory_order_acquire)) {
+        return;
+      }
+
+      // ignore the result of processAll, try to read more bytes down below
+      processAll();
+      compactify();
     }
+  } catch (asio_ns::system_error const& err) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: "
+                                            << err.what();
+    closeStreamNoLock();
+    return;
+  } catch (...) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
+
+    closeStreamNoLock();
+    return;
   }
 
   // try to read more bytes
