@@ -6,6 +6,8 @@ v3.3.11 (2018-XX-XX)
 * fixed internal issue #2163: wrong labels within foxx validation of service 
   input parameters
 
+* fixed internal issue #2160: fixed misplaced tooltips in indices view
+
 
 v3.3.10 (2018-06-04)
 --------------------
