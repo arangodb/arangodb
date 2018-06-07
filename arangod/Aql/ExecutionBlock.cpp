@@ -42,9 +42,9 @@ namespace {
       case ExecutionState::WAITING:
         return "WAITING";
     }
+    TRI_ASSERT(false);
+    return "unkown";
   }
-  TRI_ASSERT(false);
-  return "unkown";
 }
 
 ExecutionBlock::ExecutionBlock(
