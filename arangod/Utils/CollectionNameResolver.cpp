@@ -441,20 +441,6 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   #endif
 }
 
-std::string CollectionNameResolver::getViewNameCluster(
-    TRI_voc_cid_t cid
-) const {
-  if (!ServerState::isClusterRole(_serverRole)) {
-    // This handles the case of a standalone server
-    auto view = _vocbase.lookupView(cid);
-
-    return view ? view->name() : StaticStrings::Empty;
-  }
-
-  // FIXME not supported
-  return StaticStrings::Empty;
-}
-
 bool CollectionNameResolver::visitCollections(
     std::function<bool(LogicalCollection&)> const& visitor,
     TRI_voc_cid_t id

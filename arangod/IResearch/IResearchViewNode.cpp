@@ -218,6 +218,7 @@ IResearchViewNode::IResearchViewNode(
   if (ServerState::instance()->isSingleServer()) {
     _view = _vocbase.lookupView(basics::StringUtils::uint64(viewId));
   } else {
+    // need cluster wide view
     TRI_ASSERT(ClusterInfo::instance());
     _view = ClusterInfo::instance()->getView(_vocbase.name(), viewId);
   }

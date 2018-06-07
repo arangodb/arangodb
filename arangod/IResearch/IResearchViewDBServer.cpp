@@ -452,27 +452,18 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       return nullptr;
     }
 
-    auto view = std::shared_ptr<IResearchViewDBServer>(
+    auto wiew = std::shared_ptr<IResearchViewDBServer>(
       new IResearchViewDBServer(vocbase, info, *feature, planVersion)
     );
 
-    if (preCommit && !preCommit(view)) {
+    if (preCommit && !preCommit(wiew)) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
 
       return nullptr;
     }
 
-    TRI_ASSERT(ClusterInfo::instance());
-    auto wiew = ClusterInfo::instance()->getView(vocbase.name(), name, false);
-
-    if (wiew) {
-      // copy existing links
-      auto& wiewImpl = LogicalView::cast<IResearchViewDBServer>(*wiew);
-      view->_collections = wiewImpl._collections;
-    }
-
-    return view;
+    return wiew;
   }
 
   // ...........................................................................
@@ -521,7 +512,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   }
 
   auto wiew = ClusterInfo::instance()->getView(
-    vocbase.name(), viewId, false
+    vocbase.name(), viewId
   ); // always look up by view ID since it cannot change
 
   // create DBServer view
@@ -566,7 +557,12 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return nullptr;
   }
 
-  auto impl = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
+  auto impl = vocbase.lookupView(name);
+
+  if (!impl) {
+    // no view for shard
+    impl = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
+  }
 
   if (!impl) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)

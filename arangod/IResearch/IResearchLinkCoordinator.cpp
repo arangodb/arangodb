@@ -126,7 +126,11 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
   auto identifier = definition.get(StaticStrings::ViewIdField);
   auto viewId = identifier.getNumber<uint64_t>();
   auto& vocbase = _collection->vocbase();
-  auto logicalView  = vocbase.lookupView(viewId);
+
+  TRI_ASSERT(ClusterInfo::instance());
+  auto logicalView  = ClusterInfo::instance()->getView(
+    vocbase.name(), basics::StringUtils::itoa(viewId)
+  );
 
   if (!logicalView
       || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {

@@ -64,6 +64,7 @@ IResearchLink::IResearchLink(
    _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
+  // IResearchLink is not intended to be used on a coordinator
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
@@ -184,9 +185,6 @@ TRI_idx_iid_t IResearchLink::id() const noexcept {
 }
 
 bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
-  // IResearchLink is not intended to be used on a coordinator
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
   // disassociate from view if it has not been done yet
   if (TRI_ERROR_NO_ERROR != unload()) {
     return false;
@@ -225,8 +223,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     TRI_ASSERT(ClusterInfo::instance());
     logicalView = ClusterInfo::instance()->getView(
       vocbase.name(),
-      basics::StringUtils::itoa(viewId),
-      false
+      basics::StringUtils::itoa(viewId)
     );
 
     if (logicalView) {
