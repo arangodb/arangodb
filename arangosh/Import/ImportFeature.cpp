@@ -180,7 +180,7 @@ void ImportFeature::collectOptions(
                      new DiscreteValuesParameter<StringParameter>(
                          &_onDuplicateAction, actions));
 
-  options->addOption("--latency", "show 10 second latency statistics",
+  options->addOption("--latency", "show 10 second latency statistics (values in microseconds)",
                      new BooleanParameter(&_latencyStats));
 }
 
