@@ -378,7 +378,7 @@ function loadAgency(conn, seen) {
 
         console.log("http+" + leader);
         console.log(conn.getEndpoint());
-        if ("http+" + leader != conn.getEndpoint()) {
+        if ("http+" + leader !== conn.getEndpoint()) {
           conn.reconnect(leader, "_system");
         }
 
@@ -575,11 +575,11 @@ function getServerData(arango) {
 
     function (server) {
 
-      if (nservers == 1 || servers.lengthserver !== "SINGLE") {
+      if (nservers === 1 || servers.lengthserver !== "SINGLE") {
         try {
 
           if (servers[server].endpoint !== undefined) {
-            if (arango.getEndpoint() != "http+" + servers[server].endpoint) {
+            if (arango.getEndpoint() !== "http+" + servers[server].endpoint) {
               arango.reconnect(servers[server].endpoint, '_system');
             }
           }
@@ -657,7 +657,7 @@ function getServerData(arango) {
       }
     });
   if (Object.keys(servers).length > 1) {
-    if (current != arango.getEndpoint()) {
+    if (current !== arango.getEndpoint()) {
       arango.reconnect(current, '_system');
     }
   }
@@ -685,7 +685,7 @@ function getServerData(arango) {
       while (true) {
         if (agencyDump.leaderId !== "") {
           if (agencyConfig.configuration.pool.hasOwnProperty(agencyConfig.leaderId)) {
-            if ("http+" + agencyConfig.configuration.pool[agencyConfig.leaderId] !=
+            if ("http+" + agencyConfig.configuration.pool[agencyConfig.leaderId] !==
                 arango.getEndpoint()) {
               arango.reconnect(
                 agencyConfig.configuration.pool[agencyConfig.leaderId], "_system");
