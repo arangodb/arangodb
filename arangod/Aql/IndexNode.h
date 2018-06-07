@@ -55,11 +55,6 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, IndexIteratorOptions const&);
-
-  IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            Collection const* collection, Variable const* outVariable,
-            std::vector<transaction::Methods::IndexHandle> const& indexes,
             std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);

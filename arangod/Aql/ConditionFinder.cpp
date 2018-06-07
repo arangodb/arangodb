@@ -149,8 +149,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         opts.ascending = !descending;
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
             _plan, _plan->nextId(), node->vocbase(), node->collection(),
-            node->outVariable(), usedIndexes, condition.get(), opts));
-        condition.release();
+            node->outVariable(), usedIndexes, std::move(condition), opts));
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }

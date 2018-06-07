@@ -39,27 +39,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-/// @brief constructor
-IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            Collection const* collection, Variable const* outVariable,
-            std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, IndexIteratorOptions const& opts)
-      : ExecutionNode(plan, id),
-        DocumentProducingNode(outVariable),
-        _vocbase(vocbase),
-        _collection(collection),
-        _indexes(indexes),
-        _condition(condition),
-        _needsGatherNodeSort(false),
-        _restrictedTo(""),
-        _options(opts) {
-  TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_collection != nullptr);
-  TRI_ASSERT(_condition != nullptr);
-
-  initIndexCoversProjections();
-}
-
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
             Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
@@ -261,7 +240,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   }
 
   auto c = std::make_unique<IndexNode>(plan, _id, _vocbase, _collection, outVariable,
-                         _indexes, _condition->clone(), _options);
+                         _indexes, std::unique_ptr<Condition>(_condition->clone()), _options);
 
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
