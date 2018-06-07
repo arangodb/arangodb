@@ -63,195 +63,284 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-  //NEAR(coll, 0 /*lat*/, 0 /*lon*/[, 10 /*limit*/])
-  struct nearParams{
-    std::string collection;
-    double latitude;
-    double longitude;
-    std::size_t limit;
-    std::string distanceName;
+//NEAR(coll, 0 /*lat*/, 0 /*lon*/[, 10 /*limit*/])
+struct nearParams{
+  std::string collection;
+  double latitude;
+  double longitude;
+  std::size_t limit;
+  std::string distanceName;
 
-    nearParams(AstNode const* node){
-      TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
-      AstNode* arr = node->getMember(0);
-      TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-      collection = arr->getMember(0)->getString();
-      latitude = arr->getMember(1)->getDoubleValue();
-      longitude = arr->getMember(2)->getDoubleValue();
+  nearParams(AstNode const* node){
+    TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
+    AstNode* arr = node->getMember(0);
+    TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
+    collection = arr->getMember(0)->getString();
+    latitude = arr->getMember(1)->getDoubleValue();
+    longitude = arr->getMember(2)->getDoubleValue();
+    limit = arr->getMember(3)->getIntValue();
+    if(arr->numMembers() > 4){
+      distanceName = arr->getMember(4)->getString();
+    }
+  }
+};
+
+//FULLTEXT(collection, "attribute", "search", 100 /*limit*/[, "distance name"])
+struct fulltextParams{
+  std::string collection;
+  std::string attribute;
+  std::uint64_t limit;
+
+  fulltextParams(AstNode const* node){
+    TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
+    AstNode* arr = node->getMember(0);
+    TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
+    collection = arr->getMember(0)->getString();
+    attribute = arr->getMember(1)->getString();
+    if(arr->numMembers() > 3){
       limit = arr->getMember(3)->getIntValue();
-      if(arr->numMembers() > 4){
-        distanceName = arr->getMember(4)->getString();
-      }
+    } else {
+      limit = 0;
     }
-  };
+  }
+};
 
-  //FULLTEXT(collection, "attribute", "search", 100 /*limit*/[, "distance name"])
-  struct fulltextParams{
-    std::string collection;
-    std::string attribute;
-    std::uint64_t limit;
+AstNode* getAstNode(CalculationNode* c){
+  return c->expression()->nodeForModification();
+}
 
-    fulltextParams(AstNode const* node){
-      TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
-      AstNode* arr = node->getMember(0);
-      TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-      collection = arr->getMember(0)->getString();
-      attribute = arr->getMember(1)->getString();
-      if(arr->numMembers() > 3){
-        limit = arr->getMember(3)->getIntValue();
-      } else {
-        limit = 0;
-      }
-    }
-  };
+Function* getFunction(AstNode const* ast){
+  if (ast->type == AstNodeType::NODE_TYPE_FCALL){
+    return static_cast<Function*>(ast->getData());
+  }
+  return nullptr;
+}
 
-  AstNode* getAstNode(CalculationNode* c){
-    return c->expression()->nodeForModification();
+AstNode* createSubqueryWithLimit(
+  ExecutionPlan* plan,
+  ExecutionNode* node,
+  ExecutionNode* first,
+  ExecutionNode* last,
+  Variable* lastOutVariable,
+  std::size_t limit
+  ){
+  // Creates subquery of the following form:
+  //
+  //    singleton
+  //        |
+  //      index
+  //        |
+  //     [limit]
+  //        |
+  //      return
+  //
+  // The Query is then injected into the plan before the given `node`
+  //
+  auto* ast = plan->getAst();
+
+  /// singleton
+  ExecutionNode* eSingleton = plan->registerNode(
+      new SingletonNode(plan, plan->nextId())
+  );
+
+  /// return
+  ExecutionNode* eReturn = plan->registerNode(
+      // link output of index with the return node
+      new ReturnNode(plan, plan->nextId(), lastOutVariable)
+  );
+
+  /// link nodes together
+  first->addDependency(eSingleton);
+  eReturn->addDependency(last);
+
+  /// add optional limit node
+  if(limit) {
+    ExecutionNode* eLimit = plan->registerNode(
+      new LimitNode(plan, plan->nextId(), 0 /*offset*/, limit)
+    );
+    plan->insertAfter(last, eLimit); // inject into plan
   }
 
-  Function* getFunction(AstNode const* ast){
-    if (ast->type == AstNodeType::NODE_TYPE_FCALL){
-      return static_cast<Function*>(ast->getData());
-    }
-    return nullptr;
+  /// create subquery
+  Variable* subqueryOutVariable = ast->variables()->createTemporaryVariable();
+  ExecutionNode* eSubquery = plan->registerSubquery(
+      new SubqueryNode(plan, plan->nextId(), eReturn, subqueryOutVariable)
+  );
+
+  plan->insertBefore(node, eSubquery);
+
+  // this replaces the FunctionCall-AstNode in the
+  // expression of the calculation node.
+  return ast->createNodeReference(subqueryOutVariable);
+
+}
+
+AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
+  auto* ast = plan->getAst();
+  auto* query = ast->query();
+  auto* trx = query->trx();
+  nearParams params(funAstNode);
+  bool supportLegacy = true;
+
+  // RETRUN ( FOR x IN col SORT
+  //   DISTANCE(fields.lat, fields.long,param.lat, param.lon)
+  //   LIMIT param.limit
+  //   RETURN d MERGE {param.distname : calculated_distance}
+  // )
+
+  /// index
+  //  we create this first as creation of this node is more
+  //  likely to fail than the creation of other nodes
+
+  //  index - part 1 - figure out index to use
+
+  auto& vocbase = trx->vocbase();
+  auto* aqlCollection = query->collections()->get(params.collection);
+  Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
+  ExecutionNode* eEnumerate = plan->registerNode(
+      // link output of index with the return node
+      new EnumerateCollectionNode(
+            plan, plan->nextId(),
+            &vocbase, aqlCollection,
+            enumerateOutVariable, false
+      )
+  );
+
+  //// build sort codition
+
+  //FIXME
+	try {
+		std::vector<basics::AttributeName> field;
+		TRI_ParseAttributeString(params.distanceName, field, false);
+		auto indexes = trx->indexesForCollection(params.collection);
+		for(auto& idx : indexes){
+			if(Index::isGeoIndex(idx->type())) {
+
+        bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
+        bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
+        bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+
+        LOG_DEVEL << "fields";
+        for(auto& f : idx->fields()){
+          LOG_DEVEL << "new";
+          for(auto& p : f){
+            LOG_DEVEL << p.name;
+          }
+        }
+        LOG_DEVEL << "fields - end";
+
+			}
+		}
+	} catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
+                                << params.collection << "): "
+                                << e.what();
+  } catch (...){
+    LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
+                                << params.collection << ")";
   }
 
-  AstNode* replaceNear(AstNode* funAstNode, ExecutionPlan* plan){
-    auto* ast = plan->getAst();
-    auto* query = ast->query();
-    auto* trx = query->trx();
-    nearParams params(funAstNode);
-    (void) trx;
+  return nullptr;
 
+  AstNode* expressionAst = nullptr;
+  Expression* calcExpr = new Expression(plan, ast, expressionAst); //who will own this?
+  //FIXME  - end
 
-    LOG_DEVEL << "replaceNear";
-    auto* fun = getFunction(funAstNode);
-    LOG_DEVEL << fun->name;
-    LOG_DEVEL << "collection: " << params.collection;
+  // put condition into calculation node
+  Variable* calcOutVariable = ast->variables()->createTemporaryVariable();
+  ExecutionNode* eCalc = plan->registerNode(
+      new CalculationNode(plan, plan->nextId(), calcExpr, nullptr, calcOutVariable)
+  );
+  eCalc->addDependency(eEnumerate);
 
-    return nullptr;
-  }
+  // use calculation node in sort node
+  SortElementVector sortElements { SortElement{ calcOutVariable, /*asc*/ true} }; //CHECKME
+  ExecutionNode* eSort = plan->registerNode(
+      new SortNode(plan, plan->nextId(), sortElements, false)
+  );
+  eSort->addDependency(eCalc);
 
-  AstNode* replaceWithin(AstNode* funAstNode, ExecutionPlan* plan){
-    auto* ast = plan->getAst();
-    auto* query = ast->query();
-    auto* trx = query->trx();
-    (void) trx;
+  // merge distname
 
-    LOG_DEVEL << "replaceWithin";
-    auto* fun = getFunction(funAstNode);
-    LOG_DEVEL << fun->name;
-    return nullptr;
-  }
+  return createSubqueryWithLimit(plan, calcNode, eEnumerate, eSort, enumerateOutVariable, params.limit);
+}
 
-  AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
-    auto* ast = plan->getAst();
-    auto* query = ast->query();
-    auto* trx = query->trx();
+AstNode* replaceWithin(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
+  auto* ast = plan->getAst();
+  auto* query = ast->query();
+  auto* trx = query->trx();
+  (void) trx;
 
-    fulltextParams params(funAstNode);
+  LOG_DEVEL << "replaceWithin";
+  auto* fun = getFunction(funAstNode);
+  LOG_DEVEL << fun->name;
+  return nullptr;
+}
 
-    //// create subquery plan for fulltext
-    //
-    //    singleton
-    //        |
-    //      index
-    //        |
-    //     [limit]
-    //        |
-    //      return
+AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
+  auto* ast = plan->getAst();
+  auto* query = ast->query();
+  auto* trx = query->trx();
 
+  fulltextParams params(funAstNode);
 
-    /// index
-    //  we create this first as creation of this node is more
-    //  likely to fail than the creation of other nodes
+  /// index
+  //  we create this first as creation of this node is more
+  //  likely to fail than the creation of other nodes
 
-    //  index - part 1 - figure out index to use
-    std::shared_ptr<arangodb::Index> index = nullptr;
-		try {
-			std::vector<basics::AttributeName> field;
-			TRI_ParseAttributeString(params.attribute, field, false);
-			auto indexes = trx->indexesForCollection(params.collection);
-			for(auto& idx : indexes){
-				if(idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-					if(basics::AttributeName::isIdentical(idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
-						index = idx;
-						break;
-					}
+  //  index - part 1 - figure out index to use
+  std::shared_ptr<arangodb::Index> index = nullptr;
+	try {
+		std::vector<basics::AttributeName> field;
+		TRI_ParseAttributeString(params.attribute, field, false);
+		auto indexes = trx->indexesForCollection(params.collection);
+		for(auto& idx : indexes){
+			if(idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+				if(basics::AttributeName::isIdentical(idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
+					index = idx;
+					break;
 				}
 			}
-		} catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
-                                  << params.collection << "): "
-                                  << e.what();
-    } catch (...){
-      LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
-                                  << params.collection << ")";
-    }
-
-		if(!index){ // not found or error
-      LOG_DEVEL << "no valid index found";
-			return nullptr;
 		}
-
-    // index part 2 - get remaining vars required for index creation
-    auto& vocbase = trx->vocbase();
-    auto* aqlCollection = query->collections()->get(params.collection);
-		auto condition = std::make_unique<Condition>(ast);
-		condition->andCombine(funAstNode);
-		// create a fresh out variable
-    Variable* indexOutVariable = ast->variables()->createTemporaryVariable();
-
-    ExecutionNode* eIndex = plan->registerNode(
-      new IndexNode(
-        plan,
-        plan->nextId(),
-        &vocbase,
-        aqlCollection,
-        indexOutVariable,
-        std::vector<transaction::Methods::IndexHandle> {
-					transaction::Methods::IndexHandle{index}
-        },
-        std::move(condition),
-        IndexIteratorOptions()
-      )
-    );
-
-    /// singleton
-    ExecutionNode* eSingleton = plan->registerNode(
-        new SingletonNode(plan, plan->nextId())
-    );
-
-    /// return
-    ExecutionNode* eReturn = plan->registerNode(
-        // link output of index with the return node
-        new ReturnNode(plan, plan->nextId(), indexOutVariable)
-    );
-
-    /// link nodes together
-    eIndex->addDependency(eSingleton);
-    eReturn->addDependency(eIndex);
-
-    /// add optional limit node
-    if(params.limit) {
-      ExecutionNode* eLimit = plan->registerNode(
-        new LimitNode(plan, plan->nextId(), 0 /*offset*/, params.limit)
-      );
-      plan->insertAfter(eIndex, eLimit); // inject into plan
-    }
-
-    /// create subquery
-    Variable* subqueryOutVariable = ast->variables()->createTemporaryVariable();
-    ExecutionNode* eSubquery = plan->registerSubquery(
-        new SubqueryNode(plan, plan->nextId(), eReturn, subqueryOutVariable)
-    );
-
-    plan->insertBefore(calcNode, eSubquery);
-
-    // this replaces the FunctionCall-AstNode in the
-    // expression of the calculation node.
-    return ast->createNodeReference(subqueryOutVariable);
+	} catch (std::exception const& e) {
+    LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
+                                << params.collection << "): "
+                                << e.what();
+  } catch (...){
+    LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
+                                << params.collection << ")";
   }
+
+	if(!index){ // not found or error
+    LOG_DEVEL << "no valid index found";
+		return nullptr;
+	}
+
+  // index part 2 - get remaining vars required for index creation
+  auto& vocbase = trx->vocbase();
+  auto* aqlCollection = query->collections()->get(params.collection);
+	auto condition = std::make_unique<Condition>(ast);
+	condition->andCombine(funAstNode);
+	// create a fresh out variable
+  Variable* indexOutVariable = ast->variables()->createTemporaryVariable();
+
+  ExecutionNode* eIndex = plan->registerNode(
+    new IndexNode(
+      plan,
+      plan->nextId(),
+      &vocbase,
+      aqlCollection,
+      indexOutVariable,
+      std::vector<transaction::Methods::IndexHandle> {
+				transaction::Methods::IndexHandle{index}
+      },
+      std::move(condition),
+      IndexIteratorOptions()
+    )
+  );
+
+  return createSubqueryWithLimit(plan, calcNode, eIndex, eIndex, indexOutVariable, params.limit);
+}
 
 } // namespace
 
@@ -271,13 +360,13 @@ void arangodb::aql::replaceJSFunctions(Optimizer* opt
       AstNode* replacement = nullptr;
       if(fun){
         if (fun->name == std::string("NEAR")){
-          replacement = replaceNear(astnode,plan.get());
+          replacement = replaceNear(astnode, node, plan.get());
         }
         if (fun->name == std::string("WITHIN")){
-          replacement = replaceWithin(astnode,plan.get());
+          replacement = replaceWithin(astnode, node, plan.get());
         }
         if (fun->name == std::string("FULLTEXT")){
-          replacement = replaceFullText(astnode,node,plan.get());
+          replacement = replaceFullText(astnode, node,plan.get());
         }
       }
       if (replacement) {

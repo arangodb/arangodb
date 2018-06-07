@@ -168,7 +168,7 @@ class ExecutionNode {
   /// in maintainer mode, this function will perform a dynamic_cast and abort the
   /// program if the cast is invalid. in release mode, this function will perform
   /// a static_cast and will not abort the program
-  template<typename T, typename FromType> 
+  template<typename T, typename FromType>
   static inline T castTo(FromType node) noexcept {
     static_assert(std::is_pointer<T>::value, "invalid type passed into ExecutionNode::castTo");
     static_assert(std::is_pointer<FromType>::value, "invalid type passed into ExecutionNode::castTo");
@@ -182,7 +182,7 @@ class ExecutionNode {
     return static_cast<T>(node);
 #endif
   }
-  
+
   /// @brief return the node's id
   inline size_t id() const { return _id; }
 
@@ -338,7 +338,7 @@ class ExecutionNode {
 
   /// @brief walk a complete execution plan recursively
   bool walk(WalkerWorker<ExecutionNode>& worker);
-  
+
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS    = 1;
   /// include estimate cost  (used in the explainer)
@@ -1227,7 +1227,7 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return RETURN; }
-  
+
   /// @brief tell the node to count the returned values
   void setCount() { _count = true; }
 
