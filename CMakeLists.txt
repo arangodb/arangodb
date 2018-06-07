@@ -812,7 +812,7 @@ include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 # RocksDB
 # ------------------------------------------------------------------------------
 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 include_directories(${ROCKSDB_INCLUDE_DIR})
 
 set(ROCKSDB_LIBS rocksdb;snappystatic)
