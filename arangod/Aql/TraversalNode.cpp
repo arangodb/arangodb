@@ -387,8 +387,7 @@ void TraversalNode::toVelocyPackHelper(VPackBuilder& nodes,
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<TraversalBlock>(&engine, this);
 }
@@ -472,9 +471,7 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->checkConditionsDefined();
 #endif
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief the cost of a traversal node

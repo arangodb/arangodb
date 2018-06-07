@@ -354,7 +354,7 @@ int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _posForClient.clear();
 
   for (size_t i = 0; i < _nrClients; i++) {
-    _posForClient.emplace_back(std::make_pair(0, 0));
+    _posForClient.emplace_back(0, 0);
   }
   return TRI_ERROR_NO_ERROR;
 
@@ -385,20 +385,24 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   
   TRI_ASSERT(_nrClients != 0);
 
-  size_t clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
 
+  // reference to "a finish mark" for a client
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return false;
   }
 
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
+  TRI_ASSERT(_posForClient.size() > clientId);
+  std::pair<size_t, size_t> const& pos = _posForClient[clientId];
   // (i, j) where i is the position in _buffer, and j is the position in
-  // _buffer.at(i) we are sending to <clientId>
+  // _buffer[i] we are sending to <clientId>
 
   if (pos.first > _buffer.size()) {
     if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       return false;
     }
   }
@@ -417,46 +421,50 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
 
+  // reference to "a finish mark" for a client
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(_posForClient.size() > clientId);
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
+  std::pair<size_t, size_t>& pos = _posForClient[clientId];
 
   // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
     if (!getBlock(atMost)) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       return TRI_ERROR_NO_ERROR;
     }
   }
 
-  size_t available = _buffer.at(pos.first)->size() - pos.second;
+  auto& blockForClient = _buffer[pos.first];
+
+  size_t available = blockForClient->size() - pos.second;
   // available should be non-zero
 
   skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   if (!skipping) {
-    result = _buffer.at(pos.first)->slice(pos.second, pos.second + skipped);
+    result = blockForClient->slice(pos.second, pos.second + skipped);
   }
 
   // increment the position . . .
-  _posForClient.at(clientId).second += skipped;
+  pos.second += skipped;
 
   // check if we're done at current block in buffer . . .
-  if (_posForClient.at(clientId).second ==
-      _buffer.at(_posForClient.at(clientId).first)->size()) {
-    _posForClient.at(clientId).first++;
-    _posForClient.at(clientId).second = 0;
+  if (pos.second == blockForClient->size()) {
+    pos.first++; // next block
+    pos.second = 0; // reset the position within a block
 
     // check if we can pop the front of the buffer . . .
     bool popit = true;
     for (size_t i = 0; i < _nrClients; i++) {
-      if (_posForClient.at(i).first == 0) {
+      if (_posForClient[i].first == 0) {
         popit = false;
         break;
       }
@@ -466,7 +474,7 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
       _buffer.pop_front();
       // update the values in first coord of _posForClient
       for (size_t i = 0; i < _nrClients; i++) {
-        _posForClient.at(i).first--;
+        _posForClient[i].first--;
       }
     }
   }
@@ -555,19 +563,23 @@ int DistributeBlock::shutdown(int errorCode) {
 bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
 
-  size_t clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
+
+  // reference to "a finish mark" for a client
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return false;
   }
 
   TRI_ASSERT(_distBuffer.size() > clientId);
-  if (!_distBuffer.at(clientId).empty()) {
+  if (!_distBuffer[clientId].empty()) {
     return true;
   }
 
   if (!getBlockForClient(DefaultBatchSize(), clientId)) {
-    _doneForClient.at(clientId) = true;
+    doneForClient = true;
     return false;
   }
   return true;
@@ -586,19 +598,22 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t clientId = getClientId(shardId);
-
+  size_t const clientId = getClientId(shardId);
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+
+  // reference to "a finish mark" for a client
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
+  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer[clientId];
 
   if (buf.empty()) {
     if (!getBlockForClient(atMost, clientId)) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       traceGetSomeEnd(result);
       return TRI_ERROR_NO_ERROR;
     }
@@ -631,7 +646,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
       }
     }
 
-    std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+    std::unique_ptr<AqlItemBlock> more(_buffer[n]->slice(chosen, 0, chosen.size()));
     collector.add(std::move(more));
 
     chosen.clear();
@@ -662,27 +677,27 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
     _pos = 0;    // position in _buffer.at(_index)
   }
 
-  std::vector<std::deque<std::pair<size_t, size_t>>>& buf = _distBuffer;
   // it should be the case that buf.at(clientId) is empty
+  auto& buf = _distBuffer[clientId];
 
-  while (buf.at(clientId).size() < atMost) {
+  while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
       if (!ExecutionBlock::getBlock(atMost)) {
-        if (buf.at(clientId).size() == 0) {
-          _doneForClient.at(clientId) = true;
+        if (buf.size() == 0) {
+          _doneForClient[clientId] = true;
           return false;
         }
         break;
       }
     }
 
-    AqlItemBlock* cur = _buffer.at(_index);
+    AqlItemBlock* cur = _buffer[_index];
 
-    while (_pos < cur->size() && buf.at(clientId).size() < atMost) {
+    while (_pos < cur->size() && buf.size() < atMost) {
       // this may modify the input item buffer in place
-      size_t id = sendToClient(cur);
+      size_t const id = sendToClient(cur);
 
-      buf.at(id).emplace_back(std::make_pair(_index, _pos++));
+      _distBuffer[id].emplace_back(_index, _pos++);
     }
 
     if (_pos == cur->size()) {
