@@ -65,6 +65,15 @@ class ModificationBlock : public ExecutionBlock {
   /// @brief determine the number of rows in a vector of blocks
   size_t countBlocksRows() const;
 
+  /// @brief Returns the success return start of this block.
+  ///        Can either be HASMORE or DONE.
+  ///        Guarantee is that if DONE is returned every subsequent call
+  ///        to get/skipSome will NOT find mor documents.
+  ///        HASMORE is allowed to lie, so a next call to get/skipSome could return
+  ///        no more results.
+  ExecutionState getHasMoreState() override;
+
+
  protected:
   /// @brief output register ($OLD)
   RegisterId _outRegOld;
@@ -90,9 +99,6 @@ class ModificationBlock : public ExecutionBlock {
 
   /// @brief a Builder object, reused for various tasks to save a few memory allocations
   velocypack::Builder _tempBuilder;
-
-  /// @brief the state returned by the upstream Node
-  ExecutionState _upstreamState;
 };
 
 class RemoveBlock : public ModificationBlock {

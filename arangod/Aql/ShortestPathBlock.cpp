@@ -280,7 +280,8 @@ ShortestPathBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   while (true) {
     if (_done) {
-      traceGetSomeEnd(nullptr);
+      TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, nullptr};
     }
 
@@ -290,11 +291,13 @@ ShortestPathBlock::getSome(size_t atMost) {
       bool blockAppended;
       std::tie(state, blockAppended) = ExecutionBlock::getBlock(toFetch);
       if (state == ExecutionState::WAITING) {
+        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
         return {ExecutionState::WAITING, nullptr};
       }
       if (!blockAppended) {
         _done = true;
-        traceGetSomeEnd(nullptr);
+        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+        traceGetSomeEnd(nullptr, ExecutionState::DONE);
         return {ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
@@ -357,16 +360,22 @@ ShortestPathBlock::getSome(size_t atMost) {
 
     // Clear out registers no longer needed later:
     clearRegisters(res.get());
-    traceGetSomeEnd(res.get());
-    return {ExecutionState::HASMORE, std::move(res)};
+    traceGetSomeEnd(res.get(), getHasMoreState());
+    return {getHasMoreState(), std::move(res)};
   }
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
 
-size_t ShortestPathBlock::skipSomeOld(size_t atMost) {
-  // TODO IMPLEMENT!! There is a regression test for this:
+std::pair<ExecutionState, size_t> ShortestPathBlock::skipSome(size_t atMost) {
+  // TODO implement without data reading
+  // There is a regression test for this:
   // testShortestPathDijkstraOutboundSkipFirst in aql-graph.js
-  return 0;
+  auto res = getSome(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    return {res.first, 0};
+  }
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "TEMP Lenght of skipped path " << res.second->size();
+  return {res.first, res.second->size()};
 }

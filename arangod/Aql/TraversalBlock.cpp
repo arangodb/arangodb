@@ -361,7 +361,8 @@ TraversalBlock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   while (true) {
     if (_done) {
-      traceGetSomeEnd(nullptr);
+      TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, nullptr};
     }
 
@@ -369,11 +370,13 @@ TraversalBlock::getSome(size_t atMost) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       auto res = ExecutionBlock::getBlock(toFetch);
       if (res.first == ExecutionState::WAITING) {
+        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
         return {res.first, nullptr};
       }
       if (!res.second) {
         _done = true;
-        traceGetSomeEnd(nullptr);
+        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+        traceGetSomeEnd(nullptr, ExecutionState::DONE);
         return {ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
@@ -454,9 +457,8 @@ TraversalBlock::getSome(size_t atMost) {
 
     // Clear out registers no longer needed later:
     clearRegisters(res.get());
-    traceGetSomeEnd(res.get());
-    // TODO Check if we can improve here on HASMORE vs DONE.
-    return {ExecutionState::HASMORE, std::move(res)};
+    traceGetSomeEnd(res.get(), getHasMoreState());
+    return {getHasMoreState(), std::move(res)};
   }
 
   // cppcheck-suppress style
@@ -518,8 +520,7 @@ std::pair<ExecutionState, size_t> TraversalBlock::skipSome(size_t atMost) {
   
   size_t skipped = _inflight;
   _inflight = 0;
-  // TODO Check if we can be better for HASMORE/DONE.
-  return {ExecutionState::HASMORE, skipped};
+  return {getHasMoreState(), skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

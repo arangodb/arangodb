@@ -136,7 +136,7 @@ class ExecutionBlock {
 
 
   void traceGetSomeBegin(size_t atMost);
-  void traceGetSomeEnd(AqlItemBlock const*) const;
+  void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state) const;
  
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
@@ -210,6 +210,14 @@ class ExecutionBlock {
   virtual int getOrSkipSomeOld(size_t atMost, bool skipping,
                               AqlItemBlock*& result, size_t& skipped);
 
+  /// @brief Returns the success return start of this block.
+  ///        Can either be HASMORE or DONE.
+  ///        Guarantee is that if DONE is returned every subsequent call
+  ///        to get/skipSome will NOT find mor documents.
+  ///        HASMORE is allowed to lie, so a next call to get/skipSome could return
+  ///        no more results.
+  virtual ExecutionState getHasMoreState();
+
  protected:
   /// @brief the execution engine
   ExecutionEngine* _engine;
@@ -245,6 +253,10 @@ class ExecutionBlock {
   
   /// @brief getSome begin point in time
   double _getSomeBegin;
+
+  /// @brief the execution state of the dependency
+  ///        used to determine HASMORE or DONE better
+  ExecutionState _upstreamState;
 };
 
 }  // namespace arangodb::aql

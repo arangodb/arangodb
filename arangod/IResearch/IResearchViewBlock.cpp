@@ -135,7 +135,6 @@ IResearchViewBlockBase::IResearchViewBlockBase(
     _hasMore(true), // has more data initially
     _volatileSort(true),
     _volatileFilter(true),
-    _upstreamState(ExecutionState::HASMORE),
     _inflight(0) {
   TRI_ASSERT(_trx);
 
@@ -156,7 +155,6 @@ std::pair<ExecutionState, Result> IResearchViewBlockBase::initializeCursor(
   }
 
   _hasMore = true; // has more data initially
-  _upstreamState = ExecutionState::HASMORE;
   _inflight = 0;
 
   return res;
@@ -256,7 +254,8 @@ IResearchViewBlockBase::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 
@@ -341,13 +340,8 @@ IResearchViewBlockBase::getSome(size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
 
-  traceGetSomeEnd(res.get());
-
-  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
-    _done = true;
-    return {ExecutionState::DONE, std::move(res)};
-  }
-  return {ExecutionState::HASMORE, std::move(res)};
+  traceGetSomeEnd(res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res)};
 
   DEBUG_END_BLOCK();
 }
@@ -405,11 +399,7 @@ std::pair<ExecutionState, size_t> IResearchViewBlockBase::skipSome(size_t atMost
 
   size_t skipped = _inflight;
   _inflight = 0;
-  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
-    _done = true;
-    return {ExecutionState::DONE, skipped};
-  }
-  return {ExecutionState::HASMORE, skipped};
+  return {getHasMoreState(), skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

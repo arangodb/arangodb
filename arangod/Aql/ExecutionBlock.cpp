@@ -32,6 +32,19 @@
 
 using namespace arangodb::aql;
   
+namespace {
+  static std::string StateToString(ExecutionState state) {
+    switch (state) {
+      case ExecutionState::DONE:
+        return "DONE";
+      case ExecutionState::HASMORE:
+        return "HASMORE";
+      case ExecutionState::WAITING:
+        return "WAITING";
+    }
+  }
+}
+
 ExecutionBlock::ExecutionBlock(
     ExecutionEngine* engine,
     ExecutionNode const* ep)
@@ -41,7 +54,8 @@ ExecutionBlock::ExecutionBlock(
     _pos(0),
     _done(false),
     _profile(engine->getQuery()->queryOptions().profile),
-    _getSomeBegin(0) {
+    _getSomeBegin(0),
+    _upstreamState(ExecutionState::HASMORE) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -106,6 +120,8 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   _buffer.clear();
 
   _done = false;
+  _upstreamState = ExecutionState::HASMORE;
+  TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
@@ -149,7 +165,8 @@ void ExecutionBlock::traceGetSomeBegin(size_t atMost) {
 }
 
 // Trace the end of a getSome call, potentially with result
-void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
+void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState state) const {
+  TRI_ASSERT(result != nullptr || state != ExecutionState::HASMORE);
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     ExecutionNode const* en = getPlanNode();
     ExecutionStats::Node stats;
@@ -167,7 +184,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
       ExecutionNode const* node = getPlanNode();
       LOG_TOPIC(INFO, Logger::QUERIES) << "getSome done type="
       << node->getTypeString() << " this=" << (uintptr_t) this
-      << " id=" << node->id();
+      << " id=" << node->id() << " state=" << StateToString(state);
       
       if (_profile >= PROFILE_LEVEL_TRACE_2) {
         if (result == nullptr) {
@@ -218,7 +235,11 @@ AqlItemBlock* ExecutionBlock::getSomeOld(size_t atMost) {
     }
   }
   clearRegisters(result.get());
-  traceGetSomeEnd(result.get());
+  if (result == nullptr) {
+    traceGetSomeEnd(result.get(), ExecutionState::DONE);
+  } else {
+    traceGetSomeEnd(result.get(), ExecutionState::HASMORE);
+  }
   return result.release();
   DEBUG_END_BLOCK();
 }
@@ -325,6 +346,8 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   TRI_IF_FAILURE("ExecutionBlock::getBlock") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  _upstreamState = res.first;
 
   if (res.second != nullptr) {
     _buffer.emplace_back(res.second.release());
@@ -558,4 +581,15 @@ int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
 
   return TRI_ERROR_NO_ERROR;
   DEBUG_END_BLOCK();
+}
+
+ExecutionState ExecutionBlock::getHasMoreState(){
+  if (_done) {
+    return ExecutionState::DONE;
+  }
+  if (_buffer.empty() && _upstreamState == ExecutionState::DONE) {
+    _done = true;
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
 }

@@ -47,7 +47,6 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL))),
-      _upstreamState(ExecutionState::HASMORE),
       _inflight(0) {
   TRI_ASSERT(_cursor->ok());
 
@@ -103,7 +102,6 @@ std::pair<ExecutionState, arangodb::Result> EnumerateCollectionBlock::initialize
 
   DEBUG_BEGIN_BLOCK();
   _cursor->reset();
-  _upstreamState = ExecutionState::HASMORE;
   DEBUG_END_BLOCK();
 
   return res;
@@ -126,7 +124,8 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
   //   or is non-empty and _posInDocuments < _documents.size()
   if (_done) {
     TRI_ASSERT(_inflight == 0);
-    traceGetSomeEnd(nullptr);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
     
@@ -147,7 +146,8 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
         if (!upstreamRes.second) {
           TRI_ASSERT(_inflight == 0);
           _done = true;
-          traceGetSomeEnd(nullptr);
+          TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+          traceGetSomeEnd(nullptr, ExecutionState::DONE);
           return {ExecutionState::DONE, nullptr};
         }
         _pos = 0;  // this is in the first block
@@ -222,9 +222,9 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
 
-  traceGetSomeEnd(res.get());
   _inflight = 0;
-  return {computeExecutionState(), std::move(res)};
+  traceGetSomeEnd(res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -283,28 +283,8 @@ std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMo
   _engine->_stats.scannedFull += static_cast<int64_t>(_inflight);
   size_t skipped = _inflight;
   _inflight = 0;
-  return {computeExecutionState(), skipped};
+  return {getHasMoreState(), skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
-}
-
-/**
- * @brief Compute the ExecutionState to be returned by getSome or skipSome
- * SideEffect: can update _done
- *
- * @return Either HASMORE or DONE. Cannot return WAITING
- */
-ExecutionState EnumerateCollectionBlock::computeExecutionState() {
-  if (_done) {
-    return ExecutionState::DONE;
-  }
-  if (_upstreamState == ExecutionState::HASMORE ||
-      !_buffer.empty() ||
-      _cursor->hasMore()) {
-    return ExecutionState::HASMORE;
-  }
-  _done = true;
-  return ExecutionState::DONE;
-
 }

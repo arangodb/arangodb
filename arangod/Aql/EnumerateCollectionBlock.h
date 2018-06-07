@@ -56,15 +56,6 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
-  /**
-   * @brief Compute the ExecutionState to be returned by getSome or skipSome
-   * SideEffect: can update _done
-   *
-   * @return Either HASMORE or DONE. Cannot return WAITING
-   */
-  ExecutionState computeExecutionState();
-
- private:
   /// @brief collection
   Collection* _collection;
   

@@ -27,9 +27,6 @@
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
-// TODO REMOVE ME, JUST FOR TEMP LOCKING
-#include "Aql/Query.h"
-
 using namespace arangodb::aql;
 
 SingletonBlock::SingletonBlock(ExecutionEngine* engine, SingletonNode const* ep)
@@ -74,9 +71,12 @@ int SingletonBlock::shutdown(int errorCode) {
 std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  
+  traceGetSomeBegin(atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
@@ -126,6 +126,8 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
   }
 
   _done = true;
+  TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+  traceGetSomeEnd(result, ExecutionState::DONE);
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
@@ -136,8 +138,7 @@ FilterBlock::FilterBlock(ExecutionEngine* engine, FilterNode const* en)
     : ExecutionBlock(engine, en), 
       _inReg(ExecutionNode::MaxRegisterId),
       _collector(&engine->_itemBlockManager),
-      _inflight(0),
-      _upstreamState(ExecutionState::HASMORE) {
+      _inflight(0) {
 
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
@@ -149,13 +150,8 @@ FilterBlock::~FilterBlock() {}
 
 std::pair<ExecutionState, arangodb::Result> FilterBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  auto res = ExecutionBlock::initializeCursor(items, pos);
-  if (res.first == ExecutionState::WAITING) {
-    return res;
-  }
-  _upstreamState = ExecutionState::HASMORE;
   _inflight = 0;
-  return res;
+  return ExecutionBlock::initializeCursor(items, pos);
 }
   
 /// @brief internal function to actually decide if the document should be used
@@ -172,7 +168,6 @@ std::pair<ExecutionState, bool> FilterBlock::getBlock(size_t atMost) {
         !res.second) {
       return res;
     }
-    _upstreamState = res.first;
 
     if (_buffer.size() > 1) {
       break;  // Already have a current block
@@ -301,10 +296,7 @@ std::pair<ExecutionState, arangodb::Result> FilterBlock::getOrSkipSome(
   _collector.clear();
   _inflight = 0;
 
-  if (_chosen.empty() && _upstreamState == ExecutionState::DONE) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+  return {getHasMoreState(), TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
@@ -313,16 +305,10 @@ std::pair<ExecutionState, arangodb::Result> FilterBlock::getOrSkipSome(
 std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();  
-  auto res = ExecutionBlock::initializeCursor(items, pos);
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
-    // If we need to wait or get an error we return as is.
-    return res;
-  }
 
   _state = INITFULLCOUNT;
   _count = 0;
-  return res;
+  return ExecutionBlock::initializeCursor(items, pos);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  
@@ -335,6 +321,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
 
   switch (_state) {
     case DONE:
+      TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     case INITFULLCOUNT: {
       if (_fullCount) {
@@ -355,6 +342,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
       if (_limit == 0 && !_fullCount) {
         // quick exit for limit == 0
         _state = DONE;
+        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
         return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
       }
       _state = RETURNING;
@@ -373,6 +361,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
 
         if (skipped == 0) {
           _state = DONE;
+          TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
           return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
         }
 
@@ -414,13 +403,17 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
     }
   }
 
-  if (_state == DONE) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+  return {getHasMoreState(), TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
+}
+
+ExecutionState LimitBlock::getHasMoreState() {
+  if (_state == DONE) {
+    return ExecutionState::DONE;
+  }
+  return ExecutionState::HASMORE;
 }
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
@@ -436,7 +429,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
   }
 
   if (res.second == nullptr) {
-    traceGetSomeEnd(nullptr);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 
@@ -444,7 +437,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
     if (ep->_count) {
     _engine->_stats.count += static_cast<int64_t>(res.second->size());
     }
-    traceGetSomeEnd(res.second.get());
+    traceGetSomeEnd(res.second.get(), res.first);
     return res;
   }
 
@@ -487,7 +480,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ReturnBlock::getSome(
     _engine->_stats.count += static_cast<int64_t>(n);
   }
 
-  traceGetSomeEnd(stripped.get());
+  traceGetSomeEnd(stripped.get(), res.first);
   return {res.first, std::move(stripped)};
 
   // cppcheck-suppress style

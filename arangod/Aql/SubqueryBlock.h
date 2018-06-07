@@ -101,9 +101,6 @@ class SubqueryBlock : public ExecutionBlock {
 
   /// @brief track if we have completely executed the subquery.
   bool _subqueryCompleted;
-
-  /// @brief state return last time we fetched blocks from upstream
-  ExecutionState _upstreamState;
 };
 
 }  // namespace arangodb::aql

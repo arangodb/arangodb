@@ -124,9 +124,6 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
   bool _volatileSort;
   bool _volatileFilter;
 
-  /// @brief The last returned state from a dependent node.
-  arangodb::aql::ExecutionState _upstreamState;
-
   /// @brief The number of documents inflight if we hit a WAITING state.
   size_t _inflight;
 }; // IResearchViewBlockBase

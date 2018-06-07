@@ -41,8 +41,7 @@ SubqueryBlock::SubqueryBlock(ExecutionEngine* engine, SubqueryNode const* en,
       _subqueryResults(nullptr),
       _subqueryPos(0),
       _subqueryInitialized(false),
-      _subqueryCompleted(false),
-      _upstreamState(ExecutionState::HASMORE) {
+      _subqueryCompleted(false) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_outVariable->id);
   TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
   _outReg = it->second.registerId;
@@ -169,6 +168,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
     auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
     if (res.first == ExecutionState::WAITING) {
       // NOTE: _result stays a nullptr! We end up in here again!
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return res;
     }
 
@@ -176,7 +176,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
     _upstreamState = res.first;
 
     if (_result.get() == nullptr) {
-      traceGetSomeEnd(nullptr);
+      TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, nullptr};
     }
   }
@@ -190,6 +191,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
 
   if (state == ExecutionState::WAITING) {
     // We need to wait, please call again
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
     return {state, nullptr};
   }
 
@@ -198,7 +200,6 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
 
   // Clear out registers no longer needed later:
   clearRegisters(_result.get());
-  traceGetSomeEnd(_result.get());
   // If we get here, we have handed over responsibilty for all subquery results
   // computed here to this specific result. We cannot reuse them in the next
   // getSome call, hence we need to reset it.
@@ -206,8 +207,11 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> SubqueryBlock::getSome(
   _subqueryCompleted = false;
   _subqueryResults.release();
 
+
+  traceGetSomeEnd(_result.get(), getHasMoreState());
+
   // Resets _result to nullptr
-  return {_upstreamState, std::move(_result)};
+  return {getHasMoreState(), std::move(_result)};
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }

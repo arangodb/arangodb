@@ -195,14 +195,14 @@ CalculationBlock::getSome(size_t atMost) {
   }
   if (res.second.get() == nullptr) {
     TRI_ASSERT(res.first == ExecutionState::DONE);
-    traceGetSomeEnd(nullptr);
+    traceGetSomeEnd(nullptr, res.first);
     return res;
   }
 
   doEvaluation(res.second.get());
   // Clear out registers no longer needed later:
   clearRegisters(res.second.get());
-  traceGetSomeEnd(res.second.get());
+  traceGetSomeEnd(res.second.get(), res.first);
   return res;
 
   // cppcheck-suppress *

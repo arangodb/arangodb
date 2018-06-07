@@ -611,7 +611,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   if (_done) {
-    traceGetSomeEnd(nullptr);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 
@@ -749,9 +750,9 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
   _copyFromRow = 0;
   // Clear out registers no longer needed later:
   clearRegisters(_resultInFlight.get());
-  traceGetSomeEnd(_resultInFlight.get());
+  traceGetSomeEnd(_resultInFlight.get(), getHasMoreState());
 
-  return {ExecutionState::HASMORE, std::move(_resultInFlight)};
+  return {getHasMoreState(), std::move(_resultInFlight)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -820,10 +821,7 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
 
   size_t returned = _returned;
   _returned = 0;
-  if (_done) {
-    return {ExecutionState::DONE, returned};
-  }
-  return {ExecutionState::HASMORE, returned};
+  return {getHasMoreState(), returned}
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

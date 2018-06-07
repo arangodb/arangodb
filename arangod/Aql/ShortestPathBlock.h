@@ -57,7 +57,7 @@ class ShortestPathBlock : public ExecutionBlock {
   // skip atMost documents, returns the number actually skipped . . .
   // will only return less than atMost if there aren't atMost many
   // things to skip overall.
-  size_t skipSomeOld(size_t atMost) final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) final;
   
  private:
   /// @brief Compute the next shortest path

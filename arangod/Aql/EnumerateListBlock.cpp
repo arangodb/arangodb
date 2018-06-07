@@ -36,7 +36,6 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
       _index(0),
       _docVecSize(0),
       _inVarRegId(ExecutionNode::MaxRegisterId),
-      _upstreamState(ExecutionState::HASMORE),
       _inflight(0) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
 
@@ -63,7 +62,6 @@ std::pair<ExecutionState, arangodb::Result> EnumerateListBlock::initializeCursor
 
   // handle local data (if any)
   _index = 0;      // index in _inVariable for next run
-  _upstreamState = ExecutionState::HASMORE;
   _inflight = 0;
 
   return res;
@@ -75,7 +73,8 @@ EnumerateListBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   traceGetSomeBegin(atMost);
   if (_done) {
-    traceGetSomeEnd(nullptr);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 
@@ -91,12 +90,14 @@ EnumerateListBlock::getSome(size_t atMost) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
       auto upstreamRes = ExecutionBlock::getBlock(toFetch);
       if (upstreamRes.first == ExecutionState::WAITING) {
+        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
         return {upstreamRes.first, nullptr};
       }
       _upstreamState = upstreamRes.first;
       if (!upstreamRes.second) {
         _done = true;
-        traceGetSomeEnd(nullptr);
+        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+        traceGetSomeEnd(nullptr, ExecutionState::DONE);
         return {ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
@@ -170,14 +171,10 @@ EnumerateListBlock::getSome(size_t atMost) {
   } while (res.get() == nullptr);
 
   // Clear out registers no longer needed later:
-  clearRegisters(res.get());
-  traceGetSomeEnd(res.get());
   _inflight = 0;
-  if (_upstreamState == ExecutionState::DONE && _buffer.empty()) {
-    _done = true;
-    return {ExecutionState::DONE, std::move(res)};
-  }
-  return {ExecutionState::HASMORE, std::move(res)};
+  clearRegisters(res.get());
+  traceGetSomeEnd(res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res)};
   DEBUG_END_BLOCK();  
 }
 
@@ -247,11 +244,7 @@ std::pair<ExecutionState, size_t> EnumerateListBlock::skipSome(size_t atMost) {
 
   size_t skipped = _inflight;
   _inflight = 0;
-  if (_upstreamState == ExecutionState::DONE && _buffer.empty()) {
-    _done = true;
-    return {ExecutionState::DONE, skipped};
-  }
-  return {ExecutionState::HASMORE, skipped};
+  return {getHasMoreState(), skipped};
   DEBUG_END_BLOCK();  
 }
 

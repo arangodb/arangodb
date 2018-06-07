@@ -374,6 +374,14 @@ int ScatterBlock::shutdown(int errorCode) {
   DEBUG_END_BLOCK();
 }
 
+ExecutionState ScatterBlock::getHasMoreStateForClientId(size_t clientId) {
+  if (hasMoreForClientId(clientId)) {
+    return ExecutionState::HASMORE;
+  }
+  return ExecutionState::DONE;
+}
+
+
 bool ScatterBlock::hasMoreForClientId(size_t clientId) {
   DEBUG_BEGIN_BLOCK();
 
@@ -410,12 +418,14 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result, size_t& skipped,
     std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin(atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
   size_t clientId = getClientId(shardId);
 
   if (!hasMoreForClientId(clientId)) {
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
@@ -426,12 +436,14 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
   if (pos.first >= _buffer.size()) {
     auto res = getBlock(atMost);
     if (res.first == ExecutionState::WAITING) {
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return {res.first, TRI_ERROR_NO_ERROR};
     }
     if (res.first == ExecutionState::DONE) {
       _doneForClient[clientId] = true;
     }
     if (!res.second) {
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
   }
@@ -472,10 +484,8 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     }
   }
 
-  if (hasMoreForClientId(clientId)) {
-    return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
-  }
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  traceGetSomeEnd(result.get(), getHasMoreStateForClientId(clientId));
+  return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -558,6 +568,13 @@ int DistributeBlock::shutdown(int errorCode) {
   DEBUG_END_BLOCK();
 }
 
+ExecutionState DistributeBlock::getHasMoreStateForClientId(size_t clientId) {
+  if (hasMoreForClientId(clientId)) {
+    return ExecutionState::HASMORE;
+  }
+  return ExecutionState::DONE;
+}
+
 bool DistributeBlock::hasMoreForClientId(size_t clientId) {
   DEBUG_BEGIN_BLOCK();
 
@@ -597,7 +614,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
   size_t clientId = getClientId(shardId);
 
   if (!hasMoreForClientId(clientId)) {
-    traceGetSomeEnd(nullptr);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
@@ -610,7 +627,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
       return {res.first, TRI_ERROR_NO_ERROR};
     }
     if (!res.second) {
-      traceGetSomeEnd(nullptr);
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
     if (res.first == ExecutionState::DONE) {
@@ -625,11 +642,8 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
     for (size_t i = 0; i < skipped; i++) {
       buf.pop_front();
     }
-    traceGetSomeEnd(nullptr);
-    if (hasMoreForClientId(clientId)) {
-      return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
-    }
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+    traceGetSomeEnd(nullptr, getHasMoreStateForClientId(clientId));
+    return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
   }
   
   BlockCollector collector(&_engine->_itemBlockManager);
@@ -661,12 +675,9 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
 
   // _buffer is left intact, deleted and cleared at shutdown
 
-  traceGetSomeEnd(result.get());
+  traceGetSomeEnd(result.get(), getHasMoreStateForClientId(clientId));
 
-  if (hasMoreForClientId(clientId)) {
-    return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
-  }
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -699,6 +710,7 @@ std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
       }
       if (!res.second) {
         if (buf.at(clientId).size() == 0) {
+          TRI_ASSERT(getHasMoreStateForClientId(clientId) == ExecutionState::DONE);
           return {ExecutionState::DONE, false};
         }
         break;
@@ -722,11 +734,7 @@ std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
     }
   }
 
-  if (hasMoreForClientId(clientId)) {
-    return {ExecutionState::HASMORE, true};
-  }
-  return {ExecutionState::DONE, true};
-
+  return {getHasMoreStateForClientId(clientId), true};
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
@@ -1163,12 +1171,12 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
     VPackSlice responseBody = responseBodyBuilder->slice();
 
     if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
-      traceGetSomeEnd(nullptr);
+      traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, nullptr};
     }
 
     auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
-    traceGetSomeEnd(r.get());
+    traceGetSomeEnd(r.get(), ExecutionState::HASMORE);
     return {ExecutionState::HASMORE, std::move(r)};
   }
   
@@ -1346,13 +1354,15 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> UnsortingGatherBlock::g
   _done = _dependencies.empty();
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 
   // the simple case ...
   auto res = _dependencies[_atDep]->getSome(atMost);
   if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, ExecutionState::WAITING);
     return res;
   }
 
@@ -1360,18 +1370,15 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> UnsortingGatherBlock::g
     _atDep++;
     res = _dependencies[_atDep]->getSome(atMost);
     if (res.first == ExecutionState::WAITING) {
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return res;
     }
   }
 
   _done = (nullptr == res.second);
 
-  traceGetSomeEnd(res.second.get());
-
-  if (_done) {
-    return {ExecutionState::DONE, std::move(res.second)};
-  }
-  return {ExecutionState::HASMORE, std::move(res.second)}
+  traceGetSomeEnd(res.second.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res.second)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1401,10 +1408,7 @@ std::pair<ExecutionState, size_t> UnsortingGatherBlock::skipSome(size_t atMost) 
 
   _done = (res.second == 0);
 
-  if (_done) {
-    return {ExecutionState::DONE, res.second};
-  }
-  return {ExecutionState::HASMORE, res.second};
+  return {getHasMoreState(), res.second};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1603,7 +1607,8 @@ SortingGatherBlock::getSome(size_t atMost) {
   }
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 
@@ -1625,7 +1630,8 @@ SortingGatherBlock::getSome(size_t atMost) {
 
   if (available == 0) {
     _done = true;
-    traceGetSomeEnd(nullptr);
+    TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
 
@@ -1709,9 +1715,9 @@ SortingGatherBlock::getSome(size_t atMost) {
     }
   }
 
-  traceGetSomeEnd(res.get());
+  traceGetSomeEnd(res.get(), getHasMoreState());
   // Maybe we can optimize here DONE/HASMORE
-  return {ExecutionState::HASMORE, std::move(res)};
+  return {getHasMoreState(), std::move(res)};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

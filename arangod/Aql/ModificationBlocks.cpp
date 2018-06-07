@@ -48,8 +48,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _collection(ep->_collection),
       _isDBServer(false),
       _usesDefaultSharding(true),
-      _countStats(ep->countStats()),
-      _upstreamState(ExecutionState::HASMORE) {
+      _countStats(ep->countStats()) {
 
   _trx->pinData(_collection->cid());
 
@@ -85,6 +84,13 @@ size_t ModificationBlock::countBlocksRows() const {
   return count;
 }
 
+ExecutionState ModificationBlock::getHasMoreState() {
+  // In these blocks everything from upstream
+  // is entirely processed in one go.
+  // So if upstream is done, we are done.
+  return _upstreamState;
+}
+
 /// @brief get some - this accumulates all input and calls the work() method
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ModificationBlock::getSome(size_t atMost) {
@@ -107,6 +113,7 @@ ModificationBlock::getSome(size_t atMost) {
     while (_upstreamState == ExecutionState::HASMORE) {
       auto upstreamRes = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
       if (upstreamRes.first == ExecutionState::WAITING) {
+        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
         return upstreamRes;
       }
 
@@ -131,6 +138,7 @@ ModificationBlock::getSome(size_t atMost) {
       _blocks.clear();
       auto upstreamRes = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
       if (upstreamRes.first == ExecutionState::WAITING) {
+        traceGetSomeEnd(nullptr, ExecutionState::WAITING);
         return upstreamRes;
       }
 
@@ -149,20 +157,15 @@ ModificationBlock::getSome(size_t atMost) {
     }
   }
 
-  traceGetSomeEnd(replyBlocks.get());
+  traceGetSomeEnd(replyBlocks.get(), getHasMoreState());
   
-  return {_upstreamState, std::move(replyBlocks)};
+  return {getHasMoreState(), std::move(replyBlocks)};
 }
 
 std::pair<ExecutionState, arangodb::Result> ModificationBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
-  auto res = ExecutionBlock::initializeCursor(items, pos);
-  if (res.first == ExecutionState::WAITING) {
-    return res;
-  }
-  _upstreamState = ExecutionState::HASMORE;
   _blocks.clear();
-  return res;
+  return ExecutionBlock::initializeCursor(items, pos);
 }
 
 /// @brief extract a key from the AqlValue passed

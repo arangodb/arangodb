@@ -105,7 +105,8 @@ ExecutionBlockMock::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
 
   if (_done) {
-    traceGetSomeEnd(nullptr);
+    TRI_ASSERT(getHasMoreState() == arangodb::aql::ExecutionState::DONE);
+    traceGetSomeEnd(nullptr, arangodb::aql::ExecutionState::DONE);
     return {arangodb::aql::ExecutionState::DONE, nullptr};
   }
 
@@ -125,6 +126,8 @@ ExecutionBlockMock::getSome(size_t atMost) {
       _upstreamState = res.first;
       if (!res.second) {
         _done = true;
+        TRI_ASSERT(getHasMoreState() == arangodb::aql::ExecutionState::DONE);
+        traceGetSomeEnd(nullptr, arangodb::aql::ExecutionState::DONE);
         return {arangodb::aql::ExecutionState::DONE, nullptr};
       }
       _pos = 0;  // this is in the first block
@@ -171,12 +174,8 @@ ExecutionBlockMock::getSome(size_t atMost) {
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
 
-  traceGetSomeEnd(res.get());
-  if (_buffer.empty() && _upstreamState == arangodb::aql::ExecutionState::DONE) {
-    _done = true;
-    return {arangodb::aql::ExecutionState::DONE, std::move(res)};
-  }
-  return {arangodb::aql::ExecutionState::HASMORE, std::move(res)};
+  traceGetSomeEnd(res.get(), getHasMoreState());
+  return {getHasMoreState(), std::move(res)};
 
   DEBUG_END_BLOCK();
 }
@@ -229,11 +228,7 @@ std::pair<arangodb::aql::ExecutionState, size_t> ExecutionBlockMock::skipSome(si
 
   size_t skipped = _inflight;
   _inflight = 0;
-  if (_buffer.empty() && _upstreamState == arangodb::aql::ExecutionState::DONE) {
-    return {arangodb::aql::ExecutionState::DONE, skipped};
-  }
-  // We skipped atLeast documents
-  return {arangodb::aql::ExecutionState::HASMORE, skipped};
+  return {getHasMoreState(), skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

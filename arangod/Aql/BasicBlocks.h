@@ -89,9 +89,6 @@ class FilterBlock final : public ExecutionBlock {
 
   /// @brief counter for documents inflight during WAITING
   size_t _inflight;
-
-  /// @brief State of the upstream node, used during get or skipSome
-  ExecutionState _upstreamState;
 };
 
 class LimitBlock final : public ExecutionBlock {
@@ -113,6 +110,10 @@ class LimitBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                   AqlItemBlock*& result,
                                                   size_t& skipped) override;
+
+ protected:
+
+  ExecutionState getHasMoreState() override;
 
  private:
   /// @brief _offset

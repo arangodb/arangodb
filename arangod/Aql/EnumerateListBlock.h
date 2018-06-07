@@ -66,9 +66,6 @@ class EnumerateListBlock : public ExecutionBlock {
   // EnumerateListNode
   RegisterId _inVarRegId;
 
-  // @brief the last state the upstream block has returned
-  ExecutionState _upstreamState;
-
   // @brief number of requests in flight in the moment we hit WAITING
   size_t _inflight;
 };

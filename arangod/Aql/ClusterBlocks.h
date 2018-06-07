@@ -134,7 +134,10 @@ class ScatterBlock : public BlockWithClients {
 
  private:
 
-  /// @brief hasMoreForClientId: any more for client <cliendIt>?
+  /// @brief getHasMoreStateForClientId: State for client <cliendId>?
+  ExecutionState getHasMoreStateForClientId(size_t clientId);
+
+  /// @brief hasMoreForClientId: any more for client <cliendId>?
   bool hasMoreForClientId(size_t clientId);
 
   /// @brief getOrSkipSomeForShard
@@ -162,6 +165,9 @@ class DistributeBlock : public BlockWithClients {
   bool hasMoreForShard(std::string const& shardId) override;
 
  private:
+
+  /// @brief getHasMoreStateForClientId: State for client <cliendId>?
+  ExecutionState getHasMoreStateForClientId(size_t clientId);
 
   /// @brief hasMoreForClientId: any more for client <cliendIt>?
   bool hasMoreForClientId(size_t clientId);
