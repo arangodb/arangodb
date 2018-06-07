@@ -50,7 +50,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id,
         _indexes(indexes),
         _condition(condition),
         _needsGatherNodeSort(false),
-        _restrictedTo(""),
         _options(opts) {
   TRI_ASSERT(_condition != nullptr);
 
@@ -65,13 +64,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _indexes(),
       _condition(nullptr),
       _needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)),
-      _restrictedTo(""),
       _options() {
-  VPackSlice restrictedTo = base.get("restrictedTo");
-
-  if (restrictedTo.isString()) {
-    _restrictedTo = restrictedTo.copyString();
-  }
 
   _options.sorted = basics::VelocyPackHelper::readBooleanValue(base, "sorted", true);
   _options.ascending = basics::VelocyPackHelper::readBooleanValue(base, "ascending", false);
@@ -184,9 +177,6 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const 
   // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
   builder.add("indexCoversProjections", VPackValue(!_coveringIndexAttributePositions.empty()));
-  if (!_restrictedTo.empty()) {
-    builder.add("restrictedTo", VPackValue(_restrictedTo));
-  }
 
   builder.add(VPackValue("indexes"));
   {

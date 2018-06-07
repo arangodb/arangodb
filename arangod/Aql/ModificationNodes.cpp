@@ -42,12 +42,7 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
           Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)),
-      _countStats(base.get("countStats").getBool()),
-      _restrictedTo("") {
-  VPackSlice restrictedTo = base.get("restrictedTo");
-  if (restrictedTo.isString()) {
-    _restrictedTo = restrictedTo.copyString();
-  }
+      _countStats(base.get("countStats").getBool()) {
 }
 
 /// @brief toVelocyPack
@@ -61,9 +56,6 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
 
   // Now put info about vocbase and cid in there
   builder.add("countStats", VPackValue(_countStats));
-  if (!_restrictedTo.empty()) {
-    builder.add("restrictedTo", VPackValue(_restrictedTo));
-  }
 
   // add out variables
   if (_outVariableOld != nullptr) {

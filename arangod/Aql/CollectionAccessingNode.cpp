@@ -52,6 +52,12 @@ CollectionAccessingNode::CollectionAccessingNode(ExecutionPlan* plan,
     msg.append("' not found");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
   }
+  
+  VPackSlice restrictedTo = slice.get("restrictedTo");
+
+  if (restrictedTo.isString()) {
+    _restrictedTo = restrictedTo.copyString();
+  }
 }
    
 TRI_vocbase_t* CollectionAccessingNode::vocbase() const { return _collection->vocbase(); }
@@ -70,5 +76,9 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
   
   if (ServerState::instance()->isCoordinator()) {
     builder.add("numberOfShards", VPackValue(_collection->numberOfShards()));
+  }
+  
+  if (!_restrictedTo.empty()) {
+    builder.add("restrictedTo", VPackValue(_restrictedTo));
   }
 }

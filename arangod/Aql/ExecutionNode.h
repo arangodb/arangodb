@@ -667,8 +667,7 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         CollectionAccessingNode(collection),
-        _random(random),
-        _restrictedTo("") {
+        _random(random) {
   }
 
   EnumerateCollectionNode(ExecutionPlan* plan,
@@ -707,33 +706,9 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
 
-  /**
-   * @brief Restrict this Node to a single Shard (cluster only)
-   *
-   * @param shardId The shard restricted to
-   */
-  void restrictToShard(std::string const& shardId) { _restrictedTo = shardId; }
-
-  /**
-   * @brief Check if this Node is restricted to a single Shard (cluster only)
-   *
-   * @return True if we are restricted, false otherwise
-   */
-  bool isRestricted() const { return !_restrictedTo.empty(); }
-
-  /**
-   * @brief Get the Restricted shard for this Node
-   *
-   * @return The Shard this node is restricted to
-   */
-  std::string const& restrictedShard() const { return _restrictedTo; }
-
  private:
   /// @brief whether or not we want random iteration
   bool _random;
-
-  /// @brief A shard this node is restricted to, may be empty
-  std::string _restrictedTo;
 };
 
 /// @brief class EnumerateListNode

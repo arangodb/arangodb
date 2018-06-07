@@ -1314,13 +1314,7 @@ EnumerateCollectionNode::EnumerateCollectionNode(
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
-      _random(base.get("random").getBoolean()),
-      _restrictedTo("") {
-  VPackSlice restrictedTo = base.get("restrictedTo");
-
-  if (restrictedTo.isString()) {
-    _restrictedTo = restrictedTo.copyString();
-  }
+      _random(base.get("random").getBoolean()) {
 }
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
@@ -1329,10 +1323,6 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
 
   builder.add("random", VPackValue(_random));
-
-  if (!_restrictedTo.empty()) {
-    builder.add("restrictedTo", VPackValue(_restrictedTo));
-  }
 
   // add outvariable and projection
   DocumentProducingNode::toVelocyPack(builder);
