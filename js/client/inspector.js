@@ -1,5 +1,5 @@
 /* jshint -W051, -W020 */
-/* global global:true, window, require */
+/* global global:true, require */
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
