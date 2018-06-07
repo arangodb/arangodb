@@ -63,8 +63,6 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-
-
   //NEAR(coll, 0 /*lat*/, 0 /*lon*/[, 10 /*limit*/])
   struct nearParams{
     std::string collection;
@@ -91,7 +89,6 @@ namespace {
   struct fulltextParams{
     std::string collection;
     std::string attribute;
-    std::string search;
     std::uint64_t limit;
 
     fulltextParams(AstNode const* node){
@@ -100,7 +97,6 @@ namespace {
       TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
       collection = arr->getMember(0)->getString();
       attribute = arr->getMember(1)->getString();
-      search = arr->getMember(2)->getString();
       if(arr->numMembers() > 3){
         limit = arr->getMember(3)->getIntValue();
       } else {
@@ -127,8 +123,10 @@ namespace {
     auto* query = ast->query();
     auto* trx = query->trx();
     nearParams params(funAstNode);
+    (void) trx;
 
 
+    LOG_DEVEL << "replaceNear";
     auto* fun = getFunction(funAstNode);
     LOG_DEVEL << fun->name;
     LOG_DEVEL << "collection: " << params.collection;
@@ -140,29 +138,20 @@ namespace {
     auto* ast = plan->getAst();
     auto* query = ast->query();
     auto* trx = query->trx();
+    (void) trx;
 
-    LOG_DEVEL << "replaceNear";
+    LOG_DEVEL << "replaceWithin";
     auto* fun = getFunction(funAstNode);
     LOG_DEVEL << fun->name;
     return nullptr;
   }
 
-  AstNode* replaceFullText(AstNode* funAstNode, ExecutionPlan* plan){
+  AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
     auto* ast = plan->getAst();
     auto* query = ast->query();
     auto* trx = query->trx();
+
     fulltextParams params(funAstNode);
-
-
-    // TODO - DELETE /////////////////////////////
-    LOG_DEVEL << "replaceNear";
-    auto* fun = getFunction(funAstNode);
-    LOG_DEVEL << fun->name;
-    LOG_DEVEL << params.collection;
-    LOG_DEVEL << params.attribute;
-    LOG_DEVEL << params.search;
-    // TODO - DELETE /////////////////////////////
-
 
     //// create subquery plan for fulltext
     //
@@ -203,14 +192,15 @@ namespace {
     }
 
 		if(!index){ // not found or error
+      LOG_DEVEL << "no valid index found";
 			return nullptr;
 		}
 
     // index part 2 - get remaining vars required for index creation
     auto& vocbase = trx->vocbase();
     auto* aqlCollection = query->collections()->get(params.collection);
-    // TODO - CHECKME - Is this correct or do we need to build our own condition AST
-		auto condition = std::make_unique<Condition>(funAstNode->getMember(0));
+		auto condition = std::make_unique<Condition>(ast);
+		condition->andCombine(funAstNode);
 		// create a fresh out variable
     Variable* indexOutVariable = ast->variables()->createTemporaryVariable();
 
@@ -228,6 +218,7 @@ namespace {
         IndexIteratorOptions()
       )
     );
+    condition.release();
 
     /// singleton
     ExecutionNode* eSingleton = plan->registerNode(
@@ -254,16 +245,20 @@ namespace {
 
     /// create subquery
     Variable* subqueryOutVariable = ast->variables()->createTemporaryVariable();
-    plan->registerSubquery(
+    ExecutionNode* eSubquery = plan->registerSubquery(
         new SubqueryNode(plan, plan->nextId(), eReturn, subqueryOutVariable)
     );
+
+    auto* dep = calcNode->getFirstDependency();
+    calcNode->replaceDependency(dep, eSubquery);
+    eSubquery->addDependency(dep);
 
     // this replaces the FunctionCall-AstNode in the
     // expression of the calculation node.
     return ast->createNodeReference(subqueryOutVariable);
   }
 
-}
+} // namespace
 
 void arangodb::aql::replaceJSFunctions(Optimizer* opt
                                       ,std::unique_ptr<ExecutionPlan> plan
@@ -271,34 +266,41 @@ void arangodb::aql::replaceJSFunctions(Optimizer* opt
 
   bool modified = false;
 
-  auto visitor = [&modified,&plan](AstNode* astnode){
-    auto* fun = getFunction(astnode);
-    AstNode* replacement = nullptr;
-    if(fun){
-      LOG_DEVEL << "loop " << fun->name;
-      if (fun->name == std::string("NEAR")){
-        replacement = replaceNear(astnode,plan.get());
-      }
-      if (fun->name == std::string("WITHIN")){
-        replacement = replaceWithin(astnode,plan.get());
-      }
-      if (fun->name == std::string("FULLTEXT")){
-        replacement = replaceFullText(astnode,plan.get());
-      }
-    }
-    if (replacement) {
-      modified = true;
-      return replacement;
-    }
-    return astnode;
-  };
-
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, ExecutionNode::CALCULATION, true);
 
   for(auto const& node : nodes){
-    Ast::traverseAndModify(getAstNode(static_cast<CalculationNode*>(node)),visitor);
+    auto visitor = [&modified, &node, &plan](AstNode* astnode){
+      auto* fun = getFunction(astnode);
+      AstNode* replacement = nullptr;
+      if(fun){
+        LOG_DEVEL << "loop " << fun->name;
+        if (fun->name == std::string("NEAR")){
+          replacement = replaceNear(astnode,plan.get());
+        }
+        if (fun->name == std::string("WITHIN")){
+          replacement = replaceWithin(astnode,plan.get());
+        }
+        if (fun->name == std::string("FULLTEXT")){
+          replacement = replaceFullText(astnode,node,plan.get());
+        }
+      }
+      if (replacement) {
+        LOG_DEVEL << "replace";
+        modified = true;
+        return replacement;
+      }
+      return astnode;
+    };
+
+    // replace root node if it was modified
+    // traverse and modify has no access to roots parent
+    CalculationNode* calc = static_cast<CalculationNode*>(node);
+    auto* root = Ast::traverseAndModify(getAstNode(calc),visitor);
+    if (root != getAstNode(calc)) {
+      calc->expression()->replaceNode(root);
+    }
   }
 
   opt->addPlan(std::move(plan), rule, modified);
