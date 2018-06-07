@@ -41,7 +41,7 @@ namespace import {
 //
 // quickly written histogram class for debugging
 //
-  class QuickHistogram : public arangodb::Thread {
+class QuickHistogram : public arangodb::Thread {
  private:
   QuickHistogram(QuickHistogram const&) = delete;
   QuickHistogram& operator=(QuickHistogram const&) = delete;
@@ -49,15 +49,14 @@ namespace import {
  public:
   QuickHistogram()
     : Thread("QuickHistogram"), _threadRunning(false)
-  {};
+  {}
 
-  ~QuickHistogram()
-  {
+  ~QuickHistogram() {
     shutdown();
   }
 
   void beginShutdown() override {
-    _threadRunning=false;
+    _threadRunning = false;
     Thread::beginShutdown();
 
     // wake up the thread that may be waiting in run()
@@ -66,7 +65,7 @@ namespace import {
   }
 
 
-  void post_latency(std::chrono::microseconds latency) {
+  void postLatency(std::chrono::microseconds latency) {
     if (_threadRunning.load()) {
       CONDITION_LOCKER(guard, _condvar);
 
@@ -75,10 +74,9 @@ namespace import {
   }
 
 protected:
-  void run() override
-  {
-    _interval_start=std::chrono::steady_clock::now();
-    _measuring_start = _interval_start;
+  void run() override {
+    _intervalStart = std::chrono::steady_clock::now();
+    _measuringStart = _intervalStart;
     LOG_TOPIC(INFO, arangodb::Logger::FIXME)
       << R"("elapsed","window","n","min","mean","median","95th","99th","99.9th","max","unused1","clock")";
 
@@ -89,15 +87,15 @@ protected:
     while(_threadRunning.load()) {
       CONDITION_LOCKER(guard, _condvar);
 
-      std::chrono::seconds ten_sec(10);
-      _condvar.wait(ten_sec);
+      std::chrono::seconds tenSec(10);
+      _condvar.wait(tenSec);
 
       LatencyVec_t * temp;
       temp = _writingLatencies;
       _writingLatencies = _readingLatencies;
       _readingLatencies = temp;
 
-      print_interval(!_threadRunning.load());
+      printInterval(!_threadRunning.load());
     }
   } // run
 
@@ -105,8 +103,8 @@ protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief
   //////////////////////////////////////////////////////////////////////////////
-  std::chrono::steady_clock::time_point _measuring_start;
-  std::chrono::steady_clock::time_point _interval_start;
+  std::chrono::steady_clock::time_point _measuringStart;
+  std::chrono::steady_clock::time_point _intervalStart;
 
   typedef std::vector<std::chrono::microseconds> LatencyVec_t;
   LatencyVec_t _vectors[2];
@@ -116,26 +114,26 @@ protected:
   std::atomic<bool> _threadRunning;
 
  protected:
-  void print_interval(bool force=false) {
-    std::chrono::steady_clock::time_point interval_end;
-    std::chrono::milliseconds interval_diff, measuring_diff;
-    std::chrono::microseconds sum, zero_micros;
+  void printInterval(bool force=false) {
+    std::chrono::steady_clock::time_point intervalEnd;
+    std::chrono::milliseconds intervalDiff, measuringDiff;
+    std::chrono::microseconds sum, zeroMicros;
 
-    zero_micros = std::chrono::microseconds(0);
-    interval_end=std::chrono::steady_clock::now();
-    interval_diff=std::chrono::duration_cast<std::chrono::milliseconds>(interval_end - _interval_start);
+    zeroMicros = std::chrono::microseconds(0);
+    intervalEnd=std::chrono::steady_clock::now();
+    intervalDiff=std::chrono::duration_cast<std::chrono::milliseconds>(intervalEnd - _intervalStart);
 
     {
       // retest within mutex
-      interval_end=std::chrono::steady_clock::now();
-      interval_diff=std::chrono::duration_cast<std::chrono::milliseconds>(interval_end - _interval_start);
-      if (std::chrono::milliseconds(10000) <= interval_diff || force) {
+      intervalEnd=std::chrono::steady_clock::now();
+      intervalDiff=std::chrono::duration_cast<std::chrono::milliseconds>(intervalEnd - _intervalStart);
+      if (std::chrono::milliseconds(10000) <= intervalDiff || force) {
         double fp_measuring, fp_interval;
         size_t num=_readingLatencies->size();
 
-        measuring_diff = std::chrono::duration_cast<std::chrono::milliseconds>(interval_end - _measuring_start);
-        fp_measuring = measuring_diff.count() / 1000.0;
-        fp_interval = interval_diff.count() / 1000.0;
+        measuringDiff = std::chrono::duration_cast<std::chrono::milliseconds>(intervalEnd - _measuringStart);
+        fp_measuring = measuringDiff.count() / 1000.0;
+        fp_interval = intervalDiff.count() / 1000.0;
 
         std::chrono::microseconds mean, median, per95, per99, per99_9;
 
@@ -143,7 +141,7 @@ protected:
           bool odd(num & 1);
           size_t half(num/2);
 
-          sum = std::accumulate(_readingLatencies->begin(), _readingLatencies->end(), zero_micros);
+          sum = std::accumulate(_readingLatencies->begin(), _readingLatencies->end(), zeroMicros);
           mean = sum / num;
 
           if (1==num) {
@@ -154,9 +152,9 @@ protected:
             median = _readingLatencies->at(half);
           }
         } else {
-          sum = zero_micros;
-          mean = zero_micros;
-          median = zero_micros;
+          sum = zeroMicros;
+          mean = zeroMicros;
+          median = zeroMicros;
         } // else
 
         sort(_readingLatencies->begin(), _readingLatencies->end());
@@ -188,7 +186,7 @@ protected:
           << buffer;
 
         _readingLatencies->clear();
-        _interval_start=interval_end;
+        _intervalStart=intervalEnd;
       }
     }
   }
@@ -197,10 +195,10 @@ protected:
   // calculation taken from http://www.dummies.com/education/math/statistics/how-to-calculate-percentiles-in-statistics
   //  (zero and one size vector calculations not included in that link)
   std::chrono::microseconds CalcPercentile(std::vector<std::chrono::microseconds> &SortedLatencies, int Percentile) {
-    size_t index, remainder, next_index;
-    std::chrono::microseconds ret_val;
+    size_t index, remainder, nextIndex;
+    std::chrono::microseconds retVal;
 
-    ret_val=std::chrono::microseconds(0);
+    retVal=std::chrono::microseconds(0);
 
     if (0 < SortedLatencies.size()) {
       // useful vector size
@@ -215,28 +213,28 @@ protected:
       if (0 < index) {
         --index;
       } // if
-      next_index = ((index+1)<SortedLatencies.size()) ? index+1 : index;
+      nextIndex = ((index+1)<SortedLatencies.size()) ? index+1 : index;
 
       if (0 == remainder) {
         // whole number index
         std::chrono::microseconds low, high;
         low = SortedLatencies[index];
-        high = SortedLatencies[next_index];
-        ret_val = (low + high) / 2;
+        high = SortedLatencies[nextIndex];
+        retVal = (low + high) / 2;
       } else {
         // fractional index, round up ... but we are 0 based, so already one higher
-        ret_val = SortedLatencies[next_index];
+        retVal = SortedLatencies[nextIndex];
       } // else
     } else {
       // vector too small
       if (1 == SortedLatencies.size()) {
-        ret_val = SortedLatencies[0] / 2;
+        retVal = SortedLatencies[0] / 2;
       } else {
-        ret_val=std::chrono::microseconds(0);
+        retVal=std::chrono::microseconds(0);
       } // else
     } // else
 
-    return ret_val;
+    return retVal;
   } // CalcPercentile
 
  private:
@@ -247,17 +245,17 @@ class QuickHistogramTimer {
 public:
   QuickHistogramTimer(QuickHistogram & histo)
     : _histogram(histo) {
-    _interval_start=std::chrono::steady_clock::now();
+    _intervalStart=std::chrono::steady_clock::now();
   }
 
   ~QuickHistogramTimer() {
     std::chrono::microseconds latency;
 
-    latency = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _interval_start);
-    _histogram.post_latency(latency);
+    latency = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - _intervalStart);
+    _histogram.postLatency(latency);
   }
 
-  std::chrono::steady_clock::time_point _interval_start;
+  std::chrono::steady_clock::time_point _intervalStart;
   QuickHistogram & _histogram;
 }; // QuickHistogramTimer
 }
