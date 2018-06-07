@@ -587,7 +587,8 @@ function getServerData(arango) {
           const version = arango.GET('_api/version'); // version api
           const log = arango.GET('_admin/log'); // log api
           const statistics = arango.GET('_admin/statistics'); // statistics api
-          var agencyConfig, agencyState;
+          var agencyConfig;
+          var agencyState;
           if (server.startsWith("AGNT")) {
             agencyConfig = arango.GET('_api/agency/config');
             agencyState = arango.GET('_api/agency/state');
@@ -647,7 +648,7 @@ function getServerData(arango) {
 
           if (agencyConfig !==  undefined) {
             report[server].config = agencyConfig;
-            report[state].config = agencyState;
+            report[server].state = agencyState;
           }
           if (top !==  undefined) {
             report[server].top = top;
