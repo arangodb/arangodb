@@ -134,7 +134,6 @@ class ExecutionNode {
     SHORTEST_PATH = 24,
 #ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
-    SCATTER_IRESEARCH_VIEW,
 #endif
     MAX_NODE_TYPE_VALUE
   };
@@ -298,8 +297,7 @@ class ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   virtual std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache
   ) const = 0;
 
   /// @brief clone execution Node recursively, this makes the class abstract
@@ -307,7 +305,12 @@ class ExecutionNode {
                                bool withProperties) const = 0;
 
   /// @brief execution Node clone utility to be called by derives
-  void cloneHelper(ExecutionNode* Other, bool withDependencies, bool withProperties) const;
+  /// @return pointer to a registered node owned by a plan
+  ExecutionNode* cloneHelper(
+    std::unique_ptr<ExecutionNode> Other,
+    bool withDependencies,
+    bool withProperties
+  ) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
@@ -632,18 +635,17 @@ class SingletonNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<SingletonNode>(plan, _id);
-
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(
+      std::make_unique<SingletonNode>(plan, _id),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief the cost of a singleton is 1
@@ -684,8 +686,7 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -778,8 +779,7 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -847,8 +847,7 @@ class LimitNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -860,9 +859,7 @@ class LimitNode : public ExecutionNode {
       c->setFullCount();
     }
 
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
   /// @brief estimateCost
@@ -932,8 +929,7 @@ class CalculationNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -1046,8 +1042,7 @@ class SubqueryNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -1129,8 +1124,7 @@ class FilterNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -1238,8 +1232,7 @@ class ReturnNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -1293,18 +1286,17 @@ class NoResultsNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<NoResultsNode>(plan, _id);
-
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(
+      std::make_unique<NoResultsNode>(plan, _id),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief the cost of a NoResults is 0
