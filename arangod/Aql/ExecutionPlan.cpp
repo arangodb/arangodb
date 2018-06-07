@@ -871,13 +871,13 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     auto& vocbase = _ast->query()->vocbase();
     auto view = vocbase.lookupView(viewName);
 
-    if (view == nullptr) {
+    if (!view) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no view for EnumerateView");
     }
 
     en = registerNode(new iresearch::IResearchViewNode(
-      *this, nextId(), vocbase, *view, *v, nullptr, {}
+      *this, nextId(), vocbase, view, *v, nullptr, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {

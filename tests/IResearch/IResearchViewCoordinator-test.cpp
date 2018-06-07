@@ -3133,7 +3133,7 @@ SECTION("IResearchViewNode::createBlock") {
       *query.plan(),
       42, // id
       *vocbase, // database
-      *view, // view
+      view, // view
       outVariable,
       nullptr, // no filter condition
       {} // no sort condition
@@ -3141,8 +3141,7 @@ SECTION("IResearchViewNode::createBlock") {
 
     arangodb::aql::ExecutionEngine engine(&query);
     std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> cache;
-    std::unordered_set<std::string> shards;
-    auto execBlock = node.createBlock(engine, cache, shards);
+    auto execBlock = node.createBlock(engine, cache);
     CHECK(nullptr != execBlock);
     CHECK(nullptr != dynamic_cast<arangodb::aql::NoResultsBlock*>(execBlock.get()));
 

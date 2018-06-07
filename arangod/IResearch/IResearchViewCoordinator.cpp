@@ -298,16 +298,15 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
     uint64_t planVersion,
     LogicalView::PreCommitCallback const& preCommit
 ) {
-  auto view = std::shared_ptr<LogicalView>(
+  auto view = std::shared_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
   );
-  auto& impl = reinterpret_cast<IResearchViewCoordinator&>(*view);
   auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   auto props = json.get(StaticStrings::PropertiesField);
   auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'props' then assume defaults
   std::string error;
 
-  if (!impl._meta.init(properties, error)) {
+  if (!view->_meta.init(properties, error)) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
         << "failed to initialize IResearch view from definition, error: " << error;
 
@@ -318,7 +317,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
   IResearchLinkMeta linkMeta;
 
   if (links.isObject()) {
-    auto& builder = impl._links;
+    auto& builder = view->_links;
     VPackObjectBuilder guard(&builder);
 
     size_t idx = 0;
@@ -373,7 +372,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
 
     builder.openObject();
 
-    auto res = impl.toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
+    auto res = view->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
 
     if (!res.ok()) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
