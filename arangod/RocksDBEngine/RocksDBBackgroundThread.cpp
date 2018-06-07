@@ -74,8 +74,8 @@ void RocksDBBackgroundThread::run() {
               vocbase->garbageCollectReplicationClients(TRI_microtime());
               auto clients = vocbase->getReplicationClients();
               for (auto c : clients) {
-                if (std::get<2>(c) < minTick) {
-                  minTick = std::get<2>(c);
+                if (std::get<3>(c) < minTick) {
+                  minTick = std::get<3>(c);
                 }
               }
             });

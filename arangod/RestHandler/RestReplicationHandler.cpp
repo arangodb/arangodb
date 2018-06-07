@@ -45,6 +45,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -414,6 +415,11 @@ RestStatus RestReplicationHandler::execute() {
         }
         handleCommandApplierGetState();
       }
+    } else if (command == "applier-state-all") {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      handleCommandApplierGetStateAll();
     } else if (command == "clusterInventory") {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -1676,7 +1682,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
   }
 
   if (ignoreHiddenEnterpriseCollection(name, force)) {
-    return {TRI_ERROR_NO_ERROR};
+    return TRI_ERROR_NO_ERROR;
   }
 
   if (arangodb::basics::VelocyPackHelper::getBooleanValue(parameters, "deleted",
@@ -1929,6 +1935,35 @@ void RestReplicationHandler::handleCommandApplierGetState() {
   builder.openObject();
   applier->toVelocyPack(builder);
   builder.close();
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JSF_get_api_replication_applier_state_all
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplierGetStateAll() {
+  if (_request->databaseName() != StaticStrings::SystemDatabase) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "global inventory can only be fetched from within _system database");
+  }
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  VPackBuilder builder;
+  builder.openObject();
+  for (auto& name : databaseFeature->getDatabaseNames()) {
+    builder.add(name, VPackValue(VPackValueType::Object));
+    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+    ReplicationApplier* applier = vocbase->replicationApplier();
+
+    if (applier == nullptr) {
+      return;
+    }
+    applier->toVelocyPack(builder);
+    builder.close();
+  }
+  builder.close();
+
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 

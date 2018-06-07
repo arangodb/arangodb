@@ -40,6 +40,8 @@ attributes:
   - *lastServedTick*: last tick value served to this client via the *logger-follow* API
 
   - *time*: date and time when this client last called the *logger-follow* API
+  
+  - *expires*: date and time when this client would expire without an established connection
 
 @RESTRETURNCODES
 
