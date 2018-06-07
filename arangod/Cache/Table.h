@@ -56,6 +56,7 @@ class Table : public std::enable_shared_from_this<Table> {
     uint8_t _filler[BUCKET_SIZE - sizeof(BucketState)];
     bool lock(uint64_t maxTries);
     void unlock();
+    void clear();
     bool isMigrated() const;
   };
   static_assert(sizeof(GenericBucket) == BUCKET_SIZE,
