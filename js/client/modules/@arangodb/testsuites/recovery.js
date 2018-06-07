@@ -105,7 +105,7 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
     argv.unshift(pu.ARANGOD_BIN);
   }
 
-  instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup);
+  instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup, !setup && options.coreCheck);
 }
 
 function recovery (options) {

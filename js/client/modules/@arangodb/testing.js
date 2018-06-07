@@ -83,6 +83,8 @@ let optionsDocumentation = [
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
   '   - `rr`: if set to true arangod instances are run with rr',
+  '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
+  '                  produce a backtrace in the event of a crash',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
@@ -117,6 +119,7 @@ const optionsDefaults = {
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
+  'coreCheck': false,
   'coreDirectory': '/var/tmp',
   'dbServers': 2,
   'duration': 10,
@@ -363,7 +366,7 @@ function unitTestPrettyPrintResults (r, testOutputDirectory, options) {
       print(color + failText + RESET);
     }
 
-    failedMessages = onlyFailedMessages + crashedText + cu.GDB_OUTPUT + failText + '\n';
+    failedMessages = onlyFailedMessages + crashedText + '\n\n' + cu.GDB_OUTPUT + failText + '\n';
     fs.write(testOutputDirectory + options.testFailureText, failedMessages);
   } catch (x) {
     print('exception caught while pretty printing result: ');
