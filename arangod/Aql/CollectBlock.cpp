@@ -311,7 +311,7 @@ int SortedCollectBlock::getOrSkipSomeOld(size_t atMost,
 
   while (skipped < atMost) {
     // read the next input row
-    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuterOld") {
+    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
