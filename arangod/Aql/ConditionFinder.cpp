@@ -50,7 +50,6 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::SHORTEST_PATH:
 #ifdef USE_IRESEARCH
     case EN::ENUMERATE_IRESEARCH_VIEW:
-    case EN::SCATTER_IRESEARCH_VIEW:
 #endif
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
@@ -148,7 +147,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         IndexIteratorOptions opts;
         opts.ascending = !descending;
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(), node->vocbase(), node->collection(),
+            _plan, _plan->nextId(), node->collection(),
             node->outVariable(), usedIndexes, std::move(condition), opts));
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

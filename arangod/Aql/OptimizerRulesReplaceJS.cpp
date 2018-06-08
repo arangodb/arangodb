@@ -198,14 +198,12 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   // )
 
   //// enumerate collection
-  auto& vocbase = trx->vocbase();
   auto* aqlCollection = query->collections()->get(params.collection);
   Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
   ExecutionNode* eEnumerate = plan->registerNode(
       // link output of index with the return node
       new EnumerateCollectionNode(
-            plan, plan->nextId(),
-            &vocbase, aqlCollection,
+            plan, plan->nextId(), aqlCollection,
             enumerateOutVariable, false
       )
   );
@@ -390,7 +388,6 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 	}
 
   // index part 2 - get remaining vars required for index creation
-  auto& vocbase = trx->vocbase();
   auto* aqlCollection = query->collections()->get(params.collection);
 	auto condition = std::make_unique<Condition>(ast);
 	condition->andCombine(funAstNode);
@@ -401,7 +398,6 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
     new IndexNode(
       plan,
       plan->nextId(),
-      &vocbase,
       aqlCollection,
       indexOutVariable,
       std::vector<transaction::Methods::IndexHandle> {

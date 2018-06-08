@@ -90,8 +90,7 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<RemoteBlock>(
     &engine, this, server(), ownName(), queryId()
@@ -129,23 +128,20 @@ double RemoteNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief construct a scatter node
-ScatterNode::ScatterNode(ExecutionPlan* plan,
-                         arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())) {}
+ScatterNode::ScatterNode(
+    ExecutionPlan* plan,
+    arangodb::velocypack::Slice const& base
+) : ExecutionNode(plan, base) {
+  readClientsFromVelocyPack(base);
+}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  auto const shardIds = collection()->shardIds(includedShards);
-
   return std::make_unique<ScatterBlock>(
-    &engine, this, *shardIds
+    &engine, this, _clients
   );
 }
 
@@ -154,33 +150,62 @@ void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const 
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
+  // serialize clients
+  writeClientsToVelocyPack(nodes);
 
   // And close it:
   nodes.close();
 }
 
+bool ScatterNode::readClientsFromVelocyPack(VPackSlice base) {
+  auto const clientsSlice = base.get("clients");
+
+  if (!clientsSlice.isArray()) {
+    LOG_TOPIC(ERR, Logger::AQL)
+      << "invalid serialized ScatterNode definition, 'clients' attribute is expected to be an array of string";
+    return false;
+  }
+
+  size_t pos = 0;
+  for (auto const clientSlice : velocypack::ArrayIterator(clientsSlice)) {
+    if (!clientSlice.isString()) {
+      LOG_TOPIC(ERR, Logger::AQL)
+        << "invalid serialized ScatterNode definition, 'clients' attribute is expected to be an array of string but got not a string at line " << pos;
+      _clients.clear(); // clear malformed node
+      return false;
+    }
+
+    _clients.emplace_back(clientSlice.copyString());
+    ++pos;
+  }
+
+  return true;
+}
+
+void ScatterNode::writeClientsToVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder arrayScope(&builder, "clients");
+  for (auto const& client : _clients) {
+    builder.add(VPackValue(client));
+  }
+}
+
 /// @brief estimateCost
 double ScatterNode::estimateCost(size_t& nrItems) const {
-  double depCost = _dependencies[0]->getCost(nrItems);
-  auto shardIds = _collection->shardIds();
-  size_t nrShards = shardIds->size();
-  return depCost + nrItems * nrShards;
+  double const depCost = _dependencies[0]->getCost(nrItems);
+  return depCost + nrItems * _clients.size();
 }
 
 /// @brief construct a distribute node
-DistributeNode::DistributeNode(ExecutionPlan* plan,
-                               arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
-      _variable(nullptr),
-      _alternativeVariable(nullptr),
-      _createKeys(base.get("createKeys").getBoolean()),
-      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-      _allowSpecifiedKeys(false) {
+DistributeNode::DistributeNode(
+    ExecutionPlan* plan,
+    arangodb::velocypack::Slice const& base)
+  : ScatterNode(plan, base),
+    CollectionAccessingNode(plan, base),
+    _variable(nullptr),
+    _alternativeVariable(nullptr),
+    _createKeys(base.get("createKeys").getBoolean()),
+    _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
+    _allowSpecifiedKeys(false) {
   if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {     
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
@@ -193,39 +218,40 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  auto const shardIds = collection()->shardIds(includedShards);
-
   return std::make_unique<DistributeBlock>(
-    &engine, this, *shardIds, collection()
+    &engine, this, clients(), collection()
   );
 }
 
 /// @brief toVelocyPack, for DistributedNode
-void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
+void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
                                         unsigned flags) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(builder);
 
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
-  nodes.add("createKeys", VPackValue(_createKeys));
-  nodes.add("allowKeyConversionToObject",
-            VPackValue(_allowKeyConversionToObject));
-  nodes.add(VPackValue("variable"));
-  _variable->toVelocyPack(nodes);
-  nodes.add(VPackValue("alternativeVariable"));
-  _alternativeVariable->toVelocyPack(nodes);
+  // serialize clients
+  writeClientsToVelocyPack(builder);
+
+  builder.add("createKeys", VPackValue(_createKeys));
+  builder.add("allowKeyConversionToObject",
+              VPackValue(_allowKeyConversionToObject));
+  builder.add(VPackValue("variable"));
+  _variable->toVelocyPack(builder);
+  builder.add(VPackValue("alternativeVariable"));
+  _alternativeVariable->toVelocyPack(builder);
   
   // legacy format, remove in 3.4
-  nodes.add("varId", VPackValue(static_cast<int>(_variable->id)));
-  nodes.add("alternativeVarId",
-            VPackValue(static_cast<int>(_alternativeVariable->id)));
+  builder.add("varId", VPackValue(static_cast<int>(_variable->id)));
+  builder.add("alternativeVarId",
+              VPackValue(static_cast<int>(_alternativeVariable->id)));
 
   // And close it:
-  nodes.close();
+  builder.close();
 }
   
 /// @brief getVariablesUsedHere, returning a vector
@@ -265,9 +291,6 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
       case SHORTEST_PATH:
         return castTo<GraphNode const*>(node)->collection();
       case SCATTER:
-#ifdef USE_IRESEARCH
-      case SCATTER_IRESEARCH_VIEW:
-#endif
         return nullptr; // diamond boundary
       default:
         node = node->getFirstDependency();
@@ -340,8 +363,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   if (elements().empty()) {
     return std::make_unique<UnsortingGatherBlock>(engine, *this);

@@ -1402,7 +1402,7 @@ TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState*
 }
 
 bool TransactionCollectionMock::canAccess(arangodb::AccessMode::Type accessType) const {
-  return true;
+  return nullptr != _collection; // collection must have be opened previously
 }
 
 void TransactionCollectionMock::freeOperations(arangodb::transaction::Methods* activeTrx, bool mustRollback) {
@@ -1491,7 +1491,16 @@ arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::H
   static std::atomic<TRI_voc_tid_t> lastId(0);
 
   ++beginTransactionCount;
-  useCollections(_nestingLevel);
+
+  auto res = useCollections(_nestingLevel);
+
+  if (!res.ok()) {
+    updateStatus(arangodb::transaction::Status::ABORTED);
+    const_cast<TRI_voc_tid_t&>(_id) = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+
+    return res;
+  }
+
   const_cast<TRI_voc_tid_t&>(_id) = ++lastId; // ensure each transaction state has a unique ID
   updateStatus(arangodb::transaction::Status::RUNNING);
 
