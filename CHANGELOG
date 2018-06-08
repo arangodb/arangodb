@@ -1,3 +1,18 @@
+v3.3.11 (2018-XX-XX)
+--------------------
+
+* reimplemented replication view in web UI
+
+* fixed internal issue #2256: ui, document id not showing up when deleting a document
+
+* fixed internal issue #2163: wrong labels within foxx validation of service 
+  input parameters
+
+* fixed internal issue #2160: fixed misplaced tooltips in indices view
+
+* added arangodb inspector
+
+
 v3.3.10 (2018-06-04)
 --------------------
 
