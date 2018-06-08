@@ -25,28 +25,28 @@
 
 #include "Basics/Common.h"
 
-#include <asio/buffer.hpp>
-#include <asio/io_context.hpp>
-#include <asio/io_context_strand.hpp>
-
 #include "Basics/StringBuffer.h"
-//#include "Basics/asio-helper.h"
+#include "Basics/asio_ns.h"
 #include "Logger/Logger.h"
 
 namespace arangodb {
-
-typedef std::function<void(const asio::error_code& ec, std::size_t transferred)>
+typedef std::function<void(const asio_ns::error_code& ec,
+                           std::size_t transferred)>
     AsyncHandler;
 
 class Socket {
  public:
-  Socket(asio::io_context& ioContext, bool encrypted)
+  Socket(asio_ns::io_context& ioContext, bool encrypted)
       : _encrypted(encrypted), strand(ioContext) {}
+
   Socket(Socket const& that) = delete;
+
   Socket(Socket&& that) = delete;
+
   virtual ~Socket() {}
 
   bool isEncrypted() const { return _encrypted; }
+
   bool handshake() {
     if (!_encrypted || _handshakeDone) {
       return true;
@@ -57,29 +57,11 @@ class Socket {
     return false;
   }
 
-  virtual std::string peerAddress() const = 0;
-  virtual int peerPort() const = 0;
-
-  /// Enable non-blocking mode
-  virtual void setNonBlocking(bool) = 0;
-
-  virtual size_t writeSome(basics::StringBuffer* buffer,
-                           asio::error_code& ec) = 0;
-  virtual void asyncWrite(asio::mutable_buffers_1 const& buffer,
-                          AsyncHandler const& handler) = 0;
-  virtual size_t readSome(asio::mutable_buffers_1 const& buffer,
-                          asio::error_code& ec) = 0;
-  virtual std::size_t available(asio::error_code& ec) = 0;
-  virtual void asyncRead(asio::mutable_buffers_1 const& buffer,
-                         AsyncHandler const& handler) = 0;
-
-  virtual void close(asio::error_code& ec) = 0;
-
-  void shutdown(asio::error_code& ec, bool mustCloseSend,
+  void shutdown(asio_ns::error_code& ec, bool mustCloseSend,
                 bool mustCloseReceive) {
     if (mustCloseSend) {
       this->shutdownSend(ec);
-      if (ec && ec != asio::error::not_connected) {
+      if (ec && ec != asio_ns::error::not_connected) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "shutdown send stream failed with: " << ec.message();
       }
@@ -87,25 +69,40 @@ class Socket {
 
     if (mustCloseReceive) {
       this->shutdownReceive(ec);
-      if (ec && ec != asio::error::not_connected) {
+      if (ec && ec != asio_ns::error::not_connected) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "shutdown receive stream failed with: " << ec.message();
       }
     }
   }
 
+ public:
+  virtual std::string peerAddress() const = 0;
+  virtual int peerPort() const = 0;
+  virtual void setNonBlocking(bool) = 0;
+  virtual size_t writeSome(basics::StringBuffer* buffer,
+                           asio_ns::error_code& ec) = 0;
+  virtual void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
+                          AsyncHandler const& handler) = 0;
+  virtual size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
+                          asio_ns::error_code& ec) = 0;
+  virtual std::size_t available(asio_ns::error_code& ec) = 0;
+  virtual void asyncRead(asio_ns::mutable_buffers_1 const& buffer,
+                         AsyncHandler const& handler) = 0;
+  virtual void close(asio_ns::error_code& ec) = 0;
+
  protected:
   virtual bool sslHandshake() = 0;
-  virtual void shutdownReceive(asio::error_code& ec) = 0;
-  virtual void shutdownSend(asio::error_code& ec) = 0;
+  virtual void shutdownReceive(asio_ns::error_code& ec) = 0;
+  virtual void shutdownSend(asio_ns::error_code& ec) = 0;
 
  private:
   bool const _encrypted;
   bool _handshakeDone = false;
 
  public:
-  /// Strand to ensure the connection's handlers are not called concurrently.
-  asio::io_context::strand strand;
+  // strand to ensure the connection's handlers are not called concurrently.
+  asio_ns::io_context::strand strand;
 };
 }
 

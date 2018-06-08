@@ -52,6 +52,9 @@ option(SKIP_PACKAGING "" OFF)
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
+# use standalone boost asio
+add_definitions("-DARANGODB_STANDALONE_ASIO=1")
+
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
