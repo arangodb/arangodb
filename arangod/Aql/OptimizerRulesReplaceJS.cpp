@@ -21,11 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
-#include "Aql/ConditionFinder.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
@@ -54,9 +52,6 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
-#include <boost/optional.hpp>
-#include <tuple>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
@@ -64,25 +59,31 @@ using EN = arangodb::aql::ExecutionNode;
 namespace {
 
 //NEAR(coll, 0 /*lat*/, 0 /*lon*/[, 10 /*limit*/])
-struct nearParams{
+struct nearOrWithinParams{
   std::string collection;
-  AstNode* latitude;
-  AstNode* longitude;
-  std::size_t limit;
-  AstNode* distanceName;
+  AstNode* latitude = nullptr;
+  AstNode* longitude = nullptr;
+  AstNode* limit = nullptr;
+  AstNode* radius = nullptr;
+  AstNode* distanceName = nullptr;
 
-  nearParams(AstNode const* node){
+  nearOrWithinParams(AstNode const* node, bool isNear){
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
     collection = arr->getMember(0)->getString();
     latitude = arr->getMember(1);
     longitude = arr->getMember(2);
-    limit = arr->getMember(3)->getIntValue();
     if(arr->numMembers() > 4){
       distanceName = arr->getMember(4);
     } else {
       distanceName = nullptr;
+    }
+
+    if(isNear){
+      limit = arr->getMember(3);
+    } else {
+      radius = arr->getMember(3);
     }
   }
 };
@@ -91,7 +92,7 @@ struct nearParams{
 struct fulltextParams{
   std::string collection;
   std::string attribute;
-  std::uint64_t limit;
+  AstNode* limit = nullptr;
 
   fulltextParams(AstNode const* node){
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
@@ -100,9 +101,7 @@ struct fulltextParams{
     collection = arr->getMember(0)->getString();
     attribute = arr->getMember(1)->getString();
     if(arr->numMembers() > 3){
-      limit = arr->getMember(3)->getIntValue();
-    } else {
-      limit = 0;
+      limit = arr->getMember(3);
     }
   }
 };
@@ -124,7 +123,7 @@ AstNode* createSubqueryWithLimit(
   ExecutionNode* first,
   ExecutionNode* last,
   Variable* lastOutVariable,
-  std::size_t limit
+  AstNode* limit
   ){
   // Creates subquery of the following form:
   //
@@ -158,7 +157,7 @@ AstNode* createSubqueryWithLimit(
   /// add optional limit node
   if(limit) {
     ExecutionNode* eLimit = plan->registerNode(
-      new LimitNode(plan, plan->nextId(), 0 /*offset*/, limit)
+      new LimitNode(plan, plan->nextId(), 0 /*offset*/, limit->getIntValue())
     );
     plan->insertAfter(last, eLimit); // inject into plan
   }
@@ -177,17 +176,20 @@ AstNode* createSubqueryWithLimit(
 
 }
 
-AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
+AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan, bool isNear){
   auto* ast = plan->getAst();
   auto* query = ast->query();
   auto* trx = query->trx();
-  nearParams params(funAstNode);
+  nearOrWithinParams params(funAstNode,isNear);
   bool supportLegacy = true;
   (void) supportLegacy;
 
-  // RETRUN ( FOR x IN col SORT
-  //   DISTANCE(fields.lat, fields.long,param.lat, param.lon)
-  //   LIMIT param.limit
+  // RETURN (
+  //  FOR d IN col
+  //    SORT DISTANCE(d.lat, d.long, param.lat, param.lon)
+  //    MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
+  //    LIMIT param.limit
+  //
   //   RETURN d MERGE {param.distname : calculated_distance}
   // )
 
@@ -211,52 +213,82 @@ AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan
 
   //// build sort codition
 
-  //FIXME
-	try {
-		std::vector<basics::AttributeName> field;
-		auto indexes = trx->indexesForCollection(params.collection);
-		for(auto& idx : indexes){
-			if(Index::isGeoIndex(idx->type())) {
+  auto* docRef = ast->createNodeReference(enumerateOutVariable);
+  AstNode* accessNodeLat = docRef;
+  AstNode* accessNodeLon = docRef;
+  bool indexFound = false;
 
-        //bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
-        //bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
-        //bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+	std::vector<basics::AttributeName> field;
+	auto indexes = trx->indexesForCollection(params.collection);
+	for(auto& idx : indexes){
+		if(Index::isGeoIndex(idx->type())) {
+      // we take the first index that is found
 
-        LOG_DEVEL << "fields";
-        for(auto& f : idx->fields()){
-          LOG_DEVEL << "new";
-          for(auto& p : f){
-            LOG_DEVEL << p.name;
-          }
+      bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
+      bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
+      bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+
+      std::vector<arangodb::basics::AttributeName> accessLatitude;
+      std::vector<arangodb::basics::AttributeName> accessLongitude;
+
+      auto fieldNum = idx->fields().size();
+      if ((isGeo2 || isGeo) && fieldNum == 2) { // individual fields
+        accessLatitude = idx->fields()[0];
+        accessLongitude  = idx->fields()[1];
+
+        for(auto const& part : accessLatitude){
+          char const* p = query->registerString(part.name.data(), part.name.size());
+          accessNodeLat = ast->createNodeAttributeAccess(accessNodeLat, p, part.name.size());
         }
-        LOG_DEVEL << "fields - end";
 
-			}
-		}
-	} catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
-                                << params.collection << "): "
-                                << e.what();
-  } catch (...){
-    LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
-                                << params.collection << ")";
+        for(auto const& part : accessLongitude){
+          char const* p = query->registerString(part.name.data(), part.name.size());
+          accessNodeLon = ast->createNodeAttributeAccess(accessNodeLon, p, part.name.size());
+        }
+        indexFound = true;
+      } else if ((isGeo1 || isGeo) && fieldNum == 1) {
+        accessLongitude = idx->fields()[0];
+
+        for(auto const& part : accessLongitude){
+          char const* p = query->registerString(part.name.data(), part.name.size());
+          accessNodeLon = ast->createNodeAttributeAccess(accessNodeLon, p, part.name.size());
+          accessNodeLat = ast->createNodeAttributeAccess(accessNodeLat, p, part.name.size());
+        }
+
+
+        VPackBuilder builder;
+        idx->toVelocyPack(builder,true,false);
+        bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
+
+        accessNodeLat = ast->createNodeIndexedAccess(accessNodeLat, ast->createNodeValueInt(geoJson ? 1 : 0));
+        accessNodeLon = ast->createNodeIndexedAccess(accessNodeLon, ast->createNodeValueInt(geoJson ? 0 : 1));
+        indexFound = true;
+      } // if isGeo 1 or 2
+      break;
+    }
+
+  } // for index in collection
+
+
+  if(!indexFound) {
+    LOG_DEVEL << "no access path";
+    return nullptr;
   }
 
-
-  auto* docRef = ast->createNodeReference(enumerateOutVariable);
-  auto* accessLat = ast->createNodeAttributeAccess(docRef,TRI_CHAR_LENGTH_PAIR("lat"));
-  auto* accessLon = ast->createNodeAttributeAccess(docRef,TRI_CHAR_LENGTH_PAIR("lon"));
-
   auto* argsArray = ast->createNodeArray();
-  argsArray->addMember(accessLat);
-  argsArray->addMember(accessLon);
+  argsArray->addMember(accessNodeLat);
+  argsArray->addMember(accessNodeLon);
   argsArray->addMember(params.latitude);
   argsArray->addMember(params.longitude);
 
-  auto* fun = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray);
+  auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray);
 
-  AstNode* expressionAst = ast->createNodeValueBool(fun);
-  expressionAst = fun;
+  AstNode* expressionAst = funDist;
+  if(!isNear){
+    expressionAst = ast->createNodeBinaryOperator(
+      AstNodeType::NODE_TYPE_OPERATOR_BINARY_LE, funDist ,params.radius
+    );
+  }
 
   //Calculation Node will acquire ownership
   Expression* calcExpr = new Expression(plan, ast, expressionAst);
@@ -268,30 +300,36 @@ AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan
   );
   eCalc->addDependency(eEnumerate);
 
-  // use calculation node in sort node
-  SortElementVector sortElements { SortElement{ calcOutVariable, /*asc*/ true} }; //CHECKME
-  ExecutionNode* eSort = plan->registerNode(
-      new SortNode(plan, plan->nextId(), sortElements, false)
-  );
-  eSort->addDependency(eCalc);
+  ExecutionNode* eSortOrFilter = nullptr;
+  if(isNear){
+    // use calculation node in sort node
+    SortElementVector sortElements { SortElement{ calcOutVariable, /*asc*/ true} }; //CHECKME
+    eSortOrFilter = plan->registerNode(
+        new SortNode(plan, plan->nextId(), sortElements, false)
+    );
+  } else {
+    eSortOrFilter = plan->registerNode(
+        new FilterNode(plan, plan->nextId(), calcOutVariable)
+    );
+  }
+  eSortOrFilter->addDependency(eCalc);
 
   if(params.distanceName) { //return without merging the distance into the result
 
-    auto* argsArrayDist = ast->createNodeArray();
-    argsArrayDist->addMember(accessLat);
-    argsArrayDist->addMember(accessLon);
-    argsArrayDist->addMember(params.latitude);
-    argsArrayDist->addMember(params.longitude);
-
-    auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArrayDist);
-
     AstNode* elem = nullptr;
+    AstNode* funDistMerge = nullptr;
+    if(isNear){
+      funDistMerge = ast->createNodeReference(calcOutVariable);
+    } else {
+      //FIXME: recycles Ast directly - must probably be fixed;
+      funDistMerge = funDist;
+    }
     if(params.distanceName->isConstant()){
       elem = ast->createNodeObjectElement(params.distanceName->getStringValue()
                                          ,params.distanceName->getStringLength()
-                                         ,funDist);
+                                         ,funDistMerge);
     } else {
-      elem = ast->createNodeCalculatedObjectElement(params.distanceName, funDist);
+      elem = ast->createNodeCalculatedObjectElement(params.distanceName, funDistMerge );
     }
     auto* obj = ast->createNodeObject();
     obj->addMember(elem);
@@ -307,26 +345,14 @@ AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan
     ExecutionNode* eCalcMerge = plan->registerNode(
       new CalculationNode(plan, plan->nextId(), calcMergeExpr, nullptr, calcMergeOutVariable)
     );
-    plan->insertAfter(eSort, eCalcMerge);
+    plan->insertAfter(eSortOrFilter, eCalcMerge);
 
     return createSubqueryWithLimit(plan, calcNode, eEnumerate, eCalcMerge, calcMergeOutVariable, params.limit);
   }
 
   return createSubqueryWithLimit(plan, calcNode,
-                                eEnumerate /* first */, eSort /* last */,
+                                eEnumerate /* first */, eSortOrFilter /* last */,
                                 enumerateOutVariable, params.limit);
-}
-
-AstNode* replaceWithin(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
-  auto* ast = plan->getAst();
-  auto* query = ast->query();
-  auto* trx = query->trx();
-  (void) trx;
-
-  LOG_DEVEL << "replaceWithin";
-  auto* fun = getFunction(funAstNode);
-  LOG_DEVEL << fun->name;
-  return nullptr;
 }
 
 AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
@@ -412,10 +438,10 @@ void arangodb::aql::replaceJSFunctions(Optimizer* opt
       AstNode* replacement = nullptr;
       if(fun){
         if (fun->name == std::string("NEAR")){
-          replacement = replaceNear(astnode, node, plan.get());
+          replacement = replaceNearOrWithin(astnode, node, plan.get(), true /*isNear*/);
         }
         if (fun->name == std::string("WITHIN")){
-          replacement = replaceWithin(astnode, node, plan.get());
+          replacement = replaceNearOrWithin(astnode, node, plan.get(), false /*isNear*/);
         }
         if (fun->name == std::string("FULLTEXT")){
           replacement = replaceFullText(astnode, node,plan.get());
