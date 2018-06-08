@@ -32,6 +32,8 @@ WakeupQueryCallback::WakeupQueryCallback(ExecutionBlock* initiator,
     : _initiator(initiator), _query(query) {}
 
 bool WakeupQueryCallback::operator()(ClusterCommResult* result) {
+  // TODO Validate that _initiator and _query have not been deleted (ttl)
+  // TODO Handle exceptions
   bool res = _initiator->handleAsyncResult(result);
   // For now to stop busy waiting, can be removed later/needs to replaced with something else
   _query->tempSignalAsyncResponse();

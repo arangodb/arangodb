@@ -148,9 +148,13 @@ class ExecutionBlock {
   // TODO DELETE
   virtual size_t skipSomeOld(size_t atMost);
 
+  // TODO DELETE
+  // Used in aql rest handler hasMore
+  // Needs to be accurate
   virtual bool hasMore();
   
   // skip exactly atMost outputs
+  // TODO DELETE
   void skip(size_t atMost, size_t& numActuallySkipped);
   
   ExecutionNode const* getPlanNode() const { return _exeNode; }

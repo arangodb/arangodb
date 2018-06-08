@@ -414,6 +414,7 @@ class Query {
   }
 
   void tempWaitForAsyncResponse() {
+    // TODO Race, if clustercomm is faster than registering the WAIT
     std::unique_lock<std::mutex> lock(_tempMutex);
     _tempWaitForAsyncResponse.wait(lock);
   }
