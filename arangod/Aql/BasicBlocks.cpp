@@ -308,6 +308,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
 
   _state = INITFULLCOUNT;
   _count = 0;
+  _remainingOffset = _offset;
   return ExecutionBlock::initializeCursor(items, pos);
 
   // cppcheck-suppress style
@@ -331,11 +332,18 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
     }
     // intentionally falls through
     case SKIPPING: {
-      if (_offset > 0) {
-        size_t numActuallySkipped = 0;
-        _dependencies[0]->skip(_offset, numActuallySkipped);
+      while (_remainingOffset > 0) {
+        auto res = _dependencies[0]->skipSome(_remainingOffset);
+        if (res.first == ExecutionState::WAITING) {
+          return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+        }
         if (_fullCount) {
-          _engine->_stats.fullCount += static_cast<int64_t>(numActuallySkipped);
+          _engine->_stats.fullCount += static_cast<int64_t>(res.second);
+        }
+        TRI_ASSERT(_remainingOffset >= res.second);
+        _remainingOffset -= res.second;
+        if (res.first == ExecutionState::DONE) {
+          break;
         }
       }
       _count = 0;

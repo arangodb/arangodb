@@ -286,8 +286,7 @@ BlockWithClients::getSomeForShard(size_t atMost, std::string const& shardId) {
     return {out.first, nullptr};
   }
   if (!out.second.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(out.second.errorNumber(),
-                                   out.second.errorMessage());
+    THROW_ARANGO_EXCEPTION(out.second);
   }
   return {out.first, std::move(result)};
 
@@ -1134,7 +1133,7 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
       rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
 
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
@@ -1264,7 +1263,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
   // TODO Check if we need to enhance this response!
   // throwExceptionAfterBadSyncRequest(res.get(), false);
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   return {ExecutionState::WAITING, nullptr};
@@ -1317,7 +1316,7 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   // TODO Check if we need to enhance this response!
   // throwExceptionAfterBadSyncRequest(res.get(), false);
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};

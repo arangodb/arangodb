@@ -101,6 +101,7 @@ class LimitBlock final : public ExecutionBlock {
       : ExecutionBlock(engine, ep),
         _offset(ep->_offset),
         _limit(ep->_limit),
+        _remainingOffset(ep->_limit),
         _count(0),
         _state(INITFULLCOUNT),  // start in the beginning
         _fullCount(ep->_fullCount) {}
@@ -117,10 +118,13 @@ class LimitBlock final : public ExecutionBlock {
 
  private:
   /// @brief _offset
-  size_t _offset;
+  size_t const _offset;
 
   /// @brief _limit
-  size_t _limit;
+  size_t const _limit;
+
+  /// @brief remaining number of documents to skip. initialized to _offset
+  size_t _remainingOffset;
 
   /// @brief _count, number of items already handed on
   size_t _count;

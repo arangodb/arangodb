@@ -26,7 +26,19 @@
 namespace arangodb {
 namespace aql {
 
-enum class ExecutionState { DONE, HASMORE, WAITING };
+enum class ExecutionState { 
+  // done with this block, definitely no more results
+  DONE, 
+  // (potentially) more results available. this may "lie" and
+  // report that there are more results when in fact there are
+  // none (background: to accurately determine that there are
+  // more results we may need to execute expensive operations
+  // on the preceeding blocks, which we want to avoid) 
+  HASMORE, 
+  // unclear if more results available or not. caller is asked
+  // to try again
+  WAITING 
+};
 
 } // aql
 } // arangodb
