@@ -169,7 +169,7 @@ AqlItemBlock::AqlItemBlock(ResourceMonitor* resourceMonitor, VPackSlice const sl
     }
   } catch (...) {
     destroy();
-    // TODO: rethrow?
+    throw;
   }
 }
 
