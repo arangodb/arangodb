@@ -344,6 +344,8 @@ bool VstCommTask::processRead(double startTime) {
     RequestStatistics::SET_READ_START(stat, startTime);
   }
 
+  RequestStatistics::SET_READ_END(statistics(chunkHeader._messageID));
+
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     // CASE 1: message is in one chunk
     if (!getMessageFromSingleChunk(chunkHeader, message, doExecute,

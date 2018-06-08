@@ -55,7 +55,7 @@ bool ListenTask::start() {
 
   try {
     _acceptor->open();
-  } catch (asio::system_error const& err) {
+  } catch (asio_ns::system_error const& err) {
     LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
         << "failed to open endpoint '" << _endpoint->specification()
         << "' with error: " << err.what();
@@ -67,7 +67,7 @@ bool ListenTask::start() {
     return false;
   }
 
-  _handler = [this](asio::error_code const& ec) {
+  _handler = [this](asio_ns::error_code const& ec) {
     MUTEX_LOCKER(mutex, _shutdownMutex);
     JobGuard guard(_loop);
     guard.work();
@@ -81,7 +81,7 @@ bool ListenTask::start() {
     TRI_ASSERT(_acceptor != nullptr);
 
     if (ec) {
-      if (ec == asio::error::operation_aborted) {
+      if (ec == asio_ns::error::operation_aborted) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "accept failed: "
                                                  << ec.message();
         return;
