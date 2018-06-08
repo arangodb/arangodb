@@ -43,8 +43,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#ifdef _MSC_VER
-#include <windows.h>
+#ifdef _WIN32
+#include <io.h>
 #else
 #include <unistd.h>
 #endif
@@ -55,7 +55,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 static uint64_t TRI_totalSystemMemory() {
-#ifdef _MSC_VER
+#ifdef _WIN32
   MEMORYSTATUSEX status;
   status.dwLength = sizeof(status);
   GlobalMemoryStatusEx(&status);
@@ -336,7 +336,8 @@ std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
   transaction::Options transactionOptions;
   transactionOptions.waitForSync = false;
   transactionOptions.allowImplicitCollections = true;
-  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
+  auto ctx =
+    transaction::StandaloneContext::Create(_vocbaseGuard.database());
   std::unique_ptr<transaction::Methods> trx(
       new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
   Result res = trx->begin();
