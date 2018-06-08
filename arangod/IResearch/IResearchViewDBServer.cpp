@@ -452,9 +452,26 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       return nullptr;
     }
 
+    auto* ci = ClusterInfo::instance();
+
+    if (!ci) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failure to find ClusterInfo instance while constructing IResearch View in database '" << vocbase.id() << "'";
+      TRI_set_errno(TRI_ERROR_INTERNAL);
+
+      return nullptr;
+    }
+
     auto wiew = std::shared_ptr<IResearchViewDBServer>(
       new IResearchViewDBServer(vocbase, info, *feature, planVersion)
     );
+    auto logicalWiew = ClusterInfo::instance()->getView(vocbase.name(), name);
+    auto* impl = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
+
+    // if DBServer view already exists then make the new instance a partial clone
+    if (impl) {
+      wiew->_collections =impl->_collections;
+    }
 
     if (preCommit && !preCommit(wiew)) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
