@@ -69,16 +69,16 @@ class ExecutionEngine {
   TEST_VIRTUAL Query* getQuery() const { return _query; }
 
   /// @brief initializeCursor, could be called multiple times
-  int initializeCursor(AqlItemBlock* items, size_t pos);
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
   
   /// @brief shutdown, will be called exactly once for the whole query
   int shutdown(int errorCode);
 
   /// @brief getSome
-  std::unique_ptr<AqlItemBlock> getSome(size_t atMost);
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
 
   /// @brief skipSome
-  size_t skipSome(size_t atMost);
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   /// @brief hasMore
   inline bool hasMore() const { return _root->hasMore(); }
