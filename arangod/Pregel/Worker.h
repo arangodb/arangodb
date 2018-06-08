@@ -23,18 +23,18 @@
 #ifndef ARANGODB_PREGEL_WORKER_H
 #define ARANGODB_PREGEL_WORKER_H 1
 
-#include <atomic>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include "Basics/Common.h"
+
+#include <boost/date_time/posix_time/posix_time.hpp>
+
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/asio_ns.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
-
-#include <asio/deadline_timer.hpp>
 
 struct TRI_vocbase_t;
 

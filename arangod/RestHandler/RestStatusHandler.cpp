@@ -33,6 +33,10 @@
 
 #include <iostream>
 
+#if defined(TRI_HAVE_POSIX_THREADS)
+#include <unistd.h>
+#endif
+
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -56,6 +60,8 @@ RestStatus RestStatusHandler::execute() {
   result.add("server", VPackValue("arango"));
   result.add("version", VPackValue(ARANGODB_VERSION));
 
+  result.add("pid", VPackValue(Thread::currentProcessId()));
+  
 #ifdef USE_ENTERPRISE
   result.add("license", VPackValue("enterprise"));
 #else

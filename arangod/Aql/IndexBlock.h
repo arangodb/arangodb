@@ -66,10 +66,10 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   /// @brief initializeCursor, here we release our docs from this collection
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) final;
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final;
 
   // skip between atMost documents, returns the number actually skipped . . .
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) final;
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
  private:
   void initializeOnce();

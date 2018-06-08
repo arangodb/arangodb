@@ -328,7 +328,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
         _engine->_stats.fullCount = 0;
       }
       _state = SKIPPING;
-      // Fallthrough intententional
+      // intentionally falls through
     }
     case SKIPPING: {
       if (_offset > 0) {
@@ -346,7 +346,7 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
         return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
       }
       _state = RETURNING;
-      // Fallthrough intententional
+      // intentionally falls through
     }
     case RETURNING: {
       if (_count < _limit) {
