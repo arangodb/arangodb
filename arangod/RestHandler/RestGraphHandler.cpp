@@ -239,6 +239,9 @@ boost::optional<RestStatus> RestGraphHandler::graphsAction() {
     case RequestType::GET:
       graphActionReadGraphs();
       return RestStatus::DONE;
+    case RequestType::POST:
+      graphActionCreateGraph();
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -453,6 +456,18 @@ void RestGraphHandler::generateRemoved(bool removed, bool wasSynchronous,
 void RestGraphHandler::generateGraphConfig(VPackSlice slice,
                                            VPackOptions const& options) {
   resetResponse(rest::ResponseCode::OK);
+  generateResultMergedWithObject(slice, options);
+}
+
+void RestGraphHandler::generateCreatedGraphConfig(bool wasSynchronous, VPackSlice slice,
+                                           VPackOptions const& options) {
+  ResponseCode code;
+  if (wasSynchronous) {
+    code = rest::ResponseCode::CREATED;
+  } else {
+    code = rest::ResponseCode::ACCEPTED;
+  }
+  resetResponse(code);
   generateResultMergedWithObject(slice, options);
 }
 
@@ -761,6 +776,7 @@ Result RestGraphHandler::edgeActionReplace(
     const std::string& collectionName, const std::string& key) {
   return edgeModify(std::move(graph), collectionName, key, false);
 }
+
 Result RestGraphHandler::edgeModify(std::shared_ptr<const graph::Graph> graph,
                                     const std::string& collectionName,
                                     const std::string& key, bool isPatch) {
@@ -1020,6 +1036,37 @@ Result RestGraphHandler::graphActionReadGraphConfig(
   return Result();
 }
 
+Result RestGraphHandler::graphActionCreateGraph() {
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(_vocbase);
+
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return false;
+  }
+  bool waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+
+  GraphManager gmngr{ctx};
+  auto ResultT = gmngr.createGraph(body, waitForSync); // TODO CHANGE return type
+ 
+  std::string graphName = body.get(StaticStrings::DataSourceName).copyString();
+
+  std::shared_ptr<transaction::StandaloneContext> ctxx =
+      transaction::StandaloneContext::Create(_vocbase);
+  std::shared_ptr<Graph const> graph = getGraph(ctxx, graphName);
+
+  GraphOperations gops{*graph, ctxx}; // TODO moves ctx, wanted?!
+  // must not be a single transaction anyway
+  VPackBuilder builder;
+  gops.readGraph(builder);
+
+  generateCreatedGraphConfig(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
+
+  return Result();
+}
+
 Result RestGraphHandler::graphActionReadGraphs() {
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(_vocbase);
@@ -1050,6 +1097,7 @@ Result RestGraphHandler::graphActionReadConfig(
     TRI_ASSERT(false);
   }
 
+  LOG_TOPIC(FATAL, Logger::GRAPHS) << 3;
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
   return Result();

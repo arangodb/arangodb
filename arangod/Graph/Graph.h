@@ -28,6 +28,7 @@
 
 #include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ResultT.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
@@ -82,26 +83,51 @@ class Graph {
   /// @brief edge definitions of this graph
   std::unordered_map<std::string, EdgeDefinition> _edgeDefs;
 
-  /// @brief Graph collection edge definition attribute name
-  static char const* _attrEdgeDefs;
-
-  /// @brief Graph collection orphan list arribute name
-  static char const* _attrOrphans;
-  static char const* _attrIsSmart;
-  static char const* _attrNumberOfShards;
-  static char const* _attrReplicationFactor;
-  static char const* _attrSmartGraphAttribute;
-
+  /// @brief state if smart graph enabled
   bool _isSmart;
+
+  /// @brief number of shards of this graph
   int _numberOfShards;
+
+  /// @brief replication factor of this graph
   int _replicationFactor;
+
+  /// @brief smarGraphAttribute of this graph
   std::string _smartGraphAttribute;
+
+  /// @brief id of this graph
   std::string _id;
+
+  /// @brief revision of this graph
   std::string _rev;
 
  public:
   /// @brief Graph collection name
   static std::string const _graphs;
+  
+  /// @brief Graph collection edge definition attribute name
+  static char const* _attrEdgeDefs;
+
+  /// @brief Graph collection orphan list arribute name
+  static char const* _attrOrphans;
+
+  /// @brief Graph collection smart state attribute name
+  static char const* _attrIsSmart;
+
+  /// @brief Graph collection number of shards attribute name
+  static char const* _attrNumberOfShards;
+
+  /// @brief Graph collection replication factor attribute name
+  static char const* _attrReplicationFactor;
+
+  /// @brief Graph collection smartgraph attribute name
+  static char const* _attrSmartGraphAttribute;
+
+  /// @brief validate the structure of edgeDefinition, i.e.
+  /// that it contains the correct attributes, and that they contain the correct
+  /// types of values.
+  static Result ValidateEdgeDefinition(const velocypack::Slice& edgeDefinition);
+  static Result ValidateOrphanCollection(const velocypack::Slice& orphanDefinition);
 
  public:
   /// @brief get the cids of all vertexCollections
@@ -129,11 +155,6 @@ class Graph {
   void toVelocyPack(velocypack::Builder&) const;
 
   virtual void enhanceEngineInfo(velocypack::Builder&) const;
-
-  /// @brief validate the structure of edgeDefinition, i.e.
-  /// that it contains the correct attributes, and that they contain the correct
-  /// types of values.
-  Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
   std::ostream& operator<<(std::ostream& ostream);
 
@@ -279,11 +300,56 @@ class GraphManager {
   private:
    std::shared_ptr<transaction::Context> _ctx;
    std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
-  public:
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief return all collections
+   ////////////////////////////////////////////////////////////////////////////////
+   std::shared_ptr<LogicalCollection> getCollectionByName(
+       TRI_vocbase_t& vocbase,
+       std::string const& name);
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief find or create collections by EdgeDefinitions
+   ////////////////////////////////////////////////////////////////////////////////
+   void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition);
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief find or create vertex collection by name
+   ////////////////////////////////////////////////////////////////////////////////
+   void findOrCreateVertexCollectionByName(std::string&& name);
+   
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief find or create collection by name and type
+   ////////////////////////////////////////////////////////////////////////////////
+   void createCollection(std::string&& name, TRI_col_type_e colType);
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief create an edge collection
+   ////////////////////////////////////////////////////////////////////////////////
+   void createEdgeCollection(std::string&& name);
+   
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief create a vertex collection
+   ////////////////////////////////////////////////////////////////////////////////
+   void createVertexCollection(std::string&& name);
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief get all vertex collections
+   ////////////////////////////////////////////////////////////////////////////////
+   void getVertexCollections(std::vector<std::string>& collections, VPackSlice document);
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief get all edge collections
+   ////////////////////////////////////////////////////////////////////////////////
+   void getEdgeCollections(std::vector<std::string>& collections, VPackSlice edgeDefinitions);
+
+   public:
    GraphManager() = delete;
    GraphManager(std::shared_ptr<transaction::Context> ctx_)
         : _ctx(std::move(ctx_)) {}
    void readGraphs(velocypack::Builder& builder);
+   ResultT<std::pair<OperationResult, Result>> createGraph(VPackSlice document,
+       bool waitForSync);
 };
 
 

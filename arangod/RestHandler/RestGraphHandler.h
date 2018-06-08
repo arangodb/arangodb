@@ -156,6 +156,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   void generateRemoved(bool removed, bool wasSynchronous, VPackSlice old,
                        VPackOptions const& options);
 
+  void generateCreatedGraphConfig(bool wasSynchronous, VPackSlice slice,
+      VPackOptions const& options);
+
   void generateGraphConfig(VPackSlice slice, VPackOptions const& options);
 
   // TODO maybe cleanup the generate* zoo a little?
@@ -209,6 +212,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     std::shared_ptr<const graph::Graph> graph
   );
 
+  Result graphActionCreateGraph();
   Result graphActionReadGraphs();
 
   Result graphActionReadConfig(
