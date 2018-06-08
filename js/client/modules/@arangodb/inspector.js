@@ -378,7 +378,7 @@ function loadAgency(conn, seen) {
 
         console.log("http+" + leader);
         console.log(conn.getEndpoint());
-        if ("http+" + leader != conn.getEndpoint()) {
+        if ("http+" + leader !== conn.getEndpoint()) {
           conn.reconnect(leader, "_system");
         }
 
@@ -575,43 +575,50 @@ function getServerData(arango) {
 
     function (server) {
 
-      if (nservers == 1 || servers.lengthserver !== "SINGLE") {
+      if (nservers === 1 || servers.lengthserver !== "SINGLE") {
         try {
 
           if (servers[server].endpoint !== undefined) {
-            if (arango.getEndpoint() != "http+" + servers[server].endpoint) {
+            if (arango.getEndpoint() !== "http+" + servers[server].endpoint) {
               arango.reconnect(servers[server].endpoint, '_system');
             }
           }
           
-          const version = arango.GET('_api/version'); // version api
-          const log = arango.GET('_admin/log').text;  // log api
-          const statistics = arango.GET('_admin/statistics').text;  // log api
+          const version = arango.GET('_api/version?details=true'); // version api
+          const log = arango.GET('_admin/log'); // log api
+          const statistics = arango.GET('_admin/statistics'); // statistics api
           var agencyConfig;
+          var agencyState;
           if (server.startsWith("AGNT")) {
             agencyConfig = arango.GET('_api/agency/config');
+            agencyState = arango.GET('_api/agency/state');
           }
           const status = arango.GET('_admin/status');
+          const time = require('internal').time();
+
           var tmp = executeExternalAndWait(
+            '/bin/bash', ['-c', 'date -u "+%Y-%m-%d %H:%M:%S %Z" | tee /tmp/inspector-date.out > /dev/null']);
+          const date = fs.readFileSync('/tmp/inspector-date.out', 'utf8').slice(0,-1);
+          tmp = executeExternalAndWait(
             '/bin/bash', ['-c', 'dmesg | tee /tmp/inspector-dmesg.out > /dev/null']);
-          const dmesg = fs.readFileSync('/tmp/inspector-dmesg.out', 'utf8');
+          const dmesg = fs.readFileSync('/tmp/inspector-dmesg.out', 'utf8').slice(0,-1);
           tmp = executeExternalAndWait(
             '/bin/bash', ['-c', 'df -h | tee /tmp/inspector-df.out > /dev/null']);
-          const df = fs.readFileSync('/tmp/inspector-df.out', 'utf8');
+          const df = fs.readFileSync('/tmp/inspector-df.out', 'utf8').slice(0,-1);
           tmp = executeExternalAndWait(
             '/bin/bash', ['-c', 'cat /proc/meminfo | tee /tmp/inspector-meminfo.out > /dev/null']);
-          const meminfo = fs.readFileSync('/tmp/inspector-meminfo.out', 'utf8');
+          const meminfo = fs.readFileSync('/tmp/inspector-meminfo.out', 'utf8').slice(0,-1);
           tmp = executeExternalAndWait(
             '/bin/bash', ['-c', 'uptime | tee /tmp/inspector-uptime.out > /dev/null']);
-          const uptime = fs.readFileSync('/tmp/inspector-uptime.out', 'utf8');
+          const uptime = fs.readFileSync('/tmp/inspector-uptime.out', 'utf8').slice(0,-1);
           tmp = executeExternalAndWait(
             '/bin/bash', ['-c', 'uname -a | tee /tmp/inspector-uname.out > /dev/null']);
-          const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8');
+          const uname = fs.readFileSync('/tmp/inspector-uname.out', 'utf8').slice(0,-1);
           var top;
           if (status.pid !== undefined) {
             tmp = executeExternalAndWait(
               '/bin/bash', ['-c', 'top -b -H -p ' + status.pid + ' -n 1 | tee /tmp/inspector-top.out > /dev/null']);
-            top = fs.readFileSync('/tmp/inspector-top.out', 'utf8');
+            top = fs.readFileSync('/tmp/inspector-top.out', 'utf8').slice(0,-1);
           }
 
           var local = {};
@@ -637,10 +644,11 @@ function getServerData(arango) {
           report[server] = {
             version:version, log:log, dmesg:dmesg, statistics:statistics,
             status:status, df:df, uptime:uptime, uname:uname, meminfo:meminfo,
-            local:local};
+            local:local, date:date, time:time};
 
           if (agencyConfig !==  undefined) {
             report[server].config = agencyConfig;
+            report[server].state = agencyState;
           }
           if (top !==  undefined) {
             report[server].top = top;
@@ -652,7 +660,7 @@ function getServerData(arango) {
       }
     });
   if (Object.keys(servers).length > 1) {
-    if (current != arango.getEndpoint()) {
+    if (current !== arango.getEndpoint()) {
       arango.reconnect(current, '_system');
     }
   }
@@ -680,7 +688,7 @@ function getServerData(arango) {
       while (true) {
         if (agencyDump.leaderId !== "") {
           if (agencyConfig.configuration.pool.hasOwnProperty(agencyConfig.leaderId)) {
-            if ("http+" + agencyConfig.configuration.pool[agencyConfig.leaderId] !=
+            if ("http+" + agencyConfig.configuration.pool[agencyConfig.leaderId] !==
                 arango.getEndpoint()) {
               arango.reconnect(
                 agencyConfig.configuration.pool[agencyConfig.leaderId], "_system");

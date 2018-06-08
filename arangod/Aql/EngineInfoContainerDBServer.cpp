@@ -88,6 +88,9 @@ ScatterNode* findFirstScatter(ExecutionNode const& root) {
       case ExecutionNode::REMOTE:
         node = node->getFirstDependency();
 
+        if (node == nullptr) {
+          return nullptr;
+        }
         if (node->getType() != ExecutionNode::SCATTER
             && node->getType() != ExecutionNode::DISTRIBUTE) {
           return nullptr;
