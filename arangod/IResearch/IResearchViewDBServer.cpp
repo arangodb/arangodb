@@ -350,47 +350,51 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return itr->second;
   }
 
-  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
-      irs::string_ref const& key
-  )->bool {
-    return key != StaticStrings::CollectionsField
-      && key != StaticStrings::LinksField; // ignored fields
-  };
-  arangodb::velocypack::Builder builder;
+  auto viewName = generateName(name(), id(), cid);
+  auto view = vocbase().lookupView(viewName); // on startup a IResearchView might only be in vocbase but not in a brand new IResearchViewDBServer
 
-  builder.openObject();
-  builder.add(
-    arangodb::StaticStrings::DataSourceSystem,
-    arangodb::velocypack::Value(true)
-  ); // required to for use of VIEW_NAME_PREFIX
-  builder.add(
-    arangodb::StaticStrings::DataSourceName,
-    toValuePair(generateName(name(), id(), cid))
-  ); // mark the view definition as an internal per-cid instance
-  builder.add(
-    arangodb::StaticStrings::DataSourceType,
-    toValuePair(DATA_SOURCE_TYPE.name())
-  ); // type required for proper factory selection
+  if (!view) {
+    static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+        irs::string_ref const& key
+    )->bool {
+      return key != StaticStrings::CollectionsField
+        && key != StaticStrings::LinksField; // ignored fields
+    };
+    arangodb::velocypack::Builder builder;
 
-  {
+    builder.openObject();
     builder.add(
-      StaticStrings::PropertiesField,
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-    );
+      arangodb::StaticStrings::DataSourceSystem,
+      arangodb::velocypack::Value(true)
+    ); // required to for use of VIEW_NAME_PREFIX
+    builder.add(
+      arangodb::StaticStrings::DataSourceName,
+      toValuePair(generateName(name(), id(), cid))
+    ); // mark the view definition as an internal per-cid instance
+    builder.add(
+      arangodb::StaticStrings::DataSourceType,
+      toValuePair(DATA_SOURCE_TYPE.name())
+    ); // type required for proper factory selection
 
-    if (!mergeSliceSkipKeys(builder, _meta.slice(), acceptor)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().id() << "'";
+    {
+      builder.add(
+        StaticStrings::PropertiesField,
+        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+      );
 
-        return nullptr;
+      if (!mergeSliceSkipKeys(builder, _meta.slice(), acceptor)) {
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().id() << "'";
+
+          return nullptr;
+      }
+
+      builder.close(); // close StaticStrings::PropertiesField
     }
 
-    builder.close(); // close StaticStrings::PropertiesField
+    builder.close();
+    view = vocbase().createView(builder.slice());
   }
-
-  builder.close();
-
-  auto view = vocbase().createView(builder.slice());
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -466,6 +470,12 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       new IResearchViewDBServer(vocbase, info, *feature, planVersion)
     );
     auto logicalWiew = ClusterInfo::instance()->getView(vocbase.name(), name);
+
+    // if not found in the plan then look for the view in vocbase (added there below)
+    if (!logicalWiew) {
+      logicalWiew = vocbase.lookupView(name);
+    }
+
     auto* impl = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
 
     // if DBServer view already exists then make the new instance a partial clone
@@ -532,6 +542,11 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     vocbase.name(), viewId
   ); // always look up by view ID since it cannot change
 
+  // if not found in the plan then look for the view in vocbase (added there below)
+  if (!wiew) {
+    wiew = vocbase.lookupView(viewId);
+  }
+
   // create DBServer view
   if (!wiew) {
     static const std::function<bool(irs::string_ref const& key)> acceptor = [](
@@ -539,7 +554,8 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     )->bool {
       return key != arangodb::StaticStrings::DataSourceId
         && key != arangodb::StaticStrings::DataSourceSystem
-        && key != arangodb::StaticStrings::DataSourceName; // ignored fields
+        && key != arangodb::StaticStrings::DataSourceName
+        && key != arangodb::StaticStrings::DataSourceGuid; // ignored fields
     };
     arangodb::velocypack::Builder builder;
 
