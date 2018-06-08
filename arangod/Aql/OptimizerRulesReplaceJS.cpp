@@ -76,8 +76,6 @@ struct nearOrWithinParams{
     longitude = arr->getMember(2);
     if(arr->numMembers() > 4){
       distanceName = arr->getMember(4);
-    } else {
-      distanceName = nullptr;
     }
 
     if(isNear){
@@ -125,7 +123,7 @@ AstNode* createSubqueryWithLimit(
   Variable* lastOutVariable,
   AstNode* limit
   ){
-  // Creates subquery of the following form:
+  // Creates a subquery of the following form:
   //
   //    singleton
   //        |
@@ -139,7 +137,10 @@ AstNode* createSubqueryWithLimit(
   //        |
   //      return
   //
-  // The Query is then injected into the plan before the given `node`
+  // The subquery is then injected into the plan before the given `node`
+  // This function returns an `AstNode*` of type reference to the subquery's
+  // `outVariable` that can be used to replace the expression (or only a
+  // part) of a `CalculationNode`.
   //
   auto* ast = plan->getAst();
 
@@ -174,8 +175,7 @@ AstNode* createSubqueryWithLimit(
 
   plan->insertBefore(node, eSubquery);
 
-  // this replaces the FunctionCall-AstNode in the
-  // expression of the calculation node.
+  // return reference to outVariable
   return ast->createNodeReference(subqueryOutVariable);
 
 }
@@ -190,19 +190,14 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   // RETURN (
   //  FOR d IN col
-  //    SORT DISTANCE(d.lat, d.long, param.lat, param.lon)
+  //    SORT DISTANCE(d.lat, d.long, param.lat, param.lon) // NEAR
+  //    // FILTER DISTANCE(d.lat, d.long, param.lat, param.lon) < param.radius //WHITHIN
   //    MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
-  //    LIMIT param.limit
-  //
-  //   RETURN d MERGE {param.distname : calculated_distance}
+  //    LIMIT param.limit // NEAR
+  //    RETURN d MERGE {param.distname : calculated_distance}
   // )
 
-  /// index
-  //  we create this first as creation of this node is more
-  //  likely to fail than the creation of other nodes
-
-  //  index - part 1 - figure out index to use
-
+  //// enumerate collection
   auto& vocbase = trx->vocbase();
   auto* aqlCollection = query->collections()->get(params.collection);
   Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
@@ -215,13 +210,13 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
       )
   );
 
-  //// build sort codition
-
+  //// build sort condition - DISTANCE(d.lat, d.long, param.lat, param.lon)
   auto* docRef = ast->createNodeReference(enumerateOutVariable);
   AstNode* accessNodeLat = docRef;
   AstNode* accessNodeLon = docRef;
   bool indexFound = false;
 
+  //  index -figure out index to use
 	std::vector<basics::AttributeName> field;
 	auto indexes = trx->indexesForCollection(params.collection);
 	for(auto& idx : indexes){
@@ -259,7 +254,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
           accessNodeLat = ast->createNodeAttributeAccess(accessNodeLat, p, part.name.size());
         }
 
-
+        //TODO check for alternative way to find out weather geoJson is used or not
         VPackBuilder builder;
         idx->toVelocyPack(builder,true,false);
         bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
@@ -267,7 +262,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
         accessNodeLat = ast->createNodeIndexedAccess(accessNodeLat, ast->createNodeValueInt(geoJson ? 1 : 0));
         accessNodeLon = ast->createNodeIndexedAccess(accessNodeLon, ast->createNodeValueInt(geoJson ? 0 : 1));
         indexFound = true;
-      } // if isGeo 1 or 2
+      }
       break;
     }
 
@@ -284,16 +279,18 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   argsArray->addMember(accessNodeLon);
   argsArray->addMember(params.latitude);
   argsArray->addMember(params.longitude);
-
   auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray);
 
   AstNode* expressionAst = funDist;
+
+  //// build filter condition for
   if(!isNear){
     expressionAst = ast->createNodeBinaryOperator(
       AstNodeType::NODE_TYPE_OPERATOR_BINARY_LE, funDist ,params.radius
     );
   }
 
+  //// create calculation node used in SORT or FILTER
   //Calculation Node will acquire ownership
   Expression* calcExpr = new Expression(plan, ast, expressionAst);
 
@@ -304,6 +301,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   );
   eCalc->addDependency(eEnumerate);
 
+  //// create SORT of FILTER
   ExecutionNode* eSortOrFilter = nullptr;
   if(isNear){
     // use calculation node in sort node
@@ -318,8 +316,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   }
   eSortOrFilter->addDependency(eCalc);
 
+  //// create MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
   if(params.distanceName) { //return without merging the distance into the result
-
     AstNode* elem = nullptr;
     AstNode* funDistMerge = nullptr;
     if(isNear){
@@ -351,9 +349,11 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
     );
     plan->insertAfter(eSortOrFilter, eCalcMerge);
 
+    //// wrap plan part into subquery
     return createSubqueryWithLimit(plan, calcNode, eEnumerate, eCalcMerge, calcMergeOutVariable, params.limit);
   }
 
+  //// wrap plan part into subquery
   return createSubqueryWithLimit(plan, calcNode,
                                 eEnumerate /* first */, eSortOrFilter /* last */,
                                 enumerateOutVariable, params.limit);
@@ -412,6 +412,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
     )
   );
 
+  //// wrap plan part into subquery
   return createSubqueryWithLimit(plan, calcNode, eIndex, eIndex, indexOutVariable, params.limit);
 }
 
@@ -449,12 +450,12 @@ void arangodb::aql::replaceJSFunctions(Optimizer* opt
       return astnode;
     };
 
-    // replace root node if it was modified
-    // TraverseAndModify has no access to roots parent
     CalculationNode* calc = static_cast<CalculationNode*>(node);
     auto* original = getAstNode(calc);
     auto* replacement = Ast::traverseAndModify(original,visitor);
 
+    // replace root node if it was modified
+    // TraverseAndModify has no access to roots parent
     if (replacement != original) {
       calc->expression()->replaceNode(replacement);
     }
