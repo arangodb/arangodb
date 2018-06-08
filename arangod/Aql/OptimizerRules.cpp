@@ -2280,7 +2280,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::ENUMERATE_LIST:
 #ifdef USE_IRESEARCH
       case EN::ENUMERATE_IRESEARCH_VIEW:
-      case EN::SCATTER_IRESEARCH_VIEW:
 #endif
       case EN::SUBQUERY:
       case EN::FILTER:
@@ -2371,6 +2370,11 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
 
   std::unordered_set<ExecutionNode*> toUnlink;
   bool modified = false;
+  // this rule may modify the plan in place, but the new plan
+  // may not yet be optimal. so we may pass it into this same
+  // rule again. the default is to continue with the next rule
+  // however
+  int newLevel = 0;
 
   for (auto const& node : nodes) {
     auto fn = ExecutionNode::castTo<FilterNode const*>(node);
@@ -2441,6 +2445,8 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
               plan->replaceNode(setter, cn);
               modified = true;
               handled = true;
+              // pass the new plan into this rule again, to optimize even further
+              newLevel = static_cast<int>(rule->level - 1);
             }
           }
         }
@@ -2463,7 +2469,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
     plan->unlinkNodes(toUnlink);
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
+  opt->addPlan(std::move(plan), rule, modified, newLevel);
 }
 
 /// @brief helper to compute lots of permutation tuples
@@ -2703,7 +2709,13 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     remoteNode->addDependency(rootNode);
 
     // insert a gather node
-    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(c));
+    auto const sortMode = GatherNode::evaluateSortMode(
+      c->numberOfShards()
+    );
+
+    auto* gatherNode = new GatherNode(
+      plan.get(), plan->nextId(), sortMode
+    );
 
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
@@ -2945,6 +2957,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, types, true);
 
+  TRI_ASSERT(
+    plan->getAst()
+      && plan->getAst()->query()
+      && plan->getAst()->query()->trx()
+  );
+  auto* resolver = plan->getAst()->query()->trx()->resolver();
+  TRI_ASSERT(resolver);
+
   for (auto& node : nodes) {
     // found a node we need to replace in the plan
 
@@ -3024,8 +3044,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     }
 
     // insert a scatter node
-    ExecutionNode* scatterNode =
-        new ScatterNode(plan.get(), plan->nextId(), vocbase, collection);
+    auto* scatterNode = new ScatterNode(plan.get(), plan->nextId());
     plan->registerNode(scatterNode);
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
@@ -3050,8 +3069,14 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     remoteNode->addDependency(node);
 
     // insert a gather node
-    GatherNode* gatherNode =
-        new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(collection));
+    auto const sortMode = GatherNode::evaluateSortMode(
+      collection->numberOfShards()
+    );
+    auto* gatherNode = new GatherNode(
+      plan.get(),
+      plan->nextId(),
+      sortMode
+    );
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
@@ -3243,9 +3268,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       // keys if none present
       bool const createKeys = (nodeType == ExecutionNode::INSERT);
       inputVariable = node->getVariablesUsedHere()[0];
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, createKeys, true);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        createKeys,
+        true
+      );
     } else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
@@ -3255,9 +3286,15 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // We only look into _inDocVariable
         inputVariable = v[0];
       }
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, false, v.size() > 1);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        false,
+        v.size() > 1
+      );
     } else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (v.size() > 1) {
@@ -3269,16 +3306,23 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
         // was only UPDATE <doc> IN <collection>
         inputVariable = v[0];
       }
-      distNode =
-          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable, inputVariable, false, v.size() > 1);
+      distNode = new DistributeNode(
+        plan.get(),
+        plan->nextId(),
+        collection,
+        inputVariable,
+        inputVariable,
+        false,
+        v.size() > 1
+      );
     } else if (nodeType == ExecutionNode::UPSERT) {
       // an UPSERT node has two input variables!
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 
-      auto d = new DistributeNode(plan.get(), plan->nextId(), vocbase,
-                                  collection, v[0], v[1], true, true);
+      auto d = new DistributeNode(
+        plan.get(), plan->nextId(), collection, v[0], v[1], true, true
+      );
       d->setAllowSpecifiedKeys(true);
       distNode = ExecutionNode::castTo<ExecutionNode*>(d);
     } else {
@@ -3309,8 +3353,14 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     remoteNode->addDependency(node);
 
     // insert a gather node
-    ExecutionNode* gatherNode =
-        new GatherNode(plan.get(), plan->nextId(), GatherNode::getSortMode(collection));
+    auto const sortMode = GatherNode::evaluateSortMode(
+      collection->numberOfShards()
+    );
+    auto* gatherNode = new GatherNode(
+      plan.get(),
+      plan->nextId(),
+      sortMode
+    );
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
 
@@ -3626,7 +3676,6 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
         case EN::SUBQUERY:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-        case EN::SCATTER_IRESEARCH_VIEW:
 #endif
           // do break
           stopSearching = true;
@@ -3756,7 +3805,6 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::SHORTEST_PATH:
 #ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-        case EN::SCATTER_IRESEARCH_VIEW: 
 #endif
 
           // For all these, we do not want to pull a SortNode further down
@@ -3778,13 +3826,17 @@ void arangodb::aql::distributeSortToClusterRule(
           if (thisSortNode->_reinsertInCluster) {
             plan->insertDependency(rn, inspectNode);
           }
-          // On SmartEdge collections we have 0 shards and we need the elements
-          // to be injected here as well. So do not replace it with > 1
+
           auto const* collection = GatherNode::findCollection(*gatherNode);
 
-          if (collection && collection->numberOfShards() != 1) {
+          // For views (when 'collection == nullptr') we don't need
+          // to check number of shards
+          // On SmartEdge collections we have 0 shards and we need the elements
+          // to be injected here as well. So do not replace it with > 1
+          if (!collection || collection->numberOfShards() != 1) {
             gatherNode->elements(thisSortNode->elements());
           }
+
           modified = true;
           // ready to rumble!
           break;
@@ -3826,11 +3878,7 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     }
 
     auto const dep = n->getFirstDependency();
-    if (dep->getType() != EN::SCATTER
-#ifdef USE_IRESEARCH
-        && dep->getType() != EN::SCATTER_IRESEARCH_VIEW
-#endif
-        ) {
+    if (dep->getType() != EN::SCATTER) {
       continue;
     }
 
@@ -4201,9 +4249,6 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       }
       case EN::DISTRIBUTE:
       case EN::SCATTER:
-#ifdef USE_IRESEARCH
-      case EN::SCATTER_IRESEARCH_VIEW: // FIXME check
-#endif
       {
         if (_scatter) {  // met more than one scatter node
           break;         // abort . . .

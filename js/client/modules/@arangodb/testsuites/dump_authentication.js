@@ -25,6 +25,8 @@
 // / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
+const fs = require('fs');
+
 const functionsDocumentation = {
   'dump_authentication': 'dump tests with authentication'
 };
@@ -41,6 +43,10 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+
+const testPaths = {
+  'dump_authentication': ['js/server/tests/dump/']
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: dump_authentication
@@ -87,9 +93,15 @@ function dumpAuthentication (options) {
   print(CYAN + Date() + ': Setting up' + RESET);
 
   let results = { failed: 1 };
-  results.setup = tu.runInArangosh(options, instanceInfo,
-    tu.makePathUnix('js/server/tests/dump/dump-authentication-setup.js'),
+  results.setup = tu.runInArangosh(
+    options,
+    instanceInfo,
+    tu.makePathUnix(
+      fs.join(testPaths.dump_authentication[0],
+              "dump-authentication-setup.js")
+    ),
     auth2);
+
   results.setup.failed = 1;
 
   if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
@@ -123,10 +135,15 @@ function dumpAuthentication (options) {
 
         print(CYAN + Date() + ': Dump and Restore - dump after restore' + RESET);
 
-        results.test = tu.runInArangosh(authOpts, instanceInfo,
-          tu.makePathUnix('js/server/tests/dump/dump-authentication.js'), {
+        results.test = tu.runInArangosh(
+          authOpts,
+          instanceInfo,
+          tu.makePathUnix(fs.join(testPaths.dump_authentication[0],
+                                  'dump-authentication.js')),
+          {
             'server.database': 'UnitTestsDumpDst'
           });
+
         results.test.failed = 1;
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
           (results.test.status === true)) {
@@ -134,8 +151,13 @@ function dumpAuthentication (options) {
 
           print(CYAN + Date() + ': Dump and Restore - teardown' + RESET);
 
-          results.tearDown = tu.runInArangosh(options, instanceInfo,
-            tu.makePathUnix('js/server/tests/dump/dump-teardown.js'), auth2);
+          results.tearDown = tu.runInArangosh(
+            options,
+            instanceInfo,
+            tu.makePathUnix(fs.join(testPaths.dump_authentication[0],
+                                    'dump-teardown.js')
+                           ),
+            auth2);
 
           results.tearDown.failed = 1;
           if (results.tearDown.status) {
@@ -156,12 +178,11 @@ function dumpAuthentication (options) {
   return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['dump_authentication'] = dumpAuthentication;
   defaultFns.push('dump_authentication');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

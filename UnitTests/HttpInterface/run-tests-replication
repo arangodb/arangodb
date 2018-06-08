@@ -1,4 +1,0 @@
-#!/bin/sh
-test -d logs || mkdir logs
-
-rspec -I . --color --format d `find . -name "api-replication-*.rb" -a \! -name "*-cluster-*"`

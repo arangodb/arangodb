@@ -37,6 +37,11 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 
+const testPaths = {
+  'catch': [],
+  'boost': []
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: Catch
 // //////////////////////////////////////////////////////////////////////////////
@@ -68,9 +73,11 @@ function catchRunner (options) {
   if (!options.skipCatch) {
     if (run !== '') {
       let argv = [
+        '--log.line-number',
+        options.extremeVerbosity ? "true" : "false",
         '[exclude:longRunning][exclude:cache]'
       ];
-      results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir);
+      results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {
         results.failed += 1;
@@ -87,14 +94,17 @@ function catchRunner (options) {
 
   if (!options.skipCache) {
     if (run !== '') {
-      let argv = ['[cache][exclude:longRunning]',
-                  '-r',
-                  'junit',
-                  '-o',
-                  fs.join(options.testOutputDirectory, 'catch-cache.xml')
-                 ];
+      let argv = [
+        '--log.line-number',
+        options.extremeVerbosity ? "true" : "false",
+        '[cache][exclude:longRunning]',
+        '-r',
+        'junit',
+        '-o',
+        fs.join(options.testOutputDirectory, 'catch-cache.xml')
+      ];
       results.cache_suite = pu.executeAndWait(run, argv, options,
-                                           'cache_suite', rootDir);
+                                              'cache_suite', rootDir, options.coreCheck);
       results.cache_suite.failed = results.cache_suite.status ? 0 : 1;
       if (!results.cache_suite.status) {
         results.failed += 1;
@@ -111,13 +121,16 @@ function catchRunner (options) {
 
   if (!options.skipGeo) {
     if (run !== '') {
-      let argv = ['[geo][exclude:longRunning]',
-                  '-r',
-                  'junit',
-                  '-o',
-                  fs.join(options.testOutputDirectory, 'catch-geo.xml')
-                 ];
-      results.geo_suite = pu.executeAndWait(run, argv, options, 'geo_suite', rootDir);
+      let argv = [
+        '--log.line-number',
+        options.extremeVerbosity ? "true" : "false",
+        '[geo][exclude:longRunning]',
+        '-r',
+        'junit',
+        '-o',
+        fs.join(options.testOutputDirectory, 'catch-geo.xml')
+      ];
+      results.geo_suite = pu.executeAndWait(run, argv, options, 'geo_suite', rootDir, options.coreCheck);
       results.geo_suite.failed = results.geo_suite.status ? 0 : 1;
       if (!results.geo_suite.status) {
         results.failed += 1;
@@ -135,7 +148,8 @@ function catchRunner (options) {
   return results;
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['catch'] = catchRunner;
   testFns['boost'] = catchRunner;
 
@@ -147,6 +161,4 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

@@ -4,6 +4,16 @@ devel
 * PR 5552: add "--latency true" option to arangoimport.  Lists microsecond latency
   statistics on 10 second intervals.
 
+* fixed internal issue #2256: ui, document id not showing up when deleting a document
+
+* fixed internal issue #2163: wrong labels within foxx validation of service
+  input parameters
+
+* fixed internal issue #2160: fixed misplaced tooltips in indices view
+
+* Added exclusive option for rocksdb collections. Modifying AQL queries can
+  now set the exclusive option as well as it can be set on JavaScript transactions.
+
 * added optimizer rule "optimize-subqueries", which makes qualifying subqueries
   return less data
 

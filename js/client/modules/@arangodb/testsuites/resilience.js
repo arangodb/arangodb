@@ -36,12 +36,19 @@ const optionsDocumentation = [
 
 const tu = require('@arangodb/test-utils');
 
+const testPaths = {
+  'resilience': ['js/server/tests/resilience'],
+  'client_resilience': ['js/client/tests/resilience'],
+  'cluster_sync': ['js/server/tests/cluster-sync'],
+  'active_failover': ['js/client/tests/active-failover']
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: resilience
 // //////////////////////////////////////////////////////////////////////////////
 
 function resilience (options) {
-  let testCases = tu.scanTestPath('js/server/tests/resilience');
+  let testCases = tu.scanTestPaths(testPaths.resilience);
   options.cluster = true;
   options.propagateInstanceInfo = true;
   if (options.dbServers < 5) {
@@ -55,7 +62,7 @@ function resilience (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPath('js/client/tests/resilience');
+  let testCases = tu.scanTestPaths(testPaths.cluster_sync);
   options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
@@ -80,12 +87,11 @@ function clusterSync (options) {
       }
     };
   }
-  let testCases = tu.scanTestPath('js/server/tests/cluster-sync');
+  let testCases = tu.scanTestPaths(testPaths.cluster_sync);
   options.propagateInstanceInfo = true;
 
   return tu.performTests(options, testCases, 'cluster_sync', tu.runThere);
 }
-
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: active failover
@@ -102,7 +108,7 @@ function activeFailover (options) {
     };
   }
 
-  let testCases = tu.scanTestPath('js/client/tests/active-failover');
+  let testCases = tu.scanTestPaths(testPaths.active_failover);
   options.activefailover = true;
   options.singles = 4;
   return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
@@ -111,13 +117,12 @@ function activeFailover (options) {
   });
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['resilience'] = resilience;
   testFns['client_resilience'] = clientResilience;
   testFns['cluster_sync'] = clusterSync;
   testFns['active_failover'] = activeFailover;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

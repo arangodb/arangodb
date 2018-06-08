@@ -243,6 +243,7 @@ SET(ARANGOD_SOURCES
   Aql/SortBlock.cpp
   Aql/SortCondition.cpp
   Aql/SortNode.cpp
+  Aql/SortRegister.cpp
   Aql/SubqueryBlock.cpp
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
@@ -444,8 +445,8 @@ SET(ARANGOD_SOURCES
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
+  Scheduler/SocketSslTcp.cpp
   Scheduler/SocketTask.cpp
-  Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
   Statistics/ConnectionStatistics.cpp
   Statistics/Descriptions.cpp
