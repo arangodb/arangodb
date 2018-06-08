@@ -602,6 +602,11 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
   for (auto& name : databaseFeature->getDatabaseNames()) {
     builder.add(name, VPackValue(VPackValueType::Object));
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+
+    if (vocbase == nullptr) {
+      return;
+    }
+
     ReplicationApplier* applier = vocbase->replicationApplier();
 
     if (applier == nullptr) {
