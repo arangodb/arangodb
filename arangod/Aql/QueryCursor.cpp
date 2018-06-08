@@ -218,9 +218,19 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
     // reserve some space in Builder to avoid frequent reallocs
     builder.reserve(16 * 1024);
     builder.add("result", VPackValue(VPackValueType::Array, true));
+    while (true) {
+      // TODO MAX: We need to let the thread sleep here instead of while loop
+      auto res = engine->getSome(batchSize());
+      if (res.first == ExecutionState::WAITING) {
+        _query->tempWaitForAsyncResponse();
+      } else {
+        value.swap(res.second);
+        break;
+      }
+    }
 
     // get one batch
-    if ((value = engine->getSome(batchSize())) != nullptr) {
+    if (value != nullptr) {
       size_t const n = value->size();
       for (size_t i = 0; i < n; ++i) {
         AqlValue const& val = value->getValueReference(i, resultRegister);

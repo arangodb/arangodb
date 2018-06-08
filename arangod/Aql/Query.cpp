@@ -617,8 +617,22 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     resultBuilder->openArray();
 
-    // iterate over result, return it and store it in query cache
-    while (nullptr != (value = _engine->getSome(ExecutionBlock::DefaultBatchSize()))) {
+    // TODO MAX: Please fix these double true loops ;)
+    while (true) {
+      while (true) {
+        // TODO MAX: We need to let the thread sleep here instead of while loop
+        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+        if (res.first == ExecutionState::WAITING) {
+          tempWaitForAsyncResponse();
+        } else {
+          value.swap(res.second);
+          break;
+        }
+      }
+      // TODO Later we can break on DONE after processing value
+      if (value == nullptr) {
+        break;
+      }
       size_t const n = value->size();
 
       for (size_t i = 0; i < n; ++i) {
@@ -755,7 +769,22 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         builder->openArray();
 
         uint32_t j = 0;
-        while (nullptr != (value = _engine->getSome(ExecutionBlock::DefaultBatchSize()))) {
+        // TODO MAX: Please fix these double true loops ;)
+        while (true) {
+          while (true) {
+            // TODO MAX: We need to let the thread sleep here instead of while loop
+            auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+            if (res.first == ExecutionState::WAITING) {
+              tempWaitForAsyncResponse();
+            } else {
+              value.swap(res.second);
+              break;
+            }
+          }
+          // TODO Later we can break on DONE after processing value
+          if (value == nullptr) {
+            break;
+          }
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
@@ -784,7 +813,22 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       } else {
         // iterate over result and return it
         uint32_t j = 0;
-        while (nullptr != (value = _engine->getSome(ExecutionBlock::DefaultBatchSize()))) {
+        // TODO MAX: Please fix these double true loops ;)
+        while (true) {
+          while (true) {
+            // TODO MAX: We need to let the thread sleep here instead of while loop
+            auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+            if (res.first == ExecutionState::WAITING) {
+              tempWaitForAsyncResponse();
+            } else {
+              value.swap(res.second);
+              break;
+            }
+          }
+          // TODO Later we can break on DONE after processing value
+          if (value == nullptr) {
+            break;
+          }
           if (!_queryOptions.silent) {
             size_t const n = value->size();
 

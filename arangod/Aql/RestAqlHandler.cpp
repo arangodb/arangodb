@@ -762,11 +762,19 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
   // this is because the request may contain additional data
   if ((operation == "getSome" || operation == "skipSome") &&
       !query->engine()->initializeCursorCalled()) {
-    int res = query->engine()->initializeCursor(nullptr, 0);
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(GeneralResponse::responseCode(res),
-                    res, "cannot initialize cursor for AQL query");
-      return;
+    while (true) {
+      // TODO MAX: Handle Thread Sleep / Wakeup here! 
+      auto res = query->engine()->initializeCursor(nullptr, 0);
+      if (res.first == ExecutionState::WAITING) {
+        query->tempWaitForAsyncResponse();
+      } else {
+        if (!res.second.ok()) {
+          generateError(GeneralResponse::responseCode(res.second.errorNumber()),
+                        res.second.errorNumber(), "cannot initialize cursor for AQL query");
+          return;
+        }
+        break;
+      }
     }
   }
 
@@ -794,7 +802,16 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         std::unique_ptr<AqlItemBlock> items;
         if (shardId.empty()) {
-          items = query->engine()->getSome(atMost);
+          while (true) {
+            // TODO MAX: Handle Thread Sleep / Wakeup here! 
+            auto tmpRes = query->engine()->getSome(atMost);
+            if (tmpRes.first == ExecutionState::WAITING) {
+              query->tempWaitForAsyncResponse();
+            } else {
+              items.swap(tmpRes.second);
+              break;
+            }
+          }
         } else {
           auto block = static_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
@@ -825,7 +842,16 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         size_t skipped;
         if (shardId.empty()) {
-          skipped = query->engine()->skipSome(atMost);
+          while (true) {
+            // TODO MAX: Handle Thread Sleep / Wakeup here! 
+            auto tmpRes = query->engine()->skipSome(atMost);
+            if (tmpRes.first == ExecutionState::WAITING) {
+              query->tempWaitForAsyncResponse();
+            } else {
+              skipped = tmpRes.second;
+              break;
+            }
+          }
         } else {
           auto block =
               static_cast<BlockWithClients*>(query->engine()->root());
@@ -857,16 +883,35 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         auto pos =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
         std::unique_ptr<AqlItemBlock> items;
-        int res;
+        Result res;
         if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
-          res = query->engine()->initializeCursor(nullptr, 0);
+          while (true) {
+            // TODO MAX: Handle Thread Sleep / Wakeup here! 
+            auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
+            if (tmpRes.first == ExecutionState::WAITING) {
+              query->tempWaitForAsyncResponse();
+            } else {
+              res = tmpRes.second;
+              break;
+            }
+          }
+ 
         } else {
           items.reset(new AqlItemBlock(query->resourceMonitor(),
                                        querySlice.get("items")));
-          res = query->engine()->initializeCursor(items.get(), pos);
+          while (true) {
+            // TODO MAX: Handle Thread Sleep / Wakeup here! 
+            auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
+            if (tmpRes.first == ExecutionState::WAITING) {
+              query->tempWaitForAsyncResponse();
+            } else {
+              res = tmpRes.second;
+              break;
+            }
+          }
         }
-        answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
-        answerBuilder.add(StaticStrings::Code, VPackValue(res));
+        answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
+        answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
       } else if (operation == "shutdown") {
         int errorCode = VelocyPackHelper::getNumericValue<int>(
             querySlice, "code", TRI_ERROR_INTERNAL);

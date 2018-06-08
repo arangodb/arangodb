@@ -458,49 +458,33 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-int ExecutionEngine::initializeCursor(AqlItemBlock* items, size_t pos) {
+std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(AqlItemBlock* items, size_t pos) {
+  auto res = _root->initializeCursor(items, pos);
+  if (res.first == ExecutionState::WAITING) {
+    return res;
+  }
   _initializeCursorCalled = true;
-  // TODO FIXME remove this loop
-  while (true) {
-    auto res = _root->initializeCursor(items, pos);
-    if (res.first == ExecutionState::WAITING) {
-      _query->tempWaitForAsyncResponse();
-    } else {
-      return res.second.errorNumber();
-    }
-  }
+  return res;
 }
 
-std::unique_ptr<AqlItemBlock> ExecutionEngine::getSome(size_t atMost) {
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionEngine::getSome(size_t atMost) {
   if (!_initializeCursorCalled) {
-    // TODO FIXME
-    initializeCursor(nullptr, 0);
-  }
-  // TODO FIXME remove this loop
-  while (true) {
-    auto res = _root->getSome(atMost);
+    auto res = initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
-      _query->tempWaitForAsyncResponse();
-    } else {
-      return std::move(res.second);
+      return {res.first, nullptr};
     }
   }
+  return _root->getSome(atMost);
 }
 
-size_t ExecutionEngine::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   if (!_initializeCursorCalled) {
-    // TODO FIXME
-    initializeCursor(nullptr, 0);
-  }
-  // TODO FIXME remove this loop
-  while (true) {
-    auto res = _root->skipSome(atMost);
+    auto res = initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
-      _query->tempWaitForAsyncResponse();
-    } else {
-      return res.second;
+      return {res.first, 0};
     }
   }
+  return _root->skipSome(atMost);
 }
 
 
