@@ -29,7 +29,7 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/socket-utils.h"
-#include "Scheduler/EventLoop.h"
+#include "Scheduler/Acceptor.h"
 #include "Scheduler/Job.h"
 #include "Scheduler/Socket.h"
 
@@ -63,15 +63,8 @@ class Scheduler {
   virtual ~Scheduler();
 
  public:
-  asio_ns::io_context* ioContext() const { return _ioContext.get(); }
+  // XXX-TODO remove, replace with signal handler
   asio_ns::io_context* managerService() const { return _managerService.get(); }
-
-  EventLoop eventLoop() {
-    // cannot use
-    //   return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
-    // because windows complains ...
-    return EventLoop{_ioContext.get(), this};
-  }
 
   void post(std::function<void()> callback);
 
@@ -82,6 +75,15 @@ class Scheduler {
   void stopRebalancer() noexcept;
   bool isStopping() { return (_counters & (1ULL << 63)) != 0; }
   void shutdown();
+
+  template<typename T>
+  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
+    return new asio_ns::deadline_timer(*_ioContext, timeout);
+  }
+
+  asio_ns::steady_timer* newSteadyTimer() {
+    return new asio_ns::steady_timer(*_ioContext);
+  }
 
  public:
   // decrements the nrRunning counter for the thread
@@ -171,6 +173,10 @@ class Scheduler {
 
   inline bool isStopping(uint64_t value) const noexcept {
     return (value & (1ULL << 63)) != 0;
+  }
+
+  std::unique_ptr<Acceptor> createAcceptor(Endpoint* endpoint) {
+    return Acceptor::factory(*_ioContext, endpoint);
   }
 
   void startIoService();

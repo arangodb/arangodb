@@ -79,12 +79,12 @@ inline std::size_t validateAndCount(char const* vpStart,
 }
 
 
-VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
+VstCommTask::VstCommTask(Scheduler* scheduler, GeneralServer* server,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
                          double timeout, ProtocolVersion protocolVersion,
                          bool skipInit)
-    : Task(loop, "VstCommTask"),
-      GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
+    : Task(scheduler, "VstCommTask"),
+      GeneralCommTask(scheduler, server, std::move(socket), std::move(info), timeout,
                       skipInit),
       _authorized(false),
       _authMethod(rest::AuthenticationMethod::NONE),

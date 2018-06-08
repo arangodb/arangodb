@@ -66,12 +66,12 @@ static std::string const Open("/_open/");
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
+GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
                                  std::unique_ptr<Socket> socket,
                                  ConnectionInfo&& info, double keepAliveTimeout,
                                  bool skipSocketInit)
-    : Task(loop, "GeneralCommTask"),
-      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
+    : Task(scheduler, "GeneralCommTask"),
+      SocketTask(scheduler, std::move(socket), std::move(info), keepAliveTimeout,
                  skipSocketInit),
       _server(server),
       _auth(nullptr) {
@@ -364,7 +364,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   } else if (handler->isDirect()) {
     isDirect = true;
   } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
-             _loop.scheduler->shouldExecuteDirect()) {
+             _scheduler->shouldExecuteDirect()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
@@ -388,7 +388,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   if (isPrio) {
-    _loop.scheduler->post([self, this, handler]() {
+    _scheduler->post([self, this, handler]() {
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
                             std::move(handler));
     });
@@ -397,7 +397,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   // ok, we need to queue the request
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _loop.scheduler->infoStatus();
+                                    << _scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
   auto job = std::make_unique<Job>(
       _server, std::move(handler),
@@ -427,10 +427,10 @@ void GeneralCommTask::handleRequestDirectly(
     if (doLock) {
       auto self = shared_from_this();
       auto h = handler->shared_from_this();
-      _loop.scheduler->_nrQueued++;
+      _scheduler->_nrQueued++;
       _peer->strand.post([self, this, stat, h]() {
-        _loop.scheduler->_nrQueued--;
-        JobGuard guard(_loop);
+        _scheduler->_nrQueued--;
+        JobGuard guard(_scheduler);
         guard.work();
         addResponse(*(h->response()), stat);
       });

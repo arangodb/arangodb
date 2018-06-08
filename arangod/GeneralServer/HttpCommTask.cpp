@@ -46,11 +46,11 @@ size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      // 1024 MB
 size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  // 1024 MB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
-HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
+HttpCommTask::HttpCommTask(Scheduler* scheduler, GeneralServer* server,
                            std::unique_ptr<Socket> socket,
                            ConnectionInfo&& info, double timeout)
-    : Task(loop, "HttpCommTask"),
-      GeneralCommTask(loop, server, std::move(socket), std::move(info),
+    : Task(scheduler, "HttpCommTask"),
+      GeneralCommTask(scheduler, server, std::move(socket), std::move(info),
                       timeout),
       _readPosition(0),
       _startPosition(0),
@@ -281,7 +281,7 @@ bool HttpCommTask::processRead(double startTime) {
       }
 
       std::shared_ptr<GeneralCommTask> commTask = std::make_shared<VstCommTask>(
-          _loop, _server, std::move(_peer), std::move(_connectionInfo),
+          _scheduler, _server, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(), 
           protocolVersion, /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
