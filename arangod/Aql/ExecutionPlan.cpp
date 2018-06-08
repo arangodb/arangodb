@@ -2240,14 +2240,14 @@ void ExecutionPlan::insertBefore(ExecutionNode* current, ExecutionNode* newNode)
   TRI_ASSERT(newNode != nullptr);
   TRI_ASSERT(current->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
+  TRI_ASSERT(!newNode->hasParent());
 
   std::vector<ExecutionNode*> dependencies = current->getDependencies(); // Intentional copy
   for (auto* dep : dependencies){
-    if (!current->replaceDependency(dep, newNode)){
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not replace dependencies of an old node");
-    }
     newNode->addDependency(dep);
   }
+  current->removeDependencies();
+  current->addDependency(newNode);
 }
 
 /// @brief create a plan from VPack

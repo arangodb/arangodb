@@ -66,21 +66,23 @@ namespace {
 //NEAR(coll, 0 /*lat*/, 0 /*lon*/[, 10 /*limit*/])
 struct nearParams{
   std::string collection;
-  double latitude;
-  double longitude;
+  AstNode* latitude;
+  AstNode* longitude;
   std::size_t limit;
-  std::string distanceName;
+  AstNode* distanceName;
 
   nearParams(AstNode const* node){
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
     collection = arr->getMember(0)->getString();
-    latitude = arr->getMember(1)->getDoubleValue();
-    longitude = arr->getMember(2)->getDoubleValue();
+    latitude = arr->getMember(1);
+    longitude = arr->getMember(2);
     limit = arr->getMember(3)->getIntValue();
     if(arr->numMembers() > 4){
-      distanceName = arr->getMember(4)->getString();
+      distanceName = arr->getMember(4);
+    } else {
+      distanceName = nullptr;
     }
   }
 };
@@ -181,6 +183,7 @@ AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan
   auto* trx = query->trx();
   nearParams params(funAstNode);
   bool supportLegacy = true;
+  (void) supportLegacy;
 
   // RETRUN ( FOR x IN col SORT
   //   DISTANCE(fields.lat, fields.long,param.lat, param.lon)
@@ -211,14 +214,13 @@ AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan
   //FIXME
 	try {
 		std::vector<basics::AttributeName> field;
-		TRI_ParseAttributeString(params.distanceName, field, false);
 		auto indexes = trx->indexesForCollection(params.collection);
 		for(auto& idx : indexes){
 			if(Index::isGeoIndex(idx->type())) {
 
-        bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
-        bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
-        bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
+        //bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
+        //bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
+        //bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
 
         LOG_DEVEL << "fields";
         for(auto& f : idx->fields()){
@@ -240,11 +242,24 @@ AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan
                                 << params.collection << ")";
   }
 
-  return nullptr;
 
-  AstNode* expressionAst = nullptr;
-  Expression* calcExpr = new Expression(plan, ast, expressionAst); //who will own this?
-  //FIXME  - end
+  auto* docRef = ast->createNodeReference(enumerateOutVariable);
+  auto* accessLat = ast->createNodeAttributeAccess(docRef,TRI_CHAR_LENGTH_PAIR("lat"));
+  auto* accessLon = ast->createNodeAttributeAccess(docRef,TRI_CHAR_LENGTH_PAIR("lon"));
+
+  auto* argsArray = ast->createNodeArray();
+  argsArray->addMember(accessLat);
+  argsArray->addMember(accessLon);
+  argsArray->addMember(params.latitude);
+  argsArray->addMember(params.longitude);
+
+  auto* fun = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArray);
+
+  AstNode* expressionAst = ast->createNodeValueBool(fun);
+  expressionAst = fun;
+
+  //Calculation Node will acquire ownership
+  Expression* calcExpr = new Expression(plan, ast, expressionAst);
 
   // put condition into calculation node
   Variable* calcOutVariable = ast->variables()->createTemporaryVariable();
@@ -260,9 +275,46 @@ AstNode* replaceNear(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan
   );
   eSort->addDependency(eCalc);
 
-  // merge distname
+  if(params.distanceName) { //return without merging the distance into the result
 
-  return createSubqueryWithLimit(plan, calcNode, eEnumerate, eSort, enumerateOutVariable, params.limit);
+    auto* argsArrayDist = ast->createNodeArray();
+    argsArrayDist->addMember(accessLat);
+    argsArrayDist->addMember(accessLon);
+    argsArrayDist->addMember(params.latitude);
+    argsArrayDist->addMember(params.longitude);
+
+    auto* funDist = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("DISTANCE"), argsArrayDist);
+
+    AstNode* elem = nullptr;
+    if(params.distanceName->isConstant()){
+      elem = ast->createNodeObjectElement(params.distanceName->getStringValue()
+                                         ,params.distanceName->getStringLength()
+                                         ,funDist);
+    } else {
+      elem = ast->createNodeCalculatedObjectElement(params.distanceName, funDist);
+    }
+    auto* obj = ast->createNodeObject();
+    obj->addMember(elem);
+
+    auto* argsArrayMerge = ast->createNodeArray();
+    argsArrayMerge->addMember(docRef);
+    argsArrayMerge->addMember(obj);
+
+    auto* funMerge = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("MERGE"), argsArrayMerge);
+
+    Variable* calcMergeOutVariable = ast->variables()->createTemporaryVariable();
+    Expression* calcMergeExpr = new Expression(plan, ast, funMerge);
+    ExecutionNode* eCalcMerge = plan->registerNode(
+      new CalculationNode(plan, plan->nextId(), calcMergeExpr, nullptr, calcMergeOutVariable)
+    );
+    plan->insertAfter(eSort, eCalcMerge);
+
+    return createSubqueryWithLimit(plan, calcNode, eEnumerate, eCalcMerge, calcMergeOutVariable, params.limit);
+  }
+
+  return createSubqueryWithLimit(plan, calcNode,
+                                eEnumerate /* first */, eSort /* last */,
+                                enumerateOutVariable, params.limit);
 }
 
 AstNode* replaceWithin(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
