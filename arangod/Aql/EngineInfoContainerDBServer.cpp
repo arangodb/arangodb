@@ -803,20 +803,20 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
     if (vertices.empty()) {
       std::unordered_set<std::string> knownEdges;
       for (auto const& it : edges) {
-        knownEdges.emplace(it->getName());
+        knownEdges.emplace(it->name());
       }
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
       std::map<std::string, Collection*>* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
-        if (knownEdges.find(collection.second->getName()) == knownEdges.end()) {
+        if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
           auto shardIds = collection.second->shardIds(restrictToShards);
           for (ShardID const& shard : *shardIds) {
             auto pair = findServerLists(shard);
-            pair->second.vertexCollections[collection.second->getName()]
+            pair->second.vertexCollections[collection.second->name()]
                 .emplace_back(shard);
 #ifdef USE_ENTERPRISE
             if (trx->isInaccessibleCollectionId(
@@ -838,9 +838,9 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       for (auto const& collection : (*cs)) {
         for (auto& entry : mappingServerToCollections) {
           auto it =
-              entry.second.vertexCollections.find(collection.second->getName());
+              entry.second.vertexCollections.find(collection.second->name());
           if (it == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(collection.second->getName(),
+            entry.second.vertexCollections.emplace(collection.second->name(),
                                                    std::vector<ShardID>());
           }
         }
@@ -852,7 +852,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
         auto shardIds = it->shardIds(restrictToShards);
         for (ShardID const& shard : *shardIds) {
           auto pair = findServerLists(shard);
-          pair->second.vertexCollections[it->getName()].emplace_back(shard);
+          pair->second.vertexCollections[it->name()].emplace_back(shard);
 #ifdef USE_ENTERPRISE
           if (trx->isInaccessibleCollectionId(it->getPlanId())) {
             TRI_ASSERT(trxOps.skipInaccessibleCollections);
@@ -868,9 +868,9 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& it : vertices) {
         for (auto& entry : mappingServerToCollections) {
-          auto vIt = entry.second.vertexCollections.find(it->getName());
+          auto vIt = entry.second.vertexCollections.find(it->name());
           if (vIt == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(it->getName(),
+            entry.second.vertexCollections.emplace(it->name(),
                                                    std::vector<ShardID>());
           }
         }

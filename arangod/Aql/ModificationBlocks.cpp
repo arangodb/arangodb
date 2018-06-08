@@ -50,7 +50,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _usesDefaultSharding(true),
       _countStats(ep->countStats()) {
 
-  _trx->pinData(_collection->cid());
+  _trx->pinData(_collection->id());
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
 
@@ -363,7 +363,7 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     if (!toRemove.isNone() &&
         !(toRemove.isArray() && toRemove.length() == 0)) {
       // all exceptions are caught in _trx->remove()
-      OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
+      OperationResult opRes = _trx->remove(_collection->name(), toRemove, options);
 
       if (isMultiple) {
         TRI_ASSERT(opRes.ok());
@@ -493,7 +493,7 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
         } else {
           if (!ep->_options.consultAqlWriteFilter ||
               !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
-            OperationResult opRes = _trx->insert(_collection->name, a.slice(), options);
+            OperationResult opRes = _trx->insert(_collection->name(), a.slice(), options);
             errorCode = opRes.errorNumber();
 
             if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -541,7 +541,7 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
       VPackSlice toSend = _tempBuilder.slice();
       OperationResult opRes;
       if (toSend.length() > 0) {
-        opRes = _trx->insert(_collection->name, toSend, options);
+        opRes = _trx->insert(_collection->name(), toSend, options);
 
         if (producesOutput) {
           // Reset dstRow
@@ -722,7 +722,7 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
     }
 
     // fetch old revision
-    OperationResult opRes = _trx->update(_collection->name, toUpdate, options);
+    OperationResult opRes = _trx->update(_collection->name(), toUpdate, options);
     if (!isMultiple) {
       int errorCode = opRes.errorNumber();
 
@@ -958,7 +958,7 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
       if (isMultiple) {
         TRI_ASSERT(toInsert.isArray());
         if (toInsert.length() != 0) {
-          OperationResult opRes = _trx->insert(_collection->name, toInsert, options);
+          OperationResult opRes = _trx->insert(_collection->name(), toInsert, options);
           if (producesOutput) {
             VPackSlice resultList = opRes.slice();
             TRI_ASSERT(resultList.isArray());
@@ -979,7 +979,7 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
                            ep->_options.ignoreErrors);
         }
       } else {
-        OperationResult opRes = _trx->insert(_collection->name, toInsert, options);
+        OperationResult opRes = _trx->insert(_collection->name(), toInsert, options);
         errorCode = opRes.errorNumber();
 
         if (options.returnNew && errorCode == TRI_ERROR_NO_ERROR) {
@@ -1001,10 +1001,10 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
           OperationResult opRes;
           if (ep->_isReplace) {
             // replace
-            opRes = _trx->replace(_collection->name, toUpdate, options);
+            opRes = _trx->replace(_collection->name(), toUpdate, options);
           } else {
             // update
-            opRes = _trx->update(_collection->name, toUpdate, options);
+            opRes = _trx->update(_collection->name(), toUpdate, options);
           }
           handleBabyResult(opRes.countErrorCodes,
                            static_cast<size_t>(toUpdate.length()),
@@ -1029,10 +1029,10 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
         OperationResult opRes;
         if (ep->_isReplace) {
           // replace
-          opRes = _trx->replace(_collection->name, toUpdate, options);
+          opRes = _trx->replace(_collection->name(), toUpdate, options);
         } else {
           // update
-          opRes = _trx->update(_collection->name, toUpdate, options);
+          opRes = _trx->update(_collection->name(), toUpdate, options);
         }
         errorCode = opRes.errorNumber();
 
@@ -1184,7 +1184,7 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
       continue;
     }
     // fetch old revision
-    OperationResult opRes = _trx->replace(_collection->name, toUpdate, options);
+    OperationResult opRes = _trx->replace(_collection->name(), toUpdate, options);
     if (!isMultiple) {
       int errorCode = opRes.errorNumber();
 
