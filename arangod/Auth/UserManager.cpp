@@ -69,7 +69,6 @@ auth::UserManager::UserManager()
 
 auth::UserManager::UserManager(std::unique_ptr<auth::Handler> handler)
     : _outdated(true),
-      _ready(true),
       _queryRegistry(nullptr),
       _authHandler(std::move(handler)) {}
 #endif
@@ -216,14 +215,12 @@ Result auth::UserManager::loadFromDB() {
         << "Exception when loading users from db: " << ex.what();
     _outdated = true;
     AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
-    _ready = false;
     return Result(TRI_ERROR_FAILED, ex.what());
   } catch (...) {
     LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
     _outdated = true;
     AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
-    _ready = false;
     return Result(TRI_ERROR_FAILED);
   }
   return Result();

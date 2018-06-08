@@ -157,9 +157,6 @@ class UserManager {
   /// @brief need to sync _userCache from database
   std::atomic<bool> _outdated;
 
-  /// @brief are we read for requests?
-  std::atomic<bool> _ready;
-
   /// Caches permissions and other user info
   UserMap _userCache;
 
