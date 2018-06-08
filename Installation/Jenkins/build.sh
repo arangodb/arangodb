@@ -271,7 +271,6 @@ while [ $# -gt 0 ];  do
              CONFIGURE_OPTIONS+=("v140,host=x64")
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
-             CONFIGURE_OPTIONS+=(-DV8_TARGET_ARCHS=Release)
              # MSVC doesn't know howto do our assembler in first place.
              ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
              export _IsNativeEnvironment=true
