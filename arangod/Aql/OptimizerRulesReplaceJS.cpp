@@ -129,7 +129,11 @@ AstNode* createSubqueryWithLimit(
   //
   //    singleton
   //        |
-  //      index
+  //      first
+  //        |
+  //       ...
+  //        |
+  //       last
   //        |
   //     [limit]
   //        |
@@ -368,26 +372,17 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 
   //  index - part 1 - figure out index to use
   std::shared_ptr<arangodb::Index> index = nullptr;
-	try {
-		std::vector<basics::AttributeName> field;
-		TRI_ParseAttributeString(params.attribute, field, false);
-		auto indexes = trx->indexesForCollection(params.collection);
-		for(auto& idx : indexes){
-			if(idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-				if(basics::AttributeName::isIdentical(idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
-					index = idx;
-					break;
-				}
+	std::vector<basics::AttributeName> field;
+	TRI_ParseAttributeString(params.attribute, field, false);
+	auto indexes = trx->indexesForCollection(params.collection);
+	for(auto& idx : indexes){
+		if(idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+			if(basics::AttributeName::isIdentical(idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
+				index = idx;
+				break;
 			}
 		}
-	} catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
-                                << params.collection << "): "
-                                << e.what();
-  } catch (...){
-    LOG_TOPIC(ERR, Logger::AQL) << "Error while looking for collection ("
-                                << params.collection << ")";
-  }
+	}
 
 	if(!index){ // not found or error
     LOG_DEVEL << "no valid index found";
