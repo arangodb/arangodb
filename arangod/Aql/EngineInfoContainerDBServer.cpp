@@ -355,11 +355,10 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         auto const& colNode = *ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
         auto const* col = colNode.collection();
 
-        std::unordered_set<std::string> const restrictedShard(
-          colNode.isRestricted()
-            ? std::initializer_list<std::string>{ colNode.restrictedShard() }
-            : std::initializer_list<std::string>{ }
-        );
+        std::unordered_set<std::string> restrictedShard;
+        if (colNode.isRestricted()) {
+          restrictedShard.emplace(colNode.restrictedShard());
+        }
 
         handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
         updateCollection(col);
@@ -371,11 +370,10 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         auto const& idxNode = *ExecutionNode::castTo<IndexNode const*>(node);
         auto const* col = idxNode.collection();
 
-        std::unordered_set<std::string> const restrictedShard(
-          idxNode.isRestricted()
-            ? std::initializer_list<std::string>{ idxNode.restrictedShard() }
-            : std::initializer_list<std::string>{ }
-        );
+        std::unordered_set<std::string> restrictedShard;
+        if (idxNode.isRestricted()) {
+          restrictedShard.emplace(idxNode.restrictedShard());
+        }
 
         handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
         updateCollection(col);
@@ -411,11 +409,10 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         auto const& modNode = *ExecutionNode::castTo<ModificationNode const*>(node);
         auto const* col = modNode.collection();
 
-        std::unordered_set<std::string> const restrictedShard(
-          modNode.isRestricted()
-            ? std::initializer_list<std::string>{ modNode.restrictedShard() }
-            : std::initializer_list<std::string>{ }
-        );
+        std::unordered_set<std::string> restrictedShard;
+        if (modNode.isRestricted()) {
+          restrictedShard.emplace(modNode.restrictedShard());
+        }
 
         handleCollection(col, AccessMode::Type::WRITE, scatter, restrictedShard);
         updateCollection(col);
