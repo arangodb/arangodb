@@ -179,10 +179,17 @@ case "$1" in
 
     debug)
         BUILD_CONFIG=Debug
+        MAINTAINER_MODE=''
         CFLAGS="${CFLAGS} -O0"
         CXXFLAGS="${CXXFLAGS} -O0"
-        CONFIGURE_OPTIONS+=('-DV8_TARGET_ARCHS=Debug' "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}")
-
+        CONFIGURE_OPTIONS+=(
+            '-DUSE_MAINTAINER_MODE=On'
+            '-DUSE_FAILURE_TESTS=On'
+            '-DOPTDBG=On'
+            '-DUSE_BACKTRACE=On'
+            "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
+        )
+        
         echo "using debug compile configuration"
         shift
         ;;
@@ -260,9 +267,13 @@ while [ $# -gt 0 ];  do
              PAR=""
              PARALLEL_BUILDS=""
              GENERATOR="Visual Studio 14 Win64"
+             CONFIGURE_OPTIONS+=("-T")
+             CONFIGURE_OPTIONS+=("v140,host=x64")
              MAKE="cmake --build . --config ${BUILD_CONFIG}"
              PACKAGE_MAKE="cmake --build . --config ${BUILD_CONFIG} --target"
              CONFIGURE_OPTIONS+=(-DV8_TARGET_ARCHS=Release)
+             # MSVC doesn't know howto do our assembler in first place.
+             ARCH="-DUSE_OPTIMIZE_FOR_ARCHITECTURE=Off"
              export _IsNativeEnvironment=true
              ;;
 
