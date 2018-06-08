@@ -1602,20 +1602,24 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 
   if (ServerState::instance()->isCoordinator()) {
     auto* ci = ClusterInfo::instance();
-    std::string errorMsg;
-    ViewID viewId;
 
-    int const res = ci->createViewCoordinator(
-      name(), parameters, viewId, errorMsg
-    );
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      view = ci->getView(name(), viewId);
-    } else {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-        << "Could not create view in agency, error: " << errorMsg
-        << ", errorCode: " << res;
+    if (!ci) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("failed to find ClusterInfo while creating view")
+      );
     }
+
+    view = LogicalView::create(*this, parameters, true);
+
+    if (!view) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failed to instantiate view in agency'")
+      );
+    }
+
+    view = ci->getView(name(), std::to_string(view->id())); // refresh view from Agency
   } else {
     std::shared_ptr<arangodb::LogicalView> registeredView;
     auto callback = [this, &registeredView](
@@ -1893,7 +1897,8 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
     ttl = InitialSyncer::defaultBatchTimeout;
   }
 
-  double const expires = TRI_microtime() + ttl;
+  double const timestamp = TRI_microtime();
+  double const expires = timestamp + ttl;
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
@@ -1901,7 +1906,8 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
 
   if (it != _replicationClients.end()) {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl;
-    (*it).second.first = expires;
+    std::get<0>((*it).second) = timestamp;
+    std::get<1>((*it).second) = expires;
   } else {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "replication client entry for server '" << serverId << "' not found";
   }
@@ -1914,7 +1920,8 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
   if (ttl <= 0.0) {
     ttl = InitialSyncer::defaultBatchTimeout;
   }
-  double const expires = TRI_microtime() + ttl;
+  double const timestamp = TRI_microtime();
+  double const expires = timestamp + ttl;
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
@@ -1924,13 +1931,14 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
     if (it == _replicationClients.end()) {
       // insert new client entry
       _replicationClients.emplace(
-          serverId, std::make_pair(expires, lastFetchedTick));
+          serverId, std::make_tuple(timestamp, expires, lastFetchedTick));
       LOG_TOPIC(TRACE, Logger::REPLICATION) << "inserting replication client entry for server '" << serverId << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
     } else {
       // update an existing client entry
-      (*it).second.first = expires;
+      std::get<0>((*it).second) = timestamp;
+      std::get<1>((*it).second) = expires;
       if (lastFetchedTick > 0) {
-        (*it).second.second = lastFetchedTick;
+        std::get<2>((*it).second) = lastFetchedTick;
         LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
       } else {
         LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl;
@@ -1943,15 +1951,20 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
 }
 
 /// @brief return the progress of all replication clients
-std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
+std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>>
 TRI_vocbase_t::getReplicationClients() {
-  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> result;
+  std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> result;
 
   READ_LOCKER(readLocker, _replicationClientsLock);
 
   for (auto& it : _replicationClients) {
     result.emplace_back(
-        std::make_tuple(it.first, it.second.first, it.second.second));
+        std::make_tuple(it.first,
+                        std::get<0>(it.second),
+                        std::get<1>(it.second),
+                        std::get<2>(it.second)
+                        )
+    );
   }
   return result;
 }
@@ -1965,7 +1978,7 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
     auto it = _replicationClients.begin();
 
     while (it != _replicationClients.end()) {
-      double const expires = it->second.first;
+      double const expires = std::get<1>((*it).second);
       if (expireStamp > expires) {
         LOG_TOPIC(DEBUG, Logger::REPLICATION) << "removing expired replication client for server id " << it->first;
         it = _replicationClients.erase(it);

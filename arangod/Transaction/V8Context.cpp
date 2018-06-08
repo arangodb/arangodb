@@ -54,7 +54,7 @@ transaction::V8Context::orderCustomTypeHandler() {
       _customTypeHandler = main->orderCustomTypeHandler();
     } else {
       _customTypeHandler.reset(transaction::Context::createCustomTypeHandler(
-        &_vocbase, getResolver()
+        &_vocbase, &resolver()
       ));
     }
 
@@ -70,12 +70,12 @@ transaction::V8Context::orderCustomTypeHandler() {
 }
 
 /// @brief return the resolver
-CollectionNameResolver const* transaction::V8Context::getResolver() {
+CollectionNameResolver const& transaction::V8Context::resolver() {
   if (_resolver == nullptr) {
     transaction::V8Context* main = _sharedTransactionContext->_mainScope;
 
     if (main != nullptr && main != this && !main->isGlobal()) {
-      _resolver = main->getResolver();
+      _resolver = &(main->resolver());
     } else {
       TRI_ASSERT(_resolver == nullptr);
       _resolver = createResolver();
@@ -83,7 +83,8 @@ CollectionNameResolver const* transaction::V8Context::getResolver() {
   }
 
   TRI_ASSERT(_resolver != nullptr);
-  return _resolver;
+
+  return *_resolver;
 }
 
 /// @brief get parent transaction (if any)

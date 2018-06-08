@@ -133,27 +133,12 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Single-server or DB server index factories
-////////////////////////////////////////////////////////////////////////////////
-const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> dbServerIndexFactories = {
-  { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
-  { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Coordinator index factories
-////////////////////////////////////////////////////////////////////////////////
-const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> coordinatorIndexFactories = {
-  //{ "MMFilesEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles },
-  { "ClusterEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkRocksDB }
-};
-
 void registerIndexFactory() {
-  auto& factories = arangodb::ServerState::instance()->isCoordinator()
-    ? coordinatorIndexFactories
-    : dbServerIndexFactories;
-
+  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
+    { "ClusterEngine", arangodb::iresearch::IResearchLinkCoordinator::make },
+    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
+    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make }
+  };
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
   // register 'arangosearch' link

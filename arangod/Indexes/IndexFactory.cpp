@@ -34,6 +34,11 @@
 
 namespace arangodb {
 
+void IndexFactory::clear() {
+  _factories.clear();
+  _normalizers.clear();
+}
+
 Result IndexFactory::emplaceFactory(
   std::string const& type,
   IndexTypeFactory const& factory

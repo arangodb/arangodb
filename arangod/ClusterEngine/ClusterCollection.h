@@ -47,11 +47,9 @@ class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class ClusterCollection final : public PhysicalCollection {
-  friend class ClusterCollection;
 
   constexpr static double defaultLockTimeout = 10.0 * 60.0;
 
- public:
  public:
   explicit ClusterCollection(LogicalCollection*, ClusterEngineType sengineType,
                              velocypack::Slice const& info);

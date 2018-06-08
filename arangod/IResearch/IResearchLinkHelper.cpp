@@ -231,6 +231,15 @@ namespace iresearch {
       collectionsToLock, // exclusiveCollections
       arangodb::transaction::Options() // use default lock timeout
     );
+    auto* trxResolver = trx.resolver();
+
+    if (!trxResolver) {
+      return arangodb::Result(
+        TRI_ERROR_ARANGO_ILLEGAL_STATE,
+        std::string("failed to find collection name resolver while updating IResearch view '") + view.name() + "'"
+      );
+    }
+
     auto res = trx.begin();
 
     if (!res.ok()) {
@@ -246,7 +255,7 @@ namespace iresearch {
         auto& state = *itr;
         auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
 
-        state._collection = vocbase.lookupCollection(collectionName);
+        state._collection = trxResolver->getCollection(collectionName);
 
         if (!state._collection) {
           // remove modification state if removal of non-existant link on non-existant collection

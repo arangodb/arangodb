@@ -83,7 +83,7 @@ class ModificationNode : public ExecutionNode {
   /// why we can make it final here.
   double estimateCost(size_t&) const override final;
 
-  /// @brief data modification is non-deterministic  
+  /// @brief data modification is non-deterministic
   bool isDeterministic() override final { return false; }
 
   /// @brief getOptions
@@ -130,7 +130,7 @@ class ModificationNode : public ExecutionNode {
   bool isModificationNode() const override { return true; }
 
   /// @brief whether this node contributes to statistics. Only disabled in SmartGraph case
-  bool countStats() const { return _countStats; } 
+  bool countStats() const { return _countStats; }
 
   /// @brief Disable that this node is contributing to statistics. Only disabled in SmartGraph case
   void disableStatistics() { _countStats = false; }
@@ -209,8 +209,7 @@ class RemoveNode : public ModificationNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -248,9 +247,8 @@ class InsertNode : public ModificationNode {
  public:
   InsertNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
              Collection* collection, ModificationOptions const& options,
-             Variable const* inVariable, Variable const* outVariableNew)
-      : ModificationNode(plan, id, vocbase, collection, options, nullptr,
-                         outVariableNew),
+             Variable const* inVariable, Variable const* outVariableOld, Variable const* outVariableNew)
+      : ModificationNode(plan, id, vocbase, collection, options, outVariableOld, outVariableNew),
         _inVariable(inVariable) {
     TRI_ASSERT(_inVariable != nullptr);
     // _outVariable might be a nullptr
@@ -268,8 +266,7 @@ class InsertNode : public ModificationNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -330,8 +327,7 @@ class UpdateNode : public ModificationNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -407,8 +403,7 @@ class ReplaceNode : public ModificationNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -490,8 +485,7 @@ class UpsertNode : public ModificationNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively

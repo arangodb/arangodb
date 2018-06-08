@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-vocbaseprivate.h"
+#include "Aql/QueryResult.h"
 #include "Basics/conversions.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
+#include "Transaction/Context.h"
 #include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"

@@ -269,9 +269,10 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
         .AlwaysReturn(&block);
 
     // Mock the Registry
-    fakeit::When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout) {
+    fakeit::When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout, bool isPrepared) {
       REQUIRE(id != 0);
       REQUIRE(query != nullptr);
+      REQUIRE(isPrepared == true);
       REQUIRE(timeout == 600.0);
       REQUIRE(query == &queryClone);
       secondId = id;
@@ -482,13 +483,15 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // NOTE: This expects an ordering of the engines first of the stack will be handled
     // first. With same fakeit magic we could make this ordering independent which is
     // is fine as well for the production code.
-    fakeit::When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout) {
+    fakeit::When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout, bool isPrepared) {
       REQUIRE(id != 0);
       REQUIRE(query != nullptr);
+      REQUIRE(isPrepared == true);
       REQUIRE(timeout == 600.0);
       REQUIRE(query == &queryClone);
       secondId = id;
-    }).Do([&] (QueryId id, Query* query, double timeout) {
+    }).Do([&] (QueryId id, Query* query, double timeout, bool isPrepared) {
+
       REQUIRE(id != 0);
       REQUIRE(query != nullptr);
       REQUIRE(timeout == 600.0);
@@ -660,10 +663,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     SECTION("cloning of a query fails") {
       // Mock the Registry
-      fakeit::When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout) {
+      fakeit::When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout, bool isPrepared) {
         REQUIRE(id != 0);
         REQUIRE(query != nullptr);
         REQUIRE(timeout == 600.0);
+        REQUIRE(isPrepared == true);
         REQUIRE(query == &queryClone);
         secondId = id;
       });

@@ -439,78 +439,50 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     view->sync();
   }
 
+  // explicit collection and view with the same 'collection' name
+  {
+    std::string const query = "LET c=5 FOR x IN collection_1 FILTER x.seq == c FOR d IN VIEW collection_1 FILTER x.seq == d.seq RETURN x";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
+
+    CHECK((arangodb::tests::assertRules(vocbase, query, {}, boundParameters)));
+
+    // arangodb::aql::ExecutionPlan::fromNodeFor(...) throws TRI_ERROR_INTERNAL
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
+    CHECK((TRI_ERROR_INTERNAL == queryResult.code));
+  }
+
+  // explicit collection and view with the same 'view' name
+  {
+    std::string const query = "LET c=5 FOR x IN testView FILTER x.seq == c FOR d IN VIEW testView FILTER x.seq == d.seq RETURN x";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
+
+    CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
+
+    // arangodb::transaction::Methods::addCollectionAtRuntime(...) throws TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code));
+  }
+
   // bind collection and view with the same name
   {
     std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN VIEW @@dataSource FILTER x.seq == d.seq RETURN x";
     auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
 
-/* FIXME will fail
- * on TRI_ASSERT(trxCollection->collection() != nullptr);
- * in transaction::Methods::documentCollection(...)
-    CHECK(arangodb::tests::assertRules(
-      vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-      },
-      boundParameters
-    ));
-
-    std::vector<arangodb::velocypack::Slice> expectedDocs {
-      arangodb::velocypack::Slice(insertedDocsCollectionWithTheSameNameAsView[5].vpack()),
-    };
+    CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
-    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code);
-// FIXME remove line above and uncomment lines below
-// will not return any results because of the:
-// https://github.com/arangodb/backlog/issues/342
-// unable to resolve collection and view with the same name for the time being
-//
-//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
-//
-//    auto result = queryResult.result->slice();
-//    CHECK(result.isArray());
-//
-//    arangodb::velocypack::ArrayIterator resultIt(result);
-//    REQUIRE(expectedDocs.size() == resultIt.size());
-//
-//    // Check documents
-//    auto expectedDoc = expectedDocs.begin();
-//    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
-//      auto const actualDoc = resultIt.value();
-//      auto const resolved = actualDoc.resolveExternals();
-//
-//      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
-//    }
-//    CHECK(expectedDoc == expectedDocs.end());
-*/
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code));
   }
 
   // bind collection and view with the same name
-  //
-  // FIXME
-  // will not return any results because of the:
-  // https://github.com/arangodb/backlog/issues/342
   {
     std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN VIEW @@dataSource FILTER x.seq == d.seq RETURN d";
     auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
 
-/* FIXME will fail
- * on TRI_ASSERT(trxCollection->collection() != nullptr);
- * in transaction::Methods::documentCollection(...)
-    CHECK(arangodb::tests::assertRules(
-      vocbase, query, {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-      },
-      boundParameters
-    ));
-
-    std::vector<arangodb::velocypack::Slice> expectedDocs {
-      arangodb::velocypack::Slice(insertedDocsCollectionWithTheSameNameAsView[5].vpack()),
-    };
+    CHECK(arangodb::tests::assertRules(vocbase, query, {}, boundParameters));
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
-    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code);
-*/
+    CHECK((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code));
   }
 }
 

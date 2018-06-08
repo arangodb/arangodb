@@ -35,6 +35,11 @@ RESET="${C[RESET]}"
 
 newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
+isCygwin=0
+if test "$(uname -o||true)" == "Cygwin"; then
+    isCygwin=1
+fi
+
 declare -A ALL_GSEARCH_ID
 for book in ${ALLBOOKS}; do
     ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:_-]*\)".*;\1;')
@@ -529,6 +534,7 @@ function check-docublocks()
 {
     grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v '@startDocuBlockInline' |\
+        grep -v stash |\
         grep -v ppbook |\
         grep -v allComments.txt |\
         grep -v Makefile |\
@@ -538,6 +544,7 @@ function check-docublocks()
 
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
+        grep -v stash |\
         grep -v allComments.txt |\
         grep -v Makefile |\
         grep -v '.*~:.*' |\
@@ -551,6 +558,7 @@ function check-docublocks()
     # searching the Inline docublocks needs some more blacklisting:
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
+        grep -v stash |\
         grep -v allComments.txt |\
         grep -v build.sh |\
         grep -v '.*~:.*' |\
@@ -650,7 +658,7 @@ function build-dist-books()
     set -e
     rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
-    if test -z "${DISPLAY}"; then
+    if test "${isCygwin}" -eq 0 -a -z "${DISPLAY}"; then
         DISPLAY=:20.0
         start_X11_display "${PIDFILE}" "${DISP}"
         trap 'stop_X11_display "${PIDFILE}"' 0

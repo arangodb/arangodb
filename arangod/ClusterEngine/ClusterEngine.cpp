@@ -67,26 +67,30 @@ using namespace arangodb::options;
 
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer* server)
-    : StorageEngine(server, "Cluster", "ClusterEngine", new ClusterIndexFactory()) {
+  : StorageEngine(server, "Cluster", "ClusterEngine", new ClusterIndexFactory()),
+    _actualEngine(nullptr) {
   setOptional(true);
 }
 
 ClusterEngine::~ClusterEngine() { }
-  
+
 bool ClusterEngine::isRocksDB() const {
-  return _actualEngine->name() == RocksDBEngine::FeatureName;
+  return _actualEngine && _actualEngine->name() == RocksDBEngine::FeatureName;
 }
 
 bool ClusterEngine::isMMFiles() const {
-  return _actualEngine->name() == MMFilesEngine::FeatureName;
+  return _actualEngine && _actualEngine->name() == MMFilesEngine::FeatureName;
 }
-  
+
 ClusterEngineType ClusterEngine::engineType() const {
+  TRI_ASSERT(_actualEngine != nullptr);
+
   if (_actualEngine->name() == MMFilesEngine::FeatureName) {
     return ClusterEngineType::MMFilesEngine;
   } else if (_actualEngine->name() == RocksDBEngine::FeatureName) {
     return ClusterEngineType::RocksDBEngine;
   }
+
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
@@ -122,8 +126,12 @@ transaction::ContextData* ClusterEngine::createTransactionContextData() {
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
-    TRI_vocbase_t& vocbase, transaction::Options const& options) {
-  return std::make_unique<ClusterTransactionState>(vocbase, TRI_NewTickServer(), options);
+    CollectionNameResolver const& resolver,
+    transaction::Options const& options
+) {
+  return std::make_unique<ClusterTransactionState>(
+    resolver, TRI_NewTickServer(), options
+  );
 }
 
 TransactionCollection* ClusterEngine::createTransactionCollection(

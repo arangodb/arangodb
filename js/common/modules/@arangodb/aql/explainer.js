@@ -3,6 +3,7 @@
 
 var db = require('@arangodb').db,
   internal = require('internal'),
+  _ = require('lodash'),
   systemColors = internal.COLORS,
   print = internal.print,
   colors = { };
@@ -162,10 +163,10 @@ function printQuery (query) {
   // very long query strings
   var maxLength = 4096;
   if (query.length > maxLength) {
-    stringBuilder.appendLine(section('Query string (truncated):'));
+    stringBuilder.appendLine(section('Query String (truncated):'));
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
   } else {
-    stringBuilder.appendLine(section('Query string:'));
+    stringBuilder.appendLine(section('Query String:'));
   }
   stringBuilder.appendLine(' ' + value(wrap(query, 100).replace(/\n+/g, '\n ', query)));
   stringBuilder.appendLine();
@@ -194,6 +195,7 @@ function printModificationFlags (flags) {
 /* print optimizer rules */
 function printRules (rules) {
   'use strict';
+
   stringBuilder.appendLine(section('Optimization rules applied:'));
   if (rules.length === 0) {
     stringBuilder.appendLine(' ' + value('none'));
@@ -343,6 +345,47 @@ function printIndexes (indexes) {
 
       stringBuilder.appendLine(line);
     }
+  }
+}
+
+function printFunctions (functions) {
+  'use strict';
+
+  let funcArray = [];
+  Object.keys(functions).forEach(function(f) {
+    funcArray.push(functions[f]);
+  });
+
+  if (funcArray.length === 0) {
+    return;
+  }
+  stringBuilder.appendLine(section('Functions used:'));
+
+  let maxNameLen = String('Name').length;
+  let maxDeterministicLen = String('Deterministic').length;
+  let maxV8Len = String('Uses V8').length;
+  funcArray.forEach(function (f) {
+    let l = String(f.name).length;
+    if (l > maxNameLen) {
+      maxNameLen = l;
+    }
+  });
+  let line = ' ' + 
+    header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
+    header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
+    header('Uses V8') + pad(1 + maxV8Len - 'Uses V8'.length);
+
+  stringBuilder.appendLine(line);
+
+  for (var i = 0; i < funcArray.length; ++i) {
+    let deterministic = String(funcArray[i].isDeterministic);
+    let usesV8 = String(funcArray[i].usesV8);
+    line = ' ' +
+      variable(funcArray[i].name) + pad(1 + maxNameLen - funcArray[i].name.length) + '   ' +
+      value(deterministic) + pad(1 + maxDeterministicLen - deterministic.length) + '   ' +
+      value(usesV8) + pad(1 + maxV8Len - usesV8.length);
+
+    stringBuilder.appendLine(line);
   }
 }
 
@@ -580,15 +623,22 @@ function processQuery (query, explain) {
     }
   }
 
-  var recursiveWalk = function (n, level) {
+  var recursiveWalk = function (partNodes, level, site) {
+    let n = _.clone(partNodes);
+    n.reverse();
     n.forEach(function (node) {
+      // set location of execution node in cluster
+      node.site = site;
+
       nodes[node.id] = node;
       if (level === 0 && node.dependencies.length === 0) {
         rootNode = node.id;
       }
       if (node.type === 'SubqueryNode') {
         // enter subquery
-        recursiveWalk(node.subquery.nodes, level + 1);
+        recursiveWalk(node.subquery.nodes, level + 1, site);
+      } else if (node.type === 'RemoteNode') {
+        site = (site === 'COOR' ? 'DBS' : 'COOR');
       }
       node.dependencies.forEach(function (d) {
         if (!parents.hasOwnProperty(d)) {
@@ -612,20 +662,8 @@ function processQuery (query, explain) {
         }
       }
     });
-
-    var count = n.length, site = 'COOR';
-    while (count > 0) {
-      --count;
-      var node = n[count];
-      // get location of execution node in cluster
-      node.site = site;
-
-      if (node.type === 'RemoteNode') {
-        site = (site === 'COOR' ? 'DBS' : 'COOR');
-      }
-    }
   };
-  recursiveWalk(plan.nodes, 0);
+  recursiveWalk(plan.nodes, 0, 'COOR');
 
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
@@ -663,6 +701,7 @@ function processQuery (query, explain) {
     indexes = [],
     traversalDetails = [],
     shortestPathDetails = [],
+    functions = [],
     modificationFlags,
     isConst = true,
     currentNode = null;
@@ -1186,6 +1225,9 @@ function processQuery (query, explain) {
         }
         return rc;
       case 'CalculationNode':
+        (node.functions || []).forEach(function(f) {
+          functions[f.name] = f;
+        });
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
       case 'FilterNode':
         return keyword('FILTER') + ' ' + variableName(node.inVariable);
@@ -1375,6 +1417,7 @@ function processQuery (query, explain) {
   };
 
   printQuery(query);
+
   stringBuilder.appendLine(section('Execution plan:'));
 
   var line = ' ' +
@@ -1413,9 +1456,11 @@ function processQuery (query, explain) {
 
   stringBuilder.appendLine();
   printIndexes(indexes);
+  printFunctions(functions);
   printTraversalDetails(traversalDetails);
   printShortestPathDetails(shortestPathDetails);
   stringBuilder.appendLine();
+
   printRules(plan.rules);
   printModificationFlags(modificationFlags);
   printWarnings(explain.warnings);
@@ -1439,13 +1484,14 @@ function explain(data, options, shouldPrint) {
     options = data.options;
   }
   options = options || { };
+  options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let result = stmt.explain(options); // TODO why is this there ?
   processQuery(data.query, result);
-  
+
   if (shouldPrint === undefined || shouldPrint) {
     print(stringBuilder.getOutput());
   } else {

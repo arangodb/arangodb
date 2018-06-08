@@ -63,9 +63,6 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   ~IndexBlock();
 
-  /// @brief initialize, here we fetch all docs from the database
-  int initialize() override;
-
   /// @brief initializeCursor, here we release our docs from this collection
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -75,6 +72,8 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   size_t skipSome(size_t atMost) override final;
 
  private:
+  void initializeOnce();
+
   /// @brief adds a SORT to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(arangodb::aql::AstNode*) const;
 

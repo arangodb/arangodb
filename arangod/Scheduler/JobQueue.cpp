@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 
@@ -135,7 +136,7 @@ void JobQueue::wakeup() {
 }
 
 void JobQueue::waitForWork() {
-  static uint64_t WAIT_TIME = 1000 * 1000;
+  static uint64_t WAIT_TIME = 50 * 1000;
 
   CONDITION_LOCKER(guard, _queueCondition);
   guard.wait(WAIT_TIME);

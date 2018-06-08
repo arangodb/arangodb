@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
-#include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 
 #include <openssl/err.h>
-#include <asio/ssl.hpp>
+
+#include "Basics/Exceptions.h"
+#include "Basics/asio_ns.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 

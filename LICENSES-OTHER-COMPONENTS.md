@@ -1405,3 +1405,8 @@ exception from the GPL license:
 
 * GitHub: https://github.com/Leaflet/Leaflet
 * License: [BSD-style 2-Clause License](https://github.com/Leaflet/Leaflet/blob/master/LICENSE)
+
+#### randomColor
+
+* GitHub: https://github.com/davidmerfield/randomColor
+* License: [MIT License](https://github.com/davidmerfield/randomColor/blob/master/LICENSE.md)

@@ -42,9 +42,8 @@ arangodb::aql::ExecutionNode::NodeType ExecutionNodeMock::getType() const {
   
 std::unique_ptr<arangodb::aql::ExecutionBlock> ExecutionNodeMock::createBlock(
     arangodb::aql::ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, arangodb::aql::ExecutionBlock*> const& cache,
-    std::unordered_set<std::string> const& includedShards
-  ) const {
+    std::unordered_map<ExecutionNode*, arangodb::aql::ExecutionBlock*> const& cache
+) const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create a block of ExecutionNodeMock");
 }

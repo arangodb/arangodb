@@ -51,15 +51,17 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
   TRI_ASSERT(vocbase != nullptr);
 }
 
-/// @brief destroy a collection wrapper
-Collection::~Collection() {}
-
+/// @brief upgrade the access type to exclusive
+void Collection::setExclusiveAccess() {
+  TRI_ASSERT(AccessMode::isWriteOrExclusive(accessType));
+  accessType = AccessMode::Type::EXCLUSIVE;
+}
 
 /// @brief get the collection id
 TRI_voc_cid_t Collection::cid() const {
   return getCollection()->id();
 }
-  
+
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx) const {
   if (numDocuments == UNINITIALIZED) {
@@ -67,6 +69,7 @@ size_t Collection::count(transaction::Methods* trx) const {
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res.result);
     }
+    TRI_ASSERT(res.ok());
     numDocuments = res.slice().getInt();
   }
 
