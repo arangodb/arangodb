@@ -468,6 +468,7 @@ void RestGraphHandler::generateCreatedGraphConfig(bool wasSynchronous, VPackSlic
     code = rest::ResponseCode::ACCEPTED;
   }
   resetResponse(code);
+  addEtagHeader(slice.get("graph").get(StaticStrings::RevString));
   generateResultMergedWithObject(slice, options);
 }
 
