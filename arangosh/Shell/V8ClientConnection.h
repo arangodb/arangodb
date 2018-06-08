@@ -49,11 +49,12 @@ class V8ClientConnection {
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
 
  public:
-  static void setJwtSecret(std::string const& jwtSecret) { JWT_SECRET = jwtSecret; }
+  static void setJwtSecret(std::string const& jwtSecret) { JWT_SECRET = std::make_shared<std::string>(jwtSecret); }
+  static std::shared_ptr<std::string> jwtSecret() { return JWT_SECRET; }
   static std::string jwtToken(std::string const& secret);
 
  private:
-  static std::string JWT_SECRET;
+  static std::shared_ptr<std::string> JWT_SECRET;
 
  public:
   V8ClientConnection(

@@ -226,8 +226,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<IndexBlock>(&engine, this);
 }
@@ -247,9 +246,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief destroy the IndexNode

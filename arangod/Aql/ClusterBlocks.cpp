@@ -346,7 +346,7 @@ std::pair<ExecutionState, Result> ScatterBlock::initializeCursor(
   _posForClient.clear();
 
   for (size_t i = 0; i < _nrClients; i++) {
-    _posForClient.emplace_back(std::make_pair(0, 0));
+    _posForClient.emplace_back(0, 0);
   }
 
   return BlockWithClients::initializeCursor(items, pos);
@@ -379,7 +379,6 @@ ExecutionState ScatterBlock::getHasMoreStateForClientId(size_t clientId) {
   return ExecutionState::DONE;
 }
 
-
 bool ScatterBlock::hasMoreForClientId(size_t clientId) {
   DEBUG_BEGIN_BLOCK();
 
@@ -388,14 +387,14 @@ bool ScatterBlock::hasMoreForClientId(size_t clientId) {
   TRI_ASSERT(clientId < _posForClient.size());
   std::pair<size_t, size_t> pos = _posForClient.at(clientId);
   // (i, j) where i is the position in _buffer, and j is the position in
-  // _buffer.at(i) we are sending to <clientId>
+  // _buffer[i] we are sending to <clientId>
 
   if (pos.first <= _buffer.size()) {
     return true;
   }
 
   TRI_ASSERT(_doneForClient.size() > clientId);
-  return !_doneForClient.at(clientId);
+  return !_doneForClient[clientId];
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -420,7 +419,7 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
 
   if (!hasMoreForClientId(clientId)) {
     traceGetSomeEnd(nullptr, ExecutionState::DONE);
@@ -428,7 +427,7 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
   }
 
   TRI_ASSERT(_posForClient.size() > clientId);
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
+  std::pair<size_t, size_t>& pos = _posForClient[clientId];
 
   // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
@@ -446,28 +445,29 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     }
   }
 
-  size_t available = _buffer.at(pos.first)->size() - pos.second;
+  auto& blockForClient = _buffer[pos.first];
+
+  size_t available = blockForClient->size() - pos.second;
   // available should be non-zero
 
   skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   if (!skipping) {
-    result.reset(_buffer.at(pos.first)->slice(pos.second, pos.second + skipped));
+    result.reset(blockForClient->slice(pos.second, pos.second + skipped));
   }
 
   // increment the position . . .
-  _posForClient.at(clientId).second += skipped;
+  pos.second += skipped;
 
   // check if we're done at current block in buffer . . .
-  if (_posForClient.at(clientId).second ==
-      _buffer.at(_posForClient.at(clientId).first)->size()) {
-    _posForClient.at(clientId).first++;
-    _posForClient.at(clientId).second = 0;
+  if (pos.second == blockForClient->size()) {
+    pos.first++; // next block
+    pos.second = 0; // reset the position within a block
 
     // check if we can pop the front of the buffer . . .
     bool popit = true;
     for (size_t i = 0; i < _nrClients; i++) {
-      if (_posForClient.at(i).first == 0) {
+      if (_posForClient[i].first == 0) {
         popit = false;
         break;
       }
@@ -477,7 +477,7 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
       _buffer.pop_front();
       // update the values in first coord of _posForClient
       for (size_t i = 0; i < _nrClients; i++) {
-        _posForClient.at(i).first--;
+        _posForClient[i].first--;
       }
     }
   }
@@ -569,12 +569,12 @@ bool DistributeBlock::hasMoreForClientId(size_t clientId) {
   DEBUG_BEGIN_BLOCK();
 
   TRI_ASSERT(_distBuffer.size() > clientId);
-  if (!_distBuffer.at(clientId).empty()) {
+  if (!_distBuffer[clientId].empty()) {
     return true;
   }
 
   TRI_ASSERT(_doneForClient.size() > clientId);
-  return !_doneForClient.at(clientId);
+  return !_doneForClient[clientId];
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -608,7 +608,6 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-
   std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
   if (buf.empty()) {
@@ -622,7 +621,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
     }
     if (res.first == ExecutionState::DONE) {
       // Do not ask again, but we still have some stuff to process
-      _doneForClient.at(clientId) = true;
+      _doneForClient[clientId] = true;
     }
   }
 
@@ -653,7 +652,7 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
       }
     }
 
-    std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+    std::unique_ptr<AqlItemBlock> more(_buffer[n]->slice(chosen, 0, chosen.size()));
     collector.add(std::move(more));
 
     chosen.clear();
@@ -686,20 +685,20 @@ std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
     _pos = 0;    // position in _buffer.at(_index)
   }
 
-  std::vector<std::deque<std::pair<size_t, size_t>>>& buf = _distBuffer;
   // it should be the case that buf.at(clientId) is empty
+  auto& buf = _distBuffer[clientId];
 
-  while (buf.at(clientId).size() < atMost) {
+  while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
       auto res = ExecutionBlock::getBlock(atMost);
       if (res.first == ExecutionState::WAITING) {
         return {res.first, false};
       }
       if (res.first == ExecutionState::DONE) {
-        _doneForClient.at(clientId) = true;
+        _doneForClient[clientId] = true;
       }
       if (!res.second) {
-        if (buf.at(clientId).size() == 0) {
+        if (buf.empty()) {
           TRI_ASSERT(getHasMoreStateForClientId(clientId) == ExecutionState::DONE);
           return {ExecutionState::DONE, false};
         }
@@ -707,13 +706,13 @@ std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
       }
     }
 
-    AqlItemBlock* cur = _buffer.at(_index);
+    AqlItemBlock* cur = _buffer[_index];
 
-    while (_pos < cur->size() && buf.at(clientId).size() < atMost) {
+    while (_pos < cur->size() && buf.size() < atMost) {
       // this may modify the input item buffer in place
-      size_t id = sendToClient(cur);
+      size_t const id = sendToClient(cur);
 
-      buf.at(id).emplace_back(std::make_pair(_index, _pos++));
+      _distBuffer[id].emplace_back(_index, _pos++);
     }
 
     if (_pos == cur->size()) {

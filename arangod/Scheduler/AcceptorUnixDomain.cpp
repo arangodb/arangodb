@@ -44,7 +44,7 @@ void AcceptorUnixDomain::open() {
     }
   }
 
-  asio::local::stream_protocol::stream_protocol::endpoint endpoint(path);
+  asio_ns::local::stream_protocol::stream_protocol::endpoint endpoint(path);
   _acceptor.open(endpoint.protocol());
   _acceptor.bind(endpoint);
   _acceptor.listen();

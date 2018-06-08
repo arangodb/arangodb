@@ -31,6 +31,9 @@
     <% if (currentDB.get('isSystem')) { %>
       <li class="databases-menu"><a id="databases" class="tab" href="#databases"><i class="fa fa-database"></i>Databases</a></li>
     <% } %>
+    <% if (currentDB.get('isSystem') && !isCluster) { %>
+      <li class="replication-menu"><a id="replication" class="tab" href="#replication"><i class="fa fa-server"></i>Replication</a></li>
+    <% } %>
     <% if (!isCluster) { %>
       <li class="logs-menu"><a id="logs" class="tab" href="#logs"><i class="fa fa-file-text"></i>Logs</a></li>
     <% } %>

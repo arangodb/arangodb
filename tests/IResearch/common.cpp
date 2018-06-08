@@ -47,7 +47,9 @@ NS_END
 NS_BEGIN(arangodb)
 NS_BEGIN(tests)
 
-void init(bool withICU /*= false*/) {} // nothing to do here
+void init(bool withICU /*= false*/) {
+  arangodb::transaction::Methods::clearStateRegistrationCallbacks();
+}
 
 bool assertRules(
     TRI_vocbase_t& vocbase,
