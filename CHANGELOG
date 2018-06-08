@@ -1,6 +1,8 @@
 v3.3.11 (2018-XX-XX)
 --------------------
 
+* reimplemented replication view in web UI
+
 * fixed internal issue #2256: ui, document id not showing up when deleting a document
 
 * fixed internal issue #2163: wrong labels within foxx validation of service 
