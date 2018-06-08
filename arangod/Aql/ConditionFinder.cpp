@@ -147,7 +147,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         IndexIteratorOptions opts;
         opts.ascending = !descending;
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(), node->vocbase(), node->collection(),
+            _plan, _plan->nextId(), node->collection(),
             node->outVariable(), usedIndexes, condition.get(), opts));
         condition.release();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {

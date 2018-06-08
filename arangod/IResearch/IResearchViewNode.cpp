@@ -248,7 +248,7 @@ IResearchViewNode::IResearchViewNode(
       continue;
     }
 
-    _shards.push_back(shard->getName());
+    _shards.push_back(shard->name());
   }
 }
 

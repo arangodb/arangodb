@@ -503,12 +503,12 @@ void TraversalNode::prepareOptions() {
     switch (dir) {
       case TRI_EDGE_IN:
         _options->addLookupInfo(
-            _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
+            _plan, _edgeColls[i]->name(), StaticStrings::ToString,
             globalEdgeConditionBuilder.getInboundCondition()->clone(ast));
         break;
       case TRI_EDGE_OUT:
         _options->addLookupInfo(
-            _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
+            _plan, _edgeColls[i]->name(), StaticStrings::FromString,
             globalEdgeConditionBuilder.getOutboundCondition()->clone(ast));
         break;
       case TRI_EDGE_ANY:
@@ -536,12 +536,12 @@ void TraversalNode::prepareOptions() {
       switch (dir) {
         case TRI_EDGE_IN:
           opts->addDepthLookupInfo(
-              _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
+              _plan, _edgeColls[i]->name(), StaticStrings::ToString,
               builder->getInboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(
-              _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
+              _plan, _edgeColls[i]->name(), StaticStrings::FromString,
               builder->getOutboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_ANY:

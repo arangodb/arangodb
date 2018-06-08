@@ -53,6 +53,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
@@ -653,7 +654,7 @@ class SingletonNode : public ExecutionNode {
 };
 
 /// @brief class EnumerateCollectionNode
-class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNode {
+class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class EnumerateCollectionBlock;
@@ -661,16 +662,12 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief constructor with a vocbase and a collection name
  public:
   EnumerateCollectionNode(ExecutionPlan* plan, size_t id,
-                          TRI_vocbase_t* vocbase, Collection* collection,
+                          aql::Collection const* collection,
                           Variable const* outVariable, bool random)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
-        _vocbase(vocbase),
-        _collection(collection),
-        _random(random),
-        _restrictedTo("") {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(_collection != nullptr);
+        CollectionAccessingNode(collection),
+        _random(random) {
   }
 
   EnumerateCollectionNode(ExecutionPlan* plan,
@@ -709,45 +706,9 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
 
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  /**
-   * @brief Restrict this Node to a single Shard (cluster only)
-   *
-   * @param shardId The shard restricted to
-   */
-  void restrictToShard(std::string const& shardId) { _restrictedTo = shardId; }
-
-  /**
-   * @brief Check if this Node is restricted to a single Shard (cluster only)
-   *
-   * @return True if we are restricted, false otherwise
-   */
-  bool isRestricted() const { return !_restrictedTo.empty(); }
-
-  /**
-   * @brief Get the Restricted shard for this Node
-   *
-   * @return The Shard this node is restricted to
-   */
-  std::string const& restrictedShard() const { return _restrictedTo; }
-
  private:
-  /// @brief the database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief collection
-  Collection* _collection;
-
   /// @brief whether or not we want random iteration
   bool _random;
-
-  /// @brief A shard this node is restricted to, may be empty
-  std::string _restrictedTo;
 };
 
 /// @brief class EnumerateListNode
