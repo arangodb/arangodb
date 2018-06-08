@@ -1135,7 +1135,7 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(VPackSlice
   OperationResult checkDoc = trx->document(Graph::_graphs, checkDocument.slice(), options);
   if (checkDoc.ok()) {
     trx->finish(checkDoc.result);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_DUPLICATE, "graph already defined.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_DUPLICATE, "graph already exists");
   }
 
   // find or create the collections given by the edge definition 
