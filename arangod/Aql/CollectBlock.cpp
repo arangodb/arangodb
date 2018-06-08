@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "VocBase/vocbase.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
@@ -1052,87 +1053,61 @@ std::pair<ExecutionState, arangodb::Result> CountCollectBlock::initializeCursor(
   return res;
 }
 
-int CountCollectBlock::getOrSkipSomeOld(size_t atMost, bool skipping, AqlItemBlock*& result,
-                                     size_t& skipped) {
+std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost, bool skipping,
+                                                                   AqlItemBlock*& result, size_t& skipped) {
+  DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin(atMost);
+
   TRI_ASSERT(result == nullptr && skipped == 0);
-
+  
   if (_done) {
-    return TRI_ERROR_NO_ERROR;
+    traceGetSomeEnd(nullptr, ExecutionState::DONE);
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-
-  std::unique_ptr<AqlItemBlock> res;
-  if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlockOld(atMost)) {
-      // done
-      _done = true;
-      if (!skipping) {
-        res.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-        res->emplaceValue(0, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_count)));
-        result = res.release();
+  
+  while (!_done) {  
+    if (_buffer.empty()) {
+      auto upstreamRes = ExecutionBlock::getBlock(DefaultBatchSize());
+      if (upstreamRes.first == ExecutionState::WAITING) {
+        return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
       }
-      return TRI_ERROR_NO_ERROR;
+      if (upstreamRes.first == ExecutionState::DONE ||
+          !upstreamRes.second) {
+        _done = true;
+      }
     }
-    _pos = 0;  // this is in the first block
-  }
-
-  // If we get here, we do have _buffer.front()
-  AqlItemBlock* cur = _buffer.front();
-  TRI_ASSERT(cur != nullptr);
   
-  if (!skipping) {
-    res.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-
-    TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
-    inheritRegisters(cur, res.get(), _pos);
-  }
-
-  while (skipped < atMost) {
-    // read the next input row
-    TRI_IF_FAILURE("CountCollectBlock::getOrSkipSomeOuter") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    throwIfKilled();  // check if we were aborted
-  
-    ++_count; 
-
-    if (++_pos >= cur->size()) {
+    if (!_buffer.empty()) {
+      AqlItemBlock* cur = _buffer.front();
+      TRI_ASSERT(cur != nullptr);
+      _count += cur->size();
+       
+      // we are only aggregating data here, so we can immediately get rid of
+      // everything that we see
       _buffer.pop_front();
       _pos = 0;
-
-      bool hasMore = !_buffer.empty();
-
-      if (!hasMore) {
-        try {
-          TRI_IF_FAILURE("CountCollectBlock::hasMore") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          hasMore = ExecutionBlock::getBlockOld(atMost);
-        } catch (...) {
-          // prevent leak
-          returnBlock(cur);
-          throw;
-        }
-      }
-
       returnBlock(cur);
-
-      if (!hasMore) {
-        // no more input. we're done
-        _done = true;
-        break;
-      }
-
-      // hasMore
-      cur = _buffer.front();
     }
+  
+    throwIfKilled();  // check if we were aborted
   }
-          
-  if (!skipping) {
+
+  TRI_ASSERT(_done);
+
+  std::unique_ptr<AqlItemBlock> res;
+ 
+  if (skipping) {
+    skipped = 1;
+  } else {
+    res.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
     res->emplaceValue(0, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_count)));
   }
-  ++skipped;
-
+   
+  traceGetSomeEnd(res.get(), ExecutionState::DONE);
   result = res.release();
-  return TRI_ERROR_NO_ERROR;
+
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
 }

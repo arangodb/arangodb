@@ -204,7 +204,7 @@ class ExecutionBlock {
                                                           AqlItemBlock*& result, size_t& skipped);
   // TODO DELETE
   virtual int getOrSkipSomeOld(size_t atMost, bool skipping,
-                              AqlItemBlock*& result, size_t& skipped);
+                               AqlItemBlock*& result, size_t& skipped);
 
   /// @brief Returns the success return start of this block.
   ///        Can either be HASMORE or DONE.

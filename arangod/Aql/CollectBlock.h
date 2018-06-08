@@ -31,6 +31,7 @@
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
+#include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
 
@@ -90,7 +91,7 @@ class SortedCollectBlock final : public ExecutionBlock {
 
  private:
   int getOrSkipSomeOld(size_t atMost, bool skipping,
-                    AqlItemBlock*& result, size_t& skipped) override;
+                       AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief writes the current group data into the result
   void emitGroup(AqlItemBlock const* cur, AqlItemBlock* res, size_t row, bool skipping);
@@ -125,13 +126,13 @@ class SortedCollectBlock final : public ExecutionBlock {
   arangodb::velocypack::Builder _builder;
 };
 
-class HashedCollectBlock : public ExecutionBlock {
+class HashedCollectBlock final : public ExecutionBlock {
  public:
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
 
  private:
   int getOrSkipSomeOld(size_t atMost, bool skipping,
-                    AqlItemBlock*& result, size_t& skipped) override;
+                       AqlItemBlock*& result, size_t& skipped) override;
 
  private:
   /// @brief pairs, consisting of out register and in register
@@ -147,7 +148,7 @@ class HashedCollectBlock : public ExecutionBlock {
   RegisterId _collectRegister;
 };
 
-class DistinctCollectBlock : public ExecutionBlock {
+class DistinctCollectBlock final : public ExecutionBlock {
  public:
   DistinctCollectBlock(ExecutionEngine*, CollectNode const*);
   ~DistinctCollectBlock();
@@ -157,7 +158,7 @@ class DistinctCollectBlock : public ExecutionBlock {
 
  private:
   int getOrSkipSomeOld(size_t atMost, bool skipping,
-                    AqlItemBlock*& result, size_t& skipped) override;
+                       AqlItemBlock*& result, size_t& skipped) override;
 
   void clearValues();
 
@@ -168,14 +169,14 @@ class DistinctCollectBlock : public ExecutionBlock {
   std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
 };
 
-class CountCollectBlock : public ExecutionBlock {
+class CountCollectBlock final : public ExecutionBlock {
  public:
   CountCollectBlock(ExecutionEngine*, CollectNode const*);
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
- private:
-  int getOrSkipSomeOld(size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) override;
+  
+  std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                  AqlItemBlock*& result, size_t& skipped) override;
 
  private:
   RegisterId _collectRegister;

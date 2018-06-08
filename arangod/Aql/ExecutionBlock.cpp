@@ -456,11 +456,15 @@ bool ExecutionBlock::hasMore() {
 
 std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
                                                                           AqlItemBlock*& result, size_t& skipped) {
+  TRI_ASSERT(result == nullptr && skipped == 0);
   int errCode = getOrSkipSomeOld(atMost, skipping, result, skipped);
   if (skipping && skipped == 0) {
     return {ExecutionState::DONE, errCode};
   }
   if (!skipping && result == nullptr) {
+    return {ExecutionState::DONE, errCode};
+  }
+  if (_done) {
     return {ExecutionState::DONE, errCode};
   }
   return {ExecutionState::HASMORE, errCode};
@@ -555,7 +559,7 @@ int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
   DEBUG_END_BLOCK();
 }
 
-ExecutionState ExecutionBlock::getHasMoreState(){
+ExecutionState ExecutionBlock::getHasMoreState() {
   if (_done) {
     return ExecutionState::DONE;
   }
