@@ -103,6 +103,14 @@ class BlockWithClients : public ExecutionBlock {
   /// corresponding to <shardId>
   size_t getClientId(std::string const& shardId);
 
+  /// @brief reset the list of done for client information
+  void resetDoneForClient();
+
+  /// @brief hasMoreForClientId: any more for client <cliendId>?
+  virtual bool hasMoreForClientId(size_t clientId) = 0;
+
+ protected:
+
   /// @brief _shardIdMap: map from shardIds to clientNrs
   std::unordered_map<std::string, size_t> _shardIdMap;
 
@@ -138,7 +146,7 @@ class ScatterBlock : public BlockWithClients {
   ExecutionState getHasMoreStateForClientId(size_t clientId);
 
   /// @brief hasMoreForClientId: any more for client <cliendId>?
-  bool hasMoreForClientId(size_t clientId);
+  bool hasMoreForClientId(size_t clientId) override;
 
   /// @brief getOrSkipSomeForShard
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
@@ -166,11 +174,11 @@ class DistributeBlock : public BlockWithClients {
 
  private:
 
+  /// @brief hasMoreForClientId: any more for client <cliendId>?
+  bool hasMoreForClientId(size_t clientId) override;
+
   /// @brief getHasMoreStateForClientId: State for client <cliendId>?
   ExecutionState getHasMoreStateForClientId(size_t clientId);
-
-  /// @brief hasMoreForClientId: any more for client <cliendIt>?
-  bool hasMoreForClientId(size_t clientId);
 
   /// @brief getOrSkipSomeForShard
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
@@ -249,16 +257,27 @@ class RemoteBlock final : public ExecutionBlock {
   bool handleAsyncResult(ClusterCommResult* result) override; 
   
  private:
-/// @brief internal method to send a request
-/// TODO:Deprecated!
-std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
-    rest::RequestType type, std::string const& urlPart,
-    std::string const& body) const;
+  /// @brief internal method to send a request
+  /// TODO:Deprecated!
+  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
+      rest::RequestType type, std::string const& urlPart,
+      std::string const& body) const;
 
-/// @brief internal method to send a request. Will register a callback to be reactivated
-arangodb::Result sendAsyncRequest(
-    rest::RequestType type, std::string const& urlPart,
-    std::shared_ptr<std::string const> body);
+
+  /**
+   * @brief Handle communication errors in Async case.
+   *
+   * @param result The network response we got from cluster comm.
+   *
+   * @return A wrapped Result Object, that is either ok() or contains
+   *         the error information to be thrown in get/skip some.
+   */
+  arangodb::Result handleCommErrors(ClusterCommResult* result) const;
+
+  /// @brief internal method to send a request. Will register a callback to be reactivated
+  arangodb::Result sendAsyncRequest(
+      rest::RequestType type, std::string const& urlPart,
+      std::shared_ptr<std::string const> body);
 
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;
@@ -277,6 +296,9 @@ arangodb::Result sendAsyncRequest(
   /// @brief the last unprocessed result. Make sure to reset it
   ///        after it is processed.
   std::shared_ptr<httpclient::SimpleHttpResult> _lastResponse;
+
+  /// @brief the last remote response Result object, may contain an error.
+  arangodb::Result _lastError;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

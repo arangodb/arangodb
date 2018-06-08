@@ -135,7 +135,6 @@ ModificationBlock::getSome(size_t atMost) {
     // read input in chunks, and process it in chunks
     // this reduces the amount of memory used for storing the input
     while (_upstreamState == ExecutionState::HASMORE) {
-      _blocks.clear();
       auto upstreamRes = ExecutionBlock::getSomeWithoutRegisterClearout(atMost);
       if (upstreamRes.first == ExecutionState::WAITING) {
         traceGetSomeEnd(nullptr, ExecutionState::WAITING);
@@ -150,6 +149,7 @@ ModificationBlock::getSome(size_t atMost) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         replyBlocks = work();
+        _blocks.clear();
         if (replyBlocks != nullptr) {
           break;
         }

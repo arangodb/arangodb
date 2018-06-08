@@ -226,6 +226,16 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine,
   }
 }
 
+void BlockWithClients::resetDoneForClient() {
+  _doneForClient.clear();
+  _doneForClient.reserve(_nrClients);
+
+  for (size_t i = 0; i < _nrClients; i++) {
+    _doneForClient.push_back(false);
+    TRI_ASSERT(hasMoreForClientId(i));
+  }
+}
+
 /// @brief initializeCursor: reset _doneForClient
 std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
     AqlItemBlock* items, size_t pos) {
@@ -239,13 +249,7 @@ std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
     return res;
   }
 
-  _doneForClient.clear();
-  _doneForClient.reserve(_nrClients);
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    _doneForClient.push_back(false);
-  }
-
+  resetDoneForClient();
   return res;
 
   // cppcheck-suppress style
@@ -338,20 +342,14 @@ std::pair<ExecutionState, Result> ScatterBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
-  auto res = BlockWithClients::initializeCursor(items, pos);
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
-    // If we need to wait or get an error we return as is.
-    return res;
-  }
-
   // local clean up
   _posForClient.clear();
 
   for (size_t i = 0; i < _nrClients; i++) {
     _posForClient.emplace_back(0, 0);
   }
-  return res;
+
+  return BlockWithClients::initializeCursor(items, pos);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -396,7 +394,7 @@ bool ScatterBlock::hasMoreForClientId(size_t clientId) {
   }
 
   TRI_ASSERT(_doneForClient.size() > clientId);
-  return _doneForClient[clientId];
+  return !_doneForClient[clientId];
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -529,14 +527,6 @@ std::pair<ExecutionState, Result> DistributeBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
 
-  auto res = BlockWithClients::initializeCursor(items, pos);
-
-  if (res.first == ExecutionState::WAITING ||
-      !res.second.ok()) {
-    // If we need to wait or get an error we return as is.
-    return res;
-  }
-
   // local clean up
   _distBuffer.clear();
   _distBuffer.reserve(_nrClients);
@@ -545,7 +535,7 @@ std::pair<ExecutionState, Result> DistributeBlock::initializeCursor(
     _distBuffer.emplace_back();
   }
 
-  return res;
+  return BlockWithClients::initializeCursor(items, pos);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -584,7 +574,7 @@ bool DistributeBlock::hasMoreForClientId(size_t clientId) {
   }
 
   TRI_ASSERT(_doneForClient.size() > clientId);
-  return _doneForClient.at(clientId);
+  return !_doneForClient[clientId];
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -860,6 +850,67 @@ std::string DistributeBlock::createKey(VPackSlice) const {
 }
 #endif
 
+arangodb::Result RemoteBlock::handleCommErrors(ClusterCommResult* res) const {
+  DEBUG_BEGIN_BLOCK();
+  if (res->status == CL_COMM_TIMEOUT ||
+      res->status == CL_COMM_BACKEND_UNAVAILABLE) {
+    return { res->getErrorCode(), res->stringifyErrorMessage()};
+  }
+  if (res->status == CL_COMM_ERROR) {
+    std::string errorMessage = std::string("Error message received from shard '") +
+                     std::string(res->shardID) +
+                     std::string("' on cluster node '") +
+                     std::string(res->serverID) + std::string("': ");
+
+
+    int errorNum = TRI_ERROR_INTERNAL;
+    if (res->result != nullptr) {
+      errorNum = TRI_ERROR_NO_ERROR;
+      arangodb::basics::StringBuffer const& responseBodyBuf(res->result->getBody());
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+          responseBodyBuf.c_str(), responseBodyBuf.length());
+      VPackSlice slice = builder->slice();
+
+      if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
+        errorNum = TRI_ERROR_INTERNAL;
+      }
+
+      if (slice.isObject()) {
+        VPackSlice v = slice.get(StaticStrings::ErrorNum);
+        if (v.isNumber()) {
+          if (v.getNumericValue<int>() != TRI_ERROR_NO_ERROR) {
+            /* if we've got an error num, error has to be true. */
+            TRI_ASSERT(errorNum == TRI_ERROR_INTERNAL);
+            errorNum = v.getNumericValue<int>();
+          }
+        }
+
+        v = slice.get(StaticStrings::ErrorMessage);
+        if (v.isString()) {
+          errorMessage += v.copyString();
+        } else {
+          errorMessage += std::string("(no valid error in response)");
+        }
+      }
+    }
+    // In this case a proper HTTP error was reported by the DBserver,
+    if (errorNum > 0 && !errorMessage.empty()) {
+      return {errorNum, errorMessage};
+    }
+
+    // default error
+    return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION};
+  }
+
+  TRI_ASSERT(res->status == CL_COMM_SENT);
+
+  return {TRI_ERROR_NO_ERROR};
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+
+}
+
 /// @brief local helper to throw an exception if a HTTP request went wrong
 static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
                                               bool isShutdown) {
@@ -942,7 +993,8 @@ RemoteBlock::RemoteBlock(ExecutionEngine* engine, RemoteNode const* en,
       _queryId(queryId),
       _isResponsibleForInitializeCursor(
           en->isResponsibleForInitializeCursor()),
-      _lastResponse(nullptr) {
+      _lastResponse(nullptr),
+      _lastError(TRI_ERROR_NO_ERROR) {
   TRI_ASSERT(!queryId.empty());
   TRI_ASSERT(
       (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
@@ -975,6 +1027,7 @@ Result RemoteBlock::sendAsyncRequest(
   ++_engine->_stats.requests;
   std::shared_ptr<ClusterCommCallback> callback = std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
   {
+    // TODO Do we need this jobguard?
     JobGuard guard(SchedulerFeature::SCHEDULER);
     guard.block();
 
@@ -1043,7 +1096,9 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
   } 
 
   if (_lastResponse != nullptr) {
-    // TODO check for timeout!
+    if (!_lastError.ok()) {
+      THROW_ARANGO_EXCEPTION(_lastError);
+    }
     // We have an open result still.
     // Result is the response which is an object containing the ErrorCode
     std::shared_ptr<VPackBuilder> responseBodyBuilder = _lastResponse->getBodyVelocyPack();
@@ -1078,8 +1133,6 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
   auto res = sendAsyncRequest(
       rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
 
-  // TODO Check if we need to enhance this response!
-  // throwExceptionAfterBadSyncRequest(res.get(), false);
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -1091,13 +1144,27 @@ std::pair<ExecutionState, Result> RemoteBlock::initializeCursor(
 }
 
 bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
-  _lastResponse = result->result;
+  // TODO Handle exceptions thrown while we are in this code
+  // Query will not be woken up again.
+  _lastError = handleCommErrors(result);
+  if (_lastError.ok()) {
+    _lastResponse = result->result;
+  }
   return true;
 };
 
 /// @brief shutdown, will be called exactly once for the whole query
 int RemoteBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
+
+
+  /* We need to handle this here in ASYNC case
+    if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
+      // this error may happen on shutdown and is thus tolerated
+      // pass the info to the caller who can opt to ignore this error
+      return true;
+    }
+  */
 
   // For every call we simply forward via HTTP
 
@@ -1160,8 +1227,13 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> RemoteBlock::getSome(si
   
   traceGetSomeBegin(atMost);
 
+  if (!_lastError.ok()) {
+    // we were called with an error need to throw it.
+    THROW_ARANGO_EXCEPTION(_lastError);
+  }
+
   if (_lastResponse != nullptr) {
-    // TODO check for timeout!
+    // We do not have an error but a result, all is good
     // We have an open result still.
     // Result is the response which will be a serialized AqlItemBlock
 
@@ -1206,7 +1278,9 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_lastResponse != nullptr) {
-    // TODO check for timeout!
+    if (!_lastError.ok()) {
+      THROW_ARANGO_EXCEPTION(_lastError);
+    }
     // We have an open result still.
     // Result is the response which will be a serialized AqlItemBlock
 
@@ -1535,6 +1609,7 @@ bool SortingGatherBlock::hasMore() {
         // We want to get rid of HASMORE in total
         auto res = getBlock(i, DefaultBatchSize());
         if (res.first == ExecutionState::WAITING) {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are actively blocking a thread, needs to be fixed";
           _engine->getQuery()->tempWaitForAsyncResponse();
         } else {
           if (res.second) {
@@ -1623,6 +1698,7 @@ SortingGatherBlock::getSome(size_t atMost) {
     ExecutionState blockState;
     std::tie(blockState, available) = fillBuffers(atMost, nonEmptyIndex);
     if (blockState == ExecutionState::WAITING) {
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return {blockState, nullptr};
     }
   }
@@ -1715,7 +1791,6 @@ SortingGatherBlock::getSome(size_t atMost) {
   }
 
   traceGetSomeEnd(res.get(), getHasMoreState());
-  // Maybe we can optimize here DONE/HASMORE
   return {getHasMoreState(), std::move(res)};
 
   // cppcheck-suppress style
@@ -1769,7 +1844,7 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
   }
 
   // Maybe we can optimize here DONE/HASMORE
-  return {ExecutionState::HASMORE, skipped};
+  return {getHasMoreState(), skipped};
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
