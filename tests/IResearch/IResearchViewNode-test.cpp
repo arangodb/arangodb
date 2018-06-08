@@ -660,7 +660,7 @@ SECTION("collections") {
   };
 
   for (arangodb::aql::Collection const& collection : collections) {
-    CHECK(1 == expectedCollections.erase(collection.getName()));
+    CHECK(1 == expectedCollections.erase(collection.name()));
   }
   CHECK(expectedCollections.empty());
 }

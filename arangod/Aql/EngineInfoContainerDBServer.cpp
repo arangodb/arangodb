@@ -355,11 +355,10 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         auto const& colNode = *ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
         auto const* col = colNode.collection();
 
-        std::unordered_set<std::string> const restrictedShard(
-          colNode.isRestricted()
-            ? std::initializer_list<std::string>{ colNode.restrictedShard() }
-            : std::initializer_list<std::string>{ }
-        );
+        std::unordered_set<std::string> restrictedShard;
+        if (colNode.isRestricted()) {
+          restrictedShard.emplace(colNode.restrictedShard());
+        }
 
         handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
         updateCollection(col);
@@ -371,11 +370,10 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         auto const& idxNode = *ExecutionNode::castTo<IndexNode const*>(node);
         auto const* col = idxNode.collection();
 
-        std::unordered_set<std::string> const restrictedShard(
-          idxNode.isRestricted()
-            ? std::initializer_list<std::string>{ idxNode.restrictedShard() }
-            : std::initializer_list<std::string>{ }
-        );
+        std::unordered_set<std::string> restrictedShard;
+        if (idxNode.isRestricted()) {
+          restrictedShard.emplace(idxNode.restrictedShard());
+        }
 
         handleCollection(col, AccessMode::Type::READ, scatter, restrictedShard);
         updateCollection(col);
@@ -411,11 +409,10 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
         auto const& modNode = *ExecutionNode::castTo<ModificationNode const*>(node);
         auto const* col = modNode.collection();
 
-        std::unordered_set<std::string> const restrictedShard(
-          modNode.isRestricted()
-            ? std::initializer_list<std::string>{ modNode.restrictedShard() }
-            : std::initializer_list<std::string>{ }
-        );
+        std::unordered_set<std::string> restrictedShard;
+        if (modNode.isRestricted()) {
+          restrictedShard.emplace(modNode.restrictedShard());
+        }
 
         handleCollection(col, AccessMode::Type::WRITE, scatter, restrictedShard);
         updateCollection(col);
@@ -803,20 +800,20 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
     if (vertices.empty()) {
       std::unordered_set<std::string> knownEdges;
       for (auto const& it : edges) {
-        knownEdges.emplace(it->getName());
+        knownEdges.emplace(it->name());
       }
       // This case indicates we do not have a named graph. We simply use
       // ALL collections known to this query.
       std::map<std::string, Collection*>* cs =
           _query->collections()->collections();
       for (auto const& collection : (*cs)) {
-        if (knownEdges.find(collection.second->getName()) == knownEdges.end()) {
+        if (knownEdges.find(collection.second->name()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
           auto shardIds = collection.second->shardIds(restrictToShards);
           for (ShardID const& shard : *shardIds) {
             auto pair = findServerLists(shard);
-            pair->second.vertexCollections[collection.second->getName()]
+            pair->second.vertexCollections[collection.second->name()]
                 .emplace_back(shard);
 #ifdef USE_ENTERPRISE
             if (trx->isInaccessibleCollectionId(
@@ -838,9 +835,9 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       for (auto const& collection : (*cs)) {
         for (auto& entry : mappingServerToCollections) {
           auto it =
-              entry.second.vertexCollections.find(collection.second->getName());
+              entry.second.vertexCollections.find(collection.second->name());
           if (it == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(collection.second->getName(),
+            entry.second.vertexCollections.emplace(collection.second->name(),
                                                    std::vector<ShardID>());
           }
         }
@@ -852,7 +849,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
         auto shardIds = it->shardIds(restrictToShards);
         for (ShardID const& shard : *shardIds) {
           auto pair = findServerLists(shard);
-          pair->second.vertexCollections[it->getName()].emplace_back(shard);
+          pair->second.vertexCollections[it->name()].emplace_back(shard);
 #ifdef USE_ENTERPRISE
           if (trx->isInaccessibleCollectionId(it->getPlanId())) {
             TRI_ASSERT(trxOps.skipInaccessibleCollections);
@@ -868,9 +865,9 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // Thanks to fanout...
       for (auto const& it : vertices) {
         for (auto& entry : mappingServerToCollections) {
-          auto vIt = entry.second.vertexCollections.find(it->getName());
+          auto vIt = entry.second.vertexCollections.find(it->name());
           if (vIt == entry.second.vertexCollections.end()) {
-            entry.second.vertexCollections.emplace(it->getName(),
+            entry.second.vertexCollections.emplace(it->name(),
                                                    std::vector<ShardID>());
           }
         }

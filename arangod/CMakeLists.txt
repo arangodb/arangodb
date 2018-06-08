@@ -192,6 +192,7 @@ SET(ARANGOD_SOURCES
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
   Aql/Collections.cpp
+  Aql/CollectionAccessingNode.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
