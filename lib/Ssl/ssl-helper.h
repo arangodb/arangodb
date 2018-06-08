@@ -28,9 +28,8 @@
 
 #include <openssl/err.h>
 #include <openssl/ssl.h>
-#include <asio/ssl.hpp>
 
-//#include "Basics/asio-helper.h"
+#include "Basics/asio_ns.h"
 
 namespace arangodb {
 // SSL protocol methods

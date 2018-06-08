@@ -1,13 +1,7 @@
-'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief worker initialization
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,22 +18,41 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_LIB_ASIO_NS_H
+#define ARANGOD_LIB_ASIO_NS_H 1
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief worker start
-////////////////////////////////////////////////////////////////////////////////
+#if ARANGODB_STANDALONE_ASIO
 
-(function () {
-  var internal = require("internal");
+#include <asio/buffer.hpp>
+#include <asio/error.hpp>
+#include <asio/io_context.hpp>
+#include <asio/io_context_strand.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
+#include <asio/signal_set.hpp>
+#include <asio/ssl.hpp>
+#include <asio/steady_timer.hpp>
 
-  // autoload all modules
-  internal.loadStartup("server/bootstrap/autoload.js").startup();
+namespace asio_ns = asio;
 
-  return true;
-}());
+#else
 
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/asio/steady_timer.hpp>
 
+namespace boost {
+namespace asio {
+using error_code = boost::system::error_code;
+using io_context = boost::asio::io_service;
+using system_error = boost::system::system_error;
+}
+}
 
+namespace asio_ns = boost::asio;
+
+#endif
+
+#endif

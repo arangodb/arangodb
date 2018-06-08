@@ -680,7 +680,7 @@ void ClusterInfo::loadPlan() {
 
             try {
               const auto newView = LogicalView::create(
-                *vocbase, viewPairSlice.value, true, newPlanVersion
+                *vocbase, viewPairSlice.value, false, newPlanVersion // false == coming from Agency
               );
 
               if (!newView) {
@@ -1344,9 +1344,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  std::string const name =
-      arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
-      
+  auto const name = arangodb::basics::VelocyPackHelper::getStringValue(
+    json, arangodb::StaticStrings::DataSourceName, StaticStrings::Empty
+  );
+
+  if (name.empty()) {
+    return TRI_ERROR_BAD_PARAMETER; // must not be empty
+  }
+
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1828,21 +1833,14 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
 
 int ClusterInfo::createViewCoordinator(
     std::string const& databaseName,
+    std::string const& viewID,
     VPackSlice json,
-    ViewID& viewID,
     std::string& errorMsg
 ) {
-  using arangodb::velocypack::Slice;
-
+  // FIXME TODO is this check required?
   auto const typeSlice = json.get(arangodb::StaticStrings::DataSourceType);
 
   if (!typeSlice.isString()) {
-    return TRI_ERROR_BAD_PARAMETER;
-  }
-
-  auto const nameSlice = json.get(arangodb::StaticStrings::DataSourceName);
-
-  if (!nameSlice.isString()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
@@ -1851,8 +1849,7 @@ int ClusterInfo::createViewCoordinator(
   );
 
   if (name.empty()) {
-    // must not be empty
-    return TRI_ERROR_BAD_PARAMETER;
+    return TRI_ERROR_BAD_PARAMETER; // must not be empty
   }
 
   {
@@ -1861,6 +1858,7 @@ int ClusterInfo::createViewCoordinator(
 
     READ_LOCKER(readLocker, _planProt.lock);
     AllViews::const_iterator it = _plannedViews.find(databaseName);
+
     if (it != _plannedViews.end()) {
       DatabaseViews::const_iterator it2 = (*it).second.find(name);
 
@@ -1870,15 +1868,6 @@ int ClusterInfo::createViewCoordinator(
         return TRI_ERROR_ARANGO_DUPLICATE_NAME;
       }
     }
-  }
-
-  viewID = basics::VelocyPackHelper::getStringValue(
-    json, arangodb::StaticStrings::DataSourceId, StaticStrings::Empty
-  );
-
-  if (viewID.empty()) {
-    // view id has not been provided
-    viewID = basics::StringUtils::itoa(uniqid());
   }
 
   AgencyComm ac;
@@ -1893,36 +1882,6 @@ int ClusterInfo::createViewCoordinator(
     events::CreateView(name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
     return setErrormsg(TRI_ERROR_CLUSTER_VIEW_ID_EXISTS, errorMsg);
   }
-
-  auto const planId = basics::VelocyPackHelper::getStringValue(
-    json, "planId", StaticStrings::Empty
-  );
-
-  auto const propsSlice = json.get("properties");
-
-  // normalize definition
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(arangodb::StaticStrings::DataSourceName, nameSlice);
-  builder.add(arangodb::StaticStrings::DataSourceType, typeSlice);
-  builder.add(arangodb::StaticStrings::DataSourceId, VPackValue(viewID));
-
-  if (!planId.empty()) {
-    builder.add(
-      arangodb::StaticStrings::DataSourcePlanId,
-      arangodb::velocypack::Value(planId)
-    );
-  }
-
-  builder.add(VPackValue("properties"));
-  builder.add(VPackValue(VPackValueType::Object));
-  if (propsSlice.isObject()) {
-    builder.add(VPackObjectIterator(propsSlice));
-  }
-  builder.close();
-  builder.close();
-
-  json = builder.slice();
 
   AgencyWriteTransaction const transaction{
     // operations

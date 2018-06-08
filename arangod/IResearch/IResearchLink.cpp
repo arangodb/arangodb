@@ -231,7 +231,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
         if (view) {
           wiew = logicalView; // remeber the DBServer view instance
-          logicalView = view->ensure(id()); // repoint LogicalView at the per-cid instance
+          logicalView = view->ensure(_collection->id()); // repoint LogicalView at the per-cid instance
         } else {
           logicalView = nullptr;
         }

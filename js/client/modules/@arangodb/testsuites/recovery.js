@@ -41,6 +41,10 @@ const toArgv = require('internal').toArgv;
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 
+const testPaths = {
+  'recovery': ['js/server/tests/recovery']
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
@@ -101,7 +105,7 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
     argv.unshift(pu.ARANGOD_BIN);
   }
 
-  instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup);
+  instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup, !setup && options.coreCheck);
 }
 
 function recovery (options) {
@@ -118,7 +122,7 @@ function recovery (options) {
 
   let status = true;
 
-  let recoveryTests = tu.scanTestPath('js/server/tests/recovery');
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
 
@@ -172,10 +176,9 @@ function recovery (options) {
   };
 }
 
-function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+  Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-}
-
-exports.setup = setup;
+};

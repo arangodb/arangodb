@@ -429,14 +429,22 @@ ExecutionPlan* Query::preparePlan() {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                     << "Query::prepare"
                                     << " this: " << (uintptr_t) this;
+
+  auto ctx = createTransactionContext();
   std::unique_ptr<ExecutionPlan> plan;
+
+  if (!ctx) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "failed to create query transaction context"
+    );
+  }
 
   if (!_queryString.empty()) {
     Parser parser(this);
 
     parser.parse(false);
     // put in bind parameters
-    parser.ast()->injectBindParameters(_bindParameters);
+    parser.ast()->injectBindParameters(_bindParameters, ctx->resolver());
   }
 
   TRI_ASSERT(_trx == nullptr);
@@ -450,9 +458,12 @@ ExecutionPlan* Query::preparePlan() {
 #endif
 
   std::unique_ptr<AqlTransaction> trx(AqlTransaction::create(
-                     createTransactionContext(), _collections.collections(),
-                     _queryOptions.transactionOptions,
-                     _part == PART_MAIN, inaccessibleCollections));
+    std::move(ctx),
+    _collections.collections(),
+    _queryOptions.transactionOptions,
+    _part == PART_MAIN,
+    inaccessibleCollections
+  ));
   TRI_DEFER(trx.release());
   // create the transaction object, but do not start it yet
   _trx = trx.get();
@@ -908,19 +919,24 @@ QueryResult Query::explain() {
     init();
     enterState(QueryExecutionState::ValueType::PARSING);
 
+    auto ctx = createTransactionContext();
     Parser parser(this);
 
     parser.parse(true);
+
     // put in bind parameters
-    parser.ast()->injectBindParameters(_bindParameters);
+    parser.ast()->injectBindParameters(_bindParameters, ctx->resolver());
 
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
 
     // create the transaction object, but do not start it yet
-    _trx = AqlTransaction::create(createTransactionContext(),
-                              _collections.collections(),
-                              _queryOptions.transactionOptions, true);
+    _trx = AqlTransaction::create(
+      std::move(ctx),
+      _collections.collections(),
+      _queryOptions.transactionOptions,
+      true
+    );
 
     // we have an AST
     Result res = _trx->begin();

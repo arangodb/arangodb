@@ -53,7 +53,7 @@ class ClusterEngine final : public StorageEngine {
   explicit ClusterEngine(application_features::ApplicationServer*);
   ~ClusterEngine();
 
-  void setActualEngine(StorageEngine* e);
+  void setActualEngine(StorageEngine* e) { _actualEngine = e; }
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
   bool isMMFiles() const;
@@ -327,7 +327,7 @@ class ClusterEngine final : public StorageEngine {
   }
 
  private:
-  
+
   /// @brief open an existing database. internal function
   TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id,
                                       std::string const& name,
