@@ -122,7 +122,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   );
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-      << "starting to load authentication and authorization information";
+    << "starting to load authentication and authorization information";
   auto queryResult = query.execute(queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -131,16 +131,20 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        queryResult.code, "Error executing user query: " + queryResult.details);
+      queryResult.code, "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
+
+  if (usersSlice.length() == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_MANAGEMENT_BOOTSTRAPPING);
+  }
 
   if (usersSlice.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!usersSlice.isArray()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot read users from _users collection";
+      << "cannot read users from _users collection";
     return std::shared_ptr<VPackBuilder>();
   }
 

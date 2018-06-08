@@ -133,6 +133,7 @@ private:
 
   /// Is the current user authorized
   bool _authorized;
+  bool _bootstrapped;
   rest::AuthenticationMethod _authMethod;
   std::string _authenticatedUser;
   ProtocolVersion _protocolVersion;

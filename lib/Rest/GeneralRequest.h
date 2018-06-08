@@ -113,7 +113,7 @@ class GeneralRequest {
   ///  to any specific resource
   bool authenticated() const { return _authenticated; }
   void setAuthenticated(bool a) { _authenticated = a; }
-  
+
   // @brief User sending this request
   TEST_VIRTUAL std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }

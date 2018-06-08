@@ -275,6 +275,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   std::string authString;
   std::string user = "";
   _authorized = false;
+  _bootstrapped = false;
   _authMethod = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();
@@ -293,6 +294,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   if (_auth->isActive()) { // will just fail if method is NONE
     auto entry = _auth->tokenCache()->checkAuthentication(_authMethod, authString);
     _authorized = entry.authenticated();
+    _bootstrapped = entry.bootstrapped();
     if (_authorized) {
       _authenticatedUser = std::move(entry._username);
     } else {
@@ -309,8 +311,13 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId, TRI_ERROR_NO_ERROR,
                      "authentication successful");
   } else {
-    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
-                     TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed");
+    if (_bootstrapped) {
+      addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK, messageId,
+                       TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed");
+    } else {
+      addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, rest::ContentType::VPACK, messageId,
+                       TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "authentication service unavailable");
+    }
   }
 }
 

@@ -574,19 +574,31 @@ bool HttpCommTask::processRead(double startTime) {
   rest::ResponseCode authResult = handleAuthHeader(_incompleteRequest.get());
   
   // authenticated 
-  if (authResult != rest::ResponseCode::SERVER_ERROR) {
+  if (authResult == rest::ResponseCode::SERVER_ERROR) {
     
+    std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
+    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
+    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    addResponse(resp, nullptr);
+    
+  } else if (authResult == rest::ResponseCode::SERVICE_UNAVAILABLE) {
+    
+    VPackBuilder error;
+    { VPackObjectBuilder a(&error);
+      error.add("error", VPackValue(true));
+      error.add("code", VPackValue(503));
+      error.add("errorMessage", VPackValue("authorisation backend not available yet"));
+    }
+    addSimpleResponse(
+      rest::ResponseCode::SERVICE_UNAVAILABLE, rest::ContentType::UNSET,
+      1, std::move(*error.steal()));
+
+  } else {
     // prepare execution will send an error message
     RequestFlow cont = prepareExecution(*_incompleteRequest.get());
     if (cont == RequestFlow::Continue) {
       processRequest(std::move(_incompleteRequest));
     }
-    
-  } else {
-    std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
-    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
-    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-    addResponse(resp, nullptr);
   }
 
   _incompleteRequest.reset(nullptr);
@@ -789,8 +801,9 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       
       if (authMethod != AuthenticationMethod::NONE) {
         request->setAuthenticationMethod(authMethod);
+        auth::TokenCache::Entry entry;
         if (_auth->isActive()) {
-          auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
+          entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
           request->setAuthenticated(entry.authenticated());
           request->setUser(std::move(entry._username));
         } else {
@@ -802,7 +815,11 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
           return rest::ResponseCode::OK;
         }
         events::CredentialsBad(request, authMethod);
-        return rest::ResponseCode::UNAUTHORIZED;
+        if (entry.bootstrapped()) {
+          return rest::ResponseCode::UNAUTHORIZED;
+        } else {
+          return rest::ResponseCode::SERVICE_UNAVAILABLE;
+        }
       }
       
       // intentionally falls through
