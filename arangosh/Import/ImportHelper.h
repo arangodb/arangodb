@@ -28,6 +28,7 @@
 #include <atomic>
 
 #include "AutoTuneThread.h"
+#include "QuickHistogram.h"
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
@@ -64,6 +65,7 @@ struct ImportStatistics {
   size_t _numberIgnored = 0;
 
   arangodb::Mutex _mutex;
+  QuickHistogram _histogram;
 };
 
 class ImportHelper {
@@ -240,6 +242,11 @@ class ImportHelper {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t getRowsRead() const { return _rowsRead; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief start the optional histogram thread
+  //////////////////////////////////////////////////////////////////////////////
+  void startHistogram() { _stats._histogram.start(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the error message
