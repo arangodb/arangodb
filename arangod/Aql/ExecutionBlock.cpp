@@ -214,35 +214,18 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
 /// if it returns an actual block, it must contain at least one item.
 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome(size_t atMost) {
-  // TODO Auto wrapper for backwards compatibility
-  std::unique_ptr<AqlItemBlock> blk;
-  blk.reset(getSomeOld(atMost));
-  if (blk == nullptr) {
-    return {ExecutionState::DONE, nullptr};
-  }
-  return {ExecutionState::HASMORE, std::move(blk)};
-}
-
-AqlItemBlock* ExecutionBlock::getSomeOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
-  std::unique_ptr<AqlItemBlock> result;
-  while (true) {
-    auto res = getSomeWithoutRegisterClearout(atMost);
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else { 
-      result.swap(res.second);
-      break;
-    }
+    
+  auto res = getSomeWithoutRegisterClearout(atMost);
+  if (res.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(nullptr, res.first);
+    return {ExecutionState::WAITING, nullptr};
   }
-  clearRegisters(result.get());
-  if (result == nullptr) {
-    traceGetSomeEnd(result.get(), ExecutionState::DONE);
-  } else {
-    traceGetSomeEnd(result.get(), ExecutionState::HASMORE);
-  }
-  return result.release();
+
+  clearRegisters(res.second.get());
+  traceGetSomeEnd(res.second.get(), res.first);
+  return res;
   DEBUG_END_BLOCK();
 }
 
@@ -408,34 +391,21 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
-  size_t skipped = skipSomeOld(atMost);
-  if (skipped == 0) {
-    return {ExecutionState::DONE, skipped};
-  }
-  return {ExecutionState::HASMORE, skipped};
-}
-
-size_t ExecutionBlock::skipSomeOld(size_t atMost) {
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
-  int out = TRI_ERROR_INTERNAL;
-  while (true) {
-    auto res = getOrSkipSome(atMost, true, result, skipped);
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else { 
-      out = res.second.errorNumber();
-      break;
-    }
-  }
-
+  auto res = getOrSkipSome(atMost, true, result, skipped);
   TRI_ASSERT(result == nullptr);
 
-  if (out != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(out);
+  if (res.first == ExecutionState::WAITING) {
+    TRI_ASSERT(skipped == 0);
+    return {ExecutionState::WAITING, skipped};
   }
 
-  return skipped;
+  if (res.second.fail()) {
+    THROW_ARANGO_EXCEPTION(res.second);
+  }
+
+  return {res.first, skipped};
 }
 
 // skip exactly atMost outputs

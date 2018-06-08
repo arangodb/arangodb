@@ -130,11 +130,6 @@ class ExecutionBlock {
   virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
       size_t atMost);
 
-  // TODO DELETE!
-  virtual AqlItemBlock* getSomeOld(size_t atMost);
-
-
-
   void traceGetSomeBegin(size_t atMost);
   void traceGetSomeEnd(AqlItemBlock const*, ExecutionState state) const;
  
@@ -144,9 +139,6 @@ class ExecutionBlock {
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
   virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
-
-  // TODO DELETE
-  virtual size_t skipSomeOld(size_t atMost);
 
   // TODO DELETE
   // Used in aql rest handler hasMore

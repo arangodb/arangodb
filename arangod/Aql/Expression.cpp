@@ -867,8 +867,9 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   VPackFunctionParameters parameters{arena};
  
   // same here
-  SmallVector<uint8_t>::allocator_type::arena_type arena2;
-  SmallVector<uint8_t> destroyParameters{arena2};
+  SmallVector<uint64_t>::allocator_type::arena_type arena2;
+  SmallVector<uint64_t> destroyParameters{arena2};
+
   parameters.reserve(n);
   destroyParameters.reserve(n);
 
@@ -1097,11 +1098,17 @@ AqlValue Expression::executeSimpleExpressionMinus(AstNode const* node,
         // can use int64
         return AqlValue(AqlValueHintInt(-v));
       }
+    } else if (s.isUInt()) {
+      uint64_t v = s.getNumber<uint64_t>();
+      if (v <= uint64_t(INT64_MAX)) {
+        // can use int64 too
+        int64_t v = s.getNumber<int64_t>();
+        return AqlValue(AqlValueHintInt(-v));
+      }
     }
-    // fallthrouh intentional
+    // fallthrough intentional
   }
  
-  // TODO: handle integer values separately here 
   bool failed = false;
   double value = operand.toDouble(trx, failed);
 
