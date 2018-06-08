@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,29 +17,42 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Scheduler/Acceptor.h"
+#ifndef ARANGOD_LIB_ASIO_NS_H
+#define ARANGOD_LIB_ASIO_NS_H 1
 
-#include "Basics/operating-system.h"
-#include "Scheduler/AcceptorTcp.h"
+#if ARANGODB_STANDALONE_ASIO
 
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-#include "Scheduler/AcceptorUnixDomain.h"
-#endif
+#include <asio/buffer.hpp>
+#include <asio/error.hpp>
+#include <asio/io_context.hpp>
+#include <asio/io_context_strand.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
+#include <asio/signal_set.hpp>
+#include <asio/ssl.hpp>
+#include <asio/steady_timer.hpp>
 
-using namespace arangodb;
+namespace asio_ns = asio;
 
-Acceptor::Acceptor(asio_ns::io_context& ioService, Endpoint* endpoint)
-    : _ioContext(ioService), _endpoint(endpoint) {}
+#else
 
-std::unique_ptr<Acceptor> Acceptor::factory(asio_ns::io_context& ioService,
-                                            Endpoint* endpoint) {
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
-    return std::make_unique<AcceptorUnixDomain>(ioService, endpoint);
-  }
-#endif
-  return std::make_unique<AcceptorTcp>(ioService, endpoint);
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/asio/steady_timer.hpp>
+
+namespace boost {
+namespace asio {
+using error_code = boost::system::error_code;
+using io_context = boost::asio::io_service;
+using system_error = boost::system::system_error;
 }
+}
+
+namespace asio_ns = boost::asio;
+
+#endif
+
+#endif
