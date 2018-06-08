@@ -600,18 +600,19 @@ static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    builder.add(name, VPackValue(VPackValueType::Object));
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
 
     if (vocbase == nullptr) {
-      return;
+      continue;
     }
 
     ReplicationApplier* applier = vocbase->replicationApplier();
 
     if (applier == nullptr) {
-      return;
+      continue;
     }
+
+    builder.add(name, VPackValue(VPackValueType::Object));
     applier->toVelocyPack(builder);
     builder.close();
   }
