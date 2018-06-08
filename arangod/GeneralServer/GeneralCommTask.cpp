@@ -481,9 +481,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   std::string const& path = request.requestPath();
   std::string const& username = request.user();
-  rest::ResponseCode result;
-  result = request.authenticated() ?
-    rest::ResponseCode::OK : rest::ResponseCode::UNAUTHORIZED;
+  rest::ResponseCode result = request.authenticated()
+    ? rest::ResponseCode::OK : rest::ResponseCode::UNAUTHORIZED;
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(request.requestContext());
   TRI_ASSERT(vc != nullptr);
