@@ -222,6 +222,7 @@ Result auth::UserManager::loadFromDB() {
     _ready = false;
     return Result(TRI_ERROR_FAILED);
   }
+  return Result();
 }
 
 // private, must be called with _userCacheLock in write mode
