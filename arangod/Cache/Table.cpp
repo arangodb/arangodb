@@ -43,15 +43,6 @@ void Table::GenericBucket::unlock() {
   _state.unlock();
 }
 
-void Table::GenericBucket::clear() {
-  _state.lock(UINT64_MAX, [this]() -> void {
-    _state.clear();
-    memset(this + sizeof(BucketState), 0,
-           sizeof(GenericBucket) - sizeof(BucketState));
-    _state.unlock();
-  });
-}
-
 bool Table::GenericBucket::isMigrated() const {
   TRI_ASSERT(_state.isLocked());
   return _state.isSet(BucketState::Flag::migrated);
@@ -97,10 +88,7 @@ Table::Table(uint32_t logSize)
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
       _slotsUsed(static_cast<uint64_t>(0)) {
-  for (size_t i = 0; i < _size; i++) {
-    GenericBucket* bucket = _buckets + (i * BUCKET_SIZE);
-    bucket->clear();
-  }
+  memset(_buckets, 0, BUCKET_SIZE * _size);
 }
 
 uint64_t Table::allocationSize(uint32_t logSize) {
