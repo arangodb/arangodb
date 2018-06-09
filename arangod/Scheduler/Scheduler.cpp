@@ -187,30 +187,42 @@ Scheduler::~Scheduler() {
 void Scheduler::post(std::function<void()> callback) {
   ++_nrQueued;
 
-  // capture without this, ioContext will not live longer than scheduler
-  _ioContext.get()->post([this, callback]() {
+  try {
+
+    // capture without self, ioContext will not live longer than scheduler
+    _ioContext.get()->post([this, callback]() {
+        --_nrQueued;
+
+        JobGuard guard(this);
+        guard.work();
+
+        callback();
+      });
+  } catch (...) {
     --_nrQueued;
-
-    JobGuard guard(this);
-    guard.work();
-
-    callback();
-  });
+    throw;
+  }
 }
 
 void Scheduler::post(asio_ns::io_context::strand& strand,
                      std::function<void()> callback) {
   ++_nrQueued;
 
-  // capture without this, ioContext will not live longer than scheduler
-  strand.post([this, callback]() {
+  try {
+
+    // capture without self, ioContext will not live longer than scheduler
+    strand.post([this, callback]() {
+        --_nrQueued;
+
+        JobGuard guard(this);
+        guard.work();
+
+        callback();
+      });
+  } catch (...) {
     --_nrQueued;
-
-    JobGuard guard(this);
-    guard.work();
-
-    callback();
-  });
+    throw;
+  }
 }
 
 bool Scheduler::start() {
@@ -448,6 +460,7 @@ void Scheduler::rebalanceThreads() {
 
       // all threads are maxed out
       _lastAllBusyStamp = now;
+
       // increase nrRunning by one here already, while holding the lock
       incRunning();
     }
