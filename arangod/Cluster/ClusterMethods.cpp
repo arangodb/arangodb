@@ -35,6 +35,7 @@
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -381,8 +382,7 @@ static int distributeBabyOnShards(
     VPackSlice keySlice = node.get(StaticStrings::KeyString);
     if (keySlice.isNone()) {
       // The user did not specify a key, let's create one:
-      uint64_t uid = ci->uniqid();
-      _key = arangodb::basics::StringUtils::itoa(uid);
+      _key = collinfo->keyGenerator()->generate();
     } else {
       userSpecifiedKey = true;
     }
