@@ -21,37 +21,39 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Scheduler/AcceptorTcp.h"
+
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Endpoint/EndpointIp.h"
+#include "Scheduler/SocketSslTcp.h"
 #include "Scheduler/SocketTcp.h"
 
 using namespace arangodb;
 
 void AcceptorTcp::open() {
-  asio::ip::tcp::resolver resolver(_ioContext);
+  asio_ns::ip::tcp::resolver resolver(_ioContext);
 
   std::string hostname = _endpoint->host();
   int portNumber = _endpoint->port();
 
-  asio::ip::tcp::endpoint asioEndpoint;
-  asio::error_code err;
-  auto address = asio::ip::address::from_string(hostname, err);
+  asio_ns::ip::tcp::endpoint asioEndpoint;
+  asio_ns::error_code err;
+  auto address = asio_ns::ip::address::from_string(hostname, err);
   if (!err) {
-    asioEndpoint = asio::ip::tcp::endpoint(address, portNumber);
+    asioEndpoint = asio_ns::ip::tcp::endpoint(address, portNumber);
   } else {  // we need to resolve the string containing the ip
-    std::unique_ptr<asio::ip::tcp::resolver::query> query;
+    std::unique_ptr<asio_ns::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
-      query.reset(new asio::ip::tcp::resolver::query(
-          asio::ip::tcp::v6(), hostname, std::to_string(portNumber)));
+      query.reset(new asio_ns::ip::tcp::resolver::query(
+          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber)));
     } else if (_endpoint->domain() == AF_INET) {
-      query.reset(new asio::ip::tcp::resolver::query(
-          asio::ip::tcp::v4(), hostname, std::to_string(portNumber)));
+      query.reset(new asio_ns::ip::tcp::resolver::query(
+          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber)));
     } else {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
     }
 
-    asio::ip::tcp::resolver::iterator iter = resolver.resolve(*query, err);
+    asio_ns::ip::tcp::resolver::iterator iter = resolver.resolve(*query, err);
     if (err) {
       LOG_TOPIC(ERR, Logger::COMMUNICATION)
           << "unable to to resolve endpoint ' " << _endpoint->specification()
@@ -59,7 +61,7 @@ void AcceptorTcp::open() {
       throw std::runtime_error(err.message());
     }
 
-    if (asio::ip::tcp::resolver::iterator{} == iter) {
+    if (asio_ns::ip::tcp::resolver::iterator{} == iter) {
       LOG_TOPIC(ERR, Logger::COMMUNICATION)
           << "unable to to resolve endpoint: endpoint is default constructed";
     }
@@ -83,7 +85,7 @@ void AcceptorTcp::open() {
                                    "unable to set acceptor socket option");
   }
 #else
-  _acceptor.set_option(asio::ip::tcp::acceptor::reuse_address(
+  _acceptor.set_option(asio_ns::ip::tcp::acceptor::reuse_address(
       ((EndpointIp*)_endpoint)->reuseAddress()));
 #endif
 

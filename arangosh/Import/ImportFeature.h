@@ -71,6 +71,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   std::string _onDuplicateAction;
   uint64_t _rowsToSkip;
   int* _result;
+  bool _latencyStats;
 };
 }
 

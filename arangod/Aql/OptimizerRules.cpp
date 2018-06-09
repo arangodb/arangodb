@@ -2057,7 +2057,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       auto trx = _plan->getAst()->query()->trx();
       size_t coveredAttributes = 0;
       auto resultPair = trx->getIndexForSortCondition(
-          enumerateCollectionNode->collection()->getName(), &sortCondition,
+          enumerateCollectionNode->collection()->name(), &sortCondition,
           outVariable, enumerateCollectionNode->collection()->count(trx),
           usedIndexes, coveredAttributes);
       if (resultPair.second) {
@@ -2069,7 +2069,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         IndexIteratorOptions opts;
         opts.ascending = sortCondition.isAscending();
         std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(), enumerateCollectionNode->vocbase(),
+            _plan, _plan->nextId(),
             enumerateCollectionNode->collection(), outVariable, usedIndexes,
             condition.get(), opts));
 
@@ -2784,8 +2784,8 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
                     static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(dist2)));
           }
 
-          if (dist1 == c2->getName() ||
-              dist2 == c1->getName() ||
+          if (dist1 == c2->name() ||
+              dist2 == c1->name() ||
               (!dist1.empty() && dist1 == dist2)) {
             // collections have the same "distributeShardsLike" values
             // so their shards are distributed to the same servers for the
@@ -3067,7 +3067,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     plan->registerNode(remoteNode);
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
-
+    
     // insert a gather node
     auto const sortMode = GatherNode::evaluateSortMode(
       collection->numberOfShards()
@@ -3209,7 +3209,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
 #ifdef USE_ENTERPRISE
     auto ci = ClusterInfo::instance();
     auto collInfo =
-        ci->getCollection(collection->vocbase->name(), collection->name);
+        ci->getCollection(collection->vocbase()->name(), collection->name());
     // Throws if collection is not found!
     if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
       distributeInClusterRuleSmartEdgeCollection(
@@ -3485,7 +3485,6 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
             dbCollectNode->specialized();
 
-
             // will set the input of the coordinator's collect node to the new variable produced on the DB servers
             auto copy = collectNode->groupVariables();
             TRI_ASSERT(!copy.empty());
@@ -3581,14 +3580,52 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             // in case we need to keep the sortedness of the GatherNode,
             // we may need to replace some variable references in it due
             // to the changes we made to the COLLECT node
-            SortElementVector& elements = gatherNode->elements();
-            if (!removeGatherNodeSort && gatherNode != nullptr && !replacements.empty() && !elements.empty()) {
-              TRI_ASSERT(elements.size() >= replacements.size());
-              auto r = replacements.begin();
-              for (auto& it : elements) {
-                it.var = (*r).second;
-                it.attributePath.clear();
-                ++r;
+            if (gatherNode != nullptr) {
+              SortElementVector& elements = gatherNode->elements();
+              if (!removeGatherNodeSort && !replacements.empty() && !elements.empty()) {
+                std::string cmp;
+                std::string other;
+                basics::StringBuffer buffer(128, false);
+
+                // look for all sort elements in the GatherNode and replace them if they
+                // match what we have changed
+                for (auto& it : elements) {
+                  // replace variables
+                  auto it2 = replacements.find(it.var);
+
+                  if (it2 != replacements.end()) {
+                    // match with our replacement table
+                    it.var = (*it2).second;
+                    it.attributePath.clear();
+                  } else {
+                    // no match. now check all our replacements and compare how their
+                    // sources are actually calculated (e.g. #2 may mean "foo.bar")
+                    cmp = it.toString();
+                    for (auto const& it3 : replacements) {
+                      auto setter = plan->getVarSetBy(it3.first->id);
+                      if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+                        continue;
+                      }
+                      auto* expr = static_cast<CalculationNode const*>(setter)->expression();
+                      if (expr == nullptr) {
+                        continue;
+                      }
+                      other.clear();
+                      try {
+                        buffer.clear();
+                        expr->stringify(&buffer);
+                        other = std::string(buffer.c_str(), buffer.size());
+                      } catch (...) {
+                      }
+                      if (other == cmp) {
+                        // finally a match!
+                        it.var = it3.second;
+                        it.attributePath.clear();
+                        break;
+                      }
+                    }
+                  }
+                }
               }
             }
           } else {
@@ -5506,7 +5543,6 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   }
 
   std::string cname = collArg->getString();
-  auto& vocbase = plan->getAst()->query()->vocbase();
   std::vector<basics::AttributeName> field;
 
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
@@ -5557,7 +5593,6 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   auto inode = new IndexNode(
     plan,
     plan->nextId(),
-    &vocbase,
     coll,
     elnode->outVariable(),
     std::vector<transaction::Methods::IndexHandle>{
@@ -5709,7 +5744,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
 
   // we should not access the LogicalCollection directly
   Query* query = plan->getAst()->query();
-  auto indexes = query->trx()->indexesForCollection(info.collection->getName());
+  auto indexes = query->trx()->indexesForCollection(info.collection->name());
   //check for suitiable indexes
   for (std::shared_ptr<Index> idx : indexes) {
     // check if current index is a geo-index
@@ -6252,7 +6287,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   opts.evaluateFCalls = false; // workaround to avoid evaluating "doc.geo"
   std::unique_ptr<Condition> condition(buildGeoCondition(plan, info));
   auto inode = new IndexNode(
-      plan, plan->nextId(), info.collection->vocbase,
+      plan, plan->nextId(), 
       info.collection, info.collectionNodeOutVar,
       std::vector<transaction::Methods::IndexHandle>{
           transaction::Methods::IndexHandle{info.index}},

@@ -42,9 +42,9 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
     : ExecutionBlock(engine, ep), 
       DocumentProducingBlock(ep, _trx),
-      _collection(ep->_collection),
+      _collection(ep->collection()),
       _cursor(
-          _trx->indexScan(_collection->getName(),
+          _trx->indexScan(_collection->name(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL))) {
   TRI_ASSERT(_cursor->ok());
@@ -65,7 +65,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     while (!inSync) {
       auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
         dbName, std::to_string(cid));
-      auto followers = collectionInfoCurrent->servers(_collection->getName());
+      auto followers = collectionInfoCurrent->servers(_collection->name());
       inSync = std::find(followers.begin(), followers.end(),
                          ServerState::instance()->getId()) != followers.end();
       if (!inSync) {
@@ -83,7 +83,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
     if (!inSync) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          "collection " + _collection->name + " did not come into sync in time (" + std::to_string(maxWait) +")");
+          "collection " + _collection->name() + " did not come into sync in time (" + std::to_string(maxWait) +")");
     }
   }
 }

@@ -27,14 +27,11 @@
 
 #include "Basics/Common.h"
 
-#include <asio/io_context.hpp>
-#include <asio/steady_timer.hpp>
-
 #include "Basics/Mutex.h"
-//#include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/Job.h"
+#include "Scheduler/Socket.h"
 
 namespace arangodb {
 class JobQueue;
@@ -66,12 +63,13 @@ class Scheduler {
   virtual ~Scheduler();
 
  public:
-  asio::io_context* ioContext() const { return _ioContext.get(); }
-  asio::io_context* managerService() const { return _managerService.get(); }
+  asio_ns::io_context* ioContext() const { return _ioContext.get(); }
+  asio_ns::io_context* managerService() const { return _managerService.get(); }
 
   EventLoop eventLoop() {
-    // return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
-    // windows complains ...
+    // cannot use
+    //   return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
+    // because windows complains ...
     return EventLoop{_ioContext.get(), this};
   }
 
@@ -97,29 +95,34 @@ class Scheduler {
   bool shouldQueueMore() const;
   bool shouldExecuteDirect() const;
 
-  /// queue processing of an async rest job
+  // queue processing of an async rest job
   bool queue(std::unique_ptr<Job> job);
 
   std::string infoStatus();
 
   uint64_t minimum() const { return _nrMinimum; }
-  /// number of queued handlers
+
+  // number of queued handlers
   inline uint64_t numQueued() const noexcept { return _nrQueued; };
   inline uint64_t getCounters() const noexcept { return _counters; }
-  /// Number of running threads
+
+  // number of running threads
   static uint64_t numRunning(uint64_t value) noexcept {
     return value & 0xFFFFULL;
   }
-  /// Number of working threads
+
+  // number of working threads
   static uint64_t numWorking(uint64_t value) noexcept {
     return (value >> 16) & 0xFFFFULL;
   }
-  /// Number of blocked threads
+
+  // number of blocked threads
   static uint64_t numBlocked(uint64_t value) noexcept {
     return (value >> 32) & 0xFFFFULL;
   }
 
   inline void queueJob() noexcept { ++_nrQueued; }
+
   inline void unqueueJob() noexcept {
     if (--_nrQueued == UINT64_MAX) {
       TRI_ASSERT(false);
@@ -194,14 +197,14 @@ class Scheduler {
 
   std::unique_ptr<JobQueue> _jobQueue;
 
-  std::shared_ptr<asio::io_context::work> _serviceGuard;
-  std::unique_ptr<asio::io_context> _ioContext;
+  std::shared_ptr<asio_ns::io_context::work> _serviceGuard;
+  std::unique_ptr<asio_ns::io_context> _ioContext;
 
-  std::shared_ptr<asio::io_context::work> _managerGuard;
-  std::unique_ptr<asio::io_context> _managerService;
+  std::shared_ptr<asio_ns::io_context::work> _managerGuard;
+  std::unique_ptr<asio_ns::io_context> _managerService;
 
-  std::unique_ptr<asio::steady_timer> _threadManager;
-  std::function<void(const asio::error_code&)> _threadHandler;
+  std::unique_ptr<asio_ns::steady_timer> _threadManager;
+  std::function<void(const asio_ns::error_code&)> _threadHandler;
 
   mutable Mutex _threadCreateLock;
   double _lastAllBusyStamp;
