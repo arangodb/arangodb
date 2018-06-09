@@ -104,8 +104,8 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
  private:
   arangodb::aql::AqlItemBlock const* _data;
   size_t _pos_in_data{};
-  arangodb::aql::ExecutionState _upstreamState;
   size_t _inflight;
+
 }; // ExecutionBlockMock
 
 #endif // ARANGODB_IRESEARCH__IRESEARCH_EXECUTION_BLOCK_MOCK_H
