@@ -119,8 +119,8 @@ void VstCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType r
 
 void VstCommTask::addResponse(GeneralResponse& baseResponse,
                               RequestStatistics* stat) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
-    //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->runningInThisThread());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     VstResponse& response = dynamic_cast<VstResponse&>(baseResponse);
 #else
@@ -316,8 +316,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
 
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
-  //_lock.assertLockedByCurrentThread();
+  TRI_ASSERT(_peer->runningInThisThread());
   
   auto& prv = _processReadVariables;
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;

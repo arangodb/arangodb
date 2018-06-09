@@ -94,7 +94,8 @@ void HttpCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType 
 
 void HttpCommTask::addResponse(GeneralResponse& baseResponse,
                                RequestStatistics* stat) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
 #else
@@ -201,7 +202,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 // reads data from the socket
 // caller must hold the _lock
 bool HttpCommTask::processRead(double startTime) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
   
   cancelKeepAlive();
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
@@ -594,7 +595,8 @@ bool HttpCommTask::processRead(double startTime) {
 }
 
 void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
+
   {
     LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""

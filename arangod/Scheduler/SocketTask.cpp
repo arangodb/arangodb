@@ -131,13 +131,11 @@ bool SocketTask::start() {
       << _connectionInfo.clientPort;
 
   auto self = shared_from_this();
-  _scheduler->_nrQueued++;
-  _peer->strand.post([self, this]() {
-    _scheduler->_nrQueued--;
-    JobGuard guard(_scheduler);
-    guard.work();
+
+  _peer->post([self, this]() {
     asyncReadSome();
   });
+
   return true;
 }
 
@@ -147,7 +145,7 @@ bool SocketTask::start() {
 
 // caller must hold the _lock
 void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
 
   if (_closedSend.load(std::memory_order_acquire) ||
       _abandoned.load(std::memory_order_acquire)) {
@@ -171,7 +169,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
 // caller must hold the _lock
 bool SocketTask::completedWriteBuffer() {
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
 
   RequestStatistics::SET_WRITE_END(_writeBuffer._statistics);
   _writeBuffer.release(this);  // try to recycle the string buffer
@@ -196,11 +194,8 @@ void SocketTask::closeStream() {
   // strand::dispatch may execute this immediately if this
   // is called on a thread inside the same strand
   auto self = shared_from_this();
-  _scheduler->_nrQueued++;
-  _peer->strand.post([self, this] {
-    _scheduler->_nrQueued--;
-    JobGuard guard(_scheduler);
-    guard.work();
+
+  _peer->post([self, this] {
     closeStreamNoLock();
   });
 }
@@ -208,7 +203,7 @@ void SocketTask::closeStream() {
 // caller must hold the _lock
 void SocketTask::closeStreamNoLock() {
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
 
   bool mustCloseSend = !_closedSend.load(std::memory_order_acquire);
   bool mustCloseReceive = !_closedReceive.load(std::memory_order_acquire);
@@ -233,7 +228,8 @@ void SocketTask::closeStreamNoLock() {
 // will acquire the _lock
 void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
+
   _readBuffer.appendText(data, len);
 }
 
@@ -272,7 +268,8 @@ void SocketTask::cancelKeepAlive() {
 // caller must hold the _lock
 bool SocketTask::reserveMemory() {
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
+
   if (_readBuffer.reserve(READ_BLOCK_SIZE + 1) == TRI_ERROR_OUT_OF_MEMORY) {
     LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
         << "out of memory while reading from client";
@@ -290,7 +287,7 @@ bool SocketTask::trySyncRead() {
   }
 
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
 
   asio_ns::error_code err;
   TRI_ASSERT(_peer != nullptr);
@@ -338,7 +335,7 @@ bool SocketTask::trySyncRead() {
 // (new read)
 bool SocketTask::processAll() {
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
 
   double startTime = StatisticsFeature::time();
   Result res;
@@ -380,7 +377,7 @@ bool SocketTask::processAll() {
 // must be invoked on strand
 void SocketTask::asyncReadSome() {
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
 
   try {
     size_t const MAX_DIRECT_TRIES = 2;
@@ -445,19 +442,11 @@ void SocketTask::asyncReadSome() {
           return;
         }
 
-        _scheduler->_nrQueued++;
-        _peer->strand.post([self, this, transferred] {
-          _scheduler->_nrQueued--;
-          JobGuard guard(_scheduler);
-          guard.work();
-
+        _peer->post([self, this, transferred] {
           _readBuffer.increaseLength(transferred);
+
           if (processAll()) {
-            _scheduler->_nrQueued++;
-            _peer->strand.post([self, this]() {
-              _scheduler->_nrQueued--;
-              JobGuard guard(_scheduler);
-              guard.work();
+            _peer->post([self, this]() {
               asyncReadSome();
             });
           }
@@ -468,7 +457,7 @@ void SocketTask::asyncReadSome() {
 
 void SocketTask::asyncWriteSome() {
   TRI_ASSERT(_peer != nullptr);
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
 
   if (_writeBuffer.empty()) {
     return;
@@ -536,12 +525,7 @@ void SocketTask::asyncWriteSome() {
           return;
         }
 
-        _scheduler->_nrQueued++;
-        _peer->strand.post([self, this, transferred] {
-          _scheduler->_nrQueued--;
-          JobGuard guard(_scheduler);
-          guard.work();
-
+        _peer->post([self, this, transferred] {
           if (_abandoned.load(std::memory_order_acquire)) {
             return;
           }
@@ -550,11 +534,7 @@ void SocketTask::asyncWriteSome() {
                                             transferred);
 
           if (completedWriteBuffer()) {
-            _scheduler->_nrQueued++;
-            _peer->strand.post([self, this] {
-              _scheduler->_nrQueued--;
-              JobGuard guard(_scheduler);
-              guard.work();
+            _peer->post([self, this] {
               if (!_abandoned.load(std::memory_order_acquire)) {
                 asyncWriteSome();
               }
@@ -616,11 +596,8 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
 void SocketTask::triggerProcessAll() {
   // try to process remaining request data
   auto self = shared_from_this();
-  _scheduler->_nrQueued++;
-  _peer->strand.post([self, this] {
-    _scheduler->_nrQueued--;
-    JobGuard guard(_scheduler);
-    guard.work();
+
+  _peer->post([self, this] {
     processAll();
   });
 }

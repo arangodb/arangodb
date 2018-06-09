@@ -41,7 +41,7 @@ ListenTask::ListenTask(Scheduler* scheduler, Endpoint* endpoint)
     : Task(scheduler, "ListenTask"),
       _endpoint(endpoint),
       _bound(false),
-      _acceptor(scheduler->createAcceptor(endpoint)) {}
+      _acceptor(Acceptor::factory(scheduler, endpoint)) {}
 
 ListenTask::~ListenTask() {}
 

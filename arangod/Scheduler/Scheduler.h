@@ -28,23 +28,22 @@
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
+#include "Basics/asio_ns.h"
 #include "Basics/socket-utils.h"
-#include "Scheduler/Acceptor.h"
+#include "Endpoint/Endpoint.h"
 #include "Scheduler/Job.h"
-#include "Scheduler/Socket.h"
 
 namespace arangodb {
-class JobQueue;
+class Acceptor;
 class JobGuard;
+class JobQueue;
+class ListenTask;
 
 namespace velocypack {
 class Builder;
 }
 
-class ListenTask;
-
 namespace rest {
-
 class GeneralCommTask;
 class SocketTask;
 
@@ -67,6 +66,7 @@ class Scheduler {
   asio_ns::io_context* managerService() const { return _managerService.get(); }
 
   void post(std::function<void()> callback);
+  void post(asio_ns::io_context::strand&, std::function<void()> callback);
 
   bool start();
   bool isRunning() const { return numRunning(_counters) > 0; }
@@ -83,6 +83,41 @@ class Scheduler {
 
   asio_ns::steady_timer* newSteadyTimer() {
     return new asio_ns::steady_timer(*_ioContext);
+  }
+
+  asio_ns::io_context::strand* newStrand() {
+    return new asio_ns::io_context::strand(*_ioContext);
+  }
+
+  asio_ns::ip::tcp::acceptor*
+  newAcceptor() {
+    return new asio_ns::ip::tcp::acceptor(*_ioContext);
+  }
+
+  asio_ns::local::stream_protocol::acceptor*
+  newDomainAcceptor() {
+    return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
+  }
+
+  asio_ns::ip::tcp::socket*
+  newSocket() {
+    return new asio_ns::ip::tcp::socket(*_ioContext);
+  }
+
+  asio_ns::local::stream_protocol::socket*
+  newDomainSocket() {
+    return new asio_ns::local::stream_protocol::socket(*_ioContext);
+  }
+
+  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>*
+  newSslSocket(asio_ns::ssl::context& context) {
+    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(
+      *_ioContext, context);
+  }
+
+  asio_ns::ip::tcp::resolver*
+  newResolver() {
+    return new asio_ns::ip::tcp::resolver(*_ioContext);
   }
 
  public:
@@ -173,10 +208,6 @@ class Scheduler {
 
   inline bool isStopping(uint64_t value) const noexcept {
     return (value & (1ULL << 63)) != 0;
-  }
-
-  std::unique_ptr<Acceptor> createAcceptor(Endpoint* endpoint) {
-    return Acceptor::factory(*_ioContext, endpoint);
   }
 
   void startIoService();

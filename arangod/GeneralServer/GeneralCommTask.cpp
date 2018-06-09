@@ -419,7 +419,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 // Just run the handler, could have been called in a different thread
 void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
-  TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
+  TRI_ASSERT(doLock || _peer->runningInThisThread());
 
   handler->runHandler([this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
@@ -427,15 +427,12 @@ void GeneralCommTask::handleRequestDirectly(
     if (doLock) {
       auto self = shared_from_this();
       auto h = handler->shared_from_this();
-      _scheduler->_nrQueued++;
-      _peer->strand.post([self, this, stat, h]() {
-        _scheduler->_nrQueued--;
-        JobGuard guard(_scheduler);
-        guard.work();
+
+      _peer->post([self, this, stat, h]() {
         addResponse(*(h->response()), stat);
       });
     } else {
-      TRI_ASSERT(_peer->strand.running_in_this_thread());
+      TRI_ASSERT(_peer->runningInThisThread());
       addResponse(*handler->response(), stat);
     }
   });

@@ -37,4 +37,6 @@ std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() *
 Task::Task(Scheduler* scheduler, std::string const& name)
     : _scheduler(scheduler),
       _taskId(NEXT_TASK_ID.fetch_add(1, std::memory_order_seq_cst)),
-      _name(name) {}
+      _name(name) {
+  TRI_ASSERT(_scheduler != nullptr);
+}
