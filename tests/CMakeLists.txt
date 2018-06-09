@@ -77,6 +77,7 @@ add_executable(
   Aql/DateFunctions.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
