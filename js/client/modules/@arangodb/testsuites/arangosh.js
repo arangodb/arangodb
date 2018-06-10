@@ -206,7 +206,7 @@ function arangosh (options) {
     }
 
     fs.write(shebangFile,
-      '#!' + fs.makeAbsolute(pu.ARANGOSH_BIN) + ' --server.endpoint none --javascript.execute \n' +
+      '#!' + fs.makeAbsolute(pu.ARANGOSH_BIN) + ' --javascript.execute \n' +
       'print("hello world");\n');
 
     executeExternalAndWait('sh', ['-c', 'chmod a+x ' + shebangFile]);
