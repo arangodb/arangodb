@@ -359,39 +359,6 @@ SECTION("clone") {
     node.shards().emplace_back("abc");
     node.shards().emplace_back("def");
 
-/*
-    // clone with properties into the same plan
-    // this is actually not a good idea... cloning the same variables into 
-    // the same plan will cause resource leaks, as this test exposes.
-    // if properties are cloned, the target plan must be a different one than 
-    // the source plan
-    {
-      auto const nextId = node.plan()->nextId();
-      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
-        *node.clone(query.plan(), true, true)
-      );
-      CHECK(cloned.collections().empty());
-      CHECK(node.empty() == cloned.empty());
-      CHECK(node.shards() == cloned.shards());
-      CHECK(node.getType() == cloned.getType());
-      CHECK(&node.outVariable() != &cloned.outVariable()); // different objects
-      CHECK(node.outVariable().id == cloned.outVariable().id);
-      CHECK(node.outVariable().name == cloned.outVariable().name);
-      CHECK(node.plan() == cloned.plan());
-      CHECK(nextId + 1 == cloned.id());
-      CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(node.view() == cloned.view());
-      CHECK(&node.filterCondition() == &cloned.filterCondition());
-      CHECK(node.sortCondition() == cloned.sortCondition());
-      CHECK(node.volatile_filter() == cloned.volatile_filter());
-      CHECK(node.volatile_sort() == cloned.volatile_sort());
-
-      size_t lhsNrItems{}, rhsNrItems{};
-      CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
-      CHECK(lhsNrItems == rhsNrItems);
-    }
-*/
-
     // clone without properties into the same plan
     {
       auto const nextId = node.plan()->nextId();
