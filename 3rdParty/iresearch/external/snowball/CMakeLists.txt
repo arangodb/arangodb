@@ -200,15 +200,27 @@ MACRO(gen_stem IN ENCODING)
 		SET(_input "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_${_in_enc}.sbl")
 		IF(${_in_enc} STREQUAL "Unicode" AND NOT EXISTS ${_input})
 			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND ${SNOWBALL_EXECUTEABLE}  "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_ISO_8859_1.sbl" -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+    			        COMMAND ${SNOWBALL_EXECUTEABLE}
+                                        "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_ISO_8859_1.sbl"
+                                        -o ${_base}
+                                        -eprefix ${_it}_${ENCODING}_
+                                        -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime
+                                        -u
 				DEPENDS snowball)
+                        SET_PROPERTY(SOURCE ${_source} APPEND PROPERTY OBJECT_DEPENDS ${SNOWBALL_EXECUTEABLE})
 			LIST(APPEND STEMMER_SOURCES ${_source})
 
 		ELSE()
 		IF(EXISTS "${_input}")
 			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND ${SNOWBALL_EXECUTEABLE} ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+			        COMMAND ${SNOWBALL_EXECUTEABLE}
+                                        ${_input}
+                                        -o ${_base}
+                                        -eprefix ${_it}_${ENCODING}_
+                                        -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime
+                                        -u
 				DEPENDS snowball)
+                        SET_PROPERTY(SOURCE ${_source} APPEND PROPERTY OBJECT_DEPENDS ${SNOWBALL_EXECUTEABLE})
 			LIST(APPEND STEMMER_SOURCES ${_source})
 		ENDIF()
 		ENDIF()
