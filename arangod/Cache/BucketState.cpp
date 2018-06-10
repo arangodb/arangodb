@@ -99,3 +99,8 @@ void BucketState::clear() {
   TRI_ASSERT(isLocked());
   _state = static_cast<uint32_t>(Flag::locked);
 }
+
+void BucketState::clearAndUnlock() {
+  TRI_ASSERT(isLocked());
+  _state = 0;
+}

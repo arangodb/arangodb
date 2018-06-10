@@ -45,11 +45,7 @@ void Table::GenericBucket::unlock() {
 
 void Table::GenericBucket::clear() {
   _state.lock(UINT64_MAX, [this]() -> void {
-    _state.clear(); // "clear" will keep the lock!
-    for (size_t i = 0; i < BUCKET_SIZE - sizeof(BucketState); ++i) {
-      _filler[i] = 0;
-    }
-    _state.unlock();
+    _state.clearAndUnlock(); 
   });
 }
 

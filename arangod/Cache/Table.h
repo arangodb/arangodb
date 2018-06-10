@@ -53,7 +53,7 @@ class Table : public std::enable_shared_from_this<Table> {
  private:
   struct GenericBucket {
     BucketState _state;
-    uint8_t _filler[BUCKET_SIZE - sizeof(BucketState)];
+    uint8_t _padding[BUCKET_SIZE - sizeof(BucketState)];
     bool lock(uint64_t maxTries);
     void unlock();
     void clear();
