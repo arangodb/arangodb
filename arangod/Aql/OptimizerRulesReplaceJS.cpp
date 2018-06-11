@@ -71,7 +71,10 @@ struct nearOrWithinParams{
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    collection = arr->getMember(0)->getString();
+    if (arr->getMember(0)->isStringValue()){
+      collection = arr->getMember(0)->getString();
+      // otherwise the "" collection will not be found
+    }
     latitude = arr->getMember(1);
     longitude = arr->getMember(2);
     if(arr->numMembers() > 4){
@@ -96,8 +99,12 @@ struct fulltextParams{
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    collection = arr->getMember(0)->getString();
-    attribute = arr->getMember(1)->getString();
+    if (arr->getMember(0)->isStringValue()){
+      collection = arr->getMember(0)->getString();
+    }
+    if (arr->getMember(0)->isStringValue()){
+      attribute = arr->getMember(1)->getString();
+    }
     if(arr->numMembers() > 3){
       limit = arr->getMember(3);
     }
@@ -199,6 +206,11 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   //// enumerate collection
   auto* aqlCollection = query->collections()->get(params.collection);
+  if(!aqlCollection) {
+    LOG_DEVEL << "no collection";
+    return nullptr;
+  }
+
   Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
   ExecutionNode* eEnumerate = plan->registerNode(
       // link output of index with the return node
@@ -351,7 +363,8 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   auto* query = ast->query();
   auto* trx = query->trx();
 
-  fulltextParams params(funAstNode);
+  funAstNode->dump(0);
+  fulltextParams params(funAstNode); // must be NODE_TYPE_FCALL
 
   /// index
   //  we create this first as creation of this node is more
@@ -378,8 +391,13 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 
   // index part 2 - get remaining vars required for index creation
   auto* aqlCollection = query->collections()->get(params.collection);
+  if(!aqlCollection) {
+    LOG_DEVEL << "no collection";
+    return nullptr;
+  }
 	auto condition = std::make_unique<Condition>(ast);
 	condition->andCombine(funAstNode);
+  condition->normalize(plan);
 	// create a fresh out variable
   Variable* indexOutVariable = ast->variables()->createTemporaryVariable();
 
@@ -415,7 +433,7 @@ void arangodb::aql::replaceJSFunctions(Optimizer* opt
 
   for(auto const& node : nodes){
     auto visitor = [&modified, &node, &plan](AstNode* astnode){
-      auto* fun = getFunction(astnode);
+      auto* fun = getFunction(astnode); // if fun != nullptr -> astnode->type NODE_TYPE_FCALL
       AstNode* replacement = nullptr;
       if(fun){
         if (fun->name == std::string("NEAR")){

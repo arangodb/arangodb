@@ -113,7 +113,7 @@ function optimizerRuleTestSuite() {
       ["t1", "t2", "t3.e.x"].forEach(field => {
         let bindVars = {'@coll': colName, attr: field};
         let plan = AQL_EXPLAIN(query, bindVars);
-        hasNoIndexNode(plan, query);
+        hasIndexNode(plan, query);
               
         let expected = [ [ 3, 6 ], [ 3, 6 ], [ 3, 6 ], [ 1, 4 ], [ 2, 7 ] ];
         let r = AQL_EXECUTE(query, bindVars);
@@ -133,7 +133,7 @@ function optimizerRuleTestSuite() {
             hasNoFilterNode(plan1,q);
             
             let plan2 = AQL_EXPLAIN(q, bindVars, {optimizer: {rules:[ "-all" ]}});
-            hasNoIndexNode(plan2,q);
+            hasIndexNode(plan2,q);
             hasNoFilterNode(plan2,q);
             
             let r1 = AQL_EXECUTE(q, bindVars, { optimizer: { rules: [ "-all" ] } });

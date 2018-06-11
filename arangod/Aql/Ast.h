@@ -273,7 +273,7 @@ class Ast {
 
   AstNode* createNodeAttributeAccess(AstNode const* node, std::vector<basics::AttributeName> const& attrs) {
     std::vector<std::string> vec; //change to string view once availalbe
-    std::transform(attrs.begin(), attrs.end(), vec.begin(), +[](basics::AttributeName const& a) { return a.name; });
+    std::transform(attrs.begin(), attrs.end(), std::back_inserter(vec), +[](basics::AttributeName const& a) { return a.name; });
     return createNodeAttributeAccess(node,vec);
   }
 
