@@ -126,7 +126,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
-  'arangosearch':false,
+  'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,
