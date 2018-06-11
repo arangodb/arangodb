@@ -837,7 +837,9 @@ int HashedCollectBlock::getOrSkipSomeOld(size_t atMost,
 DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
                                            CollectNode const* en)
     : ExecutionBlock(engine, en),
-      _groupRegisters() {
+      _groupRegisters(),
+      _res(nullptr),
+      _skipped(0) {
   for (auto const& p : en->_groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
@@ -896,8 +898,9 @@ void DistinctCollectBlock::clearValues() {
 }
 
 std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
-    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
-  TRI_ASSERT(result == nullptr && skipped == 0);
+    size_t const atMost, bool const skipping, AqlItemBlock*& result,
+    size_t& skipped_) {
+  TRI_ASSERT(result == nullptr && skipped_ == 0);
 
   if (_done) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
@@ -906,12 +909,28 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
   std::vector<AqlValue> groupValues;
   groupValues.reserve(_groupRegisters.size());
 
-  std::unique_ptr<AqlItemBlock> res;
-
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlockOld(atMost)) {
+    ExecutionState state;
+    bool blockAppended;
+    std::tie(state, blockAppended) = ExecutionBlock::getBlock(atMost);
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(!blockAppended);
+      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    }
+    if (!blockAppended) {
       // done
       _done = true;
+
+      if (!skipping && _skipped > 0) {
+        // last time we got interrupted
+          TRI_ASSERT(_res != nullptr);
+          _res->shrink(_skipped);
+      }
+
+      result = _res.release();
+      skipped_ = _skipped;
+      _skipped = 0;
+
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
     _pos = 0;  // this is in the first block
@@ -921,14 +940,16 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
   AqlItemBlock* cur = _buffer.front();
   TRI_ASSERT(cur != nullptr);
 
-  if (!skipping) {
-    res.reset(requestBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  if (!skipping && _res == nullptr) {
+    TRI_ASSERT(_skipped == 0);
+    _res.reset(requestBlock(atMost, getPlanNode()->getRegisterPlan()
+                                                 ->nrRegs[getPlanNode()->getDepth()]));
 
-    TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
-    inheritRegisters(cur, res.get(), _pos);
+    TRI_ASSERT(cur->getNrRegs() <= _res->getNrRegs());
+    inheritRegisters(cur, _res.get(), _pos);
   }
 
-  while (skipped < atMost) {
+  while (_skipped < atMost) {
     // read the next input row
     TRI_IF_FAILURE("DistinctCollectBlock::getOrSkipSomeOuter") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -939,19 +960,19 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
     groupValues.clear(); 
     // for hashing simply re-use the aggregate registers, without cloning
     // their contents
-    for (size_t i = 0; i < _groupRegisters.size(); ++i) {
+    for (auto &it : _groupRegisters) {
       groupValues.emplace_back(
-          cur->getValueReference(_pos, _groupRegisters[i].second));
+          cur->getValueReference(_pos, it.second));
     }
 
     // now check if we already know this group
-    auto it = _seen->find(groupValues);
+    auto foundIt = _seen->find(groupValues);
 
-    if (it == _seen->end()) {
+    if (foundIt == _seen->end()) {
       if (!skipping) {
         size_t i = 0;
         for (auto& it : _groupRegisters) {
-          res->setValue(skipped, it.first, groupValues[i].clone());
+          _res->setValue(_skipped, it.first, groupValues[i].clone());
           ++i;
         }
       }
@@ -962,7 +983,7 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
         copy.emplace_back(it.clone());
       }
       _seen->emplace(std::move(copy));
-      ++skipped;
+      ++_skipped;
     }
 
     if (++_pos >= cur->size()) {
@@ -976,7 +997,15 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
           TRI_IF_FAILURE("DistinctCollectBlock::hasMore") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          hasMore = ExecutionBlock::getBlockOld(atMost);
+          ExecutionState state;
+          bool blockAppended;
+          std::tie(state, blockAppended) = ExecutionBlock::getBlock(atMost);
+          if (state == ExecutionState::WAITING) {
+            TRI_ASSERT(!blockAppended);
+            return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+          }
+          hasMore = blockAppended;
+
         } catch (...) {
           // prevent leak
           returnBlock(cur);
@@ -994,11 +1023,13 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
             }
 
             TRI_ASSERT(cur != nullptr);
-            res->shrink(skipped);
+            _res->shrink(_skipped);
           } 
           returnBlock(cur);
           _done = true;
-          result = res.release();
+          result = _res.release();
+          skipped_ = _skipped;
+          _skipped = 0;
           return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
         } catch (...) {
           returnBlock(cur);
@@ -1013,11 +1044,13 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
   }
 
   if (!skipping) {
-    TRI_ASSERT(skipped > 0);
-    res->shrink(skipped);
+    TRI_ASSERT(_skipped > 0);
+    _res->shrink(_skipped);
   }
 
-  result = res.release();
+  result = _res.release();
+  skipped_ = _skipped;
+  _skipped = 0;
   return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
 }
 

@@ -168,6 +168,8 @@ class DistinctCollectBlock final : public ExecutionBlock {
   std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
   
   std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
+  std::unique_ptr<AqlItemBlock> _res;
+  size_t _skipped;
 };
 
 class CountCollectBlock final : public ExecutionBlock {
