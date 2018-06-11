@@ -34,11 +34,7 @@ using namespace arangodb::cache;
 const uint32_t Table::minLogSize = 8;
 const uint32_t Table::maxLogSize = 32;
 
-Table::GenericBucket::GenericBucket() : _state{} {
-  for (size_t i = 0; i < paddingSize; i++) {
-    _padding[i] = static_cast<uint8_t>(0);
-  }
-}
+Table::GenericBucket::GenericBucket() : _state{}, _padding {}
 
 bool Table::GenericBucket::lock(uint64_t maxTries) {
   return _state.lock(maxTries);
@@ -51,7 +47,11 @@ void Table::GenericBucket::unlock() {
 
 void Table::GenericBucket::clear() {
   _state.lock(UINT64_MAX, [this]() -> void {
-    _state.clearAndUnlock();
+    _state.clear();
+    for (size_t i = 0; i < paddingSize; i++) {
+      _padding[i] = static_cast<uint8_t>(0);
+    }
+    _state.unlock();
   });
 }
 
@@ -126,8 +126,8 @@ uint64_t Table::size() const { return _size; }
 
 uint32_t Table::logSize() const { return _logSize; }
 
-std::pair<void*, Table*> Table::fetchAndLockBucket(
-    uint32_t hash, uint64_t maxTries) {
+std::pair<void*, Table*> Table::fetchAndLockBucket(uint32_t hash,
+                                                   uint64_t maxTries) {
   GenericBucket* bucket = nullptr;
   Table* source = nullptr;
   bool ok = _lock.readLock(maxTries);
@@ -252,14 +252,14 @@ bool Table::isEnabled(uint64_t maxTries) {
 
 bool Table::slotFilled() {
   size_t i = _slotsUsed.fetch_add(1, std::memory_order_acq_rel);
-  return ((static_cast<double>(i + 1) /
-           static_cast<double>(_slotsTotal)) > Table::idealUpperRatio);
+  return ((static_cast<double>(i + 1) / static_cast<double>(_slotsTotal)) >
+          Table::idealUpperRatio);
 }
 
 bool Table::slotEmptied() {
   size_t i = _slotsUsed.fetch_sub(1, std::memory_order_acq_rel);
-  return (((static_cast<double>(i - 1) /
-            static_cast<double>(_slotsTotal)) < Table::idealLowerRatio) &&
+  return (((static_cast<double>(i - 1) / static_cast<double>(_slotsTotal)) <
+           Table::idealLowerRatio) &&
           (_logSize > Table::minLogSize));
 }
 
