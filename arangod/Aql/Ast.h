@@ -235,10 +235,6 @@ class Ast {
   /// @brief create an AST reference node
   AstNode* createNodeReference(Variable const*);
 
-  /// @brief create an AST variable access
-  AstNode* createNodeAccess(Variable const*,
-                            std::vector<basics::AttributeName> const&);
-
   /// @brief create an AST parameter node
   AstNode* createNodeParameter(
     char const* name,
@@ -265,9 +261,21 @@ class Ast {
   AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*,
                                      AstNode const*);
 
+  /// @brief create an AST variable access
+  AstNode* createNodeAccess(Variable const*,
+                            std::vector<basics::AttributeName> const&);
+
   /// @brief create an AST attribute access node
   /// note that the caller must make sure that char* data remains valid!
   AstNode* createNodeAttributeAccess(AstNode const*, char const*, size_t);
+  //AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string_view>);
+  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string>);
+
+  AstNode* createNodeAttributeAccess(AstNode const* node, std::vector<basics::AttributeName> const& attrs) {
+    std::vector<std::string> vec; //change to string view once availalbe
+    std::transform(attrs.begin(), attrs.end(), vec.begin(), +[](basics::AttributeName const& a) { return a.name; });
+    return createNodeAttributeAccess(node,vec);
+  }
 
   /// @brief create an AST attribute access node w/ bind parameter
   AstNode* createNodeBoundAttributeAccess(AstNode const*, AstNode const*);

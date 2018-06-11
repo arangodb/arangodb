@@ -233,32 +233,21 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
         accessLatitude = idx->fields()[0];
         accessLongitude  = idx->fields()[1];
 
-        for(auto const& part : accessLatitude){
-          char const* p = query->registerString(part.name.data(), part.name.size());
-          accessNodeLat = ast->createNodeAttributeAccess(accessNodeLat, p, part.name.size());
-        }
+        accessNodeLat = ast->createNodeAttributeAccess(accessNodeLat, accessLatitude);
+        accessNodeLon = ast->createNodeAttributeAccess(accessNodeLon, accessLongitude);
 
-        for(auto const& part : accessLongitude){
-          char const* p = query->registerString(part.name.data(), part.name.size());
-          accessNodeLon = ast->createNodeAttributeAccess(accessNodeLon, p, part.name.size());
-        }
         indexFound = true;
       } else if ((isGeo1 || isGeo) && fieldNum == 1) {
         accessLongitude = idx->fields()[0];
-
-        for(auto const& part : accessLongitude){
-          char const* p = query->registerString(part.name.data(), part.name.size());
-          accessNodeLon = ast->createNodeAttributeAccess(accessNodeLon, p, part.name.size());
-          accessNodeLat = ast->createNodeAttributeAccess(accessNodeLat, p, part.name.size());
-        }
+        AstNode * base = ast->createNodeAttributeAccess(accessNodeLon, accessLongitude);
 
         //TODO check for alternative way to find out weather geoJson is used or not
         VPackBuilder builder;
         idx->toVelocyPack(builder,true,false);
         bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
 
-        accessNodeLat = ast->createNodeIndexedAccess(accessNodeLat, ast->createNodeValueInt(geoJson ? 1 : 0));
-        accessNodeLon = ast->createNodeIndexedAccess(accessNodeLon, ast->createNodeValueInt(geoJson ? 0 : 1));
+        accessNodeLat = ast->createNodeIndexedAccess(base, ast->createNodeValueInt(geoJson ? 1 : 0));
+        accessNodeLon = ast->createNodeIndexedAccess(base, ast->createNodeValueInt(geoJson ? 0 : 1));
         indexFound = true;
       }
       break;
