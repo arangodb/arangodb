@@ -167,7 +167,7 @@ AstNode* createSubqueryWithLimit(
   eReturn->addDependency(last);
 
   /// add optional limit node
-  if(limit) {
+  if(limit && !limit->isNullValue()) {
     ExecutionNode* eLimit = plan->registerNode(
       new LimitNode(plan, plan->nextId(), 0 /*offset*/, limit->getIntValue())
     );
@@ -207,7 +207,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   //// enumerate collection
   auto* aqlCollection = query->collections()->get(params.collection);
   if(!aqlCollection) {
-    LOG_DEVEL << "no collection";
+    //LOG_DEVEL << "no collection";
     return nullptr;
   }
 
@@ -269,7 +269,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
 
   if(!indexFound) {
-    LOG_DEVEL << "no access path";
+    //LOG_DEVEL << "no access path";
     return nullptr;
   }
 

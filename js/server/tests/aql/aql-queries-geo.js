@@ -130,12 +130,28 @@ function ahuacatlLegacyGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNear3 : function () {
-      var expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 }, { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
-      var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+      var expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, 
+                       { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 },
+                       { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
+      var query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") " + 
+                  "SORT x.distance DESC LIMIT 3 RETURN x"
+      var actual = runQuery(query);
       assertEqual(expected, actual);
 
-      expected = [ {"distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 }, { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 }, { "distance" : "4484371.86154" , "latitude" : -38, "longitude" : 23 } ];
-      actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") SORT x.distance DESC LIMIT 3 RETURN x");
+      expected = [ { "distance" : "4487652.12954", "latitude" : -37, "longitude" : 26 },
+                   { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 },
+                   { "distance" : "4484371.86154", "latitude" : -38, "longitude" : 23 } ];
+      query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, 100, \"distance\") "+
+              "SORT x.distance DESC LIMIT 3 RETURN x"
+      actual = runQuery(query);
+      assertEqual(expected, actual);
+
+      expected = [ { "distance" : "14891044.54146", "latitude" : 40, "longitude" : -40 }, 
+                   { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 },
+                   { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
+      query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") "+
+              "SORT x.distance DESC LIMIT 3 RETURN x"
+      actual = runQuery(query);
       assertEqual(expected, actual);
     },
 
@@ -355,19 +371,27 @@ function legacyGeoTestSuite() {
 
     testNear3: function () {
       var expected = [{ "distance": "14891044.54146", "latitude": 40, "longitude": -40 },
-      { "distance": "14853029.30724", "latitude": 40, "longitude": -39 },
-      { "distance": "14815001.47646", "latitude": 40, "longitude": -38 }];
+                      { "distance": "14853029.30724", "latitude": 40, "longitude": -39 },
+                      { "distance": "14815001.47646", "latitude": 40, "longitude": -38 }];
       var actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000) " +
-        "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
-        "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
+                                "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
+                                "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
 
       expected = [{ "distance": "4487652.12954", "latitude": -37, "longitude": 26 },
-      { "distance": "4485565.93668", "latitude": -39, "longitude": 20 },
-      { "distance": "4484371.86154", "latitude": -38, "longitude": 23 }];
+                  { "distance": "4485565.93668", "latitude": -39, "longitude": 20 },
+                  { "distance": "4484371.86154", "latitude": -38, "longitude": 23 }];
+      actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, 100) " +
+                            "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
+                            "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
+      assertEqual(expected, actual);
+
+      expected = [{ "distance": "14891044.54146", "latitude": 40, "longitude": -40 },
+                  { "distance": "14853029.30724", "latitude": 40, "longitude": -39 },
+                  { "distance": "14815001.47646", "latitude": 40, "longitude": -38 }];
       actual = runQuery("FOR x IN NEAR(" + locations.name() + ", -70, 70, null) " +
-        "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
-        "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
+                             "LET d = DISTANCE(-70,70,x.latitude,x.longitude) " +
+                             "SORT d DESC LIMIT 3 RETURN MERGE(x, {distance:d})");
       assertEqual(expected, actual);
     },
 
