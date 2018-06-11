@@ -31,7 +31,7 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `skipCache`: if set to true, the hash cache unittests are skipped',
   '   - `skipCatch`: if set to true the catch unittests are skipped',
-  '   - `skipGeo`: if set to true the geo index tests are skipped'
+  '   - `skipGeo`: obsolete and only here for downwards-compatibility'
 ];
 
 const fs = require('fs');
@@ -119,32 +119,6 @@ function catchRunner (options) {
     }
   }
 
-  if (!options.skipGeo) {
-    if (run !== '') {
-      let argv = [
-        '--log.line-number',
-        options.extremeVerbosity ? "true" : "false",
-        '[geo][exclude:longRunning]',
-        '-r',
-        'junit',
-        '-o',
-        fs.join(options.testOutputDirectory, 'catch-geo.xml')
-      ];
-      results.geo_suite = pu.executeAndWait(run, argv, options, 'geo_suite', rootDir, options.coreCheck);
-      results.geo_suite.failed = results.geo_suite.status ? 0 : 1;
-      if (!results.geo_suite.status) {
-        results.failed += 1;
-      }
-    } else {
-      results.failed += 1;
-      results.geo_suite = {
-        failed: 1,
-        status: false,
-        message: 'binary "geo_suite" not found'
-      };
-    }
-  }
-
   return results;
 }
 
@@ -155,7 +129,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   opts['skipCatch'] = false;
   opts['skipCache'] = true;
-  opts['skipGeo'] = false;
+  opts['skipGeo'] = false; // not used anymore - only here for downwards-compatibility
 
   defaultFns.push('catch');
 
