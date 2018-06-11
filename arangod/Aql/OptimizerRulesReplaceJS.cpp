@@ -207,7 +207,6 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   //// enumerate collection
   auto* aqlCollection = query->collections()->get(params.collection);
   if(!aqlCollection) {
-    //LOG_DEVEL << "no collection";
     return nullptr;
   }
 
@@ -269,7 +268,6 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
 
   if(!indexFound) {
-    //LOG_DEVEL << "no access path";
     return nullptr;
   }
 
@@ -363,7 +361,6 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   auto* query = ast->query();
   auto* trx = query->trx();
 
-  funAstNode->dump(0);
   fulltextParams params(funAstNode); // must be NODE_TYPE_FCALL
 
   /// index
@@ -385,14 +382,12 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 	}
 
 	if(!index){ // not found or error
-    LOG_DEVEL << "no valid index found";
 		return nullptr;
 	}
 
   // index part 2 - get remaining vars required for index creation
   auto* aqlCollection = query->collections()->get(params.collection);
   if(!aqlCollection) {
-    LOG_DEVEL << "no collection";
     return nullptr;
   }
 	auto condition = std::make_unique<Condition>(ast);
