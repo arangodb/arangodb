@@ -102,7 +102,7 @@ Table::Table(uint32_t logSize)
       _slotsUsed(static_cast<uint64_t>(0)) {
   for (size_t i = 0; i < _size; i++) {
     // use placement new in order to properly initialize the bucket
-    new (_buckets + i) GenericBucket{}; // aggregate initialization
+    new (_buckets + i) GenericBucket();
   }
 }
 
