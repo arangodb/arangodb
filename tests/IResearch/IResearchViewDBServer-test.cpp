@@ -24,12 +24,17 @@
 #include "utils/misc.hpp"
 
 #include "catch.hpp"
-#include "../IResearch/AgencyCommManagerMock.h"
-#include "../IResearch/StorageEngineMock.h"
+#include "common.h"
+#include "AgencyMock.h"
+#include "StorageEngineMock.h"
+#include "Agency/AgencyFeature.h"
+#include "Agency/Store.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Basics/files.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -46,6 +51,7 @@
 #include "Transaction/UserTransaction.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Parser.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -54,19 +60,26 @@
 // -----------------------------------------------------------------------------
 
 struct IResearchViewDBServerSetup {
-  GeneralClientConnectionMapMock* agency;
+  struct ClusterCommControl : arangodb::ClusterComm {
+    static void reset() {
+      arangodb::ClusterComm::_theInstanceInit.store(0);
+    }
+  };
+
+  arangodb::consensus::Store _agencyStore{nullptr, "arango"};
+  GeneralClientConnectionAgencyMock* agency;
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::string testFilesystemPath;
 
   IResearchViewDBServerSetup(): server(nullptr, nullptr) {
-    auto* agencyCommManager = new AgencyCommManagerMock();
+    auto* agencyCommManager = new AgencyCommManagerMock("arango");
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
-    agency = agencyCommManager->addConnection<GeneralClientConnectionMapMock>();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_PRIMARY);
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
@@ -77,12 +90,15 @@ struct IResearchViewDBServerSetup {
 
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
+    features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
     features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), false); // required for instantiating IResearchView*
+    features.emplace_back(new arangodb::AgencyFeature(&server), false);
+    features.emplace_back(new arangodb::ClusterFeature(&server), false);
+    features.emplace_back(new arangodb::V8DealerFeature(&server), false);
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -90,6 +106,10 @@ struct IResearchViewDBServerSetup {
 
     for (auto& f: features) {
       f.first->prepare();
+
+      if (f.first->name() == "Authentication") {
+        f.first->forceDisable();
+      }
     }
 
     for (auto& f: features) {
@@ -97,8 +117,6 @@ struct IResearchViewDBServerSetup {
         f.first->start();
       }
     }
-
-    arangodb::ClusterInfo::createInstance(nullptr); // required for generating view id
 
     testFilesystemPath = (
       (irs::utf8_path()/=
@@ -111,12 +129,13 @@ struct IResearchViewDBServerSetup {
     long systemError;
     std::string systemErrorStr;
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
+
+    agencyCommManager->start(); // initialize agency
   }
 
   ~IResearchViewDBServerSetup() {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::AgencyCommManager::MANAGER.reset();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_SINGLE);
@@ -132,6 +151,8 @@ struct IResearchViewDBServerSetup {
       f.first->unprepare();
     }
 
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
+    ClusterCommControl::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
@@ -149,11 +170,11 @@ TEST_CASE("IResearchViewDBServerTest", "[cluster][iresearch][iresearch-view]") {
   (void)(s);
 
 SECTION("test_drop") {
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
   // drop empty
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -166,9 +187,7 @@ SECTION("test_drop") {
 
   // drop non-empty
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -176,9 +195,19 @@ SECTION("test_drop") {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
 
+    // ensure we have shard view in vocbase
+    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto jsonShard = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
+    );
+    CHECK((true == !vocbase.lookupView(shardViewName)));
+    auto shardView = vocbase.createView(jsonShard->slice());
+    CHECK(shardView);
+
     auto view = impl->ensure(123);
     auto const viewId = view->id();
     CHECK((false == !view));
+    CHECK(view == shardView);
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((false == impl->visitCollections(visitor)));
     CHECK((false == !vocbase.lookupView(view->id())));
@@ -189,9 +218,7 @@ SECTION("test_drop") {
 
   // drop non-empty (drop failure)
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -199,8 +226,18 @@ SECTION("test_drop") {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
 
+    // ensure we have shard view in vocbase
+    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto jsonShard = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
+    );
+    CHECK((true == !vocbase.lookupView(shardViewName)));
+    auto shardView = vocbase.createView(jsonShard->slice());
+    CHECK(shardView);
+
     auto view = impl->ensure(123);
     CHECK((false == !view));
+    CHECK(view == shardView);
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((false == impl->visitCollections(visitor)));
     CHECK((false == !vocbase.lookupView(view->id())));
@@ -216,9 +253,6 @@ SECTION("test_drop") {
 }
 
 SECTION("test_drop_cid") {
-  s.agency->responses.clear();
-  s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-  s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -226,9 +260,18 @@ SECTION("test_drop_cid") {
   auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
   CHECK((nullptr != impl));
 
+  // ensure we have shard view in vocbase
+  auto jsonShard = arangodb::velocypack::Parser::fromJson(
+    "{ \"id\": 100, \"name\": \"_iresearch_123_1_testView\", \"type\": \"arangosearch\", \"isSystem\": true }"
+  );
+  CHECK((true == !vocbase.lookupView("_iresearch_123_1_testView")));
+  auto shardView = vocbase.createView(jsonShard->slice());
+  CHECK(shardView);
+
   auto view = impl->ensure(123);
   auto const viewId = view->id();
   CHECK((false == !view));
+  CHECK(shardView == view);
   static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
   CHECK((false == impl->visitCollections(visitor)));
   CHECK((false == !vocbase.lookupView(view->id())));
@@ -239,9 +282,6 @@ SECTION("test_drop_cid") {
 }
 
 SECTION("test_ensure") {
-  s.agency->responses.clear();
-  s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-  s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"collections\": [ 3, 4, 5 ] }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -249,7 +289,6 @@ SECTION("test_ensure") {
   auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
   CHECK((nullptr != impl));
 
-  CHECK((true == !vocbase.lookupView("_iresearch_123_1_testView")));
   auto view = impl->ensure(123);
   CHECK((false == !view));
   CHECK((std::string("_iresearch_123_1_testView") == view->name()));
@@ -265,13 +304,14 @@ SECTION("test_ensure") {
 }
 
 SECTION("test_make") {
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
   // make DBServer view
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto const wiewId = ci->uniqid() + 1; // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,  "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
@@ -279,18 +319,15 @@ SECTION("test_make") {
 
     CHECK((std::string("testView") == wiew->name()));
     CHECK((false == wiew->deleted()));
-    CHECK((1 == wiew->id()));
+    CHECK((wiewId == wiew->id()));
     CHECK((impl->id() == wiew->planId())); // same as view ID
-    CHECK((0 == wiew->planVersion())); // when creating via vocbase planVersion is always 0
+    CHECK((42 == wiew->planVersion())); // when creating via vocbase planVersion is always 0
     CHECK((arangodb::iresearch::DATA_SOURCE_TYPE == wiew->type()));
     CHECK((&vocbase == &(wiew->vocbase())));
   }
 
   // make IResearchView (DBServer view also created)
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 100, \"name\": \"_iresearch_123_456_testView\", \"type\": \"arangosearch\", \"isSystem\": true }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     CHECK((true == !vocbase.lookupView("testView")));
@@ -306,29 +343,15 @@ SECTION("test_make") {
     CHECK((42 == view->planVersion()));
     CHECK((arangodb::iresearch::DATA_SOURCE_TYPE == view->type()));
     CHECK((&vocbase == &(view->vocbase())));
-
-    auto wiew = vocbase.lookupView("testView");
-    CHECK((false == !wiew));
-    auto* wmpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
-    CHECK((nullptr != wmpl));
-
-    CHECK((std::string("testView") == wiew->name()));
-    CHECK((false == wiew->deleted()));
-    CHECK((view->id() != wiew->id()));
-    CHECK((456 == wiew->id()));
-    CHECK((wiew->id() == wiew->planId())); // same as view ID
-    CHECK((0 == wiew->planVersion())); // when creating via vocbase planVersion is always 0
-    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE == wiew->type()));
-    CHECK((&vocbase == &(wiew->vocbase())));
   }
 }
 
 SECTION("test_open") {
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
   // open empty
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -343,9 +366,7 @@ SECTION("test_open") {
 
   // open non-empty
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-123")).utf8();
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -354,19 +375,26 @@ SECTION("test_open") {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
 
+    // ensure we have shard view in vocbase
+    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto jsonShard = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
+    );
+    CHECK((true == !vocbase.lookupView(shardViewName)));
+    auto shardView = vocbase.createView(jsonShard->slice());
+    CHECK(shardView);
+
     static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
     CHECK((true == impl->visitCollections(visitor)));
     auto view = impl->ensure(123);
     CHECK((false == !view));
+    CHECK(view == shardView);
     CHECK((false == impl->visitCollections(visitor)));
     wiew->open();
   }
 }
 
 SECTION("test_query") {
-  s.agency->responses.clear();
-  s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-  s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
@@ -579,11 +607,11 @@ SECTION("test_query") {
 }
 
 SECTION("test_rename") {
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
   // rename empty
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -622,9 +650,7 @@ SECTION("test_rename") {
 
   // rename non-empty
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -632,10 +658,19 @@ SECTION("test_rename") {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
 
+    // ensure we have shard view in vocbase
+    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto jsonShard = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
+    );
+    CHECK((true == !vocbase.lookupView(shardViewName)));
+    auto shardView = vocbase.createView(jsonShard->slice());
+    CHECK(shardView);
+
     CHECK((std::string("testView") == wiew->name()));
     auto view = impl->ensure(123);
     CHECK((false == !view));
-    CHECK((std::string("_iresearch_123_3_testView") == view->name()));
+    CHECK((shardViewName == view->name()));
 
     {
       arangodb::velocypack::Builder builder;
@@ -659,7 +694,7 @@ SECTION("test_rename") {
       CHECK((std::string("newName") == builder.slice().get("name").copyString()));
     }
 
-    CHECK((std::string("_iresearch_123_3_newName") == view->name()));
+    CHECK((("_iresearch_123_" + wiewId + "_newName") == view->name()));
     wiew->rename("testView", true); // rename back or vocbase will be out of sync
   }
 }
@@ -667,9 +702,6 @@ SECTION("test_rename") {
 SECTION("test_toVelocyPack") {
   // base
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -691,9 +723,6 @@ SECTION("test_toVelocyPack") {
 
   // includeProperties
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -720,9 +749,6 @@ SECTION("test_toVelocyPack") {
 
   // includeSystem
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": \"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -749,9 +775,6 @@ SECTION("test_toVelocyPack") {
 
 SECTION("test_transaction_snapshot") {
   static std::vector<std::string> const EMPTY;
-  s.agency->responses.clear();
-  s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-  s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"commit\": { \"commitIntervalMsec\": 0 } }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto logicalWiew = vocbase.createView(viewJson->slice());
@@ -887,9 +910,6 @@ SECTION("test_transaction_snapshot") {
 SECTION("test_updateProperties") {
   // update empty (partial)
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -949,9 +969,6 @@ SECTION("test_updateProperties") {
 
   // update empty (full)
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1011,9 +1028,6 @@ SECTION("test_updateProperties") {
 
   // update non-empty (partial)
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -1075,9 +1089,6 @@ SECTION("test_updateProperties") {
 
   // update non-empty (full)
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": \"123\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
@@ -1142,11 +1153,11 @@ SECTION("test_updateProperties") {
 }
 
 SECTION("test_visitCollections") {
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE(nullptr != ci);
+
   // visit empty
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -1160,9 +1171,7 @@ SECTION("test_visitCollections") {
 
   // visit non-empty
   {
-    s.agency->responses.clear();
-    s.agency->responses["POST /_api/agency/read HTTP/1.1\r\n\r\n[[\"/Sync/LatestID\"]]"] = "http/1.0 200\n\n[ { \"\": { \"Sync\": { \"LatestID\" : 1 } } } ]";
-    s.agency->responses["POST /_api/agency/write HTTP/1.1"] = "http/1.0 200\n\n{\"results\": []}";
+    auto const wiewId = std::to_string(ci->uniqid() + 1); // +1 because LogicalView creation will generate a new ID
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -1170,8 +1179,18 @@ SECTION("test_visitCollections") {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
 
+    // ensure we have shard view in vocbase
+    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto jsonShard = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
+    );
+    CHECK((true == !vocbase.lookupView(shardViewName)));
+    auto shardView = vocbase.createView(jsonShard->slice());
+    CHECK(shardView);
+
     auto view = impl->ensure(123);
     CHECK((false == !view));
+    CHECK(shardView == view);
     std::set<TRI_voc_cid_t> cids = { 123 };
     static auto visitor = [&cids](TRI_voc_cid_t cid)->bool { return 1 == cids.erase(cid); };
     CHECK((true == wiew->visitCollections(visitor))); // all collections expected

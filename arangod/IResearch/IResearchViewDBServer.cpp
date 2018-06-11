@@ -407,14 +407,18 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return nullptr;
   }
 
+  // FIXME should we register?
+  _collections.emplace(cid, view);
+
   // hold a reference to the original view in the deleter so that the view is still valid for the duration of the pointer wrapper
   return std::shared_ptr<arangodb::LogicalView>(
     view.get(),
     [this, view, cid](arangodb::LogicalView*)->void {
+      // FIXME destructor has to be noexcept
       static const auto visitor = [](TRI_voc_cid_t)->bool { return false; };
 
       // same view in vocbase and with no collections
-      if (view.get() == vocbase().lookupView(view->id()).get() // avoid double dropView(...)
+      if (view == vocbase().lookupView(view->id()) // avoid double dropView(...)
           && view->visitCollections(visitor)) {
         drop(cid);
       }
