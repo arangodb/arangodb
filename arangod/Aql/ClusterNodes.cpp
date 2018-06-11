@@ -378,7 +378,14 @@ double GatherNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
+/// @brief spawn from an index node.
+SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode const& createFrom, ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base)
 
+{
+      
+  // TODO
+}
 /// @brief constructor for SingleRemoteOperationNode
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),

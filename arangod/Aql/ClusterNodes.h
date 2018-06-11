@@ -37,6 +37,7 @@ namespace arangodb {
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
+ class IndexNode;
 struct Collection;
 
 /// @brief class RemoteNode
@@ -417,6 +418,8 @@ class SingleRemoteOperationNode final : public ExecutionNode {
         _isResponsibleForInitializeCursor(true) {
     // note: server, ownName and queryId may be empty and filled later
   }
+
+  SingleRemoteOperationNode(IndexNode const& createFrom, ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests

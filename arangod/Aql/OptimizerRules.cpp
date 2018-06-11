@@ -2629,255 +2629,13 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
 ////////////////////////////////////////////////////////////////////////////////
 struct DetectSingleDocumentOperations final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
-  SortNode* _sortNode;
-  std::vector<std::pair<Variable const*, bool>> _sorts;
-  std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
-  bool _modified;
+  IndexNode* _indexNode;
 
  public:
   explicit DetectSingleDocumentOperations(ExecutionPlan* plan)
       : _plan(plan),
-        _sortNode(nullptr),
-        _sorts(),
-        _variableDefinitions(),
-        _modified(false) {}
-
-  bool handleEnumerateCollectionNode(
-      EnumerateCollectionNode* enumerateCollectionNode) {
-    if (_sortNode == nullptr) {
-      return true;
-    }
-
-    if (enumerateCollectionNode->isInInnerLoop()) {
-      // index node contained in an outer loop. must not optimize away the sort!
-      return true;
-    }
-
-    SortCondition sortCondition(_plan,
-        _sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(),
-        _variableDefinitions);
-
-    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
-        sortCondition.isUnidirectional()) {
-      // we have found a sort condition, which is unidirectionl
-      // now check if any of the collection's indexes covers it
-
-      Variable const* outVariable = enumerateCollectionNode->outVariable();
-      std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto trx = _plan->getAst()->query()->trx();
-      size_t coveredAttributes = 0;
-      auto resultPair = trx->getIndexForSortCondition(
-          enumerateCollectionNode->collection()->name(), &sortCondition,
-          outVariable, enumerateCollectionNode->collection()->count(trx),
-          usedIndexes, coveredAttributes);
-      if (resultPair.second) {
-        // If this bit is set, then usedIndexes has length exactly one
-        // and contains the best index found.
-        auto condition = std::make_unique<Condition>(_plan->getAst());
-        condition->normalize(_plan);
-
-        IndexIteratorOptions opts;
-        opts.ascending = sortCondition.isAscending();
-        std::unique_ptr<ExecutionNode> newNode(new IndexNode(
-            _plan, _plan->nextId(),
-            enumerateCollectionNode->collection(), outVariable, usedIndexes,
-            condition.get(), opts));
-
-        condition.release();
-
-        auto n = newNode.release();
-
-        _plan->registerNode(n);
-        _plan->replaceNode(enumerateCollectionNode, n);
-        _modified = true;
-
-        if (coveredAttributes == sortCondition.numAttributes()) {
-          // if the index covers the complete sort condition, we can also remove
-          // the sort node
-          _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-        }
-      }
-    }
-
-    return true;  // always abort further searching here
-  }
-
-  bool handleIndexNode(IndexNode* indexNode) {
-    if (_sortNode == nullptr) {
-      return true;
-    }
-
-    if (indexNode->isInInnerLoop()) {
-      // index node contained in an outer loop. must not optimize away the sort!
-      return true;
-    }
-
-    auto const& indexes = indexNode->getIndexes();
-    auto cond = indexNode->condition();
-    TRI_ASSERT(cond != nullptr);
-
-    Variable const* outVariable = indexNode->outVariable();
-    TRI_ASSERT(outVariable != nullptr);
-
-    auto index = indexes[0];
-    transaction::Methods* trx = _plan->getAst()->query()->trx();
-    bool isSorted = false;
-    bool isSparse = false;
-    std::vector<std::vector<arangodb::basics::AttributeName>> fields =
-        trx->getIndexFeatures(index, isSorted, isSparse);
-    if (indexes.size() != 1) {
-      // can only use this index node if it uses exactly one index or multiple
-      // indexes on exactly the same attributes
-
-      if (!cond->isSorted()) {
-        // index conditions do not guarantee sortedness
-        return true;
-      }
-
-      if (isSparse) {
-        return true;
-      }
-
-      for (auto& idx : indexes) {
-        if (idx != index) {
-          // Can only be sorted iff only one index is used.
-          return true;
-        }
-      }
-
-      // all indexes use the same attributes and index conditions guarantee
-      // sorted output
-    }
-
-    TRI_ASSERT(indexes.size() == 1 || cond->isSorted());
-
-    // if we get here, we either have one index or multiple indexes on the same
-    // attributes
-    bool handled = false;
-
-    if (indexes.size() == 1 && isSorted) {
-      // if we have just a single index and we can use it for the filtering
-      // condition, then we can use the index for sorting, too. regardless of it
-      // the index is sparse or not. because the index would only return
-      // non-null attributes anyway, so we do not need to care about null values
-      // when sorting here
-      isSparse = false;
-    }
-
-    SortCondition sortCondition(_plan,
-        _sorts, cond->getConstAttributes(outVariable, !isSparse),
-        _variableDefinitions);
-
-    bool const isOnlyAttributeAccess =
-        (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
-
-    if (isOnlyAttributeAccess && isSorted && !isSparse &&
-        sortCondition.isUnidirectional() &&
-        sortCondition.isAscending() == indexNode->options().ascending) {
-      // we have found a sort condition, which is unidirectional and in the same
-      // order as the IndexNode...
-      // now check if the sort attributes match the ones of the index
-      size_t const numCovered =
-          sortCondition.coveredAttributes(outVariable, fields);
-
-      if (numCovered >= sortCondition.numAttributes()) {
-        // sort condition is fully covered by index... now we can remove the
-        // sort node from the plan
-        _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-        // we need to have a sorted result later on, so we will need a sorted
-        // GatherNode in the cluster
-        indexNode->needsGatherNodeSort(true); 
-        _modified = true;
-        handled = true;
-      }
-    }
-
-    if (!handled && isOnlyAttributeAccess && indexes.size() == 1) {
-      // special case... the index cannot be used for sorting, but we only
-      // compare with equality
-      // lookups. now check if the equality lookup attributes are the same as
-      // the index attributes
-      auto root = cond->root();
-
-      if (root != nullptr) {
-        auto condNode = root->getMember(0);
-
-        if (condNode->isOnlyEqualityMatch()) {
-          // now check if the index fields are the same as the sort condition fields
-          // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
-          auto i = index.getIndex();
-          // some special handling for the MMFiles edge index here, which to the outside
-          // world is an index on attributes _from and _to at the same time, but only one
-          // can be queried at a time
-          // this special handling is required in order to prevent lookups by one of the index
-          // attributes (e.g. _from) and a sort clause on the other index attribte (e.g. _to)
-          // to be treated as the same index attribute, e.g.
-          //     FOR doc IN edgeCol FILTER doc._from == ... SORT doc._to ...
-          // can use the index either for lookup or for sorting, but not for both at the same
-          // time. this is because if we do the lookup by _from, the results will be sorted
-          // by _from, and not by _to.
-          if (i->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX && fields.size() == 2) {
-            // looks like MMFiles edge index
-            if (condNode->type == NODE_TYPE_OPERATOR_NARY_AND) {
-              // check all conditions of the index node, and check if we can find _from or _to
-              for (size_t j = 0; j < condNode->numMembers(); ++j) {
-                auto sub = condNode->getMemberUnchecked(j);
-                if (sub->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
-                  continue;
-                }
-                auto lhs = sub->getMember(0);
-                if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
-                    lhs->getMember(0)->type == NODE_TYPE_REFERENCE &&
-                    lhs->getMember(0)->getData() == outVariable) {
-                  // check if this is either _from or _to
-                  std::string attr = lhs->getString();
-                  if (attr == StaticStrings::FromString || attr == StaticStrings::ToString) {
-                    // reduce index fields to just the attribute we found in the index lookup condition
-                    fields = {{arangodb::basics::AttributeName(attr, false)} };
-                  }
-                }
-
-                auto rhs = sub->getMember(1);
-                if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
-                    rhs->getMember(0)->type == NODE_TYPE_REFERENCE &&
-                    rhs->getMember(0)->getData() == outVariable) {
-                  // check if this is either _from or _to
-                  std::string attr = rhs->getString();
-                  if (attr == StaticStrings::FromString || attr == StaticStrings::ToString) {
-                    // reduce index fields to just the attribute we found in the index lookup condition
-                    fields = {{arangodb::basics::AttributeName(attr, false)} };
-                  }
-                }
-              }
-            }
-          }
-
-          size_t const numCovered =
-              sortCondition.coveredAttributes(outVariable, fields);
-
-          if (numCovered == sortCondition.numAttributes() &&
-              sortCondition.isUnidirectional() &&
-              (isSorted || fields.size() >= sortCondition.numAttributes())) {
-            // no need to sort
-            _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-            indexNode->setAscending(sortCondition.isAscending());
-            // we need to have a sorted result later on, so we will need a sorted
-            // GatherNode in the cluster
-            indexNode->needsGatherNodeSort(true); 
-            _modified = true;
-          } else if (numCovered > 0 && sortCondition.isUnidirectional()) {
-            // remove the first few attributes if they are constant
-            SortNode* sortNode =
-                ExecutionNode::castTo<SortNode*>(_plan->getNodeById(_sortNode->id()));
-            sortNode->removeConditions(numCovered);
-            _modified = true;
-          }
-        }
-      }
-    }
-
-    return true;  // always abort after we found an IndexNode
-  }
+        _indexNode(nullptr)
+ {}
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
@@ -2893,53 +2651,40 @@ struct DetectSingleDocumentOperations final : public WalkerWorker<ExecutionNode>
 #endif
       case EN::SUBQUERY:
       case EN::FILTER:
-        return false;  // skip. we don't care.
-
-      case EN::CALCULATION: {
-        auto outvars = en->getVariablesSetHere();
-        TRI_ASSERT(outvars.size() == 1);
-
-        _variableDefinitions.emplace(
-            outvars[0]->id,
-            ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
-        return false;
-      }
-
-      case EN::SINGLETON:
+      case EN::ENUMERATE_COLLECTION:
+      case EN::CALCULATION:
       case EN::COLLECT:
       case EN::INSERT:
       case EN::REMOVE:
       case EN::REPLACE:
       case EN::UPDATE:
       case EN::UPSERT:
-      case EN::RETURN:
       case EN::NORESULTS:
       case EN::SCATTER:
       case EN::DISTRIBUTE:
       case EN::GATHER:
       case EN::REMOTE:
+      case EN::SORT:
       case EN::LIMIT:  // LIMIT is criterion to stop
+        _indexNode = nullptr;
         return true;   // abort.
 
-      case EN::SORT:  // pulling two sorts together is done elsewhere.
-        if (!_sorts.empty() || _sortNode != nullptr) {
-          return true;  // a different SORT node. abort
-        }
-        _sortNode = ExecutionNode::castTo<SortNode*>(en);
-        for (auto& it : _sortNode->elements()) {
-          _sorts.emplace_back(it.var, it.ascending);
-        }
+      case EN::SINGLETON:
+      case EN::RETURN:
         return false;
-
       case EN::INDEX:
-        return handleIndexNode(ExecutionNode::castTo<IndexNode*>(en));
-
-      case EN::ENUMERATE_COLLECTION:
-        return handleEnumerateCollectionNode(
-            ExecutionNode::castTo<EnumerateCollectionNode*>(en));
+        if (_indexNode == nullptr) {
+          _indexNode = ExecutionNode::castTo<IndexNode*>(en);
+          return false;
+        }
+        else {
+          _indexNode = nullptr;
+          return true;
+        }
 
       default: {
         // should not reach this point
+        _indexNode = nullptr;
         TRI_ASSERT(false);
       }
     }
@@ -2956,15 +2701,15 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
 
   bool modified = false;
 
-  for (auto const& n : nodes) {
-    auto sortNode = ExecutionNode::castTo<SortNode*>(n);
+  ExecutionNode* firstNode = nodes[0];
 
-    DetectSingleDocumentOperations finder(plan.get());
-    sortNode->walk(finder);
+  DetectSingleDocumentOperations finder(plan.get());
+  firstNode->walk(finder);
 
-    if (finder._modified) {
-      modified = true;
-    }
+  if (finder._indexNode != nullptr) {
+    modified = true;
+    plan->unlinkNode(nodes[0]);
+
   }
 
   opt->addPlan(std::move(plan), rule, modified);
