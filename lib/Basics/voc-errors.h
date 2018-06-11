@@ -1269,6 +1269,11 @@ constexpr int TRI_ERROR_USER_CHANGE_PASSWORD                                    
 /// Will be raised when the user is authenicated by an external server.
 constexpr int TRI_ERROR_USER_EXTERNAL                                           = 1705;
 
+/// 1706: ERROR_USER_MANAGEMENT_BOOTSTRAPPING
+/// "user management bootstrapping"
+/// The user management subsystem is still bootstrapping
+constexpr int TRI_ERROR_USER_MANAGEMENT_BOOTSTRAPPING                           = 1706;
+
 /// 1750: ERROR_SERVICE_INVALID_NAME
 /// "invalid service name"
 /// Will be raised when an invalid service name is specified.

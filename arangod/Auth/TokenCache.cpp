@@ -131,16 +131,20 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   std::string username = up.substr(0, n);
   std::string password = up.substr(n + 1);
 
-  bool authorized = _userManager->checkPassword(username, password);
+  
+  auto result = _userManager->checkPassword(username, password);
+
   double expiry = _authTimeout;
   if (expiry > 0) {
     expiry += TRI_microtime();
   }
 
-  auth::TokenCache::Entry entry(username, authorized, expiry);
+  auth::TokenCache::Entry entry(
+    username, result.ok(), expiry,
+    result.errorNumber() != TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
   {
     WRITE_LOCKER(guard, _basicLock);
-    if (authorized) {
+    if (result.ok()) {
       if (!_basicCache.emplace(secret, entry).second) {
         // insertion did not work - probably another thread did insert the
         // same data right now

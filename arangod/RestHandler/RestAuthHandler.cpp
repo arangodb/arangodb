@@ -94,7 +94,7 @@ RestStatus RestAuthHandler::execute() {
     std::string msg = "This server does not support users";
     LOG_TOPIC(ERR, Logger::AUTHENTICATION) << msg;
     generateError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_HTTP_UNAUTHORIZED, msg);
-  } else if (um->checkPassword(_username, password)) {
+  } else if (um->checkPassword(_username, password).ok()) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);

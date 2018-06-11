@@ -101,7 +101,7 @@ class UserManager {
   Result removeAllUsers();
 
   /// Convenience method to check a password
-  bool checkPassword(std::string const& username, std::string const& password);
+  Result checkPassword(std::string const& username, std::string const& password);
 
   /// Convenience method to refresh user rights
 #ifdef USE_ENTERPRISE
@@ -141,7 +141,7 @@ class UserManager {
  private:
   
   /// @brief load users and permissions from local database
-  void loadFromDB();
+  Result loadFromDB();
   /// @brief store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
 

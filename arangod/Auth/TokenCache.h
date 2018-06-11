@@ -52,23 +52,25 @@ class TokenCache {
     friend class auth::TokenCache;
 
    public:
-    explicit Entry() : _authenticated(false), _expiry(0) {}
+    explicit Entry() : _authenticated(false), _expiry(0), _bootstrapped(false) {}
 
-    explicit Entry(std::string const& username, bool a, double t)
-        : _username(username), _authenticated(a), _expiry(t) {} 
+    explicit Entry(std::string const& username, bool a, double t, bool b)
+      : _username(username), _authenticated(a), _expiry(t), _bootstrapped(b) {} 
 
     std::string const& username() const { return _username; }
     bool authenticated() const { return _authenticated; }
+    bool bootstrapped() const { return _bootstrapped; }
     void setExpiry(double expiry) { _expiry = expiry; }
     bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
 
-   public:
     /// username
     std::string _username;
     /// User exists and password was checked
     bool _authenticated;
     /// expiration time (in seconds since epoch) of this entry
     double _expiry;
+    /// _users collection has been bootstrapped
+    bool _bootstrapped;
   };
 
  public:
