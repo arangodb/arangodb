@@ -33,11 +33,11 @@ class SocketSslTcp final : public Socket {
   friend class AcceptorTcp;
 
  public:
-  SocketSslTcp(asio_ns::io_context& ioService, asio_ns::ssl::context&& context)
-      : Socket(ioService, /*encrypted*/ true),
+  SocketSslTcp(rest::Scheduler* scheduler, asio_ns::ssl::context&& context)
+      : Socket(scheduler, /*encrypted*/ true),
         _sslContext(std::move(context)),
-        _sslSocket(ioService, _sslContext),
-        _socket(_sslSocket.next_layer()),
+        _sslSocket(scheduler->newSslSocket(_sslContext)),
+        _socket(_sslSocket->next_layer()),
         _peerEndpoint() {}
 
   SocketSslTcp(SocketSslTcp const& that) = delete;
@@ -55,23 +55,23 @@ class SocketSslTcp final : public Socket {
 
   size_t writeSome(basics::StringBuffer* buffer,
                    asio_ns::error_code& ec) override {
-    return _sslSocket.write_some(
+    return _sslSocket->write_some(
         asio_ns::buffer(buffer->begin(), buffer->length()), ec);
   }
 
   void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                   AsyncHandler const& handler) override {
-    return asio_ns::async_write(_sslSocket, buffer, strand.wrap(handler));
+    return asio_ns::async_write(*_sslSocket, buffer, _strand->wrap(handler));
   }
 
   size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
                   asio_ns::error_code& ec) override {
-    return _sslSocket.read_some(buffer, ec);
+    return _sslSocket->read_some(buffer, ec);
   }
 
   void asyncRead(asio_ns::mutable_buffers_1 const& buffer,
                  AsyncHandler const& handler) override {
-    return _sslSocket.async_read_some(buffer, strand.wrap(handler));
+    return _sslSocket->async_read_some(buffer, _strand->wrap(handler));
   }
 
   std::size_t available(asio_ns::error_code& ec) override {
@@ -101,7 +101,7 @@ class SocketSslTcp final : public Socket {
 
  private:
   asio_ns::ssl::context _sslContext;
-  asio_ns::ssl::stream<asio_ns::ip::tcp::socket> _sslSocket;
+  std::unique_ptr<asio_ns::ssl::stream<asio_ns::ip::tcp::socket>> _sslSocket;
   asio_ns::ip::tcp::socket& _socket;
   asio_ns::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
