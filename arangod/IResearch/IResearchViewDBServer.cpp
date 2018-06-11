@@ -238,19 +238,6 @@ IResearchViewDBServer::IResearchViewDBServer(
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
-  // drop per-cid views that are no longer associated with any cid
-  // FIXME TODO move this to the destructor in vocbase
-  for (auto& entry: _collections) {
-    static const auto visitor = [](TRI_voc_cid_t)->bool{ return false; };
-    auto* view = entry.second.get();
-
-    if (view->visitCollections(visitor)
-        && !vocbase().dropView(view->id(), true).ok()) {// per-cid collections always system
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to drop stale IResearchView '" << view->name() << "' while deallocating IResearchViewDBServer '" << name() << "' in database '" << vocbase().name() << "'";
-    }
-  }
-
   _collections.clear(); // ensure view distructors called before mutex is deallocated
 }
 
@@ -548,21 +535,40 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return nullptr;
   }
 
-  auto impl = vocbase.lookupView(name);
+  auto view = vocbase.lookupView(name);
 
-  if (!impl) {
-    // no view for shard
-    impl = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
+  if (view) {
+    return view;
   }
 
-  if (!impl) {
+  // no view for shard
+  view = IResearchView::make(vocbase, info, isNew, planVersion, preCommit);
+
+  if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure while creating an IResearch View for collection '" << cid << "' in database '" << vocbase.name() << "'";
 
     return nullptr;
   }
 
-  return impl;
+  // a wrapper to remove the view from vocbase if it no longer has any links
+  // hold a reference to the original view in the deleter so that the view is
+  // still valid for the duration of the pointer wrapper
+  return std::shared_ptr<arangodb::LogicalView>(
+    view.get(),
+    [view](arangodb::LogicalView*)->void {
+      static const auto visitor = [](TRI_voc_cid_t)->bool { return false; };
+      auto& vocbase = view->vocbase();
+
+      // same view in vocbase and with no collections
+      if (view.get() == vocbase.lookupView(view->id()).get() // avoid double dropView(...)
+          && view->visitCollections(visitor)
+          && !vocbase.dropView(view->id(), true).ok()) { // per-cid collections always system
+        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+          << "failure to drop stale IResearchView '" << view->name() << "' while from database '" << vocbase.name() << "'";
+      }
+    }
+  );
 }
 
 void IResearchViewDBServer::open() {
