@@ -213,7 +213,8 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
     RegisterId const resultRegister = engine->resultRegister();
     std::unique_ptr<AqlItemBlock> value;
 
-    bool hasMore = true;
+    bool hasMore = false;
+    bool done = false;
 
     // reserve some space in Builder to avoid frequent reallocs
     builder.reserve(16 * 1024);
@@ -224,6 +225,9 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       if (res.first == ExecutionState::WAITING) {
         _query->tempWaitForAsyncResponse();
       } else {
+        if (res.first == ExecutionState::DONE) {
+          done = true;
+        }
         value.swap(res.second);
         break;
       }
@@ -241,9 +245,9 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       }
       // return used block: this will reset value to a nullptr
       engine->_itemBlockManager.returnBlock(std::move(value)); 
-      hasMore = engine->hasMore();
-    } else {
-      hasMore = false;
+      if (!done) {
+        hasMore = engine->hasMore();
+      }
     }
     builder.close();  // result
 
