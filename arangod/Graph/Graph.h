@@ -27,6 +27,7 @@
 #include <utility>
 
 #include "Aql/VariableGenerator.h"
+#include "Aql/Query.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ResultT.h"
@@ -309,6 +310,11 @@ class GraphManager {
        std::string const& name);
 
    ////////////////////////////////////////////////////////////////////////////////
+   /// @brief check for duplicate definitions within edge definitions
+   ////////////////////////////////////////////////////////////////////////////////
+   void checkDuplicateEdgeDefinitions(VPackSlice edgeDefinition);
+
+   ////////////////////////////////////////////////////////////////////////////////
    /// @brief find or create collections by EdgeDefinitions
    ////////////////////////////////////////////////////////////////////////////////
    void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition);
@@ -347,7 +353,7 @@ class GraphManager {
    GraphManager() = delete;
    GraphManager(std::shared_ptr<transaction::Context> ctx_)
         : _ctx(std::move(ctx_)) {}
-   void readGraphs(velocypack::Builder& builder);
+   void readGraphs(velocypack::Builder& builder, arangodb::aql::QueryPart QueryPart);
    ResultT<std::pair<OperationResult, Result>> createGraph(VPackSlice document,
        bool waitForSync);
 };

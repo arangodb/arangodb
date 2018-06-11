@@ -1074,7 +1074,7 @@ Result RestGraphHandler::graphActionReadGraphs() {
 
   GraphManager gmngr{ctx};
   VPackBuilder builder;
-  gmngr.readGraphs(builder);
+  gmngr.readGraphs(builder, arangodb::aql::PART_MAIN);
 
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
@@ -1098,7 +1098,6 @@ Result RestGraphHandler::graphActionReadConfig(
     TRI_ASSERT(false);
   }
 
-  LOG_TOPIC(FATAL, Logger::GRAPHS) << 3;
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
   return Result();

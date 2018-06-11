@@ -995,6 +995,62 @@ void GraphManager::findOrCreateVertexCollectionByName(
   }
 }
 
+void GraphManager::checkDuplicateEdgeDefinitions(
+    VPackSlice edgeDefinitions) {
+
+  std::vector<std::string> tmpCollections;
+  std::map<std::string, VPackSlice> tmpEdgeDefinitions;
+
+  if (edgeDefinitions.isArray()) {
+    for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
+      std::string col;
+      if (edgeDefinition.get("collection").isString()) {
+        col = edgeDefinition.get("collection").copyString();
+      } else {
+        return;
+      }
+
+      bool found = std::find(tmpCollections.begin(), tmpCollections.end(), col) != tmpCollections.end();
+      if (found) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE);
+      }
+      tmpCollections.emplace_back(col);
+      tmpEdgeDefinitions.emplace(std::make_pair("col", edgeDefinition));
+    }
+  }
+
+  VPackBuilder graphsBuilder;
+  readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  VPackSlice graphs = graphsBuilder.slice();
+
+  if (graphs.get("graphs").isArray()) {
+    for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
+      singleGraph = singleGraph.resolveExternals();
+      VPackSlice sGEDs = singleGraph.get("edgeDefinitions");
+      if (!sGEDs.isArray()) {
+        return;
+      }
+      for (auto const& sGED : VPackArrayIterator(sGEDs)) {
+        std::string col;
+        if (sGED.get("collection").isString()) {
+          col = sGED.get("collection").copyString();
+        } else {
+          return;
+        }
+        bool foundS = std::find(tmpCollections.begin(), tmpCollections.end(), col) != tmpCollections.end();
+        if (foundS) {
+          try {
+            if (sGED.toString() != tmpEdgeDefinitions.at(col).toString()) {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE);
+            }
+          } catch (...) {
+          }
+        }
+      }
+    }
+  }
+}
+
 void GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     VPackSlice edgeDefinitions) {
   std::shared_ptr<LogicalCollection> def;
@@ -1131,6 +1187,10 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(VPackSlice
   // TODO: verify graph collection usage in multiple graphs
   // TODO: arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code
   // TODO: not implemented yet
+  // check, if a collection is already used in a different edgeDefinition
+  if (edgeDefinitions.isArray()) {
+    checkDuplicateEdgeDefinitions(edgeDefinitions);
+  }
 
   OperationResult checkDoc = trx->document(Graph::_graphs, checkDocument.slice(), options);
   if (checkDoc.ok()) {
@@ -1169,7 +1229,7 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(VPackSlice
   return std::make_pair(std::move(result), std::move(res));
 }
 
-void GraphManager::readGraphs(velocypack::Builder& builder) {
+void GraphManager::readGraphs(velocypack::Builder& builder, aql::QueryPart QueryPart) {
   std::string const queryStr("FOR g IN _graphs RETURN g");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(
@@ -1178,7 +1238,7 @@ void GraphManager::readGraphs(velocypack::Builder& builder) {
     arangodb::aql::QueryString(queryStr),
     emptyBuilder,
     emptyBuilder,
-    arangodb::aql::PART_MAIN
+    QueryPart
   );
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
