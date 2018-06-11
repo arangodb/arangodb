@@ -137,6 +137,10 @@ struct OptimizerRule {
     /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
     // ======================================================
 
+    // when we have single document operations, fill in special cluster
+    // handling.
+    substituteSingleDocumentOperations_pass6,
+
     // replace simple OR conditions with IN
     replaceOrWithInRule_pass6,
 

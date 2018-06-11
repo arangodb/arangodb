@@ -268,6 +268,11 @@ void OptimizerRulesFeature::addRules() {
   OptimizerRulesFeature::registerRule("fulltext-index-optimizer", fulltextIndexRule,
                                       OptimizerRule::applyFulltextIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
+
+  // TODO: move into coordinator
+  registerRule("optimize-cluster-single-documnet-operations", substituteClusterSingleDocumentOperations,
+                 OptimizerRule::substituteSingleDocumentOperations_pass6, CreatesAdditionalPlans, CanBeDisabled);
+  
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #if 0
     registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
