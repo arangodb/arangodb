@@ -157,8 +157,9 @@ class DistinctCollectBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  int getOrSkipSomeOld(size_t atMost, bool skipping,
-                       AqlItemBlock*& result, size_t& skipped) override;
+  std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                  AqlItemBlock*& result,
+                                                  size_t& skipped) override;
 
   void clearValues();
 

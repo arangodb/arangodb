@@ -895,13 +895,12 @@ void DistinctCollectBlock::clearValues() {
   }
 }
 
-int DistinctCollectBlock::getOrSkipSomeOld(size_t atMost,
-                                        bool skipping, AqlItemBlock*& result,
-                                        size_t& skipped) {
+std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
-    return TRI_ERROR_NO_ERROR;
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
   std::vector<AqlValue> groupValues;
@@ -913,7 +912,7 @@ int DistinctCollectBlock::getOrSkipSomeOld(size_t atMost,
     if (!ExecutionBlock::getBlockOld(atMost)) {
       // done
       _done = true;
-      return TRI_ERROR_NO_ERROR;
+      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
     _pos = 0;  // this is in the first block
   }
@@ -1000,7 +999,7 @@ int DistinctCollectBlock::getOrSkipSomeOld(size_t atMost,
           returnBlock(cur);
           _done = true;
           result = res.release();
-          return TRI_ERROR_NO_ERROR;
+          return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
         } catch (...) {
           returnBlock(cur);
           throw;
@@ -1019,7 +1018,7 @@ int DistinctCollectBlock::getOrSkipSomeOld(size_t atMost,
   }
 
   result = res.release();
-  return TRI_ERROR_NO_ERROR;
+  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
 }
 
 CountCollectBlock::CountCollectBlock(ExecutionEngine* engine,
