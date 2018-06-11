@@ -239,7 +239,7 @@ void fulltextIndexRule(aql::Optimizer*, std::unique_ptr<aql::ExecutionPlan>, aql
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
 /// @brief replace legacy JS functions in the plan.
-void replaceJSFunctions(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+void replaceNearWithinFulltext(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
 
 }  // namespace aql

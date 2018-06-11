@@ -416,9 +416,12 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 
 } // namespace
 
-void arangodb::aql::replaceJSFunctions(Optimizer* opt
-                                      ,std::unique_ptr<ExecutionPlan> plan
-                                      ,OptimizerRule const* rule){
+
+
+//! @brief replace legacy JS Functions with pure AQL
+void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt
+                                             ,std::unique_ptr<ExecutionPlan> plan
+                                             ,OptimizerRule const* rule){
 
   bool modified = false;
 

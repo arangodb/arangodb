@@ -245,8 +245,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
-  registerRule("replace-javascript-funtions", replaceJSFunctions,
-               OptimizerRule::replaceJSFunctions, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+  registerRule("replace-near-within-fulltex", replaceNearWithinFulltext,
+               OptimizerRule::replaceNearWithinFulltext, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 #ifdef USE_IRESEARCH
   // move filters and sort conditions into views
   registerRule(
