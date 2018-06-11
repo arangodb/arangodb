@@ -229,6 +229,9 @@ boost::optional<RestStatus> RestGraphHandler::graphAction(
     case RequestType::GET:
       graphActionReadGraphConfig(graph);
       return RestStatus::DONE;
+    case RequestType::DELETE_REQ:
+      graphActionRemoveGraph(graph);
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -1033,6 +1036,22 @@ Result RestGraphHandler::graphActionReadGraphConfig(
   VPackBuilder builder;
   gops.readGraph(builder);
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
+
+  return Result();
+}
+
+Result RestGraphHandler::graphActionRemoveGraph(
+    const std::shared_ptr<const graph::Graph> graph) {
+  bool waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool dropCollections =
+      _request->parsedValue(Graph::_attrDropCollections, false);
+
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(_vocbase);
+  GraphOperations gops{*graph, ctx};
+  auto resultT = gops.removeGraph(waitForSync, dropCollections);
+
 
   return Result();
 }

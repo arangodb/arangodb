@@ -212,6 +212,10 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     std::shared_ptr<const graph::Graph> graph
   );
 
+  Result graphActionRemoveGraph(
+    std::shared_ptr<const graph::Graph> graph
+  );
+
   Result graphActionCreateGraph();
   Result graphActionReadGraphs();
 

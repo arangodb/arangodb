@@ -42,12 +42,14 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Graphs.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::UserTransaction;
 
 std::string const Graph::_graphs = "_graphs";
+char const* Graph::_attrDropCollections = "dropCollections";
 char const* Graph::_attrEdgeDefs = "edgeDefinitions";
 char const* Graph::_attrOrphans = "orphanCollections";
 char const* Graph::_attrIsSmart = "isSmart";
@@ -416,6 +418,82 @@ GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
   return builder.buffer();
 }
 
+ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph( // TODO DELETE GRAPH WIP
+    bool waitForSync, bool dropCollections) {
+
+  std::vector<std::string> trxCollections;
+  std::vector<std::string> writeCollections;
+  writeCollections.emplace_back(Graph::_graphs);
+
+  if (dropCollections) {
+    for (auto const& vertexCollection : _graph.vertexCollections()) {
+      writeCollections.emplace_back(vertexCollection);
+    }
+    for (auto const& orphanCollection : _graph.orphanCollections()) {
+      writeCollections.emplace_back(orphanCollection);
+    }
+    for (auto const& edgeCollection : _graph.edgeCollections()) {
+      writeCollections.emplace_back(edgeCollection);
+    }
+  }
+
+  OperationOptions options;
+  options.waitForSync = waitForSync;
+
+  transaction::Options trxOptions;
+  trxOptions.waitForSync = waitForSync;
+
+  std::unique_ptr<transaction::Methods> trx(
+    new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+
+  Result res = trx->begin();
+
+  std::vector<std::string> collectionsToBeRemoved;
+  if (dropCollections) {
+    for (auto const& vertexCollection : _graph.vertexCollections()) {
+      checkIfCollectionMayBeDropped(vertexCollection, _graph.name(), collectionsToBeRemoved, trx.get());
+    }
+    for (auto const& orphanCollection : _graph.orphanCollections()) {
+      checkIfCollectionMayBeDropped(orphanCollection, _graph.name(), collectionsToBeRemoved, trx.get());
+    }
+    for (auto const& edgeCollection : _graph.edgeCollections()) {
+      checkIfCollectionMayBeDropped(edgeCollection, _graph.name(), collectionsToBeRemoved, trx.get());
+    }
+
+    for (auto const& collection : collectionsToBeRemoved) {
+      VPackBuilder builder;
+      Result resIn;
+      Result found = methods::Collections::lookup(
+        &ctx()->vocbase(),
+        collection,
+        [&](LogicalCollection* coll) {
+          auto cid = std::to_string(coll->id());
+          VPackObjectBuilder obj(&builder, true);
+          obj->add("id", VPackValue(cid));
+          resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false, -1.0);
+        }
+      );
+    }
+  }
+  
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+  }
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
+  }
+
+  VPackSlice search = builder.slice();
+  OperationResult result = trx->remove(Graph::_graphs, search, options);
+
+  res = trx->finish(result.result);
+
+  return std::make_pair(std::move(result), std::move(res));
+}
+
 ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdge(
     const std::string& definitionName, const std::string& key,
     boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld) {
@@ -721,6 +799,12 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
   res = trx.finish(result.result);
 
   return std::make_pair(std::move(result), std::move(res));
+}
+
+void GraphOperations::checkIfCollectionMayBeDropped(
+  std::string colName, std::string graphName,
+  std::vector<std::string>& toBeRemoved, transaction::Methods* trx) {
+
 }
 
 void GraphOperations::readGraph(VPackBuilder& builder) {

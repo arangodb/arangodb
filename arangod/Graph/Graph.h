@@ -105,6 +105,9 @@ class Graph {
  public:
   /// @brief Graph collection name
   static std::string const _graphs;
+
+  /// @brief Graph collection edge definition attribute name
+  static char const* _attrDropCollections;
   
   /// @brief Graph collection edge definition attribute name
   static char const* _attrEdgeDefs;
@@ -244,6 +247,10 @@ class GraphOperations {
       const std::string& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
 
+  /// @brief Remove a vertex and all incident edges in the graph
+  ResultT<std::pair<OperationResult, Result>> removeGraph(
+      bool waitForSync, bool dropCollections);
+
   ResultT<std::pair<OperationResult, Result>> updateEdge(
       const std::string& definitionName, const std::string& key,
       VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
@@ -271,6 +278,9 @@ class GraphOperations {
   ResultT<std::pair<OperationResult, Result>> createVertex(
       const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
+
+  void checkIfCollectionMayBeDropped(std::string colName, std::string graphName,
+      std::vector<std::string>& toBeRemoved, transaction::Methods* trx);
 
   void readGraph(VPackBuilder& builder);
   void readEdges(VPackBuilder& builder);
