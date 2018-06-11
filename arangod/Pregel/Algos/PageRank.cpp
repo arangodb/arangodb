@@ -37,7 +37,7 @@ static std::string const kConvergence = "convergence";
 
 struct PRWorkerContext : public WorkerContext {
   PRWorkerContext() {}
-  
+
   float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
     if (gss == 0) {
@@ -49,9 +49,31 @@ struct PRWorkerContext : public WorkerContext {
 };
 
 PageRank::PageRank(VPackSlice const& params)
-    : SimpleAlgorithm("PageRank", params) {
-  _maxGSS =
-      basics::VelocyPackHelper::getNumericValue(params, "maxIterations", 250);
+    : SimpleAlgorithm("PageRank", params), _useSource(params.hasKey("sourceField")) {
+}
+
+/// will use a seed value for pagerank if available
+struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
+  SeededPRGraphFormat(std::string const& source, std::string const& result,
+                      float vertexNull)
+      : NumberGraphFormat(source, result, vertexNull, 0.0f) {}
+
+  size_t copyEdgeData(arangodb::velocypack::Slice document, float*,
+                      size_t maxSize) override {
+    return 0;
+  }
+  bool buildEdgeDocument(arangodb::velocypack::Builder& b, float const*,
+                         size_t size) const override {
+    return false;
+  }
+};
+
+GraphFormat<float, float>* PageRank::inputFormat() const {
+  if (_useSource && !_sourceField.empty()) {
+    return new SeededPRGraphFormat(_sourceField, _resultField, -1.0);
+  } else {
+    return new VertexGraphFormat<float, float>(_resultField, -1.0);
+  }
 }
 
 struct PRComputation : public VertexComputation<float, float, float> {
@@ -61,8 +83,11 @@ struct PRComputation : public VertexComputation<float, float, float> {
     float* ptr = mutableVertexData();
     float copy = *ptr;
 
+    // initialize vertices to initial weight, unless there was a seed weight
     if (globalSuperstep() == 0) {
-      *ptr = ctx->commonProb;
+      if (*ptr < 0) {
+        *ptr = ctx->commonProb;
+      }
     } else {
       float sum = 0.0f;
       for (const float* msg : messages) {
@@ -107,7 +132,6 @@ struct PRMasterContext : public MasterContext {
 MasterContext* PageRank::masterContext(VPackSlice userParams) const {
   return new PRMasterContext(userParams);
 }
-
 
 IAggregator* PageRank::aggregator(std::string const& name) const {
   if (name == kConvergence) {

@@ -22,41 +22,48 @@
 
 #include "Scheduler/SocketUnixDomain.h"
 
-#include <asio/write.hpp>
 #include "Basics/StringBuffer.h"
 
 using namespace arangodb;
 
 size_t SocketUnixDomain::writeSome(basics::StringBuffer* buffer,
-                                   asio::error_code& ec) {
-  return _socket.write_some(asio::buffer(buffer->begin(), buffer->length()),
+                                   asio_ns::error_code& ec) {
+  return _socket->write_some(asio_ns::buffer(buffer->begin(), buffer->length()),
                             ec);
 }
-void SocketUnixDomain::asyncWrite(asio::mutable_buffers_1 const& buffer,
+
+void SocketUnixDomain::asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                                   AsyncHandler const& handler) {
-  return asio::async_write(_socket, buffer, handler);
+  return asio_ns::async_write(*_socket, buffer, handler);
 }
-size_t SocketUnixDomain::readSome(asio::mutable_buffers_1 const& buffer,
-                                  asio::error_code& ec) {
-  return _socket.read_some(buffer, ec);
+
+size_t SocketUnixDomain::readSome(asio_ns::mutable_buffers_1 const& buffer,
+                                  asio_ns::error_code& ec) {
+  return _socket->read_some(buffer, ec);
 }
-std::size_t SocketUnixDomain::available(asio::error_code& ec) {
-  return _socket.available(ec);
+
+std::size_t SocketUnixDomain::available(asio_ns::error_code& ec) {
+  return _socket->available(ec);
 }
-void SocketUnixDomain::asyncRead(asio::mutable_buffers_1 const& buffer,
+
+void SocketUnixDomain::asyncRead(asio_ns::mutable_buffers_1 const& buffer,
                                  AsyncHandler const& handler) {
-  return _socket.async_read_some(buffer, handler);
+  return _socket->async_read_some(buffer, handler);
 }
-void SocketUnixDomain::shutdownReceive(asio::error_code& ec) {
-  _socket.shutdown(asio::local::stream_protocol::socket::shutdown_receive, ec);
+
+void SocketUnixDomain::shutdownReceive(asio_ns::error_code& ec) {
+  _socket->shutdown(asio_ns::local::stream_protocol::socket::shutdown_receive,
+                    ec);
 }
-void SocketUnixDomain::shutdownSend(asio::error_code& ec) {
-  _socket.shutdown(asio::local::stream_protocol::socket::shutdown_send, ec);
+
+void SocketUnixDomain::shutdownSend(asio_ns::error_code& ec) {
+  _socket->shutdown(asio_ns::local::stream_protocol::socket::shutdown_send, ec);
 }
-void SocketUnixDomain::close(asio::error_code& ec) {
-  if (_socket.is_open()) {
-    _socket.close(ec);
-    if (ec && ec != asio::error::not_connected) {
+
+void SocketUnixDomain::close(asio_ns::error_code& ec) {
+  if (_socket->is_open()) {
+    _socket->close(ec);
+    if (ec && ec != asio_ns::error::not_connected) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing socket failed with: "
                                               << ec.message();
     }
