@@ -832,7 +832,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 #ifndef USE_ENTERPRISE
 std::string DistributeBlock::createKey(VPackSlice) const {
   auto collInfo = _collection->getCollection();
-  return _collection->keyGenerator()->generate();
+  return collInfo->keyGenerator()->generate();
 }
 #endif
 
