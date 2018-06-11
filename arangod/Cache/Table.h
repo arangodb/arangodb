@@ -54,6 +54,7 @@ class Table : public std::enable_shared_from_this<Table> {
   struct GenericBucket {
     BucketState _state;
     uint8_t _padding[BUCKET_SIZE - sizeof(BucketState)];
+    GenericBucket();
     bool lock(uint64_t maxTries);
     void unlock();
     void clear();
@@ -87,7 +88,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// @brief Construct a new table of size 2^(logSize) in disabled state.
   //////////////////////////////////////////////////////////////////////////////
   explicit Table(uint32_t logSize);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy the table
   //////////////////////////////////////////////////////////////////////////////

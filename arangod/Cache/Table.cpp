@@ -34,6 +34,8 @@ using namespace arangodb::cache;
 const uint32_t Table::minLogSize = 8;
 const uint32_t Table::maxLogSize = 32;
 
+Table::GenericBucket::GenericBucket() : _state{}, _padding{0} {}
+
 bool Table::GenericBucket::lock(uint64_t maxTries) {
   return _state.lock(maxTries);
 }
@@ -45,7 +47,7 @@ void Table::GenericBucket::unlock() {
 
 void Table::GenericBucket::clear() {
   _state.lock(UINT64_MAX, [this]() -> void {
-    _state.clearAndUnlock(); 
+    _state.clearAndUnlock();
   });
 }
 
@@ -96,7 +98,7 @@ Table::Table(uint32_t logSize)
       _slotsUsed(static_cast<uint64_t>(0)) {
   for (size_t i = 0; i < _size; i++) {
     // use placement new in order to properly initialize the bucket
-    new (_buckets + i) GenericBucket();
+    new (_buckets + i) GenericBucket{}; // aggregate initialization
   }
 }
 
