@@ -238,6 +238,19 @@ IResearchViewDBServer::IResearchViewDBServer(
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
+  // drop per-cid views that are no longer associated with any cid
+  // FIXME TODO move this to the destructor in vocbase
+  for (auto& entry: _collections) {
+    static const auto visitor = [](TRI_voc_cid_t)->bool{ return false; };
+    auto* view = entry.second.get();
+
+    if (view->visitCollections(visitor)
+        && !vocbase().dropView(view->id(), true).ok()) {// per-cid collections always system
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failure to drop stale IResearchView '" << view->name() << "' while deallocating IResearchViewDBServer '" << name() << "' in database '" << vocbase().name() << "'";
+    }
+  }
+
   _collections.clear(); // ensure view distructors called before mutex is deallocated
 }
 
@@ -353,48 +366,52 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
   auto viewName = generateName(name(), id(), cid);
   auto view = vocbase().lookupView(viewName); // on startup a IResearchView might only be in vocbase but not in a brand new IResearchViewDBServer
 
-  if (!view) {
-    static const std::function<bool(irs::string_ref const& key)> acceptor = [](
-        irs::string_ref const& key
-    )->bool {
-      return key != StaticStrings::CollectionsField
-        && key != StaticStrings::LinksField; // ignored fields
-    };
-    arangodb::velocypack::Builder builder;
+  if (view) {
+    _collections.emplace(cid, view); // track the IResearchView instance from vocbase
 
-    builder.openObject();
+    return view; // do not wrap in deleter since view already present in vocbase (as if already present in '_collections')
+  }
+
+  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+      irs::string_ref const& key
+  )->bool {
+    return key != StaticStrings::CollectionsField
+      && key != StaticStrings::LinksField; // ignored fields
+  };
+  arangodb::velocypack::Builder builder;
+
+  builder.openObject();
+  builder.add(
+    arangodb::StaticStrings::DataSourceSystem,
+    arangodb::velocypack::Value(true)
+  ); // required to for use of VIEW_NAME_PREFIX
+  builder.add(
+    arangodb::StaticStrings::DataSourceName,
+    toValuePair(generateName(name(), id(), cid))
+  ); // mark the view definition as an internal per-cid instance
+  builder.add(
+    arangodb::StaticStrings::DataSourceType,
+    toValuePair(DATA_SOURCE_TYPE.name())
+  ); // type required for proper factory selection
+
+  {
     builder.add(
-      arangodb::StaticStrings::DataSourceSystem,
-      arangodb::velocypack::Value(true)
-    ); // required to for use of VIEW_NAME_PREFIX
-    builder.add(
-      arangodb::StaticStrings::DataSourceName,
-      toValuePair(generateName(name(), id(), cid))
-    ); // mark the view definition as an internal per-cid instance
-    builder.add(
-      arangodb::StaticStrings::DataSourceType,
-      toValuePair(DATA_SOURCE_TYPE.name())
-    ); // type required for proper factory selection
+      StaticStrings::PropertiesField,
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
+    );
 
-    {
-      builder.add(
-        StaticStrings::PropertiesField,
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
-      );
+    if (!mergeSliceSkipKeys(builder, _meta.slice(), acceptor)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().id() << "'";
 
-      if (!mergeSliceSkipKeys(builder, _meta.slice(), acceptor)) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "failure to generate properties definition while constructing IResearch View in database '" << vocbase().id() << "'";
-
-          return nullptr;
-      }
-
-      builder.close(); // close StaticStrings::PropertiesField
+        return nullptr;
     }
 
-    builder.close();
-    view = vocbase().createView(builder.slice());
+    builder.close(); // close StaticStrings::PropertiesField
   }
+
+  builder.close();
+  view = vocbase().createView(builder.slice());
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -476,13 +493,6 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
       logicalWiew = vocbase.lookupView(name);
     }
 
-    auto* impl = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
-
-    // if DBServer view already exists then make the new instance a partial clone
-    if (impl) {
-      wiew->_collections =impl->_collections;
-    }
-
     if (preCommit && !preCommit(wiew)) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
@@ -538,58 +548,6 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return nullptr;
   }
 
-  auto wiew = ClusterInfo::instance()->getView(
-    vocbase.name(), viewId
-  ); // always look up by view ID since it cannot change
-
-  // if not found in the plan then look for the view in vocbase (added there below)
-  if (!wiew) {
-    wiew = vocbase.lookupView(viewId);
-  }
-
-  // create DBServer view
-  if (!wiew) {
-    static const std::function<bool(irs::string_ref const& key)> acceptor = [](
-        irs::string_ref const& key
-    )->bool {
-      return key != arangodb::StaticStrings::DataSourceId
-        && key != arangodb::StaticStrings::DataSourceSystem
-        && key != arangodb::StaticStrings::DataSourceName
-        && key != arangodb::StaticStrings::DataSourceGuid; // ignored fields
-    };
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    builder.add(
-      arangodb::StaticStrings::DataSourceId,
-      arangodb::velocypack::Value(viewId)
-    );
-    builder.add(
-      arangodb::StaticStrings::DataSourceName,
-      arangodb::velocypack::Value(viewName)
-    );
-
-    if (!mergeSliceSkipKeys(builder, info, acceptor)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-        << "failure to generate definition while constructing IResearch View in database '" << vocbase.name() << "'";
-
-        return nullptr;
-    }
-
-    builder.close();
-    wiew = vocbase.createView(builder.slice());
-  }
-
-  // TODO FIXME find a better way to look up an iResearch View
-  auto* view = LogicalView::cast<IResearchViewDBServer>(wiew.get());
-
-  if (!view) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure while creating an IResearch View '" << std::string(name) << "' in database '" << vocbase.name() << "'";
-
-    return nullptr;
-  }
-
   auto impl = vocbase.lookupView(name);
 
   if (!impl) {
@@ -604,10 +562,7 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     return nullptr;
   }
 
-  WriteMutex mutex(view->_mutex);
-  SCOPED_LOCK(mutex); // 'collections_' can be asynchronously read
-
-  return view->_collections.emplace(cid, impl).first->second;
+  return impl;
 }
 
 void IResearchViewDBServer::open() {

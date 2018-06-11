@@ -159,16 +159,6 @@ int IResearchLink::drop() {
 
   _dropCollectionInDestructor = false; // will do drop now
 
-  if (arangodb::ServerState::instance()->isDBServer()) {
-    // TODO FIXME find a better way to look up an iResearch View
-    auto* view = LogicalView::cast<IResearchViewDBServer>(_wiew.get());
-
-    return view
-      ? view->drop(_collection->id()).errorNumber()
-      : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
-      ;
-  }
-
   return _view->drop(_collection->id());
 }
 
@@ -214,11 +204,10 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   auto identifier = definition.get(StaticStrings::ViewIdField);
   auto viewId = identifier.getNumber<uint64_t>();
   auto& vocbase = _collection->vocbase();
-  std::shared_ptr<arangodb::LogicalView> logicalView;
-  std::shared_ptr<arangodb::LogicalView> wiew;
+  auto logicalView = vocbase.lookupView(viewId); // will only contain IResearchView (even for a DBServer)
 
-  // create the IResearchView for the specific collection (on DBServer)
-  if (arangodb::ServerState::instance()->isDBServer()) {
+  // creation of link on a DBServer
+  if (!logicalView && arangodb::ServerState::instance()->isDBServer()) {
     auto* ci = ClusterInfo::instance();
 
     if (!ci) {
@@ -230,14 +219,29 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     }
 
     auto logicalWiew = ci->getView(vocbase.name(), std::to_string(viewId));
-    auto* impl = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
+    auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
 
-    if (impl) {
-      wiew = logicalWiew; // remeber the DBServer view instance
-      logicalView = impl->ensure(_collection->id()); // repoint LogicalView at the per-cid instance
+    if (wiew) {
+      auto collection = vocbase.lookupCollection(_collection->id());
+
+      if (collection) { // this is a shard collection/index
+        logicalView = wiew->ensure(_collection->id()); // repoint LogicalView at the per-cid instance
+      } else { // this is a cluster-wide collection/index
+        auto clusterCol = ci->getCollectionCurrent(
+          vocbase.name(), std::to_string(_collection->id())
+        );
+
+        if (clusterCol) {
+          for (auto& entry: clusterCol->errorNum()) {
+            collection = vocbase.lookupCollection(entry.first); // find shard collection
+
+            if (collection) {
+              wiew->ensure(collection->id()); // ensure the shard collection is registered with the cluster-wide view
+            }
+          }
+        }
+      }
     }
-  } else {
-    logicalView = vocbase.lookupView(viewId);
   }
 
   if (!logicalView
@@ -280,7 +284,6 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   _dropCollectionInDestructor = view->emplace(_collection->id()); // track if this is the instance that called emplace
   _meta = std::move(meta);
   _view = std::move(view);
-  _wiew = std::move(wiew);
 
   // FIXME TODO remove once View::updateProperties(...) will be fixed to write
   // the update delta into the WAL marker instead of the full persisted state
@@ -288,7 +291,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
     if (engine && engine->inRecovery()) {
-      _defaultId = _wiew ? _wiew->id() : _view->id();
+      _defaultId = _view->id();
     }
   }
 
@@ -353,11 +356,7 @@ bool IResearchLink::json(
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (_wiew) {
-    builder.add(
-      StaticStrings::ViewIdField, arangodb::velocypack::Value(_wiew->id())
-    );
-  } else if (_view) {
+  if (_view) {
     builder.add(
       StaticStrings::ViewIdField, arangodb::velocypack::Value(_view->id())
     );
@@ -385,11 +384,10 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
     }
 
     auto identifier = slice.get(StaticStrings::ViewIdField);
-    auto viewId = _wiew ? _wiew->id() : _view->id();
 
     if (!identifier.isNumber()
         || uint64_t(identifier.getInt()) != identifier.getUInt()
-        || identifier.getUInt() != viewId) {
+        || identifier.getUInt() != _view->id()) {
       return false; // iResearch View names of current object and slice do not match
     }
   } else if (_view) {
@@ -493,7 +491,7 @@ int IResearchLink::unload() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  _defaultId = _wiew ? _wiew->id() : _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
+  _defaultId = _view->id(); // remember view ID just in case (e.g. call to toVelocyPack(...) after unload())
 
   if (!_collection) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)

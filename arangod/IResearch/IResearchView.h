@@ -301,8 +301,8 @@ class IResearchView final: public arangodb::DBServerLogicalView,
     PersistedStore(irs::utf8_path&& path);
   };
 
-  class ViewStateHelper; // forward declaration
-  class ViewStateRead; // forward declaration
+  struct ViewStateHelper; // forward declaration
+  struct ViewStateRead; // forward declaration
   class ViewStateWrite; // forward declaration
 
   struct FlushCallbackUnregisterer {
