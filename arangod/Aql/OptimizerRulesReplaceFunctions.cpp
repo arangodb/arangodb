@@ -236,21 +236,18 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
       bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
       bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
 
-      std::vector<arangodb::basics::AttributeName> accessLatitude;
-      std::vector<arangodb::basics::AttributeName> accessLongitude;
-
       auto fieldNum = idx->fields().size();
       if ((isGeo2 || isGeo) && fieldNum == 2) { // individual fields
-        accessLatitude = idx->fields()[0];
-        accessLongitude  = idx->fields()[1];
+        auto accessLatitude = idx->fields()[0];
+        auto accessLongitude  = idx->fields()[1];
 
         accessNodeLat = ast->createNodeAttributeAccess(accessNodeLat, accessLatitude);
         accessNodeLon = ast->createNodeAttributeAccess(accessNodeLon, accessLongitude);
 
         indexFound = true;
       } else if ((isGeo1 || isGeo) && fieldNum == 1) {
-        accessLongitude = idx->fields()[0];
-        AstNode * base = ast->createNodeAttributeAccess(accessNodeLon, accessLongitude);
+        auto accessBase = idx->fields()[0];
+        AstNode * base = ast->createNodeAttributeAccess(accessNodeLon, accessBase);
 
         //TODO check for alternative way to find out weather geoJson is used or not
         VPackBuilder builder;
