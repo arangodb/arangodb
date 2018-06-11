@@ -805,6 +805,52 @@ void GraphOperations::checkIfCollectionMayBeDropped(
   std::string colName, std::string graphName,
   std::vector<std::string>& toBeRemoved, transaction::Methods* trx) {
 
+  GraphManager gmngr{ctx()};
+  VPackBuilder graphsBuilder;
+  gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  VPackSlice graphs = graphsBuilder.slice();
+  bool result = true;
+
+  if (graphs.get("graphs").isArray()) {
+    for (auto graph : VPackArrayIterator(graphs.get("graphs"))) {
+      graph = graph.resolveExternals();
+      if (!result) {
+        // Short circuit
+        return;
+      }
+      if (graph.get("_key").copyString() == graphName) {
+        return;
+      }
+
+      // check edge definitions
+      VPackSlice edgeDefinitions = graph.get(Graph::_attrEdgeDefs);
+      if (edgeDefinitions.isArray()) {
+        for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
+          std::string from = edgeDefinition.get(StaticStrings::FromString).copyString();
+          std::string to = edgeDefinition.get(StaticStrings::ToString).copyString();
+          std::string collection = edgeDefinition.get("collection").copyString();
+
+          if (collection == colName || from.find(colName) || to.find(colName)) {
+            result = false;
+          }
+        }
+      }
+
+      // check orphan collections
+      VPackSlice orphanCollections = graph.get(Graph::_attrOrphans);
+      if (orphanCollections.isArray()) {
+        for (auto const& orphanCollection : VPackArrayIterator(orphanCollections)) {
+          if (orphanCollection.copyString().find(colName)) {
+            result = false;
+          }
+        }
+      }
+    }
+  }
+
+  if (result) {
+    toBeRemoved.emplace_back(colName);
+  }
 }
 
 void GraphOperations::readGraph(VPackBuilder& builder) {
