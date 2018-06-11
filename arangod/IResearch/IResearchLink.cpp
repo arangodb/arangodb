@@ -240,6 +240,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
             }
           }
         }
+
+        return false; // finished shards registration
       }
     }
   }
