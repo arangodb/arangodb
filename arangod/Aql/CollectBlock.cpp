@@ -902,6 +902,19 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
     size_t& skipped_) {
   TRI_ASSERT(result == nullptr && skipped_ == 0);
 
+  auto const assignReturnValues = [this, skipping, &result, &skipped_]() {
+    // set &skipped_ and &result; reset _skipped and _res.
+
+    if (!skipping && _skipped > 0) {
+      TRI_ASSERT(_res != nullptr);
+      _res->shrink(_skipped);
+    }
+
+    result = _res.release();
+    skipped_ = _skipped;
+    _skipped = 0;
+  };
+
   if (_done) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
@@ -920,17 +933,7 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
     if (!blockAppended) {
       // done
       _done = true;
-
-      if (!skipping && _skipped > 0) {
-        // last time we got interrupted
-          TRI_ASSERT(_res != nullptr);
-          _res->shrink(_skipped);
-      }
-
-      result = _res.release();
-      skipped_ = _skipped;
-      _skipped = 0;
-
+      assignReturnValues();
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
     _pos = 0;  // this is in the first block
@@ -942,8 +945,9 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
 
   if (!skipping && _res == nullptr) {
     TRI_ASSERT(_skipped == 0);
-    _res.reset(requestBlock(atMost, getPlanNode()->getRegisterPlan()
-                                                 ->nrRegs[getPlanNode()->getDepth()]));
+    _res.reset(requestBlock(
+        atMost,
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
     TRI_ASSERT(cur->getNrRegs() <= _res->getNrRegs());
     inheritRegisters(cur, _res.get(), _pos);
@@ -1021,15 +1025,12 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
             TRI_IF_FAILURE("DistinctCollectBlock::getOrSkipSome") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
-
             TRI_ASSERT(cur != nullptr);
-            _res->shrink(_skipped);
-          } 
+          }
           returnBlock(cur);
           _done = true;
-          result = _res.release();
-          skipped_ = _skipped;
-          _skipped = 0;
+
+          assignReturnValues();
           return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
         } catch (...) {
           returnBlock(cur);
@@ -1045,12 +1046,9 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
 
   if (!skipping) {
     TRI_ASSERT(_skipped > 0);
-    _res->shrink(_skipped);
   }
 
-  result = _res.release();
-  skipped_ = _skipped;
-  _skipped = 0;
+  assignReturnValues();
   return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
 }
 
