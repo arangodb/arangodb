@@ -134,7 +134,7 @@ function ahuacatlLegacyGeoTestSuite () {
                        { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 },
                        { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
       var query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, 10000, \"distance\") " + 
-                  "SORT x.distance DESC LIMIT 3 RETURN x"
+                  "SORT x.distance DESC LIMIT 3 RETURN x";
       var actual = runQuery(query);
       assertEqual(expected, actual);
 
@@ -142,7 +142,7 @@ function ahuacatlLegacyGeoTestSuite () {
                    { "distance" : "4485565.93668", "latitude" : -39, "longitude" : 20 },
                    { "distance" : "4484371.86154", "latitude" : -38, "longitude" : 23 } ];
       query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, 100, \"distance\") "+
-              "SORT x.distance DESC LIMIT 3 RETURN x"
+              "SORT x.distance DESC LIMIT 3 RETURN x";
       actual = runQuery(query);
       assertEqual(expected, actual);
 
@@ -150,7 +150,7 @@ function ahuacatlLegacyGeoTestSuite () {
                    { "distance" : "14853029.30724", "latitude" : 40, "longitude" : -39 },
                    { "distance" : "14815001.47646", "latitude" : 40, "longitude" : -38 } ];
       query = "FOR x IN NEAR(" + locations.name() + ", -70, 70, null, \"distance\") "+
-              "SORT x.distance DESC LIMIT 3 RETURN x"
+              "SORT x.distance DESC LIMIT 3 RETURN x";
       actual = runQuery(query);
       assertEqual(expected, actual);
     },
