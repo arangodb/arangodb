@@ -1946,19 +1946,26 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
   if (_request->databaseName() != StaticStrings::SystemDatabase) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                   "global inventory can only be fetched from within _system database");
+    return;
   }
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
 
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature->getDatabaseNames()) {
-    builder.add(name, VPackValue(VPackValueType::Object));
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+
+    if (vocbase == nullptr) {
+      continue;
+    }
+
     ReplicationApplier* applier = vocbase->replicationApplier();
 
     if (applier == nullptr) {
-      return;
+      continue;
     }
+
+    builder.add(name, VPackValue(VPackValueType::Object));
     applier->toVelocyPack(builder);
     builder.close();
   }
