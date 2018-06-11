@@ -535,9 +535,12 @@ void ImportFeature::start() {
       }
 
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
-      for (std::string const& msg : ih.getErrorMessages()) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+      auto const& msgs = ih.getErrorMessages();
+      if (!msgs.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
+        for (std::string const& msg : msgs) {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+        }
       }
     }
   } catch (std::exception const& ex) {
