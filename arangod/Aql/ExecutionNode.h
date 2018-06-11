@@ -145,6 +145,7 @@ class ExecutionNode {
     TRAVERSAL = 22,
     INDEX = 23,
     SHORTEST_PATH = 24,
+    REMOTESINGLE = 25,
 #ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
 #endif

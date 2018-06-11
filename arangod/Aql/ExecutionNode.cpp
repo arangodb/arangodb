@@ -85,6 +85,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
+    {static_cast<int>(ExecutionNode::REMOTESINGLE), "SingleRemoteOperationNode"},
 #ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
 #endif
@@ -289,6 +290,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+    case REMOTESINGLE:
+      return new SingleRemoteOperationNode(plan, slice);
 #ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
@@ -1149,6 +1152,9 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       }
       break;
     }
+  case ExecutionNode::REMOTESINGLE: {
+    // TODO
+  }
 
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {

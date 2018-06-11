@@ -349,6 +349,54 @@ class SortingGatherBlock final : public ExecutionBlock {
   std::unique_ptr<SortingStrategy> _strategy;
 }; // SortingGatherBlock
 
+
+
+class SingleRemoteOperationBlock final : public ExecutionBlock {
+  /// @brief constructors/destructors
+ public:
+  SingleRemoteOperationBlock(ExecutionEngine* engine, SingleRemoteOperationNode const* en,
+                             std::string const& server, std::string const& ownName,
+                             std::string const& queryId);
+
+  /// @brief timeout
+  static double const defaultTimeOut;
+
+  /// @brief initializeCursor, could be called multiple times
+  int initializeCursor(AqlItemBlock* items, size_t pos) override final;
+
+  /// @brief shutdown, will be called exactly once for the whole query
+  int shutdown(int) override final;
+
+  /// @brief getSome
+  AqlItemBlock* getSome(size_t atMost) override final;
+
+  /// @brief skipSome
+  size_t skipSome(size_t atMost) override final;
+
+  /// @brief hasMore
+  bool hasMore() override final;
+  
+ private:
+  /// @brief internal method to send a request
+  std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
+      rest::RequestType type, std::string const& urlPart,
+      std::string const& body) const;
+
+  /// @brief our server, can be like "shard:S1000" or like "server:Claus"
+  std::string const _server;
+
+  /// @brief our own identity, in case of the coordinator this is empty,
+  /// in case of the DBservers, this is the shard ID as a string
+  std::string const _ownName;
+
+  /// @brief the ID of the query on the server as a string
+  std::string const _queryId;
+
+  /// @brief whether or not this block will forward initialize, 
+  /// initializeCursor or shutDown requests
+  bool const _isResponsibleForInitializeCursor;
+};
+
 }  // namespace arangodb::aql
 }  // namespace arangodb
 

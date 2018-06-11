@@ -398,6 +398,120 @@ class GatherNode final : public ExecutionNode {
   SortMode _sortmode;
 };
 
+
+/// @brief class RemoteNode
+class SingleRemoteOperationNode final : public ExecutionNode {
+  friend class ExecutionBlock;
+  friend class RemoteBlock;
+
+  /// @brief constructor with an id
+ public:
+  SingleRemoteOperationNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+                            std::string const& server, std::string const& ownName,
+                            std::string const& queryId)
+      : ExecutionNode(plan, id),
+        _vocbase(vocbase),
+        _server(server),
+        _ownName(ownName),
+        _queryId(queryId),
+        _isResponsibleForInitializeCursor(true) {
+    // note: server, ownName and queryId may be empty and filled later
+  }
+
+  /// @brief whether or not this node will forward initializeCursor or shutDown
+  /// requests
+  void isResponsibleForInitializeCursor(bool value) {
+    _isResponsibleForInitializeCursor = value;
+  }
+
+  /// @brief whether or not this node will forward initializeCursor or shutDown
+  /// requests
+  bool isResponsibleForInitializeCursor() const {
+    return _isResponsibleForInitializeCursor;
+  }
+
+  SingleRemoteOperationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+
+  /// @brief return the type of the node
+  NodeType getType() const override final { return REMOTESINGLE; }
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder&,
+                          unsigned flags) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+  ) const override;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override final {
+    return cloneHelper(
+      std::make_unique<SingleRemoteOperationNode>(
+        plan, _id, _vocbase, _server, _ownName, _queryId
+      ),
+      withDependencies,
+      withProperties
+    );
+  }
+
+  /// @brief estimateCost
+  double estimateCost(size_t&) const override final;
+
+  /// @brief return the database
+  TRI_vocbase_t* vocbase() const { return _vocbase; }
+
+  /// @brief return the server name
+  std::string server() const { return _server; }
+
+  /// @brief set the server name
+  void server(std::string const& server) { _server = server; }
+
+  /// @brief return our own name
+  std::string ownName() const { return _ownName; }
+
+  /// @brief set our own name
+  void ownName(std::string const& ownName) { _ownName = ownName; }
+
+  /// @brief return the query id
+  std::string queryId() const { return _queryId; }
+
+  /// @brief set the query id
+  void queryId(std::string const& queryId) { _queryId = queryId; }
+
+  /// @brief set the query id
+  void queryId(QueryId queryId) {
+    _queryId = arangodb::basics::StringUtils::itoa(queryId);
+  }
+
+ private:
+  /// @brief the underlying database
+  TRI_vocbase_t* _vocbase;
+
+  /// @brief our server, can be like "shard:S1000" or like "server:Claus"
+  std::string _server;
+
+  /// @brief our own identity, in case of the coordinator this is empty,
+  /// in case of the DBservers, this is the shard ID as a string
+  std::string _ownName;
+
+  /// @brief the ID of the query on the server as a string
+  std::string _queryId;
+
+  /// @brief whether or not this node will forward initializeCursor and shutDown
+  /// requests
+  bool _isResponsibleForInitializeCursor;
+};
+
+
+
+
+
+
+
+ 
 }  // namespace arangodb::aql
 }  // namespace arangodb
 

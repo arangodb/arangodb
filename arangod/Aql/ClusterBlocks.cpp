@@ -1627,3 +1627,290 @@ bool SortingGatherBlock::getBlock(size_t i, size_t atMost) {
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/// @brief timeout
+double const SingleRemoteOperationBlock::defaultTimeOut = 3600.0;
+
+/// @brief creates a remote block
+SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine, SingleRemoteOperationNode const* en,
+                                                       std::string const& server, std::string const& ownName,
+                                                       std::string const& queryId)
+    : ExecutionBlock(engine, en),
+      _server(server),
+      _ownName(ownName),
+      _queryId(queryId),
+      _isResponsibleForInitializeCursor(
+          en->isResponsibleForInitializeCursor()) {
+  TRI_ASSERT(!queryId.empty());
+  TRI_ASSERT(
+      (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
+      (!arangodb::ServerState::instance()->isCoordinator() &&
+       !ownName.empty()));
+}
+
+/// @brief local helper to send a request
+std::unique_ptr<ClusterCommResult> SingleRemoteOperationBlock::sendRequest(
+    arangodb::rest::RequestType type, std::string const& urlPart,
+    std::string const& body) const {
+  DEBUG_BEGIN_BLOCK();
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens on controlled shutdown
+    return std::make_unique<ClusterCommResult>();
+  }
+
+  // Later, we probably want to set these sensibly:
+  ClientTransactionID const clientTransactionId = std::string("AQL");
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
+  if (!_ownName.empty()) {
+    headers.emplace("Shard-Id", _ownName);
+  }
+    
+  std::string url = std::string("/_db/") +
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    urlPart + _queryId;
+
+  ++_engine->_stats.requests;
+  {
+    JobGuard guard(SchedulerFeature::SCHEDULER);
+    guard.block();
+
+    return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                           std::move(url), body, headers, defaultTimeOut);
+  }
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief initializeCursor, could be called multiple times
+int SingleRemoteOperationBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();
+  // For every call we simply forward via HTTP
+
+  if (!_isResponsibleForInitializeCursor) {
+    // do nothing...
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (items == nullptr) {
+    // we simply ignore the initialCursor request, as the remote side
+    // will initialize the cursor lazily
+    return TRI_ERROR_NO_ERROR;
+  } 
+
+  VPackOptions options(VPackOptions::Defaults);
+  options.buildUnindexedArrays = true;
+  options.buildUnindexedObjects = true;
+
+  VPackBuilder builder(&options);
+  builder.openObject();
+ 
+  builder.add("exhausted", VPackValue(false));
+  builder.add("error", VPackValue(false));
+  builder.add("pos", VPackValue(pos));
+  builder.add(VPackValue("items"));
+  builder.openObject();
+  items->toVelocyPack(_engine->getQuery()->trx(), builder);
+  builder.close();
+  
+  builder.close();
+
+  std::string bodyString(builder.slice().toJson());
+
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
+  throwExceptionAfterBadSyncRequest(res.get(), false);
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  {
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+        responseBodyBuf.c_str(), responseBodyBuf.length());
+
+    VPackSlice slice = builder->slice();
+  
+    if (slice.hasKey("code")) {
+      return slice.get("code").getNumericValue<int>();
+    }
+    return TRI_ERROR_INTERNAL;
+  }
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief shutdown, will be called exactly once for the whole query
+int SingleRemoteOperationBlock::shutdown(int errorCode) {
+  DEBUG_BEGIN_BLOCK();
+
+  // For every call we simply forward via HTTP
+
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
+                  std::string("{\"code\":" + std::to_string(errorCode) + "}"));
+  try {
+    if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
+      // artificially ignore error in case query was not found during shutdown
+      return TRI_ERROR_NO_ERROR;
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    if (ex.code() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
+      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    }
+    throw;
+  }
+
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  std::shared_ptr<VPackBuilder> builder =
+      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  VPackSlice slice = builder->slice();
+   
+  if (slice.isObject()) {
+    if (slice.hasKey("stats")) { 
+      ExecutionStats newStats(slice.get("stats"));
+      _engine->_stats.add(newStats);
+    }
+
+    // read "warnings" attribute if present and add it to our query
+    VPackSlice warnings = slice.get("warnings");
+    if (warnings.isArray()) {
+      auto query = _engine->getQuery();
+      for (auto const& it : VPackArrayIterator(warnings)) {
+        if (it.isObject()) {
+          VPackSlice code = it.get("code");
+          VPackSlice message = it.get("message");
+          if (code.isNumber() && message.isString()) {
+            query->registerWarning(code.getNumericValue<int>(),
+                                   message.copyString().c_str());
+          }
+        }
+      }
+    }
+  }
+
+  if (slice.hasKey("code")) {
+    return slice.get("code").getNumericValue<int>();
+  }
+  return TRI_ERROR_INTERNAL;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief getSome
+AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+  // For every call we simply forward via HTTP
+  
+  traceGetSomeBegin(atMost);
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("atMost", VPackValue(atMost));
+  builder.close();
+
+  std::string bodyString(builder.slice().toJson());
+
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
+  throwExceptionAfterBadSyncRequest(res.get(), false);
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  std::shared_ptr<VPackBuilder> responseBodyBuilder =
+      res->result->getBodyVelocyPack();
+  VPackSlice responseBody = responseBodyBuilder->slice();
+
+  if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
+    traceGetSomeEnd(nullptr);
+    return nullptr;
+  }
+
+  auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
+  traceGetSomeEnd(r.get());
+  return r.release();
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief skipSome
+size_t SingleRemoteOperationBlock::skipSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+  // For every call we simply forward via HTTP
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("atMost", VPackValue(atMost));
+  builder.close();
+
+  std::string bodyString(builder.slice().toJson());
+
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
+  throwExceptionAfterBadSyncRequest(res.get(), false);
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  {
+    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
+        responseBodyBuf.c_str(), responseBodyBuf.length());
+    VPackSlice slice = builder->slice();
+
+    if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+    }
+    size_t skipped = 0;
+    if (slice.hasKey("skipped")) {
+      skipped = slice.get("skipped").getNumericValue<size_t>();
+    }
+    return skipped;
+  }
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief hasMore
+bool SingleRemoteOperationBlock::hasMore() {
+  DEBUG_BEGIN_BLOCK();
+  // For every call we simply forward via HTTP
+  std::unique_ptr<ClusterCommResult> res =
+      sendRequest(rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
+  throwExceptionAfterBadSyncRequest(res.get(), false);
+
+  // If we get here, then res->result is the response which will be
+  // a serialized AqlItemBlock:
+  StringBuffer const& responseBodyBuf(res->result->getBody());
+  std::shared_ptr<VPackBuilder> builder =
+      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
+  VPackSlice slice = builder->slice();
+
+  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+  bool hasMore = true;
+  if (slice.hasKey("hasMore")) {
+    hasMore = slice.get("hasMore").getBoolean();
+  }
+  return hasMore;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}

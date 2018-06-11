@@ -377,3 +377,53 @@ double GatherNode::estimateCost(size_t& nrItems) const {
   double depCost = _dependencies[0]->getCost(nrItems);
   return depCost + nrItems;
 }
+
+
+/// @brief constructor for SingleRemoteOperationNode
+SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+    : ExecutionNode(plan, base),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _server(base.get("server").copyString()),
+      _ownName(base.get("ownName").copyString()),
+      _queryId(base.get("queryId").copyString()),
+      _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+
+/// @brief creates corresponding SingleRemoteOperationNode
+std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  return std::make_unique<SingleRemoteOperationBlock>(
+    &engine, this, server(), ownName(), queryId()
+  );
+}
+
+/// @brief toVelocyPack, for SingleRemoteOperationNode
+void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+
+  nodes.add("database", VPackValue(_vocbase->name()));
+  nodes.add("server", VPackValue(_server));
+  nodes.add("ownName", VPackValue(_ownName));
+  nodes.add("queryId", VPackValue(_queryId));
+  nodes.add("isResponsibleForInitializeCursor",
+            VPackValue(_isResponsibleForInitializeCursor));
+
+  // And close it:
+  nodes.close();
+}
+
+/// @brief estimateCost
+double SingleRemoteOperationNode::estimateCost(size_t& nrItems) const {
+  if (_dependencies.size() == 1) {
+    // This will usually be the case, however, in the context of the
+    // instantiation it is possible that there is no dependency...
+    double depCost = _dependencies[0]->estimateCost(nrItems);
+    return depCost + nrItems;  // we need to process them all
+  }
+  // We really should not get here, but if so, do something bordering on
+  // sensible:
+  nrItems = 1;
+  return 1.0;
+}
