@@ -53,6 +53,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
@@ -96,6 +97,18 @@ struct SortElement {
   SortElement(Variable const* v, bool asc, std::vector<std::string> const& path)
     : var(v), ascending(asc), attributePath(path) {
   }
+
+  /// @brief stringify a sort element. note: the output of this should match the
+  /// stringification output of an AstNode for an attribute access
+  /// (e.g. foo.bar => $0.bar)
+  std::string toString() const {
+    std::string result("$");
+    result += std::to_string(var->id);
+    for (auto const& it : attributePath) {
+      result += "." + it;
+    }
+    return result;
+  }
 };
 
 typedef std::vector<SortElement> SortElementVector;
@@ -134,7 +147,6 @@ class ExecutionNode {
     SHORTEST_PATH = 24,
 #ifdef USE_IRESEARCH
     ENUMERATE_IRESEARCH_VIEW,
-    SCATTER_IRESEARCH_VIEW,
 #endif
     MAX_NODE_TYPE_VALUE
   };
@@ -298,8 +310,7 @@ class ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   virtual std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache
   ) const = 0;
 
   /// @brief clone execution Node recursively, this makes the class abstract
@@ -307,7 +318,12 @@ class ExecutionNode {
                                bool withProperties) const = 0;
 
   /// @brief execution Node clone utility to be called by derives
-  void cloneHelper(ExecutionNode* Other, bool withDependencies, bool withProperties) const;
+  /// @return pointer to a registered node owned by a plan
+  ExecutionNode* cloneHelper(
+    std::unique_ptr<ExecutionNode> Other,
+    bool withDependencies,
+    bool withProperties
+  ) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
   void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
@@ -632,18 +648,17 @@ class SingletonNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<SingletonNode>(plan, _id);
-
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(
+      std::make_unique<SingletonNode>(plan, _id),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief the cost of a singleton is 1
@@ -651,7 +666,7 @@ class SingletonNode : public ExecutionNode {
 };
 
 /// @brief class EnumerateCollectionNode
-class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNode {
+class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class EnumerateCollectionBlock;
@@ -659,16 +674,12 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief constructor with a vocbase and a collection name
  public:
   EnumerateCollectionNode(ExecutionPlan* plan, size_t id,
-                          TRI_vocbase_t* vocbase, Collection* collection,
+                          aql::Collection const* collection,
                           Variable const* outVariable, bool random)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
-        _vocbase(vocbase),
-        _collection(collection),
-        _random(random),
-        _restrictedTo("") {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(_collection != nullptr);
+        CollectionAccessingNode(collection),
+        _random(random) {
   }
 
   EnumerateCollectionNode(ExecutionPlan* plan,
@@ -684,8 +695,7 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -708,45 +718,9 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
 
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  /**
-   * @brief Restrict this Node to a single Shard (cluster only)
-   *
-   * @param shardId The shard restricted to
-   */
-  void restrictToShard(std::string const& shardId) { _restrictedTo = shardId; }
-
-  /**
-   * @brief Check if this Node is restricted to a single Shard (cluster only)
-   *
-   * @return True if we are restricted, false otherwise
-   */
-  bool isRestricted() const { return !_restrictedTo.empty(); }
-
-  /**
-   * @brief Get the Restricted shard for this Node
-   *
-   * @return The Shard this node is restricted to
-   */
-  std::string const& restrictedShard() const { return _restrictedTo; }
-
  private:
-  /// @brief the database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief collection
-  Collection* _collection;
-
   /// @brief whether or not we want random iteration
   bool _random;
-
-  /// @brief A shard this node is restricted to, may be empty
-  std::string _restrictedTo;
 };
 
 /// @brief class EnumerateListNode
@@ -778,8 +752,7 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -847,8 +820,7 @@ class LimitNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -860,9 +832,7 @@ class LimitNode : public ExecutionNode {
       c->setFullCount();
     }
 
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
   /// @brief estimateCost
@@ -932,8 +902,7 @@ class CalculationNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -1046,8 +1015,7 @@ class SubqueryNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -1129,8 +1097,7 @@ class FilterNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -1238,8 +1205,7 @@ class ReturnNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
@@ -1293,18 +1259,17 @@ class NoResultsNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = std::make_unique<NoResultsNode>(plan, _id);
-
-    cloneHelper(c.get(), withDependencies, withProperties);
-
-    return c.release();
+    return cloneHelper(
+      std::make_unique<NoResultsNode>(plan, _id),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief the cost of a NoResults is 0

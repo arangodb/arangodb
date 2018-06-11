@@ -109,13 +109,13 @@ class NumberGraphFormat : public GraphFormat<V, E> {
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, const V* ptr,
                            size_t size) const override {
-    b.add(_resultField, VPackValue(*ptr));
+    b.add(_resultField, arangodb::velocypack::Value(*ptr));
     return true;
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, const E* ptr,
                          size_t size) const override {
-    b.add(_resultField, VPackValue(*ptr));
+    b.add(_resultField, arangodb::velocypack::Value(*ptr));
     return true;
   }
 };

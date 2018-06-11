@@ -272,7 +272,7 @@ ExecutionPlan* ExecutionPlan::instantiateFromAst(Ast* ast) {
 
   // set count flag for final RETURN node
   if (plan->_root->getType() == ExecutionNode::RETURN) {
-    static_cast<ReturnNode*>(plan->_root)->setCount();
+    ExecutionNode::castTo<ReturnNode*>(plan->_root)->setCount();
   }
 
   plan->findVarUsage();
@@ -393,7 +393,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type",
-                VPackValue(AccessMode::typeString(c.second->accessType)));
+                VPackValue(AccessMode::typeString(c.second->accessType())));
     builder.close();
   }
   builder.close();
@@ -729,7 +729,7 @@ ModificationOptions ExecutionPlan::createModificationOptions(
       auto const collections = _ast->query()->collections();
 
       for (auto const& it : *(collections->collections())) {
-        if (it.second->isReadWrite) {
+        if (it.second->isReadWrite()) {
           isReadWrite = true;
           break;
         }
@@ -862,7 +862,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                      "no collection for EnumerateCollection");
     }
     en = registerNode(new EnumerateCollectionNode(
-      this, nextId(), &(_ast->query()->vocbase()), collection, v, false)
+      this, nextId(), collection, v, false)
     );
 #ifdef USE_IRESEARCH
   } else if (expression->type == NODE_TYPE_VIEW) {
@@ -871,13 +871,13 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     auto& vocbase = _ast->query()->vocbase();
     auto view = vocbase.lookupView(viewName);
 
-    if (view == nullptr) {
+    if (!view) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no view for EnumerateView");
     }
 
     en = registerNode(new iresearch::IResearchViewNode(
-      *this, nextId(), vocbase, *view, *v, nullptr, {}
+      *this, nextId(), vocbase, view, *v, nullptr, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
@@ -1553,7 +1553,6 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     en = registerNode(new RemoveNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1566,7 +1565,6 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     en = registerNode(new RemoveNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1619,7 +1617,6 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     en = registerNode(new InsertNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1633,7 +1630,6 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     en = registerNode(new InsertNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1701,7 +1697,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     en = registerNode(new UpdateNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1716,7 +1711,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     en = registerNode(new UpdateNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1785,7 +1779,6 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     en = registerNode(new ReplaceNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1800,7 +1793,6 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     en = registerNode(new ReplaceNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1871,7 +1863,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   ExecutionNode* en = registerNode(new UpsertNode(
     this,
     nextId(),
-    &(_ast->query()->vocbase()),
     collection,
     options,
     docVariable,

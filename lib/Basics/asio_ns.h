@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,29 +18,43 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_EVENTS_H
-#define ARANGOD_SCHEDULER_EVENTS_H 1
+#ifndef ARANGOD_LIB_ASIO_NS_H
+#define ARANGOD_LIB_ASIO_NS_H 1
 
-#include "Basics/Common.h"
+#if ARANGODB_STANDALONE_ASIO
+
+#define ASIO_HAS_MOVE 1
+
+#include <asio/buffer.hpp>
+#include <asio/error.hpp>
 #include <asio/io_context.hpp>
+#include <asio/io_context_strand.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
+#include <asio/signal_set.hpp>
+#include <asio/ssl.hpp>
+#include <asio/steady_timer.hpp>
 
-namespace arangodb {
-namespace rest {
-class Scheduler;
+namespace asio_ns = asio;
+
+#else
+
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/asio/steady_timer.hpp>
+
+namespace boost {
+namespace asio {
+using error_code = boost::system::error_code;
+using io_context = boost::asio::io_service;
+using system_error = boost::system::system_error;
+}
 }
 
-struct EventLoop {
-  EventLoop(asio::io_context* service, rest::Scheduler* schdlr)
-      : ioContext(service), scheduler(schdlr) {}
+namespace asio_ns = boost::asio;
 
-  EventLoop() : EventLoop(nullptr, nullptr) {}
-
-  asio::io_context* ioContext;
-  rest::Scheduler* scheduler;
-};
-}
+#endif
 
 #endif

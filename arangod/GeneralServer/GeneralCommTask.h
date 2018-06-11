@@ -85,7 +85,7 @@ class GeneralCommTask : public SocketTask {
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket>,
+  GeneralCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket>,
                   ConnectionInfo&&, double keepAliveTimeout,
                   bool skipSocketInit = false);
 

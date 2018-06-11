@@ -301,11 +301,9 @@ class IResearchView final: public arangodb::DBServerLogicalView,
     PersistedStore(irs::utf8_path&& path);
   };
 
-  struct TidStore {
-    mutable std::mutex _mutex; // for use with '_removals' (allow use in const functions)
-    std::vector<std::shared_ptr<irs::filter>> _removals; // removal filters to be applied to during merge
-    MemoryStore _store;
-  };
+  class ViewStateHelper; // forward declaration
+  class ViewStateRead; // forward declaration
+  class ViewStateWrite; // forward declaration
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
@@ -318,7 +316,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
     std::mutex _reopenMutex; // for use with _reader.reopen() FIXME TODO find a better way
   };
 
-  typedef std::unordered_map<TRI_voc_tid_t, TidStore> MemoryStoreByTid;
   typedef std::unique_ptr<IResearchView, FlushCallbackUnregisterer> FlushCallback;
   typedef std::unique_ptr<
     arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>
@@ -334,11 +331,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   MemoryStore& activeMemoryStore() const;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief process a finished transaction and release resources held by it
-  ////////////////////////////////////////////////////////////////////////////////
-  int finish(TRI_voc_tid_t tid, bool commit);
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief registers a callback for flush feature
   ////////////////////////////////////////////////////////////////////////////////
   void registerFlushCallback();
@@ -352,14 +344,12 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
   std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
   AsyncSelf::ptr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::mutex _trxStoreMutex; // mutex used to protect '_storeByTid' against multiple insertions
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   IResearchViewMeta _meta;
   mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
   MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
   MemoryStoreNode* _memoryNode; // points to the current memory store
   MemoryStoreNode* _toFlush; // points to memory store to be flushed
-  MemoryStoreByTid _storeByTid;
   PersistedStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;

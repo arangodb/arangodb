@@ -390,8 +390,8 @@ GraphNode::GraphNode(
     // Collections cannot be copied. So we need to create new ones to prevent
     // leaks
     _edgeColls.emplace_back(std::make_unique<aql::Collection>(
-        it->getName(), _vocbase, AccessMode::Type::READ));
-    _graphInfo.add(VPackValue(it->getName()));
+        it->name(), _vocbase, AccessMode::Type::READ));
+    _graphInfo.add(VPackValue(it->name()));
   }
   _graphInfo.close();
 
@@ -399,7 +399,7 @@ GraphNode::GraphNode(
     // Collections cannot be copied. So we need to create new ones to prevent
     // leaks
     _vertexColls.emplace_back(std::make_unique<aql::Collection>(
-        it->getName(), _vocbase, AccessMode::Type::READ));
+        it->name(), _vocbase, AccessMode::Type::READ));
   }
 }
 
@@ -436,7 +436,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
-      nodes.add(VPackValue(e->getName()));
+      nodes.add(VPackValue(e->name()));
     }
   }
 
@@ -444,7 +444,7 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
-      nodes.add(VPackValue(v->getName()));
+      nodes.add(VPackValue(v->name()));
     }
   }
 

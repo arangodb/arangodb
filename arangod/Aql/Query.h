@@ -99,7 +99,7 @@ class Query {
     QueryPart
   );
 
-  TEST_VIRTUAL ~Query();
+  virtual ~Query();
 
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
