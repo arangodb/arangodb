@@ -618,7 +618,6 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
   // state variables of the following generator-lambda, iterating over rows
   AqlItemBlock* nextCur = nullptr;
-  // size_t nextPos = 0;
   auto getNextRow =
       [this, &nextCur,
        &curNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
@@ -629,7 +628,6 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     // try to ensure a nonempty buffer
     if (nextCur == nullptr && _buffer.empty()) {
       ExecutionBlock::getBlockOld(DefaultBatchSize());
-      _pos = 0;
       // TODO use getBlock(), return WAITING if necessary
     }
 
@@ -801,8 +799,6 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     }
   };
 
-  // TODO return blocks
-
   // For buildResult (respectively inheritRegisters). Is this really necessary?
   AqlItemBlock* lastBlock = nullptr;
 
@@ -829,6 +825,11 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
+    if (lastBlock != nullptr && lastBlock != cur) {
+      // return lastBlock just before forgetting it
+      returnBlock(lastBlock);
+    }
+
     lastBlock = cur;
     TRI_ASSERT(state == GetNextRowState::SUCCESS);
     ++skipped_;
@@ -842,7 +843,13 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
   if (skipped_ > 0) {
     TRI_ASSERT(lastBlock != nullptr);
-    result = buildResult(lastBlock);
+    try {
+      result = buildResult(lastBlock);
+      returnBlock(lastBlock);
+    } catch(...) {
+      returnBlock(lastBlock);
+      throw;
+    }
   }
 
   _done = true;
