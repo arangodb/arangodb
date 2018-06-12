@@ -149,6 +149,11 @@ AstNode* createSubqueryWithLimit(
   // `outVariable` that can be used to replace the expression (or only a
   // part) of a `CalculationNode`.
   //
+  if(limit && !(limit->isIntValue() || limit->isNullValue())) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"limit parameter is for wrong type");
+  }
+
+
   auto* ast = plan->getAst();
 
   /// singleton
@@ -205,7 +210,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   // )
 
   //// enumerate collection
-  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection);
+  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
   if(!aqlCollection) {
     LOG_DEVEL << "could not find collection: " << params.collection;
     return nullptr;
@@ -266,7 +271,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
 
   if(!indexFound) {
-    return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_GEO_INDEX_MISSING);
   }
 
   auto* argsArray = ast->createNodeArray();
@@ -280,6 +285,10 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   //// build filter condition for
   if(!isNear){
+    if(!params.radius->isNumericValue()){
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"radius argument is not a numeric value");
+    }
+
     expressionAst = ast->createNodeBinaryOperator(
       AstNodeType::NODE_TYPE_OPERATOR_BINARY_LE, funDist ,params.radius
     );
@@ -313,12 +322,16 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   //// create MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
   if(params.distanceName) { //return without merging the distance into the result
+    //FIXME do we need to resolve attribute accesses
+    if(!params.distanceName->isStringValue()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"distance argument is not a string");
+    }
     AstNode* elem = nullptr;
     AstNode* funDistMerge = nullptr;
     if(isNear){
       funDistMerge = ast->createNodeReference(calcOutVariable);
     } else {
-      //FIXME: recycles Ast directly - must probably be fixed;
+      //NOTE - recycling the Ast seems to work - tested with ASAN
       funDistMerge = funDist;
     }
     if(params.distanceName->isConstant()){
@@ -380,14 +393,12 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 	}
 
 	if(!index){ // not found or error
-    LOG_DEVEL << "could not find fulltext index for collection " << params.collection;
-		return nullptr;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING);
 	}
 
   // index part 2 - get remaining vars required for index creation
-  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection);
+  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
   if(!aqlCollection) {
-    LOG_DEVEL << "could not find collection: " << params.collection;
     return nullptr;
   }
 	auto condition = std::make_unique<Condition>(ast);

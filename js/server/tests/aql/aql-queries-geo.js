@@ -87,8 +87,8 @@ function ahuacatlLegacyGeoTestSuite () {
 
       locations.ensureGeoIndex("latitude", "longitude");
 
+      //locations without index
       locationsNon = db._create("UnitTestsAhuacatlLocationsNon");
-
       for (lat = -40; lat <= 40; ++lat) {
         for (lon = -40; lon <= 40; ++lon) {
           locationsNon.save({"latitude" : lat, "longitude" : lon });
@@ -240,9 +240,9 @@ function ahuacatlLegacyGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidNearArgument : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, \"foo\")");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, 10, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, \"foo\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, 10, true)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,10 +250,10 @@ function ahuacatlLegacyGeoTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidWithinArgument : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, \"foo\")");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 0, [ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, \"foo\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, 0, [ ])");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -484,9 +484,9 @@ function legacyGeoTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidNearArgument: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, \"foo\")");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locationsNon.name() + "\", 0, 0, 10, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, \"foo\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NEAR(\"" + locations.name() + "\", 0, 0, 10, true)");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -494,10 +494,10 @@ function legacyGeoTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidWithinArgument: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, \"foo\")");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 0, true)");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locationsNon.name() + "\", 0, 0, 0, [ ])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, \"foo\")");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, 0, true)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(\"" + locations.name() + "\", 0, 0, 0, [ ])");
     },
 
     ////////////////////////////////////////////////////////////////////////////////

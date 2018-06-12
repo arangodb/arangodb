@@ -67,11 +67,11 @@ namespace arangodb {
 namespace aql {
 
 // TODO cleanup this f-ing aql::Collection(s) mess
-Collection* addCollectionToQuery(Query* query, std::string const& cname) {
+Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert) {
   aql::Collections* colls = query->collections();
   aql::Collection* coll = colls->get(cname);
 
-  if (coll == nullptr) { // TODO: cleanup this mess
+  if (coll == nullptr && !cname.empty()) { // TODO: cleanup this mess
     coll = colls->add(cname, AccessMode::Type::READ);
 
     if (!ServerState::instance()->isCoordinator()) {
@@ -84,7 +84,9 @@ Collection* addCollectionToQuery(Query* query, std::string const& cname) {
     }
   }
 
-  TRI_ASSERT(coll != nullptr);
+  if (assert) {
+    TRI_ASSERT(coll != nullptr);
+  }
 
   return coll;
 }
