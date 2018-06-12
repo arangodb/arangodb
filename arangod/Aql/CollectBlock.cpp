@@ -542,6 +542,8 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
       _groupRegisters(),
       _aggregateRegisters(),
       _collectRegister(ExecutionNode::MaxRegisterId),
+      _skipped(0),
+      _lastBlock(nullptr),
       _allGroups(1024, AqlValueGroupHash(_trx, en->_groupVariables.size()),
                  AqlValueGroupEqual(_trx)) {
   for (auto const& p : en->_groupVariables) {
@@ -627,8 +629,13 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
     // try to ensure a nonempty buffer
     if (nextCur == nullptr && _buffer.empty()) {
-      ExecutionBlock::getBlockOld(DefaultBatchSize());
-      // TODO use getBlock(), return WAITING if necessary
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) = ExecutionBlock::getBlock(DefaultBatchSize());
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!blockAppended);
+        return std::make_tuple(GetNextRowState::WAITING, nullptr, 0);
+      }
     }
 
     // check if we're done
@@ -799,9 +806,6 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     }
   };
 
-  // For buildResult (respectively inheritRegisters). Is this really necessary?
-  AqlItemBlock* lastBlock = nullptr;
-
   while (true) {
     TRI_IF_FAILURE("HashedCollectBlock::getOrSkipSomeOuter") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -825,14 +829,14 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    if (lastBlock != nullptr && lastBlock != cur) {
+    if (_lastBlock != nullptr && _lastBlock != cur) {
       // return lastBlock just before forgetting it
-      returnBlock(lastBlock);
+      returnBlock(_lastBlock);
     }
 
-    lastBlock = cur;
+    _lastBlock = cur;
     TRI_ASSERT(state == GetNextRowState::SUCCESS);
-    ++skipped_;
+    ++_skipped;
 
     // NOLINTNEXTLINE(hicpp-use-auto,modernize-use-auto)
     decltype(_allGroups)::iterator currentGroupIt =
@@ -841,13 +845,14 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     reduceAggregates(currentGroupIt, cur, pos);
   }
 
-  if (skipped_ > 0) {
-    TRI_ASSERT(lastBlock != nullptr);
+  if (_skipped > 0) {
+    TRI_ASSERT(_lastBlock != nullptr);
     try {
-      result = buildResult(lastBlock);
-      returnBlock(lastBlock);
+      result = buildResult(_lastBlock);
+      skipped_ = _skipped;
+      returnBlock(_lastBlock);
     } catch(...) {
-      returnBlock(lastBlock);
+      returnBlock(_lastBlock);
       throw;
     }
   }

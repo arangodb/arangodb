@@ -149,6 +149,8 @@ class HashedCollectBlock final : public ExecutionBlock {
   /// used
   RegisterId _collectRegister;
 
+  size_t _skipped;
+  AqlItemBlock* _lastBlock;
   std::unordered_map<std::vector<AqlValue>,
                      std::unique_ptr<AggregateValuesType>, AqlValueGroupHash,
                      AqlValueGroupEqual>
