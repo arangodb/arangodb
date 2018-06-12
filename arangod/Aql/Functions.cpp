@@ -6952,16 +6952,16 @@ AqlValue Functions::DateFormat(arangodb::aql::Query* query,
 
 AqlValue Functions::Near(arangodb::aql::Query* query, transaction::Methods*,
               VPackFunctionParameters const& params){
-    ::registerError(query,"NEAR",TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ::registerError(query,"NEAR",TRI_ERROR_NOT_IMPLEMENTED);
     return AqlValue(AqlValueHintNull());
 }
 AqlValue Functions::Within(arangodb::aql::Query* query, transaction::Methods*,
               VPackFunctionParameters const& params){
-    ::registerError(query,"WITHIN",TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ::registerError(query,"WITHIN",TRI_ERROR_NOT_IMPLEMENTED);
     return AqlValue(AqlValueHintNull());
 }
 AqlValue Functions::Fulltext(arangodb::aql::Query* query, transaction::Methods*,
                      VPackFunctionParameters const& params){
-    ::registerError(query,"FULLTEXT",TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    ::registerError(query,"FULLTEXT",TRI_ERROR_NOT_IMPLEMENTED);
     return AqlValue(AqlValueHintNull());
 }

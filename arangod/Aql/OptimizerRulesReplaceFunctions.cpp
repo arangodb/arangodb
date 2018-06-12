@@ -21,15 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
@@ -187,10 +186,10 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
   bool indexFound = false;
 
   // figure out index to use
-	std::vector<basics::AttributeName> field;
-	auto indexes = trx->indexesForCollection(params.collection);
-	for(auto& idx : indexes){
-		if(Index::isGeoIndex(idx->type())) {
+  std::vector<basics::AttributeName> field;
+  auto indexes = trx->indexesForCollection(params.collection);
+  for(auto& idx : indexes){
+    if(Index::isGeoIndex(idx->type())) {
       // we take the first index that is found
 
       bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
@@ -228,8 +227,7 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* doc
   }
 
   return std::pair<AstNode*, AstNode*>(accessNodeLat, accessNodeLon);
-};
-
+}
 
 AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan, bool isNear){
   auto* ast = plan->getAst();
@@ -371,31 +369,31 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 
   //  index - part 1 - figure out index to use
   std::shared_ptr<arangodb::Index> index = nullptr;
-	std::vector<basics::AttributeName> field;
-	TRI_ParseAttributeString(params.attribute, field, false);
-	auto indexes = trx->indexesForCollection(params.collection);
-	for(auto& idx : indexes){
-		if(idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
-			if(basics::AttributeName::isIdentical(idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
-				index = idx;
-				break;
-			}
-		}
-	}
+  std::vector<basics::AttributeName> field;
+  TRI_ParseAttributeString(params.attribute, field, false);
+  auto indexes = trx->indexesForCollection(params.collection);
+  for(auto& idx : indexes){
+    if(idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
+      if(basics::AttributeName::isIdentical(idx->fields()[0], field, false /*ignore expansion in last?!*/)) {
+        index = idx;
+        break;
+      }
+    }
+  }
 
-	if(!index){ // not found or error
+  if(!index){ // not found or error
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FULLTEXT_INDEX_MISSING);
-	}
+  }
 
   // index part 2 - get remaining vars required for index creation
   auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
   if(!aqlCollection) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"collection used in FULLTEXT not found");
   }
-	auto condition = std::make_unique<Condition>(ast);
-	condition->andCombine(funAstNode);
+  auto condition = std::make_unique<Condition>(ast);
+  condition->andCombine(funAstNode);
   condition->normalize(plan);
-	// create a fresh out variable
+  // create a fresh out variable
   Variable* indexOutVariable = ast->variables()->createTemporaryVariable();
 
   ExecutionNode* eIndex = plan->registerNode(
@@ -405,7 +403,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
       aqlCollection,
       indexOutVariable,
       std::vector<transaction::Methods::IndexHandle> {
-				transaction::Methods::IndexHandle{index}
+        transaction::Methods::IndexHandle{index}
       },
       std::move(condition),
       IndexIteratorOptions()
@@ -438,10 +436,13 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt
       if(fun){
         if (fun->name == "NEAR"){
           replacement = replaceNearOrWithin(astnode, node, plan.get(), true /*isNear*/);
+          TRI_ASSERT(replacement);
         } else if (fun->name == "WITHIN"){
           replacement = replaceNearOrWithin(astnode, node, plan.get(), false /*isNear*/);
+          TRI_ASSERT(replacement);
         } else if (fun->name == "FULLTEXT"){
           replacement = replaceFullText(astnode, node,plan.get());
+          TRI_ASSERT(replacement);
         }
       }
       if (replacement) {

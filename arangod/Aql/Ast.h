@@ -526,7 +526,7 @@ class Ast {
 public:
   /** Make sure to replace the AstNode* you pass into TraverseAndModify
    *  if it was changed. This is necessary because the function itself
-   *  has only access to to the node but not its parent / owner.
+   *  has only access to the node but not its parent / owner.
    */
   /// @brief traverse the AST, using pre- and post-order visitors
   static AstNode* traverseAndModify(AstNode*,
