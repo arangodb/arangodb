@@ -529,5 +529,5 @@ void GeneralServerFeature::defineHandlers() {
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addRestHandlers(_handlerFactory.get());
+  engine->addRestHandlers(*_handlerFactory);
 }
