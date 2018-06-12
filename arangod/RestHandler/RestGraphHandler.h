@@ -237,6 +237,36 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     velocypack::Options const& options
   );
 
+  // edges
+  Result addEdgeDefinition(
+    std::shared_ptr<const graph::Graph> graph
+  );
+
+  Result replaceEdgeDefinition(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& edgeDefinitionName
+  );
+
+  Result removeEdgeDefinition(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& edgeDefinitionName
+  );
+
+  Result createEdgeDefinition(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& edgeDefinitionName
+  );
+
+  // vertices
+  Result addVertexDefinition(
+    std::shared_ptr<const graph::Graph> graph
+  );
+
+  Result removeVertexDefinition(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& collectionName
+  );
+
   };
 }  // namespace arangodb
 

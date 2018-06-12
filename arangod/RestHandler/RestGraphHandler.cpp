@@ -257,6 +257,9 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetsAction(
     case RequestType::GET:
       graphActionReadConfig(graph, TRI_COL_TYPE_DOCUMENT, GraphProperty::VERTICES);
       return RestStatus::DONE;
+    case RequestType::POST:
+      addVertexDefinition(graph);
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -268,6 +271,9 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetsAction(
   switch (request()->requestType()) {
     case RequestType::GET:
       graphActionReadConfig(graph, TRI_COL_TYPE_EDGE, GraphProperty::EDGES);
+      return RestStatus::DONE;
+    case RequestType::POST:
+      addEdgeDefinition(graph);
       return RestStatus::DONE;
     default:;
   }
@@ -285,6 +291,12 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
     case RequestType::POST:
       edgeActionCreate(graph, edgeDefinitionName);
       return RestStatus::DONE;
+    case RequestType::PUT:
+      replaceEdgeDefinition(graph, edgeDefinitionName);
+      return RestStatus::DONE;
+    case RequestType::DELETE_REQ:
+      removeEdgeDefinition(graph, edgeDefinitionName);
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -300,6 +312,9 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
   switch (request()->requestType()) {
     case RequestType::POST:
       vertexActionCreate(graph, vertexCollectionName);
+      return RestStatus::DONE;
+    case RequestType::DELETE_REQ:
+      removeVertexDefinition(graph, vertexCollectionName);
       return RestStatus::DONE;
     default:;
   }
@@ -357,9 +372,6 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
       return RestStatus::DONE;
     case RequestType::PUT:
       edgeActionReplace(graph, edgeDefinitionName, edgeKey);
-      return RestStatus::DONE;
-    case RequestType::POST:
-      edgeActionCreate(graph, edgeDefinitionName);
       return RestStatus::DONE;
     default:;
   }
@@ -831,6 +843,41 @@ Result RestGraphHandler::vertexCreate(std::shared_ptr<const graph::Graph> graph,
   return documentCreate(std::move(graph), collectionName,
                         TRI_COL_TYPE_DOCUMENT);
 }
+
+// /_api/gharial/{graph-name}/edge
+
+Result RestGraphHandler::addEdgeDefinition(std::shared_ptr<const graph::Graph> graph) {
+  return Result();
+}
+
+// /_api/gharial/{graph-name}/edge/{definition-name}
+
+Result RestGraphHandler::replaceEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
+                                               const std::string& edgeDefinitionName) {
+  return Result();
+}
+
+Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
+                                               const std::string& edgeDefinitionName) {
+  return Result();
+}
+
+Result RestGraphHandler::removeEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
+                                               const std::string& edgeDefinitionName) {
+  return Result();
+}
+
+// /_api/gharial/{graph-name}/vertex
+Result RestGraphHandler::addVertexDefinition(std::shared_ptr<const graph::Graph> graph) {
+  return Result();
+}
+
+// /_api/gharial/{graph-name}/vertex/{collection-name}
+Result RestGraphHandler::removeVertexDefinition(std::shared_ptr<const graph::Graph> graph,
+                                               const std::string& collectionName) {
+  return Result();
+}
+
 
 // TODO The tests check that, if "returnOld: true" is passed,  the result
 // contains the old value in the field "old"; and if "returnNew: true" is
