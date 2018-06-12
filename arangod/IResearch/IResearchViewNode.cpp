@@ -174,6 +174,39 @@ std::vector<arangodb::iresearch::IResearchSort> fromVelocyPack(
   return sorts;
 }
 
+/// negative value - value is dirty
+/// _volatilityMask & 1 == volatile filter
+/// _volatilityMask & 2 == volatile sort
+int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
+  auto const inInnerLoop = node.isInInnerLoop();
+  auto const& plan = *node.plan();
+  auto const& outVariable = node.outVariable();
+
+  std::unordered_set<arangodb::aql::Variable const*> vars;
+  int mask = 0;
+
+  // evaluate filter condition volatility
+  auto& filterCondition = node.filterCondition();
+  if (!filterConditionIsEmpty(&filterCondition) && inInnerLoop) {
+    irs::set_bit<0>(::hasDependecies(plan, filterCondition, outVariable, vars), mask);
+  }
+
+  // evaluate sort condition volatility
+  auto& sortCondition = node.sortCondition();
+  if (!sortCondition.empty() && inInnerLoop) {
+    vars.clear();
+
+    for (auto const& sort : sortCondition) {
+      if (::hasDependecies(plan, *sort.node, outVariable, vars)) {
+        irs::set_bit<1>(mask);
+        break;
+      }
+    }
+  }
+
+  return mask;
+}
+
 }
 
 namespace arangodb {
@@ -213,6 +246,7 @@ IResearchViewNode::IResearchViewNode(
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(&ALL),
     _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
+  // view
   auto const viewId = base.get("viewId").copyString();
 
   if (ServerState::instance()->isSingleServer()) {
@@ -226,6 +260,7 @@ IResearchViewNode::IResearchViewNode(
   // FIXME how to check properly
   TRI_ASSERT(_view && iresearch::DATA_SOURCE_TYPE == _view->type());
 
+  // filter condition
   auto const filterSlice = base.get("condition");
 
   if (!filterSlice.isEmptyObject()) {
@@ -235,6 +270,7 @@ IResearchViewNode::IResearchViewNode(
     );
   }
 
+  // shards
   auto const shardsSlice = base.get("shards");
 
   if (!shardsSlice.isArray()) {
@@ -257,6 +293,13 @@ IResearchViewNode::IResearchViewNode(
     }
 
     _shards.push_back(shard->name());
+  }
+
+  // volatility mask
+  auto const volatilityMaskSlice = base.get("volatility");
+
+  if (volatilityMaskSlice.isNumber()) {
+    _volatilityMask = volatilityMaskSlice.getNumber<int>();
   }
 }
 
@@ -288,27 +331,15 @@ void IResearchViewNode::planNodeRegisters(
   }
 }
 
-bool IResearchViewNode::volatile_filter() const {
-  if (!filterConditionIsEmpty(_filterCondition) && isInInnerLoop()) {
-    std::unordered_set<arangodb::aql::Variable const*> vars;
-    return ::hasDependecies(*plan(), *_filterCondition, outVariable(), vars);
+std::pair<bool, bool> IResearchViewNode::volatility(bool force /*=false*/) const {
+  if (force || _volatilityMask < 0) {
+    _volatilityMask = evaluateVolatility(*this);
   }
 
-  return false;
-}
-
-bool IResearchViewNode::volatile_sort() const {
-  if (!_sortCondition.empty() && isInInnerLoop()) {
-    std::unordered_set<aql::Variable const*> vars;
-
-    for (auto const& sort : _sortCondition) {
-      if (::hasDependecies(*plan(), *sort.node, outVariable(), vars)) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  return std::make_pair(
+    irs::check_bit<0>(_volatilityMask), // filter
+    irs::check_bit<1>(_volatilityMask)  // sort
+  );
 }
 
 /// @brief toVelocyPack, for EnumerateViewNode
@@ -321,7 +352,6 @@ void IResearchViewNode::toVelocyPackHelper(
 
   // system info
   nodes.add("database", VPackValue(_vocbase.name()));
-  nodes.add("view", VPackValue(_view->name()));
   nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 
   // our variable
@@ -348,6 +378,9 @@ void IResearchViewNode::toVelocyPackHelper(
       nodes.add(VPackValue(shard));
     }
   }
+
+  // volatility mask
+  nodes.add("volatility", VPackValue(_volatilityMask));
 
   nodes.close();
 }
@@ -402,6 +435,7 @@ aql::ExecutionNode* IResearchViewNode::clone(
     decltype(_sortCondition)(_sortCondition)
   );
   node->_shards = _shards;
+  node->_volatilityMask = _volatilityMask;
 
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }

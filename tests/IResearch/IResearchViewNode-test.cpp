@@ -190,8 +190,8 @@ SECTION("construct") {
   CHECK(42 == node.id());
   CHECK(logicalView == node.view());
   CHECK(node.sortCondition().empty());
-  CHECK(!node.volatile_filter());
-  CHECK(!node.volatile_sort());
+  CHECK(!node.volatility().first); // filter volatility
+  CHECK(!node.volatility().second); // sort volatility
   CHECK(node.getVariablesUsedHere().empty());
 
   size_t nrItems{};
@@ -246,8 +246,7 @@ SECTION("clone") {
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
-      CHECK(node.volatile_filter() == cloned.volatile_filter());
-      CHECK(node.volatile_sort() == cloned.volatile_sort());
+      CHECK(node.volatility() == cloned.volatility());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -277,8 +276,7 @@ SECTION("clone") {
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
-      CHECK(node.volatile_filter() == cloned.volatile_filter());
-      CHECK(node.volatile_sort() == cloned.volatile_sort());
+      CHECK(node.volatility() == cloned.volatility());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -307,8 +305,7 @@ SECTION("clone") {
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
-      CHECK(node.volatile_filter() == cloned.volatile_filter());
-      CHECK(node.volatile_sort() == cloned.volatile_sort());
+      CHECK(node.volatility() == cloned.volatility());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -352,8 +349,7 @@ SECTION("clone") {
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
-      CHECK(node.volatile_filter() == cloned.volatile_filter());
-      CHECK(node.volatile_sort() == cloned.volatile_sort());
+      CHECK(node.volatility() == cloned.volatility());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -386,8 +382,7 @@ SECTION("clone") {
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
-      CHECK(node.volatile_filter() == cloned.volatile_filter());
-      CHECK(node.volatile_sort() == cloned.volatile_sort());
+      CHECK(node.volatility() == cloned.volatility());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -419,8 +414,7 @@ SECTION("clone") {
       CHECK(node.view() == cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
-      CHECK(node.volatile_filter() == cloned.volatile_filter());
-      CHECK(node.volatile_sort() == cloned.volatile_sort());
+      CHECK(node.volatility() == cloned.volatility());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -491,8 +485,7 @@ SECTION("serialize") {
       CHECK(node.view() == deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
       CHECK(node.sortCondition() == deserialized.sortCondition());
-      CHECK(node.volatile_filter() == deserialized.volatile_filter());
-      CHECK(node.volatile_sort() == deserialized.volatile_sort());
+      CHECK(node.volatility() == deserialized.volatility());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == deserialized.estimateCost(rhsNrItems));
@@ -517,8 +510,7 @@ SECTION("serialize") {
       CHECK(node.view() == deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
       CHECK(node.sortCondition() == deserialized.sortCondition());
-      CHECK(node.volatile_filter() == deserialized.volatile_filter());
-      CHECK(node.volatile_sort() == deserialized.volatile_sort());
+      CHECK(node.volatility() == deserialized.volatility());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == deserialized.estimateCost(rhsNrItems));
