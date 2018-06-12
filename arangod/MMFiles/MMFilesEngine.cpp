@@ -32,7 +32,6 @@
 #include "Basics/build.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
-#include "MMFiles/MMFilesAqlFunctions.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesCompactionFeature.h"
@@ -177,7 +176,7 @@ MMFilesEngine::~MMFilesEngine() {}
 Result MMFilesEngine::dropDatabase(TRI_vocbase_t* database) {
   // drop logfile barriers for database
   MMFilesLogfileManager::instance()->dropLogfileBarriers(database->id());
-  
+
   // delete persistent indexes for this database
   MMFilesPersistentIndexFeature::dropDatabase(database->id());
 
@@ -721,7 +720,7 @@ void MMFilesEngine::waitForSyncTick(TRI_voc_tick_t tick) {
   if (application_features::ApplicationServer::isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-  
+
   MMFilesLogfileManager::instance()->slots()->waitForTick(tick);
 }
 
@@ -2364,7 +2363,7 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
   }
-      
+
   VPackBuilder content;
   VPackSlice slice;
   try {
@@ -2702,7 +2701,7 @@ int MMFilesEngine::startCleanup(TRI_vocbase_t* vocbase) {
     MUTEX_LOCKER(locker, _threadsLock);
 
     thread.reset(new MMFilesCleanupThread(vocbase));
-  
+
     if (!thread->start()) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not start cleanup thread";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2787,7 +2786,7 @@ int MMFilesEngine::beginShutdownCompactor(TRI_vocbase_t* vocbase) {
 
     thread = (*it).second;
   }
- 
+
   TRI_ASSERT(thread != nullptr);
 
   thread->beginShutdown();
@@ -2813,7 +2812,7 @@ int MMFilesEngine::stopCompactor(TRI_vocbase_t* vocbase) {
     thread = (*it).second;
     _compactorThreads.erase(it);
   }
-  
+
   TRI_ASSERT(thread != nullptr);
 
   thread->beginShutdown();
@@ -3158,7 +3157,6 @@ int MMFilesEngine::transferMarkers(LogicalCollection* collection,
 
 /// @brief Add engine-specific AQL functions.
 void MMFilesEngine::addAqlFunctions() {
-  MMFilesAqlFunctions::registerResources();
 }
 
 /// @brief Add engine-specific optimizer rules
@@ -3413,7 +3411,7 @@ int MMFilesEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
 
 VPackBuilder MMFilesEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
   std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
- 
+
   return getReplicationApplierConfiguration(filename, status);
 }
 
@@ -3474,12 +3472,12 @@ int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, a
   return saveReplicationApplierConfiguration(filename, slice, doSync);
 }
 
-int MMFilesEngine::saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) { 
+int MMFilesEngine::saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) {
   std::string const filename = arangodb::basics::FileUtils::buildFilename(_databasePath, "GLOBAL-REPLICATION-APPLIER-CONFIG");
   return saveReplicationApplierConfiguration(filename, slice, doSync);
 }
 
-int MMFilesEngine::saveReplicationApplierConfiguration(std::string const& filename, arangodb::velocypack::Slice slice, bool doSync) { 
+int MMFilesEngine::saveReplicationApplierConfiguration(std::string const& filename, arangodb::velocypack::Slice slice, bool doSync) {
   if (!VelocyPackHelper::velocyPackToFile(filename, slice, doSync)) {
     return TRI_errno();
   }

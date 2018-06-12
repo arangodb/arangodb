@@ -713,6 +713,15 @@ AstNode* Ast::createNodeAccess(Variable const* variable,
   return node;
 }
 
+AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std::string> const& path){
+  AstNode* rv = refNode->clone(this);
+  for(auto const& part : path){
+    char const* p = query()->registerString(part.data(), part.size());
+    rv = createNodeAttributeAccess(rv, p, part.size());
+  }
+  return rv;
+}
+
 /// @brief create an AST parameter node
 AstNode* Ast::createNodeParameter(
     char const* name,

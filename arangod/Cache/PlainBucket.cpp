@@ -142,7 +142,14 @@ void PlainBucket::evict(CachedValue* value, bool optimizeForInsertion) {
 
 void PlainBucket::clear() {
   TRI_ASSERT(isLocked());
-  memset(this, 0, sizeof(PlainBucket));
+  _state.clear(); // "clear" will keep the lock!
+
+  for (size_t i = 0; i < slotsData; ++i) {
+    _cachedHashes[i] = 0;
+    _cachedData[i] = nullptr;
+  }
+
+  _state.unlock();
 }
 
 void PlainBucket::moveSlot(size_t slot, bool moveToFront) {

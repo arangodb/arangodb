@@ -32,7 +32,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/build.h"
-#include "ClusterEngine/ClusterAqlFunctions.h"
 #include "ClusterEngine/ClusterCollection.h"
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
@@ -160,7 +159,7 @@ PhysicalCollection* ClusterEngine::createPhysicalCollection(
     LogicalCollection* collection, VPackSlice const& info) {
   return new ClusterCollection(collection, engineType(), info);
 }
-  
+
 void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
   builder.openObject();
   builder.close();
@@ -186,7 +185,7 @@ void ClusterEngine::getCollectionInfo(
     bool includeIndexes,
     TRI_voc_tick_t maxTick
 ) {
-  
+
 }
 
 int ClusterEngine::getCollectionsAndIndexes(
@@ -313,7 +312,7 @@ void ClusterEngine::changeCollection(
 ) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
-  
+
 arangodb::Result ClusterEngine::renameCollection(
                                   TRI_vocbase_t& vocbase,
                                   arangodb::LogicalCollection const* collection,
@@ -405,7 +404,6 @@ int ClusterEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
 
 /// @brief Add engine-specific AQL functions.
 void ClusterEngine::addAqlFunctions() {
-  ClusterAqlFunctions::registerResources();
 }
 
 /// @brief Add engine-specific optimizer rules
@@ -428,7 +426,7 @@ void ClusterEngine::addV8Functions() {
 void ClusterEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
   ClusterRestHandlers::registerResources(handlerFactory);
 }
-  
+
 void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
   // fixes tests by allowing us to reload the cluster selectivity estimates
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing timeout

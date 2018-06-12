@@ -61,9 +61,7 @@ if (USE_IRESEARCH)
   )
 endif ()
 
-add_executable(
-  arangodbtests
-  ${CMAKE_SOURCE_DIR}/arangod/RestServer/FlushFeature.cpp
+set(ARANGODB_TESTS_SOURCES
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
@@ -74,7 +72,7 @@ add_executable(
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Aql/DateFunctions.cpp
+  Aql/DateFunctionsTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/RestAqlHandlerTest.cpp
   Auth/UserManagerTest.cpp
@@ -133,6 +131,18 @@ add_executable(
   RocksDBEngine/IndexEstimatorTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
+)
+
+if (LINUX)
+  # add "-fno-var-tracking" to the compiler flags
+  # this speeds up the compilation with newer g++ versions and prevents the
+  # "variable tracking size limit exceeded warnings"
+  set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
+endif ()
+
+add_executable(
+  arangodbtests
+  ${ARANGODB_TESTS_SOURCES}
   main.cpp
 )
 

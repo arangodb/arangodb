@@ -56,7 +56,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   IndexNode(ExecutionPlan* plan, size_t id,
             aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, IndexIteratorOptions const&);
+            std::unique_ptr<Condition> condition, IndexIteratorOptions const&);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -116,7 +116,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief called to build up the matching positions of the index values for
   /// the projection attributes (if any)
   void initIndexCoversProjections();
-  
+
  private:
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;

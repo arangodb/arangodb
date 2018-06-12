@@ -36,11 +36,10 @@ struct Function {
   Function() = delete;
 
   /// @brief create the function
-  Function(std::string const& name, 
+  Function(std::string const& name,
            char const* arguments, bool isDeterministic,
            bool canThrow, bool canRunOnDBServer,
-           FunctionImplementation implementation = nullptr,
-           ExecutionCondition = nullptr);
+           FunctionImplementation implementation = nullptr);
 
   inline bool hasImplementation() const {
     return implementation != nullptr;
@@ -71,7 +70,7 @@ struct Function {
 
   /// @brief function name (name visible to the end user, may be an alias)
   std::string name;
-  
+
   /// @brief function arguments
   char const* arguments;
 
@@ -93,11 +92,6 @@ struct Function {
 
   /// @brief C++ implementation of the function (maybe nullptr)
   FunctionImplementation implementation;
-
-  /// @brief condition under which the C++ implementation of the function is
-  /// executed (if returns false, the function will be executed as its
-  /// JavaScript variant)
-  ExecutionCondition condition;
 
   /// @brief function argument conversion information
   std::vector<Conversion> conversions;
