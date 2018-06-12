@@ -205,8 +205,9 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   // )
 
   //// enumerate collection
-  auto* aqlCollection = query->collections()->get(params.collection);
+  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection);
   if(!aqlCollection) {
+    LOG_DEVEL << "could not find collection: " << params.collection;
     return nullptr;
   }
 
@@ -379,14 +380,14 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
 	}
 
 	if(!index){ // not found or error
-    LOG_DEVEL << "no index";
+    LOG_DEVEL << "could not find fulltext index for collection " << params.collection;
 		return nullptr;
 	}
 
   // index part 2 - get remaining vars required for index creation
-  auto* aqlCollection = query->collections()->get(params.collection);
+  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection);
   if(!aqlCollection) {
-    LOG_DEVEL << "no collection";
+    LOG_DEVEL << "could not find collection: " << params.collection;
     return nullptr;
   }
 	auto condition = std::make_unique<Condition>(ast);
@@ -447,7 +448,6 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt
         modified = true;
         return replacement;
       }
-      astnode->dump(0);
       return astnode;
     };
 

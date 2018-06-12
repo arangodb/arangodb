@@ -63,6 +63,35 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
+namespace arangodb {
+namespace aql {
+
+// TODO cleanup this f-ing aql::Collection(s) mess
+Collection* addCollectionToQuery(Query* query, std::string const& cname) {
+  aql::Collections* colls = query->collections();
+  aql::Collection* coll = colls->get(cname);
+
+  if (coll == nullptr) { // TODO: cleanup this mess
+    coll = colls->add(cname, AccessMode::Type::READ);
+
+    if (!ServerState::instance()->isCoordinator()) {
+      TRI_ASSERT(coll != nullptr);
+      auto cptr = query->trx()->vocbase().lookupCollection(cname);
+
+      coll->setCollection(cptr.get());
+      // FIXME: does this need to happen in the coordinator?
+      query->trx()->addCollectionAtRuntime(cname);
+    }
+  }
+
+  TRI_ASSERT(coll != nullptr);
+
+  return coll;
+}
+
+}
+}
+
 namespace {
 
 static int indexOf(std::vector<std::string> const& haystack, std::string const& needle) {
@@ -5471,28 +5500,6 @@ static bool isValueTypeCollection(AstNode const* node) {
   return node->type == NODE_TYPE_COLLECTION || node->isStringValue();
 }
 
-// TODO cleanup this f-ing aql::Collection(s) mess
-static aql::Collection* addCollectionToQuery(Query* query, std::string const& cname) {
-  aql::Collections* colls = query->collections();
-  aql::Collection* coll = colls->get(cname);
-
-  if (coll == nullptr) { // TODO: cleanup this mess
-    coll = colls->add(cname, AccessMode::Type::READ);
-
-    if (!ServerState::instance()->isCoordinator()) {
-      TRI_ASSERT(coll != nullptr);
-      auto cptr = query->trx()->vocbase().lookupCollection(cname);
-
-      coll->setCollection(cptr.get());
-      // FIXME: does this need to happen in the coordinator?
-      query->trx()->addCollectionAtRuntime(cname);
-    }
-  }
-
-  TRI_ASSERT(coll != nullptr);
-
-  return coll;
-}
 
 static bool applyFulltextOptimization(EnumerateListNode* elnode,
                                       LimitNode* ln, ExecutionPlan* plan) {

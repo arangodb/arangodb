@@ -161,7 +161,6 @@ function optimizerRuleTestSuite() {
       hasNoFilterNode(plan,q);
 
       let r = [ 3, 6 ];
-      db._explain(q)
       let r1 = AQL_EXECUTE(q, {}, { optimizer: { rules: [ "-all" ] } });
       let r2 = AQL_EXECUTE(q, {});
       assertEqual(r1.json, r, "Invalid fulltext result");
@@ -176,7 +175,6 @@ function optimizerRuleTestSuite() {
       let r = [ 1, 1 ];
       let r1 = AQL_EXECUTE(q, {}, { optimizer: { rules: [ "-all" ] } });
       let r2 = AQL_EXECUTE(q, {});
-      print(r1.toArray());
       assertEqual(r1.json, r, "Invalid fulltext result");
       assertEqual(r2.json, r, "Invalid fulltext result");
     }
