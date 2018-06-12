@@ -34,7 +34,7 @@ using namespace arangodb::cache;
 const uint32_t Table::minLogSize = 8;
 const uint32_t Table::maxLogSize = 32;
 
-Table::GenericBucket::GenericBucket() : _state{}, _padding {}
+Table::GenericBucket::GenericBucket() : _state{}, _padding{} {}
 
 bool Table::GenericBucket::lock(uint64_t maxTries) {
   return _state.lock(maxTries);
