@@ -27,8 +27,6 @@
 
 #include "Basics/Common.h"
 
-#include "Scheduler/EventLoop.h"
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -37,17 +35,18 @@ class Builder;
 class TaskData;
 
 namespace rest {
+class Scheduler;
+
 class Task : public std::enable_shared_from_this<Task> {
   Task(Task const&) = delete;
   Task& operator=(Task const&) = delete;
 
  public:
-  Task(EventLoop, std::string const& name);
+  Task(Scheduler*, std::string const& name);
   virtual ~Task() = default;
 
  public:
   uint64_t taskId() const { return _taskId; }
-  EventLoop eventLoop() const { return _loop; }
   std::string const& name() const { return _name; }
 
   // get a VelocyPack representation of the task for reporting
@@ -55,7 +54,7 @@ class Task : public std::enable_shared_from_this<Task> {
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
  protected:
-  EventLoop _loop;
+  Scheduler * const _scheduler;
   uint64_t const _taskId;
 
  private:

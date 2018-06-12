@@ -442,6 +442,10 @@ ExecutionNode* ExecutionNode::cloneHelper(
     // now assign a new id to the cloned node, otherwise it will fail
     // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
+    
+    // cloning with properties will only work if we clone a node into
+    // a different plan
+    TRI_ASSERT(!withProperties);
   }
 
   if (withProperties) {
