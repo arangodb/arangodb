@@ -216,10 +216,13 @@ class ExecutionPlan {
   /// <newNode> must be registered with the plan before this method is called.
   void insertDependency(ExecutionNode* oldNode, ExecutionNode* newNode);
 
-  /// @brief insert note directly after previous
+  /// @brief insert node directly after previous
   /// will remove previous as a dependency from its parents and
   /// add newNode as a dependency. <newNode> must be registered with the plan
   void insertAfter(ExecutionNode* previous, ExecutionNode* newNode);
+
+  /// @brief insert node directly before current
+  void insertBefore(ExecutionNode* current, ExecutionNode* newNode);
 
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }

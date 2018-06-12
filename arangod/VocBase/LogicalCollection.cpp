@@ -251,17 +251,9 @@ LogicalCollection::LogicalCollection(
     }
 
     VPackSlice keyGenSlice = info.get("keyOptions");
-    if (keyGenSlice.isObject()) {
-      keyGenSlice = keyGenSlice.get("type");
-      if (keyGenSlice.isString()) {
-        StringRef tmp(keyGenSlice);
-        if (!tmp.empty() && tmp != "traditional") {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                         "non-traditional key generators are "
-                                         "not supported for sharded "
-                                         "collections");
-        }
-      }
+    if (!KeyGenerator::canUseType(keyGenSlice)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
+                                     "the specified key generator is not supported for sharded collections");
     }
   }
 

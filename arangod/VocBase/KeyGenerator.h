@@ -26,12 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Cluster/ServerState.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
-
-/// @brief maximum length of a key in a collection
-#define TRI_VOC_KEY_MAX_LENGTH (254)
 
 namespace arangodb {
 namespace velocypack {
@@ -48,17 +46,24 @@ class KeyGenerator {
     TYPE_AUTOINCREMENT = 2
   };
 
+  /// @brief maximum length of a key in a collection
+  static constexpr size_t maxKeyLength = 254;
+
  protected:
   /// @brief create the generator
-  explicit KeyGenerator(bool);
+  explicit KeyGenerator(bool allowUserKeys);
 
  public:
   /// @brief destroy the generator
-  virtual ~KeyGenerator();
+  virtual ~KeyGenerator() = default;
 
  public:
   /// @brief get the generator type from VelocyPack
   static GeneratorType generatorType(arangodb::velocypack::Slice const&);
+
+  /// @brief check if the specified key generator in the VelocyPack
+  /// can be used in this setup (cluster / single-server)
+  static bool canUseType(arangodb::velocypack::Slice const&);
 
   /// @brief create a key generator based on the options specified
   static KeyGenerator* factory(arangodb::velocypack::Slice const&);
@@ -75,9 +80,6 @@ class KeyGenerator {
   /// @brief track usage of a key
   virtual void track(char const* p, size_t length) = 0;
 
-  /// @brief return a VelocyPack representation of the generator
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
-
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
 
@@ -89,17 +91,31 @@ class KeyGenerator {
   bool _allowUserKeys;
 };
 
-class TraditionalKeyGenerator final : public KeyGenerator {
+class TraditionalKeyGenerator : public KeyGenerator {
  public:
   /// @brief create the generator
-  explicit TraditionalKeyGenerator(bool);
+  explicit TraditionalKeyGenerator(bool allowUserKeys);
 
-  /// @brief destroy the generator
-  ~TraditionalKeyGenerator();
-
- public:
   /// @brief validate a key
   static bool validateKey(char const* key, size_t len);
+
+  /// @brief validate a key
+  int validate(char const* p, size_t length, bool isRestore) override;
+
+  /// @brief return the generator name (must be lowercase)
+  static char const* name() { return "traditional"; }
+  
+  /// @brief track usage of a key - default implementation is to throw!
+  void track(char const* p, size_t length) override;
+  
+  /// @brief build a VelocyPack representation of the generator in the builder
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
+};
+
+class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
+ public:
+  /// @brief create the generator
+  explicit TraditionalKeyGeneratorSingle(bool allowUserKeys);
 
  public:
   
@@ -107,15 +123,12 @@ class TraditionalKeyGenerator final : public KeyGenerator {
 
   /// @brief generate a key
   std::string generate() override;
-
+  
   /// @brief validate a key
   int validate(char const* p, size_t length, bool isRestore) override;
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) override final;
-
-  /// @brief return the generator name (must be lowercase)
-  static std::string name() { return "traditional"; }
+  void track(char const* p, size_t length) override;
 
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;
@@ -126,13 +139,23 @@ class TraditionalKeyGenerator final : public KeyGenerator {
   uint64_t _lastValue;
 };
 
+class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
+ public:
+  /// @brief create the generator
+  explicit TraditionalKeyGeneratorCluster(bool allowUserKeys);
+
+ public:
+  
+  bool trackKeys() const override { return false; }
+
+  /// @brief generate a key
+  std::string generate() override;
+};
+
 class AutoIncrementKeyGenerator final : public KeyGenerator {
  public:
   /// @brief create the generator
   AutoIncrementKeyGenerator(bool, uint64_t, uint64_t);
-
-  /// @brief destroy the generator
-  ~AutoIncrementKeyGenerator();
 
  public:
   /// @brief validate a key
@@ -149,10 +172,10 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   int validate(char const* p, size_t length, bool isRestore) override;
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) override final;
+  void track(char const* p, size_t length) override;
 
   /// @brief return the generator name (must be lowercase)
-  static std::string name() { return "autoincrement"; }
+  static char const* name() { return "autoincrement"; }
 
   /// @brief build a VelocyPack representation of the generator in the builder
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const override;

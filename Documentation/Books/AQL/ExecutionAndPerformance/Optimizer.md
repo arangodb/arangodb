@@ -423,7 +423,8 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a`
   would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a`
 * `geo-index-optimizer`: will appear when a geo index is utilized.
-* `fulltext-index-optimizer`: will appear when the fulltext index is used
+* `replace-function-with-index`: will appear when a function like FULLTEXT is replaced
+   with an index.
 * `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
   moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
   is specific for the MMFiles storage engine.
