@@ -179,8 +179,10 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   TRI_ASSERT(trxCollection == nullptr);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  trxCollection =
-      engine->createTransactionCollection(this, cid, accessType, nestingLevel);
+
+  trxCollection = engine->createTransactionCollection(
+    *this, cid, accessType, nestingLevel
+  ).release();
 
   TRI_ASSERT(trxCollection != nullptr);
 

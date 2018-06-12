@@ -215,7 +215,8 @@ LogicalCollection::LogicalCollection(
       _keyOptions(nullptr),
       _keyGenerator(),
       _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
+        EngineSelectorFeature::ENGINE->createPhysicalCollection(*this, info)
+      ),
       _clusterEstimateTTL(0) {
   TRI_ASSERT(info.isObject());
 
@@ -662,7 +663,7 @@ Result LogicalCollection::rename(std::string&& newName, bool doSync) {
     TRI_ASSERT(engine != nullptr);
 
     name(std::move(newName));
-    engine->changeCollection(vocbase(), id(), this, doSync);
+    engine->changeCollection(vocbase(), id(), *this, doSync);
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -701,7 +702,7 @@ arangodb::Result LogicalCollection::drop() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  engine->destroyCollection(vocbase(), this);
+  engine->destroyCollection(vocbase(), *this);
   deleted(true);
   _physical->drop();
 
@@ -984,7 +985,8 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->changeCollection(vocbase(), id(), this, doSync);
+
+  engine->changeCollection(vocbase(), id(), *this, doSync);
 
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1063,7 +1065,7 @@ void LogicalCollection::persistPhysicalCollection() {
   // We have not yet persisted this collection!
   TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto path = engine->createCollection(vocbase(), id(), this);
+  auto path = engine->createCollection(vocbase(), id(), *this);
 
   getPhysical()->setPath(path);
 }
