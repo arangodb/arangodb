@@ -73,7 +73,7 @@ void AqlFunctionFeature::prepare() {
   addStorageEngineFunctions();
 
   add({"PREGEL_RESULT", ".", false, true,
-    true, &Functions::PregelResult, NotInCoordinator});
+    true, &Functions::PregelResult});
 }
 
 void AqlFunctionFeature::unprepare() {
