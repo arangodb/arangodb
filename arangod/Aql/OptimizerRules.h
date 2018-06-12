@@ -238,9 +238,6 @@ void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule
 /// @brief replace WITHIN_RECTANGLE, NEAR, WITHIN (under certain conditions)
 void replaceLegacyGeoFunctionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
-/// @brief replace FULLTEXT function
-void fulltextIndexRule(aql::Optimizer*, std::unique_ptr<aql::ExecutionPlan>, aql::OptimizerRule const*);
-
 /// @brief push LIMIT into subqueries, and simplify them
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
