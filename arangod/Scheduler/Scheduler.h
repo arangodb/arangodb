@@ -28,23 +28,22 @@
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
+#include "Basics/asio_ns.h"
 #include "Basics/socket-utils.h"
-#include "Scheduler/EventLoop.h"
+#include "Endpoint/Endpoint.h"
 #include "Scheduler/Job.h"
-#include "Scheduler/Socket.h"
 
 namespace arangodb {
-class JobQueue;
+class Acceptor;
 class JobGuard;
+class JobQueue;
+class ListenTask;
 
 namespace velocypack {
 class Builder;
 }
 
-class ListenTask;
-
 namespace rest {
-
 class GeneralCommTask;
 class SocketTask;
 
@@ -63,17 +62,11 @@ class Scheduler {
   virtual ~Scheduler();
 
  public:
-  asio_ns::io_context* ioContext() const { return _ioContext.get(); }
+  // XXX-TODO remove, replace with signal handler
   asio_ns::io_context* managerService() const { return _managerService.get(); }
 
-  EventLoop eventLoop() {
-    // cannot use
-    //   return EventLoop{._ioService = *_ioService.get(), ._scheduler = this};
-    // because windows complains ...
-    return EventLoop{_ioContext.get(), this};
-  }
-
   void post(std::function<void()> callback);
+  void post(asio_ns::io_context::strand&, std::function<void()> callback);
 
   bool start();
   bool isRunning() const { return numRunning(_counters) > 0; }
@@ -82,6 +75,54 @@ class Scheduler {
   void stopRebalancer() noexcept;
   bool isStopping() { return (_counters & (1ULL << 63)) != 0; }
   void shutdown();
+
+  template<typename T>
+  asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
+    return new asio_ns::deadline_timer(*_ioContext, timeout);
+  }
+
+  asio_ns::steady_timer* newSteadyTimer() {
+    return new asio_ns::steady_timer(*_ioContext);
+  }
+
+  asio_ns::io_context::strand* newStrand() {
+    return new asio_ns::io_context::strand(*_ioContext);
+  }
+
+  asio_ns::ip::tcp::acceptor*
+  newAcceptor() {
+    return new asio_ns::ip::tcp::acceptor(*_ioContext);
+  }
+
+#ifndef _WIN32
+  asio_ns::local::stream_protocol::acceptor*
+  newDomainAcceptor() {
+    return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
+  }
+#endif
+
+  asio_ns::ip::tcp::socket*
+  newSocket() {
+    return new asio_ns::ip::tcp::socket(*_ioContext);
+  }
+
+#ifndef _WIN32
+  asio_ns::local::stream_protocol::socket*
+  newDomainSocket() {
+    return new asio_ns::local::stream_protocol::socket(*_ioContext);
+  }
+#endif
+
+  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>*
+  newSslSocket(asio_ns::ssl::context& context) {
+    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(
+      *_ioContext, context);
+  }
+
+  asio_ns::ip::tcp::resolver*
+  newResolver() {
+    return new asio_ns::ip::tcp::resolver(*_ioContext);
+  }
 
  public:
   // decrements the nrRunning counter for the thread
@@ -102,21 +143,21 @@ class Scheduler {
 
   uint64_t minimum() const { return _nrMinimum; }
 
-  // number of queued handlers
+  // number of jobs that are currently been posted to the io_context,
+  // but where the handler has not yet been called. The number of
+  // handler in total is numQueued() + numRunning(_counters)
   inline uint64_t numQueued() const noexcept { return _nrQueued; };
+
   inline uint64_t getCounters() const noexcept { return _counters; }
 
-  // number of running threads
   static uint64_t numRunning(uint64_t value) noexcept {
     return value & 0xFFFFULL;
   }
 
-  // number of working threads
   static uint64_t numWorking(uint64_t value) noexcept {
     return (value >> 16) & 0xFFFFULL;
   }
 
-  // number of blocked threads
   static uint64_t numBlocked(uint64_t value) noexcept {
     return (value >> 32) & 0xFFFFULL;
   }
@@ -142,13 +183,15 @@ class Scheduler {
   //   AA BB CC DD
   //
   // we use the lowest 2 bytes (DD) to store the number of running threads
+  //
   // the next lowest bytes (CC) are used to store the number of currently
   // working threads
+  //
   // the next bytes (BB) are used to store the number of currently blocked
   // threads
+  //
   // the highest bytes (AA) are used only to encode a stopping bit. when this
-  // bit is
-  // set, the scheduler is stopping (or already stopped)
+  // bit is set, the scheduler is stopping (or already stopped)
   inline void setStopping() noexcept { _counters |= (1ULL << 63); }
 
   inline void incRunning() noexcept { _counters += 1ULL << 0; }
@@ -192,7 +235,6 @@ class Scheduler {
   // meaning of its individual bits
   std::atomic<uint64_t> _counters;
 
-  // number of jobs that are currently been queued, but not worked on
   std::atomic<uint64_t> _nrQueued;
 
   std::unique_ptr<JobQueue> _jobQueue;
