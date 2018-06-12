@@ -156,6 +156,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   void generateRemoved(bool removed, bool wasSynchronous, VPackSlice old,
                        VPackOptions const& options);
 
+  void generateGraphRemoved(bool removed, bool wasSynchronous,
+                       VPackOptions const& options);
+
   void generateCreatedGraphConfig(bool wasSynchronous, VPackSlice slice,
       VPackOptions const& options);
 

@@ -247,9 +247,8 @@ class GraphOperations {
       const std::string& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
 
-  /// @brief Remove a vertex and all incident edges in the graph
-  ResultT<std::pair<OperationResult, Result>> removeGraph(
-      bool waitForSync, bool dropCollections);
+  /// @brief Remove a graph and optional all connected collections
+  ResultT<std::pair<OperationResult, Result>> removeGraph(bool waitForSync, bool dropCollections);
 
   ResultT<std::pair<OperationResult, Result>> updateEdge(
       const std::string& definitionName, const std::string& key,

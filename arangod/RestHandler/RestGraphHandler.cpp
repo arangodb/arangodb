@@ -456,6 +456,25 @@ void RestGraphHandler::generateRemoved(bool removed, bool wasSynchronous,
   generateResultMergedWithObject(obj.slice(), options);
 }
 
+/// @brief generate response object: { error, code, removed, old? }
+/// "old" is omitted if old is a NoneSlice.
+void RestGraphHandler::generateGraphRemoved(bool removed, bool wasSynchronous,
+                                       VPackOptions const& options) {
+  ResponseCode code;
+  if (wasSynchronous) {
+    code = rest::ResponseCode::ACCEPTED;
+  } else {
+    code = rest::ResponseCode::ACCEPTED;
+    // code = rest::ResponseCode::CREATED; // TODO this is not as it is described in the documentation
+  }
+  resetResponse(code);
+  VPackBuilder obj;
+  obj.add(VPackValue(VPackValueType::Object, true));
+  obj.add("removed", VelocyPackHelper::BooleanValue(removed));
+  obj.close();
+  generateResultMergedWithObject(obj.slice(), options);
+}
+
 void RestGraphHandler::generateGraphConfig(VPackSlice slice,
                                            VPackOptions const& options) {
   resetResponse(rest::ResponseCode::OK);
@@ -1051,6 +1070,28 @@ Result RestGraphHandler::graphActionRemoveGraph(
       transaction::StandaloneContext::Create(_vocbase);
   GraphOperations gops{*graph, ctx};
   auto resultT = gops.removeGraph(waitForSync, dropCollections);
+
+  if (!resultT.ok()) {
+    generateTransactionError("", resultT, "");
+    return resultT.copy_result();
+  }
+
+  OperationResult& result = resultT.get().first;
+
+  Result res = resultT.get().second;
+
+  if (result.fail()) {
+    generateTransactionError(result);
+    return result.result;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError("", res, "");
+    return res;
+  }
+
+  generateGraphRemoved(true, result._options.waitForSync,
+                  *ctx->getVPackOptionsForDump());
 
   return Result();
 }

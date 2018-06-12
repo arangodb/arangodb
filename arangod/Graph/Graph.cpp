@@ -418,7 +418,7 @@ GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
   return builder.buffer();
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph( // TODO DELETE GRAPH WIP
+ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
     bool waitForSync, bool dropCollections) {
 
   std::vector<std::string> trxCollections;
