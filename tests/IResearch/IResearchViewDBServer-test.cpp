@@ -84,6 +84,9 @@ struct IResearchViewDBServerSetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
+    // suppress INFO {cluster} Starting up with role PRIMARY
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::WARN);
+
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
@@ -153,6 +156,7 @@ struct IResearchViewDBServerSetup {
 
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
     ClusterCommControl::reset();
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
@@ -196,7 +200,7 @@ SECTION("test_drop") {
     CHECK((nullptr != impl));
 
     // ensure we have shard view in vocbase
-    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto const shardViewName = "_iresearch_123_" + wiewId;
     auto jsonShard = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
     );
@@ -227,7 +231,7 @@ SECTION("test_drop") {
     CHECK((nullptr != impl));
 
     // ensure we have shard view in vocbase
-    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto const shardViewName = "_iresearch_123_" + wiewId;
     auto jsonShard = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
     );
@@ -262,9 +266,9 @@ SECTION("test_drop_cid") {
 
   // ensure we have shard view in vocbase
   auto jsonShard = arangodb::velocypack::Parser::fromJson(
-    "{ \"id\": 100, \"name\": \"_iresearch_123_1_testView\", \"type\": \"arangosearch\", \"isSystem\": true }"
+    "{ \"id\": 100, \"name\": \"_iresearch_123_1\", \"type\": \"arangosearch\", \"isSystem\": true }"
   );
-  CHECK((true == !vocbase.lookupView("_iresearch_123_1_testView")));
+  CHECK((true == !vocbase.lookupView("_iresearch_123_1")));
   auto shardView = vocbase.createView(jsonShard->slice());
   CHECK(shardView);
 
@@ -291,7 +295,7 @@ SECTION("test_ensure") {
 
   auto view = impl->ensure(123);
   CHECK((false == !view));
-  CHECK((std::string("_iresearch_123_1_testView") == view->name()));
+  CHECK((std::string("_iresearch_123_1") == view->name()));
   CHECK((false == view->deleted()));
   CHECK((wiew->id() != view->id())); // must have unique ID
   CHECK((view->id() == view->planId())); // same as view ID
@@ -300,7 +304,7 @@ SECTION("test_ensure") {
   CHECK((&vocbase == &(view->vocbase())));
   static auto visitor = [](TRI_voc_cid_t)->bool { return false; };
   CHECK((true == view->visitCollections(visitor))); // no collections in view
-  CHECK((false == !vocbase.lookupView("_iresearch_123_1_testView")));
+  CHECK((false == !vocbase.lookupView("_iresearch_123_1")));
 }
 
 SECTION("test_make") {
@@ -328,7 +332,7 @@ SECTION("test_make") {
 
   // make IResearchView (DBServer view also created)
   {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 100, \"name\": \"_iresearch_123_456_testView\", \"type\": \"arangosearch\", \"isSystem\": true }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"id\": 100, \"name\": \"_iresearch_123_456\", \"type\": \"arangosearch\", \"isSystem\": true }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     CHECK((true == !vocbase.lookupView("testView")));
     auto view = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
@@ -336,7 +340,7 @@ SECTION("test_make") {
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view.get());
     CHECK((nullptr != impl));
 
-    CHECK((std::string("_iresearch_123_456_testView") == view->name()));
+    CHECK((std::string("_iresearch_123_456") == view->name()));
     CHECK((false == view->deleted()));
     CHECK((100 == view->id()));
     CHECK((view->id() == view->planId())); // same as view ID
@@ -376,7 +380,7 @@ SECTION("test_open") {
     CHECK((nullptr != impl));
 
     // ensure we have shard view in vocbase
-    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto const shardViewName = "_iresearch_123_" + wiewId;
     auto jsonShard = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
     );
@@ -660,7 +664,7 @@ SECTION("test_rename") {
 
     auto view = impl->ensure(123);
     CHECK((false == !view));
-    CHECK((std::string("_iresearch_123_1_newName") == view->name()));
+    CHECK((std::string("_iresearch_123_1") == view->name()));
   }
 
   // rename non-empty
@@ -674,7 +678,7 @@ SECTION("test_rename") {
     CHECK((nullptr != impl));
 
     // ensure we have shard view in vocbase
-    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto const shardViewName = "_iresearch_123_" + wiewId;
     auto jsonShard = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
     );
@@ -709,7 +713,7 @@ SECTION("test_rename") {
       CHECK((std::string("newName") == builder.slice().get("name").copyString()));
     }
 
-    CHECK((("_iresearch_123_" + wiewId + "_newName") == view->name()));
+    CHECK((("_iresearch_123_" + wiewId) == view->name()));
     wiew->rename("testView", true); // rename back or vocbase will be out of sync
   }
 }
@@ -799,6 +803,7 @@ SECTION("test_transaction_snapshot") {
   auto logicalView = wiewImpl->ensure(42);
   REQUIRE((false == !logicalView));
   auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+  REQUIRE((nullptr != viewImpl));
 
   // add a single document to view (do not sync)
   {
@@ -923,14 +928,24 @@ SECTION("test_transaction_snapshot") {
 }
 
 SECTION("test_updateProperties") {
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE((nullptr != ci));
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
+  REQUIRE((nullptr != databaseFeature));
+  std::string error;
+
   // update empty (partial)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+    REQUIRE((nullptr != vocbase));
+    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    auto* logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice(), error)));
+    auto wiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -985,11 +1000,15 @@ SECTION("test_updateProperties") {
   // update empty (full)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+    REQUIRE((nullptr != vocbase));
+    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    auto* logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice(), error)));
+    auto wiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -1044,11 +1063,15 @@ SECTION("test_updateProperties") {
   // update non-empty (partial)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+    REQUIRE((nullptr != vocbase));
+    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    auto* logicalCollection = vocbase->createCollection(collectionJson->slice());
     CHECK((nullptr != logicalCollection));
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice(), error)));
+    auto wiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -1106,13 +1129,17 @@ SECTION("test_updateProperties") {
   {
     auto collection0Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
     auto collection1Json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\", \"id\": \"123\" }");
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection0 = vocbase.createCollection(collection0Json->slice());
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": \"42\", \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"collections\": [ 3, 4, 5 ], \"threadsMaxIdle\": 24, \"threadsMaxTotal\": 42 } }");
+    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+    REQUIRE((nullptr != vocbase));
+    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    auto* logicalCollection0 = vocbase->createCollection(collection0Json->slice());
     CHECK((nullptr != logicalCollection0));
-    auto* logicalCollection1 = vocbase.createCollection(collection1Json->slice());
+    auto* logicalCollection1 = vocbase->createCollection(collection1Json->slice());
     CHECK((nullptr != logicalCollection1));
-    auto wiew = arangodb::iresearch::IResearchViewDBServer::make(vocbase, json->slice(), true, 42);
+    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", viewJson->slice(), error)));
+    auto wiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !wiew));
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(wiew.get());
     CHECK((nullptr != impl));
@@ -1195,7 +1222,7 @@ SECTION("test_visitCollections") {
     CHECK((nullptr != impl));
 
     // ensure we have shard view in vocbase
-    auto const shardViewName = "_iresearch_123_" + wiewId + "_testView";
+    auto const shardViewName = "_iresearch_123_" + wiewId;
     auto jsonShard = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 100, \"name\": \"" + shardViewName + "\", \"type\": \"arangosearch\", \"isSystem\": true }"
     );
