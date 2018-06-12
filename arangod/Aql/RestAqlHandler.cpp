@@ -617,7 +617,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
       return;
     }
 
-    answerBody.add("error", VPackValue(false));
+    answerBody.add(StaticStrings::Error, VPackValue(false));
   } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(&_vocbase, _qId);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: " << ex.message();
@@ -833,7 +833,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         }
         if (items.get() == nullptr) {
           answerBuilder.add("exhausted", VPackValue(true));
-          answerBuilder.add("error", VPackValue(false));
+          answerBuilder.add(StaticStrings::Error, VPackValue(false));
         } else {
           items->toVelocyPack(query->trx(), answerBuilder);
         }
@@ -874,7 +874,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
         }
         answerBuilder.add("skipped", VPackValue(skipped));
-        answerBuilder.add("error", VPackValue(false));
+        answerBuilder.add(StaticStrings::Error, VPackValue(false));
       } else if (operation == "initialize") {
         // this is a no-op now
         answerBuilder.add(StaticStrings::Error, VPackValue(false));
@@ -887,7 +887,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
           while (true) {
             // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
+            auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
             if (tmpRes.first == ExecutionState::WAITING) {
               query->tempWaitForAsyncResponse();
             } else {
@@ -895,13 +895,12 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
               break;
             }
           }
- 
         } else {
           items.reset(new AqlItemBlock(query->resourceMonitor(),
                                        querySlice.get("items")));
           while (true) {
             // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
+            auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
             if (tmpRes.first == ExecutionState::WAITING) {
               query->tempWaitForAsyncResponse();
             } else {
