@@ -1,12 +1,12 @@
 Arangoinspect Examples
 ======================
 
-If you are asked by ArangoDB support to provide an `arangodb-inspector.json`
-file, run the _arangoinspect_ binary to generate in the current working folder.
+If you are asked by ArangoDB support to provide an inspector output, run
+the _arangoinspect_ binary to generate a file in the current working folder.
 
-The resulting JSON file contains the names of existing databases, their
-collections, indexes, shards and some other potentially useful data about
-the system to diagnose problems.
+The resulting JSON file is a collection of meta data acquired from all
+involved instances. The data includes relevant operating system parameters,
+ArangoDB process parameters, local database information etc.
 
 {% hint 'warning' %}
 Please open the file locally and check if it contains anything that you are
