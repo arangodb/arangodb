@@ -129,10 +129,12 @@ class SortedCollectBlock final : public ExecutionBlock {
 class HashedCollectBlock final : public ExecutionBlock {
  public:
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
+  ~HashedCollectBlock() final;
 
  private:
-  int getOrSkipSomeOld(size_t atMost, bool skipping,
-                       AqlItemBlock*& result, size_t& skipped) override;
+  std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
+                                                  AqlItemBlock*& result,
+                                                  size_t& skipped) override;
 
  private:
   /// @brief pairs, consisting of out register and in register
@@ -146,6 +148,15 @@ class HashedCollectBlock final : public ExecutionBlock {
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
+
+  size_t _skipped;
+  AqlItemBlock* _lastBlock;
+  std::unordered_map<std::vector<AqlValue>,
+                     std::unique_ptr<AggregateValuesType>, AqlValueGroupHash,
+                     AqlValueGroupEqual>
+      _allGroups;
+
+  void _destroyAllGroupsAqlValues();
 };
 
 class DistinctCollectBlock final : public ExecutionBlock {
