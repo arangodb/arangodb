@@ -619,19 +619,16 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
       previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
   // state variables of the following generator-lambda, iterating over rows
-  AqlItemBlock* nextCur = nullptr;
   auto getNextRow =
-      [this, &nextCur,
+      [this,
        &curNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
 
-    // TODO nextcur is either nullptr or _buffer.front() - seems somewhat
-    // superfluous
-
     // try to ensure a nonempty buffer
-    if (nextCur == nullptr && _buffer.empty()) {
+    if (_buffer.empty()) {
       ExecutionState state;
       bool blockAppended;
-      std::tie(state, blockAppended) = ExecutionBlock::getBlock(DefaultBatchSize());
+      std::tie(state, blockAppended) =
+          ExecutionBlock::getBlock(DefaultBatchSize());
       if (state == ExecutionState::WAITING) {
         TRI_ASSERT(!blockAppended);
         return std::make_tuple(GetNextRowState::WAITING, nullptr, 0);
@@ -643,18 +640,15 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
       return std::make_tuple(GetNextRowState::NONE, nullptr, 0);
     }
 
-    nextCur = _buffer.front();
-
     // save current position (to return)
-    AqlItemBlock* cur = nextCur;
+    AqlItemBlock* cur = _buffer.front();
     size_t pos = _pos;
 
     TRI_ASSERT(curNrRegs == cur->getNrRegs());
 
     // calculate next position
     ++_pos;
-    if (_pos >= nextCur->size()) {
-      nextCur = nullptr;
+    if (_pos >= cur->size()) {
       _pos = 0;
       _buffer.pop_front();
     }
@@ -783,6 +777,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
     return result.release();
   };
+
   auto reduceAggregates = [this, en](decltype(_allGroups)::iterator groupIt,
                                      AqlItemBlock const* cur,
                                      size_t const pos) {
@@ -814,9 +809,6 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     AqlItemBlock* cur = nullptr;
     size_t pos = 0;
     std::tie(state, cur, pos) = getNextRow();
-
-    throwIfKilled();
-
     if (state == GetNextRowState::NONE) {
       // no more rows
       break;
@@ -828,6 +820,8 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     TRI_IF_FAILURE("HashedCollectBlock::getOrSkipSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
+
+    throwIfKilled();
 
     if (_lastBlock != nullptr && _lastBlock != cur) {
       // return lastBlock just before forgetting it
