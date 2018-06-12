@@ -43,12 +43,12 @@ using namespace arangodb::aql;
 IndexNode::IndexNode(ExecutionPlan* plan, size_t id,
             Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
-            Condition* condition, IndexIteratorOptions const& opts)
+            std::unique_ptr<Condition> condition, IndexIteratorOptions const& opts)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         CollectionAccessingNode(collection),
         _indexes(indexes),
-        _condition(condition),
+        _condition(condition.release()),
         _needsGatherNodeSort(false),
         _options(opts) {
   TRI_ASSERT(_condition != nullptr);
@@ -138,7 +138,7 @@ void IndexNode::initIndexCoversProjections() {
     // we will not be able to satisfy all requested projections with this index
     return;
   }
-  
+
   std::vector<size_t> coveringAttributePositions;
   // test if the index fields are the same fields as used in the projection
   std::string result;
@@ -159,7 +159,7 @@ void IndexNode::initIndexCoversProjections() {
     }
     ++i;
   }
- 
+
   _coveringIndexAttributePositions = std::move(coveringAttributePositions);
 }
 
@@ -167,10 +167,10 @@ void IndexNode::initIndexCoversProjections() {
 void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
-  
+
   // add outvariable and projections
   DocumentProducingNode::toVelocyPack(builder);
-  
+
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder);
 
@@ -215,8 +215,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = std::make_unique<IndexNode>(plan, _id, _collection, outVariable,
-                         _indexes, _condition->clone(), _options);
+  auto c = std::make_unique<IndexNode>(plan, _id,  _collection, outVariable,
+                         _indexes, std::unique_ptr<Condition>(_condition->clone()), _options);
 
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);

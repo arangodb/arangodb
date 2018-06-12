@@ -44,7 +44,6 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RocksDBEngine/RocksDBAqlFunctions.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -1389,7 +1388,6 @@ int RocksDBEngine::shutdownDatabase(TRI_vocbase_t* vocbase) {
 
 /// @brief Add engine-specific AQL functions.
 void RocksDBEngine::addAqlFunctions() {
-  RocksDBAqlFunctions::registerResources();
 }
 
 /// @brief Add engine-specific optimizer rules
