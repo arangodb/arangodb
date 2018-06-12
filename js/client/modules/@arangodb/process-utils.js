@@ -407,7 +407,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     if (platform.substr(0, 3) !== 'win') {
       // this shellscript will prevent cores from being writen on macos and linux.
       args.unshift(cmd);
-      cmd = pu.TOP_DIR + '/scripts/disable-cores.sh';
+      cmd = TOP_DIR + '/scripts/disable-cores.sh';
     }
   }
   
