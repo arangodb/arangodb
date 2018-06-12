@@ -362,19 +362,17 @@ AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
   size_t skipped = 0;
 
   AqlItemBlock* result = nullptr;
-  int out = TRI_ERROR_INTERNAL;
   while (true) {
+    TRI_ASSERT(result == nullptr);
     auto res = getOrSkipSome(atMost, false, result, skipped);
     if (res.first == ExecutionState::WAITING) {
       _engine->getQuery()->tempWaitForAsyncResponse();
     } else { 
-      out = res.second.errorNumber();
+      if (res.second.fail()) {
+        THROW_ARANGO_EXCEPTION(res.second);
+      }
       break;
     }
-  }
-
-  if (out != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(out);
   }
 
   return result;

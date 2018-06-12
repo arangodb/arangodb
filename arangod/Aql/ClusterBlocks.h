@@ -134,9 +134,6 @@ class ScatterBlock : public BlockWithClients {
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  /// @brief shutdown
-  int shutdown(int) override;
-
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
 
@@ -165,9 +162,6 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
-  /// @brief shutdown
-  int shutdown(int) override;
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
@@ -312,9 +306,6 @@ class UnsortingGatherBlock final : public ExecutionBlock {
     TRI_ASSERT(en.elements().empty());
   }
 
-  /// @brief shutdown: need our own method since our _buffer is different
-  int shutdown(int errorCode) override final;
-
   /// @brief initializeCursor
   std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
@@ -365,9 +356,6 @@ class SortingGatherBlock final : public ExecutionBlock {
     ExecutionEngine& engine,
     GatherNode const& en
   );
-
-  /// @brief shutdown: need our own method since our _buffer is different
-  int shutdown(int errorCode) override final;
 
   /// @brief initializeCursor
   std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;

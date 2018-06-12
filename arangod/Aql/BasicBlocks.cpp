@@ -62,12 +62,6 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::initializeCursor(
   DEBUG_END_BLOCK();  
 }
 
-/// @brief shutdown the singleton block
-int SingletonBlock::shutdown(int errorCode) {
-  _inputRegisterValues.reset();
-  return ExecutionBlock::shutdown(errorCode);
-}
-
 std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  

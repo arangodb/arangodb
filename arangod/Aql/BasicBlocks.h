@@ -43,8 +43,6 @@ class SingletonBlock final : public ExecutionBlock {
   /// above
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  int shutdown(int) override final;
-
   bool hasMore() override final { return !_done; }
 
  private:

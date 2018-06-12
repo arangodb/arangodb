@@ -355,23 +355,6 @@ std::pair<ExecutionState, Result> ScatterBlock::initializeCursor(
   DEBUG_END_BLOCK();
 }
 
-/// @brief shutdown
-int ScatterBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  int res = BlockWithClients::shutdown(errorCode);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // local clean up
-  _posForClient.clear();
-
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 ExecutionState ScatterBlock::getHasMoreStateForClientId(size_t clientId) {
   if (hasMoreForClientId(clientId)) {
     return ExecutionState::HASMORE;
@@ -536,23 +519,6 @@ std::pair<ExecutionState, Result> DistributeBlock::initializeCursor(
   }
 
   return BlockWithClients::initializeCursor(items, pos);
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief shutdown
-int DistributeBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  int res = BlockWithClients::shutdown(errorCode);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // local clean up
-  _distBuffer.clear();
-
-  return TRI_ERROR_NO_ERROR;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1156,7 +1122,6 @@ bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
 int RemoteBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
 
-
   /* We need to handle this here in ASYNC case
     if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
       // this error may happen on shutdown and is thus tolerated
@@ -1359,26 +1324,6 @@ bool RemoteBlock::hasMore() {
 // -- SECTION --                                            UnsortingGatherBlock
 // -----------------------------------------------------------------------------
 
-/// @brief shutdown: need our own method since our _buffer is different
-int UnsortingGatherBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  // don't call default shutdown method since it does the wrong thing to
-  // _gatherBlockBuffer
-  int ret = TRI_ERROR_NO_ERROR;
-  for (auto* dependency : _dependencies) {
-    int res = dependency->shutdown(errorCode);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      ret = res;
-    }
-  }
-
-  return ret;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 /// @brief initializeCursor
 std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
@@ -1522,39 +1467,6 @@ SortingGatherBlock::SortingGatherBlock(
     en.elements(),
     _sortRegisters
   );
-}
-
-/// @brief shutdown: need our own method since our _buffer is different
-int SortingGatherBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  // don't call default shutdown method since it does the wrong thing to
-  // _gatherBlockBuffer
-  int ret = TRI_ERROR_NO_ERROR;
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->shutdown(errorCode);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      ret = res;
-    }
-  }
-
-  if (ret != TRI_ERROR_NO_ERROR) {
-    return ret;
-  }
-
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y : x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _gatherBlockBuffer.clear();
-  _gatherBlockPos.clear();
-
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
 }
 
 /// @brief initializeCursor
