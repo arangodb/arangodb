@@ -179,38 +179,9 @@ AstNode* createSubqueryWithLimit(
 
 }
 
-AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan, bool isNear){
-  auto* ast = plan->getAst();
-  auto* query = ast->query();
-  auto* trx = query->trx();
-  NearOrWithinParams params(funAstNode,isNear);
+std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(Ast* ast, AstNode* docRef, NearOrWithinParams& params){
+  auto* trx = ast->query()->trx();
 
-  // RETURN (
-  //  FOR d IN col
-  //    SORT DISTANCE(d.lat, d.long, param.lat, param.lon) // NEAR
-  //    // FILTER DISTANCE(d.lat, d.long, param.lat, param.lon) < param.radius //WHITHIN
-  //    MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
-  //    LIMIT param.limit // NEAR
-  //    RETURN d MERGE {param.distname : calculated_distance}
-  // )
-
-  //// enumerate collection
-  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
-  if(!aqlCollection) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"collection used in NEAR or WITHIN not found");
-  }
-
-  Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
-  ExecutionNode* eEnumerate = plan->registerNode(
-      // link output of index with the return node
-      new EnumerateCollectionNode(
-            plan, plan->nextId(), aqlCollection,
-            enumerateOutVariable, false
-      )
-  );
-
-  //// build sort condition - DISTANCE(d.lat, d.long, param.lat, param.lon)
-  auto* docRef = ast->createNodeReference(enumerateOutVariable);
   AstNode* accessNodeLat = docRef;
   AstNode* accessNodeLon = docRef;
   bool indexFound = false;
@@ -252,10 +223,48 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   } // for index in collection
 
-
   if(!indexFound) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_GEO_INDEX_MISSING);
   }
+
+  return std::pair<AstNode*, AstNode*>(accessNodeLat, accessNodeLon);
+};
+
+
+AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan, bool isNear){
+  auto* ast = plan->getAst();
+  auto* query = ast->query();
+  NearOrWithinParams params(funAstNode,isNear);
+
+  // RETURN (
+  //  FOR d IN col
+  //    SORT DISTANCE(d.lat, d.long, param.lat, param.lon) // NEAR
+  //    // FILTER DISTANCE(d.lat, d.long, param.lat, param.lon) < param.radius //WHITHIN
+  //    MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
+  //    LIMIT param.limit // NEAR
+  //    RETURN d MERGE {param.distname : calculated_distance}
+  // )
+
+  //// enumerate collection
+  auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
+  if(!aqlCollection) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"collection used in NEAR or WITHIN not found");
+  }
+
+  Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
+  ExecutionNode* eEnumerate = plan->registerNode(
+      // link output of index with the return node
+      new EnumerateCollectionNode(
+            plan, plan->nextId(), aqlCollection,
+            enumerateOutVariable, false
+      )
+  );
+
+  //// build sort condition - DISTANCE(d.lat, d.long, param.lat, param.lon)
+  auto* docRef = ast->createNodeReference(enumerateOutVariable);
+
+  AstNode *accessNodeLat, *accessNodeLon;
+  std::tie(accessNodeLat, accessNodeLon) = getAttributeAccessFromIndex(ast, docRef, params);
 
   auto* argsArray = ast->createNodeArray();
   argsArray->addMember(accessNodeLat);
