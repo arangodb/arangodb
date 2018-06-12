@@ -654,9 +654,9 @@ Result auth::UserManager::removeAllUsers() {
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
-  // AuthResult result(username);
-  if (username.empty() || IsRole(username)) {
-    return false;
+  if (username.empty() || IsRole(username) ||
+      ServerState::serverMode() == ServerState::Mode::MAINTENANCE) {
+    return false; // we cannot authenticate during bootstrap
   }
 
   loadFromDB();
