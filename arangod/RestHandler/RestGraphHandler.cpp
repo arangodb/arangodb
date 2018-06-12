@@ -1052,7 +1052,6 @@ Result RestGraphHandler::graphActionRemoveGraph(
   GraphOperations gops{*graph, ctx};
   auto resultT = gops.removeGraph(waitForSync, dropCollections);
 
-
   return Result();
 }
 

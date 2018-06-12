@@ -444,35 +444,20 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph( // TOD
   trxOptions.waitForSync = waitForSync;
 
   std::unique_ptr<transaction::Methods> trx(
-    new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+    new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions)); // TODO NEW 
 
   Result res = trx->begin();
 
   std::vector<std::string> collectionsToBeRemoved;
   if (dropCollections) {
     for (auto const& vertexCollection : _graph.vertexCollections()) {
-      checkIfCollectionMayBeDropped(vertexCollection, _graph.name(), collectionsToBeRemoved, trx.get());
+      checkIfCollectionMayBeDropped(vertexCollection, _graph.name(), collectionsToBeRemoved);
     }
     for (auto const& orphanCollection : _graph.orphanCollections()) {
-      checkIfCollectionMayBeDropped(orphanCollection, _graph.name(), collectionsToBeRemoved, trx.get());
+      checkIfCollectionMayBeDropped(orphanCollection, _graph.name(), collectionsToBeRemoved);
     }
     for (auto const& edgeCollection : _graph.edgeCollections()) {
-      checkIfCollectionMayBeDropped(edgeCollection, _graph.name(), collectionsToBeRemoved, trx.get());
-    }
-
-    for (auto const& collection : collectionsToBeRemoved) {
-      VPackBuilder builder;
-      Result resIn;
-      Result found = methods::Collections::lookup(
-        &ctx()->vocbase(),
-        collection,
-        [&](LogicalCollection* coll) {
-          auto cid = std::to_string(coll->id());
-          VPackObjectBuilder obj(&builder, true);
-          obj->add("id", VPackValue(cid));
-          resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false, -1.0);
-        }
-      );
+      checkIfCollectionMayBeDropped(edgeCollection, _graph.name(), collectionsToBeRemoved);
     }
   }
   
@@ -489,7 +474,37 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph( // TOD
   VPackSlice search = builder.slice();
   OperationResult result = trx->remove(Graph::_graphs, search, options);
 
+  if (result.fail()) {
+    res = trx->finish(result.result);
+    THROW_ARANGO_EXCEPTION(result.result);
+  }
+
   res = trx->finish(result.result);
+
+  // remove graph related collections
+  // we are not able to do this in a transaction, so doing it afterwards
+  if (dropCollections) {
+    for (auto const& collection : collectionsToBeRemoved) {
+      LOG_TOPIC(FATAL, Logger::GRAPHS) << collection;
+      Result resIn;
+      Result found = methods::Collections::lookup(
+        &ctx()->vocbase(),
+        collection,
+        [&](LogicalCollection* coll) {
+          LOG_TOPIC(FATAL, Logger::GRAPHS) << "DROPPING";
+          resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false, -1.0);
+          LOG_TOPIC(FATAL, Logger::GRAPHS) << "DROPPED";
+        }
+      );
+
+      if (found.fail()) {
+        LOG_TOPIC(FATAL, Logger::GRAPHS) << "ERROR 1";
+      } else if (resIn.fail()) {
+        LOG_TOPIC(FATAL, Logger::GRAPHS) << "ERROR 2";
+      }
+    }
+  }
+  LOG_TOPIC(FATAL, Logger::GRAPHS) << "DONE";
 
   return std::make_pair(std::move(result), std::move(res));
 }
@@ -803,7 +818,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
 
 void GraphOperations::checkIfCollectionMayBeDropped(
   std::string colName, std::string graphName,
-  std::vector<std::string>& toBeRemoved, transaction::Methods* trx) {
+  std::vector<std::string>& toBeRemoved) {
 
   GraphManager gmngr{ctx()};
   VPackBuilder graphsBuilder;
@@ -816,10 +831,10 @@ void GraphOperations::checkIfCollectionMayBeDropped(
       graph = graph.resolveExternals();
       if (!result) {
         // Short circuit
-        return;
+        break;
       }
       if (graph.get("_key").copyString() == graphName) {
-        return;
+        break;
       }
 
       // check edge definitions

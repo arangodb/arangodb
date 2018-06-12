@@ -280,7 +280,7 @@ class GraphOperations {
       VPackSlice document, bool waitForSync, bool returnNew);
 
   void checkIfCollectionMayBeDropped(std::string colName, std::string graphName,
-      std::vector<std::string>& toBeRemoved, transaction::Methods* trx);
+      std::vector<std::string>& toBeRemoved);
 
   void readGraph(VPackBuilder& builder);
   void readEdges(VPackBuilder& builder);
