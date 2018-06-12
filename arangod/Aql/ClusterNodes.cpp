@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ModificationNodes.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
@@ -381,12 +382,22 @@ double GatherNode::estimateCost(size_t& nrItems) const {
 
 /// @brief spawn from an index node.
 SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode* createFrom,
-                                                     UpdateNode* _updateNode,
-                                                     ReplaceNode* _replaceNode,
-                                                     RemoveNode* _removeNode)
-  : ExecutionNode(createFrom->plan(), createFrom->plan()->nextId()),
-        _attributeNode(nullptr),
-        _valueNode(nullptr)
+                                                     UpdateNode* updateNode,
+                                                     ReplaceNode* replaceNode,
+                                                     RemoveNode* removeNode)
+  : ExecutionNode(createFrom->plan(),
+                  createFrom->plan()->nextId()),
+    _mode(INDEX),
+    _attributeNode(nullptr),
+    _valueNode(nullptr),
+    _outVariableOld(nullptr),
+    _outVariableNew(nullptr),
+    _inVariable(nullptr),
+    _inDocVariable(nullptr),
+    _inKeyVariable(nullptr),
+    _insertVariable(nullptr),
+    _updateVariable(nullptr)
+
 {
   auto node = createFrom->condition()->root();
 
@@ -400,7 +411,24 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode* createFrom,
       }
     }
   }
-   
+
+  if (updateNode != nullptr) {
+    _mode = UPDATE;
+    auto vars = updateNode->getVariablesUsedHere();
+    _inDocVariable = vars[0];
+    _inKeyVariable = (vars.size() > 1) ? vars[1] : nullptr;
+  } else if (replaceNode != nullptr) {
+    _mode = REPLACE;
+    auto vars = replaceNode->getVariablesUsedHere();
+    _inDocVariable = vars[0];
+    _inKeyVariable = (vars.size() > 1) ? vars[1] : nullptr;
+  } else if (removeNode != nullptr) {
+    _mode = REMOVE;
+    auto vars = removeNode->getVariablesUsedHere();
+    _inVariable = vars[0];
+  }
+
+  
   // TODO
 }
 /// @brief constructor for SingleRemoteOperationNode
@@ -434,6 +462,49 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   nodes.add("isResponsibleForInitializeCursor",
             VPackValue(_isResponsibleForInitializeCursor));
 
+  nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
+
+
+  // add out variables
+  if (_outVariableOld != nullptr) {
+    nodes.add(VPackValue("outVariableOld"));
+    _outVariableOld->toVelocyPack(nodes);
+  }
+  if (_outVariableNew != nullptr) {
+    nodes.add(VPackValue("outVariableNew"));
+    _outVariableNew->toVelocyPack(nodes);
+  }
+  if (_inVariable != nullptr) {
+    nodes.add(VPackValue("inVariable"));
+    _inVariable->toVelocyPack(nodes);
+  }
+
+  if (_inDocVariable != nullptr) {
+    nodes.add(VPackValue("inDocVariable"));
+    _inDocVariable->toVelocyPack(nodes);
+  }
+  // inKeyVariable might be empty
+  if (_inKeyVariable != nullptr) {
+    nodes.add(VPackValue("inKeyVariable"));
+    _inKeyVariable->toVelocyPack(nodes);
+  }
+
+  if (_insertVariable != nullptr) {
+    nodes.add(VPackValue("insertVariable"));
+    _insertVariable->toVelocyPack(nodes);
+  }
+
+  if (_updateVariable != nullptr) {
+    nodes.add(VPackValue("updateVariable"));
+    _updateVariable->toVelocyPack(nodes);
+  }
+  //   nodes.add("isReplace", VPackValue(_isReplace));
+
+
+  /*
+  nodes.add(VPackValue("modificationFlags"));
+  _options.toVelocyPack(nodes);
+  */
   // And close it:
   nodes.close();
 }

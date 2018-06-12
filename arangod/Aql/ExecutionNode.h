@@ -202,6 +202,9 @@ class ExecutionNode {
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
 
+  /// @brief resolve nodeType to a string.
+  static std::string const& getTypeString(NodeType type);
+  
   /// @brief return the type name of the node
   std::string const& getTypeString() const;
 

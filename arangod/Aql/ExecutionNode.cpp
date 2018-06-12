@@ -93,9 +93,9 @@ std::unordered_map<int, std::string const> const typeNames{
 
 } // namespace
 
-/// @brief returns the type name of the node
-std::string const& ExecutionNode::getTypeString() const {
-  auto it = ::typeNames.find(static_cast<int>(getType()));
+/// @brief resolve nodeType to a string.
+std::string const& ExecutionNode::getTypeString(NodeType type) {
+  auto it = ::typeNames.find(static_cast<int>(type));
 
   if (it != ::typeNames.end()) {
     return (*it).second;
@@ -103,6 +103,12 @@ std::string const& ExecutionNode::getTypeString() const {
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                  "missing type in TypeNames");
+}
+
+
+/// @brief returns the type name of the node
+std::string const& ExecutionNode::getTypeString() const {
+  return getTypeString(getType());
 }
 
 void ExecutionNode::validateType(int type) {

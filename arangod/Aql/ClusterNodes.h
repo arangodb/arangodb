@@ -424,9 +424,9 @@ class SingleRemoteOperationNode final : public ExecutionNode {
   }
 
   SingleRemoteOperationNode(IndexNode* createFrom,
-                            UpdateNode* _updateNode,
-                            ReplaceNode* _replaceNode,
-                            RemoveNode* _removeNode);
+                            UpdateNode* updateNode,
+                            ReplaceNode* replaceNode,
+                            RemoveNode* removeNode);
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests
@@ -497,10 +497,35 @@ class SingleRemoteOperationNode final : public ExecutionNode {
   }
 
  private:
+  NodeType _mode;
+  
   AstNode const* _attributeNode;
   AstNode const* _valueNode;
 
-  
+  /// @brief modification operation options
+  // ModificationOptions _options;
+
+  /// @brief output variable ($OLD)
+  Variable const* _outVariableOld;
+
+  /// @brief output variable ($NEW)
+  Variable const* _outVariableNew;
+
+  /// @brief input variable
+  Variable const* _inVariable;
+
+    /// @brief input variable for documents
+  Variable const* _inDocVariable;
+
+  /// @brief input variable for keys
+  Variable const* _inKeyVariable;
+
+    /// @brief insert case expression
+  Variable const* _insertVariable;
+
+  /// @brief update case expression
+  Variable const* _updateVariable;
+
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
 
