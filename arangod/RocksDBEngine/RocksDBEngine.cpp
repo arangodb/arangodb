@@ -62,7 +62,7 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-// #include "RocksDBEngine/RocksDBThrottle.h"
+#include "RocksDBEngine/RocksDBThrottle.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionContextData.h"
 #include "RocksDBEngine/RocksDBTransactionManager.h"
@@ -145,11 +145,10 @@ RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
 void RocksDBEngine::shutdownRocksDBInstance() noexcept {
   if (_db) {
     // turn off RocksDBThrottle, and release our pointers to it
-    /*
     if (nullptr != _listener.get()) {
       _listener->StopThread();
     }  // if
-    */
+
     for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
       _db->DestroyColumnFamilyHandle(h);
     }
@@ -196,11 +195,11 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
-  /*
+
   options->addOption("--rocksdb.throttle",
                      "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
-  */
+
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
 #endif
@@ -393,12 +392,12 @@ void RocksDBEngine::start() {
   _options.memtable_prefix_bloom_size_ratio = 0.2;  // TODO: pick better value?
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
-  /*
+
   if (_useThrottle) {
     _listener.reset(new RocksDBThrottle);
     _options.listeners.push_back(_listener);
   }
-  */
+
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
   _options.max_write_buffer_number = 7 + 2;
@@ -532,12 +531,12 @@ void RocksDBEngine::start() {
         << numberOfColumnFamilies;
     FATAL_ERROR_EXIT();
   }
-  /*
+
   // give throttle access to families
   if (_useThrottle) {
     _listener->SetFamilies(cfHandles);
   }
-  */
+
   // set our column families
   RocksDBColumnFamily::_definitions = cfHandles[0];
   RocksDBColumnFamily::_documents = cfHandles[1];
