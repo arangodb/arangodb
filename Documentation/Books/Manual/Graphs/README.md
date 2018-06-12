@@ -201,6 +201,7 @@ This is how we create it, inspect its *vertices* and *edges*, and drop it again:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock graph_create_knows_sample
 
+**Note:** with the default "Search Depth" of 2 of the graph viewer you may not see all edges of this graph.
 
 ### The Social Graph
 
@@ -262,6 +263,8 @@ Circles have unique numeric labels. Edges have two boolean attributes (*theFalse
     examples.dropGraph("traversalGraph");
     @END_EXAMPLE_ARANGOSH_RUN
     @endDocuBlock graph_create_traversal_sample
+
+**Note:** with the default "Search Depth" of 2 of the graph viewer you may not see all nodes of this graph.
 
 ### The World Graph
 
