@@ -1080,10 +1080,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
   if (std::this_thread::get_id() == _planLoader) {
     // we're loading plan, lookup inside immediately created planned views
     // already protected by _planProt.mutex, don't need to lock there
-    auto view = lookupView(_newPlannedViews, databaseID, viewID);
-
-    // if view is not found in the new plan then check the old plan too
-    return view ? view : lookupView(_plannedViews, databaseID, viewID);
+    return lookupView(_newPlannedViews, databaseID, viewID);
   }
 
   int tries = 0;

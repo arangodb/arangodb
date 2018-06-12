@@ -1030,7 +1030,14 @@ std::string StorageEngineMock::createCollection(
 }
 
 TRI_vocbase_t* StorageEngineMock::createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
-  TRI_ASSERT(args.get("name").isString());
+  if (!args.get("name").isString()) {
+    status = TRI_ERROR_BAD_PARAMETER;
+
+    return nullptr;
+  }
+
+  status = TRI_ERROR_NO_ERROR;
+
   return new TRI_vocbase_t(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, args.get("name").copyString());
 }
 

@@ -395,7 +395,14 @@ SECTION("test_open") {
 }
 
 SECTION("test_query") {
+  auto* ci = arangodb::ClusterInfo::instance();
+  REQUIRE((nullptr != ci));
+  auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
+  REQUIRE((nullptr != databaseFeature));
+  std::string error;
+
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
+    \"id\": \"42\", \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
   }");
@@ -469,10 +476,14 @@ SECTION("test_query") {
     }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+    REQUIRE((nullptr != vocbase));
+    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    auto* logicalCollection = vocbase->createCollection(collectionJson->slice());
     std::vector<std::string> collections{ logicalCollection->name() };
-    auto logicalWiew = vocbase.createView(createJson->slice());
+    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", createJson->slice(), error)));
+    auto logicalWiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     CHECK((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(logicalWiew.get());
     CHECK((false == !wiewImpl));
@@ -483,7 +494,7 @@ SECTION("test_query") {
     // fill with test data
     {
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         EMPTY,
         collections,
         EMPTY,
@@ -504,7 +515,7 @@ SECTION("test_query") {
 
     arangodb::transaction::Options trxOptions;
     trxOptions.waitForSync = true;
-    arangodb::CollectionNameResolver resolver0(vocbase);
+    arangodb::CollectionNameResolver resolver0(*vocbase);
     auto state0 = s.engine.createTransactionState(resolver0, trxOptions);
     auto* snapshot0 = wiewImpl->snapshot(*state0, true);
     CHECK(12 == snapshot0->docs_count());
@@ -512,7 +523,7 @@ SECTION("test_query") {
     // add more data
     {
       arangodb::transaction::UserTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::Create(*vocbase),
         EMPTY,
         collections,
         EMPTY,
@@ -534,7 +545,7 @@ SECTION("test_query") {
     // old reader sees same data as before
     CHECK(12 == snapshot0->docs_count());
     // new reader sees new data
-    arangodb::CollectionNameResolver resolver1(vocbase);
+    arangodb::CollectionNameResolver resolver1(*vocbase);
     auto state1 = s.engine.createTransactionState(resolver1, trxOptions);
     auto* snapshot1 = wiewImpl->snapshot(*state1, true);
     CHECK(24 == snapshot1->docs_count());
@@ -549,9 +560,13 @@ SECTION("test_query") {
       arangodb::FlushFeature
     >("Flush");
     REQUIRE(feature);
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    auto logicalWiew = vocbase.createView(viewCreateJson->slice());
+    TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
+    REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+    REQUIRE((nullptr != vocbase));
+    REQUIRE((TRI_ERROR_NO_ERROR == ci->createDatabaseCoordinator(vocbase->name(), arangodb::velocypack::Slice::emptyObjectSlice(), error, 0.)));
+    auto* logicalCollection = vocbase->createCollection(collectionJson->slice());
+    CHECK((TRI_ERROR_NO_ERROR == ci->createViewCoordinator(vocbase->name(), "42", createJson->slice(), error)));
+    auto logicalWiew = ci->getView(vocbase->name(), "42"); // link creation requires cluster-view to be in ClusterInfo instead of TRI_vocbase_t
     REQUIRE((false == !logicalWiew));
     auto* wiewImpl = dynamic_cast<arangodb::iresearch::IResearchViewDBServer*>(logicalWiew.get());
     REQUIRE((false == !wiewImpl));
@@ -583,7 +598,7 @@ SECTION("test_query") {
       {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"seq\": ") + std::to_string(i) + " }");
         arangodb::transaction::UserTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::Create(*vocbase),
           EMPTY,
           EMPTY,
           EMPTY,
@@ -597,7 +612,7 @@ SECTION("test_query") {
 
       // query
       {
-        arangodb::CollectionNameResolver resolver(vocbase);
+        arangodb::CollectionNameResolver resolver(*vocbase);
         auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
         auto* snapshot = wiewImpl->snapshot(*state, true);
         CHECK(i == snapshot->docs_count());
