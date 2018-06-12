@@ -621,7 +621,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
   // state variables of the following generator-lambda, iterating over rows
   auto getNextRow =
       [this,
-       &curNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
+       curNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
 
     // try to ensure a nonempty buffer
     if (_buffer.empty()) {
@@ -728,7 +728,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
   };
 
   auto buildResult = [this, en,
-                      &curNrRegs](AqlItemBlock const* src) -> AqlItemBlock* {
+                      curNrRegs](AqlItemBlock const* src) -> AqlItemBlock* {
     RegisterId nrRegs = en->getRegisterPlan()->nrRegs[en->getDepth()];
 
     std::unique_ptr<AqlItemBlock> result(
