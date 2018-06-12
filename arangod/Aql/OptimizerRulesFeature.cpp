@@ -245,7 +245,7 @@ void OptimizerRulesFeature::addRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
-  registerRule("replace-near-within-fulltex", replaceNearWithinFulltext,
+  registerRule("replace-function-with-index", replaceNearWithinFulltext,
                OptimizerRule::replaceNearWithinFulltext, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 #ifdef USE_IRESEARCH
   // move filters and sort conditions into views
