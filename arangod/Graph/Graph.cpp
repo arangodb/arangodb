@@ -425,29 +425,6 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph( // TOD
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(Graph::_graphs);
 
-  if (dropCollections) {
-    for (auto const& vertexCollection : _graph.vertexCollections()) {
-      writeCollections.emplace_back(vertexCollection);
-    }
-    for (auto const& orphanCollection : _graph.orphanCollections()) {
-      writeCollections.emplace_back(orphanCollection);
-    }
-    for (auto const& edgeCollection : _graph.edgeCollections()) {
-      writeCollections.emplace_back(edgeCollection);
-    }
-  }
-
-  OperationOptions options;
-  options.waitForSync = waitForSync;
-
-  transaction::Options trxOptions;
-  trxOptions.waitForSync = waitForSync;
-
-  std::unique_ptr<transaction::Methods> trx(
-    new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions)); // TODO NEW 
-
-  Result res = trx->begin();
-
   std::vector<std::string> collectionsToBeRemoved;
   if (dropCollections) {
     for (auto const& vertexCollection : _graph.vertexCollections()) {
@@ -460,10 +437,6 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph( // TOD
       checkIfCollectionMayBeDropped(edgeCollection, _graph.name(), collectionsToBeRemoved);
     }
   }
-  
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
-  }
 
   VPackBuilder builder;
   {
@@ -471,6 +444,19 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph( // TOD
     builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
   }
 
+  OperationOptions options;
+  options.waitForSync = waitForSync;
+
+  transaction::Options trxOptions;
+  trxOptions.waitForSync = waitForSync;
+
+  std::unique_ptr<transaction::Methods> trx(
+    new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+
+  Result res = trx->begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+  }
   VPackSlice search = builder.slice();
   OperationResult result = trx->remove(Graph::_graphs, search, options);
 
@@ -485,26 +471,16 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph( // TOD
   // we are not able to do this in a transaction, so doing it afterwards
   if (dropCollections) {
     for (auto const& collection : collectionsToBeRemoved) {
-      LOG_TOPIC(FATAL, Logger::GRAPHS) << collection;
       Result resIn;
       Result found = methods::Collections::lookup(
         &ctx()->vocbase(),
         collection,
         [&](LogicalCollection* coll) {
-          LOG_TOPIC(FATAL, Logger::GRAPHS) << "DROPPING";
           resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false, -1.0);
-          LOG_TOPIC(FATAL, Logger::GRAPHS) << "DROPPED";
         }
       );
-
-      if (found.fail()) {
-        LOG_TOPIC(FATAL, Logger::GRAPHS) << "ERROR 1";
-      } else if (resIn.fail()) {
-        LOG_TOPIC(FATAL, Logger::GRAPHS) << "ERROR 2";
-      }
     }
   }
-  LOG_TOPIC(FATAL, Logger::GRAPHS) << "DONE";
 
   return std::make_pair(std::move(result), std::move(res));
 }
