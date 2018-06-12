@@ -42,6 +42,7 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
