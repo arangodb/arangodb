@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/Condition.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
@@ -379,11 +380,27 @@ double GatherNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief spawn from an index node.
-SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode const& createFrom, ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base)
-
+SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode* createFrom,
+                                                     UpdateNode* _updateNode,
+                                                     ReplaceNode* _replaceNode,
+                                                     RemoveNode* _removeNode)
+  : ExecutionNode(createFrom->plan(), createFrom->plan()->nextId()),
+        _attributeNode(nullptr),
+        _valueNode(nullptr)
 {
-      
+  auto node = createFrom->condition()->root();
+
+  if ((node->type == NODE_TYPE_OPERATOR_NARY_OR) && (node->numMembers() == 1)) {
+    auto subNode = node->getMemberUnchecked(0);
+    if ((subNode->type == NODE_TYPE_OPERATOR_NARY_AND) && (subNode->numMembers() == 1)) {
+      subNode = node->getMemberUnchecked(0);
+      if ((subNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) && (subNode->numMembers() == 2)) {
+        _attributeNode = node->getMemberUnchecked(0);
+        _valueNode = node->getMemberUnchecked(1);
+      }
+    }
+  }
+   
   // TODO
 }
 /// @brief constructor for SingleRemoteOperationNode

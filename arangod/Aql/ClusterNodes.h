@@ -37,7 +37,11 @@ namespace arangodb {
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
- class IndexNode;
+class IndexNode;
+class UpdateNode;
+class ReplaceNode;
+class RemoveNode;
+
 struct Collection;
 
 /// @brief class RemoteNode
@@ -419,7 +423,10 @@ class SingleRemoteOperationNode final : public ExecutionNode {
     // note: server, ownName and queryId may be empty and filled later
   }
 
-  SingleRemoteOperationNode(IndexNode const& createFrom, ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  SingleRemoteOperationNode(IndexNode* createFrom,
+                            UpdateNode* _updateNode,
+                            ReplaceNode* _replaceNode,
+                            RemoveNode* _removeNode);
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests
@@ -490,6 +497,10 @@ class SingleRemoteOperationNode final : public ExecutionNode {
   }
 
  private:
+  AstNode const* _attributeNode;
+  AstNode const* _valueNode;
+
+  
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
 

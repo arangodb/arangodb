@@ -2659,12 +2659,18 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
 struct DetectSingleDocumentOperations final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   IndexNode* _indexNode;
+  UpdateNode* _updateNode;
+  ReplaceNode* _replaceNode;
+  RemoveNode* _removeNode;
 
  public:
   explicit DetectSingleDocumentOperations(ExecutionPlan* plan)
       : _plan(plan),
-        _indexNode(nullptr)
- {}
+        _indexNode(nullptr),
+        _updateNode(nullptr),
+        _replaceNode(nullptr),
+        _removeNode(nullptr)
+  {}
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
     return false;
@@ -2684,9 +2690,6 @@ struct DetectSingleDocumentOperations final : public WalkerWorker<ExecutionNode>
       case EN::CALCULATION:
       case EN::COLLECT:
       case EN::INSERT:
-      case EN::REMOVE:
-      case EN::REPLACE:
-      case EN::UPDATE:
       case EN::UPSERT:
       case EN::NORESULTS:
       case EN::SCATTER:
@@ -2698,13 +2701,33 @@ struct DetectSingleDocumentOperations final : public WalkerWorker<ExecutionNode>
         _indexNode = nullptr;
         return true;   // abort.
 
+      case EN::UPDATE:
+        _updateNode = ExecutionNode::castTo<UpdateNode*>(en);
+        return false;
+      case EN::REPLACE:
+        _replaceNode = ExecutionNode::castTo<ReplaceNode*>(en);
+        return false;
+      case EN::REMOVE:
+        _removeNode =  ExecutionNode::castTo<RemoveNode*>(en);
+        return false;
       case EN::SINGLETON:
       case EN::RETURN:
         return false;
       case EN::INDEX:
         if (_indexNode == nullptr) {
           _indexNode = ExecutionNode::castTo<IndexNode*>(en);
-          return false;
+          auto node = _indexNode->condition()->root();
+
+          if ((node->type == NODE_TYPE_OPERATOR_NARY_OR) && (node->numMembers() == 1)) {
+            auto subNode = node->getMemberUnchecked(0);
+            if ((subNode->type == NODE_TYPE_OPERATOR_NARY_AND) && (subNode->numMembers() == 1)) {
+              subNode = node->getMemberUnchecked(0);
+              if ((subNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) && (subNode->numMembers() == 2)) {
+                return false;
+              }
+            }
+          }
+          return true;
         }
         else {
           _indexNode = nullptr;
@@ -2737,7 +2760,21 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
 
   if (finder._indexNode != nullptr) {
     modified = true;
-    plan->unlinkNode(nodes[0]);
+    auto roNode = new SingleRemoteOperationNode(finder._indexNode,
+                                                finder._updateNode,
+                                                finder._replaceNode,
+                                                finder._removeNode);
+    plan->replaceNode(finder._indexNode, roNode);
+
+    if (finder._updateNode != nullptr) {
+      plan->unlinkNode(finder._updateNode);
+    }
+    if (finder._replaceNode != nullptr) {
+      plan->unlinkNode(finder._replaceNode);
+    }
+    if (finder._removeNode != nullptr) {
+      plan->unlinkNode(finder._removeNode);
+    }
 
   }
 
