@@ -406,17 +406,22 @@ class Query {
  private:
   std::condition_variable _tempWaitForAsyncResponse;
   std::mutex _tempMutex;
+  bool _wasNotified = false;
 
  public:
   void tempSignalAsyncResponse() {
     std::unique_lock<std::mutex> lock(_tempMutex);
+    _wasNotified = true;
     _tempWaitForAsyncResponse.notify_all();
   }
 
   void tempWaitForAsyncResponse() {
     // TODO Race, if clustercomm is faster than registering the WAIT
     std::unique_lock<std::mutex> lock(_tempMutex);
-    _tempWaitForAsyncResponse.wait(lock);
+    if (!_wasNotified) {
+      _tempWaitForAsyncResponse.wait(lock);
+    }
+    _wasNotified = false;
   }
 };
 
