@@ -268,11 +268,12 @@ class Ast {
   /// @brief create an AST attribute access node
   /// note that the caller must make sure that char* data remains valid!
   AstNode* createNodeAttributeAccess(AstNode const*, char const*, size_t);
-  //AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string_view>);
-  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string>);
 
+
+  /// @brief create an AST attribute access node for multiple accesses
+  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string> const&);
   AstNode* createNodeAttributeAccess(AstNode const* node, std::vector<basics::AttributeName> const& attrs) {
-    std::vector<std::string> vec; //change to string view once availalbe
+    std::vector<std::string> vec; //change to std::string_view once available
     std::transform(attrs.begin(), attrs.end(), std::back_inserter(vec), +[](basics::AttributeName const& a) { return a.name; });
     return createNodeAttributeAccess(node,vec);
   }
@@ -524,7 +525,7 @@ class Ast {
 
 public:
   /** Make sure to replace the AstNode* you pass into TraverseAndModify
-   *  if it was changes. This is necessary because the function itself
+   *  if it was changed. This is necessary because the function itself
    *  has only access to to the node but not its parent / owner.
    */
   /// @brief traverse the AST, using pre- and post-order visitors

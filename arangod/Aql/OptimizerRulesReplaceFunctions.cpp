@@ -21,11 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
-#include "Aql/CollectNode.h"
-#include "Aql/CollectOptions.h"
-#include "Aql/Collection.h"
-#include "Aql/DocumentProducingNode.h"
-#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
@@ -33,10 +28,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
-#include "Aql/ShortestPathNode.h"
-#include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
-#include "Aql/TraversalConditionFinder.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -44,12 +36,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
-#include "Cluster/ClusterInfo.h"
-#include "Geo/GeoParams.h"
-#include "GeoIndex/Index.h"
-#include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
-#include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
 using namespace arangodb;
@@ -59,7 +46,7 @@ using EN = arangodb::aql::ExecutionNode;
 namespace {
 
 //NEAR(coll, 0 /*lat*/, 0 /*lon*/[, 10 /*limit*/])
-struct nearOrWithinParams{
+struct NearOrWithinParams{
   std::string collection;
   AstNode* latitude = nullptr;
   AstNode* longitude = nullptr;
@@ -67,7 +54,7 @@ struct nearOrWithinParams{
   AstNode* radius = nullptr;
   AstNode* distanceName = nullptr;
 
-  nearOrWithinParams(AstNode const* node, bool isNear){
+  NearOrWithinParams(AstNode const* node, bool isNear){
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
@@ -90,19 +77,19 @@ struct nearOrWithinParams{
 };
 
 //FULLTEXT(collection, "attribute", "search", 100 /*limit*/[, "distance name"])
-struct fulltextParams{
+struct FulltextParams{
   std::string collection;
   std::string attribute;
   AstNode* limit = nullptr;
 
-  fulltextParams(AstNode const* node){
+  FulltextParams(AstNode const* node){
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
     if (arr->getMember(0)->isStringValue()){
       collection = arr->getMember(0)->getString();
     }
-    if (arr->getMember(0)->isStringValue()){
+    if (arr->getMember(1)->isStringValue()){
       attribute = arr->getMember(1)->getString();
     }
     if(arr->numMembers() > 3){
@@ -196,9 +183,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   auto* ast = plan->getAst();
   auto* query = ast->query();
   auto* trx = query->trx();
-  nearOrWithinParams params(funAstNode,isNear);
-  bool supportLegacy = true;
-  (void) supportLegacy;
+  NearOrWithinParams params(funAstNode,isNear);
 
   // RETURN (
   //  FOR d IN col
@@ -212,8 +197,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   //// enumerate collection
   auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
   if(!aqlCollection) {
-    LOG_DEVEL << "could not find collection: " << params.collection;
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"collection used in NEAR or WITHIN not found");
   }
 
   Variable* enumerateOutVariable = ast->variables()->createTemporaryVariable();
@@ -231,15 +215,15 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   AstNode* accessNodeLon = docRef;
   bool indexFound = false;
 
-  //  index -figure out index to use
+  // figure out index to use
 	std::vector<basics::AttributeName> field;
 	auto indexes = trx->indexesForCollection(params.collection);
 	for(auto& idx : indexes){
 		if(Index::isGeoIndex(idx->type())) {
       // we take the first index that is found
 
-      bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
-      bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
+      bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX;
+      bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX;
       bool isGeo = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO_INDEX;
 
       auto fieldNum = idx->fields().size();
@@ -255,7 +239,6 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
         auto accessBase = idx->fields()[0];
         AstNode * base = ast->createNodeAttributeAccess(accessNodeLon, accessBase);
 
-        //TODO check for alternative way to find out weather geoJson is used or not
         VPackBuilder builder;
         idx->toVelocyPack(builder,true,false);
         bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
@@ -309,7 +292,7 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
   ExecutionNode* eSortOrFilter = nullptr;
   if(isNear){
     // use calculation node in sort node
-    SortElementVector sortElements { SortElement{ calcOutVariable, /*asc*/ true} }; //CHECKME
+    SortElementVector sortElements { SortElement{ calcOutVariable, /*asc*/ true} };
     eSortOrFilter = plan->registerNode(
         new SortNode(plan, plan->nextId(), sortElements, false)
     );
@@ -322,7 +305,6 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   //// create MERGE(d, { param.distname : DISTANCE(d.lat, d.long, param.lat, param.lon)})
   if(params.distanceName) { //return without merging the distance into the result
-    //FIXME do we need to resolve attribute accesses
     if(!params.distanceName->isStringValue()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"distance argument is not a string");
     }
@@ -363,8 +345,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode, Execu
 
   //// wrap plan part into subquery
   return createSubqueryWithLimit(plan, calcNode,
-                                eEnumerate /* first */, eSortOrFilter /* last */,
-                                enumerateOutVariable, params.limit);
+                                 eEnumerate /* first */, eSortOrFilter /* last */,
+                                 enumerateOutVariable, params.limit);
 }
 
 AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, ExecutionPlan* plan){
@@ -372,7 +354,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   auto* query = ast->query();
   auto* trx = query->trx();
 
-  fulltextParams params(funAstNode); // must be NODE_TYPE_FCALL
+  FulltextParams params(funAstNode); // must be NODE_TYPE_FCALL
 
   /// index
   //  we create this first as creation of this node is more
@@ -399,7 +381,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode, Execution
   // index part 2 - get remaining vars required for index creation
   auto* aqlCollection = aql::addCollectionToQuery(query, params.collection, false);
   if(!aqlCollection) {
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"collection used in FULLTEXT not found");
   }
 	auto condition = std::make_unique<Condition>(ast);
 	condition->andCombine(funAstNode);
@@ -445,13 +427,11 @@ void arangodb::aql::replaceNearWithinFulltext(Optimizer* opt
       auto* fun = getFunction(astnode); // if fun != nullptr -> astnode->type NODE_TYPE_FCALL
       AstNode* replacement = nullptr;
       if(fun){
-        if (fun->name == std::string("NEAR")){
+        if (fun->name == "NEAR"){
           replacement = replaceNearOrWithin(astnode, node, plan.get(), true /*isNear*/);
-        }
-        if (fun->name == std::string("WITHIN")){
+        } else if (fun->name == "WITHIN"){
           replacement = replaceNearOrWithin(astnode, node, plan.get(), false /*isNear*/);
-        }
-        if (fun->name == std::string("FULLTEXT")){
+        } else if (fun->name == "FULLTEXT"){
           replacement = replaceFullText(astnode, node,plan.get());
         }
       }

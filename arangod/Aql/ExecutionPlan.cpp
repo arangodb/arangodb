@@ -2233,8 +2233,7 @@ void ExecutionPlan::insertBefore(ExecutionNode* current, ExecutionNode* newNode)
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(!newNode->hasParent());
 
-  std::vector<ExecutionNode*> dependencies = current->getDependencies(); // Intentional copy
-  for (auto* dep : dependencies){
+  for (auto* dep : current->getDependencies()){
     newNode->addDependency(dep);
   }
   current->removeDependencies();
