@@ -224,9 +224,8 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     if (wiew) {
       auto collection = vocbase.lookupCollection(_collection->id());
 
-      if (collection) { // this is a shard collection/index
-        logicalView = wiew->ensure(_collection->id()); // repoint LogicalView at the per-cid instance
-      } else { // this is a cluster-wide collection/index
+      // this is a cluster-wide collection/index/link (per-cid view links have their corresponding collections in vocbase)
+      if (!collection) {
         auto clusterCol = ci->getCollectionCurrent(
           vocbase.name(), std::to_string(_collection->id())
         );
@@ -236,13 +235,17 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
             collection = vocbase.lookupCollection(entry.first); // find shard collection
 
             if (collection) {
-              wiew->ensure(collection->id()); // ensure the shard collection is registered with the cluster-wide view
+              // ensure the shard collection is registered with the cluster-wide view
+              // required from creating snapshots for per-cid views loaded from WAL
+              wiew->ensure(collection->id());
             }
           }
         }
 
-        return false; // finished shards registration
+        return true; // leave '_view' uninitialized to mark the index as unloaded/unusable
       }
+
+      logicalView = wiew->ensure(_collection->id()); // repoint LogicalView at the per-cid instance
     }
   }
 
