@@ -38,7 +38,7 @@ namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
+  VstCommTask(Scheduler*, GeneralServer*, std::unique_ptr<Socket> socket,
               ConnectionInfo&&, double timeout, ProtocolVersion protocolVersion,
               bool skipSocketInit = false);
 
