@@ -35,8 +35,10 @@ let functionsDocumentation = {
 
 let optionsDocumentation = [
   '',
+
   ' The following properties of `options` are defined:',
   '',
+  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
   '   - `jsonReply`: if set a json is returned which the caller has to ',
   '        present the user',
   '   - `force`: if set to true the tests are continued even if one fails',
