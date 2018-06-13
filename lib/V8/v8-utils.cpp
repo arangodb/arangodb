@@ -2719,9 +2719,8 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
           file.flush();
           file.sync();
         }
-        bool good = file.good();
         file.close();
-        if (good) {
+        if (file.good()) {
           TRI_V8_RETURN_TRUE();
         }
       }
@@ -2748,9 +2747,8 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
           file.flush();
           file.sync();
         }
-        bool good = file.good();
         file.close();
-        if (good) {
+        if (file.good()) {
           TRI_V8_RETURN_TRUE();
         }
       }
