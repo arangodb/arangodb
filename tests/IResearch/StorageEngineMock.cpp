@@ -1043,14 +1043,11 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
 ) {
   if (!args.get("name").isString()) {
     status = TRI_ERROR_BAD_PARAMETER;
-
-) {
-    return nullptr;
   }
 
   status = TRI_ERROR_NO_ERROR;
 
-  return new TRI_vocbase_t(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, args.get("name").copyString());
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, args.get("name").copyString());
 }
 
 void StorageEngineMock::createIndex(
