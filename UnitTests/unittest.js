@@ -213,7 +213,7 @@ function main (argv) {
     fs.makeDirectoryRecursive(testOutputDirectory);
   } catch (x) {
     print("failed to create test directory - " + x.message);
-    throw (x)
+    throw x;
   }
 
   // by default we set this to error, so we always have a proper result for the caller
