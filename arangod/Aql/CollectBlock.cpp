@@ -743,9 +743,10 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
   // finds the group matching the current row, or emplaces it. in either case,
   // it returns an iterator to the group matching the current row in _allGroups.
+  // additionally, .second is true iff a new group was emplaced.
   auto findOrEmplaceGroup = [this, &buildNewGroup](
       AqlItemBlock const* cur,
-      size_t const pos) -> decltype(_allGroups)::iterator {
+      size_t const pos) -> std::pair<decltype(_allGroups)::iterator, bool> {
     std::vector<AqlValue> groupValues;
     size_t const n = _groupRegisters.size();
     groupValues.reserve(n);
@@ -761,7 +762,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
     if (it != _allGroups.end()) {
       // group already exists
-      return it;
+      return {it, false};
     }
 
     // must create new group
@@ -774,7 +775,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     // emplace must not fail
     TRI_ASSERT(emplaceResult.second);
 
-    return emplaceResult.first;
+    return {emplaceResult.first, true};
   };
 
   auto buildResult = [this, en,
@@ -873,9 +874,6 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    // TODO getBlock calls this - that should suffice...
-    throwIfKilled();
-
     if (_lastBlock != nullptr && _lastBlock != cur) {
       // return lastBlock just before forgetting it
       returnBlock(_lastBlock);
@@ -883,20 +881,20 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
     _lastBlock = cur;
 
-    // TODO increase skipped iff a new group was emplaced, not for every
-    // input row! Also see TODO below.
-    ++_skipped;
-
     // NOLINTNEXTLINE(hicpp-use-auto,modernize-use-auto)
-    decltype(_allGroups)::iterator currentGroupIt =
-        findOrEmplaceGroup(cur, pos);
+    decltype(_allGroups)::iterator currentGroupIt;
+    bool newGroup;
+    std::tie(currentGroupIt, newGroup) = findOrEmplaceGroup(cur, pos);
+
+    if (newGroup) {
+      ++_skipped;
+    }
 
     reduceAggregates(currentGroupIt, cur, pos);
   }
 
-  // TODO as soon as _skipped counts groups, this has to be changed as well!
-  if (_skipped > 0) {
-    TRI_ASSERT(_lastBlock != nullptr);
+  // _lastBlock is null iff the input didn't contain a single row
+  if (_lastBlock != nullptr) {
     try {
       result = buildResult(_lastBlock);
       skipped_ = _skipped;
