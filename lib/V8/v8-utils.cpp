@@ -2707,16 +2707,25 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::fstream file;
 
+    errno = 0;
+
+    file.exceptions(std::ifstream::goodbit);
     file.open(*name, std::ios::out | std::ios::binary);
 
-    if (file.is_open()) {
+    if (file.is_open() && file.good()) {
       file.write(data, size);
-      if (flush) {
-        file.flush();
-        file.sync();
+      if (file.good()) {
+        if (flush) {
+          file.flush();
+          file.sync();
+        }
+        bool good = file.good();
+        file.close();
+        if (good) {
+          TRI_V8_RETURN_TRUE();
+        }
       }
       file.close();
-      TRI_V8_RETURN_TRUE();
     }
   } else {
     TRI_Utf8ValueNFC content(args[1]);
@@ -2727,20 +2736,31 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::fstream file;
 
+    errno = 0;
+
+    file.exceptions(std::ifstream::goodbit);
     file.open(*name, std::ios::out | std::ios::binary);
 
-    if (file.is_open()) {
+    if (file.is_open() && file.good()) {
       file << *content;
-      if (flush) {
-        file.flush();
-        file.sync();
+      if (file.good()) {
+        if (flush) {
+          file.flush();
+          file.sync();
+        }
+        bool good = file.good();
+        file.close();
+        if (good) {
+          TRI_V8_RETURN_TRUE();
+        }
       }
       file.close();
-      TRI_V8_RETURN_TRUE();
     }
   }
 
-  TRI_V8_THROW_EXCEPTION_SYS("cannot write file");
+  std::string error = std::string("cannot write file (") + strerror(errno) + ")";
+  
+  TRI_V8_THROW_EXCEPTION_SYS(error);
   TRI_V8_TRY_CATCH_END
 }
 
