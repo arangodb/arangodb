@@ -110,6 +110,12 @@ class SortedCollectBlock final : public ExecutionBlock {
   /// @brief details about the current group
   CollectGroup _currentGroup;
 
+  /// @brief number of skipped items
+  size_t _skipped;
+
+  /// @brief the last input block
+  AqlItemBlock* _lastBlock;
+
   /// @brief the optional register that contains the input expression values for
   /// each group
   RegisterId _expressionRegister;

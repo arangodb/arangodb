@@ -148,6 +148,8 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
       _groupRegisters(),
       _aggregateRegisters(),
       _currentGroup(en->_count),
+      _skipped(0),
+      _lastBlock(nullptr),
       _expressionRegister(ExecutionNode::MaxRegisterId),
       _collectRegister(ExecutionNode::MaxRegisterId),
       _variableNames() {
@@ -278,45 +280,55 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
-  bool const isTotalAggregation = _groupRegisters.empty();
-  std::unique_ptr<AqlItemBlock> res;
+  if (atMost == 0) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
 
-  if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlockOld(atMost)) {
-      // done
-      _done = true;
+  enum class GetNextRowState { NONE, SUCCESS, WAITING };
 
-      if (isTotalAggregation && _currentGroup.groupLength == 0) {
-        // total aggregation, but have not yet emitted a group
-        res.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-        emitGroup(nullptr, res.get(), skipped, skipping);
-        result = res.release();
+  // get the next row from the current block. fetches a new block if necessary.
+  // TODO unify with the one from HashedCollectBlock::getOrSkipSome
+  auto getNextRow =
+      [this]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
+
+    // try to ensure a nonempty buffer
+    if (_buffer.empty()) {
+      if (true) {
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) =
+            ExecutionBlock::getBlock(DefaultBatchSize());
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          return std::make_tuple(GetNextRowState::WAITING, nullptr, 0);
+        }
+      } else {
+        ExecutionBlock::getBlockOld(DefaultBatchSize());
       }
-
-      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-    }
-    _pos = 0;  // this is in the first block
-  }
-
-  // If we get here, we do have _buffer.front()
-  AqlItemBlock* cur = _buffer.front();
-  TRI_ASSERT(cur != nullptr);
-  
-  if (!skipping) {
-    res.reset(requestBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-
-    TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
-    inheritRegisters(cur, res.get(), _pos);
-  }
-
-  while (skipped < atMost) {
-    // read the next input row
-    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    throwIfKilled();  // check if we were aborted
-    
+    // check if we're done
+    if (_buffer.empty()) {
+      return std::make_tuple(GetNextRowState::NONE, nullptr, 0);
+    }
+
+    // save current position (to return)
+    AqlItemBlock* cur = _buffer.front();
+    size_t pos = _pos;
+
+    // calculate next position
+    ++_pos;
+    if (_pos >= cur->size()) {
+      _pos = 0;
+      _buffer.pop_front();
+    }
+
+    return std::make_tuple(GetNextRowState::SUCCESS, cur, pos);
+  };
+
+  bool const isTotalAggregation = _groupRegisters.empty();
+  auto updateCurrentGroup = [this, isTotalAggregation, skipping](
+      AqlItemBlock const* cur, size_t const pos, AqlItemBlock* res) {
     bool newGroup = false;
     if (!isTotalAggregation) {
       if (_currentGroup.groupValues[0].isEmpty()) {
@@ -325,11 +337,11 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
       } else {
         // we already had a group, check if the group has changed
         size_t i = 0;
-        
+
         for (auto& it : _groupRegisters) {
-          int cmp = AqlValue::Compare(
-              _trx, _currentGroup.groupValues[i], 
-              cur->getValueReference(_pos, it.second), false);
+          int cmp =
+              AqlValue::Compare(_trx, _currentGroup.groupValues[i],
+                                cur->getValueReference(pos, it.second), false);
 
           if (cmp != 0) {
             // group change
@@ -341,25 +353,20 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
       }
     }
 
+    bool emittedGroup = false;
+
+    // note: isTotalAggregation => !newGroup
     if (newGroup) {
       if (!_currentGroup.groupValues[0].isEmpty()) {
         if (!skipping) {
           // need to emit the current group first
           TRI_ASSERT(cur != nullptr);
-          emitGroup(cur, res.get(), skipped, skipping);
+          emitGroup(cur, res, _skipped, skipping);
         } else {
           skipGroup();
         }
 
-        // increase output row count
-        ++skipped;
-
-        if (skipped == atMost && !skipping) {
-          // output is full
-          // do NOT advance input pointer
-          result = res.release();
-          return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
-        }
+        emittedGroup = true;
       }
 
       // still space left in the output to create a new group
@@ -368,94 +375,140 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
       size_t i = 0;
       TRI_ASSERT(cur != nullptr);
       for (auto& it : _groupRegisters) {
-        _currentGroup.groupValues[i] = cur->getValueReference(_pos, it.second).clone();
+        _currentGroup.groupValues[i] =
+            cur->getValueReference(pos, it.second).clone();
         ++i;
       }
-      _currentGroup.setFirstRow(_pos);
+      _currentGroup.setFirstRow(pos);
     }
 
-    _currentGroup.setLastRow(_pos);
+    _currentGroup.setLastRow(pos);
 
-    if (++_pos >= cur->size()) {
-      _buffer.pop_front();
-      _pos = 0;
+    return emittedGroup;
+  };
 
-      bool hasMore = !_buffer.empty();
+  std::unique_ptr<AqlItemBlock> res;
 
-      if (!hasMore) {
-        try {
-          TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
-          hasMore = ExecutionBlock::getBlockOld(atMost);
-        } catch (...) {
-          // prevent leak
-          returnBlock(cur);
-          throw;
-        }
-      }
+  if (!skipping) {
+    // initialize res with a block
+    auto previousNode = getPlanNode()->getFirstDependency();
+    TRI_ASSERT(previousNode != nullptr);
+    RegisterId const curNrRegs =
+        previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
-      if (!hasMore) {
-        // no more input. we're done
-        try {
-          // emit last buffered group
-          if (!skipping) {
-            TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-            }
+    res.reset(requestBlock(
+        atMost,
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
-            throwIfKilled();
+    TRI_ASSERT(curNrRegs <= res->getNrRegs());
+    // TODO:
+    // inheritRegisters(cur, res.get(), _pos);
+  }
 
-            TRI_ASSERT(cur != nullptr);
-            emitGroup(cur, res.get(), skipped, skipping);
-            ++skipped;
-            res->shrink(skipped);
-          } else {
-            ++skipped;
-          }
-          returnBlock(cur);
-          _done = true;
-          result = res.release();
-          return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-        } catch (...) {
-          returnBlock(cur);
-          throw;
-        }
-      }
+  while (_skipped < atMost) {
+    GetNextRowState state;
+    AqlItemBlock* cur = nullptr;
+    size_t pos = 0;
+    std::tie(state, cur, pos) = getNextRow();
 
-      // hasMore
+    if (state == GetNextRowState::NONE) {
+      // no more rows
+      break;
+    } else if (state == GetNextRowState::WAITING) {
+      // continue later
+      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    }
+    TRI_ASSERT(state == GetNextRowState::SUCCESS);
 
+    // TODO dirty hack, improve this plz
+    if (_lastBlock == nullptr) {
+      TRI_ASSERT(pos == 0);
+      inheritRegisters(cur, res.get(), pos);
+    }
+
+    // if the current block changed, move the last block's infos into the
+    // current group; then delete it.
+    if (_lastBlock != nullptr && _lastBlock != cur) {
       if (_currentGroup.rowsAreValid) {
         size_t j = 0;
         for (auto& it : _currentGroup.aggregators) {
           RegisterId const reg = _aggregateRegisters[j].second;
           for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1;
                ++r) {
-            it->reduce(getValueForRegister(cur, r, reg));
+            it->reduce(getValueForRegister(_lastBlock, r, reg));
           }
           ++j;
         }
       }
+      // also resets firstRow, lastRow and especially rowsAreValid
+      _currentGroup.addValues(_lastBlock, _collectRegister);
 
-      // move over the last group details into the group before we delete the
-      // block
-      _currentGroup.addValues(cur, _collectRegister);
+      returnBlock(_lastBlock);
+    }
 
-      returnBlock(cur);
-      cur = _buffer.front();
-      _currentGroup.firstRow = 0; 
-      _currentGroup.lastRow = 0; 
+    _lastBlock = cur;
+
+    // if necessary, open a new group and emit the last one to res;
+    // then, add the current row to the current group.
+    // returns true iff a group was emitted (so false when called on the first
+    // empty current group, while still initializing it)
+    bool emittedGroup = updateCurrentGroup(cur, pos, res.get());
+
+    if (emittedGroup) {
+      // increase output row count
+      ++_skipped;
     }
   }
 
-  if (!skipping) {
-    TRI_ASSERT(skipped > 0);
-    res->shrink(skipped);
+  // TODO why !skipping?
+  if (_skipped >= atMost && !skipping) {
+    // output is full
+    result = res.release();
+    skipped = _skipped;
+    _skipped = 0;
+    return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
   }
 
+  try {
+    // is nullptr only if the input didn't produce a single row
+    if (_lastBlock != nullptr) {
+      // emit last buffered group
+      if (!skipping) {
+        TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        throwIfKilled();
+
+        emitGroup(_lastBlock, res.get(), _skipped, skipping);
+        ++_skipped;
+        res->shrink(_skipped);
+      } else {
+        ++_skipped;
+      }
+      returnBlock(_lastBlock);
+    } else {
+      // TODO remove isTotalAggregation if possible
+      if (isTotalAggregation && _currentGroup.groupLength == 0) {
+        // total aggregation, but have not yet emitted a group
+        emitGroup(nullptr, res.get(), _skipped, skipping);
+        ++_skipped;
+        TRI_ASSERT(_skipped == 1);
+        res->shrink(_skipped);
+        _skipped++;
+      }
+    }
+  } catch (...) {
+    returnBlock(_lastBlock);
+    throw;
+  }
+
+  skipped = _skipped;
   result = res.release();
-  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
-}
+  _done = true;
+
+  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+};
 
 /// @brief writes the current group data into the result
 void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
@@ -492,13 +545,13 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
         TRI_ASSERT(cur != nullptr);
         RegisterId const reg = _aggregateRegisters[j].second;
         for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1;
-            ++r) {
+             ++r) {
           it->reduce(getValueForRegister(cur, r, reg));
         }
         res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
       } else {
-        res->emplaceValue(
-            row, _aggregateRegisters[j].first, arangodb::basics::VelocyPackHelper::NullValue());
+        res->emplaceValue(row, _aggregateRegisters[j].first,
+                          arangodb::basics::VelocyPackHelper::NullValue());
       }
       ++j;
     }
@@ -509,18 +562,21 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
 
       if (ExecutionNode::castTo<CollectNode const*>(_exeNode)->_count) {
         // only set group count in result register
-        res->emplaceValue(row, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_currentGroup.groupLength)));
-      } else if (ExecutionNode::castTo<CollectNode const*>(_exeNode)->_expressionVariable !=
-                nullptr) {
+        res->emplaceValue(
+            row, _collectRegister,
+            AqlValueHintUInt(static_cast<uint64_t>(_currentGroup.groupLength)));
+      } else if (ExecutionNode::castTo<CollectNode const*>(_exeNode)
+                     ->_expressionVariable != nullptr) {
         // copy expression result into result register
-        res->setValue(row, _collectRegister,
-                      AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
-                                                _expressionRegister));
+        res->setValue(
+            row, _collectRegister,
+            AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
+                                       _expressionRegister));
       } else {
         // copy variables / keep variables into result register
         res->setValue(row, _collectRegister,
-                      AqlValue::CreateFromBlocks(_trx, _currentGroup.groupBlocks,
-                                                _variableNames));
+                      AqlValue::CreateFromBlocks(
+                          _trx, _currentGroup.groupBlocks, _variableNames));
       }
     }
   }
@@ -617,7 +673,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
   RegisterId const curNrRegs =
       previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
-  // state variables of the following generator-lambda, iterating over rows
+  // get the next row from the current block. fetches a new block if necessary.
   auto getNextRow =
       [this,
        curNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
@@ -657,6 +713,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
   auto* en = ExecutionNode::castTo<CollectNode const*>(_exeNode);
 
+  // if no group exists for the current row yet, this builds a new group.
   auto buildNewGroup = [this, en](
       const AqlItemBlock* cur, size_t const pos,
       const size_t n) -> std::pair<std::unique_ptr<AggregateValuesType>,
@@ -692,6 +749,8 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     return std::make_pair(std::move(aggregateValues), group);
   };
 
+  // finds the group matching the current row, or emplaces it. in either case,
+  // it returns an iterator to the group matching the current row in _allGroups.
   auto findOrEmplaceGroup = [this, &buildNewGroup](
       AqlItemBlock const* cur,
       size_t const pos) -> decltype(_allGroups)::iterator {
@@ -777,6 +836,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     return result.release();
   };
 
+  // "adds" the current row to its group's aggregates.
   auto reduceAggregates = [this, en](decltype(_allGroups)::iterator groupIt,
                                      AqlItemBlock const* cur,
                                      size_t const pos) {
@@ -815,11 +875,13 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
       // continue later
       return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
     }
+    TRI_ASSERT(state == GetNextRowState::SUCCESS);
 
     TRI_IF_FAILURE("HashedCollectBlock::getOrSkipSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
+    // TODO getBlock calls this - that should suffice...
     throwIfKilled();
 
     if (_lastBlock != nullptr && _lastBlock != cur) {
@@ -828,7 +890,9 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     }
 
     _lastBlock = cur;
-    TRI_ASSERT(state == GetNextRowState::SUCCESS);
+
+    // TODO increase skipped iff a new group was emplaced, not for every
+    // input row! Also see TODO below.
     ++_skipped;
 
     // NOLINTNEXTLINE(hicpp-use-auto,modernize-use-auto)
@@ -838,6 +902,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     reduceAggregates(currentGroupIt, cur, pos);
   }
 
+  // TODO as soon as _skipped counts groups, this has to be changed as well!
   if (_skipped > 0) {
     TRI_ASSERT(_lastBlock != nullptr);
     try {
