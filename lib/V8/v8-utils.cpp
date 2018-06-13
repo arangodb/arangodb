@@ -2724,7 +2724,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_V8_RETURN_TRUE();
         }
       }
-      file.close();
+      else {
+        file.close();
+      }
     }
   } else {
     TRI_Utf8ValueNFC content(args[1]);
@@ -2752,7 +2754,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
           TRI_V8_RETURN_TRUE();
         }
       }
-      file.close();
+      else {
+        file.close();
+      }
     }
   }
 
