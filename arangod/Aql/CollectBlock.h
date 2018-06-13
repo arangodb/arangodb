@@ -26,6 +26,7 @@
 #define ARANGOD_AQL_COLLECT_BLOCK_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/CollectNode.h"
@@ -42,7 +43,6 @@ class Methods;
 
 namespace aql {
 struct Aggregator;
-class AqlItemBlock;
 class ExecutionEngine;
   
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
@@ -121,6 +121,9 @@ class SortedCollectBlock final : public ExecutionBlock {
 
   /// @brief the last input block
   AqlItemBlock* _lastBlock;
+
+  /// @brief result built during getOrSkipSome
+  std::unique_ptr<AqlItemBlock> _result;
 
   /// @brief the optional register that contains the input expression values for
   /// each group

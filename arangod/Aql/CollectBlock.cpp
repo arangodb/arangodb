@@ -114,7 +114,9 @@ void SortedCollectBlock::CollectGroup::reset() {
 void SortedCollectBlock::CollectGroup::addValues(AqlItemBlock const* src,
                                                  RegisterId groupRegister) {
   if (groupRegister == ExecutionNode::MaxRegisterId) {
-    // nothing to do
+    // nothing to do, but still make sure we won't add the same rows again
+    firstRow = lastRow = 0;
+    rowsAreValid = false;
     return;
   }
 
@@ -402,10 +404,8 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     _currentGroup.addValues(block, _collectRegister);
   };
 
-  std::unique_ptr<AqlItemBlock> res;
-
-  if (!skipping) {
-    // initialize res with a block
+  if (!skipping && _result == nullptr) {
+    // initialize _result with a block
     auto previousNode = getPlanNode()->getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
     RegisterId const curNrRegs =
@@ -414,11 +414,11 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // If we don't have any values to group by, the result will contain a single
     // group.
     size_t maxBlockSize = _groupRegisters.empty() ? 1 : atMost;
-    res.reset(requestBlock(
+    _result.reset(requestBlock(
         maxBlockSize,
         getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
-    TRI_ASSERT(curNrRegs <= res->getNrRegs());
+    TRI_ASSERT(curNrRegs <= _result->getNrRegs());
     // TODO:
     // inheritRegisters(cur, res.get(), _pos);
   }
@@ -441,7 +441,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // TODO dirty hack, improve this plz
     if (_lastBlock == nullptr) {
       TRI_ASSERT(pos == 0);
-      inheritRegisters(cur, res.get(), pos);
+      inheritRegisters(cur, _result.get(), pos);
     }
 
     // if the current block changed, move the last block's infos into the
@@ -458,7 +458,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // then, add the current row to the current group.
     // returns true iff a group was emitted (so false when called on the first
     // empty current group, while still initializing it)
-    bool emittedGroup = updateCurrentGroup(cur, pos, res.get());
+    bool emittedGroup = updateCurrentGroup(cur, pos, _result.get());
 
     if (emittedGroup) {
       // increase output row count
@@ -468,7 +468,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
 
   if (_skipped >= atMost) {
     // output is full
-    result = res.release();
+    result = _result.release();
     skipped = _skipped;
     _skipped = 0;
     return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
@@ -485,9 +485,9 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
 
       // _lastBlock can be null (iff there wasn't a single input row).
       // we still need to emit a group (of nulls)
-      emitGroup(_lastBlock, res.get(), _skipped, skipping);
+      emitGroup(_lastBlock, _result.get(), _skipped, skipping);
       ++_skipped;
-      res->shrink(_skipped);
+      _result->shrink(_skipped);
     } else {
       ++_skipped;
     }
@@ -503,7 +503,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
   }
 
   skipped = _skipped;
-  result = res.release();
+  result = _result.release();
   _done = true;
 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
