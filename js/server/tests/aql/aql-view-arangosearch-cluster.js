@@ -35,17 +35,24 @@ var db = require("@arangodb").db;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function iResearchAqlTestSuite () {
+function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
   var c;
   var v;
+
+  // provided arguments
+  var args = {
+    numberOfShards: numberOfShards, 
+    replicationFactor: replicationFactor 
+  };
+  console.info("Test suite arguments: " + JSON.stringify(args));
 
   return {
     setUp : function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", args);
 
       db._drop("AnotherUnitTestsCollection");
-      var ac = db._create("AnotherUnitTestsCollection");
+      var ac = db._create("AnotherUnitTestsCollection", args);
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
@@ -480,6 +487,20 @@ function iResearchAqlTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(iResearchAqlTestSuite);
+jsunity.run(function() {
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 })
+});
+
+jsunity.run(function() {
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 })
+});
+
+jsunity.run(function() {
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 })
+});
+
+jsunity.run(function() {
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 })
+});
 
 return jsunity.done();
