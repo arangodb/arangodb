@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -81,18 +82,19 @@ class RemoteNode final : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new RemoteNode(plan, _id, _vocbase, _server, _ownName, _queryId);
-
-    cloneHelper(c, withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return cloneHelper(
+      std::make_unique<RemoteNode>(
+        plan, _id, _vocbase, _server, _ownName, _queryId
+      ),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief estimateCost
@@ -145,81 +147,77 @@ class RemoteNode final : public ExecutionNode {
 
 /// @brief class ScatterNode
 class ScatterNode : public ExecutionNode {
-  friend class ExecutionBlock;
-  friend class ScatterBlock;
-
-  /// @brief constructor with an id
  public:
-  ScatterNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-              Collection const* collection)
-      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection) {}
+  /// @brief constructor with an id
+  ScatterNode(ExecutionPlan* plan, size_t id)
+      : ExecutionNode(plan, id) {
+  }
 
   ScatterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return SCATTER; }
+  NodeType getType() const override { return SCATTER; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&,
-                          unsigned flags) const override final;
+  void toVelocyPackHelper(
+   arangodb::velocypack::Builder&,
+   unsigned flags
+  ) const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const& includedShards
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
-    auto c = new ScatterNode(plan, _id, _vocbase, _collection);
+  ExecutionNode* clone(
+      ExecutionPlan* plan, bool withDependencies,
+      bool withProperties
+  ) const override {
+    auto c = std::make_unique<ScatterNode>(plan, _id);
+    c->clients() = clients();
 
-    cloneHelper(c, withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
   /// @brief estimateCost
-  double estimateCost(size_t&) const override final;
+  double estimateCost(size_t&) const override;
 
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  std::vector<std::string> const& clients() const noexcept { return _clients; }
+  std::vector<std::string>& clients() noexcept { return _clients; }
 
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  /// @brief set collection
-  void setCollection(Collection const* collection) { _collection = collection; }
+ protected:
+  void writeClientsToVelocyPack(VPackBuilder& builder) const;
+  bool readClientsFromVelocyPack(VPackSlice base);
 
  private:
-  /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief the underlying collection
-  Collection const* _collection;
+  std::vector<std::string> _clients;
 };
 
 /// @brief class DistributeNode
-class DistributeNode : public ExecutionNode {
+class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class DistributeBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id
  public:
-  DistributeNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                 Collection const* collection, Variable const* variable,
-                 Variable const* alternativeVariable, bool createKeys,
-                 bool allowKeyConversionToObject)
-      : ExecutionNode(plan, id),
-        _vocbase(vocbase),
-        _collection(collection),
-        _variable(variable),
-        _alternativeVariable(alternativeVariable),
-        _createKeys(createKeys),
-        _allowKeyConversionToObject(allowKeyConversionToObject),
-        _allowSpecifiedKeys(false) {}
+  DistributeNode(
+      ExecutionPlan* plan, size_t id,
+      Collection const* collection,
+      Variable const* variable,
+      Variable const* alternativeVariable,
+      bool createKeys,
+      bool allowKeyConversionToObject)
+    : ScatterNode(plan, id),
+      CollectionAccessingNode(collection),
+      _variable(variable),
+      _alternativeVariable(alternativeVariable),
+      _createKeys(createKeys),
+      _allowKeyConversionToObject(allowKeyConversionToObject),
+      _allowSpecifiedKeys(false) {
+  }
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -233,20 +231,24 @@ class DistributeNode : public ExecutionNode {
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new DistributeNode(plan, _id, _vocbase, _collection, _variable,
-                                _alternativeVariable, _createKeys,
-                                _allowKeyConversionToObject);
+    auto c = std::make_unique<DistributeNode>(
+      plan,
+      _id,
+      _collection,
+      _variable,
+      _alternativeVariable,
+      _createKeys,
+      _allowKeyConversionToObject
+    );
+    c->clients() = clients();
 
-    cloneHelper(c, withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return cloneHelper(std::move(c), withDependencies, withProperties);
   }
   
   /// @brief getVariablesUsedHere, returning a vector
@@ -258,15 +260,6 @@ class DistributeNode : public ExecutionNode {
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
-
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  /// @brief set collection
-  void setCollection(Collection* coll) { _collection = coll; }
 
   void variable(Variable const* variable) { _variable = variable; }
 
@@ -284,12 +277,6 @@ class DistributeNode : public ExecutionNode {
   void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
 
  private:
-  /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief the underlying collection
-  Collection const* _collection;
-
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
 
@@ -310,12 +297,10 @@ class DistributeNode : public ExecutionNode {
 /// @brief class GatherNode
 class GatherNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class GatherBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
   enum class SortMode : uint32_t {
-    Unset = 0, // FIXME do we really 'Unset' value?
     MinElement,
     Heap
   };
@@ -327,11 +312,15 @@ class GatherNode final : public ExecutionNode {
     GatherNode const& node
   ) noexcept;
 
-  /// @returns sort mode for the specified collection
-  static SortMode getSortMode(
-    Collection const* collection,
-    std::size_t shardsRequiredForHeapMerge = 5
-  );
+  /// @returns sort mode for the specified number of shards
+  static SortMode evaluateSortMode(
+      size_t numberOfShards,
+      size_t shardsRequiredForHeapMerge = 5
+  ) noexcept {
+    return numberOfShards >= shardsRequiredForHeapMerge
+      ? SortMode::Heap
+      : SortMode::MinElement;
+  }
 
   /// @brief constructor with an id
   GatherNode(
@@ -356,18 +345,17 @@ class GatherNode final : public ExecutionNode {
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto c = new GatherNode(plan, _id, _sortmode);
-
-    cloneHelper(c, withDependencies, withProperties);
-
-    return ExecutionNode::castTo<ExecutionNode*>(c);
+    return cloneHelper(
+      std::make_unique<GatherNode>(plan, _id, _sortmode),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
   /// @brief estimateCost

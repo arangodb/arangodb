@@ -47,7 +47,13 @@ using namespace arangodb::aql;
 namespace arangodb {
 namespace tests {
 namespace geo_functions_aql {
-
+    
+auto clearVector = [](SmallVector<AqlValue>& v) {
+  for (auto& it : v) {
+    it.destroy();
+  }
+  v.clear();
+};
 
 namespace geo_equals_point {
 SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
@@ -63,6 +69,12 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
     SmallVector<AqlValue> paramsA{arena};
     SmallVector<AqlValue> paramsB{arena};
     SmallVector<AqlValue> paramsC{arena};
+  
+    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
+      clearVector(paramsA);
+      clearVector(paramsB);
+      clearVector(paramsC);
+    });
 
     WHEN("checking two equal points") {
       VPackBuilder foo;
@@ -74,8 +86,9 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
       paramsA.emplace_back(foo.slice().at(1));
       AqlValue pointA = Functions::GeoPoint(&query, &trx, paramsA);
 
-      paramsC.emplace_back(pointA);
-      paramsC.emplace_back(pointA);
+      paramsC.emplace_back(pointA.clone());
+      paramsC.emplace_back(pointA.clone());
+      pointA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
@@ -91,6 +104,8 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
       paramsA.emplace_back(foo.slice().at(0));
       paramsA.emplace_back(foo.slice().at(1));
       AqlValue pointA = Functions::GeoPoint(&query, &trx, paramsA);
+      paramsC.emplace_back(pointA.clone());
+      pointA.destroy();
       
       VPackBuilder bar;
       bar.openArray();
@@ -100,9 +115,8 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
       paramsB.emplace_back(bar.slice().at(0));
       paramsB.emplace_back(bar.slice().at(1));
       AqlValue pointB = Functions::GeoPoint(&query, &trx, paramsB);
-
-      paramsC.emplace_back(pointA);
-      paramsC.emplace_back(pointB);
+      paramsC.emplace_back(pointB.clone());
+      pointB.destroy();
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
@@ -126,6 +140,12 @@ SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
     SmallVector<AqlValue> paramsA{arena};
     SmallVector<AqlValue> paramsB{arena};
     SmallVector<AqlValue> paramsC{arena};
+    
+    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
+      clearVector(paramsA);
+      clearVector(paramsB);
+      clearVector(paramsC);
+    });
 
     WHEN("checking two equal multipoints") {
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -137,9 +157,9 @@ SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
       paramsA.emplace_back(jsonA);
 
       AqlValue resA = Functions::GeoMultiPoint(&query, &trx, paramsA);
-
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resA);
+      paramsC.emplace_back(resA.clone());
+      paramsC.emplace_back(resA.clone());
+      resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
@@ -161,9 +181,8 @@ SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
       paramsB.emplace_back(jsonB);
 
       AqlValue resA = Functions::GeoMultiPoint(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoMultiPoint(&query, &trx, paramsB);
-
       paramsC.emplace_back(resA);
+      AqlValue resB = Functions::GeoMultiPoint(&query, &trx, paramsB);
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
@@ -188,6 +207,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
     SmallVector<AqlValue> paramsA{arena};
     SmallVector<AqlValue> paramsB{arena};
     SmallVector<AqlValue> paramsC{arena};
+    
+    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
+      clearVector(paramsA);
+      clearVector(paramsB);
+      clearVector(paramsC);
+    });
 
     WHEN("checking two equal polygons") {
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -199,11 +224,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resA);
+      paramsC.emplace_back(resA.clone());
+      paramsC.emplace_back(resA.clone());
+      resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
+      resC.destroy();
       CHECK(resC.slice().isBoolean());
       CHECK(resC.slice().getBool() == true);
     }
@@ -218,9 +244,9 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resA);
+      paramsC.emplace_back(resA.clone());
+      paramsC.emplace_back(resA.clone());
+      resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
@@ -242,9 +268,8 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsB.emplace_back(jsonB);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
-
       paramsC.emplace_back(resA);
+      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
@@ -262,9 +287,9 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resA);
+      paramsC.emplace_back(resA.clone());
+      paramsC.emplace_back(resA.clone());
+      resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
@@ -286,9 +311,8 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsB.emplace_back(jsonB);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
-
       paramsC.emplace_back(resA);
+      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
@@ -311,9 +335,8 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsB.emplace_back(jsonB);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
-
       paramsC.emplace_back(resA);
+      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
@@ -336,9 +359,8 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsB.emplace_back(jsonB);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
-
       paramsC.emplace_back(resA);
+      AqlValue resB = Functions::GeoPolygon(&query, &trx, paramsB);
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
@@ -352,6 +374,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
     SmallVector<AqlValue> paramsA{arena};
     SmallVector<AqlValue> paramsB{arena};
     SmallVector<AqlValue> paramsC{arena};
+    
+    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
+      clearVector(paramsA);
+      clearVector(paramsB);
+      clearVector(paramsC);
+    });
 
     WHEN("checking only one polygon - first parameter") {
       fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
@@ -372,7 +400,6 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-
       paramsC.emplace_back(resA);
       paramsC.emplace_back(jsonB);
 
@@ -399,7 +426,6 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsA.emplace_back(jsonA);
 
       AqlValue resA = Functions::GeoPolygon(&query, &trx, paramsA);
-
       paramsC.emplace_back(jsonB);
       paramsC.emplace_back(resA);
 
@@ -425,6 +451,12 @@ SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
     SmallVector<AqlValue> paramsA{arena};
     SmallVector<AqlValue> paramsB{arena};
     SmallVector<AqlValue> paramsC{arena};
+    
+    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
+      clearVector(paramsA);
+      clearVector(paramsB);
+      clearVector(paramsC);
+    });
 
     WHEN("checking two equal linestrings") {
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -437,8 +469,9 @@ SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
 
       AqlValue resA = Functions::GeoLinestring(&query, &trx, paramsA);
 
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resA);
+      paramsC.emplace_back(resA.clone());
+      paramsC.emplace_back(resA.clone());
+      resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
@@ -487,6 +520,12 @@ SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINEST
     SmallVector<AqlValue> paramsA{arena};
     SmallVector<AqlValue> paramsB{arena};
     SmallVector<AqlValue> paramsC{arena};
+    
+    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
+      clearVector(paramsA);
+      clearVector(paramsB);
+      clearVector(paramsC);
+    });
 
     WHEN("checking two equal multilinestrings") {
       char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
@@ -498,9 +537,9 @@ SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINEST
       paramsA.emplace_back(jsonA);
 
       AqlValue resA = Functions::GeoMultiLinestring(&query, &trx, paramsA);
-
-      paramsC.emplace_back(resA);
-      paramsC.emplace_back(resA);
+      paramsC.emplace_back(resA.clone());
+      paramsC.emplace_back(resA.clone());
+      resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);
       CHECK(resC.slice().isBoolean());
@@ -549,6 +588,12 @@ SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
     SmallVector<AqlValue> paramsA{arena};
     SmallVector<AqlValue> paramsB{arena};
     SmallVector<AqlValue> paramsC{arena};
+    
+    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
+      clearVector(paramsA);
+      clearVector(paramsB);
+      clearVector(paramsC);
+    });
 
     WHEN("checking polygon with multilinestring") {
       fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
@@ -598,9 +643,8 @@ SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
       paramsB.emplace_back(jsonB);
 
       AqlValue resA = Functions::GeoMultiPoint(&query, &trx, paramsA);
-      AqlValue resB = Functions::GeoMultiLinestring(&query, &trx, paramsB);
-
       paramsC.emplace_back(resA);
+      AqlValue resB = Functions::GeoMultiLinestring(&query, &trx, paramsB);
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&query, &trx, paramsC);

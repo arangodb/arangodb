@@ -463,6 +463,13 @@ struct Functions {
    static AqlValue CurrentUser(arangodb::aql::Query*,
                                 transaction::Methods*,
                                 VPackFunctionParameters const&);
+
+    static AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+    static AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+    static AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
 };
 
 }

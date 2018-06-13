@@ -260,8 +260,7 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) c
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<ShortestPathBlock>(&engine, this);
 }
@@ -305,9 +304,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   c->_fromCondition = _fromCondition->clone(_plan->getAst());
   c->_toCondition = _toCondition->clone(_plan->getAst());
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 double ShortestPathNode::estimateCost(size_t& nrItems) const {
@@ -332,17 +329,17 @@ void ShortestPathNode::prepareOptions() {
     auto dir = _directions[i];
     switch (dir) {
       case TRI_EDGE_IN:
-        opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addLookupInfo(_plan, _edgeColls[i]->name(),
                             StaticStrings::ToString, _toCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::FromString,
                                    _fromCondition->clone(ast));
         break;
       case TRI_EDGE_OUT:
-        opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addLookupInfo(_plan, _edgeColls[i]->name(),
                             StaticStrings::FromString,
                             _fromCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::ToString,
                                    _toCondition->clone(ast));
         break;

@@ -50,7 +50,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
       _usesDefaultSharding(true),
       _countStats(ep->countStats()) {
 
-  _trx->pinData(_collection->cid());
+  _trx->pinData(_collection->id());
 
   auto const& registerPlan = ep->getRegisterPlan()->varInfo;
 
@@ -99,61 +99,56 @@ AqlItemBlock* ModificationBlock::getSome(size_t atMost) {
     blocks.clear();
   };
 
+  TRI_DEFER_BLOCK(freeBlocks(blocks));
+  
   // loop over input until it is exhausted
-  try {
-    if (ExecutionNode::castTo<ModificationNode const*>(_exeNode)
-            ->_options.readCompleteInput) {
-      // read all input into a buffer first
-      while (true) {
-        std::unique_ptr<AqlItemBlock> res(
-            ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+  if (ExecutionNode::castTo<ModificationNode const*>(_exeNode)
+          ->_options.readCompleteInput) {
+    // read all input into a buffer first
+    while (true) {
+      std::unique_ptr<AqlItemBlock> res(
+          ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
-        if (res.get() == nullptr) {
-          break;
-        }
-
-        TRI_IF_FAILURE("ModificationBlock::getSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        blocks.emplace_back(res.get());
-        res.release();
+      if (res.get() == nullptr) {
+        break;
       }
 
-      // now apply the modifications for the complete input
+      TRI_IF_FAILURE("ModificationBlock::getSome") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      blocks.emplace_back(res.get());
+      res.release();
+    }
+
+    // now apply the modifications for the complete input
+    replyBlocks.reset(work(blocks));
+  } else {
+    // read input in chunks, and process it in chunks
+    // this reduces the amount of memory used for storing the input
+    while (true) {
+      freeBlocks(blocks);
+      std::unique_ptr<AqlItemBlock> res(
+          ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+
+      if (res == nullptr) {
+        break;
+      }
+
+      TRI_IF_FAILURE("ModificationBlock::getSome") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      blocks.emplace_back(res.get());
+      res.release();
+
       replyBlocks.reset(work(blocks));
-    } else {
-      // read input in chunks, and process it in chunks
-      // this reduces the amount of memory used for storing the input
-      while (true) {
-        freeBlocks(blocks);
-        std::unique_ptr<AqlItemBlock> res(
-            ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
-        if (res == nullptr) {
-          break;
-        }
-
-        TRI_IF_FAILURE("ModificationBlock::getSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        blocks.emplace_back(res.get());
-        res.release();
-
-        replyBlocks.reset(work(blocks));
-
-        if (replyBlocks != nullptr) {
-          break;
-        }
+      if (replyBlocks != nullptr) {
+        break;
       }
     }
-  } catch (...) {
-    freeBlocks(blocks);
-    throw;
   }
-
-  freeBlocks(blocks);
 
   traceGetSomeEnd(replyBlocks.get());
   return replyBlocks.release();
@@ -354,7 +349,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
     if (!toRemove.isNone() &&
         !(toRemove.isArray() && toRemove.length() == 0)) {
       // all exceptions are caught in _trx->remove()
-      OperationResult opRes = _trx->remove(_collection->name, toRemove, options);
+      OperationResult opRes = _trx->remove(_collection->name(), toRemove, options);
 
       if (isMultiple) {
         TRI_ASSERT(opRes.ok());
@@ -484,7 +479,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         } else {
           if (!ep->_options.consultAqlWriteFilter ||
               !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
-            OperationResult opRes = _trx->insert(_collection->name, a.slice(), options);
+            OperationResult opRes = _trx->insert(_collection->name(), a.slice(), options);
             errorCode = opRes.errorNumber();
 
             if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -532,7 +527,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       VPackSlice toSend = _tempBuilder.slice();
       OperationResult opRes;
       if (toSend.length() > 0) {
-        opRes = _trx->insert(_collection->name, toSend, options);
+        opRes = _trx->insert(_collection->name(), toSend, options);
 
         if (producesOutput) {
           // Reset dstRow
@@ -713,7 +708,7 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
     }
 
     // fetch old revision
-    OperationResult opRes = _trx->update(_collection->name, toUpdate, options);
+    OperationResult opRes = _trx->update(_collection->name(), toUpdate, options);
     if (!isMultiple) {
       int errorCode = opRes.errorNumber();
 
@@ -949,7 +944,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       if (isMultiple) {
         TRI_ASSERT(toInsert.isArray());
         if (toInsert.length() != 0) {
-          OperationResult opRes = _trx->insert(_collection->name, toInsert, options);
+          OperationResult opRes = _trx->insert(_collection->name(), toInsert, options);
           if (producesOutput) {
             VPackSlice resultList = opRes.slice();
             TRI_ASSERT(resultList.isArray());
@@ -970,7 +965,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                            ep->_options.ignoreErrors);
         }
       } else {
-        OperationResult opRes = _trx->insert(_collection->name, toInsert, options);
+        OperationResult opRes = _trx->insert(_collection->name(), toInsert, options);
         errorCode = opRes.errorNumber();
 
         if (options.returnNew && errorCode == TRI_ERROR_NO_ERROR) {
@@ -992,10 +987,10 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           OperationResult opRes;
           if (ep->_isReplace) {
             // replace
-            opRes = _trx->replace(_collection->name, toUpdate, options);
+            opRes = _trx->replace(_collection->name(), toUpdate, options);
           } else {
             // update
-            opRes = _trx->update(_collection->name, toUpdate, options);
+            opRes = _trx->update(_collection->name(), toUpdate, options);
           }
           handleBabyResult(opRes.countErrorCodes,
                            static_cast<size_t>(toUpdate.length()),
@@ -1020,10 +1015,10 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         OperationResult opRes;
         if (ep->_isReplace) {
           // replace
-          opRes = _trx->replace(_collection->name, toUpdate, options);
+          opRes = _trx->replace(_collection->name(), toUpdate, options);
         } else {
           // update
-          opRes = _trx->update(_collection->name, toUpdate, options);
+          opRes = _trx->update(_collection->name(), toUpdate, options);
         }
         errorCode = opRes.errorNumber();
 
@@ -1175,7 +1170,7 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       continue;
     }
     // fetch old revision
-    OperationResult opRes = _trx->replace(_collection->name, toUpdate, options);
+    OperationResult opRes = _trx->replace(_collection->name(), toUpdate, options);
     if (!isMultiple) {
       int errorCode = opRes.errorNumber();
 

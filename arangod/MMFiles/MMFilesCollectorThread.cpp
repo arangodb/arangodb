@@ -620,10 +620,13 @@ void MMFilesCollectorThread::clearQueuedOperations() {
       it.second.clear();
     }
   } catch (...) {
-    // must clear the inuse flag here
-    MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
-    TRI_ASSERT(_operationsQueueInUse); // used by us
-    _operationsQueueInUse = false;
+    {
+      // must clear the inuse flag here
+      MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+      TRI_ASSERT(_operationsQueueInUse); // used by us
+      _operationsQueueInUse = false;
+    }
+
     throw;
   }
 

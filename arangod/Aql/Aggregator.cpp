@@ -35,54 +35,147 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
+namespace {
+
+constexpr bool doesRequireInput = true;
+constexpr bool doesNotRequireInput = false;
+
+constexpr bool official = true;
+constexpr bool internalOnly = false;
+
+struct AggregatorInfo {
+  std::function<std::unique_ptr<Aggregator>(transaction::Methods* trx)> generator;
+  bool requiresInput;
+  bool isVisible;
+  std::string pushToDBServerAs;
+  std::string runOnCoordinatorAs;
+};
+
+std::unordered_map<std::string, AggregatorInfo> const aggregators = {
+  // LENGTH and COUNT are identical. both do not require any input
+  { "LENGTH", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorLength>(trx); }, 
+    doesNotRequireInput, official,
+    "LENGTH",
+    "SUM" // we need to sum up the lengths from the DB servers 
+  } }, 
+  { "MIN",{ 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorMin>(trx); }, 
+    doesRequireInput, official,
+    "MIN",
+    "MIN" // min is commutative 
+  } }, 
+  { "MAX", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorMax>(trx); }, 
+    doesRequireInput, official,
+    "MAX",
+    "MAX" // max is commutative 
+  } }, 
+  { "SUM", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorSum>(trx); }, 
+    doesRequireInput, official,
+    "SUM",
+    "SUM" // sum is commutative 
+  } }, 
+  // AVERAGE and AVG are identical
+  { "AVERAGE", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorAverage>(trx); }, 
+    doesRequireInput, official,
+    "AVERAGE_STEP1",
+    "AVERAGE_STEP2"
+  } }, 
+  { "AVERAGE_STEP1", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorAverageStep1>(trx); }, 
+    doesRequireInput, internalOnly,
+    "",
+    "AVERAGE_STEP1"
+  } }, 
+  { "AVERAGE_STEP2", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorAverageStep2>(trx); }, 
+    doesRequireInput, internalOnly,
+    "",
+    "AVERAGE_STEP2"
+  } }, 
+  { "VARIANCE_POPULATION", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorVariance>(trx, true); }, 
+    doesRequireInput, official,
+    "",
+    "VARIANCE_POPULATION"
+  } }, 
+  { "VARIANCE_SAMPLE", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorVariance>(trx, false); }, 
+    doesRequireInput, official,
+    "",
+    "VARIANCE_SAMPLE" 
+  } }, 
+  { "STDDEV_POPULATION", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorStddev>(trx, true); }, 
+    doesRequireInput, official,
+    "",
+    "STDDEV_POPULATION"
+  } }, 
+  { "STDDEV_SAMPLE", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorStddev>(trx, false); }, 
+    doesRequireInput, official,
+    "",
+    "STDDEV_SAMPLE" 
+  } }, 
+  { "UNIQUE", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorUnique>(trx, false); }, 
+    doesRequireInput, official,
+    "UNIQUE",
+    "UNIQUE_STEP2" 
+  } }, 
+  { "UNIQUE_STEP2", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorUnique>(trx, true); }, 
+    doesRequireInput, internalOnly,
+    "",
+    "UNIQUE_STEP2"
+  } }, 
+  { "SORTED_UNIQUE", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorSortedUnique>(trx, false); }, 
+    doesRequireInput, official,
+    "SORTED_UNIQUE",
+    "SORTED_UNIQUE_STEP2"
+  } }, 
+  { "SORTED_UNIQUE_STEP2", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorSortedUnique>(trx, true); }, 
+    doesRequireInput, internalOnly,
+    "",
+    "SORTED_UNIQUE_STEP2"
+  } }, 
+  // COUNT_UNIQUE and COUNT_DISTINCT are identical
+  { "COUNT_DISTINCT", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorCountDistinct>(trx, false); }, 
+    doesRequireInput, official,
+    "UNIQUE",
+    "COUNT_DISTINCT_STEP2"
+  } }, 
+  { "COUNT_DISTINCT_STEP2", { 
+    [](transaction::Methods* trx) { return std::make_unique<AggregatorCountDistinct>(trx, true); }, 
+    doesRequireInput, internalOnly,
+    "",
+    "COUNT_DISTINCT_STEP2"
+  } } 
+};
+
+std::unordered_map<std::string, std::string> const aliases = {
+  { "COUNT", "LENGTH" },
+  { "AVG", "AVERAGE" },
+  { "VARIANCE", "VARIANCE_POPULATION" },
+  { "STDDEV", "STDDEV_POPULATION" },
+  { "COUNT_UNIQUE", "COUNT_DISTINCT" }
+};
+
+} // namespace
+
 std::unique_ptr<Aggregator> Aggregator::fromTypeString(transaction::Methods* trx,
                                                        std::string const& type) {
-  if (type == "LENGTH" || type == "COUNT") {
-    return std::make_unique<AggregatorLength>(trx);
-  }
-  if (type == "MIN") {
-    return std::make_unique<AggregatorMin>(trx);
-  }
-  if (type == "MAX") {
-    return std::make_unique<AggregatorMax>(trx);
-  }
-  if (type == "SUM") {
-    return std::make_unique<AggregatorSum>(trx);
-  }
-  if (type == "AVERAGE" || type == "AVG") {
-    return std::make_unique<AggregatorAverage>(trx);
-  }
-  if (type == "VARIANCE_POPULATION" || type == "VARIANCE") {
-    return std::make_unique<AggregatorVariance>(trx, true);
-  }
-  if (type == "VARIANCE_SAMPLE") {
-    return std::make_unique<AggregatorVariance>(trx, false);
-  }
-  if (type == "STDDEV_POPULATION" || type == "STDDEV") {
-    return std::make_unique<AggregatorStddev>(trx, true);
-  }
-  if (type == "STDDEV_SAMPLE") {
-    return std::make_unique<AggregatorStddev>(trx, false);
-  }
-  if (type == "UNIQUE") {
-    return std::make_unique<AggregatorUnique>(trx, false);
-  }
-  if (type == "UNIQUE_ADD") {
-    return std::make_unique<AggregatorUnique>(trx, true);
-  }
-  if (type == "SORTED_UNIQUE") {
-    return std::make_unique<AggregatorSortedUnique>(trx, false);
-  }
-  if (type == "SORTED_UNIQUE_ADD") {
-    return std::make_unique<AggregatorSortedUnique>(trx, true);
-  }
-  if (type == "COUNT_DISTINCT" || type == "COUNT_UNIQUE") {
-    return std::make_unique<AggregatorCountDistinct>(trx, false);
-  }
-  if (type == "COUNT_UNIQUE_ADD") {
-    return std::make_unique<AggregatorCountDistinct>(trx, true);
-  }
+  auto it = ::aggregators.find(translateAlias(type));
 
+  if (it != ::aggregators.end()) { 
+    return (*it).second.generator(trx);
+  }
   // aggregator function name should have been validated before
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
@@ -95,30 +188,54 @@ std::unique_ptr<Aggregator> Aggregator::fromVPack(transaction::Methods* trx,
   if (variable.isString()) {
     return fromTypeString(trx, variable.copyString());
   }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid aggregate function");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-bool Aggregator::isSupported(std::string const& type) {
-  return (type == "LENGTH" || type == "COUNT" || type == "MIN" ||
-          type == "MAX" || type == "SUM" || type == "AVERAGE" ||
-          type == "AVG" || type == "VARIANCE_POPULATION" ||
-          type == "VARIANCE" || type == "VARIANCE_SAMPLE" ||
-          type == "STDDEV_POPULATION" || type == "STDDEV" ||
-          type == "STDDEV_SAMPLE" || type == "UNIQUE" ||
-          type == "SORTED_UNIQUE" ||
-          type == "COUNT_DISTINCT" || type == "COUNT_UNIQUE");
+std::string Aggregator::translateAlias(std::string const& name) {
+  auto it = ::aliases.find(name);
+  
+  if (it != ::aliases.end()) {
+    return (*it).second;
+  }
+  // not an alias
+  return name;
+}
+
+std::string Aggregator::pushToDBServerAs(std::string const& type) {
+  auto it = ::aggregators.find(translateAlias(type));
+  
+  if (it != ::aggregators.end()) {
+    return (*it).second.pushToDBServerAs;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
+}
+
+std::string Aggregator::runOnCoordinatorAs(std::string const& type) {
+  auto it = ::aggregators.find(translateAlias(type));
+  
+  if (it != ::aggregators.end()) {
+    return (*it).second.runOnCoordinatorAs;
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
+}
+
+bool Aggregator::isValid(std::string const& type) {
+  auto it = ::aggregators.find(translateAlias(type));
+  
+  if (it == ::aggregators.end()) {
+    return false;
+  }
+  // check if the aggregator is part of the public API or internal 
+  return (*it).second.isVisible;
 }
 
 bool Aggregator::requiresInput(std::string const& type) {
-  if (type == "LENGTH" || type == "COUNT") {
-    // LENGTH/COUNT do not require its input parameter, so
-    // it can be optimized away
-    return false;
+  auto it = ::aggregators.find(translateAlias(type));
+  
+  if (it != ::aggregators.end()) {
+    return (*it).second.requiresInput;
   }
-  // all other functions require their input
-  return true;
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
 void AggregatorLength::reset() { count = 0; }
@@ -253,6 +370,49 @@ AqlValue AggregatorAverage::stealValue() {
   AqlValue temp(builder.slice());
   reset();
   return temp;
+}
+
+AqlValue AggregatorAverageStep1::stealValue() {
+  builder.clear();
+  builder.openArray();
+  if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL ||
+      sum == -HUGE_VAL) {
+    builder.add(VPackValue(VPackValueType::Null));
+    builder.add(VPackValue(VPackValueType::Null));
+  } else {
+    TRI_ASSERT(count > 0);
+    builder.add(VPackValue(sum));
+    builder.add(VPackValue(count));
+  }
+  builder.close();
+  AqlValue temp(builder.slice());
+  reset();
+  return temp;
+}
+  
+void AggregatorAverageStep2::reduce(AqlValue const& cmpValue) {
+  if (!cmpValue.isArray()) {
+    invalid = true;
+    return;
+  }
+
+  bool mustDestroy;
+  AqlValue const& sumValue = cmpValue.at(trx, 0, mustDestroy, false);
+  AqlValue const& countValue = cmpValue.at(trx, 1, mustDestroy, false);
+
+  if (sumValue.isNull(true) || countValue.isNull(true)) {
+    invalid = true;
+    return;
+  }
+
+  bool failed = false;
+  double v = sumValue.toDouble(trx, failed);
+  if (failed) {
+    invalid = true;
+    return;
+  }
+  sum += v;
+  count += countValue.toInt64(trx);
 }
 
 void AggregatorVarianceBase::reset() {
@@ -418,11 +578,6 @@ void AggregatorSortedUnique::reduce(AqlValue const& cmpValue) {
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(pos);
-
-    if (builder.isClosed()) {
-      builder.openArray();
-    }
-    builder.add(VPackSlice(pos));
   };
   
   if (isArrayInput) {
@@ -442,6 +597,8 @@ AqlValue AggregatorSortedUnique::stealValue() {
   for (auto const& it : seen) {
     builder.add(it);
   }
+
+  // always close the Builder
   builder.close();
   AqlValue result(builder.slice());
   reset();
@@ -477,11 +634,6 @@ void AggregatorCountDistinct::reduce(AqlValue const& cmpValue) {
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(pos);
-
-    if (builder.isClosed()) {
-      builder.openArray();
-    }
-    builder.add(VPackSlice(pos));
   };
   
   if (isArrayInput) {
@@ -497,10 +649,6 @@ void AggregatorCountDistinct::reduce(AqlValue const& cmpValue) {
 }
 
 AqlValue AggregatorCountDistinct::stealValue() {
-  if (seen.empty()) {
-    return AqlValue(AqlValueHintUInt(0));
-  }
-
   uint64_t value = seen.size();
   reset();
   return AqlValue(AqlValueHintUInt(value));

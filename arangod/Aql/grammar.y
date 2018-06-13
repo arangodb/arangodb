@@ -103,7 +103,7 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
       }
       else {
         auto f = static_cast<arangodb::aql::Function*>(func->getData());
-        if (!Aggregator::isSupported(f->name)) {
+        if (!Aggregator::isValid(f->name)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
           isValid = false;
         }
@@ -326,7 +326,6 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> simple_value;
 %type <node> value_literal;
 %type <node> collection_name;
-%type <node> view_name;
 %type <node> in_or_into_collection;
 %type <node> bind_parameter;
 %type <strval> variable_name;
@@ -447,13 +446,7 @@ statement_block_statement:
   ;
 
 for_statement:
-    T_FOR variable_name T_IN T_VIEW view_name {
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-
-      auto node = parser->ast()->createNodeFor($2.value, $2.length, $5, true);
-      parser->ast()->addOperation(node);
-    }
-    | T_FOR variable_name T_IN expression {
+    T_FOR variable_name T_IN expression {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
 
       auto node = parser->ast()->createNodeFor($2.value, $2.length, $4, true);
@@ -1471,7 +1464,15 @@ graph_direction_steps:
   ;
 
 reference:
-    T_STRING {
+  T_VIEW T_STRING {
+      auto* ast = parser->ast();
+      auto* node = ast->createNodeView($2.value);
+
+      TRI_ASSERT(node != nullptr);
+
+      $$ = node;
+    }
+  | T_STRING {
       // variable or collection
       auto ast = parser->ast();
       AstNode* node = nullptr;
@@ -1680,29 +1681,20 @@ collection_name:
     }
   ;
 
-view_name:
-    T_STRING {
-      $$ = parser->ast()->createNodeView($1.value);
-    }
-  | T_QUOTED_STRING {
-      $$ = parser->ast()->createNodeView($1.value);
+bind_parameter:
+  T_VIEW T_DATA_SOURCE_PARAMETER {
+      if ($2.length < 2 || $2.value[0] != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $2.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = parser->ast()->createNodeParameterView($2.value, $2.length);
     }
   | T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
-      $$ = parser->ast()->createNodeParameter($1.value, $1.length);
-    }
-  ;
-
-bind_parameter:
-    T_DATA_SOURCE_PARAMETER {
-      if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
-      }
-
-      $$ = parser->ast()->createNodeParameter($1.value, $1.length);
+      $$ = parser->ast()->createNodeParameterCollection($1.value, $1.length);
     }
   | T_PARAMETER {
       $$ = parser->ast()->createNodeParameter($1.value, $1.length);

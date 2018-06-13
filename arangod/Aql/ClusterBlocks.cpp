@@ -41,6 +41,8 @@
 #include "Cluster/ServerState.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -56,451 +58,161 @@ using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 using StringBuffer = arangodb::basics::StringBuffer;
 
-GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
-    : ExecutionBlock(engine, en),
-      _atDep(0),
-      _sortRegisters(),
-      _isSimple(en->elements().empty()),
-      _heap(en->_sortmode == GatherNode::SortMode::Heap ? new Heap : nullptr) {
+namespace {
 
-  if (!_isSimple) {
-    for (auto const& p : en->elements()) {
-      // We know that planRegisters has been run, so
-      // getPlanNode()->_registerPlan is set up
-      auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
-      TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      _sortRegisters.emplace_back(it->second.registerId, p.ascending);
-      if (!p.attributePath.empty()) {
-        _sortRegisters.back().attributePath = p.attributePath;
-      }
-    }
-  }
-}
-
-GatherBlock::~GatherBlock() {
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y : x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _gatherBlockBuffer.clear();
-}
-
-/// @brief shutdown: need our own method since our _buffer is different
-int GatherBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  // don't call default shutdown method since it does the wrong thing to
-  // _gatherBlockBuffer
-  int ret = TRI_ERROR_NO_ERROR;
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->shutdown(errorCode);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      ret = res;
-    }
+/// @brief OurLessThan: comparison method for elements of SortingGatherBlock
+class OurLessThan {
+ public:
+  OurLessThan(
+      arangodb::transaction::Methods* trx,
+      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : _trx(trx),
+      _gatherBlockBuffer(gatherBlockBuffer),
+      _sortRegisters(sortRegisters) {
   }
 
-  if (ret != TRI_ERROR_NO_ERROR) {
-    return ret;
-  }
+  bool operator()(
+    std::pair<size_t, size_t> const& a,
+    std::pair<size_t, size_t> const& b
+  ) const;
 
-  if (!_isSimple) {
-    for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-      for (AqlItemBlock* y : x) {
-        delete y;
-      }
-      x.clear();
-    }
-    _gatherBlockBuffer.clear();
-    _gatherBlockPos.clear();
-  }
+ private:
+  arangodb::transaction::Methods* _trx;
+  std::vector<std::deque<AqlItemBlock*>>& _gatherBlockBuffer;
+  std::vector<SortRegister>& _sortRegisters;
+}; // OurLessThan
 
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief initializeCursor
-int GatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  _atDep = 0;
-
-  if (!_isSimple) {
-    for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-      for (AqlItemBlock* y : x) {
-        delete y;
-      }
-      x.clear();
-    }
-    _gatherBlockBuffer.clear();
-    _gatherBlockPos.clear();
-    _gatherBlockBuffer.reserve(_dependencies.size());
-    _gatherBlockPos.reserve(_dependencies.size());
-    for (size_t i = 0; i < _dependencies.size(); i++) {
-      _gatherBlockBuffer.emplace_back();
-      _gatherBlockPos.emplace_back(std::make_pair(i, 0));
-    }
-    
-    if (_heap) {
-      _heap->clear();
-    }
-  }
-
-  if (_dependencies.empty()) {
-    _done = true;
-  } else {
-    _done = false;
-  }
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief hasMore: true if any position of _buffer hasMore and false
-/// otherwise.
-bool GatherBlock::hasMore() {
-  DEBUG_BEGIN_BLOCK();
-  if (_done || _dependencies.empty()) {
-    return false;
-  }
-
-  if (_isSimple) {
-    for (size_t i = 0; i < _dependencies.size(); i++) {
-      if (_dependencies.at(i)->hasMore()) {
-        return true;
-      }
-    }
-  } else {
-    for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
-      if (!_gatherBlockBuffer.at(i).empty()) {
-        return true;
-      } else if (getBlock(i, DefaultBatchSize())) {
-        _gatherBlockPos.at(i) = std::make_pair(i, 0);
-        return true;
-      }
-    }
-  }
-  _done = true;
-  return false;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief getSome
-AqlItemBlock* GatherBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atMost);
-
-  if (_dependencies.empty()) {
-    _done = true;
-  }
-
-  if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
-  }
-
-  // the simple case . . .
-  if (_isSimple) {
-    auto res = _dependencies.at(_atDep)->getSome(atMost);
-    while (res == nullptr && _atDep < _dependencies.size() - 1) {
-      _atDep++;
-      res = _dependencies.at(_atDep)->getSome(atMost);
-    }
-    if (res == nullptr) {
-      _done = true;
-    }
-    traceGetSomeEnd(res);
-    return res;
-  }
-
-  // the non-simple case . . .
-  size_t available = 0;  // nr of available rows
-  size_t index = 0;      // an index of a non-empty buffer
-	  
-  // pull more blocks from dependencies . . .
-  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
-  TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
- 
-  for (size_t i = 0; i < _dependencies.size(); ++i) {
-    if (_gatherBlockBuffer[i].empty()) {
-      if (getBlock(i, atMost)) {
-        index = i;
-        _gatherBlockPos[i] = std::make_pair(i, 0);
-      }
-    } else {
-      index = i;
-    }
-
-    auto const& cur = _gatherBlockBuffer[i];
-    if (!cur.empty()) {
-      TRI_ASSERT(cur[0]->size() >= _gatherBlockPos[i].second);
-      available += cur[0]->size() - _gatherBlockPos[i].second;
-      for (size_t j = 1; j < cur.size(); ++j) {
-        available += cur[j]->size();
-      }
-    }
-  }
-
-  if (available == 0) {
-    _done = true;
-    traceGetSomeEnd(nullptr);
-    return nullptr;
-  }
-
-  size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
-
-  // the following is similar to AqlItemBlock's slice method . . .
-  std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
-  cache.resize(_gatherBlockBuffer.size());
-
-  // comparison function
-  OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
-  auto ourGreater = [&ourLessThan](std::pair<std::size_t, std::size_t>& a, std::pair<std::size_t, std::size_t>& b) {
-    return ourLessThan(b, a);
-  };
-
-  TRI_ASSERT(!_gatherBlockBuffer.at(index).empty());
-  AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
-  size_t nrRegs = example->getNrRegs();
-
-  // automatically deleted if things go wrong
-  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
-
-  if (_heap && _heap->size() != _dependencies.size()) {
-    auto& heap = *_heap;
-    std::copy(_gatherBlockPos.begin(), _gatherBlockPos.end(), std::back_inserter(heap));
-    std::make_heap(heap.begin(), heap.end(), ourGreater);
-  }
-
-  for (size_t i = 0; i < toSend; i++) {
-    // get the next smallest row from the buffer . . .
-    std::pair<size_t, size_t> val;
-    if (_heap) {
-      val = _heap->front();
-    } else {
-      val = *(std::min_element( _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
-    }
-
-    // copy the row in to the outgoing block . . .
-    for (RegisterId col = 0; col < nrRegs; col++) {
-      TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
-      AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
-      if (!x.isEmpty()) {
-        if (x.requiresDestruction()) {
-          // complex value, with ownership transfer
-          auto it = cache[val.first].find(x);
-
-          if (it == cache[val.first].end()) {
-            AqlValue y = x.clone();
-            try {
-              res->setValue(i, col, y);
-            } catch (...) {
-              y.destroy();
-              throw;
-            }
-            cache[val.first].emplace(x, y);
-          } else {
-            res->setValue(i, col, (*it).second);
-          }
-        } else {
-          // simple value, no ownership transfer needed
-          res->setValue(i, col, x);
-        }
-      }
-    }
-
-    _gatherBlockPos.at(val.first).second++;
-    if (_heap) {
-      auto& heap = *_heap;
-      std::pop_heap(heap.begin(), heap.end(), ourGreater); // remove element from heap but not from vector
-      heap.back().second++; //advance position in itemblock of removed element before it is re-inserted later
-    }
-
-    // renew the _gatherBlockPos and clean up the buffer if necessary
-    if (_gatherBlockPos.at(val.first).second == _gatherBlockBuffer.at(val.first).front()->size()) {
-      TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
-      AqlItemBlock* cur = _gatherBlockBuffer[val.first].front();
-      returnBlock(cur);
-      _gatherBlockBuffer[val.first].pop_front();
-      _gatherBlockPos[val.first] = {val.first, 0}; 
-
-      if (_heap) {
-        _heap->back().second = 0;
-      }
-
-      if (_gatherBlockBuffer[val.first].empty()) {
-        // if we pulled everything from the buffer, we need to fetch
-        // more data for the shard for which we have no more local
-        // values. 
-        getBlock(val.first, atMost);
-        cache[val.first].clear();
-        // note that if getBlock() returns false here, this is not
-        // a problem, because the sort function used takes care of
-        // this
-      }
-    }
-
-    if (_heap) {
-      std::push_heap(_heap->begin(), _heap->end(), ourGreater); //re-insert element
-    }
-  }
-
-  traceGetSomeEnd(res.get());
-  return res.release();
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief skipSome
-size_t GatherBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  if (_done) {
-    return 0;
-  }
-
-  // the simple case . . .
-  if (_isSimple) {
-    auto skipped = _dependencies.at(_atDep)->skipSome(atMost);
-    while (skipped == 0 && _atDep < _dependencies.size() - 1) {
-      _atDep++;
-      skipped = _dependencies[_atDep]->skipSome(atMost);
-    }
-    if (skipped == 0) {
-      _done = true;
-    }
-    return skipped;
-  }
-
-  // the non-simple case . . .
-  size_t available = 0;  // nr of available rows
-  TRI_ASSERT(_dependencies.size() != 0);
-
-  // pull more blocks from dependencies . . .
-  for (size_t i = 0; i < _dependencies.size(); i++) {
-    if (_gatherBlockBuffer[i].empty()) {
-      if (getBlock(i, atMost)) {
-        _gatherBlockPos[i] = std::make_pair(i, 0);
-      }
-    }
-
-    auto cur = _gatherBlockBuffer.at(i);
-    if (!cur.empty()) {
-      available += cur.at(0)->size() - _gatherBlockPos.at(i).second;
-      for (size_t j = 1; j < cur.size(); j++) {
-        available += cur.at(j)->size();
-      }
-    }
-  }
-
-  if (available == 0) {
-    _done = true;
-    return 0;
-  }
-
-  size_t skipped = (std::min)(available, atMost);  // nr rows in outgoing block
-
-  // comparison function
-  OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
-
-  for (size_t i = 0; i < skipped; i++) {
-    // get the next smallest row from the buffer . . .
-    std::pair<size_t, size_t> val = *(std::min_element(
-        _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
-
-    // renew the _gatherBlockPos and clean up the buffer if necessary
-    _gatherBlockPos[val.first].second++;
-    if (_gatherBlockPos[val.first].second ==
-        _gatherBlockBuffer[val.first].front()->size()) {
-      TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
-      AqlItemBlock* cur = _gatherBlockBuffer[val.first].front();
-      returnBlock(cur);
-      _gatherBlockBuffer[val.first].pop_front();
-      _gatherBlockPos[val.first] = std::make_pair(val.first, 0);
-    }
-  }
-
-  return skipped;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
-/// non-simple case only
-bool GatherBlock::getBlock(size_t i, size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  TRI_ASSERT(i < _dependencies.size());
-  TRI_ASSERT(!_isSimple);
-
-  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSome(atMost));
-  if (docs != nullptr && docs->size() > 0) {
-    _gatherBlockBuffer.at(i).emplace_back(docs.get());
-    docs.release();
-    return true;
-  }
-
-  return false;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief OurLessThan: comparison method for elements of _gatherBlockPos
-bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
-                                          std::pair<size_t, size_t> const& b) {
+bool OurLessThan::operator()(
+    std::pair<size_t, size_t> const& a,
+    std::pair<size_t, size_t> const& b
+) const {
   // nothing in the buffer is maximum!
   if (_gatherBlockBuffer[a.first].empty()) {
     return false;
   }
+
   if (_gatherBlockBuffer[b.first].empty()) {
     return true;
   }
+
   TRI_ASSERT(!_gatherBlockBuffer[a.first].empty());
   TRI_ASSERT(!_gatherBlockBuffer[b.first].empty());
 
   for (auto const& reg : _sortRegisters) {
+    auto const& lhs = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
+    auto const& rhs = _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
+    auto const& attributePath = reg.attributePath;
+
     // Fast path if there is no attributePath:
     int cmp;
-    if (reg.attributePath.empty()) {
-      cmp = AqlValue::Compare(
-          _trx,
-          _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg),
-          _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg),
-          true);
+
+    if (attributePath.empty()) {
+#ifdef USE_IRESEARCH
+      TRI_ASSERT(reg.comparator);
+      cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
+#else
+      cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+#endif
     } else {
       // Take attributePath into consideration:
-      AqlValue const& topA = _gatherBlockBuffer[a.first].front()->getValueReference(a.second, reg.reg);
-      AqlValue const& topB = _gatherBlockBuffer[b.first].front()->getValueReference(b.second, reg.reg);
       bool mustDestroyA;
-      AqlValue aa = topA.get(_trx, reg.attributePath, mustDestroyA, false);
+      AqlValue aa = lhs.get(_trx, attributePath, mustDestroyA, false);
       AqlValueGuard guardA(aa, mustDestroyA);
       bool mustDestroyB;
-      AqlValue bb = topB.get(_trx, reg.attributePath, mustDestroyB, false);
+      AqlValue bb = rhs.get(_trx, attributePath, mustDestroyB, false);
       AqlValueGuard guardB(bb, mustDestroyB);
       cmp = AqlValue::Compare(_trx, aa, bb, true);
     }
 
     if (cmp == -1) {
-      return reg.ascending;
+      return reg.asc;
     } else if (cmp == 1) {
-      return !reg.ascending;
+      return !reg.asc;
     }
   }
 
   return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class HeapSorting
+/// @brief "Heap" sorting strategy
+////////////////////////////////////////////////////////////////////////////////
+class HeapSorting final : public SortingStrategy, private OurLessThan  {
+ public:
+  HeapSorting(
+      arangodb::transaction::Methods* trx,
+      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
+  }
+
+  virtual ValueType nextValue() override {
+    TRI_ASSERT(!_heap.empty());
+    std::push_heap(_heap.begin(), _heap.end(), *this); // re-insert element
+    std::pop_heap(_heap.begin(), _heap.end(), *this); // remove element from _heap but not from vector
+    return _heap.back();
+  }
+
+  virtual void prepare(std::vector<ValueType>& blockPos) override {
+    TRI_ASSERT(!blockPos.empty());
+
+    if (_heap.size() == blockPos.size()) {
+      return;
+    }
+
+    _heap.clear();
+    std::copy(blockPos.begin(), blockPos.end(), std::back_inserter(_heap));
+    std::make_heap(_heap.begin(), _heap.end()-1, *this); // remain last element out of heap to maintain invariant
+    TRI_ASSERT(!_heap.empty());
+  }
+
+  virtual void reset() noexcept override {
+    _heap.clear();
+  }
+
+  bool operator()(
+      std::pair<size_t, size_t> const& lhs,
+      std::pair<size_t, size_t> const& rhs
+  ) const {
+    return OurLessThan::operator()(rhs, lhs);
+  }
+
+ private:
+  std::vector<std::reference_wrapper<ValueType>> _heap;
+}; // HeapSorting
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class MinElementSorting
+/// @brief "MinElement" sorting strategy
+////////////////////////////////////////////////////////////////////////////////
+class MinElementSorting final : public SortingStrategy, public OurLessThan {
+ public:
+  MinElementSorting(
+      arangodb::transaction::Methods* trx,
+      std::vector<std::deque<AqlItemBlock*>>& gatherBlockBuffer,
+      std::vector<SortRegister>& sortRegisters) noexcept
+    : OurLessThan(trx, gatherBlockBuffer, sortRegisters) {
+  }
+
+  virtual ValueType nextValue() override {
+    TRI_ASSERT(_blockPos);
+    return *(std::min_element(_blockPos->begin(), _blockPos->end(), *this));
+  }
+
+  virtual void prepare(std::vector<ValueType>& blockPos) override {
+    _blockPos = &blockPos;
+  }
+
+  virtual void reset() noexcept override {
+    _blockPos = nullptr;
+  }
+
+ private:
+  std::vector<ValueType> const* _blockPos;
+};
+
 }
 
 BlockWithClients::BlockWithClients(ExecutionEngine* engine,
@@ -644,7 +356,7 @@ int ScatterBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _posForClient.clear();
 
   for (size_t i = 0; i < _nrClients; i++) {
-    _posForClient.emplace_back(std::make_pair(0, 0));
+    _posForClient.emplace_back(0, 0);
   }
   return TRI_ERROR_NO_ERROR;
 
@@ -675,20 +387,24 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   
   TRI_ASSERT(_nrClients != 0);
 
-  size_t clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
 
+  // reference to "a finish mark" for a client
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return false;
   }
 
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
+  TRI_ASSERT(_posForClient.size() > clientId);
+  std::pair<size_t, size_t> const& pos = _posForClient[clientId];
   // (i, j) where i is the position in _buffer, and j is the position in
-  // _buffer.at(i) we are sending to <clientId>
+  // _buffer[i] we are sending to <clientId>
 
   if (pos.first > _buffer.size()) {
     if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       return false;
     }
   }
@@ -707,46 +423,50 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
 
+  // reference to "a finish mark" for a client
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(_posForClient.size() > clientId);
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
+  std::pair<size_t, size_t>& pos = _posForClient[clientId];
 
   // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
     if (!getBlock(atMost)) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       return TRI_ERROR_NO_ERROR;
     }
   }
 
-  size_t available = _buffer.at(pos.first)->size() - pos.second;
+  auto& blockForClient = _buffer[pos.first];
+
+  size_t available = blockForClient->size() - pos.second;
   // available should be non-zero
 
   skipped = (std::min)(available, atMost);  // nr rows in outgoing block
 
   if (!skipping) {
-    result = _buffer.at(pos.first)->slice(pos.second, pos.second + skipped);
+    result = blockForClient->slice(pos.second, pos.second + skipped);
   }
 
   // increment the position . . .
-  _posForClient.at(clientId).second += skipped;
+  pos.second += skipped;
 
   // check if we're done at current block in buffer . . .
-  if (_posForClient.at(clientId).second ==
-      _buffer.at(_posForClient.at(clientId).first)->size()) {
-    _posForClient.at(clientId).first++;
-    _posForClient.at(clientId).second = 0;
+  if (pos.second == blockForClient->size()) {
+    pos.first++; // next block
+    pos.second = 0; // reset the position within a block
 
     // check if we can pop the front of the buffer . . .
     bool popit = true;
     for (size_t i = 0; i < _nrClients; i++) {
-      if (_posForClient.at(i).first == 0) {
+      if (_posForClient[i].first == 0) {
         popit = false;
         break;
       }
@@ -756,7 +476,7 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
       _buffer.pop_front();
       // update the values in first coord of _posForClient
       for (size_t i = 0; i < _nrClients; i++) {
-        _posForClient.at(i).first--;
+        _posForClient[i].first--;
       }
     }
   }
@@ -845,19 +565,23 @@ int DistributeBlock::shutdown(int errorCode) {
 bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
 
-  size_t clientId = getClientId(shardId);
+  size_t const clientId = getClientId(shardId);
+
+  // reference to "a finish mark" for a client
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     return false;
   }
 
   TRI_ASSERT(_distBuffer.size() > clientId);
-  if (!_distBuffer.at(clientId).empty()) {
+  if (!_distBuffer[clientId].empty()) {
     return true;
   }
 
   if (!getBlockForClient(DefaultBatchSize(), clientId)) {
-    _doneForClient.at(clientId) = true;
+    doneForClient = true;
     return false;
   }
   return true;
@@ -876,19 +600,22 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
-  size_t clientId = getClientId(shardId);
-
+  size_t const clientId = getClientId(shardId);
   TRI_ASSERT(_doneForClient.size() > clientId);
-  if (_doneForClient.at(clientId)) {
+
+  // reference to "a finish mark" for a client
+  std::vector<bool>::reference doneForClient = _doneForClient[clientId];
+
+  if (doneForClient) {
     traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;
   }
 
-  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
+  std::deque<std::pair<size_t, size_t>>& buf = _distBuffer[clientId];
 
   if (buf.empty()) {
     if (!getBlockForClient(atMost, clientId)) {
-      _doneForClient.at(clientId) = true;
+      doneForClient = true;
       traceGetSomeEnd(result);
       return TRI_ERROR_NO_ERROR;
     }
@@ -921,7 +648,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
       }
     }
 
-    std::unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
+    std::unique_ptr<AqlItemBlock> more(_buffer[n]->slice(chosen, 0, chosen.size()));
     collector.add(std::move(more));
 
     chosen.clear();
@@ -952,27 +679,27 @@ bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
     _pos = 0;    // position in _buffer.at(_index)
   }
 
-  std::vector<std::deque<std::pair<size_t, size_t>>>& buf = _distBuffer;
   // it should be the case that buf.at(clientId) is empty
+  auto& buf = _distBuffer[clientId];
 
-  while (buf.at(clientId).size() < atMost) {
+  while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
       if (!ExecutionBlock::getBlock(atMost)) {
-        if (buf.at(clientId).size() == 0) {
-          _doneForClient.at(clientId) = true;
+        if (buf.size() == 0) {
+          _doneForClient[clientId] = true;
           return false;
         }
         break;
       }
     }
 
-    AqlItemBlock* cur = _buffer.at(_index);
+    AqlItemBlock* cur = _buffer[_index];
 
-    while (_pos < cur->size() && buf.at(clientId).size() < atMost) {
+    while (_pos < cur->size() && buf.size() < atMost) {
       // this may modify the input item buffer in place
-      size_t id = sendToClient(cur);
+      size_t const id = sendToClient(cur);
 
-      buf.at(id).emplace_back(std::make_pair(_index, _pos++));
+      _distBuffer[id].emplace_back(_index, _pos++);
     }
 
     if (_pos == cur->size()) {
@@ -1105,9 +832,8 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 /// @brief create a new document key, argument is unused here
 #ifndef USE_ENTERPRISE
 std::string DistributeBlock::createKey(VPackSlice) const {
-  ClusterInfo* ci = ClusterInfo::instance();
-  uint64_t uid = ci->uniqid();
-  return std::to_string(uid);
+  auto collInfo = _collection->getCollection();
+  return collInfo->keyGenerator()->generate();
 }
 #endif
 
@@ -1449,6 +1175,455 @@ bool RemoteBlock::hasMore() {
     hasMore = slice.get("hasMore").getBoolean();
   }
   return hasMore;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+// -----------------------------------------------------------------------------
+// -- SECTION --                                            UnsortingGatherBlock
+// -----------------------------------------------------------------------------
+
+/// @brief shutdown: need our own method since our _buffer is different
+int UnsortingGatherBlock::shutdown(int errorCode) {
+  DEBUG_BEGIN_BLOCK();
+  // don't call default shutdown method since it does the wrong thing to
+  // _gatherBlockBuffer
+  int ret = TRI_ERROR_NO_ERROR;
+  for (auto* dependency : _dependencies) {
+    int res = dependency->shutdown(errorCode);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      ret = res;
+    }
+  }
+
+  return ret;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief initializeCursor
+int UnsortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();
+  int res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  _atDep = 0;
+  _done = _dependencies.empty();
+
+  return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief hasMore: true if any position of _buffer hasMore and false
+/// otherwise.
+bool UnsortingGatherBlock::hasMore() {
+  DEBUG_BEGIN_BLOCK();
+  if (_done || _dependencies.empty()) {
+    return false;
+  }
+
+  for (auto* dependency : _dependencies) {
+    if (dependency->hasMore()) {
+      return true;
+    }
+  }
+
+  _done = true;
+  return false;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief getSome
+AqlItemBlock* UnsortingGatherBlock::getSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin(atMost);
+
+  _done = _dependencies.empty();
+
+  if (_done) {
+    traceGetSomeEnd(nullptr);
+    return nullptr;
+  }
+
+  // the simple case . . .
+  auto* res = _dependencies[_atDep]->getSome(atMost);
+
+  while (!res && _atDep < _dependencies.size() - 1) {
+    _atDep++;
+    res = _dependencies[_atDep]->getSome(atMost);
+  }
+
+  _done = (nullptr == res);
+
+  traceGetSomeEnd(res);
+
+  return res;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief skipSome
+size_t UnsortingGatherBlock::skipSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+
+  if (_done) {
+    return 0;
+  }
+
+  // the simple case . . .
+  auto skipped = _dependencies[_atDep]->skipSome(atMost);
+
+  while (skipped == 0 && _atDep < _dependencies.size() - 1) {
+    _atDep++;
+    skipped = _dependencies[_atDep]->skipSome(atMost);
+  }
+
+  _done = (skipped == 0);
+
+  return skipped;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+// -----------------------------------------------------------------------------
+// -- SECTION --                                              SortingGatherBlock
+// -----------------------------------------------------------------------------
+
+
+SortingGatherBlock::SortingGatherBlock(
+    ExecutionEngine& engine,
+    GatherNode const& en)
+  : ExecutionBlock(&engine, &en) {
+  TRI_ASSERT(!en.elements().empty());
+
+  switch (en.sortMode()) {
+    case GatherNode::SortMode::MinElement:
+      _strategy = std::make_unique<HeapSorting>(
+        _trx, _gatherBlockBuffer, _sortRegisters
+      );
+      break;
+    case GatherNode::SortMode::Heap:
+      _strategy = std::make_unique<MinElementSorting>(
+        _trx, _gatherBlockBuffer, _sortRegisters
+      );
+      break;
+    default:
+      TRI_ASSERT(false);
+      break;
+  }
+  TRI_ASSERT(_strategy);
+
+  // We know that planRegisters has been run, so
+  // getPlanNode()->_registerPlan is set up
+  SortRegister::fill(
+    *en.plan(),
+    *en.getRegisterPlan(),
+    en.elements(),
+    _sortRegisters
+  );
+}
+
+/// @brief shutdown: need our own method since our _buffer is different
+int SortingGatherBlock::shutdown(int errorCode) {
+  DEBUG_BEGIN_BLOCK();
+  // don't call default shutdown method since it does the wrong thing to
+  // _gatherBlockBuffer
+  int ret = TRI_ERROR_NO_ERROR;
+  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
+    int res = (*it)->shutdown(errorCode);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      ret = res;
+    }
+  }
+
+  if (ret != TRI_ERROR_NO_ERROR) {
+    return ret;
+  }
+
+  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
+    for (AqlItemBlock* y : x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _gatherBlockBuffer.clear();
+  _gatherBlockPos.clear();
+
+  return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief initializeCursor
+int SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
+  DEBUG_BEGIN_BLOCK();
+  int res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
+    for (AqlItemBlock* y : x) {
+      delete y;
+    }
+    x.clear();
+  }
+  _gatherBlockBuffer.clear();
+  _gatherBlockPos.clear();
+  _gatherBlockBuffer.reserve(_dependencies.size());
+  _gatherBlockPos.reserve(_dependencies.size());
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    _gatherBlockBuffer.emplace_back();
+    _gatherBlockPos.emplace_back(i, 0);
+  }
+
+  _strategy->reset();
+
+  _done = _dependencies.empty();
+  return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief hasMore: true if any position of _buffer hasMore and false
+/// otherwise.
+bool SortingGatherBlock::hasMore() {
+  DEBUG_BEGIN_BLOCK();
+  if (_done || _dependencies.empty()) {
+    return false;
+  }
+
+  for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
+    if (!_gatherBlockBuffer[i].empty()) {
+      return true;
+    } else if (getBlock(i, DefaultBatchSize())) {
+      _gatherBlockPos[i] = std::make_pair(i, 0);
+      return true;
+    }
+  }
+
+  _done = true;
+  return false;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief getSome
+AqlItemBlock* SortingGatherBlock::getSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin(atMost);
+
+  if (_dependencies.empty()) {
+    _done = true;
+  }
+
+  if (_done) {
+    traceGetSomeEnd(nullptr);
+    return nullptr;
+  }
+
+  // the non-simple case . . .
+  size_t available = 0;  // nr of available rows
+  size_t index = 0;      // an index of a non-empty buffer
+
+  // pull more blocks from dependencies . . .
+  TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
+  TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
+
+  for (size_t i = 0; i < _dependencies.size(); ++i) {
+    if (_gatherBlockBuffer[i].empty()) {
+      if (getBlock(i, atMost)) {
+        index = i;
+        _gatherBlockPos[i] = std::make_pair(i, 0);
+      }
+    } else {
+      index = i;
+    }
+
+    auto const& cur = _gatherBlockBuffer[i];
+    if (!cur.empty()) {
+      TRI_ASSERT(cur[0]->size() >= _gatherBlockPos[i].second);
+      available += cur[0]->size() - _gatherBlockPos[i].second;
+      for (size_t j = 1; j < cur.size(); ++j) {
+        available += cur[j]->size();
+      }
+    }
+  }
+
+  if (available == 0) {
+    _done = true;
+    traceGetSomeEnd(nullptr);
+    return nullptr;
+  }
+
+  size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
+
+  // the following is similar to AqlItemBlock's slice method . . .
+  std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
+  cache.resize(_gatherBlockBuffer.size());
+
+  TRI_ASSERT(!_gatherBlockBuffer.at(index).empty());
+  AqlItemBlock* example = _gatherBlockBuffer[index].front();
+  size_t nrRegs = example->getNrRegs();
+
+  // automatically deleted if things go wrong
+  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
+
+  _strategy->prepare(_gatherBlockPos);
+
+  for (size_t i = 0; i < toSend; i++) {
+    // get the next smallest row from the buffer . . .
+    auto const val = _strategy->nextValue();
+    auto& blocks = _gatherBlockBuffer[val.first];
+    auto& blocksPos = _gatherBlockPos[val.first];
+
+    // copy the row in to the outgoing block . . .
+    for (RegisterId col = 0; col < nrRegs; col++) {
+      TRI_ASSERT(!blocks.empty());
+      AqlValue const& x = blocks.front()->getValueReference(val.second, col);
+      if (!x.isEmpty()) {
+        if (x.requiresDestruction()) {
+          // complex value, with ownership transfer
+          auto it = cache[val.first].find(x);
+
+          if (it == cache[val.first].end()) {
+            AqlValue y = x.clone();
+            try {
+              res->setValue(i, col, y);
+            } catch (...) {
+              y.destroy();
+              throw;
+            }
+            cache[val.first].emplace(x, y);
+          } else {
+            res->setValue(i, col, (*it).second);
+          }
+        } else {
+          // simple value, no ownership transfer needed
+          res->setValue(i, col, x);
+        }
+      }
+    }
+
+    // renew the _gatherBlockPos and clean up the buffer if necessary
+    if (++blocksPos.second == blocks.front()->size()) {
+      TRI_ASSERT(!blocks.empty());
+      AqlItemBlock* cur = blocks.front();
+      returnBlock(cur);
+      blocks.pop_front();
+      blocksPos.second = 0; // reset position within a dependency
+
+      if (blocks.empty()) {
+        // if we pulled everything from the buffer, we need to fetch
+        // more data for the shard for which we have no more local
+        // values.
+        getBlock(val.first, atMost);
+        cache[val.first].clear();
+        // note that if getBlock() returns false here, this is not
+        // a problem, because the sort function used takes care of
+        // this
+      }
+    }
+  }
+
+  traceGetSomeEnd(res.get());
+  return res.release();
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief skipSome
+size_t SortingGatherBlock::skipSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+
+  if (_done) {
+    return 0;
+  }
+
+  // the non-simple case . . .
+  size_t available = 0;  // nr of available rows
+  TRI_ASSERT(_dependencies.size() != 0);
+
+  // pull more blocks from dependencies . . .
+  for (size_t i = 0; i < _dependencies.size(); i++) {
+    if (_gatherBlockBuffer[i].empty()) {
+      if (getBlock(i, atMost)) {
+        _gatherBlockPos[i] = std::make_pair(i, 0);
+      }
+    }
+
+    auto cur = _gatherBlockBuffer[i];
+    if (!cur.empty()) {
+      available += cur[0]->size() - _gatherBlockPos[i].second;
+      for (size_t j = 1; j < cur.size(); j++) {
+        available += cur[j]->size();
+      }
+    }
+  }
+
+  if (available == 0) {
+    _done = true;
+    return 0;
+  }
+
+  size_t const skipped = (std::min)(available, atMost);  // nr rows in outgoing block
+
+  _strategy->prepare(_gatherBlockPos);
+
+  for (size_t i = 0; i < skipped; i++) {
+    // get the next smallest row from the buffer . . .
+    auto const val = _strategy->nextValue();
+    auto& blocks = _gatherBlockBuffer[val.first];
+    auto& blocksPos = _gatherBlockPos[val.first];
+
+    // renew the _gatherBlockPos and clean up the buffer if necessary
+    if (++blocksPos.second == blocks.front()->size()) {
+      TRI_ASSERT(!blocks.empty());
+      AqlItemBlock* cur = blocks.front();
+      returnBlock(cur);
+      blocks.pop_front();
+      blocksPos.second = 0; // reset position within a dependency
+    }
+  }
+
+  return skipped;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+/// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
+/// non-simple case only
+bool SortingGatherBlock::getBlock(size_t i, size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+  TRI_ASSERT(i < _dependencies.size());
+
+  std::unique_ptr<AqlItemBlock> docs(_dependencies[i]->getSome(atMost));
+  if (docs && docs->size() > 0) {
+    _gatherBlockBuffer[i].emplace_back(docs.get());
+    docs.release();
+    return true;
+  }
+
+  return false;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

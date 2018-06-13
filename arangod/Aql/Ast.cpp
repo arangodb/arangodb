@@ -712,6 +712,15 @@ AstNode* Ast::createNodeAccess(Variable const* variable,
   return node;
 }
 
+AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std::string> const& path){
+  AstNode* rv = refNode->clone(this);
+  for(auto const& part : path){
+    char const* p = query()->registerString(part.data(), part.size());
+    rv = createNodeAttributeAccess(rv, p, part.size());
+  }
+  return rv;
+}
+
 /// @brief create an AST parameter node
 AstNode* Ast::createNodeParameter(
     char const* name,
@@ -727,6 +736,28 @@ AstNode* Ast::createNodeParameter(
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name);
+
+  return node;
+}
+
+AstNode* Ast::createNodeParameterCollection(char const* name, size_t length) {
+  auto node = createNodeParameter(name, length);
+
+  if (node) {
+    node->reserve(1);
+    node->addMember(createNode(NODE_TYPE_COLLECTION));
+  }
+
+  return node;
+}
+
+AstNode* Ast::createNodeParameterView(char const* name, size_t length) {
+  auto node = createNodeParameter(name, length);
+
+  if (node) {
+    node->reserve(1);
+    node->addMember(createNode(NODE_TYPE_VIEW));
+  }
 
   return node;
 }
@@ -789,6 +820,7 @@ AstNode* Ast::createNodeTernaryOperator(AstNode const* condition,
 }
 
 /// @brief create an AST attribute access node
+/// note that the caller must make sure that char* data remains valid!
 AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed,
                                         char const* attributeName,
                                         size_t nameLength) {
@@ -1437,7 +1469,10 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 }
 
 /// @brief injects bind parameters into the AST
-void Ast::injectBindParameters(BindParameters& parameters) {
+void Ast::injectBindParameters(
+    BindParameters& parameters,
+    arangodb::CollectionNameResolver const& resolver
+) {
   auto& p = parameters.get();
 
   auto func = [&](AstNode* node) -> AstNode* {
@@ -1467,71 +1502,88 @@ void Ast::injectBindParameters(BindParameters& parameters) {
       TRI_ASSERT(!param.empty());
 
       if ('@' == param[0]) {
-          // bound data source parameter
-          TRI_ASSERT(value.isString());
+        // bound data source parameter
+        TRI_ASSERT(value.isString());
 
-          char const* name = nullptr;
-          VPackValueLength length;
-          char const* stringValue = value.getString(length);
+        // should have arrived here via createNodeParameterCollection(...) or createNodeParameterView(...)
+        if (1 != node->numMembers() || !node->getMemberUnchecked(0)) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, "missing data source category"
+          );
+        }
 
-          // FIXME use external resolver
-          arangodb::CollectionNameResolver resolver(_query->vocbase());
-          std::shared_ptr<LogicalDataSource> dataSource;
-
-          if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
-            dataSource = resolver.getDataSource(basics::StringUtils::uint64(stringValue, length));
-          } else {
-            dataSource = resolver.getDataSource(std::string(stringValue, length));
-          }
+        switch (node->getMemberUnchecked(0)->type) {
+         case NODE_TYPE_COLLECTION: {
+          auto dataSource = resolver.getCollection(value.copyString());
 
           if (!dataSource) {
             THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "%s",
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              "collection: %s",
               value.copyString().c_str()
             );
           }
 
           // TODO: can we get away without registering the string value here?
-          auto& dataSourceName = dataSource->name();
+          auto* name = _query->registerString(dataSource->name());
 
-          name = _query->registerString(dataSourceName.c_str(), dataSourceName.size());
+          // check if the collection was used in a data-modification query
+          bool isWriteCollection = false;
 
-          if (LogicalCollection::category() == dataSource->category()) {
-            // check if the collection was used in a data-modification query
-            bool isWriteCollection = false;
+          arangodb::StringRef paramRef(param);
 
-            for (auto const& it : _writeCollections) {
-              auto const& c = it.first;
-              if (c->type == NODE_TYPE_PARAMETER && StringRef(param) == StringRef(c->getStringValue(), c->getStringLength())) {
-                isWriteCollection = true;
-                break;
+          for (auto const& it : _writeCollections) {
+            auto const& c = it.first;
+
+            if (c->type == NODE_TYPE_PARAMETER
+                && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
+              isWriteCollection = true;
+
+              break;
+            }
+          }
+
+          node = createNodeCollection(
+            name,
+            isWriteCollection ? AccessMode::Type::WRITE : AccessMode::Type::READ
+          );
+
+          if (isWriteCollection) {
+            // must update AST info now for all nodes that contained this parameter
+            for (size_t i = 0; i < _writeCollections.size(); ++i) {
+              auto& c = _writeCollections[i].first;
+
+              if (c->type == NODE_TYPE_PARAMETER
+                  && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
+                c = node;
+                // no break here. replace all occurrences
               }
             }
+          }
 
-            node = createNodeCollection(name, isWriteCollection
-                                      ? AccessMode::Type::WRITE
-                                      : AccessMode::Type::READ);
+          break;
+         }
+         case NODE_TYPE_VIEW: {
+          auto dataSource = resolver.getView(value.copyString());
 
-            if (isWriteCollection) {
-              // must update AST info now for all nodes that contained this
-              // parameter
-              for (size_t i = 0; i < _writeCollections.size(); ++i) {
-                auto& c = _writeCollections[i].first;
-                if (c->type == NODE_TYPE_PARAMETER &&
-                    StringRef(param) == StringRef(c->getStringValue(), c->getStringLength())) {
-                  c = node;
-                  // no break here. replace all occurrences
-                }
-              }
-            }
-          } else if (LogicalView::category() == dataSource->category()) {
-            node = createNodeView(name);
-          } else {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              "unexpected data source category"
+          if (!dataSource) {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              "view: %s",
+              value.copyString().c_str()
             );
           }
+
+          // TODO: can we get away without registering the string value here?
+          node = createNodeView(_query->registerString(dataSource->name()));
+
+          break;
+         }
+         default:
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL, "unexpected data source category"
+          );
+        }
       } else {
          // regular bound parameter
          node = nodeFromVPack(value, true);

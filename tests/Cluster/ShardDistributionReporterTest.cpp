@@ -211,7 +211,6 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
       bool gotFirstRequest = false;
       CoordTransactionID cordTrxId = 0;
-      uint64_t requestsInFlight = 0;
 
       std::queue<ClusterCommResult> responses;
       ClusterCommResult leaderS2Response;

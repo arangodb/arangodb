@@ -35,12 +35,32 @@
 #include "Aql/Optimizer.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ServerState.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb::iresearch;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
+
+size_t numberOfShards(
+    arangodb::CollectionNameResolver const& resolver,
+    arangodb::LogicalView const& view
+) {
+  size_t numberOfShards = 0;
+
+  auto visitor = [&numberOfShards](
+      arangodb::LogicalCollection const& collection
+  ) noexcept {
+    numberOfShards += collection.numberOfShards();
+    return true;
+  };
+
+  resolver.visitCollections(visitor, view.id());
+
+  return numberOfShards;
+}
 
 std::vector<arangodb::iresearch::IResearchSort> buildSort(
     ExecutionPlan const& plan,
@@ -196,13 +216,14 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
 
     case EN::ENUMERATE_IRESEARCH_VIEW: {
       auto node = EN::castTo<IResearchViewNode const*>(en);
+      auto& view = *node->view();
 
       // add view and linked collections to the query
       TRI_ASSERT(_plan && _plan->getAst() && _plan->getAst()->query());
-      if (!addView(node->view(), *_plan->getAst()->query())) {
+      if (!addView(view, *_plan->getAst()->query())) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_PARSE,
-          "failed to process all collections linked with the view '" + node->view().name() + "'"
+          "failed to process all collections linked with the view '" + view.name() + "'"
         );
       }
 
@@ -525,6 +546,14 @@ void scatterViewInClusterRule(
   nodes.clear();
   plan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
+  TRI_ASSERT(
+    plan->getAst()
+      && plan->getAst()->query()
+      && plan->getAst()->query()->trx()
+  );
+  auto* resolver = plan->getAst()->query()->trx()->resolver();
+  TRI_ASSERT(resolver);
+
   for (auto* node : nodes) {
     TRI_ASSERT(node);
     auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
@@ -554,15 +583,15 @@ void scatterViewInClusterRule(
     }
 
     auto& vocbase = viewNode.vocbase();
-    auto& view = viewNode.view();
+    auto& view = *viewNode.view();
 
     bool const isRootNode = plan->isRoot(node);
     plan->unlinkNode(node, true);
 
     // insert a scatter node
     auto scatterNode = plan->registerNode(
-      std::make_unique<IResearchViewScatterNode>(
-        *plan, plan->nextId(), vocbase, view
+      std::make_unique<ScatterNode>(
+        plan.get(), plan->nextId()
     ));
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
@@ -590,20 +619,18 @@ void scatterViewInClusterRule(
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
 
-    // insert a gather node
+    // insert gather node
+    auto const sortMode = GatherNode::evaluateSortMode(
+      numberOfShards(*resolver, view)
+    );
     auto* gatherNode = plan->registerNode(
       std::make_unique<GatherNode>(
         plan.get(),
         plan->nextId(),
-        GatherNode::SortMode::Unset
+        sortMode
     ));
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
-
-   // FIXME
-   // if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
-   //   gatherNode->setElements(elements);
-   // }
 
     // and now link the gather node with the rest of the plan
     if (parents.size() == 1) {

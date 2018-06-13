@@ -127,7 +127,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeRedundantCalculationsRule_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 2": try to remove redundant or unnecessary nodes
-  
+
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
@@ -142,10 +142,10 @@ void OptimizerRulesFeature::addRules() {
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
                OptimizerRule::removeRedundantSortsRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
-  
-  // inline subqueries one level higher, after removing unecessary calculations
-  /*registerRule("inline-subqueries", inlineSubqueriesRule,
-               OptimizerRule::inlineSubqueriesRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);*/
+
+  // push limits into subqueries and simplify them
+  registerRule("optimize-subqueries", optimizeSubqueriesRule,
+               OptimizerRule::optimizeSubqueriesRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher
@@ -245,6 +245,8 @@ void OptimizerRulesFeature::addRules() {
   registerRule("patch-update-statements", patchUpdateStatementsRule,
                OptimizerRule::patchUpdateStatementsRule_pass9, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
+  registerRule("replace-function-with-index", replaceNearWithinFulltext,
+               OptimizerRule::replaceNearWithinFulltext, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 #ifdef USE_IRESEARCH
   // move filters and sort conditions into views
   registerRule(
@@ -255,7 +257,7 @@ void OptimizerRulesFeature::addRules() {
     CanNotBeDisabled
   );
 #endif
-  
+
   // @brief replace WITHIN_RECTANGLE(...), NEAR(...), WITHIN(...)
   /*OptimizerRulesFeature::registerRule("replace-legacy-geo-functions", replaceLegacyGeoFunctionsRule,
                 OptimizerRule::removeLegacyGeoFunctions_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);*/
@@ -263,10 +265,6 @@ void OptimizerRulesFeature::addRules() {
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,
                                       OptimizerRule::applyGeoIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
-
-  // replace FOR v IN FULLTEXT(...) with an IndexNode and Limit
-  OptimizerRulesFeature::registerRule("fulltext-index-optimizer", fulltextIndexRule,
-                                      OptimizerRule::applyFulltextIndexRule_pass6, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
 #if 0
@@ -283,7 +281,7 @@ void OptimizerRulesFeature::addRules() {
 
     registerRule("distribute-in-cluster", distributeInClusterRule,
                  OptimizerRule::distributeInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
-    
+
     registerRule("collect-in-cluster", collectInClusterRule,
                  OptimizerRule::collectInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 

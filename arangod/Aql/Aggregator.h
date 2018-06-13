@@ -122,8 +122,31 @@ struct Aggregator {
   static std::unique_ptr<Aggregator> fromVPack(transaction::Methods*,
                                                arangodb::velocypack::Slice const&, char const*);
 
-  static bool isSupported(std::string const&);
-  static bool requiresInput(std::string const&);
+  static std::string translateAlias(std::string const& name);
+
+  // name/type of aggregator to use for the DB server part of the aggregation when a 
+  // COLLECT is pushed from coordinator to DB server.
+  // for example, the MAX aggregator is commutative. it can be pushed from the coordinator
+  // to the DB server and be used as a MAX aggregator there too.
+  // other aggregators may need slight adjustment or type changes when they are pushed to
+  // DB servers
+  // an empty return value means that the aggregator is not suitable for being pushed to
+  // a DB server
+  static std::string pushToDBServerAs(std::string const& type);
+  
+  // name/type of aggregator to use for the coordinator part of the aggregation when a
+  // COLLECT is pushed from coordinator to DB server.
+  // for example, the COUNT aggregator is commutative. it can be pushed from the coordinator
+  // to the DB server and be used there too. However, on the coordinator we must not use
+  // COUNT on the aggregated results from the DB server, but use SUM instead
+  static std::string runOnCoordinatorAs(std::string const& type);
+  
+  // whether or not the aggregator name is supported. all internal-only aggregators count
+  // as not supported here
+  static bool isValid(std::string const& type);
+
+  // whether or not the aggregator requires any input (note: COUNT/LENGTH don't, all others do) 
+  static bool requiresInput(std::string const& type);
 
   transaction::Methods* trx;
 
@@ -189,19 +212,34 @@ struct AggregatorSum final : public Aggregator {
   bool invalid;
 };
 
-struct AggregatorAverage final : public Aggregator {
+struct AggregatorAverage : public Aggregator {
   explicit AggregatorAverage(transaction::Methods* trx)
       : Aggregator(trx), count(0), sum(0.0), invalid(false) {}
 
   char const* name() const override final { return "AVERAGE"; }
 
   void reset() override final;
-  void reduce(AqlValue const&) override final;
-  AqlValue stealValue() override final;
+  virtual void reduce(AqlValue const&) override;
+  virtual AqlValue stealValue() override;
 
   uint64_t count;
   double sum;
   bool invalid;
+};
+
+struct AggregatorAverageStep1 final : public AggregatorAverage {
+  explicit AggregatorAverageStep1(transaction::Methods* trx)
+      : AggregatorAverage(trx) {}
+
+  // special version that will produce an array with sum and count separately 
+  AqlValue stealValue() override final;
+};
+
+struct AggregatorAverageStep2 final : public AggregatorAverage {
+  explicit AggregatorAverageStep2(transaction::Methods* trx)
+      : AggregatorAverage(trx) {}
+
+  void reduce(AqlValue const&) override final;
 };
 
 struct AggregatorVarianceBase : public Aggregator {

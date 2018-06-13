@@ -37,6 +37,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -86,7 +87,6 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
 #ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW), "EnumerateViewNode"},
-    {static_cast<int>(ExecutionNode::SCATTER_IRESEARCH_VIEW), "ScatterViewNode"}
 #endif
 };
 
@@ -292,8 +292,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
 #ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
-    case SCATTER_IRESEARCH_VIEW:
-      return new iresearch::IResearchViewScatterNode(*plan, slice);
 #endif
     default: {
       // should not reach this point
@@ -430,20 +428,25 @@ void ExecutionNode::toVelocyPack(VPackBuilder& builder,
   }
 }
 
-/// @brief execution Node clone utility to be called by derives
-void ExecutionNode::cloneHelper(ExecutionNode* other,
-                                bool withDependencies,
-                                bool withProperties) const {
+/// @brief execution Node clone utility to be called by derived classes
+/// @return pointer to a registered node owned by a plan
+ExecutionNode* ExecutionNode::cloneHelper(
+    std::unique_ptr<ExecutionNode> other,
+    bool withDependencies,
+    bool withProperties
+) const {
   ExecutionPlan* plan = other->plan();
 
   if (plan == _plan) {
     // same execution plan for source and target
-    // now assign a new id to the cloned node, otherwise it will leak
-    // upon node registration and its meaning is ambiguous
+    // now assign a new id to the cloned node, otherwise it will fail
+    // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
+    
+    // cloning with properties will only work if we clone a node into
+    // a different plan
+    TRI_ASSERT(!withProperties);
   }
-
-  plan->registerNode(other);
 
   if (withProperties) {
     other->_regsToClear = _regsToClear;
@@ -482,9 +485,13 @@ void ExecutionNode::cloneHelper(ExecutionNode* other,
     other->_registerPlan = _registerPlan;
   }
 
+  auto* registeredNode = plan->registerNode(std::move(other));
+
   if (withDependencies) {
-    cloneDependencies(plan, other, withProperties);
+    cloneDependencies(plan, registeredNode, withProperties);
   }
+
+  return registeredNode;
 }
 
 /// @brief helper for cloning, use virtual clone methods for dependencies
@@ -1151,10 +1158,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
-
-    case ExecutionNode::SCATTER_IRESEARCH_VIEW:
-      // these node type does not produce any new registers
-      break;
 #endif
 
     default: {
@@ -1291,8 +1294,7 @@ void ExecutionNode::removeDependencies() {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<SingletonBlock>(&engine, this);
 }
@@ -1315,54 +1317,31 @@ EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
-      _random(base.get("random").getBoolean()),
-      _restrictedTo("") {
-  TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_collection != nullptr);
-  VPackSlice restrictedTo = base.get("restrictedTo");
-
-  if (restrictedTo.isString()) {
-    _restrictedTo = restrictedTo.copyString();
-  }
-
-  if (_collection == nullptr) {
-    std::string msg("collection '");
-    msg.append(base.get("collection").copyString());
-    msg.append("' not found");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
-  }
+      CollectionAccessingNode(plan, base),
+      _random(base.get("random").getBoolean()) {
 }
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
-void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
 
-  // Now put info about vocbase and cid in there
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
-  nodes.add("random", VPackValue(_random));
-  nodes.add("satellite", VPackValue(_collection->isSatellite()));
-
-  if (!_restrictedTo.empty()) {
-    nodes.add("restrictedTo", VPackValue(_restrictedTo));
-  }
+  builder.add("random", VPackValue(_random));
 
   // add outvariable and projection
-  DocumentProducingNode::toVelocyPack(nodes);
+  DocumentProducingNode::toVelocyPack(builder);
+
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(builder);
 
   // And close it:
-  nodes.close();
+  builder.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<EnumerateCollectionBlock>(&engine, this);
 }
@@ -1377,13 +1356,11 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
     TRI_ASSERT(outVariable != nullptr);
   }
 
-  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _vocbase, _collection, outVariable, _random);
+  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _collection, outVariable, _random);
 
   c->projections(_projections);
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
@@ -1429,8 +1406,7 @@ void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<EnumerateListBlock>(&engine, this);
 }
@@ -1449,9 +1425,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
   auto c = std::make_unique<EnumerateListNode>(plan, _id, inVariable, outVariable);
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief the cost of an enumerate list node
@@ -1516,8 +1490,7 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<LimitBlock>(&engine, this);
 }
@@ -1571,7 +1544,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
   }
 
   nodes.add("expressionType", VPackValue(_expression->typeString()));
-  
+
   if ((flags & SERIALIZE_FUNCTIONS) &&
       _expression->node() != nullptr) {
     auto root = _expression->node();
@@ -1589,7 +1562,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic", VPackValue(func->isDeterministic));
             nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
-            nodes.add("usesV8", VPackValue(func->implementation == nullptr || (func->condition && !func->condition())));
+            nodes.add("usesV8", VPackValue(false));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {
@@ -1618,8 +1591,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<CalculationBlock>(&engine, this);
 }
@@ -1642,9 +1614,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief estimateCost
@@ -1677,7 +1647,14 @@ void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const
 }
 
 bool SubqueryNode::isConst() {
-  if (isModificationQuery() || !isDeterministic()) {
+  if (isModificationSubquery() || !isDeterministic()) {
+    return false;
+  }
+
+  if (mayAccessCollections() && _plan->getAst()->query()->isModificationQuery()) {
+    // a subquery that accesses data from a collection may not be const,
+    // even if itself does not modify any data. it is possible that the
+    // subquery is embedded into some outer loop that is modifying data
     return false;
   }
 
@@ -1701,11 +1678,49 @@ bool SubqueryNode::isConst() {
   return true;
 }
 
+bool SubqueryNode::mayAccessCollections() {
+  if (_plan->getAst()->functionsMayAccessDocuments()) {
+    // if the query contains any calls to functions that MAY access any
+    // document, then we count this as a "yes"
+    return true;
+  }
+
+  TRI_ASSERT(_subquery != nullptr);
+
+  // if the subquery contains any of these nodes, it may access data from
+  // a collection
+  std::vector<ExecutionNode::NodeType> const types = {
+#ifdef USE_IRESEARCH
+      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+#endif
+      ExecutionNode::ENUMERATE_COLLECTION,
+      ExecutionNode::INDEX,
+      ExecutionNode::INSERT,
+      ExecutionNode::UPDATE,
+      ExecutionNode::REPLACE,
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT,
+      ExecutionNode::TRAVERSAL,
+      ExecutionNode::SHORTEST_PATH
+  };
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+
+  NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
+  _subquery->walk(finder);
+
+  if (!nodes.empty()) {
+    return true;
+  }
+
+  return false;
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
     ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache
 ) const {
   auto const it = cache.find(getSubquery());
   TRI_ASSERT(it != cache.end());
@@ -1723,13 +1738,11 @@ ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = std::make_unique<SubqueryNode>(
       plan, _id, _subquery->clone(plan, true, withProperties), outVariable);
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief whether or not the subquery is a data-modification operation
-bool SubqueryNode::isModificationQuery() const {
+bool SubqueryNode::isModificationSubquery() const {
   std::vector<ExecutionNode*> stack({_subquery});
 
   while (!stack.empty()) {
@@ -1907,8 +1920,7 @@ void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
     ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<FilterBlock>(&engine, this);
 }
@@ -1923,9 +1935,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = std::make_unique<FilterNode>(plan, _id, inVariable);
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief estimateCost
@@ -1965,8 +1975,7 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<ReturnBlock>(&engine, this);
 }
@@ -1986,9 +1995,7 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->setCount();
   }
 
-  cloneHelper(c.get(), withDependencies, withProperties);
-
-  return c.release();
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief estimateCost
@@ -2010,8 +2017,7 @@ void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine &engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<NoResultsBlock>(&engine, this);
 }

@@ -3,6 +3,7 @@
 
 var db = require('@arangodb').db,
   internal = require('internal'),
+  _ = require('lodash'),
   systemColors = internal.COLORS,
   print = internal.print,
   colors = { };
@@ -622,15 +623,22 @@ function processQuery (query, explain) {
     }
   }
 
-  var recursiveWalk = function (n, level) {
+  var recursiveWalk = function (partNodes, level, site) {
+    let n = _.clone(partNodes);
+    n.reverse();
     n.forEach(function (node) {
+      // set location of execution node in cluster
+      node.site = site;
+
       nodes[node.id] = node;
       if (level === 0 && node.dependencies.length === 0) {
         rootNode = node.id;
       }
       if (node.type === 'SubqueryNode') {
         // enter subquery
-        recursiveWalk(node.subquery.nodes, level + 1);
+        recursiveWalk(node.subquery.nodes, level + 1, site);
+      } else if (node.type === 'RemoteNode') {
+        site = (site === 'COOR' ? 'DBS' : 'COOR');
       }
       node.dependencies.forEach(function (d) {
         if (!parents.hasOwnProperty(d)) {
@@ -654,20 +662,8 @@ function processQuery (query, explain) {
         }
       }
     });
-
-    var count = n.length, site = 'COOR';
-    while (count > 0) {
-      --count;
-      var node = n[count];
-      // get location of execution node in cluster
-      node.site = site;
-
-      if (node.type === 'RemoteNode') {
-        site = (site === 'COOR' ? 'DBS' : 'COOR');
-      }
-    }
   };
-  recursiveWalk(plan.nodes, 0);
+  recursiveWalk(plan.nodes, 0, 'COOR');
 
   if (profileMode) { // merge runtime info into plan
     stats.nodes.forEach(n => {
@@ -991,6 +987,8 @@ function processQuery (query, explain) {
   const restriction = function (node) {
     if (node.restrictedTo) {
       return `, shard: ${node.restrictedTo}`;
+    } else if (node.numberOfShards) {
+      return `, ${node.numberOfShards} shard(s)`;
     }
     return '';
   };
@@ -1005,7 +1003,7 @@ function processQuery (query, explain) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`);
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -1028,15 +1026,6 @@ function processQuery (query, explain) {
           indexes.push(idx);
         });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
-      case 'IndexRangeNode':
-        collectionVariables[node.outVariable.id] = node.collection;
-        var index = node.index;
-        index.ranges = node.ranges.map(buildRanges).join(' || ');
-        index.collection = node.collection;
-        index.node = node.id;
-        indexes.push(index);
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* ' + (node.reverse ? 'reverse ' : '') + node.index.type + ' index scan */');
-
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
