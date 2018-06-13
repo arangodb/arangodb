@@ -40,9 +40,11 @@ class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
  public:
   explicit GeneralClientConnectionAgencyMock(
       arangodb::consensus::Store& store,
+      bool invokeCallbacks = false,
       bool trace = false
   ) noexcept
     : _store(&store),
+      _invokeCallbacks(invokeCallbacks),
       _trace(trace) {
   }
 
@@ -63,6 +65,7 @@ class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
   std::vector<std::string> _path;
   std::string _url;
   std::string _body;
+  bool _invokeCallbacks;
   bool _trace;
 }; // GeneralClientConnectionAgencyMock
 

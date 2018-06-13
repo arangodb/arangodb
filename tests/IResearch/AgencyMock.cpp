@@ -22,11 +22,75 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyMock.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/NumberUtils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Agency/Store.h"
 #include "lib/Rest/HttpResponse.h"
 
 #include <velocypack/velocypack-aliases.h>
+
+namespace arangodb {
+namespace consensus {
+
+// FIXME TODO for some reason the implementation of this function is missing in the arangodb code
+void Store::notifyObservers() const {
+  auto* clusterFeature =
+    arangodb::application_features::ApplicationServer::getFeature<
+      arangodb::ClusterFeature
+    >("Cluster");
+
+  if (!clusterFeature) {
+    return;
+  }
+
+  auto* callbackRegistry = clusterFeature->agencyCallbackRegistry();
+
+  if (!callbackRegistry) {
+    return;
+  }
+
+  std::vector<uint32_t> callbackIds;
+
+  {
+    MUTEX_LOCKER(storeLocker, _storeLock);
+
+    for (auto& entry: _observerTable) {
+      auto& key = entry.first;
+      auto pos = key.rfind("/"); // observer id is after the last '/'
+
+      if (std::string::npos == pos) {
+        continue;
+      }
+
+      bool success;
+      auto* idStr = &(key[pos + 1]);
+      auto id = arangodb::NumberUtils::atoi<uint32_t>(
+        idStr, idStr + std::strlen(idStr), success
+      );
+
+      if (success) {
+        callbackIds.emplace_back(id);
+      }
+    }
+  }
+
+  for (auto& id: callbackIds) {
+    try {
+      auto& condition = callbackRegistry->getCallback(id)->_cv;
+      CONDITION_LOCKER(locker, condition);
+
+      callbackRegistry->getCallback(id)->refetchAndUpdate(false, true); // force a check
+      condition.signal();
+    } catch(...) {
+      // ignore
+    }
+  }
+}
+
+} // consensus
+} // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                 GeneralClientConnectionAgencyMock
@@ -82,6 +146,11 @@ void GeneralClientConnectionAgencyMock::handleWrite(
 
   resp.writeHeader(&buffer);
   buffer.appendText(body);
+
+  if (_invokeCallbacks) {
+    // FIXME TODO should be done in a separate thread since some callbacks aquire non-recursive mutexes
+    _store->notifyObservers();
+  }
 }
 
 void GeneralClientConnectionAgencyMock::response(
