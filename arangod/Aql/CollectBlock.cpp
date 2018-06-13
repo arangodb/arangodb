@@ -458,47 +458,48 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     }
   }
 
-  if (_skipped >= atMost) {
-    // output is full
-    result = _result.release();
-    skipped = _skipped;
-    _skipped = 0;
-    return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
-  }
+  bool done = _skipped < atMost;
 
-  try {
-    // emit last buffered group
-    if (!skipping) {
-      TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  if (done) {
+    try {
+      // emit last buffered group
+      if (!skipping) {
+        TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        throwIfKilled();
+
+        // _lastBlock can be null (iff there wasn't a single input row).
+        // we still need to emit a group (of nulls)
+        emitGroup(_lastBlock, _result.get(), _skipped, skipping);
+        ++_skipped;
+        _result->shrink(_skipped);
+      } else {
+        ++_skipped;
       }
 
-      throwIfKilled();
-
-      // _lastBlock can be null (iff there wasn't a single input row).
-      // we still need to emit a group (of nulls)
-      emitGroup(_lastBlock, _result.get(), _skipped, skipping);
-      ++_skipped;
-      _result->shrink(_skipped);
-    } else {
-      ++_skipped;
+      if (_lastBlock != nullptr) {
+        returnBlock(_lastBlock);
+      }
+    } catch (...) {
+      if (_lastBlock != nullptr) {
+        returnBlock(_lastBlock);
+      }
+      throw;
     }
-
-    if (_lastBlock != nullptr) {
-      returnBlock(_lastBlock);
-    }
-  } catch (...) {
-    if (_lastBlock != nullptr) {
-      returnBlock(_lastBlock);
-    }
-    throw;
   }
 
   skipped = _skipped;
   result = _result.release();
-  _done = true;
+  _done = done;
+  _skipped = 0;
 
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  if (done) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  } else {
+    return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+  }
 };
 
 /// @brief writes the current group data into the result
