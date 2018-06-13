@@ -165,8 +165,13 @@ class HashedCollectBlock final : public ExecutionBlock {
   /// used
   RegisterId _collectRegister;
 
+  /// @brief number of skipped items
   size_t _skipped;
+
+  /// @brief the last input block
   AqlItemBlock* _lastBlock;
+
+  /// @brief hashmap of all encountered groups
   std::unordered_map<std::vector<AqlValue>,
                      std::unique_ptr<AggregateValuesType>, AqlValueGroupHash,
                      AqlValueGroupEqual>
