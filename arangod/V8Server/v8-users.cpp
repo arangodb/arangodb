@@ -488,15 +488,22 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else {
     // return the current database permissions
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      auth::Level lvl = um->databaseAuthLevel(username, vocbase->name());
-      if (lvl != auth::Level::NONE) { // hide non accessible collections
-        result->ForceSet(TRI_V8_STD_STRING(isolate, vocbase->name()),
-                         TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
+
+    DatabaseFeature::DATABASE->enumerateDatabases(
+      [&](TRI_vocbase_t& vocbase)->void {
+        auto lvl = um->databaseAuthLevel(username, vocbase.name());
+
+        if (lvl != auth::Level::NONE) { // hide non accessible collections
+          result->ForceSet(
+            TRI_V8_STD_STRING(isolate, vocbase.name()),
+            TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl))
+          );
+        }
       }
-    });
+    );
     TRI_V8_RETURN(result);
   }
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }

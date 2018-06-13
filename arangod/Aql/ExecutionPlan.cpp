@@ -2226,6 +2226,7 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
   TRI_ASSERT(newNode != nullptr);
   TRI_ASSERT(previous->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
+
   std::vector<ExecutionNode*> parents = previous->getParents(); // Intentional copy
   for (ExecutionNode* parent : parents) {
     if (!parent->replaceDependency(previous, newNode)) {
@@ -2234,6 +2235,20 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
     }
   }
   newNode->addDependency(previous);
+}
+
+/// @brief insert note directly before current
+void ExecutionPlan::insertBefore(ExecutionNode* current, ExecutionNode* newNode) {
+  TRI_ASSERT(newNode != nullptr);
+  TRI_ASSERT(current->id() != newNode->id());
+  TRI_ASSERT(newNode->getDependencies().empty());
+  TRI_ASSERT(!newNode->hasParent());
+
+  for (auto* dep : current->getDependencies()){
+    newNode->addDependency(dep);
+  }
+  current->removeDependencies();
+  current->addDependency(newNode);
 }
 
 /// @brief create a plan from VPack
