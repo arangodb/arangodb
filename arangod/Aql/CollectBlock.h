@@ -60,6 +60,10 @@ class SortedCollectBlock final : public ExecutionBlock {
     bool rowsAreValid;
     bool const count;
 
+    // is true iff at least one row belongs to the current group (the values
+    // aren't necessarily added yet)
+    bool hasRows;
+
     CollectGroup() = delete;
     CollectGroup(CollectGroup const&) = delete;
     CollectGroup& operator=(CollectGroup const&) = delete;
@@ -73,11 +77,13 @@ class SortedCollectBlock final : public ExecutionBlock {
     void setFirstRow(size_t value) {
       firstRow = value;
       rowsAreValid = true;
+      hasRows = true;
     }
 
     void setLastRow(size_t value) {
       lastRow = value;
       rowsAreValid = true;
+      hasRows = true;
     }
 
     void addValues(AqlItemBlock const* src, RegisterId groupRegister);

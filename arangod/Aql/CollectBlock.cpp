@@ -53,7 +53,8 @@ SortedCollectBlock::CollectGroup::CollectGroup(bool count)
       lastRow(0),
       groupLength(0),
       rowsAreValid(false),
-      count(count) {}
+      count(count),
+      hasRows(false) {}
 
 SortedCollectBlock::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
@@ -107,6 +108,7 @@ void SortedCollectBlock::CollectGroup::reset() {
   }
 
   rowsAreValid = false;
+  hasRows = false;
 }
 
 void SortedCollectBlock::CollectGroup::addValues(AqlItemBlock const* src,
@@ -326,38 +328,34 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     return std::make_tuple(GetNextRowState::SUCCESS, cur, pos);
   };
 
-  bool const isTotalAggregation = _groupRegisters.empty();
-  auto updateCurrentGroup = [this, isTotalAggregation, skipping](
+  auto updateCurrentGroup = [this, skipping](
       AqlItemBlock const* cur, size_t const pos, AqlItemBlock* res) {
     bool newGroup = false;
-    if (!isTotalAggregation) {
-      if (_currentGroup.groupValues[0].isEmpty()) {
-        // we never had any previous group
-        newGroup = true;
-      } else {
-        // we already had a group, check if the group has changed
-        size_t i = 0;
+    if (!_currentGroup.hasRows) {
+      // we never had any previous group
+      newGroup = true;
+    } else {
+      // we already had a group, check if the group has changed
+      size_t i = 0;
 
-        for (auto& it : _groupRegisters) {
-          int cmp =
-              AqlValue::Compare(_trx, _currentGroup.groupValues[i],
-                                cur->getValueReference(pos, it.second), false);
+      for (auto& it : _groupRegisters) {
+        int cmp =
+            AqlValue::Compare(_trx, _currentGroup.groupValues[i],
+                              cur->getValueReference(pos, it.second), false);
 
-          if (cmp != 0) {
-            // group change
-            newGroup = true;
-            break;
-          }
-          ++i;
+        if (cmp != 0) {
+          // group change
+          newGroup = true;
+          break;
         }
+        ++i;
       }
     }
 
     bool emittedGroup = false;
 
-    // note: isTotalAggregation => !newGroup
     if (newGroup) {
-      if (!_currentGroup.groupValues[0].isEmpty()) {
+      if (_currentGroup.hasRows) {
         if (!skipping) {
           // need to emit the current group first
           TRI_ASSERT(cur != nullptr);
@@ -396,8 +394,11 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     RegisterId const curNrRegs =
         previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
+    // If we don't have any values to group by, the result will contain a single
+    // group.
+    size_t maxBlockSize = _groupRegisters.empty() ? 1 : atMost;
     res.reset(requestBlock(
-        atMost,
+        maxBlockSize,
         getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
     TRI_ASSERT(curNrRegs <= res->getNrRegs());
@@ -460,8 +461,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     }
   }
 
-  // TODO why !skipping?
-  if (_skipped >= atMost && !skipping) {
+  if (_skipped >= atMost) {
     // output is full
     result = res.release();
     skipped = _skipped;
@@ -487,16 +487,6 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
         ++_skipped;
       }
       returnBlock(_lastBlock);
-    } else {
-      // TODO remove isTotalAggregation if possible
-      if (isTotalAggregation && _currentGroup.groupLength == 0) {
-        // total aggregation, but have not yet emitted a group
-        emitGroup(nullptr, res.get(), _skipped, skipping);
-        ++_skipped;
-        TRI_ASSERT(_skipped == 1);
-        res->shrink(_skipped);
-        _skipped++;
-      }
     }
   } catch (...) {
     returnBlock(_lastBlock);
