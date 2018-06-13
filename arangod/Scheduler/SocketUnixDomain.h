@@ -41,7 +41,6 @@ class SocketUnixDomain final : public Socket {
 
   SocketUnixDomain(SocketUnixDomain&& that) = default;
 
- public:
   std::string peerAddress() const override { return "local"; }
   int peerPort() const override { return 0; }
 
