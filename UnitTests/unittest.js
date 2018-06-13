@@ -222,6 +222,7 @@ function main (argv) {
     fs.write(testOutputDirectory + '/UNITTEST_RESULT_CRASHED.json', "true", true);
   } catch (x) {
     print('failed to write default test result: ' + x.message);
+    throw(x);
   }
 
   if (options.hasOwnProperty('cluster') && options.cluster) {
