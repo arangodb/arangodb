@@ -144,6 +144,24 @@ bool hasBinaryCompare(ExecutionNode* node){
   return result;
 }
 
+bool depIsSingletonOrConstCalc(ExecutionNode* node){
+    while (node){
+      node = node->getFirstDependency();
+      LOG_DEVEL << node->getTypeString();
+      if(node->getType() == EN::SINGLETON){
+        return true;
+      }
+
+      if(node->getType() != EN::CALCULATION){
+        return false;
+      }
+      if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
+        return false;
+      }
+    }
+   return false;
+}
+
 void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                                                               std::unique_ptr<ExecutionPlan> plan,
                                                               OptimizerRule const* rule) {
@@ -152,13 +170,23 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::INDEX, true);
 
+  if(nodes.size() != 1){
+    //more than one index
+    opt->addPlan(std::move(plan), rule, modified);
+    return;
+  }
+
   for(auto* node : nodes){
+    if(!depIsSingletonOrConstCalc(node)){
+      continue;
+    }
+
     Index* index = hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     if (index){
       LOG_DEVEL << "has compare";
       if(!hasBinaryCompare(node)){
         // do nothing if index does not work on a single document
-        break;
+        continue;
       }
       auto* parentModification = hasSingleParent(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE});
       auto* parentSelect = hasSingleParent(node,EN::RETURN);
