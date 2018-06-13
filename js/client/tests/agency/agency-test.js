@@ -98,7 +98,7 @@ function agencyTestSuite () {
   var compactionConfig = findAgencyCompactionIntervals();
   require("console").topic("agency=info", "Agency compaction configuration: ", compactionConfig);
 
-  function accessAgency(api, list) {
+  function accessAgency(api, list, timeout = 60) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
@@ -107,8 +107,8 @@ function agencyTestSuite () {
                      method: "POST", followRedirect: false,
                      body: JSON.stringify(list),
                      headers: {"Content-Type": "application/json"},
-                     timeout: 300  /* essentially for the huge trx package
-                                      running under ASAN in the CI */ });
+                     timeout: timeout  /* essentially for the huge trx package
+                                          running under ASAN in the CI */ });
       if(res.statusCode === 307) {
         agencyLeader = res.headers.location;
         var l = 0;
@@ -138,8 +138,8 @@ function agencyTestSuite () {
     return res.bodyParsed;
   }
 
-  function writeAndCheck(list) {
-    var res = accessAgency("write", list);
+  function writeAndCheck(list, timeout = 60) {
+    var res = accessAgency("write", list, timeout);
     assertEqual(res.statusCode, 200);
     return res.bodyParsed;
   }
@@ -974,7 +974,7 @@ function agencyTestSuite () {
       for (var i = 0; i < 20000; ++i) {
         huge.push([{"a":{"op":"increment"}}]);
       }
-      writeAndCheck(huge);
+      writeAndCheck(huge, 600);
       assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
     },
 
