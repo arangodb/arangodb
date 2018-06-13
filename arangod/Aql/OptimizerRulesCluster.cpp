@@ -18,7 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Willi & Obi
+/// @author Wilfried Goesgens
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
@@ -110,12 +111,13 @@ Index* hasSingleIndexHandle(ExecutionNode* node, Index::IndexType type){
   return nullptr;
 }
 
-bool hasBinaryCompare(ExecutionNode* node){
+AstNode const* hasBinaryCompare(ExecutionNode* node){
+  // returns any AstNode in the expression that is
+  // a binary comparison.
   TRI_ASSERT(node->getType() == EN::INDEX);
   IndexNode* indexNode = static_cast<IndexNode*>(node);
   AstNode const* cond = indexNode->condition()->root();
-
-  bool result;
+  AstNode const* result = nullptr;
 
   auto preVisitor = [&result] (AstNode const* node) {
     if (node == nullptr) {
@@ -123,11 +125,11 @@ bool hasBinaryCompare(ExecutionNode* node){
     };
 
     if(node->type == NODE_TYPE_OPERATOR_BINARY_EQ){
-      result=true;
+      result = node;
       return false;
     }
 
-    //skip over NARY AND AND OR
+    //skip over NARY AND/OR
     if(node->type == NODE_TYPE_OPERATOR_NARY_OR ||
        node->type == NODE_TYPE_OPERATOR_NARY_AND) {
       return true;
@@ -143,23 +145,24 @@ bool hasBinaryCompare(ExecutionNode* node){
 }
 
 bool depIsSingletonOrConstCalc(ExecutionNode* node){
-    while (node){
-      node = node->getFirstDependency();
-      if(node->getType() == EN::SINGLETON){
-        LOG_DEVEL << "reached singleton";
-        return true;
-      }
-
-      if(node->getType() != EN::CALCULATION){
-        LOG_DEVEL << node->getTypeString() << " not a clac node";
-        return false;
-      }
-      if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
-        LOG_DEVEL << "calculation not constant";
-        return false;
-      }
+  while (node){
+    node = node->getFirstDependency();
+    if(node->getType() == EN::SINGLETON){
+      LOG_DEVEL << "reached singleton";
+      return true;
     }
-   return false;
+
+    if(node->getType() != EN::CALCULATION){
+      LOG_DEVEL << node->getTypeString() << " not a calculation node";
+      return false;
+    }
+
+    if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
+      LOG_DEVEL << "calculation not constant";
+      return false;
+    }
+  }
+  return false;
 }
 
 void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
@@ -179,7 +182,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
     LOG_DEVEL << "";
     LOG_DEVEL << "substitute single document operation";
     if(!depIsSingletonOrConstCalc(node)){
-      LOG_DEVEL << "dep is not singleton or const claculation";
+      LOG_DEVEL << "dependency is not singleton or const calculation";
       continue;
     }
 
@@ -199,7 +202,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
           LOG_DEVEL << ExecutionNode::getTypeString(parentType);
           if (parentType == EN::RETURN){
 
-          //check that opeation uses the document provided by the index
+          //check that operation uses the document provided by the index
           //check that calculation is used in the modification
 
           } else if ( parentType == EN::INSERT) {
