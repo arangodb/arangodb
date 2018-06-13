@@ -301,9 +301,9 @@ class IResearchView final: public arangodb::DBServerLogicalView,
     PersistedStore(irs::utf8_path&& path);
   };
 
-  struct ViewStateHelper; // forward declaration
+  class ViewStateHelper; // forward declaration
   struct ViewStateRead; // forward declaration
-  class ViewStateWrite; // forward declaration
+  struct ViewStateWrite; // forward declaration
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
