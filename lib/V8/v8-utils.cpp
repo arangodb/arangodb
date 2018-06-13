@@ -2758,9 +2758,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string error = std::string("cannot write file (") + strerror(errno) + ")";
-  
-  TRI_V8_THROW_EXCEPTION_SYS(error);
+  TRI_V8_THROW_EXCEPTION_SYS("cannot write file");
   TRI_V8_TRY_CATCH_END
 }
 
