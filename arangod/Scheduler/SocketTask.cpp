@@ -383,39 +383,37 @@ void SocketTask::asyncReadSome() {
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
 
-  if (!_peer->isEncrypted()) {
-    try {
-      size_t const MAX_DIRECT_TRIES = 2;
-      size_t n = 0;
+  try {
+    size_t const MAX_DIRECT_TRIES = 2;
+    size_t n = 0;
 
-      while (++n <= MAX_DIRECT_TRIES &&
-             !_abandoned.load(std::memory_order_acquire)) {
-        if (!trySyncRead()) {
-          if (n < MAX_DIRECT_TRIES) {
-            std::this_thread::yield();
-          }
-          continue;
+    while (++n <= MAX_DIRECT_TRIES &&
+           !_abandoned.load(std::memory_order_acquire)) {
+      if (!trySyncRead()) {
+        if (n < MAX_DIRECT_TRIES) {
+          std::this_thread::yield();
         }
-
-        if (_abandoned.load(std::memory_order_acquire)) {
-          return;
-        }
-
-        // ignore the result of processAll, try to read more bytes down below
-        processAll();
-        compactify();
+        continue;
       }
-    } catch (asio_ns::system_error const& err) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: "
-                                              << err.what();
-      closeStreamNoLock();
-      return;
-    } catch (...) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
 
-      closeStreamNoLock();
-      return;
+      if (_abandoned.load(std::memory_order_acquire)) {
+        return;
+      }
+
+      // ignore the result of processAll, try to read more bytes down below
+      processAll();
+      compactify();
     }
+  } catch (asio_ns::system_error const& err) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync read failed with: "
+                                            << err.what();
+    closeStreamNoLock();
+    return;
+  } catch (...) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "general error on stream";
+
+    closeStreamNoLock();
+    return;
   }
 
   // try to read more bytes
@@ -482,41 +480,39 @@ void SocketTask::asyncWriteSome() {
   TRI_ASSERT(!_abandoned);
   TRI_ASSERT(_peer != nullptr);
 
-  if (!_peer->isEncrypted()) {
-    asio_ns::error_code err;
-    err.clear();
-    while (true) {
-      RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
-      written = _peer->writeSome(_writeBuffer._buffer, err);
+  asio_ns::error_code err;
+  err.clear();
+  while (true) {
+    RequestStatistics::SET_WRITE_START(_writeBuffer._statistics);
+    written = _peer->writeSome(_writeBuffer._buffer, err);
 
-      if (err) {
-        break;
-      }
-
-      RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, written);
-
-      if (written != total) {
-        // unable to write everything at once, might be a lot of data
-        // above code does not update the buffer positon
-        break;
-      }
-
-      if (!completedWriteBuffer()) {
-        return;
-      }
-
-      // try to send next buffer
-      total = _writeBuffer._buffer->length();
-      written = 0;
+    if (err) {
+      break;
     }
 
-    // write could have blocked which is the only acceptable error
-    if (err && err != ::asio_ns::error::would_block) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync write on failed with: "
-                                              << err.message();
-      closeStreamNoLock();
+    RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, written);
+
+    if (written != total) {
+      // unable to write everything at once, might be a lot of data
+      // above code does not update the buffer positon
+      break;
+    }
+
+    if (!completedWriteBuffer()) {
       return;
     }
+
+    // try to send next buffer
+    total = _writeBuffer._buffer->length();
+    written = 0;
+  }
+
+  // write could have blocked which is the only acceptable error
+  if (err && err != ::asio_ns::error::would_block) {
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "sync write on failed with: "
+                                            << err.message();
+    closeStreamNoLock();
+    return;
   }
 
   if (_abandoned.load(std::memory_order_acquire)) {

@@ -42,7 +42,6 @@ class SocketTcp final : public Socket {
 
   SocketTcp(SocketTcp&& that) = delete;
 
- public:
   std::string peerAddress() const override {
     return _peerEndpoint.address().to_string();
   }
