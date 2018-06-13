@@ -859,6 +859,12 @@ Result RestGraphHandler::replaceEdgeDefinition(std::shared_ptr<const graph::Grap
 
 Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
                                                const std::string& edgeDefinitionName) {
+  std::shared_ptr<transaction::StandaloneContext> ctx =
+      transaction::StandaloneContext::Create(_vocbase);
+
+  GraphOperations gops{*graph, ctx};
+ // gops.createEdgeDefinition(edgeDefinitionName);
+
   return Result();
 }
 
@@ -869,6 +875,7 @@ Result RestGraphHandler::removeEdgeDefinition(std::shared_ptr<const graph::Graph
 
 // /_api/gharial/{graph-name}/vertex
 Result RestGraphHandler::addVertexDefinition(std::shared_ptr<const graph::Graph> graph) {
+
   return Result();
 }
 

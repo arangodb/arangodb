@@ -361,6 +361,14 @@ std::ostream& Graph::operator<<(std::ostream& ostream) {
   return ostream;
 }
 
+// edges
+/*
+ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdgeDefinition(
+    std::string const& edgeDefinitionName) {
+};*/
+
+// vertices
+
 // TODO check if collection is a vertex collection in _graph?
 // TODO are orphans allowed?
 ResultT<std::pair<OperationResult, Result>> GraphOperations::getVertex(
@@ -450,23 +458,26 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
 
-  std::unique_ptr<transaction::Methods> trx(
-    new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+  Result res;
+  OperationResult result;
+  {
+    std::unique_ptr<transaction::Methods> trx(
+      new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
 
-  Result res = trx->begin();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
-  }
-  VPackSlice search = builder.slice();
-  OperationResult result = trx->remove(Graph::_graphs, search, options);
+    res = trx->begin();
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+    }
+    VPackSlice search = builder.slice();
+    result = trx->remove(Graph::_graphs, search, options);
 
-  if (result.fail()) {
+    if (result.fail()) {
+      res = trx->finish(result.result);
+      THROW_ARANGO_EXCEPTION(result.result);
+    }
+
     res = trx->finish(result.result);
-    THROW_ARANGO_EXCEPTION(result.result);
   }
-
-  res = trx->finish(result.result);
-
   // remove graph related collections
   // we are not able to do this in a transaction, so doing it afterwards
   if (dropCollections) {
@@ -479,6 +490,12 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
           resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false, -1.0);
         }
       );
+
+      if (found.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      } else if (resIn.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
     }
   }
 
