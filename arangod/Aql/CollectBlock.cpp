@@ -385,6 +385,23 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     return emittedGroup;
   };
 
+  auto aggregateAndAddValues = [this](AqlItemBlock* block) {
+    if (_currentGroup.rowsAreValid) {
+      size_t j = 0;
+      for (auto& it : _currentGroup.aggregators) {
+        RegisterId const reg = _aggregateRegisters[j].second;
+        for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1;
+             ++r) {
+          it->reduce(getValueForRegister(block, r, reg));
+        }
+        ++j;
+      }
+    }
+
+    // also resets firstRow, lastRow and especially rowsAreValid
+    _currentGroup.addValues(block, _collectRegister);
+  };
+
   std::unique_ptr<AqlItemBlock> res;
 
   if (!skipping) {
@@ -430,19 +447,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // if the current block changed, move the last block's infos into the
     // current group; then delete it.
     if (_lastBlock != nullptr && _lastBlock != cur) {
-      if (_currentGroup.rowsAreValid) {
-        size_t j = 0;
-        for (auto& it : _currentGroup.aggregators) {
-          RegisterId const reg = _aggregateRegisters[j].second;
-          for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1;
-               ++r) {
-            it->reduce(getValueForRegister(_lastBlock, r, reg));
-          }
-          ++j;
-        }
-      }
-      // also resets firstRow, lastRow and especially rowsAreValid
-      _currentGroup.addValues(_lastBlock, _collectRegister);
+      aggregateAndAddValues(_lastBlock);
 
       returnBlock(_lastBlock);
     }
@@ -470,26 +475,30 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
   }
 
   try {
-    // is nullptr only if the input didn't produce a single row
-    if (_lastBlock != nullptr) {
-      // emit last buffered group
-      if (!skipping) {
-        TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-
-        throwIfKilled();
-
-        emitGroup(_lastBlock, res.get(), _skipped, skipping);
-        ++_skipped;
-        res->shrink(_skipped);
-      } else {
-        ++_skipped;
+    // emit last buffered group
+    if (!skipping) {
+      TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+
+      throwIfKilled();
+
+      // _lastBlock can be null (iff there wasn't a single input row).
+      // we still need to emit a group (of nulls)
+      emitGroup(_lastBlock, res.get(), _skipped, skipping);
+      ++_skipped;
+      res->shrink(_skipped);
+    } else {
+      ++_skipped;
+    }
+
+    if (_lastBlock != nullptr) {
       returnBlock(_lastBlock);
     }
   } catch (...) {
-    returnBlock(_lastBlock);
+    if (_lastBlock != nullptr) {
+      returnBlock(_lastBlock);
+    }
     throw;
   }
 
