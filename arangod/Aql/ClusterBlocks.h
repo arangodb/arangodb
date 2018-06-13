@@ -354,8 +354,10 @@ class SortingGatherBlock final : public ExecutionBlock {
 class SingleRemoteOperationBlock final : public ExecutionBlock {
   /// @brief constructors/destructors
  public:
-  SingleRemoteOperationBlock(ExecutionEngine* engine, SingleRemoteOperationNode const* en,
-                             std::string const& server, std::string const& ownName,
+  SingleRemoteOperationBlock(ExecutionEngine* engine,
+                             SingleRemoteOperationNode const* en,
+                             std::string const& server,
+                             std::string const& ownName,
                              std::string const& queryId);
 
   /// @brief timeout
@@ -391,6 +393,12 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
 
   /// @brief the ID of the query on the server as a string
   std::string const _queryId;
+
+  /// @brief _colectionName: the name of the sharded collection
+  Collection const* _collection;
+
+  /// @brief the key of the document to fetch
+  std::string const _key;
 
   /// @brief whether or not this block will forward initialize, 
   /// initializeCursor or shutDown requests

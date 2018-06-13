@@ -384,9 +384,11 @@ double GatherNode::estimateCost(size_t& nrItems) const {
 SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode* createFrom,
                                                      UpdateNode* updateNode,
                                                      ReplaceNode* replaceNode,
-                                                     RemoveNode* removeNode)
+                                                     RemoveNode* removeNode,
+                                                     arangodb::velocypack::Slice const& base)
   : ExecutionNode(createFrom->plan(),
                   createFrom->plan()->nextId()),
+    CollectionAccessingNode(createFrom->plan(), base),
     _mode(INDEX),
     _attributeNode(nullptr),
     _valueNode(nullptr),
@@ -408,6 +410,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode* createFrom,
       if ((subNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) && (subNode->numMembers() == 2)) {
         _attributeNode = node->getMemberUnchecked(0);
         _valueNode = node->getMemberUnchecked(1);
+        _key = _valueNode->getString();
       }
     }
   }
@@ -434,6 +437,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode* createFrom,
 /// @brief constructor for SingleRemoteOperationNode
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
+      CollectionAccessingNode(plan, base),
       _vocbase(&(plan->getAst()->query()->vocbase())),
       _server(base.get("server").copyString()),
       _ownName(base.get("ownName").copyString()),

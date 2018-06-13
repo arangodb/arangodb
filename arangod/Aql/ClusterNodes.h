@@ -405,28 +405,34 @@ class GatherNode final : public ExecutionNode {
 
 
 /// @brief class RemoteNode
-class SingleRemoteOperationNode final : public ExecutionNode {
+class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class RemoteBlock;
 
   /// @brief constructor with an id
  public:
-  SingleRemoteOperationNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                            std::string const& server, std::string const& ownName,
+  
+  SingleRemoteOperationNode(ExecutionPlan* plan,
+                            size_t id,
+                            Collection const* collection,
+                            TRI_vocbase_t* vocbase,
+                            std::string const& server,
+                            std::string const& ownName,
                             std::string const& queryId)
       : ExecutionNode(plan, id),
-        _vocbase(vocbase),
-        _server(server),
-        _ownName(ownName),
-        _queryId(queryId),
-        _isResponsibleForInitializeCursor(true) {
+    CollectionAccessingNode(collection),
+    _vocbase(vocbase),
+    _server(server),
+    _ownName(ownName),
+    _queryId(queryId) {
     // note: server, ownName and queryId may be empty and filled later
   }
-
+  
   SingleRemoteOperationNode(IndexNode* createFrom,
                             UpdateNode* updateNode,
                             ReplaceNode* replaceNode,
-                            RemoveNode* removeNode);
+                            RemoveNode* removeNode,
+                            arangodb::velocypack::Slice const& base);
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests
@@ -460,8 +466,14 @@ class SingleRemoteOperationNode final : public ExecutionNode {
                        bool withProperties) const override final {
     return cloneHelper(
       std::make_unique<SingleRemoteOperationNode>(
-        plan, _id, _vocbase, _server, _ownName, _queryId
-      ),
+                                                  plan,
+                                                  _id,
+                                                  _collection,
+                                                  _vocbase,
+                                                  _server,
+                                                  _ownName,
+                                                  _queryId
+                                                  ),
       withDependencies,
       withProperties
     );
@@ -496,6 +508,8 @@ class SingleRemoteOperationNode final : public ExecutionNode {
     _queryId = arangodb::basics::StringUtils::itoa(queryId);
   }
 
+  std::string const& key() const { return _key; }
+
  private:
   NodeType _mode;
   
@@ -529,6 +543,9 @@ class SingleRemoteOperationNode final : public ExecutionNode {
   /// @brief the underlying database
   TRI_vocbase_t* _vocbase;
 
+  /// the key of the document we're intending to work with
+  std::string _key;
+  
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string _server;
 

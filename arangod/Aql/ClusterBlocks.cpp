@@ -45,6 +45,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -1646,13 +1649,17 @@ bool SortingGatherBlock::getBlock(size_t i, size_t atMost) {
 double const SingleRemoteOperationBlock::defaultTimeOut = 3600.0;
 
 /// @brief creates a remote block
-SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine, SingleRemoteOperationNode const* en,
-                                                       std::string const& server, std::string const& ownName,
+SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
+                                                       SingleRemoteOperationNode const* en,
+                                                       std::string const& server,
+                                                       std::string const& ownName,
                                                        std::string const& queryId)
     : ExecutionBlock(engine, en),
       _server(server),
       _ownName(ownName),
       _queryId(queryId),
+      _collection(en->collection()),
+      _key(en->key()),
       _isResponsibleForInitializeCursor(
           en->isResponsibleForInitializeCursor()) {
   TRI_ASSERT(!queryId.empty());
@@ -1819,6 +1826,81 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(StaticStrings::KeyString, VPackValue(_key));
+  }
+
+  VPackSlice search = builder.slice();
+
+  // find and load collection given by name or identifier
+  auto ctx(transaction::StandaloneContext::Create(_engine->getQuery()->trx()->vocbase()));
+  SingleCollectionTransaction trx(ctx, _collection->id(), AccessMode::Type::READ);
+
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  // ...........................................................................
+  // inside read transaction
+  // ...........................................................................
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    /*generateTransactionError(_collection->getPlanId(), res, "");*/
+    return nullptr;
+  }
+
+  OperationOptions options;
+  options.ignoreRevs = true;
+
+
+  OperationResult result = trx.document(_collection->name(), search, options);
+
+  res = trx.finish(result.result);
+
+  if (!result.ok()) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      // generateDocumentNotFound(_collection->getPlanId(), key);
+      return nullptr;
+      //} else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
+      // generatePreconditionFailed(result.slice());
+    } else {
+      // generateTransactionError(_collection->id(), res, key);
+    }
+    return nullptr;
+  }
+
+  if (!res.ok()) {
+    // generateTransactionError(_collection->id(), res, key);
+    return nullptr;
+  }
+  /*
+  if (ifNoneRid != 0) {
+    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
+    if (ifNoneRid == rid) {
+      generateNotModified(rid);
+      return true;
+    }
+  }
+*/
+
+
+  VPackSlice document = result.slice().resolveExternal();
+
+  std::string rev;
+  if (document.isObject()) {
+    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString,
+                                           "");
+  }
+  
+  auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), document);
+  traceGetSomeEnd(r.get());
+  return r.release();
+
+  /*
+  
+  
   traceGetSomeBegin(atMost);
   VPackBuilder builder;
   builder.openObject();
@@ -1845,7 +1927,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
   traceGetSomeEnd(r.get());
   return r.release();
-
+  */
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
