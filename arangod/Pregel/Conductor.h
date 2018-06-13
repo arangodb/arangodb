@@ -23,10 +23,10 @@
 #ifndef ARANGODB_PREGEL_CONDUCTOR_H
 #define ARANGODB_PREGEL_CONDUCTOR_H 1
 
-#include <string>
+#include "Basics/Common.h"
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include "Basics/Common.h"
+
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
