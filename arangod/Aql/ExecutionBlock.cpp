@@ -307,7 +307,8 @@ bool ExecutionBlock::getBlockOld(size_t atMost) {
       _engine->getQuery()->tempWaitForAsyncResponse();
     } else {
       if (res.second != nullptr) {
-        _buffer.emplace_back(res.second.release());
+        _buffer.emplace_back(res.second.get());
+        res.second.release();
         return true;
       }
       return false;
@@ -335,7 +336,8 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   _upstreamState = res.first;
 
   if (res.second != nullptr) {
-    _buffer.emplace_back(res.second.release());
+    _buffer.emplace_back(res.second.get());
+    res.second.release();
     return {res.first, true};
   }
 
