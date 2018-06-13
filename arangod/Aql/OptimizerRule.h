@@ -138,10 +138,6 @@ struct OptimizerRule {
     /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
     // ======================================================
 
-    // when we have single document operations, fill in special cluster
-    // handling.
-    substituteSingleDocumentOperations_pass6,
-
     // replace simple OR conditions with IN
     replaceOrWithInRule_pass6,
 
@@ -184,6 +180,10 @@ struct OptimizerRule {
     // remove now obsolete path variables
     removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
+
+    // when we have single document operations, fill in special cluster
+    // handling.
+    substituteSingleDocumentOperations_pass6,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,

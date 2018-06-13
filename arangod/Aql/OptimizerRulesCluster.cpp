@@ -65,6 +65,87 @@ using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 ////////////////////////////////////////////////////////////////////////////////
+ExecutionNode* hasSingleParent(ExecutionNode* in){
+  auto parents = in->getParents();
+  if(parents.size() == 1){
+    return parents.front();
+  }
+  return nullptr;
+}
+
+ExecutionNode* hasSingleParent(ExecutionNode* in, EN::NodeType type){
+  auto* parent = hasSingleParent(in);
+  if(parent) {
+    if(parent->getType() == type){
+      return parent;
+    }
+  }
+  return nullptr;
+}
+
+ExecutionNode* hasSingleParent(ExecutionNode* in, std::vector<EN::NodeType> types){
+  auto* parent = hasSingleParent(in);
+  if(parent) {
+    for(auto const& type : types){
+      if(parent->getType() == type){
+        return parent;
+      }
+    }
+
+  }
+  return nullptr;
+}
+
+Index* hasSingleIndexHandle(ExecutionNode* node){
+  TRI_ASSERT(node->getType() == EN::INDEX);
+  IndexNode* indexNode = static_cast<IndexNode*>(node);
+  auto indexHandleVec = indexNode->getIndexes();
+  if (indexHandleVec.size() == 1){
+    return indexHandleVec.front().getIndex().get();
+  }
+  return nullptr;
+}
+
+Index* hasSingleIndexHandle(ExecutionNode* node, Index::IndexType type){
+  auto* idx = hasSingleIndexHandle(node);
+  if (idx->type() == type ){
+    return idx;
+  }
+  return nullptr;
+}
+
+bool hasBinaryCompare(ExecutionNode* node){
+  TRI_ASSERT(node->getType() == EN::INDEX);
+  IndexNode* indexNode = static_cast<IndexNode*>(node);
+  AstNode const* cond = indexNode->condition()->root();
+
+  bool result;
+
+  auto preVisitor = [&result] (AstNode const* node) {
+    if (node == nullptr) {
+      return false;
+    };
+
+    if(node->type == NODE_TYPE_OPERATOR_BINARY_EQ){
+      result=true;
+      return false;
+    }
+
+    //skip over NARY AND AND OR
+    if(node->type == NODE_TYPE_OPERATOR_NARY_OR ||
+       node->type == NODE_TYPE_OPERATOR_NARY_AND) {
+      return true;
+    } else {
+      return false;
+    }
+
+  };
+  auto postVisitor = [](AstNode const*){};
+  Ast::traverseReadOnly(cond, preVisitor, postVisitor);
+
+  return result;
+}
+
 struct DetectSingleDocumentOperations final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   IndexNode* _indexNode;
@@ -125,18 +206,7 @@ struct DetectSingleDocumentOperations final : public WalkerWorker<ExecutionNode>
       case EN::INDEX:
         if (_indexNode == nullptr) {
           _indexNode = ExecutionNode::castTo<IndexNode*>(en);
-          auto node = _indexNode->condition()->root();
-
-          if ((node->type == NODE_TYPE_OPERATOR_NARY_OR) && (node->numMembers() == 1)) {
-            auto subNode = node->getMemberUnchecked(0);
-            if ((subNode->type == NODE_TYPE_OPERATOR_NARY_AND) && (subNode->numMembers() == 1)) {
-              subNode = node->getMemberUnchecked(0);
-              if ((subNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) && (subNode->numMembers() == 2)) {
-                return false;
-              }
-            }
-          }
-          return true;
+          return !hasBinaryCompare(en);
         }
         else {
           _indexNode = nullptr;
@@ -156,36 +226,74 @@ struct DetectSingleDocumentOperations final : public WalkerWorker<ExecutionNode>
 void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                                                               std::unique_ptr<ExecutionPlan> plan,
                                                               OptimizerRule const* rule) {
+  bool modified = false;
+  if(false) {
+    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+    SmallVector<ExecutionNode*> nodes{a};
+    plan->findNodesOfType(nodes, EN::FILTER, true);
+
+    ExecutionNode* firstNode = nodes[0];
+
+    DetectSingleDocumentOperations finder(plan.get());
+    firstNode->walk(finder);
+
+    if (finder._indexNode != nullptr) {
+      modified = true;
+      auto roNode = new SingleRemoteOperationNode(finder._indexNode,
+                                                  finder._updateNode,
+                                                  finder._replaceNode,
+                                                  finder._removeNode);
+      plan->registerNode(roNode);
+      plan->replaceNode(finder._indexNode, roNode);
+
+      if (finder._updateNode != nullptr) {
+        plan->unlinkNode(finder._updateNode);
+      }
+      if (finder._replaceNode != nullptr) {
+        plan->unlinkNode(finder._replaceNode);
+      }
+      if (finder._removeNode != nullptr) {
+        plan->unlinkNode(finder._removeNode);
+      }
+
+    }
+  }
+
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::FILTER, true);
+  plan->findNodesOfType(nodes, EN::INDEX, true);
 
-  bool modified = false;
+  for(auto* node : nodes){
+    Index* index = hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
+    if (index){
+      IndexNode* indexNode = static_cast<IndexNode*>(node);
+      LOG_DEVEL << "has compare";
+      if(!hasBinaryCompare(node)){
+        // do nothing if index does not work on a single document
+        break;
+      }
+      //check fields and ranges ==
+      auto* parentModification = hasSingleParent(indexNode,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE});
+      auto* parentSelect = hasSingleParent(indexNode,EN::RETURN);
 
-  ExecutionNode* firstNode = nodes[0];
+      if (parentModification){
+        LOG_DEVEL << "optimize modification node";
+        auto parentType = parentModification->getType();
+          LOG_DEVEL << ExecutionNode::getTypeString(parentType);
+          if (parentType == EN::RETURN){
 
-  DetectSingleDocumentOperations finder(plan.get());
-  firstNode->walk(finder);
-
-  if (finder._indexNode != nullptr) {
-    modified = true;
-    auto roNode = new SingleRemoteOperationNode(finder._indexNode,
-                                                finder._updateNode,
-                                                finder._replaceNode,
-                                                finder._removeNode);
-    plan->replaceNode(finder._indexNode, roNode);
-
-    if (finder._updateNode != nullptr) {
-      plan->unlinkNode(finder._updateNode);
+          } else if ( parentType == EN::INSERT) {
+          } else if ( parentType == EN::REMOVE) {
+          } else if ( parentType == EN::UPDATE) {
+          } else if ( parentType == EN::UPSERT) {
+          } else if ( parentType == EN::REPLACE) {
+          }
+      } else if(parentSelect){
+        LOG_DEVEL << "optimize SELECT";
+      }
     }
-    if (finder._replaceNode != nullptr) {
-      plan->unlinkNode(finder._replaceNode);
-    }
-    if (finder._removeNode != nullptr) {
-      plan->unlinkNode(finder._removeNode);
-    }
-
   }
+
 
   opt->addPlan(std::move(plan), rule, modified);
 }
