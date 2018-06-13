@@ -408,19 +408,17 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // initialize _result with a block
     auto previousNode = getPlanNode()->getFirstDependency();
     TRI_ASSERT(previousNode != nullptr);
-    RegisterId const curNrRegs =
+    RegisterId const inputNrRegs =
         previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
+    RegisterId const outputNrRegs =
+        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
     // If we don't have any values to group by, the result will contain a single
     // group.
     size_t maxBlockSize = _groupRegisters.empty() ? 1 : atMost;
-    _result.reset(requestBlock(
-        maxBlockSize,
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+    _result.reset(requestBlock(maxBlockSize, outputNrRegs));
 
-    TRI_ASSERT(curNrRegs <= _result->getNrRegs());
-    // TODO:
-    // inheritRegisters(cur, res.get(), _pos);
+    TRI_ASSERT(inputNrRegs <= _result->getNrRegs());
   }
 
   while (_skipped < atMost) {
@@ -437,12 +435,6 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
       return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
     }
     TRI_ASSERT(state == GetNextRowState::SUCCESS);
-
-    // TODO dirty hack, improve this plz
-    if (_lastBlock == nullptr) {
-      TRI_ASSERT(pos == 0);
-      inheritRegisters(cur, _result.get(), pos);
-    }
 
     // if the current block changed, move the last block's infos into the
     // current group; then delete it.
