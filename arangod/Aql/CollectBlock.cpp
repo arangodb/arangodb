@@ -288,26 +288,30 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
+  auto previousNode = getPlanNode()->getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId const inputNrRegs =
+    previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  RegisterId const outputNrRegs =
+    getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+
   enum class GetNextRowState { NONE, SUCCESS, WAITING };
 
   // get the next row from the current block. fetches a new block if necessary.
   // TODO unify with the one from HashedCollectBlock::getOrSkipSome
   auto getNextRow =
-      [this]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
+      [this,
+        inputNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
 
     // try to ensure a nonempty buffer
     if (_buffer.empty()) {
-      if (true) {
-        ExecutionState state;
-        bool blockAppended;
-        std::tie(state, blockAppended) =
-            ExecutionBlock::getBlock(DefaultBatchSize());
-        if (state == ExecutionState::WAITING) {
-          TRI_ASSERT(!blockAppended);
-          return std::make_tuple(GetNextRowState::WAITING, nullptr, 0);
-        }
-      } else {
-        ExecutionBlock::getBlockOld(DefaultBatchSize());
+      ExecutionState state;
+      bool blockAppended;
+      std::tie(state, blockAppended) =
+          ExecutionBlock::getBlock(DefaultBatchSize());
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(!blockAppended);
+        return std::make_tuple(GetNextRowState::WAITING, nullptr, 0);
       }
     }
 
@@ -319,6 +323,8 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // save current position (to return)
     AqlItemBlock* cur = _buffer.front();
     size_t pos = _pos;
+
+    TRI_ASSERT(inputNrRegs == cur->getNrRegs());
 
     // calculate next position
     ++_pos;
@@ -406,12 +412,6 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
 
   if (!skipping && _result == nullptr) {
     // initialize _result with a block
-    auto previousNode = getPlanNode()->getFirstDependency();
-    TRI_ASSERT(previousNode != nullptr);
-    RegisterId const inputNrRegs =
-        previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
-    RegisterId const outputNrRegs =
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
     // If we don't have any values to group by, the result will contain a single
     // group.
@@ -662,13 +662,13 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
   auto previousNode = getPlanNode()->getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  RegisterId const curNrRegs =
+  RegisterId const inputNrRegs =
       previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
 
   // get the next row from the current block. fetches a new block if necessary.
   auto getNextRow =
       [this,
-       curNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
+       inputNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
 
     // try to ensure a nonempty buffer
     if (_buffer.empty()) {
@@ -691,7 +691,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     AqlItemBlock* cur = _buffer.front();
     size_t pos = _pos;
 
-    TRI_ASSERT(curNrRegs == cur->getNrRegs());
+    TRI_ASSERT(inputNrRegs == cur->getNrRegs());
 
     // calculate next position
     ++_pos;
@@ -779,7 +779,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
   };
 
   auto buildResult = [this, en,
-                      curNrRegs](AqlItemBlock const* src) -> AqlItemBlock* {
+                      inputNrRegs](AqlItemBlock const* src) -> AqlItemBlock* {
     RegisterId nrRegs = en->getRegisterPlan()->nrRegs[en->getDepth()];
 
     std::unique_ptr<AqlItemBlock> result(
@@ -820,7 +820,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
       if (row > 0) {
         // re-use already copied AQLValues for remaining registers
-        result->copyValuesFromFirstRow(row, static_cast<RegisterId>(curNrRegs));
+        result->copyValuesFromFirstRow(row, static_cast<RegisterId>(inputNrRegs));
       }
 
       ++row;
@@ -838,7 +838,7 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
     if (en->_aggregateVariables.empty()) {
       // no aggregate registers. simply increase the counter
       if (en->_count) {
-        // TODO maybe get rid of this special case
+        // TODO get rid of this special case if possible
         TRI_ASSERT(!aggregateValues->empty());
         aggregateValues->back()->reduce(AqlValue());
       }
