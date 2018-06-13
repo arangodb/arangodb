@@ -455,38 +455,17 @@ bool ExecutionBlock::hasMore() {
 std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
                                                                           AqlItemBlock*& result, size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
-  int errCode = getOrSkipSomeOld(atMost, skipping, result, skipped);
-  if (skipping && skipped == 0) {
-    return {ExecutionState::DONE, errCode};
-  }
-  if (!skipping && result == nullptr) {
-    return {ExecutionState::DONE, errCode};
-  }
-  if (_done) {
-    return {ExecutionState::DONE, errCode};
-  }
-  return {ExecutionState::HASMORE, errCode};
-}
-
-int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
-                                     AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();
-  TRI_ASSERT(result == nullptr && skipped == 0);
-
-  if (_done) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
+  
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
   BlockCollector collector(&_engine->_itemBlockManager);
 
-  while (skipped < atMost) {
+  while (!_done && skipped < atMost) {
     if (_buffer.empty()) {
       if (skipping) {
         size_t numActuallySkipped = 0;
         _dependencies[0]->skip(atMost - skipped, numActuallySkipped);
         skipped += numActuallySkipped;
-        return TRI_ERROR_NO_ERROR;
+        break;
       } else {
         if (!getBlockOld(atMost - skipped)) {
           _done = true;
@@ -548,13 +527,21 @@ int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
   }
 
   TRI_ASSERT(result == nullptr);
-
+  
   if (!skipping) {
     result = collector.steal();
   }
 
-  return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();
+  if (skipping && skipped == 0) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  if (!skipping && result == nullptr) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  if (_done) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {

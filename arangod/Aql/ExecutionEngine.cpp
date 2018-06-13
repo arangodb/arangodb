@@ -422,17 +422,13 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
     // QueryIds are filled by responses of DBServer parts.
     MapRemoteToSnippet queryIds{};
 
-    bool needsErrorCleanup = true;
-    auto cleanup = [&]() {
-      if (needsErrorCleanup) {
-        _dbserverParts.cleanupEngines(
-          ClusterComm::instance(),
-          TRI_ERROR_INTERNAL,
-          _query->vocbase().name(), queryIds
-        );
-      }
-    };
-    TRI_DEFER(cleanup());
+    auto cleanupGuard = scopeGuard([this, &queryIds]() {
+      _dbserverParts.cleanupEngines(
+        ClusterComm::instance(),
+        TRI_ERROR_INTERNAL,
+        _query->vocbase().name(), queryIds
+      );
+    });
 
     ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, lockedShards);
     if (res.fail()) {
@@ -451,7 +447,7 @@ struct CoordinatorInstanciator final : public WalkerWorker<ExecutionNode> {
     );
 
     if (res.ok()) {
-      needsErrorCleanup = false;
+      cleanupGuard.cancel();
     }
 
     return res;

@@ -178,7 +178,6 @@ int ShortestPathBlock::shutdown(int errorCode) {
   DEBUG_END_BLOCK();
 }
 
-
 bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   if (_usedConstant) {
     // Both source and target are constant.

@@ -915,15 +915,12 @@ Result EngineInfoContainerDBServer::buildEngines(
     + arangodb::basics::StringUtils::urlEncode(_query->vocbase().name())
     + "/_api/aql/setup"
   );
-  bool needCleanup = true;
-  auto cleanup = [&]() {
-    if (needCleanup) {
-      cleanupEngines(
-        cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds
-      );
-    }
-  };
-  TRI_DEFER(cleanup());
+
+  auto cleanupGuard = scopeGuard([this, &cc, &queryIds]() {
+    cleanupEngines(
+      cc, TRI_ERROR_INTERNAL, _query->vocbase().name(), queryIds
+    );
+  });
 
   std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
@@ -965,7 +962,7 @@ Result EngineInfoContainerDBServer::buildEngines(
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
               "Unable to deploy query on all required "
               "servers. This can happen during "
-              "Failover. Please check: " +
+              "failover. Please check: " +
                   it.first};
     }
 
@@ -977,7 +974,7 @@ Result EngineInfoContainerDBServer::buildEngines(
         return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                 "Unable to deploy query on all required "
                 "servers. This can happen during "
-                "Failover. Please check: " +
+                "failover. Please check: " +
                     it.first};
       }
       size_t remoteId = 0;
@@ -1001,7 +998,7 @@ Result EngineInfoContainerDBServer::buildEngines(
         return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
                 "Unable to deploy query on all required "
                 "servers. This can happen during "
-                "Failover. Please check: " +
+                "failover. Please check: " +
                     it.first};
       }
 
@@ -1012,7 +1009,7 @@ Result EngineInfoContainerDBServer::buildEngines(
 #ifdef USE_ENTERPRISE
   resetSatellites();
 #endif
-  needCleanup = false;
+  cleanupGuard.cancel();
   return TRI_ERROR_NO_ERROR;
 }
 

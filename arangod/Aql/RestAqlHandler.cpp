@@ -943,7 +943,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
   } catch (std::exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, "unknown exception caught in handleUsequery");
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, "unknown exception caught in handleUseQuery");
   }
 }
 

@@ -53,7 +53,7 @@ struct NearOrWithinParams{
   AstNode* radius = nullptr;
   AstNode* distanceName = nullptr;
 
-  NearOrWithinParams(AstNode const* node, bool isNear){
+  NearOrWithinParams(AstNode const* node, bool isNear) {
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
@@ -81,7 +81,7 @@ struct FulltextParams{
   std::string attribute;
   AstNode* limit = nullptr;
 
-  FulltextParams(AstNode const* node){
+  explicit FulltextParams(AstNode const* node) {
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);

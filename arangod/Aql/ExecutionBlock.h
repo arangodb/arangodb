@@ -202,9 +202,6 @@ class ExecutionBlock {
   /// @brief generic method to get or skip some
   virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                           AqlItemBlock*& result, size_t& skipped);
-  // TODO DELETE
-  virtual int getOrSkipSomeOld(size_t atMost, bool skipping,
-                               AqlItemBlock*& result, size_t& skipped);
 
   /// @brief Returns the success return start of this block.
   ///        Can either be HASMORE or DONE.
