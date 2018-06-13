@@ -65,7 +65,7 @@
                   <th class="collectionTh">Fields:</th>
                   <th><input type="text" id="newGeoFields" value=""/></th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list with one or two attribute paths. Example: latitude,longitude">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -78,7 +78,7 @@
                     <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Set geoJson to true if the coordinates stored in the specified attribute are arrays in the form [longitude,latitude].">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -93,7 +93,7 @@
                   <th class="collectionTh">Fields:</th>
                   <th><input type="text" id="newPersistentFields" value=""/></th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -106,7 +106,7 @@
                     <input id="newPersistentUnique" type="checkbox" name="newPersistentUnique" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -119,7 +119,7 @@
                     <input id="newPersistentSparse" type="checkbox" name="newPersistentSparse" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -132,7 +132,7 @@
                     <input id="newPersistentDeduplicate" type="checkbox" name="newPersistentDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -147,7 +147,7 @@
                   <th class="collectionTh">Fields:</th>
                   <th><input type="text" id="newHashFields" value=""/></th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -160,7 +160,7 @@
                     <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -173,7 +173,7 @@
                     <input id="newHashSparse" type="checkbox" name="newHashSparse" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -186,7 +186,7 @@
                     <input id="newHashDeduplicate" type="checkbox" name="newHashDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -201,7 +201,7 @@
                   <th class="collectionTh">Fields:</th>
                   <th><input type="text" id="newFulltextFields" value=""/></th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A single attribute path. Example: message.text">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -212,7 +212,7 @@
                   <th class="collectionTh">Min. length:</th>
                   <th><input type="text" id="newFulltextMinLength" value=""/></th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -228,7 +228,7 @@
                   <th class="collectionTh">Fields:</th>
                   <th><input type="text" id="newSkiplistFields" value=""/></th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -241,7 +241,7 @@
                     <input id="newSkiplistUnique" type="checkbox" name="newSkiplistUnique" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a unique index.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -254,7 +254,7 @@
                     <input id="newSkiplistSparse" type="checkbox" name="newSkiplistSparse" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
@@ -267,7 +267,7 @@
                     <input id="newSkiplistDeduplicate" type="checkbox" name="newSkiplistDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
-                    <div>
+                    <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>

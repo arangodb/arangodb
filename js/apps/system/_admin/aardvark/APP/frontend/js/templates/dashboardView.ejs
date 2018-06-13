@@ -88,7 +88,6 @@
   <ul class="subMenuEntries subViewNavbar">
     <li id="requests-statistics" class="subMenuEntry active"><a>Request Statistics</a></li>
     <li id="system-statistics" class="subMenuEntry "><a>System Resources</a></li>
-    <li id="replication-statistics" class="subMenuEntry "><a>Replication</a></li>
   </ul>
 
   <div id="requests">
@@ -144,86 +143,6 @@
       <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
     </div>
 
-  </div>
-
-  <div id="replication" style="display: none;">
-
-    <div class="dashboard-row">
-      <div class="dashboard-full-width-chart" id="replication-chart">
-        <div class="dashboard-full-width-chart-inner pure-u">
-    <div class="dashboard-sub-bar"">Replication <span class="state"> updating...</span></div>
-          <div id="repl-numbers" class="dashboard-interior-chart pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
-            <div class="inner">
-              <div class="top dashboard-subtitle-bar">Totals</div>
-              <div class="bottom">
-                <table>
-                  <tbody>
-                    <tr>
-                      <td>Events&nbsp;replicated</td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td>Requests&nbsp;issued</td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td>Failed&nbsp;connects</td>
-                      <td></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <div id="repl-ticks" class="dashboard-interior-chart pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
-            <div class="inner">
-              <div class="top dashboard-subtitle-bar">Ticks</div>
-              <div class="bottom">
-                <table>
-                  <tbody>
-                    <tr>
-                      <td>Applied</td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td>Processed</td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td>Available</td>
-                      <td></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          <div id="repl-progress" class="dashboard-interior-chart pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
-            <div class="inner">
-              <div class="top dashboard-subtitle-bar">Progress</div>
-              <div class="bottom">
-                <table>
-                  <tbody>
-                    <tr>
-                      <td>Message</td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td>Time</td>
-                      <td></td>
-                    </tr>
-                    <tr>
-                      <td>Connect&nbsp;failures</td>
-                      <td></td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
 </script>

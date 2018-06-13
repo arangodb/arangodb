@@ -69,9 +69,10 @@ static void JS_StateLoggerReplication(
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  auto res = engine->createLoggerState(nullptr,builder);
+  auto res = engine->createLoggerState(vocbase,builder);
   if(res.fail()){
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -600,9 +601,51 @@ static void StateApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_END
 }
 
+static void StateApplierReplicationAll(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                    ApplierType applierType) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("stateAll()");
+  }
+
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  VPackBuilder builder;
+  builder.openObject();
+  for (auto& name : databaseFeature->getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+
+    if (vocbase == nullptr) {
+      continue;
+    }
+
+    ReplicationApplier* applier = vocbase->replicationApplier();
+
+    if (applier == nullptr) {
+      continue;
+    }
+
+    builder.add(name, VPackValue(VPackValueType::Object));
+    applier->toVelocyPack(builder);
+    builder.close();
+  }
+  builder.close();
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_StateApplierReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   StateApplierReplication(args, APPLIER_DATABASE);
+}
+
+static void JS_StateApplierReplicationAll(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  StateApplierReplicationAll(args, APPLIER_DATABASE);
 }
 
 static void JS_StateGlobalApplierReplication(
@@ -697,6 +740,9 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STATE"),
                                JS_StateApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STATE_ALL"),
+                               JS_StateApplierReplicationAll, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_STATE"),
                                JS_StateGlobalApplierReplication, true);

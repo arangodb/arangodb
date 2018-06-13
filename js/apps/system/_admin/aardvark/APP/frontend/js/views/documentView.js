@@ -117,7 +117,7 @@
           window.modalView.createReadOnlyEntry(
             'doc-delete-button',
             'Confirm delete, document id is',
-            this.type._id,
+            this.type._id || this.docid,
             undefined,
             undefined,
             false,

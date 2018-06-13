@@ -1395,3 +1395,8 @@ exception from the GPL license:
 
 * GitHub: https://github.com/evanplaice/jquery-csv
 * License: [MIT License](https://github.com/evanplaice/jquery-csv)
+
+#### randomColor
+
+* GitHub: https://github.com/davidmerfield/randomColor
+* License: [MIT License](https://github.com/davidmerfield/randomColor/blob/master/LICENSE.md)
