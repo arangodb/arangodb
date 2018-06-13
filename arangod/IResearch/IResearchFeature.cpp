@@ -246,13 +246,12 @@ void registerViewFactory() {
   }
 }
 
-template<typename Impl>
 arangodb::Result transactionStateRegistrationCallback(
     arangodb::LogicalDataSource& dataSource,
     arangodb::TransactionState& state
 ) {
   if (arangodb::iresearch::DATA_SOURCE_TYPE != dataSource.type()) {
-    return arangodb::Result(); // not an IResearchView (noop)
+    return {}; // not an IResearchView (noop)
   }
 
   // TODO FIXME find a better way to look up a LogicalView
@@ -266,38 +265,21 @@ arangodb::Result transactionStateRegistrationCallback(
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failure to get LogicalView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' name '" << dataSource.name() << "'";
 
-    return arangodb::Result(TRI_ERROR_INTERNAL);
+    return {TRI_ERROR_INTERNAL};
   }
 
   // TODO FIXME find a better way to look up an IResearch View
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* impl = dynamic_cast<Impl*>(view);
-  #else
-    auto* impl = static_cast<Impl*>(view);
-  #endif
+  auto& impl = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*view);
 
-  if (!impl) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << dataSource.name() << "'";
+  impl.apply(state);
 
-    return arangodb::Result(TRI_ERROR_INTERNAL);
-  }
-
-  impl->apply(state);
-
-  return arangodb::Result();
+  return {};
 }
 
 void registerTransactionStateCallback() {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    // NOOP
-  } else if(arangodb::ServerState::instance()->isDBServer()) {
+  if (arangodb::ServerState::instance()->isSingleServer()) {
     arangodb::transaction::Methods::addStateRegistrationCallback(
-      transactionStateRegistrationCallback<arangodb::iresearch::IResearchViewDBServer>
-    );
-  } else {
-    arangodb::transaction::Methods::addStateRegistrationCallback(
-      transactionStateRegistrationCallback<arangodb::iresearch::IResearchView>
+      transactionStateRegistrationCallback
     );
   }
 }

@@ -34,6 +34,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 namespace {
@@ -217,19 +218,6 @@ IResearchViewDBServer::IResearchViewDBServer(
      ? info.get(StaticStrings::PropertiesField) : emptyObjectSlice()
    ),
    _persistedPath(getPersistedPath(dbPathFeature, id())) {
-
-  auto* viewPtr = this;
-
-  // initialize transaction read callback
-  _trxReadCallback = [viewPtr](arangodb::TransactionState& state)->void {
-    switch(state.status()) {
-     case arangodb::transaction::Status::RUNNING:
-      viewPtr->snapshot(state, true);
-      return;
-     default:
-      {} // NOOP
-    }
-  };
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
@@ -293,10 +281,6 @@ arangodb::Result IResearchViewDBServer::appendVelocyPack(
   builder.close(); // close PROPERTIES_FIELD
 
   return arangodb::Result();
-}
-
-void IResearchViewDBServer::apply(arangodb::TransactionState& state) {
-  state.addStatusChangeCallback(_trxReadCallback);
 }
 
 arangodb::Result IResearchViewDBServer::drop() {
@@ -561,6 +545,7 @@ arangodb::Result IResearchViewDBServer::rename(
 
 PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     TransactionState& state,
+    std::vector<std::string> const& shards,
     bool force /*= false*/
 ) const {
   // TODO FIXME find a better way to look up a ViewState
@@ -583,10 +568,27 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // 'collections_' can be asynchronously modified
 
+  auto& resolver = state.resolver();
+
   try {
-    for (auto& entry: _collections) {
-      auto* rdr =
-        static_cast<IResearchView*>(entry.second.get())->snapshot(state, force);
+    for (auto& shardId : shards) {
+      auto const cid = resolver.getCollectionIdLocal(shardId);
+
+      if (0 == cid) {
+        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "failed to find shard by id '" << shardId << "', skipping it";
+        continue;
+      }
+
+      auto const shardView = _collections.find(cid);
+
+      if (shardView == _collections.end()) {
+        LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+          << "failed to find shard view for shard id '" << cid << "', skipping it";
+        continue;
+      }
+
+      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(state, force);
 
       if (rdr) {
         reader.add(*rdr);

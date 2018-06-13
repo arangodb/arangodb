@@ -187,10 +187,14 @@ class TransactionState {
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
   void setType(AccessMode::Type type);
-  
+
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
+  }
+
+  CollectionNameResolver const& resolver() const noexcept {
+    return _resolver;
   }
 
  protected:

@@ -45,11 +45,6 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
  public:
   virtual ~IResearchViewDBServer();
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief apply any changes to 'state' required by this view
-  ///////////////////////////////////////////////////////////////////////////////
-  void apply(arangodb::TransactionState& state);
-
   virtual arangodb::Result drop() override;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -89,6 +84,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ////////////////////////////////////////////////////////////////////////////////
   PrimaryKeyIndexReader* snapshot(
     TransactionState& state,
+    std::vector<std::string> const& shards,
     bool force = false
   ) const;
 
@@ -113,7 +109,6 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   arangodb::velocypack::Builder _meta; // the view definition
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
   irs::utf8_path const _persistedPath;
-  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,

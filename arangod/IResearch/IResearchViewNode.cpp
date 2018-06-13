@@ -492,19 +492,19 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto& state = *(trx->state());
+  auto& view = *this->view();
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    // FIXME pass list of the shards involved
     // FIXME cache snapshot in transaction state when transaction starts
-    reader = LogicalView::cast<IResearchViewDBServer>(*this->view()).snapshot(state, true);
+    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(state, _shards, true);
   } else {
-    reader = LogicalView::cast<IResearchView>(*this->view()).snapshot(state);
+    reader = LogicalView::cast<IResearchView>(view).snapshot(state);
   }
 
   if (!reader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view()->name() << "' tid '" << state.id() << "'";
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '" << state.id() << "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
