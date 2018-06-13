@@ -712,6 +712,15 @@ AstNode* Ast::createNodeAccess(Variable const* variable,
   return node;
 }
 
+AstNode* Ast::createNodeAttributeAccess(AstNode const* refNode, std::vector<std::string> const& path){
+  AstNode* rv = refNode->clone(this);
+  for(auto const& part : path){
+    char const* p = query()->registerString(part.data(), part.size());
+    rv = createNodeAttributeAccess(rv, p, part.size());
+  }
+  return rv;
+}
+
 /// @brief create an AST parameter node
 AstNode* Ast::createNodeParameter(
     char const* name,
@@ -811,6 +820,7 @@ AstNode* Ast::createNodeTernaryOperator(AstNode const* condition,
 }
 
 /// @brief create an AST attribute access node
+/// note that the caller must make sure that char* data remains valid!
 AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed,
                                         char const* attributeName,
                                         size_t nameLength) {
@@ -1459,7 +1469,10 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 }
 
 /// @brief injects bind parameters into the AST
-void Ast::injectBindParameters(BindParameters& parameters) {
+void Ast::injectBindParameters(
+    BindParameters& parameters,
+    arangodb::CollectionNameResolver const& resolver
+) {
   auto& p = parameters.get();
 
   auto func = [&](AstNode* node) -> AstNode* {
@@ -1499,9 +1512,6 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           );
         }
 
-        // FIXME use external resolver
-        arangodb::CollectionNameResolver resolver(_query->vocbase());
-
         switch (node->getMemberUnchecked(0)->type) {
          case NODE_TYPE_COLLECTION: {
           auto dataSource = resolver.getCollection(value.copyString());
@@ -1522,20 +1532,21 @@ void Ast::injectBindParameters(BindParameters& parameters) {
 
           arangodb::StringRef paramRef(param);
 
-
           for (auto const& it : _writeCollections) {
             auto const& c = it.first;
 
             if (c->type == NODE_TYPE_PARAMETER
                 && paramRef == StringRef(c->getStringValue(), c->getStringLength())) {
               isWriteCollection = true;
+
               break;
             }
           }
 
-          node = createNodeCollection(name, isWriteCollection
-                                    ? AccessMode::Type::WRITE
-                                    : AccessMode::Type::READ);
+          node = createNodeCollection(
+            name,
+            isWriteCollection ? AccessMode::Type::WRITE : AccessMode::Type::READ
+          );
 
           if (isWriteCollection) {
             // must update AST info now for all nodes that contained this parameter

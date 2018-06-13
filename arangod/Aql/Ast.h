@@ -234,10 +234,6 @@ class Ast {
 
   /// @brief create an AST reference node
   AstNode* createNodeReference(Variable const*);
-  
-  /// @brief create an AST variable access
-  AstNode* createNodeAccess(Variable const*,
-                            std::vector<basics::AttributeName> const&);
 
   /// @brief create an AST parameter node
   AstNode* createNodeParameter(
@@ -265,8 +261,22 @@ class Ast {
   AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*,
                                      AstNode const*);
 
+  /// @brief create an AST variable access
+  AstNode* createNodeAccess(Variable const*,
+                            std::vector<basics::AttributeName> const&);
+
   /// @brief create an AST attribute access node
+  /// note that the caller must make sure that char* data remains valid!
   AstNode* createNodeAttributeAccess(AstNode const*, char const*, size_t);
+
+
+  /// @brief create an AST attribute access node for multiple accesses
+  AstNode* createNodeAttributeAccess(AstNode const*, std::vector<std::string> const&);
+  AstNode* createNodeAttributeAccess(AstNode const* node, std::vector<basics::AttributeName> const& attrs) {
+    std::vector<std::string> vec; //change to std::string_view once available
+    std::transform(attrs.begin(), attrs.end(), std::back_inserter(vec), +[](basics::AttributeName const& a) { return a.name; });
+    return createNodeAttributeAccess(node,vec);
+  }
 
   /// @brief create an AST attribute access node w/ bind parameter
   AstNode* createNodeBoundAttributeAccess(AstNode const*, AstNode const*);
@@ -384,7 +394,10 @@ class Ast {
   AstNode* createNodeNaryOperator(AstNodeType, AstNode const*);
 
   /// @brief injects bind parameters into the AST
-  void injectBindParameters(BindParameters&);
+  void injectBindParameters(
+    BindParameters& parameters,
+    arangodb::CollectionNameResolver const& resolver
+  );
 
   /// @brief replace variables
   AstNode* replaceVariables(
@@ -437,10 +450,10 @@ class Ast {
 
   /// @brief get the n-ary operator type equivalent for a binary operator type
   static AstNodeType NaryOperatorType(AstNodeType);
-  
+
   /// @brief return whether this is an `AND` operator
   static bool IsAndOperatorType(AstNodeType);
-  
+
   /// @brief return whether this is an `OR` operator
   static bool IsOrOperatorType(AstNodeType);
 
@@ -511,12 +524,16 @@ class Ast {
   AstNode* optimizeObject(AstNode*);
 
 public:
+  /** Make sure to replace the AstNode* you pass into TraverseAndModify
+   *  if it was changed. This is necessary because the function itself
+   *  has only access to the node but not its parent / owner.
+   */
   /// @brief traverse the AST, using pre- and post-order visitors
   static AstNode* traverseAndModify(AstNode*,
                                     std::function<bool(AstNode const*)> const&,
                                     std::function<AstNode*(AstNode*)> const&,
                                     std::function<void(AstNode const*)> const&);
-  
+
   /// @brief traverse the AST using a depth-first visitor
   static AstNode* traverseAndModify(AstNode*,
                                     std::function<AstNode*(AstNode*)> const&);
@@ -529,7 +546,7 @@ public:
   /// @brief traverse the AST using a depth-first visitor, with const nodes
   static void traverseReadOnly(AstNode const*,
                                std::function<void(AstNode const*)> const&);
-  
+
  private:
   /// @brief normalize a function name
   std::pair<std::string, bool> normalizeFunctionName(char const* functionName, size_t length);

@@ -86,6 +86,12 @@ const impTodos = [{
   type: 'json',
   create: undefined
 }, {
+  id: 'csvNonoCreate',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
+  coll: 'UnitTestsImportCsvNonoCreate',
+  type: 'csv',
+  create: 'false'
+}, {
   id: 'csv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.csv')),
   coll: 'UnitTestsImportCsv1',

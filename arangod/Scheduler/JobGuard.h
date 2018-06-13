@@ -26,7 +26,6 @@
 #include "Basics/Common.h"
 
 #include "Basics/SameThreadAsserter.h"
-#include "Scheduler/EventLoop.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -39,8 +38,8 @@ class JobGuard : public SameThreadAsserter {
   JobGuard(JobGuard const&) = delete;
   JobGuard& operator=(JobGuard const&) = delete;
 
-  explicit JobGuard(EventLoop const& loop) : SameThreadAsserter(), _scheduler(loop.scheduler) {}
-  explicit JobGuard(rest::Scheduler* scheduler) : SameThreadAsserter(), _scheduler(scheduler) {}
+  explicit JobGuard(rest::Scheduler* scheduler)
+      : SameThreadAsserter(), _scheduler(scheduler) {}
   ~JobGuard() { release(); }
 
  public:

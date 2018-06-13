@@ -126,25 +126,31 @@ function arangosh (options) {
 
   print();
 
-  runTest('testArangoshExitCodeFail', 'Starting arangosh with exception throwing script:', 'throw(\'foo\')', 1, {});
+  runTest('testArangoshExitCodeFail', 'Starting arangosh with exception throwing script:', 'throw(\'foo\')', 1, 
+          {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeFailButCaught', 'Starting arangosh with a caught exception:', 'try { throw(\'foo\'); } catch (err) {}', 0, {});
+  runTest('testArangoshExitCodeFailButCaught', 'Starting arangosh with a caught exception:', 
+          'try { throw(\'foo\'); } catch (err) {}', 0, {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeEmpty', 'Starting arangosh with empty script:', '', 0, {});
+  runTest('testArangoshExitCodeEmpty', 'Starting arangosh with empty script:', '', 0, {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeSuccess', 'Starting arangosh with regular terminating script:', ';', 0, {});
+  runTest('testArangoshExitCodeSuccess', 'Starting arangosh with regular terminating script:', ';', 0, 
+          {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeStatements', 'Starting arangosh with multiple statements:', 'var a = 1; if (a !== 1) throw("boom!");', 0, {});
+  runTest('testArangoshExitCodeStatements', 'Starting arangosh with multiple statements:',
+          'var a = 1; if (a !== 1) throw("boom!");', 0, {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeStatements2', 'Starting arangosh with multiple statements:', 'var a = 1;\nif (a !== 1) throw("boom!");\nif (a === 1) print("success");', 0, {});
+  runTest('testArangoshExitCodeStatements2', 'Starting arangosh with multiple statements:',
+          'var a = 1;\nif (a !== 1) throw("boom!");\nif (a === 1) print("success");', 0, {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeNewlines', 'Starting arangosh with newlines:', 'q = `FOR i\nIN [1,2,3]\nRETURN i`;\nq += "abc"\n', 0, {});
+  runTest('testArangoshExitCodeNewlines', 'Starting arangosh with newlines:', 
+          'q = `FOR i\nIN [1,2,3]\nRETURN i`;\nq += "abc"\n', 0, {'server.endpoint': 'none'});
   print();
 
   if (platform.substr(0, 3) !== 'win') {

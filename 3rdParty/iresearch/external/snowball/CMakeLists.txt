@@ -169,6 +169,14 @@ SET(COMPILER_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_rust.c
 )
 
+ADD_EXECUTABLE(snowball ${COMPILER_SOURCES})
+
+if (EXECUTABLE_OUTPUT_PATH STREQUAL "")
+  set(SNOWBALL_EXECUTEABLE "${snowball_BINARY_DIR}/snowball")
+else()
+  set(SNOWBALL_EXECUTEABLE "${EXECUTABLE_OUTPUT_PATH}/${CMAKE_CFG_INTDIR}/snowball")
+endif()
+
 SET(SNOWBALL_RUNTIME
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime/api.c
   ${CMAKE_CURRENT_SOURCE_DIR}/runtime/utilities.c
@@ -192,15 +200,27 @@ MACRO(gen_stem IN ENCODING)
 		SET(_input "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_${_in_enc}.sbl")
 		IF(${_in_enc} STREQUAL "Unicode" AND NOT EXISTS ${_input})
 			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND ${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/snowball  "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_ISO_8859_1.sbl" -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+    			        COMMAND ${SNOWBALL_EXECUTEABLE}
+                                        "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_ISO_8859_1.sbl"
+                                        -o ${_base}
+                                        -eprefix ${_it}_${ENCODING}_
+                                        -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime
+                                        -u
 				DEPENDS snowball)
+                        SET_PROPERTY(SOURCE ${_source} APPEND PROPERTY OBJECT_DEPENDS ${SNOWBALL_EXECUTEABLE})
 			LIST(APPEND STEMMER_SOURCES ${_source})
 
 		ELSE()
 		IF(EXISTS "${_input}")
 			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND ${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/snowball ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+			        COMMAND ${SNOWBALL_EXECUTEABLE}
+                                        ${_input}
+                                        -o ${_base}
+                                        -eprefix ${_it}_${ENCODING}_
+                                        -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime
+                                        -u
 				DEPENDS snowball)
+                        SET_PROPERTY(SOURCE ${_source} APPEND PROPERTY OBJECT_DEPENDS ${SNOWBALL_EXECUTEABLE})
 			LIST(APPEND STEMMER_SOURCES ${_source})
 		ENDIF()
 		ENDIF()
@@ -209,8 +229,6 @@ ENDMACRO()
 
 INCLUDE_DIRECTORIES("include")
 INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}/libstemmer")
-
-ADD_EXECUTABLE(snowball ${COMPILER_SOURCES})
 
 ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
