@@ -2708,7 +2708,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::fstream file;
 
     errno = 0;
-
+    // disable exceptions in the stream object:
     file.exceptions(std::ifstream::goodbit);
     file.open(*name, std::ios::out | std::ios::binary);
 
@@ -2738,7 +2738,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::fstream file;
 
     errno = 0;
-
+    // disable exceptions in the stream object:
     file.exceptions(std::ifstream::goodbit);
     file.open(*name, std::ios::out | std::ios::binary);
 
