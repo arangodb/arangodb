@@ -960,7 +960,7 @@ IResearchView::~IResearchView() {
   if (deleted()) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
-    engine->destroyView(vocbase(), this);
+    engine->destroyView(vocbase(), *this);
   }
 }
 
