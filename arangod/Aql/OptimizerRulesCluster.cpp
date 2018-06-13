@@ -2,8 +2,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,8 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
-/// @author Jan Steemann
+/// @author Willi & Obi
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
@@ -147,15 +145,17 @@ bool hasBinaryCompare(ExecutionNode* node){
 bool depIsSingletonOrConstCalc(ExecutionNode* node){
     while (node){
       node = node->getFirstDependency();
-      LOG_DEVEL << node->getTypeString();
       if(node->getType() == EN::SINGLETON){
+        LOG_DEVEL << "reached singleton";
         return true;
       }
 
       if(node->getType() != EN::CALCULATION){
+        LOG_DEVEL << node->getTypeString() << " not a clac node";
         return false;
       }
       if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
+        LOG_DEVEL << "calculation not constant";
         return false;
       }
     }
@@ -170,22 +170,24 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::INDEX, true);
 
-  if(nodes.size() != 1){
-    //more than one index
+  if(nodes.size() != 1){ //more than one index - we replace simple expressions only
     opt->addPlan(std::move(plan), rule, modified);
     return;
   }
 
   for(auto* node : nodes){
+    LOG_DEVEL << "";
+    LOG_DEVEL << "substitute single document operation";
     if(!depIsSingletonOrConstCalc(node)){
+      LOG_DEVEL << "dep is not singleton or const claculation";
       continue;
     }
 
     Index* index = hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     if (index){
-      LOG_DEVEL << "has compare";
       if(!hasBinaryCompare(node)){
         // do nothing if index does not work on a single document
+        LOG_DEVEL << "has no valid compare";
         continue;
       }
       auto* parentModification = hasSingleParent(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE});
@@ -197,6 +199,9 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
           LOG_DEVEL << ExecutionNode::getTypeString(parentType);
           if (parentType == EN::RETURN){
 
+          //check that opeation uses the document provided by the index
+          //check that calculation is used in the modification
+
           } else if ( parentType == EN::INSERT) {
           } else if ( parentType == EN::REMOVE) {
           } else if ( parentType == EN::UPDATE) {
@@ -205,9 +210,12 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
           }
       } else if(parentSelect){
         LOG_DEVEL << "optimize SELECT";
+      } else {
+        LOG_DEVEL << "plan following the index node is too complex";
       }
+    } else {
+      LOG_DEVEL << "is not primary or has more indexes";
     }
   }
-
   opt->addPlan(std::move(plan), rule, modified);
 }
