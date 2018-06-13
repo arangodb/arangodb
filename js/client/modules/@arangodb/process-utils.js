@@ -377,7 +377,7 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCores, coreCheck = false) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -403,6 +403,14 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     cmd = options.valgrind;
   }
 
+  if (circumventCores) {
+    if (platform.substr(0, 3) !== 'win') {
+      // this shellscript will prevent cores from being writen on macos and linux.
+      args.unshift(cmd);
+      cmd = TOP_DIR + '/scripts/disable-cores.sh';
+    }
+  }
+  
   if (options.extremeVerbosity) {
     print('executeAndWait: cmd =', cmd, 'args =', args);
   }
