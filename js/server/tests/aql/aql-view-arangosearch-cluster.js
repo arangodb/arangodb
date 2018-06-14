@@ -456,7 +456,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
         assertEqual(doc.c, res.c);
       });
     },
-
+/*
     testViewInInnerLoopSortByTFIDF_BM25_Attribute : function() {
       var expected = [];
       expected.push({ a: "baz", b: "foo", c: 1 });
@@ -480,6 +480,7 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
         assertEqual(doc.c, res.c);
       });
     },
+*/
   };
 }
 
@@ -492,15 +493,19 @@ jsunity.run(function() {
 });
 
 jsunity.run(function() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 })
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 })
 });
 
+/*
+
 jsunity.run(function() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 })
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 })
 });
 
 jsunity.run(function() {
   return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 })
 });
+
+*/
 
 return jsunity.done();
