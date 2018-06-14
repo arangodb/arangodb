@@ -201,7 +201,7 @@ static std::shared_ptr<VPackBuilder> ExtractAnswer(
 ////////////////////////////////////////////////////////////////////////////////
 
 static void mergeResults(
-    std::vector<std::pair<ShardID, VPackSlice>> const& reverseMapping,
+    std::vector<std::pair<ShardID, VPackValueLength>> const& reverseMapping,
     std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> const& resultMap,
     std::shared_ptr<VPackBuilder>& resultBody) {
   resultBody->clear();
@@ -214,7 +214,7 @@ static void mergeResults(
       int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
       THROW_ARANGO_EXCEPTION(res);
     }
-    resultBody->add(pair.second);
+    resultBody->add(arr.at(pair.second));
   }
   resultBody->close();
 }
@@ -314,8 +314,8 @@ static int distributeBabyOnShards(
     std::unordered_map<ShardID, std::vector<VPackSlice>>& shardMap,
     ClusterInfo* ci, std::string const& collid,
     std::shared_ptr<LogicalCollection> const& collinfo,
-    std::vector<std::pair<ShardID, VPackSlice>>& reverseMapping,
-    VPackSlice const value) {
+    std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
+    VPackSlice const& value) {
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
   ShardID shardID;
@@ -333,10 +333,10 @@ static int distributeBabyOnShards(
   auto it = shardMap.find(shardID);
   if (it == shardMap.end()) {
     shardMap.emplace(shardID, std::vector<VPackSlice>{value});
-    reverseMapping.emplace_back(shardID, value);
+    reverseMapping.emplace_back(shardID, 0);
   } else {
     it->second.emplace_back(value);
-    reverseMapping.emplace_back(shardID, value);
+    reverseMapping.emplace_back(shardID, it->second.size() - 1);
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -352,7 +352,7 @@ static int distributeBabyOnShards(
     std::unordered_map<ShardID, std::vector<std::pair<VPackSlice, std::string>>>& shardMap,
     ClusterInfo* ci, std::string const& collid,
     std::shared_ptr<LogicalCollection> const& collinfo,
-    std::vector<std::pair<ShardID, VPackSlice>>& reverseMapping,
+    std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
     VPackSlice const value, bool isRestore) {
   ShardID shardID;
   bool userSpecifiedKey = false;
@@ -410,10 +410,10 @@ static int distributeBabyOnShards(
   auto it = shardMap.find(shardID);
   if (it == shardMap.end()) {
     shardMap.emplace(shardID, std::vector<std::pair<VPackSlice, std::string>>{{value, _key}});
-    reverseMapping.emplace_back(shardID, value);
+    reverseMapping.emplace_back(shardID, 0);
   } else {
     it->second.emplace_back(value, _key);
-    reverseMapping.emplace_back(shardID, value);
+    reverseMapping.emplace_back(shardID, it->second.size() - 1);
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -1107,7 +1107,7 @@ Result createDocumentOnCoordinator(
   // create vars used in this function
   bool const useMultiple = slice.isArray(); // insert more than one document
   std::unordered_map<ShardID, std::vector<std::pair<VPackSlice, std::string>>> shardMap;
-  std::vector<std::pair<ShardID, VPackSlice>> reverseMapping;
+  std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
 
   {
     // create shard map
@@ -1267,7 +1267,7 @@ int deleteDocumentOnCoordinator(
     // Merge the results with static merge helper
 
     std::unordered_map<ShardID, std::vector<VPackSlice>> shardMap;
-    std::vector<std::pair<ShardID, VPackSlice>> reverseMapping;
+    std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
     auto workOnOneNode = [&shardMap, &ci, &collid, &collinfo, &reverseMapping](
         VPackSlice const value) -> int {
       // Sort out the _key attribute and identify the shard responsible for it.
@@ -1298,10 +1298,10 @@ int deleteDocumentOnCoordinator(
       auto it = shardMap.find(shardID);
       if (it == shardMap.end()) {
         shardMap.emplace(shardID, std::vector<VPackSlice>{value});
-        reverseMapping.emplace_back(shardID, value);
+        reverseMapping.emplace_back(shardID, 0);
       } else {
         it->second.emplace_back(value);
-        reverseMapping.emplace_back(shardID, value);
+        reverseMapping.emplace_back(shardID, it->second.size() - 1);
       }
       return TRI_ERROR_NO_ERROR;
     };
@@ -1609,7 +1609,7 @@ int getDocumentOnCoordinator(
   ShardID shardID;
 
   std::unordered_map<ShardID, std::vector<VPackSlice>> shardMap;
-  std::vector<std::pair<ShardID, VPackSlice>> reverseMapping;
+  std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   bool useMultiple = slice.isArray();
 
   int res = TRI_ERROR_NO_ERROR;
@@ -2306,7 +2306,7 @@ int modifyDocumentOnCoordinator(
   ShardID shardID;
 
   std::unordered_map<ShardID, std::vector<VPackSlice>> shardMap;
-  std::vector<std::pair<ShardID, VPackSlice>> reverseMapping;
+  std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   bool useMultiple = slice.isArray();
 
   int res = TRI_ERROR_NO_ERROR;
