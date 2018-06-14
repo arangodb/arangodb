@@ -27,6 +27,7 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include "Actions/actions.h"
+#include "Scheduler/Scheduler.h"
 
 namespace arangodb {
 class RestActionHandler : public RestVocbaseBaseHandler {
@@ -36,7 +37,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
  public:
   char const* name() const override final { return "RestActionHandler"; }
   bool isDirect() const override { return _action == nullptr; }
-  size_t queue() const override { return JobQueue::BACKGROUND_QUEUE; }
+  size_t queue() const override { return rest::Scheduler::CLIENT_V8_QUEUE; }
   RestStatus execute() override;
   bool cancel() override;
 

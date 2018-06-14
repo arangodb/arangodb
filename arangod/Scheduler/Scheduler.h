@@ -27,16 +27,15 @@
 
 #include "Basics/Common.h"
 
+#include <boost/lockfree/queue.hpp>
+
 #include "Basics/Mutex.h"
 #include "Basics/asio_ns.h"
 #include "Basics/socket-utils.h"
 #include "Endpoint/Endpoint.h"
-#include "Scheduler/Job.h"
 
 namespace arangodb {
-class Acceptor;
 class JobGuard;
-class JobQueue;
 class ListenTask;
 
 namespace velocypack {
@@ -61,12 +60,82 @@ class Scheduler {
             uint64_t maxQueueSize);
   virtual ~Scheduler();
 
+  // queue handling:
+  //
+  // The Scheduler queue is an `io_context` that is server by a number
+  // of SchedulerThreads. Jobs can be posted to the `io_context` using
+  // the function `post`. A job in the Scheduler queue can be queues,
+  // i.e. the executing has not yet been started, or running, i.e.
+  // the executing has already been started.
+  //
+  // `numRunning` returns the number of running threads that are
+  // currently serving the `io_context`.
+  //
+  // `numQueued` returns the number of jobs queued in the io_context
+  // that are not yet running.
+  //
+  // The scheduler also has a number of FIFO where it stores jobs in
+  // case that the there are too many jobs in Scheduler queue. The
+  // function `queue` will handle the queuing. Depending on the fifos
+  // and the number of queues jobs it will either queue the job
+  // directly in the Scheduler queue or move it to the corresponding
+  // FIFO.
+
  public:
-  // XXX-TODO remove, replace with signal handler
-  asio_ns::io_context* managerService() const { return _managerService.get(); }
+  struct QueueStatistics {
+    uint64_t _running;
+    uint64_t _working;
+    uint64_t _blocked;
+    uint64_t _queued;
+  };
+
+  static size_t const INTERNAL_QUEUE = 1;
+  static size_t const INTERNAL_AQL_QUEUE = 1;
+  static size_t const INTERNAL_V8_QUEUE = 2;
+  static size_t const CLIENT_QUEUE = 2;
+  static size_t const CLIENT_SLOW_QUEUE = 2;
+  static size_t const CLIENT_AQL_QUEUE = 2;
+  static size_t const CLIENT_V8_QUEUE = 2;
 
   void post(std::function<void()> callback);
   void post(asio_ns::io_context::strand&, std::function<void()> callback);
+
+  bool queue(size_t fifo, std::function<void()>);
+  void drain();
+
+  void addQueueStatistics(velocypack::Builder&) const;
+  QueueStatistics queueStatistics() const;
+
+ private:
+  bool canPostDirectly() const noexcept;
+
+  static uint64_t numRunning(uint64_t value) noexcept {
+    return value & 0xFFFFULL;
+  }
+
+  inline uint64_t numQueued() const noexcept { return _nrQueued; };
+
+  struct FifoJob {
+    FifoJob(std::function<void()> callback) : _callback(callback) {}
+    std::function<void()> _callback;
+  };
+
+  bool pushToFifo(size_t fifo, std::function<void()> callback);
+  bool popFifo(size_t fifo);
+
+  // maximal number of outstanding user requests
+  uint64_t _maxQueueSize;
+
+  static int64_t const NUMBER_FIFOS = 2;
+  uint64_t _maxFifoSize[NUMBER_FIFOS];
+  int64_t _fifoSize[NUMBER_FIFOS];
+  boost::lockfree::queue<FifoJob*> _fifo1;
+  boost::lockfree::queue<FifoJob*> _fifo2;
+  boost::lockfree::queue<FifoJob*>* _fifos[NUMBER_FIFOS];
+
+ public:
+  // XXX-TODO remove, replace with signal handler
+  asio_ns::io_context* managerService() const { return _managerService.get(); }
 
   bool start();
   bool isRunning() const { return numRunning(_counters) > 0; }
@@ -76,7 +145,7 @@ class Scheduler {
   bool isStopping() { return (_counters & (1ULL << 63)) != 0; }
   void shutdown();
 
-  template<typename T>
+  template <typename T>
   asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
     return new asio_ns::deadline_timer(*_ioContext, timeout);
   }
@@ -89,34 +158,29 @@ class Scheduler {
     return new asio_ns::io_context::strand(*_ioContext);
   }
 
-  asio_ns::ip::tcp::acceptor*
-  newAcceptor() {
+  asio_ns::ip::tcp::acceptor* newAcceptor() {
     return new asio_ns::ip::tcp::acceptor(*_ioContext);
   }
 
-  asio_ns::local::stream_protocol::acceptor*
-  newDomainAcceptor() {
+  asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
     return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
   }
 
-  asio_ns::ip::tcp::socket*
-  newSocket() {
+  asio_ns::ip::tcp::socket* newSocket() {
     return new asio_ns::ip::tcp::socket(*_ioContext);
   }
 
-  asio_ns::local::stream_protocol::socket*
-  newDomainSocket() {
+  asio_ns::local::stream_protocol::socket* newDomainSocket() {
     return new asio_ns::local::stream_protocol::socket(*_ioContext);
   }
 
-  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>*
-  newSslSocket(asio_ns::ssl::context& context) {
-    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(
-      *_ioContext, context);
+  asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
+      asio_ns::ssl::context& context) {
+    return new asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(*_ioContext,
+                                                              context);
   }
 
-  asio_ns::ip::tcp::resolver*
-  newResolver() {
+  asio_ns::ip::tcp::resolver* newResolver() {
     return new asio_ns::ip::tcp::resolver(*_ioContext);
   }
 
@@ -132,23 +196,11 @@ class Scheduler {
   bool shouldQueueMore() const;
   bool shouldExecuteDirect() const;
 
-  // queue processing of an async rest job
-  bool queue(std::unique_ptr<Job> job);
-
   std::string infoStatus();
 
   uint64_t minimum() const { return _nrMinimum; }
 
-  // number of jobs that are currently been posted to the io_context,
-  // but where the handler has not yet been called. The number of
-  // handler in total is numQueued() + numRunning(_counters)
-  inline uint64_t numQueued() const noexcept { return _nrQueued; };
-
   inline uint64_t getCounters() const noexcept { return _counters; }
-
-  static uint64_t numRunning(uint64_t value) noexcept {
-    return value & 0xFFFFULL;
-  }
 
   static uint64_t numWorking(uint64_t value) noexcept {
     return (value >> 16) & 0xFFFFULL;
@@ -158,6 +210,7 @@ class Scheduler {
     return (value >> 32) & 0xFFFFULL;
   }
 
+  /*
   inline void queueJob() noexcept { ++_nrQueued; }
 
   inline void unqueueJob() noexcept {
@@ -165,6 +218,7 @@ class Scheduler {
       TRI_ASSERT(false);
     }
   }
+  */
 
  private:
   void startNewThread();
@@ -218,9 +272,6 @@ class Scheduler {
   void rebalanceThreads();
 
  private:
-  // maximal number of outstanding user requests
-  uint64_t const _maxQueueSize;
-
   // minimum number of running SchedulerThreads
   uint64_t const _nrMinimum;
 
@@ -233,7 +284,7 @@ class Scheduler {
 
   std::atomic<uint64_t> _nrQueued;
 
-  std::unique_ptr<JobQueue> _jobQueue;
+  // std::unique_ptr<JobQueue> _jobQueue;
 
   std::shared_ptr<asio_ns::io_context::work> _serviceGuard;
   std::unique_ptr<asio_ns::io_context> _ioContext;

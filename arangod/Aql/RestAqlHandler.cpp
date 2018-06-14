@@ -22,6 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlHandler.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionBlock.h"
@@ -41,15 +46,11 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/JobGuard.h"
-#include "Scheduler/JobQueue.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
-
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -69,7 +70,7 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request,
 }
 
 // returns the queue name
-size_t RestAqlHandler::queue() const { return JobQueue::AQL_QUEUE; }
+size_t RestAqlHandler::queue() const { return Scheduler::INTERNAL_AQL_QUEUE; }
 
 bool RestAqlHandler::isDirect() const { return false; }
 

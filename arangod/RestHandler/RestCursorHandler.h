@@ -32,6 +32,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Scheduler/Scheduler.h"
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -63,7 +65,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   bool cancel() override final;
   
-  size_t queue() const override final;
+  size_t queue() const override final { return rest::Scheduler::CLIENT_AQL_QUEUE; }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

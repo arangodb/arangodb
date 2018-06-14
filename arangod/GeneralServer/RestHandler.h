@@ -25,8 +25,9 @@
 #define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
 
 #include "Basics/Common.h"
+
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/JobQueue.h"
+#include "Scheduler/Scheduler.h"
 
 namespace arangodb {
 class GeneralRequest;
@@ -82,12 +83,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
   
  public:
-  /// @brief rest handler name
+  // rest handler name
   virtual char const* name() const = 0;
-  /// @brief allow execution on the network thread
+
+  // allow execution on the network thread
   virtual bool isDirect() const = 0;
-  /// @brief priority of this request
-  virtual size_t queue() const { return JobQueue::STANDARD_QUEUE; }
+
+  // priority of this request
+  virtual size_t queue() const { return Scheduler::CLIENT_QUEUE; }
 
   virtual void prepareExecute() {}
   virtual RestStatus execute() = 0;

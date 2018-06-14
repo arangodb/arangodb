@@ -50,7 +50,7 @@ class MaintenanceHandler : public RestBaseHandler {
   bool isDirect() const override { return true; };
   
   // returns the queue name, should trigger processing without job
-  size_t queue() const override { return JobQueue::AQL_QUEUE; }
+  size_t queue() const override { return Scheduler::CLIENT_QUEUE; }
 
   RestStatus execute() override {
     ReplicationFeature::prepareFollowerResponse(_response.get(), _mode);

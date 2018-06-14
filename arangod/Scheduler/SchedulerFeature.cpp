@@ -263,7 +263,8 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrServerThreads,
-                                           _nrMaximalThreads, _queueSize);
+                                           _nrMaximalThreads,
+                                           (_queueSize == 0 ? 512 : _queueSize));
 
   SCHEDULER = _scheduler.get();
 }

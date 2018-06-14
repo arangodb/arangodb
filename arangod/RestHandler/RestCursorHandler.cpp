@@ -76,13 +76,6 @@ bool RestCursorHandler::cancel() {
   return cancelQuery();
 }
 
-size_t RestCursorHandler::queue() const {
-  if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::AQL_QUEUE; // needs to be on background thread
-  }
-  return JobQueue::STANDARD_QUEUE;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processes the query and returns the results/cursor
 /// this method is also used by derived classes
