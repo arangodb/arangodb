@@ -69,7 +69,7 @@ class Expression {
   Expression(ExecutionPlan* plan, Ast*, arangodb::velocypack::Slice const&);
 
   ~Expression();
- 
+
   /// @brief replace the root node
   void replaceNode(AstNode* node) {
     _node = node;
@@ -105,7 +105,7 @@ class Expression {
     }
     return _isDeterministic;
   }
-  
+
   /// @brief whether or not the expression will use V8
   inline bool willUseV8() {
     if (_type == UNPROCESSED) {
@@ -201,7 +201,7 @@ class Expression {
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
   /// latter becomes `a + b + 1`
   void replaceVariableReference(Variable const*, AstNode const*);
-  
+
   void replaceAttributeAccess(Variable const*, std::vector<std::string> const& attribute);
 
   /// @brief invalidates an expression
@@ -263,7 +263,7 @@ class Expression {
                                          bool& mustDestroy);
 
   /// @brief execute an expression of type SIMPLE with VALUE
-  AqlValue executeSimpleExpressionValue(AstNode const*, 
+  AqlValue executeSimpleExpressionValue(AstNode const*,
                                         transaction::Methods*,
                                         bool& mustDestroy);
 
@@ -277,7 +277,7 @@ class Expression {
   AqlValue executeSimpleExpressionFCall(AstNode const*,
                                         transaction::Methods*,
                                         bool& mustDestroy);
-  
+
   /// @brief execute an expression of type SIMPLE with FCALL, CXX variant
   AqlValue executeSimpleExpressionFCallCxx(AstNode const*,
                                            transaction::Methods*,
@@ -286,7 +286,7 @@ class Expression {
   AqlValue executeSimpleExpressionFCallJS(AstNode const*,
                                           transaction::Methods*,
                                           bool& mustDestroy);
-  
+
   /// @brief execute an expression of type SIMPLE with RANGE
   AqlValue executeSimpleExpressionRange(AstNode const*,
                                         transaction::Methods*,
@@ -295,21 +295,21 @@ class Expression {
   /// @brief execute an expression of type SIMPLE with NOT
   AqlValue executeSimpleExpressionNot(AstNode const*, transaction::Methods*,
                                        bool& mustDestroy);
-  
+
   /// @brief execute an expression of type SIMPLE with +
   AqlValue executeSimpleExpressionPlus(AstNode const*, transaction::Methods*,
                                        bool& mustDestroy);
-  
+
   /// @brief execute an expression of type SIMPLE with -
   AqlValue executeSimpleExpressionMinus(AstNode const*, transaction::Methods*,
                                         bool& mustDestroy);
 
-  /// @brief execute an expression of type SIMPLE with AND 
+  /// @brief execute an expression of type SIMPLE with AND
   AqlValue executeSimpleExpressionAnd(AstNode const*,
                                       transaction::Methods*,
                                       bool& mustDestroy);
-  
-  /// @brief execute an expression of type SIMPLE with OR 
+
+  /// @brief execute an expression of type SIMPLE with OR
   AqlValue executeSimpleExpressionOr(AstNode const*,
                                      transaction::Methods*,
                                      bool& mustDestroy);
@@ -323,7 +323,7 @@ class Expression {
   AqlValue executeSimpleExpressionComparison(
       AstNode const*, transaction::Methods*,
       bool& mustDestroy);
-  
+
   /// @brief execute an expression of type SIMPLE with ARRAY COMPARISON
   AqlValue executeSimpleExpressionArrayComparison(
       AstNode const*, transaction::Methods*,
@@ -346,7 +346,7 @@ class Expression {
 
   /// @brief execute an expression of type SIMPLE with BINARY_* (+, -, * , /, %)
   AqlValue executeSimpleExpressionArithmetic(
-      AstNode const*, transaction::Methods*, 
+      AstNode const*, transaction::Methods*,
       bool& mustDestroy);
 
  private:

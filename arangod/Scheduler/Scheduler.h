@@ -162,17 +162,23 @@ class Scheduler {
     return new asio_ns::ip::tcp::acceptor(*_ioContext);
   }
 
-  asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
+#ifndef _WIN32
+  asio_ns::local::stream_protocol::acceptor*
+  newDomainAcceptor() {
     return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
   }
+#endif
 
   asio_ns::ip::tcp::socket* newSocket() {
     return new asio_ns::ip::tcp::socket(*_ioContext);
   }
 
-  asio_ns::local::stream_protocol::socket* newDomainSocket() {
+#ifndef _WIN32
+  asio_ns::local::stream_protocol::socket*
+  newDomainSocket() {
     return new asio_ns::local::stream_protocol::socket(*_ioContext);
   }
+#endif
 
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket>* newSslSocket(
       asio_ns::ssl::context& context) {

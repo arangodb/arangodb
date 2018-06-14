@@ -406,6 +406,7 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
   enterState(QueryExecutionState::ValueType::EXECUTION);
 
   TRI_ASSERT(_engine == nullptr);
+  TRI_ASSERT(_trx != nullptr);
   // note that the engine returned here may already be present in our
   // own _engine attribute (the instanciation procedure may modify us
   // by calling our engine(ExecutionEngine*) function
@@ -1287,6 +1288,9 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 
 /// @brief create a transaction::Context
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
+  if (_transactionContext) {
+    return _transactionContext;
+  }
   if (_contextOwnedByExterior) {
     // we must use v8
     return transaction::V8Context::Create(_vocbase, true);
