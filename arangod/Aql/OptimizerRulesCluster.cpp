@@ -111,13 +111,13 @@ Index* hasSingleIndexHandle(ExecutionNode* node, Index::IndexType type){
   return nullptr;
 }
 
-AstNode const* hasBinaryCompare(ExecutionNode* node){
+std::vector<AstNode const*> hasBinaryCompare(ExecutionNode* node){
   // returns any AstNode in the expression that is
   // a binary comparison.
   TRI_ASSERT(node->getType() == EN::INDEX);
   IndexNode* indexNode = static_cast<IndexNode*>(node);
   AstNode const* cond = indexNode->condition()->root();
-  AstNode const* result = nullptr;
+  std::vector<AstNode const*> result;
 
   auto preVisitor = [&result] (AstNode const* node) {
     if (node == nullptr) {
@@ -125,7 +125,7 @@ AstNode const* hasBinaryCompare(ExecutionNode* node){
     };
 
     if(node->type == NODE_TYPE_OPERATOR_BINARY_EQ){
-      result = node;
+      result.push_back(node);
       return false;
     }
 
@@ -142,6 +142,19 @@ AstNode const* hasBinaryCompare(ExecutionNode* node){
   Ast::traverseReadOnly(cond, preVisitor, postVisitor);
 
   return result;
+}
+
+std::string getFirstKey(std::vector<AstNode const*> compares){
+  for(auto const* node : compares){
+    AstNode const* keyNode = node->getMemberUnchecked(0);
+    if(keyNode->type == AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS && keyNode->stringEquals("_key")) {
+      keyNode = node->getMemberUnchecked(1);
+    }
+    if (keyNode->isStringValue()){
+      return keyNode->getString();
+    }
+  }
+  return "";
 }
 
 bool depIsSingletonOrConstCalc(ExecutionNode* node){
@@ -188,11 +201,16 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
 
     Index* index = hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     if (index){
-      if(!hasBinaryCompare(node)){
+      IndexNode* indexNode = static_cast<IndexNode*>(node);
+      auto binaryCompares = hasBinaryCompare(node);
+      std::string key = getFirstKey(binaryCompares);
+      if(key.empty()){
         // do nothing if index does not work on a single document
         LOG_DEVEL << "has no valid compare";
         continue;
       }
+      auto collection = index->collection()->name();
+
       auto* parentModification = hasSingleParent(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE});
       auto* parentSelect = hasSingleParent(node,EN::RETURN);
 
@@ -213,6 +231,18 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
           }
       } else if(parentSelect){
         LOG_DEVEL << "optimize SELECT";
+        LOG_DEVEL << "collection: " << collection;
+        LOG_DEVEL << "key: " << key;
+
+        ExecutionNode* singleOperationNode = plan->registerNode(
+            new SingleRemoteOperationNode(plan.get(), plan->nextId()
+                                         ,EN::INDEX, key, collection
+                                         , nullptr /*update*/
+                                         , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
+        );
+        plan->replaceNode(indexNode,singleOperationNode);
+        modified = true;
+
       } else {
         LOG_DEVEL << "plan following the index node is too complex";
       }

@@ -1641,8 +1641,7 @@ SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
                                                        )
     : ExecutionBlock(engine, static_cast<ExecutionNode const*>(en)),
       _key(en->key()),
-      _isResponsibleForInitializeCursor(
-          en->isResponsibleForInitializeCursor()) {
+      _isResponsibleForInitializeCursor(false) {
   TRI_ASSERT(
       arangodb::ServerState::instance()->isCoordinator()
       );

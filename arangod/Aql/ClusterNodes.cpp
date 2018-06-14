@@ -380,11 +380,39 @@ double GatherNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
-/// @brief spawn from an index node.
+SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
+                            size_t id,
+                            NodeType mode,
+                            std::string key,
+                            std::string collection,
+                            Variable const* out,
+                            Variable const* update,
+                            Variable const* OLD,
+                            Variable const* NEW
+                            )
+      : ExecutionNode(plan, id)
+      , _key(key)
+      , _collection(collection)
+      , _mode(mode)
+      , _inVariableUpdate(update)
+      , _outVariable(out)
+      , _outVariableOld(OLD)
+      , _outVariableNew(NEW)
+  {
+    if (_mode == NodeType::INDEX) { //select
+
+    } else {
+      LOG_DEVEL << "Ctor failed unkown node type";
+      TRI_ASSERT(false);
+    }
+
+
+
+
+  }
 /// @brief constructor for SingleRemoteOperationNode
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _queryId(base.get("queryId").copyString()),
       _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
 /// @brief creates corresponding SingleRemoteOperationNode
@@ -397,61 +425,46 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
 
 /// @brief toVelocyPack, for SingleRemoteOperationNode
 void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-//  // call base class method
-//  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
-//
-//  nodes.add("database", VPackValue(_vocbase->name()));
-//  nodes.add("server", VPackValue(_server));
-//  nodes.add("ownName", VPackValue(_ownName));
-//  nodes.add("queryId", VPackValue(_queryId));
-//  nodes.add("isResponsibleForInitializeCursor",
-//            VPackValue(_isResponsibleForInitializeCursor));
-//
-//  nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
-//
-//
-//  // add out variables
-//  if (_outVariableOld != nullptr) {
-//    nodes.add(VPackValue("outVariableOld"));
-//    _outVariableOld->toVelocyPack(nodes);
-//  }
-//  if (_outVariableNew != nullptr) {
-//    nodes.add(VPackValue("outVariableNew"));
-//    _outVariableNew->toVelocyPack(nodes);
-//  }
-//  if (_inVariable != nullptr) {
-//    nodes.add(VPackValue("inVariable"));
-//    _inVariable->toVelocyPack(nodes);
-//  }
-//
-//  if (_inDocVariable != nullptr) {
-//    nodes.add(VPackValue("inDocVariable"));
-//    _inDocVariable->toVelocyPack(nodes);
-//  }
-//  // inKeyVariable might be empty
-//  if (_inKeyVariable != nullptr) {
-//    nodes.add(VPackValue("inKeyVariable"));
-//    _inKeyVariable->toVelocyPack(nodes);
-//  }
-//
-//  if (_insertVariable != nullptr) {
-//    nodes.add(VPackValue("insertVariable"));
-//    _insertVariable->toVelocyPack(nodes);
-//  }
-//
-//  if (_updateVariable != nullptr) {
-//    nodes.add(VPackValue("updateVariable"));
-//    _updateVariable->toVelocyPack(nodes);
-//  }
-//  //   nodes.add("isReplace", VPackValue(_isReplace));
-//
-//
+//                            NodeType mode,
+//                            std::string key,
+//                            std::string collection,
+//                            Variable const* out,
+//                            Variable const* update,
+//                            Variable const* OLD,
+//                            Variable const* NEW
+  // call base class method
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+
+  nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
+  nodes.add("key", VPackValue(_key));
+  nodes.add("collection", VPackValue(_collection));
+
+  // add out variables
+  if (_outVariableOld != nullptr) {
+    nodes.add(VPackValue("outVariableOld"));
+    _outVariableOld->toVelocyPack(nodes);
+  }
+  if (_outVariableNew != nullptr) {
+    nodes.add(VPackValue("outVariableNew"));
+    _outVariableNew->toVelocyPack(nodes);
+  }
+
+  if (_inVariableUpdate != nullptr) {
+    nodes.add(VPackValue("inVariableUpdate"));
+    _inVariableUpdate->toVelocyPack(nodes);
+  }
+
+  if (_outVariable != nullptr) {
+    nodes.add(VPackValue("_outVariable"));
+    _outVariable->toVelocyPack(nodes);
+  }
 //  /*
 //  nodes.add(VPackValue("modificationFlags"));
 //  _options.toVelocyPack(nodes);
 //  */
-//  // And close it:
-//  nodes.close();
+
+  // And close it:
+  nodes.close();
 }
 
 /// @brief estimateCost

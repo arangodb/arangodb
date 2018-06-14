@@ -32,6 +32,7 @@
 #include "Aql/types.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "Logger/Logger.h"
 
 namespace arangodb {
 namespace aql {
@@ -415,29 +416,23 @@ class SingleRemoteOperationNode final : public ExecutionNode {
                             size_t id,
                             NodeType mode,
                             std::string key,
-                            Variable* update,
-                            Variable* NEW,
-                            Variable* OLD
-                            )
-      : ExecutionNode(plan, id)
-      , _mode(mode)
-      , _outVariableOld(OLD)
-      , _outVariableNew(NEW)
-      , _inVariableUpdate(update)
-      , _key(key)
-  { }
+                            std::string collection,
+                            Variable const* out,
+                            Variable const* update,
+                            Variable const* OLD,
+                            Variable const* NEW
+                            );
+  // /// @brief whether or not this node will forward initializeCursor or shutDown
+  // /// requests
+  // void isResponsibleForInitializeCursor(bool value) {
+  //   _isResponsibleForInitializeCursor = value;
+  // }
 
-  /// @brief whether or not this node will forward initializeCursor or shutDown
-  /// requests
-  void isResponsibleForInitializeCursor(bool value) {
-    _isResponsibleForInitializeCursor = value;
-  }
-
-  /// @brief whether or not this node will forward initializeCursor or shutDown
-  /// requests
-  bool isResponsibleForInitializeCursor() const {
-    return _isResponsibleForInitializeCursor;
-  }
+  // /// @brief whether or not this node will forward initializeCursor or shutDown
+  // /// requests
+  // bool isResponsibleForInitializeCursor() const {
+  //   return _isResponsibleForInitializeCursor;
+  // }
 
   SingleRemoteOperationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -470,44 +465,67 @@ class SingleRemoteOperationNode final : public ExecutionNode {
     //  withDependencies,
     //  withProperties
     //);
+    LOG_DEVEL << "clone not implmented";
+    std::terminate();
     return nullptr;
+  }
+
+  /// @brief getVariablesUsedHere, returning a vector
+  std::vector<Variable const*> getVariablesUsedHere() const override final {
+    std::vector<Variable const*> v;
+    //v.emplace_back(p.var);
+    return v;
+  }
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(
+      std::unordered_set<Variable const*>& vars) const override final {
+    if(_inVariableUpdate){
+      vars.emplace(_inVariableUpdate);
+    }
+  }
+
+  /// @brief getVariablesSetHere
+  virtual std::vector<Variable const*> getVariablesSetHere()
+      const override final {
+    std::vector<Variable const*> vec;
+
+    if (_outVariable) {
+      vec.push_back(_outVariable);
+    }
+    if (_outVariableNew) {
+      vec.push_back(_outVariableNew);
+    }
+    if (_outVariableOld) {
+      vec.push_back(_outVariableOld);
+    }
+
+    return vec;
   }
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
 
-  /// @brief return the query id
-  std::string queryId() const { return _queryId; }
-
-  /// @brief set the query id
-  void queryId(std::string const& queryId) { _queryId = queryId; }
-
-  /// @brief set the query id
-  void queryId(QueryId queryId) {
-    _queryId = arangodb::basics::StringUtils::itoa(queryId);
-  }
-
   std::string const& key() const { return _key; }
 
  private:
-  NodeType _mode;
+  std::string _key;
+  std::string _collection;
 
-  /// @brief modification operation options
-  //ModificationOptions _options;
+  NodeType _mode;
+  Variable const* _inVariableUpdate;
+  Variable const* _outVariable;
 
   /// @brief output variable ($OLD)
   Variable const* _outVariableOld;
 
   /// @brief output variable ($NEW)
   Variable const* _outVariableNew;
-  Variable const* _inVariableUpdate;
 
+  /// @brief modification operation options
+  //ModificationOptions _options;
 
   /// the key of the document we're intending to work with
-  std::string _key;
-
-  /// @brief the ID of the query on the server as a string
-  std::string _queryId;
 
   /// @brief whether or not this node will forward initializeCursor and shutDown
   /// requests
