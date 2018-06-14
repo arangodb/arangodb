@@ -77,7 +77,7 @@ class BlockWithClients : public ExecutionBlock {
   }
 
   /// @brief hasMore
-  bool hasMore() override final {
+  ExecutionState hasMore() override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -245,7 +245,7 @@ class RemoteBlock final : public ExecutionBlock {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   /// @brief hasMore
-  bool hasMore() override final;
+  ExecutionState hasMore() override final;
 
   /// @brief handleAsyncResult
   bool handleAsyncResult(ClusterCommResult* result) override; 
@@ -311,7 +311,7 @@ class UnsortingGatherBlock final : public ExecutionBlock {
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
-  bool hasMore() override final;
+  ExecutionState hasMore() override final;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
@@ -362,7 +362,7 @@ class SortingGatherBlock final : public ExecutionBlock {
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
-  bool hasMore() override final;
+  ExecutionState hasMore() override final;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(

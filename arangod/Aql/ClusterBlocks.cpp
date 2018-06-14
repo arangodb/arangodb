@@ -1293,7 +1293,7 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 }
 
 /// @brief hasMore
-bool RemoteBlock::hasMore() {
+ExecutionState RemoteBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res =
@@ -1314,7 +1314,12 @@ bool RemoteBlock::hasMore() {
   if (slice.hasKey("hasMore")) {
     hasMore = slice.get("hasMore").getBoolean();
   }
-  return hasMore;
+
+  if (hasMore) {
+    return ExecutionState::HASMORE;
+  } else {
+    return ExecutionState::DONE;
+  }
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1343,21 +1348,26 @@ std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCurs
 }
 
 /// @brief hasMore: true if any position of _buffer hasMore and false
-/// otherwise.
-bool UnsortingGatherBlock::hasMore() {
+/// otherwise. TODO update this docu
+ExecutionState UnsortingGatherBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
   if (_done || _dependencies.empty()) {
-    return false;
+    return ExecutionState::DONE;
   }
 
   for (auto* dependency : _dependencies) {
-    if (dependency->hasMore()) {
-      return true;
+    ExecutionState depState = dependency->hasMore();
+    switch (depState) {
+      case ExecutionState::WAITING:
+      case ExecutionState::HASMORE:
+        return depState;
+      case ExecutionState::DONE:
+        break;
     }
   }
 
   _done = true;
-  return false;
+  return ExecutionState::DONE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1506,36 +1516,33 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
 /// @brief hasMore: true if any position of _buffer hasMore and false
 /// otherwise.
-bool SortingGatherBlock::hasMore() {
+ExecutionState SortingGatherBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
   if (_done || _dependencies.empty()) {
-    return false;
+    return ExecutionState::DONE;
   }
 
   for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
     if (!_gatherBlockBuffer[i].empty()) {
-      return true;
-    } else {
-      while (true) {
-        // We want to get rid of HASMORE in total
-        auto res = getBlock(i, DefaultBatchSize());
-        if (res.first == ExecutionState::WAITING) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are actively blocking a thread, needs to be fixed";
-          _engine->getQuery()->tempWaitForAsyncResponse();
-        } else {
-          if (res.second) {
-            _gatherBlockPos[i] = std::make_pair(i, 0);
-            return true;
-          }
-          // Leave WHILE continue in FOR
-          break;
-        }
-      }
+      return ExecutionState::HASMORE;
+    }
+
+    // We want to get rid of HASMORE in total
+    ExecutionState state;
+    bool blockAppended;
+    std::tie(state, blockAppended) = getBlock(i, DefaultBatchSize());
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(!blockAppended);
+      return ExecutionState::WAITING;
+    }
+    if (blockAppended) {
+      _gatherBlockPos[i] = std::make_pair(i, 0);
+      return ExecutionState::HASMORE;
     }
   }
 
   _done = true;
-  return false;
+  return ExecutionState::DONE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

@@ -246,7 +246,7 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       // return used block: this will reset value to a nullptr
       engine->_itemBlockManager.returnBlock(std::move(value)); 
       if (!done) {
-        hasMore = engine->hasMore();
+        hasMore = engine->hasMoreSync();
       }
     }
     builder.close();  // result

@@ -24,11 +24,12 @@
 #ifndef ARANGOD_AQL_EXECUTION_ENGINE_H
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
-#include "Basics/Common.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
+#include "Aql/Query.h"
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -81,7 +82,26 @@ class ExecutionEngine {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   /// @brief hasMore
-  inline bool hasMore() const { return _root->hasMore(); }
+  inline ExecutionState hasMore() const { return _root->hasMore(); }
+
+  /// @brief hasMore - synchronous (cannot return WAITING)
+  /// TODO should be removed, but the AQL HTTP API has to be changed for this
+  inline bool hasMoreSync() const {
+    ExecutionState state = _root->hasMore();
+
+    while (state == ExecutionState::WAITING) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "We are actively blocking a thread, needs to be fixed";
+      getQuery()->tempWaitForAsyncResponse();
+      state = _root->hasMore();
+    }
+
+    if (state == ExecutionState::DONE) {
+      return false;
+    }
+    TRI_ASSERT(state == ExecutionState::HASMORE);
+    return true;
+  }
 
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const { return _initializeCursorCalled; }

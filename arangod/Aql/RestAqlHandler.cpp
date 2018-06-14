@@ -598,7 +598,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
     if (operation == "hasMore") {
       bool hasMore;
       if (shardId.empty()) {
-        hasMore = query->engine()->hasMore();
+        hasMore = query->engine()->hasMoreSync();
       } else {
         auto block = static_cast<BlockWithClients*>(query->engine()->root());
         if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&

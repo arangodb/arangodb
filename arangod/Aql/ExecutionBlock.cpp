@@ -439,19 +439,26 @@ void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
   numActuallySkipped = skipped;
 }
 
-bool ExecutionBlock::hasMore() {
+ExecutionState ExecutionBlock::hasMore() {
   if (_done) {
-    return false;
+    return ExecutionState::DONE;
   }
   if (!_buffer.empty()) {
-    return true;
+    return ExecutionState::HASMORE;
   }
-  if (getBlockOld(DefaultBatchSize())) {
+  ExecutionState state;
+  bool blockAppended;
+  std::tie(state, blockAppended) = getBlock(DefaultBatchSize());
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!blockAppended);
+    return ExecutionState::WAITING;
+  }
+  if (blockAppended) {
     _pos = 0;
-    return true;
+    return ExecutionState::HASMORE;
   }
   _done = true;
-  return false;
+  return ExecutionState::DONE;
 }
 
 std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
