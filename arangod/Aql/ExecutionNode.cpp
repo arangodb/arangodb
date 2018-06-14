@@ -451,7 +451,7 @@ ExecutionNode* ExecutionNode::cloneHelper(
     // now assign a new id to the cloned node, otherwise it will fail
     // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
-    
+
     // cloning with properties will only work if we clone a node into
     // a different plan
     TRI_ASSERT(!withProperties);
@@ -1159,7 +1159,23 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
   case ExecutionNode::REMOTESINGLE: {
-    // TODO
+      depth++;
+      auto ep = ExecutionNode::castTo<SingleRemoteOperationNode const*>(en);
+      TRI_ASSERT(ep != nullptr);
+      auto vars = ep->getVariablesSetHere();
+      nrRegsHere.emplace_back(static_cast<RegisterId>(vars.size()));
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back
+      // may invalidate all references
+      RegisterId registerId =
+          static_cast<RegisterId>(vars.size() + nrRegs.back());
+      nrRegs.emplace_back(registerId);
+
+      for (auto& it : vars) {
+        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
+        totalNrRegs++;
+      }
+      break;
   }
 
 #ifdef USE_IRESEARCH

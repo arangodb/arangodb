@@ -472,9 +472,14 @@ class SingleRemoteOperationNode final : public ExecutionNode {
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::vector<Variable const*> v;
-    //v.emplace_back(p.var);
-    return v;
+    std::vector<Variable const*> vec;
+    if(_inVariableUpdate){
+      vec.push_back(_inVariableUpdate);
+    }
+    if (_outVariable) {
+      vec.push_back(_outVariable);
+    }
+    return vec;
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
@@ -482,6 +487,9 @@ class SingleRemoteOperationNode final : public ExecutionNode {
       std::unordered_set<Variable const*>& vars) const override final {
     if(_inVariableUpdate){
       vars.emplace(_inVariableUpdate);
+    }
+    if (_outVariable) {
+      vars.emplace(_outVariable);
     }
   }
 
