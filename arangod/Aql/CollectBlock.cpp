@@ -447,6 +447,7 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     TRI_ASSERT(state == GetNextRowState::SUCCESS);
 
     // TODO this is dirty. if you have an idea how to improve this, please do.
+    // Can't we omit this?
     if (_lastBlock == nullptr) {
       // call only on the first row of the first block
       TRI_ASSERT(pos == 0);
@@ -524,6 +525,9 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
                                    size_t row, bool skipping) {
   TRI_ASSERT(res != nullptr);
 
+  // TODO removing this block doesn't seem to have any effect.
+  // find out if it's necessary, and why, and what it has to do with
+  // the inheritRegisters call in getOrSkipSome.
   if (row > 0 && !skipping) {
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);

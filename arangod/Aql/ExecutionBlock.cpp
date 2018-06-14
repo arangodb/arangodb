@@ -47,17 +47,17 @@ namespace {
   }
 }
 
-ExecutionBlock::ExecutionBlock(
-    ExecutionEngine* engine,
-    ExecutionNode const* ep)
-  : _engine(engine),
-    _trx(engine->getQuery()->trx()),
-    _exeNode(ep),
-    _pos(0),
-    _done(false),
-    _profile(engine->getQuery()->queryOptions().profile),
-    _getSomeBegin(0),
-    _upstreamState(ExecutionState::HASMORE) {
+ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
+    : _engine(engine),
+      _trx(engine->getQuery()->trx()),
+      _exeNode(ep),
+      _pos(0),
+      _done(false),
+      _profile(engine->getQuery()->queryOptions().profile),
+      _getSomeBegin(0),
+      _upstreamState(ExecutionState::HASMORE),
+      _collector(&_engine->_itemBlockManager),
+      _skipped(0) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -454,22 +454,29 @@ bool ExecutionBlock::hasMore() {
   return false;
 }
 
-std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
-                                                                          AqlItemBlock*& result, size_t& skipped) {
-  TRI_ASSERT(result == nullptr && skipped == 0);
-  
-  // if _buffer.size() is > 0 then _pos points to a valid place . . .
-  BlockCollector collector(&_engine->_itemBlockManager);
+std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped_) {
+  TRI_ASSERT(result == nullptr && skipped_ == 0);
 
-  while (!_done && skipped < atMost) {
+  // if _buffer.size() is > 0 then _pos points to a valid place . . .
+
+  while (!_done && _skipped < atMost) {
     if (_buffer.empty()) {
       if (skipping) {
         size_t numActuallySkipped = 0;
-        _dependencies[0]->skip(atMost - skipped, numActuallySkipped);
-        skipped += numActuallySkipped;
+        _dependencies[0]->skip(atMost - _skipped, numActuallySkipped);
+        _skipped += numActuallySkipped;
         break;
       } else {
-        if (!getBlockOld(atMost - skipped)) {
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) = getBlock(atMost - _skipped);
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+        }
+
+        if (!blockAppended) {
           _done = true;
           break;  // must still put things in the result from the collector .
                   // . .
@@ -480,20 +487,20 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(size_t
 
     AqlItemBlock* cur = _buffer.front();
 
-    if (cur->size() - _pos > atMost - skipped) {
+    if (cur->size() - _pos > atMost - _skipped) {
       // The current block is too large for atMost:
       if (!skipping) {
         std::unique_ptr<AqlItemBlock> more(
-            cur->slice(_pos, _pos + (atMost - skipped)));
+            cur->slice(_pos, _pos + (atMost - _skipped)));
 
         TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        collector.add(std::move(more));
+        _collector.add(std::move(more));
       }
-      _pos += atMost - skipped;
-      skipped = atMost;
+      _pos += atMost - _skipped;
+      _skipped = atMost;
     } else if (_pos > 0) {
       // The current block fits into our result, but it is already
       // half-eaten:
@@ -504,22 +511,22 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(size_t
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        collector.add(std::move(more));
+        _collector.add(std::move(more));
       }
-      skipped += cur->size() - _pos;
+      _skipped += cur->size() - _pos;
       returnBlock(cur);
       _buffer.pop_front();
       _pos = 0;
     } else {
       // The current block fits into our result and is fresh:
-      skipped += cur->size();
+      _skipped += cur->size();
       if (!skipping) {
         // if any of the following statements throw, then cur is not lost,
         // as it is still contained in _buffer
         TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        collector.add(cur);
+        _collector.add(cur);
       } else {
         returnBlock(cur);
       }
@@ -531,10 +538,12 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(size_t
   TRI_ASSERT(result == nullptr);
   
   if (!skipping) {
-    result = collector.steal();
+    result = _collector.steal();
   }
+  skipped_ = _skipped;
+  _skipped = 0;
 
-  if (skipping && skipped == 0) {
+  if (skipping && skipped_ == 0) {
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
   if (!skipping && result == nullptr) {

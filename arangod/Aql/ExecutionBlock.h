@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
@@ -250,6 +251,9 @@ class ExecutionBlock {
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
+
+  size_t _skipped;
+  aql::BlockCollector _collector;
 };
 
 }  // namespace arangodb::aql
