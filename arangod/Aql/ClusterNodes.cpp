@@ -403,7 +403,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   , _outVariableOld(OLD)
   , _outVariableNew(NEW)
 {
-  
+
   if (_mode == NodeType::INDEX) { //select
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariableUpdate == nullptr);
@@ -452,9 +452,11 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(nodes);
+
   nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
   nodes.add("key", VPackValue(_key));
-  nodes.add("collection", VPackValue(_collection));
 
   // add out variables
   if (_outVariableOld != nullptr) {
