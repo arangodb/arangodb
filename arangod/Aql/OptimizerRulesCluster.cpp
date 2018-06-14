@@ -209,7 +209,6 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
         LOG_DEVEL << "has no valid compare";
         continue;
       }
-      aql::Collection const* collection = ((CollectionAccessingNode*)index)->collection();
 
       auto* parentModification = hasSingleParent(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE});
       auto* parentSelect = hasSingleParent(node,EN::RETURN);
@@ -231,12 +230,11 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
           }
       } else if(parentSelect){
         LOG_DEVEL << "optimize SELECT";
-        LOG_DEVEL << "collection: " << collection;
         LOG_DEVEL << "key: " << key;
 
         ExecutionNode* singleOperationNode = plan->registerNode(
             new SingleRemoteOperationNode(plan.get(), plan->nextId()
-                                         ,EN::INDEX, key, collection, ModificationOptions{}
+                                         ,EN::INDEX, key, indexNode->collection(), ModificationOptions{}
                                          , nullptr /*update*/
                                          , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
