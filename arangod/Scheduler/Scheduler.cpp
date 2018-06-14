@@ -170,17 +170,19 @@ class SchedulerThread : public Thread {
 
 Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/,
                      uint64_t nrMaximum, uint64_t maxQueueSize)
-    : _maxQueueSize(128),
-      _maxFifoSize{maxQueueSize, maxQueueSize},
-      _fifoSize{0, 0},
-      _fifo1(maxQueueSize),
-      _fifo2(maxQueueSize),
+    : _maxQueueSize(maxQueueSize),
+      _maxFifoSize{16 * 4096, 4096},
+      _fifo1(_maxFifoSize[0]),
+      _fifo2(_maxFifoSize[1]),
       _fifos{&_fifo1, &_fifo2},
       _nrMinimum(nrMinimum),
       _nrMaximum(nrMaximum),
       _counters(0),
       _nrQueued(0),
       _lastAllBusyStamp(0.0) {
+  _fifoSize[0] = 0;
+  _fifoSize[1] = 0;
+
   // setup signal handlers
   initializeSignalHandlers();
 }
@@ -300,7 +302,7 @@ Scheduler::QueueStatistics Scheduler::queueStatistics() const {
 
 bool Scheduler::canPostDirectly() const noexcept {
   auto counters = getCounters();
-  auto nrWorking = numRunning(counters);
+  auto nrWorking = numWorking(counters);
   auto nrQueued = numQueued();
 
   return nrWorking + nrQueued <= _maxQueueSize;
@@ -347,6 +349,9 @@ bool Scheduler::popFifo(size_t fifo) {
   bool ok = _fifos[p]->pop(job) && job != nullptr;
 
   if (ok) {
+    post(job->_callback);
+    delete job;
+
     --_fifoSize[p];
   }
 
@@ -492,48 +497,15 @@ bool Scheduler::stopThreadIfTooMany(double now) {
   return true;
 }
 
-bool Scheduler::shouldQueueMore() const {
-  uint64_t const counters = _counters.load();
-  uint64_t const nrWorking = numWorking(counters);
-
-  if (nrWorking + _nrQueued < _nrMaximum) {
-    return true;
-  }
-
-  return false;
-}
-
-/*
-bool Scheduler::shouldExecuteDirect() const {
-  uint64_t const counters = _counters.load();
-  uint64_t const nrWorking = numWorking(counters);
-  uint64_t const nrBlocked = numBlocked(counters);
-
-  if (nrWorking + nrBlocked + _nrQueued < numRunning(counters) / 2 + 1) {
-    auto jobQueue = _jobQueue.get();
-    auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
-    return queueSize == 0;
-  }
-
-  return false;
-}
-*/
-
 std::string Scheduler::infoStatus() {
-#warning TODO
-  /*
-  auto jobQueue = _jobQueue.get();
-  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
-
   uint64_t const counters = _counters.load();
-  return "working: " + std::to_string(numWorking(counters)) + ", queued: " +
-         std::to_string(_nrQueued) + ", blocked: " +
-         std::to_string(numBlocked(counters)) + ", running: " +
-         std::to_string(numRunning(counters)) + ", outstanding: " +
-         std::to_string(queueSize) + ", min/max: " +
-         std::to_string(_nrMinimum) + "/" + std::to_string(_nrMaximum);
-  */
-  return "";
+
+  return "scheduler threads " + std::to_string(numRunning(counters)) +
+         " in-progress " + std::to_string(numWorking(counters)) + " queued " +
+         std::to_string(_nrQueued) + " blocked " +
+         std::to_string(numBlocked(counters)) + " fifo1 " +
+         std::to_string(_fifoSize[0]) + " fifo2 " +
+         std::to_string(_fifoSize[1]);
 }
 
 void Scheduler::rebalanceThreads() {

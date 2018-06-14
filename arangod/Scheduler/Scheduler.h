@@ -123,12 +123,12 @@ class Scheduler {
   bool pushToFifo(size_t fifo, std::function<void()> callback);
   bool popFifo(size_t fifo);
 
-  // maximal number of outstanding user requests
+  // maximal number of running + queued jobs in the Scheduler `io_context`
   uint64_t _maxQueueSize;
 
   static int64_t const NUMBER_FIFOS = 2;
-  uint64_t _maxFifoSize[NUMBER_FIFOS];
-  int64_t _fifoSize[NUMBER_FIFOS];
+  uint64_t const _maxFifoSize[NUMBER_FIFOS];
+  std::atomic<int64_t> _fifoSize[NUMBER_FIFOS];
   boost::lockfree::queue<FifoJob*> _fifo1;
   boost::lockfree::queue<FifoJob*> _fifo2;
   boost::lockfree::queue<FifoJob*>* _fifos[NUMBER_FIFOS];
@@ -163,8 +163,7 @@ class Scheduler {
   }
 
 #ifndef _WIN32
-  asio_ns::local::stream_protocol::acceptor*
-  newDomainAcceptor() {
+  asio_ns::local::stream_protocol::acceptor* newDomainAcceptor() {
     return new asio_ns::local::stream_protocol::acceptor(*_ioContext);
   }
 #endif
@@ -174,8 +173,7 @@ class Scheduler {
   }
 
 #ifndef _WIN32
-  asio_ns::local::stream_protocol::socket*
-  newDomainSocket() {
+  asio_ns::local::stream_protocol::socket* newDomainSocket() {
     return new asio_ns::local::stream_protocol::socket(*_ioContext);
   }
 #endif
@@ -198,9 +196,6 @@ class Scheduler {
   // returns true if yes, otherwise false. when the function returns
   // true, it has already decremented the nrRunning counter!
   bool stopThreadIfTooMany(double now);
-
-  bool shouldQueueMore() const;
-  bool shouldExecuteDirect() const;
 
   std::string infoStatus();
 

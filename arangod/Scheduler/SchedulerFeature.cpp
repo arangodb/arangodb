@@ -68,18 +68,19 @@ void SchedulerFeature::collectOptions(
   options->addOption("--server.threads", "number of threads",
                      new UInt64Parameter(&_nrServerThreads));
 
+  options->addHiddenOption(
+      "--server.maximal-queue-size",
+      "number of simultaneously queues requests in the scheduler",
+      new UInt64Parameter(&_queueSize));
+
   options->addHiddenOption("--server.minimal-threads",
                            "minimal number of threads",
                            new UInt64Parameter(&_nrMinimalThreads));
 
+  // obsolete options
   options->addHiddenOption("--server.maximal-threads",
                            "maximal number of threads",
                            new UInt64Parameter(&_nrMaximalThreads));
-
-  options->addOption(
-      "--server.maximal-queue-size",
-      "maximum queue length for pending operations (use 0 for unrestricted)",
-      new UInt64Parameter(&_queueSize));
 
   options->addOldOption("scheduler.threads", "server.threads");
 }
@@ -90,6 +91,10 @@ void SchedulerFeature::validateOptions(
     _nrServerThreads = TRI_numberProcessors();
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "Detected number of processors: " << _nrServerThreads;
+  }
+
+  if (_queueSize == 0) {
+    _queueSize = 128;
   }
 
   if (_nrMinimalThreads < 2) {
@@ -263,8 +268,7 @@ bool CtrlHandler(DWORD eventType) {
 
 void SchedulerFeature::buildScheduler() {
   _scheduler = std::make_unique<Scheduler>(_nrMinimalThreads, _nrServerThreads,
-                                           _nrMaximalThreads,
-                                           (_queueSize == 0 ? 512 : _queueSize));
+                                           _nrMaximalThreads, _queueSize);
 
   SCHEDULER = _scheduler.get();
 }
