@@ -71,12 +71,15 @@ There are two common causes for this.
 1) The `Pods` cannot be scheduled because there are not enough nodes available.
    This is usally only the case with a `spec.environment` setting that has a value of `Production`.
 
-   Solution: Add more nodes.
+   Solution:
+Add more nodes.
+
 1) There are no `PersistentVolumes` available to be bound to the `PersistentVolumeClaims`
    created by the operator.
 
-    Solution: Use `kubectl get persistentvolumes` to inspect the available `PersistentVolumes`
-    and if needed, use the [`ArangoLocalStorage` operator](./StorageResource.md) to provision `PersistentVolumes`.
+    Solution:
+Use `kubectl get persistentvolumes` to inspect the available `PersistentVolumes`
+and if needed, use the [`ArangoLocalStorage` operator](./StorageResource.md) to provision `PersistentVolumes`.
 
 ### When restarting a `Node`, the `Pods` scheduled on that node remain in `Terminating` state
 
