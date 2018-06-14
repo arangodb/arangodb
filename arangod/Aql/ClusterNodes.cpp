@@ -380,13 +380,17 @@ double GatherNode::estimateCost(size_t& nrItems) const {
   return depCost + nrItems;
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
                             size_t id,
                             NodeType mode,
                             std::string key,
                             std::string collection,
-                            Variable const* out,
+                            ModificationOptions const& options,
                             Variable const* update,
+                            Variable const* out,
                             Variable const* OLD,
                             Variable const* NEW
                             )
@@ -398,23 +402,42 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
       , _outVariable(out)
       , _outVariableOld(OLD)
       , _outVariableNew(NEW)
-  {
-    if (_mode == NodeType::INDEX) { //select
-
-    } else {
-      LOG_DEVEL << "Ctor failed unkown node type";
-      TRI_ASSERT(false);
-    }
-
-
-
-
+{
+  TRI_ASSERT(!_collection.empty());
+  if (_mode == NodeType::INDEX) { //select
+    TRI_ASSERT(!_key.empty());
+    TRI_ASSERT(_inVariableUpdate == nullptr);
+    TRI_ASSERT(_outVariable != nullptr);
+    TRI_ASSERT(_outVariableOld == nullptr);
+    TRI_ASSERT(_outVariableNew == nullptr);
+  } else if (_mode == NodeType::REMOVE) {
+    LOG_DEVEL << "not implemented";
+    TRI_ASSERT(false);
+  } else if (_mode == NodeType::INSERT) {
+    LOG_DEVEL << "not implemented";
+    TRI_ASSERT(false);
+  } else if (_mode == NodeType::UPDATE) {
+    LOG_DEVEL << "not implemented";
+    TRI_ASSERT(false);
+  } else if (_mode == NodeType::REPLACE) {
+    LOG_DEVEL << "not implemented";
+    TRI_ASSERT(false);
+  } else if (_mode == NodeType::UPSERT) {
+    LOG_DEVEL << "not implemented";
+    TRI_ASSERT(false);
+  } else {
+    LOG_DEVEL << "Ctor failed unkown node type";
+    TRI_ASSERT(false);
   }
+}
+
+//FIXME
 /// @brief constructor for SingleRemoteOperationNode
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
+//FIXME
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     ExecutionEngine& engine,
@@ -425,13 +448,6 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
 
 /// @brief toVelocyPack, for SingleRemoteOperationNode
 void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-//                            NodeType mode,
-//                            std::string key,
-//                            std::string collection,
-//                            Variable const* out,
-//                            Variable const* update,
-//                            Variable const* OLD,
-//                            Variable const* NEW
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
 
@@ -458,10 +474,9 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
     nodes.add(VPackValue("_outVariable"));
     _outVariable->toVelocyPack(nodes);
   }
-//  /*
-//  nodes.add(VPackValue("modificationFlags"));
-//  _options.toVelocyPack(nodes);
-//  */
+
+  nodes.add(VPackValue("modificationFlags"));
+  _options.toVelocyPack(nodes);
 
   // And close it:
   nodes.close();

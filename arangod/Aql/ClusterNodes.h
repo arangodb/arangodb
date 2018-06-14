@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
+#include "Aql/ModificationOptions.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 #include "Logger/Logger.h"
@@ -417,23 +418,14 @@ class SingleRemoteOperationNode final : public ExecutionNode {
                             NodeType mode,
                             std::string key,
                             std::string collection,
+                            ModificationOptions const& options,
                             Variable const* out,
                             Variable const* update,
                             Variable const* OLD,
                             Variable const* NEW
                             );
-  // /// @brief whether or not this node will forward initializeCursor or shutDown
-  // /// requests
-  // void isResponsibleForInitializeCursor(bool value) {
-  //   _isResponsibleForInitializeCursor = value;
-  // }
 
-  // /// @brief whether or not this node will forward initializeCursor or shutDown
-  // /// requests
-  // bool isResponsibleForInitializeCursor() const {
-  //   return _isResponsibleForInitializeCursor;
-  // }
-
+  //FIXME - we probably do not need this because the rule will only be used on the coordinator
   SingleRemoteOperationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
   /// @brief return the type of the node
@@ -443,12 +435,14 @@ class SingleRemoteOperationNode final : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           unsigned flags) const override final;
 
+  //FIXME
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
+  //FIXME
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
@@ -476,9 +470,6 @@ class SingleRemoteOperationNode final : public ExecutionNode {
     if(_inVariableUpdate){
       vec.push_back(_inVariableUpdate);
     }
-    if (_outVariable) {
-      vec.push_back(_outVariable);
-    }
     return vec;
   }
 
@@ -487,9 +478,6 @@ class SingleRemoteOperationNode final : public ExecutionNode {
       std::unordered_set<Variable const*>& vars) const override final {
     if(_inVariableUpdate){
       vars.emplace(_inVariableUpdate);
-    }
-    if (_outVariable) {
-      vars.emplace(_outVariable);
     }
   }
 
@@ -515,6 +503,7 @@ class SingleRemoteOperationNode final : public ExecutionNode {
   double estimateCost(size_t&) const override final;
 
   std::string const& key() const { return _key; }
+  std::string const& collection() const { return _collection; }
 
  private:
   std::string _key;
@@ -531,7 +520,7 @@ class SingleRemoteOperationNode final : public ExecutionNode {
   Variable const* _outVariableNew;
 
   /// @brief modification operation options
-  //ModificationOptions _options;
+  ModificationOptions _options;
 
   /// the key of the document we're intending to work with
 

@@ -236,7 +236,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
 
         ExecutionNode* singleOperationNode = plan->registerNode(
             new SingleRemoteOperationNode(plan.get(), plan->nextId()
-                                         ,EN::INDEX, key, collection
+                                         ,EN::INDEX, key, collection, ModificationOptions{}
                                          , nullptr /*update*/
                                          , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
