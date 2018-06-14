@@ -82,18 +82,18 @@ class ExecutionEngine {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   /// @brief hasMore
-  inline ExecutionState hasMore() const { return _root->hasMore(); }
+  inline ExecutionState hasMoreState() const { return _root->hasMoreState(); }
 
   /// @brief hasMore - synchronous (cannot return WAITING)
   /// TODO should be removed, but the AQL HTTP API has to be changed for this
   inline bool hasMoreSync() const {
-    ExecutionState state = _root->hasMore();
+    ExecutionState state = _root->hasMoreState();
 
     while (state == ExecutionState::WAITING) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
       << "We are actively blocking a thread, needs to be fixed";
       getQuery()->tempWaitForAsyncResponse();
-      state = _root->hasMore();
+      state = _root->hasMoreState();
     }
 
     if (state == ExecutionState::DONE) {

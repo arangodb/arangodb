@@ -143,11 +143,8 @@ class ExecutionBlock {
 
   // Used in aql rest handler hasMore
   // Needs to be accurate
-  // TODO Since the change of its return value type from bool to ExecutionState,
-  // the name "hasMore()" is no longer that intuitive. Maybe change it to
-  // "executionState()"? Same goes for ExecutionEngine::hasMore().
   // TODO change the documentation of all hasMore implementations
-  virtual ExecutionState hasMore();
+  virtual ExecutionState hasMoreState();
   
   // skip exactly atMost outputs
   // TODO DELETE

@@ -575,10 +575,18 @@ void RestAqlHandler::useQuery(std::string const& operation,
 // GET method for /_api/aql/<operation>/<queryId>, (internal)
 // this is using
 // the part of the cursor API without side effects. The operation must
-// be "hasMore". The result is a Json
+// be "hasMore" or "hasMoreState". "hasMore" is a synchronous operation and
+// only for backwards compatibility; new client code should only use
+// "hasMoreState".
+//
+// The result is a Json
 // with, depending on the operation, the following attributes:
-//   for "hasMore": the result has the attributes "error" (set to false)
-//                  and "hasMore" set to a boolean value.
+//   for "hasMore":
+//     the result has the attributes "error" (set to false)
+//     and "hasMore" set to a boolean value.
+//   for "hasMoreState":
+//     the result has the attributes "error" (set to false)
+//     and "hasMoreState" set to a string "DONE", "HASMORE" or "WAITING".
 void RestAqlHandler::getInfoQuery(std::string const& operation,
                                   std::string const& idString) {
   bool found;
@@ -595,12 +603,39 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
   try {
     VPackObjectBuilder guard(&answerBody);
 
-    if (operation == "hasMore") {
+    if (operation == "hasMoreState") {
+      // asynchronous API
+      ExecutionState hasMoreState;
+      if (shardId.empty()) {
+        hasMoreState = query->engine()->hasMoreState();
+      } else {
+        auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
+        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
+            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+            "unexpected node type");
+        }
+        hasMoreState = block->getHasMoreStateForShard(shardId);
+      }
+      switch (hasMoreState) {
+        case ExecutionState::DONE:
+          answerBody.add("hasMoreState", VPackValue("DONE"));
+          break;
+        case ExecutionState::HASMORE:
+          answerBody.add("hasMoreState", VPackValue("HASMORE"));
+          break;
+        case ExecutionState::WAITING:
+          answerBody.add("hasMoreState", VPackValue("WAITING"));
+          break;
+      }
+    }
+    else if (operation == "hasMore") {
+      // backwards compatible synchronous API
       bool hasMore;
       if (shardId.empty()) {
         hasMore = query->engine()->hasMoreSync();
       } else {
-        auto block = static_cast<BlockWithClients*>(query->engine()->root());
+        auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
         if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
             block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -813,7 +848,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             }
           }
         } else {
-          auto block = static_cast<BlockWithClients*>(query->engine()->root());
+          auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
               block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -853,8 +888,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             }
           }
         } else {
-          auto block =
-              static_cast<BlockWithClients*>(query->engine()->root());
+          auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
               block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

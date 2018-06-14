@@ -77,7 +77,7 @@ class BlockWithClients : public ExecutionBlock {
   }
 
   /// @brief hasMore
-  ExecutionState hasMore() override final {
+  ExecutionState hasMoreState() override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -92,6 +92,8 @@ class BlockWithClients : public ExecutionBlock {
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   virtual bool hasMoreForShard(std::string const& shardId) = 0;
+
+  virtual ExecutionState getHasMoreStateForShard(std::string const& shardId) = 0;
 
  protected:
   /// @brief getOrSkipSomeForShard
@@ -144,6 +146,8 @@ class ScatterBlock : public BlockWithClients {
 
   /// @brief hasMoreForClientId: any more for client <cliendId>?
   bool hasMoreForClientId(size_t clientId) override;
+
+  ExecutionState getHasMoreStateForShard(const std::string &shardId) final;
 
   /// @brief getOrSkipSomeForShard
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
@@ -220,6 +224,8 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief allow specified keys even in non-default sharding case
   bool _allowSpecifiedKeys;
+
+  ExecutionState getHasMoreStateForShard(const std::string &shardId) final;
 };
 
 class RemoteBlock final : public ExecutionBlock {
@@ -245,7 +251,7 @@ class RemoteBlock final : public ExecutionBlock {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   /// @brief hasMore
-  ExecutionState hasMore() override final;
+  ExecutionState hasMoreState() override final;
 
   /// @brief handleAsyncResult
   bool handleAsyncResult(ClusterCommResult* result) override; 
@@ -311,7 +317,7 @@ class UnsortingGatherBlock final : public ExecutionBlock {
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
-  ExecutionState hasMore() override final;
+  ExecutionState hasMoreState() override final;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
@@ -362,7 +368,7 @@ class SortingGatherBlock final : public ExecutionBlock {
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
-  ExecutionState hasMore() override final;
+  ExecutionState hasMoreState() override final;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(

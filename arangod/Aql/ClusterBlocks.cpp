@@ -393,6 +393,11 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_END_BLOCK();
 }
 
+ExecutionState ScatterBlock::getHasMoreStateForShard(
+    std::string const& shardId) {
+  return getHasMoreStateForClientId(getClientId(shardId));
+}
+
 /// @brief getOrSkipSomeForShard
 std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result, size_t& skipped,
@@ -554,6 +559,11 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
+}
+
+ExecutionState DistributeBlock::getHasMoreStateForShard(
+    std::string const& shardId) {
+  return getHasMoreStateForClientId(getClientId(shardId));
 }
 
 /// @brief getOrSkipSomeForShard
@@ -1293,7 +1303,7 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 }
 
 /// @brief hasMore
-ExecutionState RemoteBlock::hasMore() {
+ExecutionState RemoteBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res =
@@ -1349,14 +1359,14 @@ std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCurs
 
 /// @brief hasMore: true if any position of _buffer hasMore and false
 /// otherwise. TODO update this docu
-ExecutionState UnsortingGatherBlock::hasMore() {
+ExecutionState UnsortingGatherBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   if (_done || _dependencies.empty()) {
     return ExecutionState::DONE;
   }
 
   for (auto* dependency : _dependencies) {
-    ExecutionState depState = dependency->hasMore();
+    ExecutionState depState = dependency->hasMoreState();
     switch (depState) {
       case ExecutionState::WAITING:
       case ExecutionState::HASMORE:
@@ -1516,7 +1526,7 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
 /// @brief hasMore: true if any position of _buffer hasMore and false
 /// otherwise.
-ExecutionState SortingGatherBlock::hasMore() {
+ExecutionState SortingGatherBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   if (_done || _dependencies.empty()) {
     return ExecutionState::DONE;

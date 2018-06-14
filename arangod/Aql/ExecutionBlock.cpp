@@ -415,7 +415,7 @@ void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
   numActuallySkipped = skipped;
 }
 
-ExecutionState ExecutionBlock::hasMore() {
+ExecutionState ExecutionBlock::hasMoreState() {
   if (_done) {
     return ExecutionState::DONE;
   }

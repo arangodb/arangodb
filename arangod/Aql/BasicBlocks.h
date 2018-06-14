@@ -43,7 +43,7 @@ class SingletonBlock final : public ExecutionBlock {
   /// above
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  ExecutionState hasMore() final {
+  ExecutionState hasMoreState() final {
     if (_done) {
       return ExecutionState::DONE;
     } else {
@@ -170,7 +170,7 @@ class NoResultsBlock final : public ExecutionBlock {
   /// above
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  ExecutionState hasMore() final { return ExecutionState::DONE; }
+  ExecutionState hasMoreState() final { return ExecutionState::DONE; }
 
  private:
   std::pair<ExecutionState, arangodb::Result> getOrSkipSome(
