@@ -77,6 +77,8 @@ Index::Index(VPackSlice const& info,
         "geo index can only be created with one or two fields.");
   }
 }
+
+/// @brief Parse document and return cells for indexing
 Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
                          S2Point& centroid) const {
   using geo::GeoUtils;
@@ -95,6 +97,9 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
       if (!S2LatLng(centroid).is_valid()) {
         return TRI_ERROR_BAD_PARAMETER;
       }
+    } else if (r.is(TRI_ERROR_NOT_IMPLEMENTED)) {
+      // ignore not-implemented error on inserts, because index is sparse
+      return TRI_ERROR_BAD_PARAMETER;
     }
     return r;
   } else if (_variant == Variant::COMBINED_LAT_LON) {

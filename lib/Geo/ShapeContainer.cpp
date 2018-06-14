@@ -67,7 +67,7 @@ ShapeContainer::ShapeContainer(ShapeContainer&& other) noexcept
 }
 ShapeContainer::~ShapeContainer() { delete _data; }
 
-void ShapeContainer::reset(std::unique_ptr<S2Region>&& ptr, Type tt) noexcept {
+void ShapeContainer::reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept {
   delete _data;
   _type = tt;
   _data = ptr.release();

@@ -955,7 +955,12 @@ function geoJsonTestSuite() {
   let indonesia = [
     { "type": "Polygon", "coordinates": [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]]] },
     { "type": "LineString", "coordinates": [[102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]] },
-    { "type": "Point", "coordinates": [102.0, 0.5] }];
+    { "type": "Point", "coordinates": [102.0, 0.5] },
+    { "type": "MultiPolygon", "coordinates": [
+      [[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+      [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+        [[100.2, 0.2], [100.2, 0.8], [100.8, 0.8], [100.8, 0.2], [100.2, 0.2]]]]
+    }];
   let indonesiaKeys = [];
 
   // EMEA region
@@ -1021,7 +1026,7 @@ function geoJsonTestSuite() {
         bindVars: {
           "@cc": locations.name(),
         },
-        expected: [indonesiaKeys[0], indonesiaKeys[2]]
+        expected: [indonesiaKeys[0], indonesiaKeys[2], indonesiaKeys[3]]
       });
     },
 
@@ -1054,7 +1059,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle contains
+    /// @brief test polygon contains
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsPolygon1: function () {
@@ -1069,7 +1074,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle contains using a reference
+    /// @brief test polygon contains
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsPolygon2: function () {

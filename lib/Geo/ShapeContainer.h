@@ -71,7 +71,7 @@ class ShapeContainer final {
   /// Parses a coordinate pair
   Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
 
-  void reset(std::unique_ptr<S2Region>&& ptr, Type tt) noexcept;
+  void reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept;
   void reset(S2Region* ptr, Type tt) noexcept;
   void resetCoordinates(double lat, double lon);
 

@@ -4744,6 +4744,7 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   }
 
   S2Loop loop;
+  loop.set_s2debug_override(S2Debug::DISABLE);
   Result res = geo::geojson::parseLoop(coords.slice(), geoJson, loop);
   if (res.fail() || !loop.IsValid()) {
     ::registerWarning(query, "IS_IN_POLYGON", res);

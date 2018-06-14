@@ -81,6 +81,11 @@ Result parseMultiLinestring(velocypack::Slice const& vpack,
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
 Result parsePolygon(velocypack::Slice const& vpack, ShapeContainer& region);
+  
+/// @brief parse GeoJson polygon or array of loops. Each loop consists of
+/// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...].
+/// The multipolygon contains an array of looops
+Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region);
 
 /// @brief Parse a loop (LinearRing)
 ///
