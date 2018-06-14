@@ -317,8 +317,6 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
             (v1.lng() - v2.lng()).abs() < eps &&
             (v2.lat() - v3.lat()).abs() < eps &&
             (v3.lng() - v0.lng()).abs() < eps) {
-          /*auto rect = std::make_unique<S2LatLngRect>(v0, v2);
-           LOG_TOPIC(ERR, Logger::FIXME) << "LO: " << rect->lo() << " HI: " << rect->hi();*/
           region.reset(std::make_unique<S2LatLngRect>(v0, v2),
                        ShapeContainer::Type::S2_LATLNGRECT);
           return TRI_ERROR_NO_ERROR;
