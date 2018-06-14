@@ -104,6 +104,23 @@ arangodb::aql::AqlValue noop(
   );
 }
 
+void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
+  arangodb::iresearch::addFunction(functions, {
+    "__ARANGOSEARCH_SCORE_DEBUG",  // name
+    ".",    // value to convert
+    true,   // deterministic
+    false,  // can't throw
+    true,   // can be run on server
+    [](arangodb::aql::Query*,
+       arangodb::transaction::Methods*,
+       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
+      auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
+      auto const floatValue = *reinterpret_cast<float_t const*>(arg.slice().begin());
+      return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+    }
+  });
+}
+
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
@@ -361,6 +378,7 @@ void IResearchFeature::start() {
     if (functions) {
       registerFilters(*functions);
       registerScorers(*functions);
+      registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature 'AQLFunctions' while registering iresearch filters";

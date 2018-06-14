@@ -352,6 +352,8 @@ void IResearchViewNode::toVelocyPackHelper(
 
   // system info
   nodes.add("database", VPackValue(_vocbase.name()));
+  // need 'view' field to correctly print view name in JS explanation
+  nodes.add("view", VPackValue(_view->name()));
   nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 
   // our variable
