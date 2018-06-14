@@ -33,7 +33,7 @@ namespace arangodb {
 
 /// @brief create the context
 transaction::SmartContext::SmartContext(TRI_vocbase_t& vocbase)
-  : Context(vocbase) {}
+  : Context(vocbase), _state(nullptr) {}
 
 /// @brief order a custom type handler for the collection
 std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::SmartContext::orderCustomTypeHandler() {
