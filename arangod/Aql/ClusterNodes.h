@@ -409,7 +409,7 @@ class GatherNode final : public ExecutionNode {
 /// @brief class RemoteNode
 class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-
+  friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:
 

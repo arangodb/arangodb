@@ -1642,266 +1642,72 @@ SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
     : ExecutionBlock(engine, static_cast<ExecutionNode const*>(en)),
       _collection(en->collection()),
       _key(en->key()),
-      _isResponsibleForInitializeCursor(false) {
+      _isResponsibleForInitializeCursor(false),
+      _count(0) {
   TRI_ASSERT(
       arangodb::ServerState::instance()->isCoordinator()
       );
 }
-/*
-/// @brief local helper to send a request
-std::unique_ptr<ClusterCommResult> SingleRemoteOperationBlock::sendRequest(
-    arangodb::rest::RequestType type, std::string const& urlPart,
-    std::string const& body) const {
-  DEBUG_BEGIN_BLOCK();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
-    // nullptr only happens on controlled shutdown
-    return std::make_unique<ClusterCommResult>();
-  }
-
-  // Later, we probably want to set these sensibly:
-  ClientTransactionID const clientTransactionId = std::string("AQL");
-  CoordTransactionID const coordTransactionId = TRI_NewTickServer();
-  std::unordered_map<std::string, std::string> headers;
-  if (!_ownName.empty()) {
-    headers.emplace("Shard-Id", _ownName);
-  }
-
-  std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
-    urlPart + _queryId;
-
-  ++_engine->_stats.requests;
-  {
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
-
-    return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                           std::move(url), body, headers, defaultTimeOut);
-  }
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief initializeCursor, could be called multiple times
-int SingleRemoteOperationBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  
-  if (!_isResponsibleForInitializeCursor) {
-    // do nothing...
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  if (items == nullptr) {
-    // we simply ignore the initialCursor request, as the remote side
-    // will initialize the cursor lazily
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  VPackOptions options(VPackOptions::Defaults);
-  options.buildUnindexedArrays = true;
-  options.buildUnindexedObjects = true;
-
-  VPackBuilder builder(&options);
-  builder.openObject();
-
-  builder.add("exhausted", VPackValue(false));
-  builder.add("error", VPackValue(false));
-  builder.add("pos", VPackValue(pos));
-  builder.add(VPackValue("items"));
-  builder.openObject();
-  items->toVelocyPack(_engine->getQuery()->trx(), builder);
-  builder.close();
-
-  builder.close();
-
-  std::string bodyString(builder.slice().toJson());
-
-  std::unique_ptr<ClusterCommResult> res = sendRequest(
-      rest::RequestType::PUT, "/_api/aql/initializeCursor/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-        responseBodyBuf.c_str(), responseBodyBuf.length());
-
-    VPackSlice slice = builder->slice();
-
-    if (slice.hasKey("code")) {
-      return slice.get("code").getNumericValue<int>();
-    }
-    return TRI_ERROR_INTERNAL;
-  }
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
-/// @brief shutdown, will be called exactly once for the whole query
-int SingleRemoteOperationBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  
-  // For every call we simply forward via HTTP
-
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/shutdown/",
-                  std::string("{\"code\":" + std::to_string(errorCode) + "}"));
-  try {
-    if (throwExceptionAfterBadSyncRequest(res.get(), true)) {
-      // artificially ignore error in case query was not found during shutdown
-      return TRI_ERROR_NO_ERROR;
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    if (ex.code() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-    }
-    throw;
-  }
-
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (slice.isObject()) {
-    if (slice.hasKey("stats")) {
-      ExecutionStats newStats(slice.get("stats"));
-      _engine->_stats.add(newStats);
-    }
-
-    // read "warnings" attribute if present and add it to our query
-    VPackSlice warnings = slice.get("warnings");
-    if (warnings.isArray()) {
-      auto query = _engine->getQuery();
-      for (auto const& it : VPackArrayIterator(warnings)) {
-        if (it.isObject()) {
-          VPackSlice code = it.get("code");
-          VPackSlice message = it.get("message");
-          if (code.isNumber() && message.isString()) {
-            query->registerWarning(code.getNumericValue<int>(),
-                                   message.copyString().c_str());
-          }
-        }
-      }
-    }
-  }
-
-  if (slice.hasKey("code")) {
-    return slice.get("code").getNumericValue<int>();
-  }
-  
-  return TRI_ERROR_INTERNAL;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-*/
 /// @brief getSome
 AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-
-  VPackBuilder builder;
+  if (_done) {
+    return nullptr;
+  }
+  VPackBuilder searchBuilder;
   {
-    VPackObjectBuilder guard(&builder);
-    builder.add(StaticStrings::KeyString, VPackValue(_key));
+    VPackObjectBuilder guard(&searchBuilder);
+    searchBuilder.add(StaticStrings::KeyString, VPackValue(_key));
   }
 
-  VPackSlice search = builder.slice();
-
-  // find and load collection given by name or identifier
-  auto ctx(transaction::StandaloneContext::Create(_engine->getQuery()->trx()->vocbase()));
-
-  // SingleCollectionTransaction trx(ctx, _collection->id(), AccessMode::Type::READ);
-
-  _trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-
-  // ...........................................................................
-  // inside read transaction
-  // ...........................................................................
-
+  VPackSlice search = searchBuilder.slice();
   OperationOptions options;
   options.ignoreRevs = true;
 
-
   OperationResult result = _trx->document(_collection->name(), search, options);
-
-  auto res = _trx->finish(result.result);
 
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      // generateDocumentNotFound(_collection->getPlanId(), key);
+      // document not there is not an error in this situation.
       return nullptr;
-      //} else if (ifRid != 0 && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
-      // generatePreconditionFailed(result.slice());
-    } else {
-      // generateTransactionError(_collection->id(), res, key);
+    }
+    else {
+      THROW_ARANGO_EXCEPTION(result.errorNumber());
     }
     return nullptr;
   }
-
-  if (!res.ok()) {
-    // generateTransactionError(_collection->id(), res, key);
-    return nullptr;
-  }
-  /*
-  if (ifNoneRid != 0) {
-    TRI_voc_rid_t const rid = TRI_ExtractRevisionId(result.slice());
-    if (ifNoneRid == rid) {
-      generateNotModified(rid);
-      return true;
-    }
-  }
-*/
-
 
   VPackSlice document = result.slice().resolveExternal();
+  std::unique_ptr<AqlItemBlock> aqlres;
 
-  std::string rev;
-  if (document.isObject()) {
-    rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString,
-                                           "");
+  RegisterId nrRegs =
+    getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+
+  aqlres.reset(requestBlock(1, nrRegs));
+
+  auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
+  auto out = node->_outVariable;
+
+  TRI_ASSERT(out != nullptr); /// just for select
+  auto itOut = node->getRegisterPlan()->varInfo.find(out->id);
+
+  auto outRegId = (*itOut).second.registerId;
+  TRI_ASSERT(itOut != node->getRegisterPlan()->varInfo.end());
+  TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+  aqlres.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+
+  aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(document));
+
+  throwIfKilled();  // check if we were aborted
+    
+  TRI_IF_FAILURE("SingleRemoteOperationBlock::moreDocuments") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), document);
-  traceGetSomeEnd(r.get());
-  return r.release();
+  _done = true;
+  return aqlres.release();
 
-  /*
-
-
-  traceGetSomeBegin(atMost);
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("atMost", VPackValue(atMost));
-  builder.close();
-
-  std::string bodyString(builder.slice().toJson());
-
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/getSome/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  std::shared_ptr<VPackBuilder> responseBodyBuilder =
-      res->result->getBodyVelocyPack();
-  VPackSlice responseBody = responseBodyBuilder->slice();
-
-  if (VelocyPackHelper::getBooleanValue(responseBody, "exhausted", true)) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
-  }
-
-  auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), responseBody);
-  traceGetSomeEnd(r.get());
-  return r.release();
-  */
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
@@ -1909,37 +1715,6 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 /// @brief skipSome
 size_t SingleRemoteOperationBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
-  /*
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add("atMost", VPackValue(atMost));
-  builder.close();
-
-  std::string bodyString(builder.slice().toJson());
-
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::PUT, "/_api/aql/skipSome/", bodyString);
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  {
-    std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(
-        responseBodyBuf.c_str(), responseBodyBuf.length());
-    VPackSlice slice = builder->slice();
-
-    if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-    }
-    size_t skipped = 0;
-    if (slice.hasKey("skipped")) {
-      skipped = slice.get("skipped").getNumericValue<size_t>();
-    }
-    return skipped;
-  }
-  */
   return 0;
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1948,29 +1723,7 @@ size_t SingleRemoteOperationBlock::skipSome(size_t atMost) {
 /// @brief hasMore
 bool SingleRemoteOperationBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
-  /*
-  // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
-  throwExceptionAfterBadSyncRequest(res.get(), false);
-
-  // If we get here, then res->result is the response which will be
-  // a serialized AqlItemBlock:
-  StringBuffer const& responseBodyBuf(res->result->getBody());
-  std::shared_ptr<VPackBuilder> builder =
-      VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
-  VPackSlice slice = builder->slice();
-
-  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-  }
-  bool hasMore = true;
-  if (slice.hasKey("hasMore")) {
-    hasMore = slice.get("hasMore").getBoolean();
-  }
-  return hasMore;
-  */
-  return false;
+  return _done;
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
