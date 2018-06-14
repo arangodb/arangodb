@@ -302,6 +302,8 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
   auto getNextRow =
       [this,
         inputNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
+    // this lambda must not have changed the state of *this when returning
+    // WAITING, so calling it again resumes the previous execution.
 
     // try to ensure a nonempty buffer
     if (_buffer.empty()) {
@@ -435,6 +437,13 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
       return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
     }
     TRI_ASSERT(state == GetNextRowState::SUCCESS);
+
+    // TODO this is dirty. if you have an idea how to improve this, please do.
+    if (_lastBlock == nullptr) {
+      // call only on the first row of the first block
+      TRI_ASSERT(pos == 0);
+      inheritRegisters(cur, _result.get(), 0);
+    }
 
     // if the current block changed, move the last block's infos into the
     // current group; then delete it.
