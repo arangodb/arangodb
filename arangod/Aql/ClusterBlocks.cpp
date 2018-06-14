@@ -387,7 +387,7 @@ int ScatterBlock::shutdown(int errorCode) {
 /// @brief hasMoreForShard: any more for shard <shardId>?
 bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  
+
   TRI_ASSERT(_nrClients != 0);
 
   size_t const clientId = getClientId(shardId);
@@ -633,7 +633,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
     traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   BlockCollector collector(&_engine->_itemBlockManager);
   std::vector<size_t> chosen;
 
@@ -947,9 +947,9 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
   if (!_ownName.empty()) {
     headers.emplace("Shard-Id", _ownName);
   }
-    
+
   std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
@@ -974,12 +974,12 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   if (items == nullptr) {
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
     return TRI_ERROR_NO_ERROR;
-  } 
+  }
 
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
@@ -987,7 +987,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   VPackBuilder builder(&options);
   builder.openObject();
- 
+
   builder.add("exhausted", VPackValue(false));
   builder.add("error", VPackValue(false));
   builder.add("pos", VPackValue(pos));
@@ -995,7 +995,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   builder.openObject();
   items->toVelocyPack(_engine->getQuery()->trx(), builder);
   builder.close();
-  
+
   builder.close();
 
   std::string bodyString(builder.slice().toJson());
@@ -1012,7 +1012,7 @@ int RemoteBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
         responseBodyBuf.c_str(), responseBodyBuf.length());
 
     VPackSlice slice = builder->slice();
-  
+
     if (slice.hasKey("code")) {
       return slice.get("code").getNumericValue<int>();
     }
@@ -1048,9 +1048,9 @@ int RemoteBlock::shutdown(int errorCode) {
   std::shared_ptr<VPackBuilder> builder =
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
-   
+
   if (slice.isObject()) {
-    if (slice.hasKey("stats")) { 
+    if (slice.hasKey("stats")) {
       ExecutionStats newStats(slice.get("stats"));
       _engine->_stats.add(newStats);
     }
@@ -1085,7 +1085,7 @@ int RemoteBlock::shutdown(int errorCode) {
 AqlItemBlock* RemoteBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  
+
   traceGetSomeBegin(atMost);
   VPackBuilder builder;
   builder.openObject();
@@ -1632,41 +1632,20 @@ bool SortingGatherBlock::getBlock(size_t i, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 /// @brief timeout
 double const SingleRemoteOperationBlock::defaultTimeOut = 3600.0;
 
 /// @brief creates a remote block
 SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
-                                                       SingleRemoteOperationNode const* en,
-                                                       std::string const& server,
-                                                       std::string const& ownName,
-                                                       std::string const& queryId)
-    : ExecutionBlock(engine, en),
-      _server(server),
-      _ownName(ownName),
-      _queryId(queryId),
-      _collection(en->collection()),
+                                                       SingleRemoteOperationNode const* en
+                                                       )
+    : ExecutionBlock(engine, static_cast<ExecutionNode const*>(en)),
       _key(en->key()),
       _isResponsibleForInitializeCursor(
           en->isResponsibleForInitializeCursor()) {
-  TRI_ASSERT(!queryId.empty());
   TRI_ASSERT(
-      (arangodb::ServerState::instance()->isCoordinator() && ownName.empty()) ||
-      (!arangodb::ServerState::instance()->isCoordinator() &&
-       !ownName.empty()));
+      arangodb::ServerState::instance()->isCoordinator()
+      );
 }
 
 /// @brief local helper to send a request
@@ -1687,9 +1666,9 @@ std::unique_ptr<ClusterCommResult> SingleRemoteOperationBlock::sendRequest(
   if (!_ownName.empty()) {
     headers.emplace("Shard-Id", _ownName);
   }
-    
+
   std::string url = std::string("/_db/") +
-    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) + 
+    arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->trx()->vocbase().name()) +
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
@@ -1714,12 +1693,12 @@ int SingleRemoteOperationBlock::initializeCursor(AqlItemBlock* items, size_t pos
     // do nothing...
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   if (items == nullptr) {
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
     return TRI_ERROR_NO_ERROR;
-  } 
+  }
 
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
@@ -1727,7 +1706,7 @@ int SingleRemoteOperationBlock::initializeCursor(AqlItemBlock* items, size_t pos
 
   VPackBuilder builder(&options);
   builder.openObject();
- 
+
   builder.add("exhausted", VPackValue(false));
   builder.add("error", VPackValue(false));
   builder.add("pos", VPackValue(pos));
@@ -1735,7 +1714,7 @@ int SingleRemoteOperationBlock::initializeCursor(AqlItemBlock* items, size_t pos
   builder.openObject();
   items->toVelocyPack(_engine->getQuery()->trx(), builder);
   builder.close();
-  
+
   builder.close();
 
   std::string bodyString(builder.slice().toJson());
@@ -1752,7 +1731,7 @@ int SingleRemoteOperationBlock::initializeCursor(AqlItemBlock* items, size_t pos
         responseBodyBuf.c_str(), responseBodyBuf.length());
 
     VPackSlice slice = builder->slice();
-  
+
     if (slice.hasKey("code")) {
       return slice.get("code").getNumericValue<int>();
     }
@@ -1788,9 +1767,9 @@ int SingleRemoteOperationBlock::shutdown(int errorCode) {
   std::shared_ptr<VPackBuilder> builder =
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
-   
+
   if (slice.isObject()) {
-    if (slice.hasKey("stats")) { 
+    if (slice.hasKey("stats")) {
       ExecutionStats newStats(slice.get("stats"));
       _engine->_stats.add(newStats);
     }
@@ -1825,7 +1804,7 @@ int SingleRemoteOperationBlock::shutdown(int errorCode) {
 AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  
+
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
@@ -1893,14 +1872,14 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     rev = VelocyPackHelper::getStringValue(document, StaticStrings::RevString,
                                            "");
   }
-  
+
   auto r = std::make_unique<AqlItemBlock>(_engine->getQuery()->resourceMonitor(), document);
   traceGetSomeEnd(r.get());
   return r.release();
 
   /*
-  
-  
+
+
   traceGetSomeBegin(atMost);
   VPackBuilder builder;
   builder.openObject();

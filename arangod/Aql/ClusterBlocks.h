@@ -175,7 +175,7 @@ class DistributeBlock : public BlockWithClients {
 
   // a reusable Builder object for building _key values
   arangodb::velocypack::Builder _keyBuilder;
-  
+
   // a reusable Builder object for building document objects
   arangodb::velocypack::Builder _objectBuilder;
 
@@ -227,7 +227,7 @@ class RemoteBlock final : public ExecutionBlock {
 
   /// @brief hasMore
   bool hasMore() override final;
-  
+
  private:
   /// @brief internal method to send a request
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
@@ -244,7 +244,7 @@ class RemoteBlock final : public ExecutionBlock {
   /// @brief the ID of the query on the server as a string
   std::string const _queryId;
 
-  /// @brief whether or not this block will forward initialize, 
+  /// @brief whether or not this block will forward initialize,
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
 };
@@ -355,10 +355,8 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
   /// @brief constructors/destructors
  public:
   SingleRemoteOperationBlock(ExecutionEngine* engine,
-                             SingleRemoteOperationNode const* en,
-                             std::string const& server,
-                             std::string const& ownName,
-                             std::string const& queryId);
+                             SingleRemoteOperationNode const* en
+                             );
 
   /// @brief timeout
   static double const defaultTimeOut;
@@ -377,7 +375,7 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
 
   /// @brief hasMore
   bool hasMore() override final;
-  
+
  private:
   /// @brief internal method to send a request
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
@@ -400,7 +398,7 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
   /// @brief the key of the document to fetch
   std::string const _key;
 
-  /// @brief whether or not this block will forward initialize, 
+  /// @brief whether or not this block will forward initialize,
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
 };

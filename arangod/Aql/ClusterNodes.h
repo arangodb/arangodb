@@ -255,7 +255,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
 
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
-  
+
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final;
 
@@ -271,7 +271,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   void alternativeVariable(Variable const* variable) {
     _alternativeVariable = variable;
   }
-  
+
   /// @brief set createKeys
   void setCreateKeys(bool b) { _createKeys = b; }
 
@@ -405,34 +405,27 @@ class GatherNode final : public ExecutionNode {
 
 
 /// @brief class RemoteNode
-class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
+class SingleRemoteOperationNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RemoteBlock;
 
   /// @brief constructor with an id
  public:
-  
+
   SingleRemoteOperationNode(ExecutionPlan* plan,
                             size_t id,
-                            Collection const* collection,
-                            TRI_vocbase_t* vocbase,
-                            std::string const& server,
-                            std::string const& ownName,
-                            std::string const& queryId)
-      : ExecutionNode(plan, id),
-    CollectionAccessingNode(collection),
-    _vocbase(vocbase),
-    _server(server),
-    _ownName(ownName),
-    _queryId(queryId) {
-    // note: server, ownName and queryId may be empty and filled later
-  }
-  
-  SingleRemoteOperationNode(IndexNode* createFrom,
-                            UpdateNode* updateNode,
-                            ReplaceNode* replaceNode,
-                            RemoveNode* removeNode,
-                            arangodb::velocypack::Slice const& base);
+                            NodeType mode,
+                            std::string key,
+                            Variable* update,
+                            Variable* NEW,
+                            Variable* OLD
+                            )
+      : ExecutionNode(plan, id)
+      , _mode(mode)
+      , _outVariableOld(OLD)
+      , _outVariableNew(NEW)
+      , _inVariableUpdate(update)
+      , _key(key)
+  { }
 
   /// @brief whether or not this node will forward initializeCursor or shutDown
   /// requests
@@ -464,38 +457,24 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    return cloneHelper(
-      std::make_unique<SingleRemoteOperationNode>(
-                                                  plan,
-                                                  _id,
-                                                  _collection,
-                                                  _vocbase,
-                                                  _server,
-                                                  _ownName,
-                                                  _queryId
-                                                  ),
-      withDependencies,
-      withProperties
-    );
+    //return cloneHelper(
+    //  std::make_unique<SingleRemoteOperationNode>(
+    //                                              plan,
+    //                                              _id,
+    //                                              _mode,
+    //                                              _outVariableOld,
+    //                                              _outVariableNew,
+    //                                              _inVariableUpdate,
+    //                                              _key
+    //                                              ),
+    //  withDependencies,
+    //  withProperties
+    //);
+    return nullptr;
   }
 
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
-
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the server name
-  std::string server() const { return _server; }
-
-  /// @brief set the server name
-  void server(std::string const& server) { _server = server; }
-
-  /// @brief return our own name
-  std::string ownName() const { return _ownName; }
-
-  /// @brief set our own name
-  void ownName(std::string const& ownName) { _ownName = ownName; }
 
   /// @brief return the query id
   std::string queryId() const { return _queryId; }
@@ -512,62 +491,29 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
  private:
   NodeType _mode;
-  
-  AstNode const* _attributeNode;
-  AstNode const* _valueNode;
 
   /// @brief modification operation options
-  // ModificationOptions _options;
+  //ModificationOptions _options;
 
   /// @brief output variable ($OLD)
   Variable const* _outVariableOld;
 
   /// @brief output variable ($NEW)
   Variable const* _outVariableNew;
+  Variable const* _inVariableUpdate;
 
-  /// @brief input variable
-  Variable const* _inVariable;
-
-    /// @brief input variable for documents
-  Variable const* _inDocVariable;
-
-  /// @brief input variable for keys
-  Variable const* _inKeyVariable;
-
-    /// @brief insert case expression
-  Variable const* _insertVariable;
-
-  /// @brief update case expression
-  Variable const* _updateVariable;
-
-  /// @brief the underlying database
-  TRI_vocbase_t* _vocbase;
 
   /// the key of the document we're intending to work with
   std::string _key;
-  
-  /// @brief our server, can be like "shard:S1000" or like "server:Claus"
-  std::string _server;
-
-  /// @brief our own identity, in case of the coordinator this is empty,
-  /// in case of the DBservers, this is the shard ID as a string
-  std::string _ownName;
 
   /// @brief the ID of the query on the server as a string
   std::string _queryId;
 
   /// @brief whether or not this node will forward initializeCursor and shutDown
   /// requests
-  bool _isResponsibleForInitializeCursor;
+  bool _isResponsibleForInitializeCursor = false;
 };
 
-
-
-
-
-
-
- 
 }  // namespace arangodb::aql
 }  // namespace arangodb
 

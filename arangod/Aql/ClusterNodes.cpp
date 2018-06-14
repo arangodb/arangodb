@@ -80,7 +80,7 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
 
 }
 
-/// @brief constructor for RemoteNode 
+/// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _vocbase(&(plan->getAst()->query()->vocbase())),
@@ -208,7 +208,7 @@ DistributeNode::DistributeNode(
     _createKeys(base.get("createKeys").getBoolean()),
     _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
     _allowSpecifiedKeys(false) {
-  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {     
+  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {
     _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
     _alternativeVariable = Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
   } else {
@@ -232,7 +232,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
                                         unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
-  
+
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder);
 
@@ -246,7 +246,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
   _variable->toVelocyPack(builder);
   builder.add(VPackValue("alternativeVariable"));
   _alternativeVariable->toVelocyPack(builder);
-  
+
   // legacy format, remove in 3.4
   builder.add("varId", VPackValue(static_cast<int>(_variable->id)));
   builder.add("alternativeVarId",
@@ -255,7 +255,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder,
   // And close it:
   builder.close();
 }
-  
+
 /// @brief getVariablesUsedHere, returning a vector
 std::vector<Variable const*> DistributeNode::getVariablesUsedHere() const {
   std::vector<Variable const*> vars;
@@ -265,7 +265,7 @@ std::vector<Variable const*> DistributeNode::getVariablesUsedHere() const {
   }
   return vars;
 }
-  
+
 /// @brief getVariablesUsedHere, modifying the set in-place
 void DistributeNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
   vars.emplace(_variable);
@@ -381,66 +381,9 @@ double GatherNode::estimateCost(size_t& nrItems) const {
 }
 
 /// @brief spawn from an index node.
-SingleRemoteOperationNode::SingleRemoteOperationNode(IndexNode* createFrom,
-                                                     UpdateNode* updateNode,
-                                                     ReplaceNode* replaceNode,
-                                                     RemoveNode* removeNode,
-                                                     arangodb::velocypack::Slice const& base)
-  : ExecutionNode(createFrom->plan(),
-                  createFrom->plan()->nextId()),
-    CollectionAccessingNode(createFrom->plan(), base),
-    _mode(INDEX),
-    _attributeNode(nullptr),
-    _valueNode(nullptr),
-    _outVariableOld(nullptr),
-    _outVariableNew(nullptr),
-    _inVariable(nullptr),
-    _inDocVariable(nullptr),
-    _inKeyVariable(nullptr),
-    _insertVariable(nullptr),
-    _updateVariable(nullptr)
-
-{
-  auto node = createFrom->condition()->root();
-
-  if ((node->type == NODE_TYPE_OPERATOR_NARY_OR) && (node->numMembers() == 1)) {
-    auto subNode = node->getMemberUnchecked(0);
-    if ((subNode->type == NODE_TYPE_OPERATOR_NARY_AND) && (subNode->numMembers() == 1)) {
-      subNode = node->getMemberUnchecked(0);
-      if ((subNode->type == NODE_TYPE_OPERATOR_BINARY_EQ) && (subNode->numMembers() == 2)) {
-        _attributeNode = node->getMemberUnchecked(0);
-        _valueNode = node->getMemberUnchecked(1);
-        _key = _valueNode->getString();
-      }
-    }
-  }
-
-  if (updateNode != nullptr) {
-    _mode = UPDATE;
-    auto vars = updateNode->getVariablesUsedHere();
-    _inDocVariable = vars[0];
-    _inKeyVariable = (vars.size() > 1) ? vars[1] : nullptr;
-  } else if (replaceNode != nullptr) {
-    _mode = REPLACE;
-    auto vars = replaceNode->getVariablesUsedHere();
-    _inDocVariable = vars[0];
-    _inKeyVariable = (vars.size() > 1) ? vars[1] : nullptr;
-  } else if (removeNode != nullptr) {
-    _mode = REMOVE;
-    auto vars = removeNode->getVariablesUsedHere();
-    _inVariable = vars[0];
-  }
-
-  
-  // TODO
-}
 /// @brief constructor for SingleRemoteOperationNode
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      CollectionAccessingNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _server(base.get("server").copyString()),
-      _ownName(base.get("ownName").copyString()),
       _queryId(base.get("queryId").copyString()),
       _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
@@ -449,68 +392,66 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
-  return std::make_unique<SingleRemoteOperationBlock>(
-    &engine, this, server(), ownName(), queryId()
-  );
+  return std::make_unique<SingleRemoteOperationBlock>(&engine, this);
 }
 
 /// @brief toVelocyPack, for SingleRemoteOperationNode
 void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
-  // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
-
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("server", VPackValue(_server));
-  nodes.add("ownName", VPackValue(_ownName));
-  nodes.add("queryId", VPackValue(_queryId));
-  nodes.add("isResponsibleForInitializeCursor",
-            VPackValue(_isResponsibleForInitializeCursor));
-
-  nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
-
-
-  // add out variables
-  if (_outVariableOld != nullptr) {
-    nodes.add(VPackValue("outVariableOld"));
-    _outVariableOld->toVelocyPack(nodes);
-  }
-  if (_outVariableNew != nullptr) {
-    nodes.add(VPackValue("outVariableNew"));
-    _outVariableNew->toVelocyPack(nodes);
-  }
-  if (_inVariable != nullptr) {
-    nodes.add(VPackValue("inVariable"));
-    _inVariable->toVelocyPack(nodes);
-  }
-
-  if (_inDocVariable != nullptr) {
-    nodes.add(VPackValue("inDocVariable"));
-    _inDocVariable->toVelocyPack(nodes);
-  }
-  // inKeyVariable might be empty
-  if (_inKeyVariable != nullptr) {
-    nodes.add(VPackValue("inKeyVariable"));
-    _inKeyVariable->toVelocyPack(nodes);
-  }
-
-  if (_insertVariable != nullptr) {
-    nodes.add(VPackValue("insertVariable"));
-    _insertVariable->toVelocyPack(nodes);
-  }
-
-  if (_updateVariable != nullptr) {
-    nodes.add(VPackValue("updateVariable"));
-    _updateVariable->toVelocyPack(nodes);
-  }
-  //   nodes.add("isReplace", VPackValue(_isReplace));
-
-
-  /*
-  nodes.add(VPackValue("modificationFlags"));
-  _options.toVelocyPack(nodes);
-  */
-  // And close it:
-  nodes.close();
+//  // call base class method
+//  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+//
+//  nodes.add("database", VPackValue(_vocbase->name()));
+//  nodes.add("server", VPackValue(_server));
+//  nodes.add("ownName", VPackValue(_ownName));
+//  nodes.add("queryId", VPackValue(_queryId));
+//  nodes.add("isResponsibleForInitializeCursor",
+//            VPackValue(_isResponsibleForInitializeCursor));
+//
+//  nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
+//
+//
+//  // add out variables
+//  if (_outVariableOld != nullptr) {
+//    nodes.add(VPackValue("outVariableOld"));
+//    _outVariableOld->toVelocyPack(nodes);
+//  }
+//  if (_outVariableNew != nullptr) {
+//    nodes.add(VPackValue("outVariableNew"));
+//    _outVariableNew->toVelocyPack(nodes);
+//  }
+//  if (_inVariable != nullptr) {
+//    nodes.add(VPackValue("inVariable"));
+//    _inVariable->toVelocyPack(nodes);
+//  }
+//
+//  if (_inDocVariable != nullptr) {
+//    nodes.add(VPackValue("inDocVariable"));
+//    _inDocVariable->toVelocyPack(nodes);
+//  }
+//  // inKeyVariable might be empty
+//  if (_inKeyVariable != nullptr) {
+//    nodes.add(VPackValue("inKeyVariable"));
+//    _inKeyVariable->toVelocyPack(nodes);
+//  }
+//
+//  if (_insertVariable != nullptr) {
+//    nodes.add(VPackValue("insertVariable"));
+//    _insertVariable->toVelocyPack(nodes);
+//  }
+//
+//  if (_updateVariable != nullptr) {
+//    nodes.add(VPackValue("updateVariable"));
+//    _updateVariable->toVelocyPack(nodes);
+//  }
+//  //   nodes.add("isReplace", VPackValue(_isReplace));
+//
+//
+//  /*
+//  nodes.add(VPackValue("modificationFlags"));
+//  _options.toVelocyPack(nodes);
+//  */
+//  // And close it:
+//  nodes.close();
 }
 
 /// @brief estimateCost
