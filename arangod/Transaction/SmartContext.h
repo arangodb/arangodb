@@ -35,7 +35,7 @@ class TransactionState;
 
 namespace transaction {
 
-/// transaction context that will manage the creation or aquisition of a TransactionState
+/// transaction context that will manage the creation or acquisition of a TransactionState
 /// for transction::Methods instances for cluster wide transactions. Cluster wide transactions
 /// essentially just mean that all operations will use a consistent transaction ID and
 /// on the same server the same TransactionState instance will be used.
