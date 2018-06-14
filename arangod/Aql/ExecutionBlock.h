@@ -186,9 +186,6 @@ class ExecutionBlock {
   /// the dependent node is exhausted.
   std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
-  // TODO DEPRECATED REMOVE
-  bool getBlockOld(size_t atMost);
-
   /// @brief getSomeWithoutRegisterClearout, same as above, however, this
   /// is the actual worker which does not clear out registers at the end
   /// the idea is that somebody who wants to call the generic functionality
