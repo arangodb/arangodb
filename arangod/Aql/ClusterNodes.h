@@ -407,7 +407,7 @@ class GatherNode final : public ExecutionNode {
 
 
 /// @brief class RemoteNode
-class SingleRemoteOperationNode final : public ExecutionNode {
+class SingleRemoteOperationNode final : public ExecutionNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
 
   /// @brief constructor with an id
@@ -417,7 +417,7 @@ class SingleRemoteOperationNode final : public ExecutionNode {
                             size_t id,
                             NodeType mode,
                             std::string key,
-                            std::string collection,
+                            aql::Collection const* collection,
                             ModificationOptions const& options,
                             Variable const* out,
                             Variable const* update,
@@ -503,11 +503,9 @@ class SingleRemoteOperationNode final : public ExecutionNode {
   double estimateCost(size_t&) const override final;
 
   std::string const& key() const { return _key; }
-  std::string const& collection() const { return _collection; }
 
  private:
   std::string _key;
-  std::string _collection;
 
   NodeType _mode;
   Variable const* _inVariableUpdate;

@@ -209,7 +209,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
         LOG_DEVEL << "has no valid compare";
         continue;
       }
-      auto collection = index->collection()->name();
+      aql::Collection const* collection = ((CollectionAccessingNode*)index)->collection();
 
       auto* parentModification = hasSingleParent(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE});
       auto* parentSelect = hasSingleParent(node,EN::RETURN);

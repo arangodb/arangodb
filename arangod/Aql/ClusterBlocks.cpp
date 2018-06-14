@@ -1640,13 +1640,14 @@ SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
                                                        SingleRemoteOperationNode const* en
                                                        )
     : ExecutionBlock(engine, static_cast<ExecutionNode const*>(en)),
+      _collection(en->collection()),
       _key(en->key()),
       _isResponsibleForInitializeCursor(false) {
   TRI_ASSERT(
       arangodb::ServerState::instance()->isCoordinator()
       );
 }
-
+/*
 /// @brief local helper to send a request
 std::unique_ptr<ClusterCommResult> SingleRemoteOperationBlock::sendRequest(
     arangodb::rest::RequestType type, std::string const& urlPart,
@@ -1687,7 +1688,7 @@ std::unique_ptr<ClusterCommResult> SingleRemoteOperationBlock::sendRequest(
 int SingleRemoteOperationBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-
+  
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
     return TRI_ERROR_NO_ERROR;
@@ -1744,7 +1745,7 @@ int SingleRemoteOperationBlock::initializeCursor(AqlItemBlock* items, size_t pos
 /// @brief shutdown, will be called exactly once for the whole query
 int SingleRemoteOperationBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
-
+  
   // For every call we simply forward via HTTP
 
   std::unique_ptr<ClusterCommResult> res =
@@ -1793,12 +1794,13 @@ int SingleRemoteOperationBlock::shutdown(int errorCode) {
   if (slice.hasKey("code")) {
     return slice.get("code").getNumericValue<int>();
   }
+  
   return TRI_ERROR_INTERNAL;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
-
+*/
 /// @brief getSome
 AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
@@ -1814,28 +1816,22 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 
   // find and load collection given by name or identifier
   auto ctx(transaction::StandaloneContext::Create(_engine->getQuery()->trx()->vocbase()));
-  SingleCollectionTransaction trx(ctx, _collection->id(), AccessMode::Type::READ);
 
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  // SingleCollectionTransaction trx(ctx, _collection->id(), AccessMode::Type::READ);
+
+  _trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
 
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    /*generateTransactionError(_collection->getPlanId(), res, "");*/
-    return nullptr;
-  }
-
   OperationOptions options;
   options.ignoreRevs = true;
 
 
-  OperationResult result = trx.document(_collection->name(), search, options);
+  OperationResult result = _trx->document(_collection->name(), search, options);
 
-  res = trx.finish(result.result);
+  auto res = _trx->finish(result.result);
 
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -1914,7 +1910,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 size_t SingleRemoteOperationBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-
+  /*
   VPackBuilder builder;
   builder.openObject();
   builder.add("atMost", VPackValue(atMost));
@@ -1943,7 +1939,8 @@ size_t SingleRemoteOperationBlock::skipSome(size_t atMost) {
     }
     return skipped;
   }
-
+  */
+  return 0;
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
@@ -1951,6 +1948,7 @@ size_t SingleRemoteOperationBlock::skipSome(size_t atMost) {
 /// @brief hasMore
 bool SingleRemoteOperationBlock::hasMore() {
   DEBUG_BEGIN_BLOCK();
+  /*
   // For every call we simply forward via HTTP
   std::unique_ptr<ClusterCommResult> res =
       sendRequest(rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
@@ -1971,7 +1969,8 @@ bool SingleRemoteOperationBlock::hasMore() {
     hasMore = slice.get("hasMore").getBoolean();
   }
   return hasMore;
-
+  */
+  return false;
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }

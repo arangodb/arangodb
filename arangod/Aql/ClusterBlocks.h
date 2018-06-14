@@ -360,12 +360,12 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
 
   /// @brief timeout
   static double const defaultTimeOut;
-
+  /*
   /// @brief initializeCursor, could be called multiple times
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
-
   /// @brief shutdown, will be called exactly once for the whole query
   int shutdown(int) override final;
+  */
 
   /// @brief getSome
   AqlItemBlock* getSome(size_t atMost) override final;
@@ -377,11 +377,12 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
   bool hasMore() override final;
 
  private:
+  /*
   /// @brief internal method to send a request
   std::unique_ptr<arangodb::ClusterCommResult> sendRequest(
       rest::RequestType type, std::string const& urlPart,
       std::string const& body) const;
-
+  */
   /// @brief our server, can be like "shard:S1000" or like "server:Claus"
   std::string const _server;
 

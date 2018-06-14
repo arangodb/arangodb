@@ -384,26 +384,26 @@ double GatherNode::estimateCost(size_t& nrItems) const {
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
-                            size_t id,
-                            NodeType mode,
-                            std::string key,
-                            std::string collection,
-                            ModificationOptions const& options,
-                            Variable const* update,
-                            Variable const* out,
-                            Variable const* OLD,
-                            Variable const* NEW
-                            )
-      : ExecutionNode(plan, id)
-      , _key(key)
-      , _collection(collection)
-      , _mode(mode)
-      , _inVariableUpdate(update)
-      , _outVariable(out)
-      , _outVariableOld(OLD)
-      , _outVariableNew(NEW)
+                                                     size_t id,
+                                                     NodeType mode,
+                                                     std::string key,
+                                                     aql::Collection const* collection,
+                                                     ModificationOptions const& options,
+                                                     Variable const* update,
+                                                     Variable const* out,
+                                                     Variable const* OLD,
+                                                     Variable const* NEW
+                                                     )
+  : ExecutionNode(plan, id)
+  , CollectionAccessingNode(collection)
+  , _key(key)
+  , _mode(mode)
+  , _inVariableUpdate(update)
+  , _outVariable(out)
+  , _outVariableOld(OLD)
+  , _outVariableNew(NEW)
 {
-  TRI_ASSERT(!_collection.empty());
+  
   if (_mode == NodeType::INDEX) { //select
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariableUpdate == nullptr);
@@ -434,8 +434,9 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
 //FIXME
 /// @brief constructor for SingleRemoteOperationNode
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base),
-      _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+    : ExecutionNode(plan, base)
+    , CollectionAccessingNode(plan, base)
+    , _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
 
 //FIXME
 /// @brief creates corresponding SingleRemoteOperationNode
