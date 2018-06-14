@@ -23,6 +23,7 @@
 #ifndef ARANGOD_GRAPH_GRAPH_H
 #define ARANGOD_GRAPH_GRAPH_H
 
+#include <velocypack/Buffer.h>
 #include <chrono>
 #include <utility>
 
@@ -80,6 +81,10 @@ class Graph {
 
   /// @brief the cids of all edgeCollections
   std::unordered_set<std::string> _edgeColls;
+  
+  /// @brief ordered edge definition names of this graph,
+  /// ordered as in the database
+  std::vector<std::string> _edgeDefsNames;
 
   /// @brief edge definitions of this graph
   std::unordered_map<std::string, EdgeDefinition> _edgeDefs;
@@ -132,6 +137,7 @@ class Graph {
   /// types of values.
   static Result ValidateEdgeDefinition(const velocypack::Slice& edgeDefinition);
   static Result ValidateOrphanCollection(const velocypack::Slice& orphanDefinition);
+  static std::shared_ptr<velocypack::Buffer<uint8_t>> SortEdgeDefinition(const velocypack::Slice& edgeDefinition);
 
  public:
   /// @brief get the cids of all vertexCollections
@@ -145,6 +151,9 @@ class Graph {
 
   /// @brief get the cids of all edgeCollections
   std::unordered_map<std::string, EdgeDefinition> const& edgeDefinitions() const;
+
+  /// @brief get the cids of all edgeCollections
+  std::vector<std::string> const& edgeDefinitionNames() const;
 
   bool const& isSmart() const;
   int const& numberOfShards() const;
@@ -278,6 +287,20 @@ class GraphOperations {
       const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a new edge defition in an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
+  ResultT<std::pair<OperationResult, Result>> createEdgeDefinition(
+      VPackSlice document,
+      bool waitForSync);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief extend, create or modify edge defition in an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
+  ResultT<std::pair<OperationResult, Result>> extendEdgeDefinition(
+      VPackSlice edgeDefinition,
+      bool waitForSync);
+
   void checkIfCollectionMayBeDropped(std::string colName, std::string graphName,
       std::vector<std::string>& toBeRemoved);
 
@@ -324,11 +347,6 @@ class GraphManager {
    void checkDuplicateEdgeDefinitions(VPackSlice edgeDefinition);
 
    ////////////////////////////////////////////////////////////////////////////////
-   /// @brief find or create collections by EdgeDefinitions
-   ////////////////////////////////////////////////////////////////////////////////
-   void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition);
-
-   ////////////////////////////////////////////////////////////////////////////////
    /// @brief find or create vertex collection by name
    ////////////////////////////////////////////////////////////////////////////////
    void findOrCreateVertexCollectionByName(std::string&& name);
@@ -363,8 +381,18 @@ class GraphManager {
    GraphManager(std::shared_ptr<transaction::Context> ctx_)
         : _ctx(std::move(ctx_)) {}
    void readGraphs(velocypack::Builder& builder, arangodb::aql::QueryPart QueryPart);
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief create a graph
+   ////////////////////////////////////////////////////////////////////////////////
    ResultT<std::pair<OperationResult, Result>> createGraph(VPackSlice document,
        bool waitForSync);
+
+   ////////////////////////////////////////////////////////////////////////////////
+   /// @brief find or create collections by EdgeDefinitions
+   ////////////////////////////////////////////////////////////////////////////////
+   void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition);
+
 };
 
 

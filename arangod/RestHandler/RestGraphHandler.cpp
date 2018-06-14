@@ -257,9 +257,9 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetsAction(
     case RequestType::GET:
       graphActionReadConfig(graph, TRI_COL_TYPE_DOCUMENT, GraphProperty::VERTICES);
       return RestStatus::DONE;
-    case RequestType::POST:
-      addVertexDefinition(graph);
-      return RestStatus::DONE;
+    //case RequestType::POST: // TODO: missing
+    //  addVertexDefinition(graph);
+    //  return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -273,7 +273,7 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetsAction(
       graphActionReadConfig(graph, TRI_COL_TYPE_EDGE, GraphProperty::EDGES);
       return RestStatus::DONE;
     case RequestType::POST:
-      addEdgeDefinition(graph);
+      createEdgeDefinition(graph);
       return RestStatus::DONE;
     default:;
   }
@@ -291,12 +291,12 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
     case RequestType::POST:
       edgeActionCreate(graph, edgeDefinitionName);
       return RestStatus::DONE;
-    case RequestType::PUT:
-      replaceEdgeDefinition(graph, edgeDefinitionName);
-      return RestStatus::DONE;
-    case RequestType::DELETE_REQ:
-      removeEdgeDefinition(graph, edgeDefinitionName);
-      return RestStatus::DONE;
+    //case RequestType::PUT: TODO: missing
+    //  replaceEdgeDefinition(graph, edgeDefinitionName);
+    //  return RestStatus::DONE; TODO: missing
+    //case RequestType::DELETE_REQ: TODO: missing
+    //  removeEdgeDefinition(graph, edgeDefinitionName);
+    //  return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -313,9 +313,9 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
     case RequestType::POST:
       vertexActionCreate(graph, vertexCollectionName);
       return RestStatus::DONE;
-    case RequestType::DELETE_REQ:
-      removeVertexDefinition(graph, vertexCollectionName);
-      return RestStatus::DONE;
+   // case RequestType::DELETE_REQ: // TODO: missing
+      //removeVertexDefinition(graph, vertexCollectionName);
+      //return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -498,6 +498,20 @@ void RestGraphHandler::generateCreatedGraphConfig(bool wasSynchronous, VPackSlic
   ResponseCode code;
   if (wasSynchronous) {
     code = rest::ResponseCode::CREATED;
+  } else {
+    code = rest::ResponseCode::ACCEPTED;
+  }
+  resetResponse(code);
+  addEtagHeader(slice.get("graph").get(StaticStrings::RevString));
+  generateResultMergedWithObject(slice, options);
+}
+
+// TODO DOCU not equals TESTS !!! (responseCode)
+void RestGraphHandler::generateCreatedEdgeDefinition(bool wasSynchronous, VPackSlice slice,
+                                           VPackOptions const& options) {
+  ResponseCode code;
+  if (wasSynchronous) {
+    code = rest::ResponseCode::ACCEPTED;
   } else {
     code = rest::ResponseCode::ACCEPTED;
   }
@@ -844,12 +858,6 @@ Result RestGraphHandler::vertexCreate(std::shared_ptr<const graph::Graph> graph,
                         TRI_COL_TYPE_DOCUMENT);
 }
 
-// /_api/gharial/{graph-name}/edge
-
-Result RestGraphHandler::addEdgeDefinition(std::shared_ptr<const graph::Graph> graph) {
-  return Result();
-}
-
 // /_api/gharial/{graph-name}/edge/{definition-name}
 
 Result RestGraphHandler::replaceEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
@@ -857,13 +865,55 @@ Result RestGraphHandler::replaceEdgeDefinition(std::shared_ptr<const graph::Grap
   return Result();
 }
 
-Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
-                                               const std::string& edgeDefinitionName) {
+// /_api/gharial/{graph-name}/edge
+
+Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph> graph) {
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return false;
+  }
+  bool waitForSync =
+      _request->parsedValue(StaticStrings::WaitForSyncString, false);
+
   std::shared_ptr<transaction::StandaloneContext> ctx =
       transaction::StandaloneContext::Create(_vocbase);
 
   GraphOperations gops{*graph, ctx};
- // gops.createEdgeDefinition(edgeDefinitionName);
+  auto resultT = gops.createEdgeDefinition(body, waitForSync);
+
+  OperationResult& result = resultT.get().first;
+  Result res = resultT.get().second;
+
+  if (result.fail()) {
+    generateTransactionError(result);
+    return result.result;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError("", res, ""); // TODO: how to do properly?
+    return res;
+  }
+
+
+  // TODO: new pointer to new graph instance
+  // graph cache
+  // add function invalidate (+ return)
+  // return new graph config
+  //std::string graphName = graph->name();
+  // TODO: REFACTOR THIS !!
+  std::shared_ptr<transaction::StandaloneContext> ctxx =
+      transaction::StandaloneContext::Create(_vocbase);
+
+  std::string graphName = graph->name();
+  std::shared_ptr<Graph const> graphx = _graphCache.getGraph(std::move(ctxx), graphName);
+  GraphOperations gopss{*graphx, ctx};
+
+  VPackBuilder builder;
+  gopss.readGraph(builder);
+  // TODO: REFACTOR THIS !!
+
+  generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
 
   return Result();
 }

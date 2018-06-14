@@ -162,6 +162,9 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   void generateCreatedGraphConfig(bool wasSynchronous, VPackSlice slice,
       VPackOptions const& options);
 
+  void generateCreatedEdgeDefinition(bool wasSynchronous, VPackSlice slice,
+      VPackOptions const& options);
+
   void generateGraphConfig(VPackSlice slice, VPackOptions const& options);
 
   // TODO maybe cleanup the generate* zoo a little?
@@ -238,10 +241,6 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   );
 
   // edges
-  Result addEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph
-  );
-
   Result replaceEdgeDefinition(
     std::shared_ptr<const graph::Graph> graph,
     const std::string& edgeDefinitionName
@@ -253,8 +252,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   );
 
   Result createEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph,
-    const std::string& edgeDefinitionName
+    std::shared_ptr<const graph::Graph> graph
   );
 
   // vertices
