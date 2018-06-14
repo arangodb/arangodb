@@ -30,6 +30,10 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Aql/Ast.h"
+#include "Aql/Query.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -43,18 +47,14 @@
 #include "IResearch/AqlHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/AqlFunctionFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -150,7 +150,7 @@ void assertExpressionFilter(
 
   // iteratorForCondition
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       {},
       {},
@@ -237,7 +237,7 @@ void assertFilter(
 
   // execution time
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       {},
       {},
