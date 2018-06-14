@@ -1306,8 +1306,8 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 ExecutionState RemoteBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::RequestType::GET, "/_api/aql/hasMoreState/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1320,16 +1320,24 @@ ExecutionState RemoteBlock::hasMoreState() {
   if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  bool hasMore = true;
-  if (slice.hasKey("hasMore")) {
-    hasMore = slice.get("hasMore").getBoolean();
+
+  if (!slice.hasKey("hasMoreState") || !slice.get("hasMoreState").isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+  std::string hasMoreStateString = slice.get("hasMoreState").copyString();
+
+  ExecutionState hasMoreState;
+  if (hasMoreStateString == "HASMORE") {
+    hasMoreState = ExecutionState::HASMORE;
+  } else if (hasMoreStateString == "DONE") {
+    hasMoreState = ExecutionState::DONE;
+  } else if (hasMoreStateString == "WAITING") {
+    hasMoreState = ExecutionState::WAITING;
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
 
-  if (hasMore) {
-    return ExecutionState::HASMORE;
-  } else {
-    return ExecutionState::DONE;
-  }
+  return hasMoreState;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
