@@ -307,6 +307,10 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
 
     // try to ensure a nonempty buffer
     if (_buffer.empty()) {
+      TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
       ExecutionState state;
       bool blockAppended;
       std::tie(state, blockAppended) =
@@ -424,6 +428,10 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
   }
 
   while (_skipped < atMost) {
+    TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     GetNextRowState state;
     AqlItemBlock* cur = nullptr;
     size_t pos = 0;
