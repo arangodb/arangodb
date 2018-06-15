@@ -321,8 +321,13 @@ static int distributeBabyOnShards(
   ShardID shardID;
   int error;
   if (value.isString()) {
-    error = ci->getResponsibleShard(collinfo.get(), value, false, shardID,
-                                    usesDefaultShardingAttributes, value.copyString());
+    VPackBuilder temp;
+    temp.openObject();
+    temp.add(StaticStrings::KeyString, value);
+    temp.close();
+  
+    error = ci->getResponsibleShard(collinfo.get(), temp.slice(), false, shardID,
+                                    usesDefaultShardingAttributes);
   } else {
     error = ci->getResponsibleShard(collinfo.get(), value, false, shardID,
                                     usesDefaultShardingAttributes);
@@ -1618,12 +1623,6 @@ int getDocumentOnCoordinator(
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   bool useMultiple = slice.isArray();
 
-  // this temporary Builder is needed in case the document keys
-  // are passed as strings and not in { "_key" : "..." } format.
-  // we intentionally do not close this Builder as it would mean
-  // the pointers to the contained slices may change on close
-  VPackBuilder tempBuilder;
-  tempBuilder.openArray();
   int res = TRI_ERROR_NO_ERROR;
   bool canUseFastPath = true;
   if (useMultiple) {
