@@ -628,8 +628,12 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
           answerBody.add("hasMoreState", VPackValue("WAITING"));
           break;
       }
-    }
-    else if (operation == "hasMore") {
+    } else if (operation == "hasMore") {
+      LOG_TOPIC(WARN, arangodb::Logger::AQL)
+          << "Deprecated blocking route 'hasMore' used in AQL. This should "
+             "only happen during a rolling upgrade (from <3.4 to ~3.4). "
+             "Otherwise, please report this error.";
+
       // backwards compatible synchronous API
       bool hasMore;
       if (shardId.empty()) {

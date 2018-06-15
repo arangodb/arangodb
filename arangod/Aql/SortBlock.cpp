@@ -133,7 +133,7 @@ std::pair<ExecutionState, arangodb::Result> SortBlock::getOrSkipSome(
 
   return ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
   // cppcheck-suppress style
-  DEBUG_END_BLOCK();  
+  DEBUG_END_BLOCK();
 }
 
 void SortBlock::doSorting() {

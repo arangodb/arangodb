@@ -56,8 +56,8 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _profile(engine->getQuery()->queryOptions().profile),
       _getSomeBegin(0),
       _upstreamState(ExecutionState::HASMORE),
-      _collector(&_engine->_itemBlockManager),
-      _skipped(0) {
+      _skipped(0),
+      _collector(&engine->_itemBlockManager) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -345,7 +345,7 @@ AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
     auto res = getOrSkipSome(atMost, false, result, skipped);
     if (res.first == ExecutionState::WAITING) {
       _engine->getQuery()->tempWaitForAsyncResponse();
-    } else { 
+    } else {
       if (res.second.fail()) {
         THROW_ARANGO_EXCEPTION(res.second);
       }
@@ -456,6 +456,8 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
         std::tie(state, blockAppended) = getBlock(atMost - _skipped);
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!blockAppended);
+          TRI_ASSERT(result == nullptr);
+          TRI_ASSERT(skipped_ == 0);
           return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
         }
 

@@ -249,7 +249,16 @@ class ExecutionBlock {
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
 
+ private:
+  /// @brief The number of skipped/processed rows in getOrSkipSome, used to keep
+  /// track of it despite WAITING interruptions. As
+  /// ExecutionBlock::getOrSkipSome is called directly in some overriden
+  /// implementations of ::getOrSkipSome, these implementations need their own
+  /// _skipped counter.
   size_t _skipped;
+
+  /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
+  /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;
 };
 

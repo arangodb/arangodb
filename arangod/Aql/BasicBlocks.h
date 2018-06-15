@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_BASIC_BLOCKS_H
 #define ARANGOD_AQL_BASIC_BLOCKS_H 1
 
+#include "Aql/AqlItemBlock.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -98,7 +99,7 @@ class FilterBlock final : public ExecutionBlock {
 class LimitBlock final : public ExecutionBlock {
  private:
 
-   enum State { INITFULLCOUNT, SKIPPING, RETURNING, DONE };
+   enum class State { INITFULLCOUNT, SKIPPING, RETURNING, DONE };
 
  public:
   LimitBlock(ExecutionEngine* engine, LimitNode const* ep)
@@ -107,13 +108,15 @@ class LimitBlock final : public ExecutionBlock {
         _limit(ep->_limit),
         _remainingOffset(ep->_limit),
         _count(0),
-        _state(INITFULLCOUNT),  // start in the beginning
-        _fullCount(ep->_fullCount) {}
+        _state(State::INITFULLCOUNT),  // start in the beginning
+        _fullCount(ep->_fullCount),
+        _skipped(0),
+        _result(nullptr) {}
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) final override;
 
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                  AqlItemBlock*& result,
+                                                  AqlItemBlock*& result_,
                                                   size_t& skipped) override;
 
  protected:
@@ -138,6 +141,11 @@ class LimitBlock final : public ExecutionBlock {
 
   /// @brief whether or not the block should count what it limits
   bool const _fullCount;
+
+  size_t _skipped;
+
+  /// @brief result to return in getOrSkipSome
+  std::unique_ptr<AqlItemBlock> _result;
 };
 
 class ReturnBlock final : public ExecutionBlock {
