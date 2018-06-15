@@ -269,11 +269,13 @@ The "coordinates" member is an array of LineString coordinate arrays:
 ### Polygon
 
 [GeoJSON polygons](https://tools.ietf.org/html/rfc7946#section-3.1.6) consists
-of a series of closed `LineString` objects (ring-like). These *LineRing* objects
+of a series of closed `LineString` objects (ring-like). These *Linear Ring* objects
 consist of four or more vertices with the first and last coordinate pairs
 being equal. Coordinates of a Polygon are an array of linear ring coordinate
 arrays. The first element in the array represents the exterior ring.
-Any subsequent elements represent interior rings (or holes).
+Any subsequent elements represent interior rings (holes within the surface.). 
+A linear ring MUST follow the right-hand rule with respect to the area it bounds, i.e., 
+exterior rings are counterclockwise, and holes are clockwise.
 
 No Holes:
 
@@ -296,7 +298,11 @@ With Holes:
 
 - The exterior ring should not self-intersect.
 - The interior rings must be contained in the outer ring
-- Interior rings cannot overlap (or touch) with each other
+- Interior rings cannot overlap (or touch) with each other. 
+- Rings cannot share edges, they may share vertices
+- No ring may be empty, a LineString needs at least three _distinct_ coordinates
+- Polygon rings MUST follow the right-hand rule for orientation (counterclockwise external rings, 
+  clockwise internal rings).
 
 ```json
 {
@@ -319,6 +325,53 @@ With Holes:
   ]
 }
 ```
+
+### MultiPolygon
+
+
+[GeoJSON MultiPolygons](https://tools.ietf.org/html/rfc7946#section-3.1.6) consists
+of multiple polygons. The the "coordinates" member is an array of
+_Polygon_ coordinate arrays. 
+
+- Polygons within the same MultiPolygon may not intersect i.e. the boundary of a polygon 
+  may not intersect both the interior and exterior of any other polygon.
+- Polygons in the same MultiPolygon may not share edges, they may share coordinates
+- Polygons and rings must not be empty
+
+Example with two polygons, the second one with a hole:
+```json
+{
+    "type": "MultiPolygon",
+    "coordinates": [
+        [
+            [
+                [102.0, 2.0],
+                [103.0, 2.0],
+                [103.0, 3.0],
+                [102.0, 3.0],
+                [102.0, 2.0]
+            ]
+        ],
+        [
+            [
+                [100.0, 0.0],
+                [101.0, 0.0],
+                [101.0, 1.0],
+                [100.0, 1.0],
+                [100.0, 0.0]
+            ],
+            [
+                [100.2, 0.2],
+                [100.2, 0.8],
+                [100.8, 0.8],
+                [100.8, 0.2],
+                [100.2, 0.2]
+            ]
+        ]
+    ]
+}
+```
+
 
 Arangosh Examples
 -----------------
