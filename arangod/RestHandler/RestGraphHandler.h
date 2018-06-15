@@ -46,6 +46,10 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     VERTICES, EDGES
   };
 
+  enum class EdgeDefinitionAction {
+    CREATE, EDIT, REMOVE
+  };
+
  public:
   RestGraphHandler(GeneralRequest* request, GeneralResponse* response,
                    graph::GraphCache* graphCache);
@@ -241,7 +245,7 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   );
 
   // edges
-  Result replaceEdgeDefinition(
+  Result editEdgeDefinition(
     std::shared_ptr<const graph::Graph> graph,
     const std::string& edgeDefinitionName
   );
@@ -253,6 +257,12 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   Result createEdgeDefinition(
     std::shared_ptr<const graph::Graph> graph
+  );
+
+  Result modifyEdgeDefinition(
+    std::shared_ptr<const graph::Graph> graph,
+    EdgeDefinitionAction action,
+    std::string edgeDefinitionName
   );
 
   // vertices

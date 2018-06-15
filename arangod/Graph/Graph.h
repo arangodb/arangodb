@@ -255,6 +255,14 @@ class GraphOperations {
   ResultT<std::pair<OperationResult, Result>> removeVertex(
       const std::string& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
+  
+  /// @brief Remove a vertex collection from a graph
+  ResultT<std::pair<OperationResult, Result>> removeVertex(
+      const std::string& collectionName);
+
+  /// @brief Remove a vertex collection from the database
+  ResultT<std::pair<OperationResult, Result>> removeVertexCollection(
+    const std::string& collectionName, bool dropCollection);
 
   /// @brief Remove a graph and optional all connected collections
   ResultT<std::pair<OperationResult, Result>> removeGraph(bool waitForSync, bool dropCollections);
@@ -291,15 +299,29 @@ class GraphOperations {
   /// @brief create a new edge defition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   ResultT<std::pair<OperationResult, Result>> createEdgeDefinition(
-      VPackSlice document,
-      bool waitForSync);
+      VPackSlice document, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief extend, create or modify edge defition in an existing graph
+  /// @brief create edge defition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   ResultT<std::pair<OperationResult, Result>> extendEdgeDefinition(
       VPackSlice edgeDefinition,
       bool waitForSync);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create edge defition in an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
+  ResultT<std::pair<OperationResult, Result>> editEdgeDefinition(
+      VPackSlice edgeDefinition, bool waitForSync, std::string edgeDefinitionName);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief change the edge definition for a specified graph
+  ////////////////////////////////////////////////////////////////////////////////
+  OperationResult changeEdgeDefinitionsForGraph(
+      VPackSlice graph, VPackSlice edgeDefinition,
+      std::unordered_set<std::string> newCollections,
+      std::unordered_set<std::string> possibleOrphans, bool waitForSync,
+      std::string thisGraphName, transaction::Methods& trx);
 
   void checkIfCollectionMayBeDropped(std::string colName, std::string graphName,
       std::vector<std::string>& toBeRemoved);

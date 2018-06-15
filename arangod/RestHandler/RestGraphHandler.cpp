@@ -291,9 +291,9 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
     case RequestType::POST:
       edgeActionCreate(graph, edgeDefinitionName);
       return RestStatus::DONE;
-    //case RequestType::PUT: TODO: missing
-    //  replaceEdgeDefinition(graph, edgeDefinitionName);
-    //  return RestStatus::DONE; TODO: missing
+    case RequestType::PUT:
+      editEdgeDefinition(graph, edgeDefinitionName);
+      return RestStatus::DONE;
     //case RequestType::DELETE_REQ: TODO: missing
     //  removeEdgeDefinition(graph, edgeDefinitionName);
     //  return RestStatus::DONE;
@@ -859,15 +859,19 @@ Result RestGraphHandler::vertexCreate(std::shared_ptr<const graph::Graph> graph,
 }
 
 // /_api/gharial/{graph-name}/edge/{definition-name}
-
-Result RestGraphHandler::replaceEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
+Result RestGraphHandler::editEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
                                                const std::string& edgeDefinitionName) {
-  return Result();
+
+  return modifyEdgeDefinition(graph, EdgeDefinitionAction::EDIT, edgeDefinitionName);
 }
 
+Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph> graph) {
+  return modifyEdgeDefinition(graph, EdgeDefinitionAction::CREATE, "");
+}
 // /_api/gharial/{graph-name}/edge
 
-Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph> graph) {
+Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
+    EdgeDefinitionAction action, std::string edgeDefinitionName) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -880,7 +884,16 @@ Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph
       transaction::StandaloneContext::Create(_vocbase);
 
   GraphOperations gops{*graph, ctx};
-  auto resultT = gops.createEdgeDefinition(body, waitForSync);
+  ResultT<std::pair<OperationResult, Result>> resultT{
+      Result(TRI_ERROR_INTERNAL)};
+  
+  if (action == EdgeDefinitionAction::CREATE) {
+    resultT = gops.createEdgeDefinition(body, waitForSync);
+  } else if (action == EdgeDefinitionAction::EDIT) {
+    resultT = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   OperationResult& result = resultT.get().first;
   Result res = resultT.get().second;
@@ -894,7 +907,6 @@ Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph
     generateTransactionError("", res, ""); // TODO: how to do properly?
     return res;
   }
-
 
   // TODO: new pointer to new graph instance
   // graph cache
