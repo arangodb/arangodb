@@ -1701,37 +1701,49 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     newRegId = (*itNew).second.registerId;
   }
 
-
-  // VPackBuilder bodyBuilder;
-  // //VPackSlice body;
-  // If (node->_haveReferences) { /// have let foo=
-  //   std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
-  //   AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
-  //   bodyBuilder.add(inDocument.slice());
-  // }
-
-  OperationOptions opOptions;
-  opOptions.ignoreRevs = true;
-
-  opOptions.keepNull = true; /// TODO - get from node - replace => patch existing
-  opOptions.mergeObjects = true; /// TODO - get from node - replace => patch existing
-  opOptions.returnNew = true; // TODO - get from node - update
-  opOptions.returnOld = true; // TODO - get from node insert, delete
-  opOptions.waitForSync = false; // TODO - get from node
-  opOptions.silent = false; // TODO - get from node
-  opOptions.overwrite = true; // TODO insert / update
-  OperationResult result;
-
-  if(node->_mode == ExecutionNode::NodeType::INDEX) {
-    result = _trx->document(_collection->name(), key, opOptions);
+  VPackBuilder bodyBuilder;
+  VPackSlice body = VPackSlice::nullSlice();
+  if(in) {// IF NOT REMOVE OR SELECT
+   //node->_haveReferences; // INSPECT
+   std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+   AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
+   bodyBuilder.add(inDocument.slice());
+   body = bodyBuilder.slice();
   }
 
-  // delete: result = _trx->remove(_collection->name(), search, opOptions);
-  // insert: result = _trx->insert(_collection->name(), xxxx, opOptions);
-  //
-  // update - replace existing: result = _trx->replace(_collection->name(), xxxx, opOptions);
-  // update - patch existing: result = _trx->update(_collection->name(), xxxx, opOptions);
+  auto const& nodeOps = node->_options;
 
+  OperationOptions opOptions;
+  opOptions.ignoreRevs = true; // TODO
+  opOptions.keepNull = !nodeOps.nullMeansRemove;
+  opOptions.mergeObjects = nodeOps.mergeObjects;
+  opOptions.returnNew = !!NEW;
+  opOptions.returnOld = !!OLD;
+  opOptions.waitForSync = nodeOps.waitForSync;
+  opOptions.silent = nodeOps.ignoreErrors; // TODO
+  opOptions.overwrite = nodeOps.overwrite;
+
+  OperationResult result;
+  if(node->_mode == ExecutionNode::NodeType::INDEX) {
+    TRI_ASSERT(body.isNull());
+    result = _trx->document(_collection->name(), key, opOptions);
+  } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
+    TRI_ASSERT(!body.isNull());
+    // insert: result = _trx->insert(_collection->name(), xxxx, opOptions);
+  } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
+    TRI_ASSERT(body.isNull());
+    // delete: result = _trx->remove(_collection->name(), search, opOptions);
+  } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
+    TRI_ASSERT(!body.isNull());
+    // update - replace existing: result = _trx->replace(_collection->name(), xxxx, opOptions);
+  } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
+    TRI_ASSERT(!body.isNull());
+    // update - patch existing: result = _trx->update(_collection->name(), xxxx, opOptions);
+  } else if(node->_mode == ExecutionNode::NodeType::UPSERT) {
+    TRI_ASSERT(!body.isNull());
+  }
+
+  // check operation result
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // document not there is not an error in this situation.
@@ -1743,15 +1755,23 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     return nullptr;
   }
 
-  VPackSlice outDocument = result.slice().resolveExternal();
-
+  // Fill itemblock
+  std::unique_ptr<AqlItemBlock> aqlres;
   // create block that can hold a result with one entry and a number of variables
   // corresponing to the amount of out variables
-  std::unique_ptr<AqlItemBlock> aqlres;
   aqlres.reset(requestBlock(1, node->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-
-  // place document as in the outvariable slot of the result
-  aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+  VPackSlice outDocument = VPackSlice::noneSlice();
+  if(node->_mode == ExecutionNode::NodeType::INDEX) {
+    outDocument = result.slice().resolveExternal();
+    // place document as in the outvariable slot of the result
+    //ERROR HANDLING? what if there is no result?
+    aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+  } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
+  } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
+  } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
+  } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
+  } else if(node->_mode == ExecutionNode::NodeType::UPSERT) {
+  }
 
   throwIfKilled();  // check if we were aborted
 
