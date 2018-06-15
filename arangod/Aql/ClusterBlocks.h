@@ -147,7 +147,7 @@ class ScatterBlock : public BlockWithClients {
   /// @brief hasMoreForClientId: any more for client <cliendId>?
   bool hasMoreForClientId(size_t clientId) override;
 
-  ExecutionState getHasMoreStateForShard(const std::string &shardId) final;
+  ExecutionState getHasMoreStateForShard(const std::string &shardId) override;
 
   /// @brief getOrSkipSomeForShard
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
@@ -186,6 +186,8 @@ class DistributeBlock : public BlockWithClients {
   /// @brief getBlockForClient: try to get at atMost pairs into
   /// _distBuffer.at(clientId).
   std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
+  
+  ExecutionState getHasMoreStateForShard(const std::string &shardId) override;
 
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
@@ -224,8 +226,6 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief allow specified keys even in non-default sharding case
   bool _allowSpecifiedKeys;
-
-  ExecutionState getHasMoreStateForShard(const std::string &shardId) final;
 };
 
 class RemoteBlock final : public ExecutionBlock {
