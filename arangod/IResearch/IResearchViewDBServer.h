@@ -31,15 +31,16 @@
 
 namespace arangodb {
 
-class DatabasePathFeature; // forward declaration
-class TransactionState; // forward declaration
+class DatabasePathFeature;
+class TransactionState;
+class CollectionNameResolver;
 
 } // arangodb
 
 namespace arangodb {
 namespace iresearch {
 
-class PrimaryKeyIndexReader; // forward declaration
+class PrimaryKeyIndexReader;
 
 class IResearchViewDBServer final: public arangodb::LogicalView {
  public:
@@ -84,6 +85,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ////////////////////////////////////////////////////////////////////////////////
   PrimaryKeyIndexReader* snapshot(
     TransactionState& state,
+    CollectionNameResolver const& resolver,
     std::vector<std::string> const& shards,
     bool force = false
   ) const;

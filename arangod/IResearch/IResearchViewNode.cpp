@@ -498,8 +498,14 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    // FIXME cache snapshot in transaction state when transaction starts
-    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(state, _shards, true);
+    auto* resolver = trx->resolver();
+
+    if (resolver) {
+      // FIXME cache snapshot in transaction state when transaction starts
+      reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(state, *resolver, _shards, true);
+    } else {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << "failed to retrieve CollectionNameResolver from the transaction";
+    }
   } else {
     reader = LogicalView::cast<IResearchView>(view).snapshot(state);
   }

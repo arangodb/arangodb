@@ -434,7 +434,7 @@ SECTION("test_query") {
 
     arangodb::CollectionNameResolver resolver(vocbase);
     auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
-    auto* snapshot = wiewImpl->snapshot(*state, { logicalCollection->name() }, true);
+    auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
     CHECK(0 == snapshot->docs_count());
   }
 
@@ -476,7 +476,7 @@ SECTION("test_query") {
 
     arangodb::CollectionNameResolver resolver(vocbase);
     auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
-    auto* snapshot = wiewImpl->snapshot(*state, { logicalCollection->name() }, true);
+    auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
     CHECK(12 == snapshot->docs_count());
   }
 
@@ -528,7 +528,7 @@ SECTION("test_query") {
     trxOptions.waitForSync = true;
     arangodb::CollectionNameResolver resolver0(*vocbase);
     auto state0 = s.engine.createTransactionState(resolver0, trxOptions);
-    auto* snapshot0 = wiewImpl->snapshot(*state0, { logicalCollection->name() }, true);
+    auto* snapshot0 = wiewImpl->snapshot(*state0, resolver0, { logicalCollection->name() }, true);
     CHECK(12 == snapshot0->docs_count());
 
     // add more data
@@ -558,7 +558,7 @@ SECTION("test_query") {
     // new reader sees new data
     arangodb::CollectionNameResolver resolver1(*vocbase);
     auto state1 = s.engine.createTransactionState(resolver1, trxOptions);
-    auto* snapshot1 = wiewImpl->snapshot(*state1, { logicalCollection->name() }, true);
+    auto* snapshot1 = wiewImpl->snapshot(*state1, resolver1, { logicalCollection->name() }, true);
     CHECK(24 == snapshot1->docs_count());
   }
 
@@ -625,7 +625,7 @@ SECTION("test_query") {
       {
         arangodb::CollectionNameResolver resolver(*vocbase);
         auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
-        auto* snapshot = wiewImpl->snapshot(*state, { logicalCollection->name() }, true);
+        auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
         CHECK(i == snapshot->docs_count());
       }
     }
@@ -836,7 +836,7 @@ SECTION("test_transaction_snapshot") {
   {
     arangodb::CollectionNameResolver resolver(vocbase);
     auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
-    auto* snapshot = wiewImpl->snapshot(*state, { logicalCollection->name() });
+    auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() });
     CHECK((nullptr == snapshot));
   }
 
@@ -844,7 +844,7 @@ SECTION("test_transaction_snapshot") {
   {
     arangodb::CollectionNameResolver resolver(vocbase);
     auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
-    auto* snapshot = wiewImpl->snapshot(*state, { logicalCollection->name() }, true);
+    auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
     CHECK((nullptr != snapshot));
     CHECK((0 == snapshot->live_docs_count()));
   }
@@ -854,7 +854,7 @@ SECTION("test_transaction_snapshot") {
     arangodb::CollectionNameResolver resolver(vocbase);
     auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     state->waitForSync(true);
-    auto* snapshot = wiewImpl->snapshot(*state, { logicalCollection->name() });
+    auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() });
     CHECK((nullptr == snapshot));
   }
 
@@ -863,7 +863,7 @@ SECTION("test_transaction_snapshot") {
     arangodb::CollectionNameResolver resolver(vocbase);
     auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     state->waitForSync(true);
-    auto* snapshot = wiewImpl->snapshot(*state, { logicalCollection->name() }, true);
+    auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
   }

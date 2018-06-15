@@ -545,6 +545,7 @@ arangodb::Result IResearchViewDBServer::rename(
 
 PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     TransactionState& state,
+    CollectionNameResolver const& resolver,
     std::vector<std::string> const& shards,
     bool force /*= false*/
 ) const {
@@ -567,8 +568,6 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
   auto& reader = cookiePtr->_snapshot;
   ReadMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // 'collections_' can be asynchronously modified
-
-  auto& resolver = state.resolver();
 
   try {
     for (auto& shardId : shards) {
