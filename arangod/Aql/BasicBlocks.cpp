@@ -384,37 +384,37 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
         }
       }
       if (_count >= _limit) {
-        if (_fullCount) {
+        if (!_fullCount) {
+          _state = State::DONE;
+        } else {
           // if fullCount is set, we must fetch all elements from the
-          // dependency. we'll use the default batch size for this
-          atMost = DefaultBatchSize();
+          // dependency.
 
           // suck out all data from the dependencies
-          while (true) {
+          while (_state != State::DONE) {
             AqlItemBlock* ignore = nullptr;
             // local skipped count
             size_t skipped = 0;
-            // We're only counting here, so always skip.
-            auto res =
-                ExecutionBlock::getOrSkipSome(atMost, skipping, ignore, skipped);
+            // We're only counting here, so skip. Using the DefaultBatchSize
+            // instead of atMost because we need to skip everything if we have
+            // to calculate fullCount.
+            auto res = ExecutionBlock::getOrSkipSome(DefaultBatchSize(), true,
+                                                     ignore, skipped);
+            TRI_ASSERT(ignore == nullptr);
 
-            if (res.first == ExecutionState::WAITING || !res.second.ok()) {
-              TRI_ASSERT(ignore == nullptr);
+            ExecutionState state = res.first;
+            Result result = res.second;
+            if (state == ExecutionState::WAITING || result.fail()) {
               // On WAITING we will continue here, on error we bail out
               return res;
             }
 
-            TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
-            delete ignore;
             _engine->_stats.fullCount += skipped;
 
             if (skipped == 0) {
               _state = State::DONE;
-              break;
             }
           }
-        } else {
-          _state = State::DONE;
         }
       }
     }
