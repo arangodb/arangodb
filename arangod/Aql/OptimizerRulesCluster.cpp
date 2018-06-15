@@ -178,6 +178,18 @@ bool depIsSingletonOrConstCalc(ExecutionNode* node){
   return false;
 }
 
+void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode){
+  if(oldNode == plan->root()) {
+    for(auto* dep : oldNode->getDependencies()) {
+      newNode->addDependency(dep);
+    }
+    plan->root(newNode,true);
+  } else {
+    TRI_ASSERT(oldNode != plan->root());
+    plan->replaceNode(oldNode, newNode);
+  }
+}
+
 void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                                                               std::unique_ptr<ExecutionPlan> plan,
                                                               OptimizerRule const* rule) {
@@ -219,19 +231,9 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
         auto parentType = parentModification->getType();
         LOG_DEVEL << ExecutionNode::getTypeString(parentType);
 
-
-        Variable* update = nullptr;
-        if ( parentType == EN::INSERT) {
-          update = nullptr; //get update
-        } else if ( parentType == EN::REMOVE) {
-          // only case that does not need update
-          // reverse if logic
-        } else if ( parentType == EN::UPDATE) {
-          update = nullptr; //get update
-        } else if ( parentType == EN::UPSERT) {
-          update = nullptr; //get update
-        } else if ( parentType == EN::REPLACE) {
-          update = nullptr; //get update
+        Variable const* update = nullptr;
+        if ( parentType != EN::REMOVE) {
+          update = mod->getVariablesUsedHere().front();
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(
@@ -246,7 +248,8 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
             mod->getOutVariableNew()
           )
         );
-        plan->replaceNode(parentModification, singleOperationNode);
+
+        replaceNode(plan.get(), mod, singleOperationNode);
         plan->unlinkNode(indexNode);
         modified = true;
       } else if(parentSelect){
@@ -259,7 +262,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                                          , nullptr /*update*/
                                          , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
-        plan->replaceNode(indexNode,singleOperationNode);
+        replaceNode(plan.get(), indexNode, singleOperationNode);
         modified = true;
 
       } else {
