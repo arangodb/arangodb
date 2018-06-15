@@ -1667,10 +1667,40 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   }
 
   VPackSlice search = searchBuilder.slice();
-  OperationOptions options;
-  options.ignoreRevs = true;
+  VPackBuilder bodyBuilder;
+  VPackSlice body;
+  if (node->_haveReferences) { /// have let foo=
+    auto in = node->_inVariableUpdate;
 
-  OperationResult result = _trx->document(_collection->name(), search, options);
+    TRI_ASSERT(in != nullptr); /// just for select
+    auto itIn = node->getRegisterPlan()->varInfo.find(in->id);
+
+    auto inRegId = (*itIn).second.registerId;
+    TRI_ASSERT(itIn != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+    std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+
+    AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
+    bodyBuilder.add(inDocument.slice());
+  }
+  
+  OperationOptions opOptions;
+  opOptions.ignoreRevs = true;
+
+  opOptions.keepNull = true; /// TODO - get from node - replace => patch existing
+  opOptions.mergeObjects = true; /// TODO - get from node - replace => patch existing
+  opOptions.returnNew = true; // TODO - get from node - update
+  opOptions.returnOld = true; // TODO - get from node insert, delete
+  opOptions.waitForSync = false; // TODO - get from node
+  opOptions.silent = false; // TODO - get from node
+  opOptions.overwrite = true; // TODO insert / update
+  OperationResult result;
+  // fetch: result = _trx->document(_collection->name(), search, opOptions);
+  // delete: result = _trx->remove(_collection->name(), search, opOptions);
+  // insert: result = _trx->insert(_collection->name(), xxxx, opOptions);
+  // 
+  // update - replace existing: result = _trx->replace(_collection->name(), xxxx, opOptions);
+  // update - patch existing: result = _trx->update(_collection->name(), xxxx, opOptions);
 
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {

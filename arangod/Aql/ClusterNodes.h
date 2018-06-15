@@ -507,6 +507,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
  private:
   std::string _key;
 
+  bool _haveReferences;
+
   NodeType _mode;
   Variable const* _inVariableUpdate;
   Variable const* _outVariable;
