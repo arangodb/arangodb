@@ -179,7 +179,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), std::move(stats));
+      _engine->_stats.nodes.emplace(en->id(), stats);
     }
     
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -334,6 +334,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
   }
   return {ExecutionState::HASMORE, std::move(blk)};
 }
+
+// TODO I suppose this should be removed?
 AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(atMost > 0);

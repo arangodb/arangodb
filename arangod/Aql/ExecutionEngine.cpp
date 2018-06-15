@@ -513,9 +513,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     QueryRegistry* queryRegistry, Query* query, ExecutionPlan* plan,
     bool planRegisters) {
   auto role = arangodb::ServerState::instance()->getRole();
-  bool const isCoordinator =
-      arangodb::ServerState::instance()->isCoordinator(role);
-  bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
+  bool const isCoordinator = arangodb::ServerState::isCoordinator(role);
+  bool const isDBServer = arangodb::ServerState::isDBServer(role);
 
   TRI_ASSERT(queryRegistry != nullptr);
 

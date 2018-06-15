@@ -35,6 +35,23 @@ var db = require("@arangodb").db;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
+// returns some values of array around index (from index-before to index+after)
+// as a comma separated string. Appends/prepends "..." when not printing the
+// whole array.
+function arrayStringExcerpt(array, index, before, after) {
+  const lastIdx = array.length - 1;
+  const from = Math.max(index-before, 0);
+  const to = Math.min(index+after, lastIdx);
+  const slice = array.slice(from, to).join(', ');
+  const prefix = from > 0
+    ? '..., '
+    : '';
+  const suffix = to < lastIdx
+    ? ', ...'
+    : '';
+  return prefix + slice + suffix;
+}
+
 function sortTestSuite () {
   var c;
 
@@ -56,13 +73,16 @@ function sortTestSuite () {
 /// @brief test without index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSortNoIndex : function () {
-      var result = AQL_EXECUTE("FOR doc IN " + c.name() + " SORT doc.value RETURN doc.value").json;
+    testSortNoIndex: function() {
+      const result =
+          AQL_EXECUTE(`FOR doc IN ${c.name()} SORT doc.value RETURN doc.value`)
+              .json;
       assertEqual(11111, result.length);
 
-      var last = -1;
-      for (var i = 0; i < result.length; ++i) {
-        assertTrue(result[i] > last);
+      let last = -1;
+      for (let i = 0; i < result.length; ++i) {
+        let slice = arrayStringExcerpt(result, i, 2, 1);
+        assertTrue(result[i] > last, `failure at index ${i}: ${slice}`);
         last = result[i];
       }
     },
@@ -71,14 +91,17 @@ function sortTestSuite () {
 /// @brief test with index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSortSkiplist : function () {
-      c.ensureIndex({ type: "skiplist", fields: [ "value" ]});
-      var result = AQL_EXECUTE("FOR doc IN " + c.name() + " SORT doc.value RETURN doc.value").json;
+    testSortSkiplist: function() {
+      c.ensureIndex({type: "skiplist", fields: ["value"]});
+      const result =
+          AQL_EXECUTE(`FOR doc IN ${c.name()} SORT doc.value RETURN doc.value`)
+              .json;
       assertEqual(11111, result.length);
 
-      var last = -1;
-      for (var i = 0; i < result.length; ++i) {
-        assertTrue(result[i] > last);
+      let last = -1;
+      for (let i = 0; i < result.length; ++i) {
+        let slice = arrayStringExcerpt(result, i, 2, 1);
+        assertTrue(result[i] > last, `failure at index ${i}: ${slice}`);
         last = result[i];
       }
     }
