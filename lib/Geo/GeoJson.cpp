@@ -329,7 +329,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
       return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
     }
     S2Loop* loop = loops.back().get();
-    // normalizazion ensures that point orientation does not matter for Polygon type
+    // normalization ensures that point orientation does not matter for Polygon type
     // the RFC recommends this for better compatibility
     loop->Normalize();
     

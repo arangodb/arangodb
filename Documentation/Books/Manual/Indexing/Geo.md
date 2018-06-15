@@ -273,9 +273,11 @@ of a series of closed `LineString` objects (ring-like). These *Linear Ring* obje
 consist of four or more vertices with the first and last coordinate pairs
 being equal. Coordinates of a Polygon are an array of linear ring coordinate
 arrays. The first element in the array represents the exterior ring.
-Any subsequent elements represent interior rings (holes within the surface.). 
-A linear ring MUST follow the right-hand rule with respect to the area it bounds, i.e., 
-exterior rings are counterclockwise, and holes are clockwise.
+Any subsequent elements represent interior rings (holes within the surface.).
+
+- A linear ring may not be empty, a LineString needs at least three _distinct_ coordinates
+- Within the same linear ring consecutive coordinates may be the same, otherwise
+  (except the first and last one) all coordinates need to be distinct
 
 No Holes:
 
@@ -298,10 +300,8 @@ With Holes:
 
 - The exterior ring should not self-intersect.
 - The interior rings must be contained in the outer ring
-- Interior rings cannot overlap (or touch) with each other. 
-- Rings cannot share edges, they may share vertices
-- No ring may be empty, a LineString needs at least three _distinct_ coordinates
-- Polygon rings MUST follow the right-hand rule for orientation (counterclockwise external rings, 
+- Rings cannot share edges, they may however share vertices
+- Polygon rings should follow the right-hand rule for orientation (counterclockwise external rings, 
   clockwise internal rings).
 
 ```json
@@ -334,9 +334,11 @@ of multiple polygons. The the "coordinates" member is an array of
 _Polygon_ coordinate arrays. 
 
 - Polygons within the same MultiPolygon may not intersect i.e. the boundary of a polygon 
-  may not intersect both the interior and exterior of any other polygon.
+  may intersect neither the interior nor the exterior rings of any other polygon.
 - Polygons in the same MultiPolygon may not share edges, they may share coordinates
 - Polygons and rings must not be empty
+- Linear Rings **MUST** follow the right-hand rule for orientation (counterclockwise external rings, 
+  clockwise internal rings).
 
 Example with two polygons, the second one with a hole:
 ```json
