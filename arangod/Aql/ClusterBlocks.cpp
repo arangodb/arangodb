@@ -1655,76 +1655,30 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     return nullptr;
   }
 
-  auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
-  auto out = node->_outVariable;
-  auto OLD = node->_outVariableOld;
-  auto NEW = node->_outVariableNew;
-
   VPackBuilder searchBuilder;
   {
     VPackObjectBuilder guard(&searchBuilder);
     searchBuilder.add(StaticStrings::KeyString, VPackValue(_key));
   }
+  VPackSlice key = searchBuilder.slice();
 
-  VPackSlice search = searchBuilder.slice();
-  VPackBuilder bodyBuilder;
-  VPackSlice body;
-  if (node->_haveReferences) { /// have let foo=
-    auto in = node->_inVariableUpdate;
+  auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
+  auto out = node->_outVariable;
+  auto in = node->_inVariableUpdate;
+  auto OLD = node->_outVariableOld;
+  auto NEW = node->_outVariableNew;
 
-    TRI_ASSERT(in != nullptr); /// just for select
-    auto itIn = node->getRegisterPlan()->varInfo.find(in->id);
-
-    auto inRegId = (*itIn).second.registerId;
-    TRI_ASSERT(itIn != node->getRegisterPlan()->varInfo.end());
-    TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
-    std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
-
-    AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
-    bodyBuilder.add(inDocument.slice());
-  }
-  
-  OperationOptions opOptions;
-  opOptions.ignoreRevs = true;
-
-  opOptions.keepNull = true; /// TODO - get from node - replace => patch existing
-  opOptions.mergeObjects = true; /// TODO - get from node - replace => patch existing
-  opOptions.returnNew = true; // TODO - get from node - update
-  opOptions.returnOld = true; // TODO - get from node insert, delete
-  opOptions.waitForSync = false; // TODO - get from node
-  opOptions.silent = false; // TODO - get from node
-  opOptions.overwrite = true; // TODO insert / update
-  OperationResult result;
-  // fetch: result = _trx->document(_collection->name(), search, opOptions);
-  // delete: result = _trx->remove(_collection->name(), search, opOptions);
-  // insert: result = _trx->insert(_collection->name(), xxxx, opOptions);
-  // 
-  // update - replace existing: result = _trx->replace(_collection->name(), xxxx, opOptions);
-  // update - patch existing: result = _trx->update(_collection->name(), xxxx, opOptions);
-
-  if (!result.ok()) {
-    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      // document not there is not an error in this situation.
-      return nullptr;
-    }
-    else {
-      THROW_ARANGO_EXCEPTION(result.errorNumber());
-    }
-    return nullptr;
-  }
-
-  VPackSlice document = result.slice().resolveExternal();
-  std::unique_ptr<AqlItemBlock> aqlres;
-
-  RegisterId nrRegs =
-    node->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-
-  aqlres.reset(requestBlock(1, nrRegs));
-
-
+  RegisterId inRegId = 0;
   RegisterId outRegId = 0;
   RegisterId oldRegId = 0;
   RegisterId newRegId = 0;
+
+  if(in != nullptr) {
+    auto itIn = node->getRegisterPlan()->varInfo.find(in->id);
+    TRI_ASSERT(itIn != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+    inRegId = (*itIn).second.registerId;
+  }
 
   if(out != nullptr) {
     auto itOut = node->getRegisterPlan()->varInfo.find(out->id);
@@ -1747,9 +1701,57 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     newRegId = (*itNew).second.registerId;
   }
 
+
+  // VPackBuilder bodyBuilder;
+  // //VPackSlice body;
+  // If (node->_haveReferences) { /// have let foo=
+  //   std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+  //   AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
+  //   bodyBuilder.add(inDocument.slice());
+  // }
+
+  OperationOptions opOptions;
+  opOptions.ignoreRevs = true;
+
+  opOptions.keepNull = true; /// TODO - get from node - replace => patch existing
+  opOptions.mergeObjects = true; /// TODO - get from node - replace => patch existing
+  opOptions.returnNew = true; // TODO - get from node - update
+  opOptions.returnOld = true; // TODO - get from node insert, delete
+  opOptions.waitForSync = false; // TODO - get from node
+  opOptions.silent = false; // TODO - get from node
+  opOptions.overwrite = true; // TODO insert / update
+  OperationResult result;
+
+  if(node->_mode == ExecutionNode::NodeType::INDEX) {
+    result = _trx->document(_collection->name(), key, opOptions);
+  }
+
+  // delete: result = _trx->remove(_collection->name(), search, opOptions);
+  // insert: result = _trx->insert(_collection->name(), xxxx, opOptions);
+  //
+  // update - replace existing: result = _trx->replace(_collection->name(), xxxx, opOptions);
+  // update - patch existing: result = _trx->update(_collection->name(), xxxx, opOptions);
+
+  if (!result.ok()) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      // document not there is not an error in this situation.
+      return nullptr;
+    }
+    else {
+      THROW_ARANGO_EXCEPTION(result.errorNumber());
+    }
+    return nullptr;
+  }
+
+  VPackSlice outDocument = result.slice().resolveExternal();
+
+  // create block that can hold a result with one entry and a number of variables
+  // corresponing to the amount of out variables
+  std::unique_ptr<AqlItemBlock> aqlres;
   aqlres.reset(requestBlock(1, node->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
-  aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(document));
+  // place document as in the outvariable slot of the result
+  aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
 
   throwIfKilled();  // check if we were aborted
 
