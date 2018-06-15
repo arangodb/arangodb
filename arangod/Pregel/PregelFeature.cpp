@@ -258,6 +258,6 @@ void PregelFeature::handleConductorRequest(std::string const& path,
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    w->aqlResult(&outBuilder);
+    w->aqlResult(outBuilder);
   }
 }

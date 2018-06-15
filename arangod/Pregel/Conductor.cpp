@@ -705,28 +705,30 @@ int Conductor::_finalizeWorkers() {
   return res;
 }
 
-VPackBuilder Conductor::collectAQLResults() {
-  _callbackMutex.assertLockedByCurrentThread();
+void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
+  MUTEX_LOCKER(guard, _callbackMutex);
 
   if (_state != ExecutionState::DONE) {
-    return VPackBuilder();
+    return;
   }
 
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
   b.close();
-  VPackBuilder messages;
+  
+  // merge results from DBServers
+  outBuilder.openArray();
   int res = _sendToAllDBServers(Utils::aqlResultsPath, b,
                                 [&](VPackSlice const& payload) {
                                   if (payload.isArray()) {
-                                    messages.add(payload);
+                                    outBuilder.add(VPackArrayIterator(payload));
                                   }
                                 });
+  outBuilder.close();
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  return messages;
 }
 
 VPackBuilder Conductor::toVelocyPack() const {

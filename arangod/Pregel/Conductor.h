@@ -121,7 +121,7 @@ class Conductor {
   void start();
   void cancel();
   void startRecovery();
-  VPackBuilder collectAQLResults();
+  void collectAQLResults(velocypack::Builder& outBuilder);
   VPackBuilder toVelocyPack() const;
 
   double totalRuntimeSecs() const {
