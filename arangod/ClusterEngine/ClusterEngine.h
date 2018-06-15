@@ -83,7 +83,7 @@ class ClusterEngine final : public StorageEngine {
   std::unique_ptr<TransactionManager> createTransactionManager() override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
-    CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     transaction::Options const& options
   ) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(

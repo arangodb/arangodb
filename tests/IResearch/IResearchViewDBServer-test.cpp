@@ -47,8 +47,8 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Parser.h"
 #include "V8Server/V8DealerFeature.h"
@@ -433,7 +433,7 @@ SECTION("test_query") {
     REQUIRE((false == !viewImpl));
 
     arangodb::CollectionNameResolver resolver(vocbase);
-    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
     CHECK(0 == snapshot->docs_count());
   }
@@ -457,7 +457,7 @@ SECTION("test_query") {
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
-      arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY,
         EMPTY,
@@ -475,7 +475,7 @@ SECTION("test_query") {
     }
 
     arangodb::CollectionNameResolver resolver(vocbase);
-    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
     CHECK(12 == snapshot->docs_count());
   }
@@ -504,7 +504,7 @@ SECTION("test_query") {
 
     // fill with test data
     {
-      arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         EMPTY,
         collections,
@@ -526,14 +526,14 @@ SECTION("test_query") {
 
     arangodb::transaction::Options trxOptions;
     trxOptions.waitForSync = true;
+    auto state0 = s.engine.createTransactionState(*vocbase, trxOptions);
     arangodb::CollectionNameResolver resolver0(*vocbase);
-    auto state0 = s.engine.createTransactionState(resolver0, trxOptions);
     auto* snapshot0 = wiewImpl->snapshot(*state0, resolver0, { logicalCollection->name() }, true);
     CHECK(12 == snapshot0->docs_count());
 
     // add more data
     {
-      arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         EMPTY,
         collections,
@@ -557,7 +557,7 @@ SECTION("test_query") {
     CHECK(12 == snapshot0->docs_count());
     // new reader sees new data
     arangodb::CollectionNameResolver resolver1(*vocbase);
-    auto state1 = s.engine.createTransactionState(resolver1, trxOptions);
+    auto state1 = s.engine.createTransactionState(*vocbase, trxOptions);
     auto* snapshot1 = wiewImpl->snapshot(*state1, resolver1, { logicalCollection->name() }, true);
     CHECK(24 == snapshot1->docs_count());
   }
@@ -608,7 +608,7 @@ SECTION("test_query") {
       // insert
       {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"seq\": ") + std::to_string(i) + " }");
-        arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
           EMPTY,
           EMPTY,
@@ -623,8 +623,8 @@ SECTION("test_query") {
 
       // query
       {
+        auto state = s.engine.createTransactionState(*vocbase, arangodb::transaction::Options());
         arangodb::CollectionNameResolver resolver(*vocbase);
-        auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
         auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
         CHECK(i == snapshot->docs_count());
       }
@@ -820,7 +820,7 @@ SECTION("test_transaction_snapshot") {
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,
@@ -834,16 +834,16 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == false, waitForSync = false)
   {
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     arangodb::CollectionNameResolver resolver(vocbase);
-    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() });
     CHECK((nullptr == snapshot));
   }
 
   // no snapshot in TransactionState (force == true, waitForSync = false)
   {
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     arangodb::CollectionNameResolver resolver(vocbase);
-    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
     auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
     CHECK((nullptr != snapshot));
     CHECK((0 == snapshot->live_docs_count()));
@@ -851,18 +851,18 @@ SECTION("test_transaction_snapshot") {
 
   // no snapshot in TransactionState (force == false, waitForSync = true)
   {
-    arangodb::CollectionNameResolver resolver(vocbase);
-    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     state->waitForSync(true);
+    arangodb::CollectionNameResolver resolver(vocbase);
     auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() });
     CHECK((nullptr == snapshot));
   }
 
   // no snapshot in TransactionState (force == true, waitForSync = true)
   {
-    arangodb::CollectionNameResolver resolver(vocbase);
-    auto state = s.engine.createTransactionState(resolver, arangodb::transaction::Options());
+    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
     state->waitForSync(true);
+    arangodb::CollectionNameResolver resolver(vocbase);
     auto* snapshot = wiewImpl->snapshot(*state, resolver, { logicalCollection->name() }, true);
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
@@ -873,7 +873,7 @@ SECTION("test_transaction_snapshot") {
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 2 }");
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,

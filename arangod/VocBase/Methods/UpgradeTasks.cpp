@@ -136,7 +136,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 
   bool created = false;
   auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
-  arangodb::SingleCollectionTransaction trx(ctx, collection.name(),
+  arangodb::SingleCollectionTransaction trx(ctx, &collection,
                                             arangodb::AccessMode::Type::EXCLUSIVE);
 
   res = trx.begin();

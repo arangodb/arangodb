@@ -62,7 +62,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"

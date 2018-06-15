@@ -1103,11 +1103,11 @@ std::unique_ptr<arangodb::TransactionManager> StorageEngineMock::createTransacti
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
-    arangodb::CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     arangodb::transaction::Options const& options
 ) {
   return std::unique_ptr<arangodb::TransactionState>(
-    new TransactionStateMock(resolver, options)
+    new TransactionStateMock(vocbase, options)
   );
 }
 
@@ -1524,9 +1524,9 @@ size_t TransactionStateMock::commitTransactionCount;
 
 // ensure each transaction state has a unique ID
 TransactionStateMock::TransactionStateMock(
-    arangodb::CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     arangodb::transaction::Options const& options
-): TransactionState(resolver, 0, options) {
+): TransactionState(vocbase, 0, options) {
 }
 
 arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::Methods* trx) {
