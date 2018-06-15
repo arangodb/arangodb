@@ -80,8 +80,7 @@ Other attributes may be necessary, depending on the index type.
 - *hash*: hash index
 - *skiplist*: skiplist index
 - *fulltext*: fulltext index
-- *geo1*: geo index, with one attribute
-- *geo2*: geo index, with two attributes
+- *geo*: geo index, with _one_ or _two_ attributes
 
 **sparse** can be *true* or *false*.
 
