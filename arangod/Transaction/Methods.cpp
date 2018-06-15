@@ -2994,46 +2994,56 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
     throwCollectionNotFound(cname.c_str());
   }
 
+  auto addCollection = [this, &cname, type](TRI_voc_cid_t cid)->int {
+    int res;
+
+    if (_state->isTopLevelTransaction()
+        && _state->status() != transaction::Status::CREATED) {
+      res = TRI_ERROR_TRANSACTION_INTERNAL; // transaction already started?
+    } else {
+      res =
+        _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
+    }
+
+    if (TRI_ERROR_NO_ERROR == res) {
+      return res;
+    }
+
+    if (TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION == res) {
+      // special error message to indicate which collection was undeclared
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        res,
+        std::string(TRI_errno_string(res)) + ": " + cname
+        + " [" + AccessMode::typeString(type) + "]"
+      );
+    }
+
+    if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == res) {
+      throwCollectionNotFound(cname.c_str());
+    }
+
+    THROW_ARANGO_EXCEPTION(res);
+  };
+
   Result res;
   bool visited = false;
-  auto visitor = _state->isEmbeddedTransaction()
-    ? std::function<bool(LogicalCollection&)>(
-        [this, &cname, type, &res, cid, &visited](LogicalCollection& col)->bool {
-          res = addCollectionEmbedded(col.id(), cname, type);
+  std::function<bool(LogicalCollection&)> visitor(
+    [this, &addCollection, &res, cid, &visited](LogicalCollection& col)->bool {
+      res = addCollection(col.id());
 
-          if (!res.ok()) {
-            return false; // break on error
-          }
+      if (res.ok()) {
+        res = applyStateRegistrationCallbacks(col, *_state);
+        visited |= cid == col.id();
+      }
 
-          res = applyStateRegistrationCallbacks(col, *_state);
-          visited |= cid == col.id();
-
-          return res.ok(); // add the remaining collections (or break on error)
-        }
-      )
-    : std::function<bool(LogicalCollection&)>(
-        [this, &cname, type, &res, cid, &visited](LogicalCollection& col)->bool {
-          res = addCollectionToplevel(col.id(), cname, type);
-
-          if (!res.ok()) {
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(col, *_state);
-          visited |= cid == col.id();
-
-          return res.ok(); // add the remaining collections (or break on error)
-        }
-      )
-    ;
+      return res.ok(); // add the remaining collections (or break on error)
+    }
+  );
 
   if (!resolver()->visitCollections(visitor, cid) || !res.ok()) {
     // trigger exception as per the original behaviour (tests depend on this)
     if (res.ok() && !visited) {
-      res = _state->isEmbeddedTransaction()
-          ? addCollectionEmbedded(cid, cname, type)
-          : addCollectionToplevel(cid, cname, type)
-          ;
+      res = addCollection(cid);
     }
 
     return res.ok() ? Result(TRI_ERROR_INTERNAL) : res; // return first error
@@ -3212,58 +3222,6 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
 
   // We have successfully found an index with the requested id.
   return IndexHandle(idx);
-}
-
-/// @brief add a collection to an embedded transaction
-Result transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid,
-                                                   std::string const& cname, AccessMode::Type type) {
-  TRI_ASSERT(_state != nullptr);
-
-  int res = _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-      // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res, std::string(TRI_errno_string(res)) + ": " + cname + " [" +
-                   AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      throwCollectionNotFound(cname.c_str());
-    }
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return res;
-}
-
-/// @brief add a collection to a top-level transaction
-Result transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid,
-                                                   std::string const& cname,
-                                                   AccessMode::Type type) {
-  TRI_ASSERT(_state != nullptr);
-
-  int res;
-
-  if (_state->status() != transaction::Status::CREATED) {
-    // transaction already started?
-    res = TRI_ERROR_TRANSACTION_INTERNAL;
-  } else {
-    res = _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-      // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res, std::string(TRI_errno_string(res)) + ": " + cname + " [" +
-                   AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      throwCollectionNotFound(cname.c_str());
-    }
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return res;
 }
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,

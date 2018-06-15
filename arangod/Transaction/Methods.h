@@ -585,12 +585,6 @@ class Methods {
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(
       std::string const&) const;
 
-  /// @brief add a collection to an embedded transaction
-  Result addCollectionEmbedded(TRI_voc_cid_t, std::string const& name, AccessMode::Type);
-
-  /// @brief add a collection to a top-level transaction
-  Result addCollectionToplevel(TRI_voc_cid_t, std::string const& name, AccessMode::Type);
-
  protected:
   /// @brief the state
   TransactionState* _state;
