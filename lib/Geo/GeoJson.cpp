@@ -329,9 +329,11 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
       return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
     }
     S2Loop* loop = loops.back().get();
+    // normalizazion ensures that point orientation does not matter for Polygon type
+    // the RFC recommends this for better compatibility
     loop->Normalize();
     
-    // Any subsequent loops must be holes within first loop
+    // subsequent loops must be holes within first loop
     if (loops.size() > 1 && !loops.front()->Contains(loop)) {
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "Subsequent loop not a hole in polygon");
@@ -340,9 +342,10 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
 
   std::unique_ptr<S2Polygon> poly;
   if (loops.size() == 1) {
-    poly = std::make_unique<S2Polygon>(std::move(loops[0]));
+    poly = std::make_unique<S2Polygon>(std::move(loops[0]), S2Debug::DISABLE);
   } else if (loops.size() > 1) {
     poly = std::make_unique<S2Polygon>(std::move(loops));
+    poly->set_s2debug_override(S2Debug::DISABLE);
   }
   if (poly) {
     TRI_ASSERT(poly->IsValid());
@@ -388,6 +391,8 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
                     "Multi-Polygon must consist of an array of Polygons coordinates");
     }
     
+    // the loop of the
+    size_t outerLoop = loops.size();
     for (VPackSlice loopVertices : VPackArrayIterator(polygons)) {
       std::vector<S2Point> vtx;
       Result res = ::parsePoints(loopVertices, /*geoJson*/ true, vtx);
@@ -411,14 +416,21 @@ Result parseMultiPolygon(velocypack::Slice const& vpack, ShapeContainer& region)
       if (!loops.back()->IsValid()) {  // will check first and last for us
         return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
       }
+      
+      // Any subsequent loop must be a hole within first loop
+      if (outerLoop + 1 < loops.size() && !loops[outerLoop]->Contains(loops.back().get())) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Subsequent loop not a hole in polygon");
+      }
     }
   }
   
   std::unique_ptr<S2Polygon> poly;
   if (loops.size() == 1) {
-    poly = std::make_unique<S2Polygon>(std::move(loops[0]));
+    poly = std::make_unique<S2Polygon>(std::move(loops[0]), S2Debug::DISABLE);
   } else if (loops.size() > 1) {
     poly = std::make_unique<S2Polygon>();
+    poly->set_s2debug_override(S2Debug::DISABLE);
     poly->InitOriented(std::move(loops));
   }
   if (poly) {
