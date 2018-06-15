@@ -411,8 +411,10 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
     TRI_ASSERT(_outVariableOld == nullptr);
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::REMOVE) {
-    LOG_DEVEL << "not implemented";
-    TRI_ASSERT(false);
+    TRI_ASSERT(!_key.empty());
+    TRI_ASSERT(_inVariableUpdate == nullptr);
+    //TRI_ASSERT(_outVariable == nullptr); //why?
+    TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::INSERT) {
     LOG_DEVEL << "not implemented";
     TRI_ASSERT(false);

@@ -215,19 +215,40 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
 
       if (parentModification){
         LOG_DEVEL << "optimize modification node";
+        auto mod = static_cast<ModificationNode*>(parentModification);
         auto parentType = parentModification->getType();
-          LOG_DEVEL << ExecutionNode::getTypeString(parentType);
-          if (parentType == EN::RETURN){
+        LOG_DEVEL << ExecutionNode::getTypeString(parentType);
 
-          //check that operation uses the document provided by the index
-          //check that calculation is used in the modification
 
-          } else if ( parentType == EN::INSERT) {
-          } else if ( parentType == EN::REMOVE) {
-          } else if ( parentType == EN::UPDATE) {
-          } else if ( parentType == EN::UPSERT) {
-          } else if ( parentType == EN::REPLACE) {
-          }
+        Variable* update = nullptr;
+        if ( parentType == EN::INSERT) {
+          update = nullptr; //get update
+        } else if ( parentType == EN::REMOVE) {
+          // only case that does not need update
+          // reverse if logic
+        } else if ( parentType == EN::UPDATE) {
+          update = nullptr; //get update
+        } else if ( parentType == EN::UPSERT) {
+          update = nullptr; //get update
+        } else if ( parentType == EN::REPLACE) {
+          update = nullptr; //get update
+        }
+
+        ExecutionNode* singleOperationNode = plan->registerNode(
+          new SingleRemoteOperationNode(
+            plan.get(), plan->nextId(),
+            parentType,
+            key, indexNode->collection(),
+            mod->getOptions(),
+            update,
+            indexNode->outVariable(),
+            mod->getOutVariableOld(),
+            mod->getOutVariableNew()
+          )
+        );
+        plan->replaceNode(parentModification, singleOperationNode);
+        plan->unlinkNode(indexNode);
+        modified = true;
       } else if(parentSelect){
         LOG_DEVEL << "optimize SELECT";
         LOG_DEVEL << "key: " << key;
