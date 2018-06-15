@@ -3440,6 +3440,16 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
 
     while (current != nullptr) {
       bool eligible = true;
+      
+      // check if any of the nodes we pass use a variable that will not be
+      // available after we insert a new COLLECT on top of it (note: COLLECT
+      // will eliminate all variables from the scope but its own)
+      for (auto const& it : current->getVariablesUsedHere()) {
+        if (current->getType() != EN::GATHER) {
+          // Gather nodes are taken care of separately below
+          allUsed.emplace(it);
+        }
+      }
 
       // check if any of the nodes we pass use a variable that will not be
       // available after we insert a new COLLECT on top of it (note: COLLECT

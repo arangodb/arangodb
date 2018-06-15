@@ -50,13 +50,14 @@
 #include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/TransactionState.h"
 #include "StorageEngine/StorageEngine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Transaction/UserTransaction.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/LocalDocumentId.h"
@@ -1253,7 +1254,7 @@ void IResearchView::getPropertiesVPack(
   options.allowImplicitCollections = false;
 
   try {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       transaction::StandaloneContext::Create(vocbase()),
       collections, // readCollections
       EMPTY, // writeCollections
@@ -1984,8 +1985,8 @@ void IResearchView::verifyKnownCollections() {
   {
     static const arangodb::transaction::Options defaults;
     struct State final: public arangodb::TransactionState {
-      State(arangodb::CollectionNameResolver const& resolver)
-        : arangodb::TransactionState(resolver, 0, defaults) {}
+      State(TRI_vocbase_t& vocbase)
+        : arangodb::TransactionState(vocbase, 0, defaults) {}
       virtual arangodb::Result abortTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
@@ -1998,8 +1999,7 @@ void IResearchView::verifyKnownCollections() {
       virtual bool hasFailedOperations() const override { return false; }
     };
 
-    arangodb::CollectionNameResolver resolver(vocbase());
-    State state(resolver);
+    State state(vocbase());
 
     if (!appendKnownCollections(cids, *snapshot(state, true))) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)

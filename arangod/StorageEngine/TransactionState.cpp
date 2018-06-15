@@ -37,17 +37,17 @@ using namespace arangodb;
 
 /// @brief transaction type
 TransactionState::TransactionState(
-    CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     TRI_voc_tid_t tid,
     transaction::Options const& options
 ):
+      _vocbase(vocbase),
       _id(tid),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
       _arena(),
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
-      _resolver(resolver),
       _hints(),
       _nestingLevel(0),
       _options(options) {}
@@ -119,6 +119,7 @@ TransactionState::Cookie::ptr TransactionState::cookie(
 
 /// @brief add a collection to a transaction
 int TransactionState::addCollection(TRI_voc_cid_t cid,
+                                    std::string const& cname,
                                     AccessMode::Type accessType,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
@@ -148,7 +149,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                   "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
-      int res = checkCollectionPermission(cid, accessType);
+      int res = checkCollectionPermission(cid, cname, accessType);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
@@ -170,7 +171,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   }
   
   // now check the permissions
-  int res = checkCollectionPermission(cid, accessType);
+  int res = checkCollectionPermission(cid, cname, accessType);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -324,6 +325,7 @@ bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
 }
 
 int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
+                                                std::string const& cname,
                                                 AccessMode::Type accessType) const {
   ExecContext const* exec = ExecContext::CURRENT;
 
@@ -336,9 +338,7 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
-    std::string const colName = _resolver.getCollectionNameCluster(cid);
-    auto level = exec->collectionAuthLevel(_resolver.vocbase().name(), colName);
-
+    auto level = exec->collectionAuthLevel(_vocbase.name(), cname);
     TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
 
     if (level == auth::Level::NONE) {
@@ -352,7 +352,7 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
 
     if (level == auth::Level::RO && collectionWillWrite) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
-      << " has no write right for collection " << colName;
+      << " has no write right for collection " << cname;
 
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
@@ -394,14 +394,12 @@ void TransactionState::clearQueryCache() {
     }
 
     if (!collections.empty()) {
-      arangodb::aql::QueryCache::instance()->invalidate(
-        &(_resolver.vocbase()), collections
-      );
+      arangodb::aql::QueryCache::instance()->invalidate(&_vocbase, collections);
     }
   } catch (...) {
     // in case something goes wrong, we have to remove all queries from the
     // cache
-    arangodb::aql::QueryCache::instance()->invalidate(&(_resolver.vocbase()));
+    arangodb::aql::QueryCache::instance()->invalidate(&_vocbase);
   }
 }
 

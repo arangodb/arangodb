@@ -114,6 +114,11 @@ class Query {
     _trx = trx;
     init();
   }
+  
+  /// @brief inject a transaction context to use
+  void setTransactionContext(std::shared_ptr<transaction::Context> const& ctx) {
+    _transactionContext = ctx;
+  }
 
   QueryProfile* profile() const {
     return _profile.get();
@@ -327,6 +332,9 @@ class Query {
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t& _vocbase;
+  
+  /// @brief transaction context to use for this query
+  std::shared_ptr<transaction::Context> _transactionContext;
 
   /// @brief the currently used V8 context
   V8Context* _context;

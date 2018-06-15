@@ -96,7 +96,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual std::unique_ptr<TransactionManager> createTransactionManager() = 0;
   virtual std::unique_ptr<transaction::ContextData> createTransactionContextData() = 0;
   virtual std::unique_ptr<TransactionState> createTransactionState(
-    CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     transaction::Options const& options
   ) = 0;
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
