@@ -2989,21 +2989,23 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
         "cannot add collection to committed or aborted transaction");
   }
 
+  if (_state->isTopLevelTransaction()
+      && status != transaction::Status::CREATED) {
+    // transaction already started?
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_TRANSACTION_INTERNAL,
+      "cannot add collection to a previously started top-level transaction"
+    );
+  }
+
   if (cid == 0) {
     // invalid cid
     throwCollectionNotFound(cname.c_str());
   }
 
   auto addCollection = [this, &cname, type](TRI_voc_cid_t cid)->int {
-    int res;
-
-    if (_state->isTopLevelTransaction()
-        && _state->status() != transaction::Status::CREATED) {
-      res = TRI_ERROR_TRANSACTION_INTERNAL; // transaction already started?
-    } else {
-      res =
-        _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
-    }
+    auto res =
+      _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
 
     if (TRI_ERROR_NO_ERROR == res) {
       return res;
