@@ -1641,9 +1641,7 @@ SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
                                                        )
     : ExecutionBlock(engine, static_cast<ExecutionNode const*>(en)),
       _collection(en->collection()),
-      _key(en->key()),
-      _isResponsibleForInitializeCursor(false),
-      _count(0) {
+      _key(en->key()){
   TRI_ASSERT(
       arangodb::ServerState::instance()->isCoordinator()
       );
@@ -1652,9 +1650,16 @@ SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
 AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
+
   if (_done) {
     return nullptr;
   }
+
+  auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
+  auto out = node->_outVariable;
+  auto OLD = node->_outVariableOld;
+  auto NEW = node->_outVariableNew;
+
   VPackBuilder searchBuilder;
   {
     VPackObjectBuilder guard(&searchBuilder);
@@ -1682,25 +1687,42 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   std::unique_ptr<AqlItemBlock> aqlres;
 
   RegisterId nrRegs =
-    getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+    node->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
   aqlres.reset(requestBlock(1, nrRegs));
 
-  auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
-  auto out = node->_outVariable;
 
-  TRI_ASSERT(out != nullptr); /// just for select
-  auto itOut = node->getRegisterPlan()->varInfo.find(out->id);
+  RegisterId outRegId = 0;
+  RegisterId oldRegId = 0;
+  RegisterId newRegId = 0;
 
-  auto outRegId = (*itOut).second.registerId;
-  TRI_ASSERT(itOut != node->getRegisterPlan()->varInfo.end());
-  TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
-  aqlres.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  if(out != nullptr) {
+    auto itOut = node->getRegisterPlan()->varInfo.find(out->id);
+    TRI_ASSERT(itOut != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+    outRegId = (*itOut).second.registerId;
+  }
+
+  if(OLD != nullptr) {
+    auto itOld = node->getRegisterPlan()->varInfo.find(OLD->id);
+    TRI_ASSERT(itOld != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itOld).second.registerId < ExecutionNode::MaxRegisterId);
+    oldRegId = (*itOld).second.registerId;
+  }
+
+  if(NEW != nullptr) {
+    auto itNew = node->getRegisterPlan()->varInfo.find(NEW->id);
+    TRI_ASSERT(itNew != node->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itNew).second.registerId < ExecutionNode::MaxRegisterId);
+    newRegId = (*itNew).second.registerId;
+  }
+
+  aqlres.reset(requestBlock(1, node->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(document));
 
   throwIfKilled();  // check if we were aborted
-    
+
   TRI_IF_FAILURE("SingleRemoteOperationBlock::moreDocuments") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

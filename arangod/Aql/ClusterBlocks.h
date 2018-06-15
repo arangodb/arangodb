@@ -371,27 +371,12 @@ class SingleRemoteOperationBlock final : public ExecutionBlock {
   bool hasMore() override final;
 
  private:
-  /// @brief our server, can be like "shard:S1000" or like "server:Claus"
-  std::string const _server;
-
-  /// @brief our own identity, in case of the coordinator this is empty,
-  /// in case of the DBservers, this is the shard ID as a string
-  std::string const _ownName;
-
-  /// @brief the ID of the query on the server as a string
-  std::string const _queryId;
 
   /// @brief _colectionName: the name of the sharded collection
   Collection const* _collection;
 
   /// @brief the key of the document to fetch
   std::string const _key;
-
-  /// @brief whether or not this block will forward initialize,
-  /// initializeCursor or shutDown requests
-  bool const _isResponsibleForInitializeCursor;
-
-  int _count;
 };
 
 }  // namespace arangodb::aql
