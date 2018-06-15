@@ -97,57 +97,6 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
       db._drop("AnotherUnitTestsCollection");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test no fullcount
-////////////////////////////////////////////////////////////////////////////////
-/*
-    testTransactionRegistration : function () {
-      // read lock
-      var result = db._executeTransaction({
-        collections: {
-          allowImplicit: false,
-          read: [ v.name() ]
-        },
-        action: function () {
-          var db = require("@arangodb").db;
-          var c = db._collection("UnitTestsCollection");
-          assertEqual(1, c.document('foo').xyz);
-          return c.toArray().length;
-        }
-      });
-      assertEqual(28, result);
-
-      // write lock
-      result = db._executeTransaction({
-        collections: {
-          allowImplicit: false,
-          write: [ v.name() ]
-        },
-        action: function () {
-          var db = require("@arangodb").db;
-          var c = db._collection("UnitTestsCollection");
-          c.save({ _key: "bar", xyz: 2 });
-          return c.toArray().length;
-        }
-      });
-      assertEqual(29, result);
-
-      // exclusive lock
-      result = db._executeTransaction({
-        collections: {
-          allowImplicit: false,
-          exclusive: [ v.name() ]
-        },
-        action: function () {
-          var db = require("@arangodb").db;
-          var c = db._collection("UnitTestsCollection");
-          c.save({ _key: "baz", xyz: 3 });
-          return c.toArray().length;
-        }
-      });
-      assertEqual(30, result);
-    },
-*/
     testAttributeEqualityFilter : function () {
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a == 'foo' RETURN doc", null, { waitForSync: true }).json;
 

@@ -90,10 +90,6 @@ function iResearchAqlTestSuite () {
       db._drop("AnotherUnitTestsCollection");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test no fullcount
-////////////////////////////////////////////////////////////////////////////////
-
     testTransactionRegistration : function () {
       // read lock
       var result = db._executeTransaction({
