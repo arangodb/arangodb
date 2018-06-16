@@ -1646,6 +1646,27 @@ SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
       arangodb::ServerState::instance()->isCoordinator()
       );
 }
+
+std::unique_ptr<VPackBuilder>
+merge(VPackSlice document, std::string key, TRI_voc_rid_t revision){
+  auto builder = std::make_unique<VPackBuilder>() ;
+  {
+    VPackObjectBuilder guard(builder.get());
+    TRI_SanitizeObject(document, *builder);
+    VPackSlice keyInBody = document.get(StaticStrings::KeyString);
+
+    if ((revision != 0 && TRI_ExtractRevisionId(document) != revision) ||
+      keyInBody.isNone() || keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
+      // We need to rewrite the document with the given revision and key:
+      builder->add(StaticStrings::KeyString, VPackValue(key));
+      if (revision != 0) {
+        builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(revision)));
+      }
+    }
+  }
+  return builder;
+}
+
 /// @brief getSome
 AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
@@ -1654,13 +1675,6 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   if (_done) {
     return nullptr;
   }
-
-  VPackBuilder searchBuilder;
-  {
-    VPackObjectBuilder guard(&searchBuilder);
-    searchBuilder.add(StaticStrings::KeyString, VPackValue(_key));
-  }
-  VPackSlice key = searchBuilder.slice();
 
   auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
   auto out = node->_outVariable;
@@ -1701,14 +1715,13 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     newRegId = (*itNew).second.registerId;
   }
 
-  VPackBuilder bodyBuilder;
-  VPackSlice body = VPackSlice::nullSlice();
+  VPackBuilder inBuilder;
+  VPackSlice inSlice = VPackSlice::nullSlice();
   if(in) {// IF NOT REMOVE OR SELECT
-   //node->_haveReferences; // INSPECT
    std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
    AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
-   bodyBuilder.add(inDocument.slice());
-   body = bodyBuilder.slice();
+   inBuilder.add(inDocument.slice());
+   inSlice = inBuilder.slice();
   }
 
   auto const& nodeOps = node->_options;
@@ -1725,22 +1738,33 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 
   OperationResult result;
   if(node->_mode == ExecutionNode::NodeType::INDEX) {
-    TRI_ASSERT(body.isNull());
-    result = _trx->document(_collection->name(), key, opOptions);
+    TRI_ASSERT(inSlice.isNull());
+    auto mergedBuilder = merge(VPackSlice::emptyObjectSlice(), _key, 0);
+    result = _trx->document(_collection->name(), mergedBuilder->slice(), opOptions);
+
   } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
-    TRI_ASSERT(!body.isNull());
-    // insert: result = _trx->insert(_collection->name(), xxxx, opOptions);
+    TRI_ASSERT(!inSlice.isNull());
+    result = _trx->insert(_collection->name(), inSlice, opOptions);
+
   } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
-    TRI_ASSERT(body.isNull());
-    // delete: result = _trx->remove(_collection->name(), search, opOptions);
+    TRI_ASSERT(inSlice.isNull());
+    auto mergedBuilder = merge(VPackSlice::emptyObjectSlice(), _key, 0);
+    result = _trx->remove(_collection->name(), mergedBuilder->slice() , opOptions);
+
   } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
-    TRI_ASSERT(!body.isNull());
-    // update - replace existing: result = _trx->replace(_collection->name(), xxxx, opOptions);
+    TRI_ASSERT(!inSlice.isNull());
+    // revision ??
+    auto mergedBuilder = merge(inSlice, _key, 0);
+    result = _trx->replace(_collection->name(), mergedBuilder->slice(), opOptions);
+
   } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
-    TRI_ASSERT(!body.isNull());
-    // update - patch existing: result = _trx->update(_collection->name(), xxxx, opOptions);
+    TRI_ASSERT(!inSlice.isNull());
+    // revision ??
+    auto mergedBuilder = merge(inSlice, _key, 0);
+    _trx->update(_collection->name(), mergedBuilder->slice(), opOptions);
+
   } else if(node->_mode == ExecutionNode::NodeType::UPSERT) {
-    TRI_ASSERT(!body.isNull());
+    //TRI_ASSERT(!inSlice.isNull());
   }
 
   // check operation result
@@ -1750,7 +1774,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
       return nullptr;
     }
     else {
-      THROW_ARANGO_EXCEPTION(result.errorNumber());
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
     return nullptr;
   }
