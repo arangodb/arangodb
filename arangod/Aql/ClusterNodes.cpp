@@ -480,12 +480,12 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   }
 
   if (_inVariable!= nullptr) {
-    nodes.add(VPackValue("inVariableUpdate"));
+    nodes.add(VPackValue("inVariable"));
     _inVariable->toVelocyPack(nodes);
   }
 
   if (_outVariable != nullptr) {
-    nodes.add(VPackValue("_outVariable"));
+    nodes.add(VPackValue("outVariable"));
     _outVariable->toVelocyPack(nodes);
   }
 

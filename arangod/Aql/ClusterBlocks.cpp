@@ -1739,26 +1739,36 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   OperationResult result;
   if(node->_mode == ExecutionNode::NodeType::INDEX) {
     TRI_ASSERT(inSlice.isNull());
+
+    // options?!
     auto mergedBuilder = merge(VPackSlice::emptyObjectSlice(), _key, 0);
     result = _trx->document(_collection->name(), mergedBuilder->slice(), opOptions);
 
   } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
     TRI_ASSERT(!inSlice.isNull());
+
+    // options?!
     result = _trx->insert(_collection->name(), inSlice, opOptions);
 
   } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
     TRI_ASSERT(inSlice.isNull());
+
+    // options?!
     auto mergedBuilder = merge(VPackSlice::emptyObjectSlice(), _key, 0);
     result = _trx->remove(_collection->name(), mergedBuilder->slice() , opOptions);
 
   } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
     TRI_ASSERT(!inSlice.isNull());
+
+    // options?!
     // revision ??
     auto mergedBuilder = merge(inSlice, _key, 0);
     result = _trx->replace(_collection->name(), mergedBuilder->slice(), opOptions);
 
   } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
     TRI_ASSERT(!inSlice.isNull());
+
+    // options?!
     // revision ??
     auto mergedBuilder = merge(inSlice, _key, 0);
     _trx->update(_collection->name(), mergedBuilder->slice(), opOptions);
@@ -1780,23 +1790,31 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   }
 
   // Fill itemblock
-  std::unique_ptr<AqlItemBlock> aqlres;
   // create block that can hold a result with one entry and a number of variables
   // corresponing to the amount of out variables
+  std::unique_ptr<AqlItemBlock> aqlres;
   aqlres.reset(requestBlock(1, node->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-  VPackSlice outDocument = VPackSlice::noneSlice();
-  if(node->_mode == ExecutionNode::NodeType::INDEX) {
-    outDocument = result.slice().resolveExternal();
-    // place document as in the outvariable slot of the result
-    //ERROR HANDLING? what if there is no result?
-    aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
-  } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
-  } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
-  } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
-  } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
-  //} else if(node->_mode == ExecutionNode::NodeType::UPSERT) {
+
+  VPackSlice outDocument = result.slice().resolveExternal();
+  VPackSlice oldDocument = VPackSlice::noneSlice();
+  VPackSlice newDocument = VPackSlice::noneSlice();
+  if(outDocument.hasKey("old")){
+    oldDocument = outDocument.get("old");
+  }
+  if(outDocument.hasKey("new")){
+    newDocument = outDocument.get("new");
   }
 
+  // place documents as in the outi variable slots of the result
+  if(out) {
+    aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+  }
+  if(OLD) {
+    aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
+  }
+  if(NEW) {
+    aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
+  }
   throwIfKilled();  // check if we were aborted
 
   TRI_IF_FAILURE("SingleRemoteOperationBlock::moreDocuments") {

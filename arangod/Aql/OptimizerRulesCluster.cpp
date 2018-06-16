@@ -190,6 +190,8 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
   }
 }
 
+// TODO create a rule that works without index / enumeration
+
 void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                                                               std::unique_ptr<ExecutionPlan> plan,
                                                               OptimizerRule const* rule) {
@@ -233,7 +235,9 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
 
         Variable const* update = nullptr;
         if ( parentType != EN::REMOVE) {
-          update = mod->getVariablesUsedHere().front();
+          auto const& vec = mod->getVariablesUsedHere();
+          TRI_ASSERT(vec.size() == 1);
+          update = vec.front();
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(
