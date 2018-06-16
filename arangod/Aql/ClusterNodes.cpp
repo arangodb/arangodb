@@ -398,7 +398,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   , CollectionAccessingNode(collection)
   , _key(key)
   , _mode(mode)
-  , _inVariableUpdate(update)
+  , _inVariable(update)
   , _outVariable(out)
   , _outVariableOld(OLD)
   , _outVariableNew(NEW)
@@ -406,27 +406,36 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
 
   if (_mode == NodeType::INDEX) { //select
     TRI_ASSERT(!_key.empty());
-    TRI_ASSERT(_inVariableUpdate == nullptr);
+    TRI_ASSERT(_inVariable== nullptr);
     TRI_ASSERT(_outVariable != nullptr);
     TRI_ASSERT(_outVariableOld == nullptr);
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::REMOVE) {
     TRI_ASSERT(!_key.empty());
-    TRI_ASSERT(_inVariableUpdate == nullptr);
+    TRI_ASSERT(_inVariable== nullptr);
     //TRI_ASSERT(_outVariable == nullptr); //why?
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::INSERT) {
-    LOG_DEVEL << "not implemented";
-    TRI_ASSERT(false);
+    TRI_ASSERT(_key.empty());
+    TRI_ASSERT(_inVariable != nullptr);
+    //TRI_ASSERT(_outVariable != nullptr);
+    //TRI_ASSERT(_outVariableOld == nullptr);
+    //TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::UPDATE) {
-    LOG_DEVEL << "not implemented";
-    TRI_ASSERT(false);
+    TRI_ASSERT(!_key.empty());
+    TRI_ASSERT(_inVariable != nullptr);
+    //TRI_ASSERT(_outVariable != nullptr);
+    //TRI_ASSERT(_outVariableOld == nullptr);
+    //TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::REPLACE) {
-    LOG_DEVEL << "not implemented";
-    TRI_ASSERT(false);
-  } else if (_mode == NodeType::UPSERT) {
-    LOG_DEVEL << "not implemented";
-    TRI_ASSERT(false);
+    TRI_ASSERT(!_key.empty());
+    TRI_ASSERT(_inVariable != nullptr);
+    //TRI_ASSERT(_outVariable != nullptr);
+    //TRI_ASSERT(_outVariableOld == nullptr);
+    //TRI_ASSERT(_outVariableNew == nullptr);
+  //} else if (_mode == NodeType::UPSERT) {
+  //  LOG_DEVEL << "not implemented";
+  //  TRI_ASSERT(false);
   } else {
     LOG_DEVEL << "Ctor failed unkown node type";
     TRI_ASSERT(false);
@@ -470,9 +479,9 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
     _outVariableNew->toVelocyPack(nodes);
   }
 
-  if (_inVariableUpdate != nullptr) {
+  if (_inVariable!= nullptr) {
     nodes.add(VPackValue("inVariableUpdate"));
-    _inVariableUpdate->toVelocyPack(nodes);
+    _inVariable->toVelocyPack(nodes);
   }
 
   if (_outVariable != nullptr) {

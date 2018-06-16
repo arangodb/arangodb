@@ -442,33 +442,27 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
-  //FIXME
+  //TESTME
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    //return cloneHelper(
-    //  std::make_unique<SingleRemoteOperationNode>(
-    //                                              plan,
-    //                                              _id,
-    //                                              _mode,
-    //                                              _outVariableOld,
-    //                                              _outVariableNew,
-    //                                              _inVariableUpdate,
-    //                                              _key
-    //                                              ),
-    //  withDependencies,
-    //  withProperties
-    //);
-    LOG_DEVEL << "clone not implmented";
-    std::terminate();
-    return nullptr;
+    return cloneHelper(
+      std::make_unique<SingleRemoteOperationNode>(
+        plan, _id,
+        _mode, _key, collection(),
+        _options,
+        _inVariable, _outVariable, _outVariableOld, _outVariableNew
+      ),
+      withDependencies,
+      withProperties
+    );
   }
 
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<Variable const*> getVariablesUsedHere() const override final {
     std::vector<Variable const*> vec;
-    if(_inVariableUpdate){
-      vec.push_back(_inVariableUpdate);
+    if(_inVariable){
+      vec.push_back(_inVariable);
     }
     return vec;
   }
@@ -476,8 +470,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(
       std::unordered_set<Variable const*>& vars) const override final {
-    if(_inVariableUpdate){
-      vars.emplace(_inVariableUpdate);
+    if(_inVariable){
+      vars.emplace(_inVariable);
     }
   }
 
@@ -508,7 +502,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   std::string _key;
 
   NodeType _mode;
-  Variable const* _inVariableUpdate;
+  Variable const* _inVariable;
   Variable const* _outVariable;
 
   /// @brief output variable ($OLD)

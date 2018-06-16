@@ -259,8 +259,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
         ExecutionNode* singleOperationNode = plan->registerNode(
             new SingleRemoteOperationNode(plan.get(), plan->nextId()
                                          ,EN::INDEX, key, indexNode->collection(), ModificationOptions{}
-                                         , nullptr /*update*/
-                                         , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
+                                         , nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
         replaceNode(plan.get(), indexNode, singleOperationNode);
         modified = true;

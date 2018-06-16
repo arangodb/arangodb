@@ -1678,7 +1678,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 
   auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
   auto out = node->_outVariable;
-  auto in = node->_inVariableUpdate;
+  auto in = node->_inVariable;
   auto OLD = node->_outVariableOld;
   auto NEW = node->_outVariableNew;
 
@@ -1794,7 +1794,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
   } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
   } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
-  } else if(node->_mode == ExecutionNode::NodeType::UPSERT) {
+  //} else if(node->_mode == ExecutionNode::NodeType::UPSERT) {
   }
 
   throwIfKilled();  // check if we were aborted
