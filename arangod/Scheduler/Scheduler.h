@@ -56,8 +56,7 @@ class Scheduler {
   friend class arangodb::ListenTask;
 
  public:
-  Scheduler(uint64_t nrMinimum, uint64_t nrDesired, uint64_t nrMaximum,
-            uint64_t maxQueueSize);
+  Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize);
   virtual ~Scheduler();
 
   // queue handling:
@@ -72,7 +71,9 @@ class Scheduler {
   // currently serving the `io_context`.
   //
   // `numQueued` returns the number of jobs queued in the io_context
-  // that are not yet running.
+  // that are not yet worked on.
+  //
+  // `numWorking`returns the number of jobs currently worked on.
   //
   // The scheduler also has a number of FIFO where it stores jobs in
   // case that the there are too many jobs in Scheduler queue. The
@@ -85,7 +86,6 @@ class Scheduler {
   struct QueueStatistics {
     uint64_t _running;
     uint64_t _working;
-    uint64_t _blocked;
     uint64_t _queued;
   };
 
@@ -105,15 +105,79 @@ class Scheduler {
 
   void addQueueStatistics(velocypack::Builder&) const;
   QueueStatistics queueStatistics() const;
+  std::string infoStatus();
+
+  bool isRunning() const { return numRunning(_counters) > 0; }
+  bool isStopping() const noexcept { return (_counters & (1ULL << 63)) != 0; }
 
  private:
+  inline void setStopping() noexcept { _counters |= (1ULL << 63); }
+
+  inline bool isStopping(uint64_t value) const noexcept {
+    return (value & (1ULL << 63)) != 0;
+  }
+
   bool canPostDirectly() const noexcept;
 
   static uint64_t numRunning(uint64_t value) noexcept {
     return value & 0xFFFFULL;
   }
 
-  inline uint64_t numQueued() const noexcept { return _nrQueued; };
+  inline void incRunning() noexcept { _counters += 1ULL << 0; }
+
+  inline void decRunning() noexcept {
+    TRI_ASSERT((_counters & 0xFFFFUL) > 0);
+    _counters -= 1ULL << 0;
+  }
+
+  static uint64_t numQueued(uint64_t value) noexcept {
+    return (value >> 32) & 0xFFFFULL;
+  }
+
+  inline void incQueued() noexcept { _counters += 1ULL << 32; }
+
+  inline void decQueued() noexcept {
+    TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0);
+    _counters -= 1ULL << 32;
+  }
+
+  static uint64_t numWorking(uint64_t value) noexcept {
+    return (value >> 16) & 0xFFFFULL;
+  }
+
+  inline void incWorking() noexcept { _counters += 1ULL << 16; }
+
+  inline void decWorking() noexcept {
+    TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0);
+    _counters -= 1ULL << 16;
+  }
+
+  // maximal number of running + queued jobs in the Scheduler `io_context`
+  uint64_t const _maxQueueSize;
+
+  // we store most of the threads status info in a single atomic uint64_t
+  // the encoding of the values inside this variable is (left to right means
+  // high to low bytes):
+  //
+  //   AA BB CC DD
+  //
+  // we use the lowest 2 bytes (DD) to store the number of running threads
+  //
+  // the next lowest bytes (CC) are used to store the number of currently
+  // working threads
+  //
+  // the next bytes (BB) are used to store the number of currently blocked
+  // threads
+  //
+  // the highest bytes (AA) are used only to encode a stopping bit. when this
+  // bit is set, the scheduler is stopping (or already stopped)
+
+  std::atomic<uint64_t> _counters;
+
+  inline uint64_t getCounters() const noexcept { return _counters; }
+
+  // the fifos will collect the outstand requests in case the Scheduler
+  // queue is full
 
   struct FifoJob {
     FifoJob(std::function<void()> callback) : _callback(callback) {}
@@ -123,9 +187,6 @@ class Scheduler {
   bool pushToFifo(size_t fifo, std::function<void()> callback);
   bool popFifo(size_t fifo);
 
-  // maximal number of running + queued jobs in the Scheduler `io_context`
-  uint64_t _maxQueueSize;
-
   static int64_t const NUMBER_FIFOS = 2;
   uint64_t const _maxFifoSize[NUMBER_FIFOS];
   std::atomic<int64_t> _fifoSize[NUMBER_FIFOS];
@@ -133,18 +194,11 @@ class Scheduler {
   boost::lockfree::queue<FifoJob*> _fifo2;
   boost::lockfree::queue<FifoJob*>* _fifos[NUMBER_FIFOS];
 
+  // the following methds create tasks in the `io_context`.
+  // The `io_context` itself is not exposed because everything
+  // should use the method `post` of the Scheduler.
+
  public:
-  // XXX-TODO remove, replace with signal handler
-  asio_ns::io_context* managerService() const { return _managerService.get(); }
-
-  bool start();
-  bool isRunning() const { return numRunning(_counters) > 0; }
-
-  void beginShutdown();
-  void stopRebalancer() noexcept;
-  bool isStopping() { return (_counters & (1ULL << 63)) != 0; }
-  void shutdown();
-
   template <typename T>
   asio_ns::deadline_timer* newDeadlineTimer(T timeout) {
     return new asio_ns::deadline_timer(*_ioContext, timeout);
@@ -188,113 +242,62 @@ class Scheduler {
     return new asio_ns::ip::tcp::resolver(*_ioContext);
   }
 
- public:
-  // decrements the nrRunning counter for the thread
-  void stopThread();
-
-  // check if the current thread should be stopped
-  // returns true if yes, otherwise false. when the function returns
-  // true, it has already decremented the nrRunning counter!
-  bool stopThreadIfTooMany(double now);
-
-  std::string infoStatus();
-
-  uint64_t minimum() const { return _nrMinimum; }
-
-  inline uint64_t getCounters() const noexcept { return _counters; }
-
-  static uint64_t numWorking(uint64_t value) noexcept {
-    return (value >> 16) & 0xFFFFULL;
+  asio_ns::signal_set* newSignalSet() {
+    return new asio_ns::signal_set(*_managerContext);
   }
-
-  static uint64_t numBlocked(uint64_t value) noexcept {
-    return (value >> 32) & 0xFFFFULL;
-  }
-
-  /*
-  inline void queueJob() noexcept { ++_nrQueued; }
-
-  inline void unqueueJob() noexcept {
-    if (--_nrQueued == UINT64_MAX) {
-      TRI_ASSERT(false);
-    }
-  }
-  */
 
  private:
-  void startNewThread();
-
   static void initializeSignalHandlers();
 
+  // `start`will start the Scheduler threads
+  // `stopRebalancer` will stop the rebalancer thread
+  // `beginShutdown` will begin to shut down the Scheduler threads
+  // `shutdown` will shutdown the Scheduler threads
+
+ public:
+  bool start();
+  void beginShutdown();
+  void shutdown();
+
  private:
-  // we store most of the threads status info in a single atomic uint64_t
-  // the encoding of the values inside this variable is (left to right means
-  // high to low bytes):
-  //
-  //   AA BB CC DD
-  //
-  // we use the lowest 2 bytes (DD) to store the number of running threads
-  //
-  // the next lowest bytes (CC) are used to store the number of currently
-  // working threads
-  //
-  // the next bytes (BB) are used to store the number of currently blocked
-  // threads
-  //
-  // the highest bytes (AA) are used only to encode a stopping bit. when this
-  // bit is set, the scheduler is stopping (or already stopped)
-  inline void setStopping() noexcept { _counters |= (1ULL << 63); }
-
-  inline void incRunning() noexcept { _counters += 1ULL << 0; }
-  inline void decRunning() noexcept {
-    TRI_ASSERT((_counters & 0xFFFFUL) > 0);
-    _counters -= 1ULL << 0;
-  }
-
-  inline void workThread() noexcept { _counters += 1ULL << 16; }
-  inline void unworkThread() noexcept {
-    TRI_ASSERT(((_counters & 0XFFFF0000UL) >> 16) > 0);
-    _counters -= 1ULL << 16;
-  }
-
-  inline void blockThread() noexcept { _counters += 1ULL << 32; }
-  inline void unblockThread() noexcept {
-    TRI_ASSERT(((_counters & 0XFFFF00000000UL) >> 32) > 0);
-    _counters -= 1ULL << 32;
-  }
-
-  inline bool isStopping(uint64_t value) const noexcept {
-    return (value & (1ULL << 63)) != 0;
-  }
-
   void startIoService();
-  void startRebalancer();
   void startManagerThread();
-  void rebalanceThreads();
+  void startRebalancer();
+
+ public:
+  void stopRebalancer() noexcept;
 
  private:
-  // minimum number of running SchedulerThreads
-  uint64_t const _nrMinimum;
-
-  // maximal number of outstanding user requests
-  uint64_t const _nrMaximum;
-
-  // current counters. refer to the above description of the
-  // meaning of its individual bits
-  std::atomic<uint64_t> _counters;
-
-  std::atomic<uint64_t> _nrQueued;
-
-  // std::unique_ptr<JobQueue> _jobQueue;
-
   std::shared_ptr<asio_ns::io_context::work> _serviceGuard;
   std::unique_ptr<asio_ns::io_context> _ioContext;
 
   std::shared_ptr<asio_ns::io_context::work> _managerGuard;
-  std::unique_ptr<asio_ns::io_context> _managerService;
+  std::unique_ptr<asio_ns::io_context> _managerContext;
 
   std::unique_ptr<asio_ns::steady_timer> _threadManager;
   std::function<void(const asio_ns::error_code&)> _threadHandler;
+
+  // There will never be less than `_minThread` Scheduler threads.
+  // There will never be more than `_maxThread` Scheduler threads.
+
+ private:
+  void rebalanceThreads();
+
+ public:
+  // decrements the nrRunning counter for the thread
+  void threadHasStopped();
+
+  // check if the current thread should be stopped returns true if
+  // yes, otherwise false. when the function returns true, it has
+  // already decremented the nrRunning counter!
+  bool threadShouldStop(double now);
+
+ private:
+  void startNewThread();
+
+ private:
+  uint64_t const _minThreads;
+  uint64_t const _maxThreads;
 
   mutable Mutex _threadCreateLock;
   double _lastAllBusyStamp;

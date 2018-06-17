@@ -47,20 +47,10 @@ class JobGuard : public SameThreadAsserter {
     TRI_ASSERT(!_isWorkingFlag);
 
     if (0 == _isWorking++) {
-      _scheduler->workThread();
+      _scheduler->incWorking();
     }
 
     _isWorkingFlag = true;
-  }
-
-  void block() {
-    TRI_ASSERT(!_isBlockedFlag);
-
-    if (0 == _isBlocked++) {
-      _scheduler->blockThread();
-    }
-
-    _isBlockedFlag = true;
   }
 
  private:
@@ -72,18 +62,7 @@ class JobGuard : public SameThreadAsserter {
       if (0 == --_isWorking) {
         // if this is the last JobGuard we inform the
         // scheduler that the thread is back to idle
-        _scheduler->unworkThread();
-      }
-    }
-
-    if (_isBlockedFlag) {
-      _isBlockedFlag = false;
-
-      TRI_ASSERT(_isBlocked > 0);
-      if (0 == --_isBlocked) {
-        // if this is the last JobGuard we inform the
-        // scheduler that the thread is now unblocked
-        _scheduler->unblockThread();
+        _scheduler->decWorking();
       }
     }
   }
@@ -92,10 +71,8 @@ class JobGuard : public SameThreadAsserter {
   rest::Scheduler* _scheduler;
 
   bool _isWorkingFlag = false;
-  bool _isBlockedFlag = false;
 
   static thread_local size_t _isWorking;
-  static thread_local size_t _isBlocked;
 };
 }
 

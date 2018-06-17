@@ -138,14 +138,11 @@ static void JS_ServerStatistics(
 
   auto qs = SchedulerFeature::SCHEDULER->queueStatistics();
 
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "running"),
+  counters->Set(TRI_V8_ASCII_STRING(isolate, "schedulerThreads"),
                 v8::Number::New(isolate, static_cast<int32_t>(qs._running)));
 
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "working"),
+  counters->Set(TRI_V8_ASCII_STRING(isolate, "inProgress"),
                 v8::Number::New(isolate, static_cast<int32_t>(qs._working)));
-
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "blocked"),
-                v8::Number::New(isolate, static_cast<int32_t>(qs._blocked)));
 
   counters->Set(TRI_V8_ASCII_STRING(isolate, "queued"),
                 v8::Number::New(isolate, static_cast<int32_t>(qs._queued)));

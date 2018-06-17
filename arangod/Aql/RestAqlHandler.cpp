@@ -324,32 +324,26 @@ bool RestAqlHandler::registerSnippets(
         // For all others locking is pointless
         needToLock = false;
 
-        {
-          JobGuard guard(SchedulerFeature::SCHEDULER);
-          guard.block();
-
-          try {
-            int res = query->trx()->lockCollections();
-            if (res != TRI_ERROR_NO_ERROR) {
-              generateError(rest::ResponseCode::SERVER_ERROR,
-                  res, TRI_errno_string(res));
-              return false;
-            }
-          } catch (basics::Exception  const& e) {
+        try {
+          int res = query->trx()->lockCollections();
+          if (res != TRI_ERROR_NO_ERROR) {
             generateError(rest::ResponseCode::SERVER_ERROR,
-                e.code(), e.message());
-            return false;
-          } catch (...) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR,
-                          "Unable to lock all collections.");
+                          res, TRI_errno_string(res));
             return false;
           }
-          // If we get here we successfully locked the collections.
-          // If we bail out up to this point nothing is kept alive.
-          // No need to cleanup...
+        } catch (basics::Exception  const& e) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        e.code(), e.message());
+          return false;
+        } catch (...) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR,
+                        "Unable to lock all collections.");
+          return false;
         }
-
+        // If we get here we successfully locked the collections.
+        // If we bail out up to this point nothing is kept alive.
+        // No need to cleanup...
       }
 
       _queryRegistry->insert(qId, query.get(), ttl, prepared);
@@ -788,13 +782,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         // Mark current thread as potentially blocking:
         int res = TRI_ERROR_INTERNAL;
 
-        {
-          JobGuard guard(SchedulerFeature::SCHEDULER);
-          guard.block();
-
-          // let exceptions propagate from here
-          res = query->trx()->lockCollections();
-        }
+        // let exceptions propagate from here
+        res = query->trx()->lockCollections();
 
         answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add(StaticStrings::Code, VPackValue(res));
