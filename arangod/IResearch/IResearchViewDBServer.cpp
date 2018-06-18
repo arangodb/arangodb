@@ -34,7 +34,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/TransactionState.h"
-#include "VocBase/LogicalCollection.h"
+#include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
 namespace {
@@ -282,6 +282,7 @@ arangodb::Result IResearchViewDBServer::appendVelocyPack(
 
   return arangodb::Result();
 }
+
 
 arangodb::Result IResearchViewDBServer::drop() {
   WriteMutex mutex(_mutex);

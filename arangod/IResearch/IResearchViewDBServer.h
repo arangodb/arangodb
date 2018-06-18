@@ -35,6 +35,12 @@ class DatabasePathFeature;
 class TransactionState;
 class CollectionNameResolver;
 
+namespace transaction {
+
+class Methods; // forward declaration
+
+} // transaction
+
 } // arangodb
 
 namespace arangodb {
@@ -46,6 +52,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
  public:
   virtual ~IResearchViewDBServer();
 
+  /// @return success
   virtual arangodb::Result drop() override;
 
   //////////////////////////////////////////////////////////////////////////////

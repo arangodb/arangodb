@@ -263,9 +263,9 @@ void registerViewFactory() {
   }
 }
 
-arangodb::Result transactionStateRegistrationCallback(
+arangodb::Result transactionDataSourceRegistrationCallback(
     arangodb::LogicalDataSource& dataSource,
-    arangodb::TransactionState& state
+    arangodb::transaction::Methods& trx
 ) {
   if (arangodb::iresearch::DATA_SOURCE_TYPE != dataSource.type()) {
     return {}; // not an IResearchView (noop)
@@ -280,7 +280,7 @@ arangodb::Result transactionStateRegistrationCallback(
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to get LogicalView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' name '" << dataSource.name() << "'";
+      << "failure to get LogicalView while processing a TransactionState by IResearchFeature for name '" << dataSource.name() << "'";
 
     return {TRI_ERROR_INTERNAL};
   }
@@ -288,15 +288,15 @@ arangodb::Result transactionStateRegistrationCallback(
   // TODO FIXME find a better way to look up an IResearch View
   auto& impl = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*view);
 
-  impl.apply(state);
-
-  return {};
+  return arangodb::Result(
+    impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL
+  );
 }
 
-void registerTransactionStateCallback() {
+void registerTransactionDataSourceRegistrationCallback() {
   if (arangodb::ServerState::instance()->isSingleServer()) {
-    arangodb::transaction::Methods::addStateRegistrationCallback(
-      transactionStateRegistrationCallback
+    arangodb::transaction::Methods::addDataSourceRegistrationCallback(
+      &transactionDataSourceRegistrationCallback
     );
   }
 }
@@ -360,8 +360,8 @@ void IResearchFeature::prepare() {
   // register 'arangosearch' view
   registerViewFactory();
 
-  // register 'arangosearch' TransactionState state-change callback factory
-  registerTransactionStateCallback();
+  // register 'arangosearch' Transaction DataSource registration callback
+  registerTransactionDataSourceRegistrationCallback();
 
   registerRecoveryHelper();
 }

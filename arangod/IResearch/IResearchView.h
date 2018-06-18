@@ -130,9 +130,10 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   using arangodb::LogicalView::name;
 
   ///////////////////////////////////////////////////////////////////////////////
-  /// @brief apply any changes to 'state' required by this view
+  /// @brief apply any changes to 'trx' required by this view
+  /// @return success
   ///////////////////////////////////////////////////////////////////////////////
-  void apply(arangodb::TransactionState& state);
+  bool apply(arangodb::transaction::Methods& trx);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief persist the specified WAL file into permanent storage

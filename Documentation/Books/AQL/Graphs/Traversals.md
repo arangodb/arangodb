@@ -12,7 +12,7 @@ There are two slightly different syntaxes for traversals in AQL, one for
 ### Working with named graphs
 
 ```
-[WITH collection1[, collection2[, ...collectionN]]]
+[WITH vertexCollection1[, vertexCollection2[, ...vertexCollectionN]]]
 FOR vertex[, edge[, path]]
   IN [min[..max]]
   OUTBOUND|INBOUND|ANY startVertex
@@ -21,7 +21,7 @@ FOR vertex[, edge[, path]]
 ```
 - `WITH`: optional for single server instances, but required for
   [graph traversals in a cluster](#graph-traversals-in-a-cluster).
-  - **collections** (collection, *repeatable*): list of collections that will
+  - **collections** (collection, *repeatable*): list of vertex collections that will
     be involved in the traversal
 - `FOR`: emits up to three variables:
   - **vertex** (object): the current vertex in a traversal
@@ -74,7 +74,7 @@ FOR vertex[, edge[, path]]
 ### Working with collection sets
 
 ```
-[WITH collection1[, collection2[, ...collectionN]]]
+[WITH vertexCollection1[, vertexCollection2[, ...vertexCollectionN]]]
 FOR vertex[, edge[, path]]
   IN [min[..max]]
   OUTBOUND|INBOUND|ANY startVertex
