@@ -257,9 +257,9 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetsAction(
     case RequestType::GET:
       graphActionReadConfig(graph, TRI_COL_TYPE_DOCUMENT, GraphProperty::VERTICES);
       return RestStatus::DONE;
-    //case RequestType::POST: // TODO: missing
-    //  addVertexDefinition(graph);
-    //  return RestStatus::DONE;
+    //case RequestType::POST:
+      //modifyVertexDefinition(graph, VertexDefinitionAction::CREATE, "");
+      //return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -313,9 +313,9 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
     case RequestType::POST:
       vertexActionCreate(graph, vertexCollectionName);
       return RestStatus::DONE;
-   // case RequestType::DELETE_REQ: // TODO: missing
-      //removeVertexDefinition(graph, vertexCollectionName);
-      //return RestStatus::DONE;
+    case RequestType::DELETE_REQ:
+      modifyVertexDefinition(graph, VertexDefinitionAction::REMOVE, vertexCollectionName);
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -876,6 +876,8 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   }
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool dropCollections =
+          _request->parsedValue(Graph::_attrDropCollections, false);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
@@ -888,7 +890,69 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   } else if (action == EdgeDefinitionAction::EDIT) {
     resultT = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
-    resultT = gops.removeEdgeDefinition(waitForSync, edgeDefinitionName);
+    resultT = gops.removeEdgeDefinition(waitForSync, edgeDefinitionName, dropCollections);
+  } else {
+    TRI_ASSERT(false);
+  }
+
+  OperationResult& result = resultT.get().first;
+  Result res = resultT.get().second;
+
+  if (result.fail()) {
+    generateTransactionError(result);
+    return result.result;
+  }
+
+  if (!res.ok()) {
+    generateTransactionError("", res, ""); // TODO: how to do properly?
+    return res;
+  }
+
+  // TODO: new pointer to new graph instance
+  // graph cache
+  // add function invalidate (+ return)
+  // return new graph config
+  //std::string graphName = graph->name();
+  // TODO: REFACTOR THIS START !!
+  auto ctxx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+
+  std::string graphName = graph->name();
+  std::shared_ptr<Graph const> graphx = _graphCache.getGraph(std::move(ctxx), graphName);
+  GraphOperations gopss{*graphx, ctxx};
+
+  VPackBuilder builder;
+  gopss.readGraph(builder);
+  // TODO: REFACTOR THIS END !!
+
+  generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
+
+  return Result();
+}
+
+Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Graph> graph,
+                                              VertexDefinitionAction action, std::string vertexDefinitionName) {
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return false;
+  }
+
+  // TODO maybe merge this function with modifyEdgeDefinition?
+  bool waitForSync =
+          _request->parsedValue(StaticStrings::WaitForSyncString, false);
+  bool dropCollections =
+          _request->parsedValue(Graph::_attrDropCollections, false);
+
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+
+  GraphOperations gops{*graph, ctx};
+  ResultT<std::pair<OperationResult, Result>> resultT{
+          Result(TRI_ERROR_INTERNAL)};
+
+  if (action == VertexDefinitionAction::CREATE) {
+    resultT = gops.createVertexDefinition(body, waitForSync);
+  } else if (action == VertexDefinitionAction::REMOVE) {
+    resultT = gops.removeVertexDefinition(waitForSync, vertexDefinitionName, dropCollections);
   } else {
     TRI_ASSERT(false);
   }
@@ -934,6 +998,7 @@ Result RestGraphHandler::removeEdgeDefinition(std::shared_ptr<const graph::Graph
 
 // /_api/gharial/{graph-name}/vertex
 Result RestGraphHandler::addVertexDefinition(std::shared_ptr<const graph::Graph> graph) {
+
 
   return Result();
 }

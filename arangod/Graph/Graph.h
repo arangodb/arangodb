@@ -294,6 +294,18 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a new edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
+  ResultT<std::pair<OperationResult, Result>> createVertexDefinition(
+      VPackSlice document, bool waitForSync);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief remove an edge definition in an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
+  ResultT <std::pair<OperationResult, Result>> removeVertexDefinition(
+      bool waitForSync, std::string vertexDefinitionName, bool dropCollection);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a new edge definition in an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
   ResultT<std::pair<OperationResult, Result>> createEdgeDefinition(
       VPackSlice document, bool waitForSync);
 
@@ -301,7 +313,7 @@ class GraphOperations {
   /// @brief remove an edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   ResultT <std::pair<OperationResult, Result>> removeEdgeDefinition(
-      bool waitForSync, std::string edgeDefinitionName);
+      bool waitForSync, std::string edgeDefinitionName, bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
@@ -351,20 +363,14 @@ class GraphOperations {
       transaction::Methods* trx, const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
 
-    void checkEdgeCollectionAvailabilty(std::string edgeDefinitionName);
+    void checkEdgeCollectionAvailability(std::string edgeDefinitionName);
+    void checkVertexCollectionAvailability(std::string VertexDefinitionName);
 };
 
 class GraphManager {
   private:
    std::shared_ptr<transaction::Context> _ctx;
    std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
-
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief return all collections
-   ////////////////////////////////////////////////////////////////////////////////
-   std::shared_ptr<LogicalCollection> getCollectionByName(
-       TRI_vocbase_t& vocbase,
-       std::string const& name);
 
    ////////////////////////////////////////////////////////////////////////////////
    /// @brief check for duplicate definitions within edge definitions
@@ -401,6 +407,14 @@ class GraphManager {
    GraphManager(std::shared_ptr<transaction::Context> ctx_)
         : _ctx(std::move(ctx_)) {}
    void readGraphs(velocypack::Builder& builder, arangodb::aql::QueryPart QueryPart);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief find and return a collections if available
+    ////////////////////////////////////////////////////////////////////////////////
+    std::shared_ptr<LogicalCollection> getCollectionByName(
+        TRI_vocbase_t& vocbase,
+        std::string const& name);
+
 
    ////////////////////////////////////////////////////////////////////////////////
    /// @brief create a graph

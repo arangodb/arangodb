@@ -50,6 +50,10 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     CREATE, EDIT, REMOVE
   };
 
+  enum class VertexDefinitionAction {
+    CREATE, REMOVE
+  };
+
  public:
   RestGraphHandler(GeneralRequest* request, GeneralResponse* response,
                    graph::GraphCache* graphCache);
@@ -263,6 +267,12 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     std::shared_ptr<const graph::Graph> graph,
     EdgeDefinitionAction action,
     std::string edgeDefinitionName
+  );
+
+  Result modifyVertexDefinition(
+    std::shared_ptr<const graph::Graph> graph,
+    VertexDefinitionAction action,
+    std::string vertexDefinitionName
   );
 
   // vertices
