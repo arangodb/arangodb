@@ -233,7 +233,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
   PrimaryKeyIndexReader* snapshot(
-    TransactionState& state,
+    transaction::Methods& trx,
     bool force = false
   ) const;
 

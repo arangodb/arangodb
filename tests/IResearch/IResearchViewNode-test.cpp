@@ -658,7 +658,7 @@ SECTION("createBlockSingleServer") {
     // start transaction (put snapshot into)
     REQUIRE(query.trx()->state());
     arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
-      *query.trx()->state(), true
+      *query.trx(), true
     );
 
     // after transaction has started

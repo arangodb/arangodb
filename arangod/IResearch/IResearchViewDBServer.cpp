@@ -605,7 +605,7 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
         continue;
       }
 
-      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(*state, force);
+      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(trx, force);
 
       if (rdr) {
         reader.add(*rdr);

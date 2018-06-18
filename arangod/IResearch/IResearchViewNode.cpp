@@ -503,7 +503,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   if (ServerState::instance()->isDBServer()) {
     reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(*trx, _shards, true);
   } else {
-    reader = LogicalView::cast<IResearchView>(view).snapshot(*trx->state());
+    reader = LogicalView::cast<IResearchView>(view).snapshot(*trx);
   }
 
   if (!reader) {
