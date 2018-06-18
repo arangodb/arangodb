@@ -299,6 +299,14 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
 
   // get the next row from the current block. fetches a new block if necessary.
   // TODO unify with the one from HashedCollectBlock::getOrSkipSome
+  // TODO The way this works now, is that it returns a row (via block+position)
+  //      and saves the next row in the state of the block.
+  //      It may be more understandable if the block state always points to the
+  //      current position, and more in line with the original implementations.
+  //      So think about if that's feasible or creates more problems than it
+  //      solves.
+  //      Otherwise, document this behaviour clearly; and also how this
+  //      interacts with WAITING.
   auto getNextRow =
       [this,
         inputNrRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {

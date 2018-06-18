@@ -385,13 +385,12 @@ class SortingGatherBlock final : public ExecutionBlock {
    *
    *
    * @param atMost The amount of data requested per block.
-   * @param nonEmptyIndex an index of a non-empty GatherBlock buffer
    *
    * @return Will return {WAITING, 0} if it had to request new data from upstream.
    *         If everything is in place: all buffers are either filled, or the upstream
    *         block is DONE. Will return {DONE, SUM(_gatherBlockBuffer)} on success.
    */
-  std::pair<ExecutionState, size_t> fillBuffers(size_t atMost, size_t& nonEmptyIndex);
+  std::pair<ExecutionState, size_t> fillBuffers(size_t atMost);
  
   /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
   /// non-simple case only

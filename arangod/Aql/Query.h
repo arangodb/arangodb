@@ -424,9 +424,8 @@ class Query {
   }
 
   /// TODO This has to stay for a backwards-compatible AQL HTTP API (hasMore).
-  /// So it needs to be renamed, and maybe the race condition should be solved.
+  /// So it needs to be renamed.
   void tempWaitForAsyncResponse() {
-    // TODO Race, if clustercomm is faster than registering the WAIT
     std::unique_lock<std::mutex> lock(_tempMutex);
     if (!_wasNotified) {
       _tempWaitForAsyncResponse.wait(lock);

@@ -599,6 +599,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
     if (plan->isResponsibleForInitialize()) {
       // TODO REMOVE THIS LOOP
+      // TODO if possible, remove the initializeCursor() call completely.
       while (true) {
         auto res = root->initializeCursor(nullptr, 0);
         if (res.first == ExecutionState::WAITING) {

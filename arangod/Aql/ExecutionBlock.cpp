@@ -449,6 +449,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
     if (_buffer.empty()) {
       if (skipping) {
         size_t numActuallySkipped = 0;
+        // TODO test if calling skipSome() works - if so, delete skip.
         _dependencies[0]->skip(atMost - _skipped, numActuallySkipped);
         _skipped += numActuallySkipped;
         break;
@@ -551,4 +552,22 @@ ExecutionState ExecutionBlock::getHasMoreState() {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
+}
+
+RegisterId ExecutionBlock::getNrInputRegisters() const {
+  ExecutionNode const* previousNode = getPlanNode()->getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId const inputNrRegs =
+    previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
+
+  return inputNrRegs;
+}
+
+RegisterId ExecutionBlock::getNrOutputRegisters() const {
+  ExecutionNode const* planNode = getPlanNode();
+  TRI_ASSERT(planNode != nullptr);
+  RegisterId const outputNrRegs =
+    planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
+
+  return outputNrRegs;
 }

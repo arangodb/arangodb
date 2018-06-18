@@ -1579,7 +1579,7 @@ ExecutionState SortingGatherBlock::hasMoreState() {
  *         Will return {DONE, SUM(_gatherBlockBuffer)} on success.
  */
 std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(
-    size_t atMost, size_t& nonEmptyIndex) {
+    size_t atMost) {
   size_t available = 0;
 
   // In the future, we should request all blocks in parallel. But not everything
@@ -1598,9 +1598,6 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::fillBuffers(
       return {ExecutionState::WAITING, 0};
     }
 
-    if (!_gatherBlockBuffer[i].empty()) {
-      nonEmptyIndex = i;
-    }
     available += availableRows(i);
   }
 
@@ -1651,10 +1648,9 @@ SortingGatherBlock::getSome(size_t atMost) {
   TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
   
   size_t available = 0;
-  size_t nonEmptyIndex = 0;
   {
     ExecutionState blockState;
-    std::tie(blockState, available) = fillBuffers(atMost, nonEmptyIndex);
+    std::tie(blockState, available) = fillBuffers(atMost);
     if (blockState == ExecutionState::WAITING) {
       traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return {blockState, nullptr};
@@ -1674,11 +1670,7 @@ SortingGatherBlock::getSome(size_t atMost) {
   std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
   cache.resize(_gatherBlockBuffer.size());
 
-  // TODO take the nr of regs from the plan, not the values. Then, we can
-  // get rid of example and nonEmptyIndex.
-  TRI_ASSERT(!_gatherBlockBuffer.at(nonEmptyIndex).empty());
-  AqlItemBlock* example = _gatherBlockBuffer[nonEmptyIndex].front();
-  size_t nrRegs = example->getNrRegs();
+  size_t nrRegs = getNrInputRegisters();
 
   // automatically deleted if things go wrong
   std::unique_ptr<AqlItemBlock> res(
@@ -1741,10 +1733,9 @@ std::pair<ExecutionState, size_t> SortingGatherBlock::skipSome(size_t atMost) {
   TRI_ASSERT(!_dependencies.empty());
 
   size_t available = 0;
-  size_t nonEmptyIndex = 0; // Unused
   {
     ExecutionState blockState;
-    std::tie(blockState, available) = fillBuffers(atMost, nonEmptyIndex);
+    std::tie(blockState, available) = fillBuffers(atMost);
     if (blockState == ExecutionState::WAITING) {
       return {blockState, 0};
     }

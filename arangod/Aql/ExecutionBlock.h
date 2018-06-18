@@ -164,6 +164,10 @@ class ExecutionBlock {
     return true;
   }
 
+  RegisterId getNrInputRegisters() const;
+
+  RegisterId getNrOutputRegisters() const;
+
  protected:
   /// @brief request an AqlItemBlock from the memory manager
   AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
@@ -198,6 +202,9 @@ class ExecutionBlock {
   
 
   /// @brief generic method to get or skip some
+  /// Does neither do tracing (traceGetSomeBegin/~End), nor call
+  /// clearRegisters() - both is done in getSome(), which calls this (via
+  /// getSomeWithoutRegisterClearout()).
   virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                           AqlItemBlock*& result, size_t& skipped);
 
