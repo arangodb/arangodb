@@ -13,7 +13,7 @@ const anonymize = function(doc) {
     return doc.map(anonymize);
   }
   if (typeof doc === 'string') {
-    return Array(doc.length + 1).join("X");
+    return Array(doc.length + 1).join('X');
   }
   if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
     return doc;
@@ -21,7 +21,7 @@ const anonymize = function(doc) {
   if (typeof doc === 'object') {
     let result = {};
     Object.keys(doc).forEach(function(key) {
-      if (key.startsWith("_") || key.startsWith("@")) {
+      if (key.startsWith('_') || key.startsWith('@')) {
         // This excludes system attributes in examples
         // and collections in bindVars
         result[key] = doc[key];
@@ -239,7 +239,7 @@ function printStats (stats) {
   var maxSILen = String('Scan Index').length;
   var maxFLen = String('Filtered').length;
   var maxETen = String('Exec Time [s]').length;
-  stats.executionTime = stats.executionTime.toFixed(5) + "s";
+  stats.executionTime = stats.executionTime.toFixed(5) + 's';
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
                            header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
                          
@@ -471,7 +471,7 @@ function printTraversalDetails (traversals) {
       if (opts.length > maxOptionsLen) {
         maxOptionsLen = opts.length;
       }
-    } else if (node.hasOwnProperty("traversalFlags")) {
+    } else if (node.hasOwnProperty('traversalFlags')) {
       // Backwards compatibility for < 3.2
       let opts = optify(node.traversalFlags);
       if (opts.length > maxOptionsLen) {
@@ -605,7 +605,7 @@ function processQuery (query, explain) {
     stats = explain.stats;
 
   /// mode with actual runtime stats per node
-  let profileMode = stats && stats.hasOwnProperty("nodes");
+  let profileMode = stats && stats.hasOwnProperty('nodes');
 
   var isCoordinator = false;
   if (typeof ArangoClusterComm === 'object') {
@@ -1026,6 +1026,7 @@ function processQuery (query, explain) {
           indexes.push(idx);
         });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
+// `
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1311,6 +1312,41 @@ function processQuery (query, explain) {
           }
         return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
+      case 'SingleRemoteOperationNode': {
+        switch (node.mode) {
+        case "IndexNode": {
+          collectionVariables[node.outVariable.id] = node.collection;
+          indexes.push({
+            node: node.id,
+            type: 'primary',
+            sparse: false,
+            selectivityEstimate: 1,
+            unique: true,
+            fields: ['_key'],
+            collection: node.collection,
+            condition : `(${variable('X')}.${attribute(`_key`)} == ${value(JSON.stringify(node.key))})`
+          });
+          return `${keyword('FOR')} X ${keyword('IN')} ${collection(node.collection)} ${annotation(`/* primary index scan */`)}`;
+// `
+        }
+        case 'InsertNode': {
+          return 'aoeu';
+        }
+        case 'UpdateNode': {
+          return 'aoeu';
+        }
+        case 'ReplaceNode': {
+          return 'aoeu';
+        }
+        case 'UpsertNode': {
+          return 'aoeu';
+        }
+        case 'RemoveNode': {
+          return 'aoeu';
+        }
+        }
+      }
+      break;
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
