@@ -108,6 +108,7 @@ class MMFilesEngine final : public StorageEngine {
                                           bool doSync) override;
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
                                           bool doSync) override;
+  // TODO worker-safety
   Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                         arangodb::LogicalCollection* col,
                         std::string const& keysId) override;

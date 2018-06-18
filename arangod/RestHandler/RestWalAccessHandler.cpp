@@ -26,7 +26,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Replication/common-defines.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -147,7 +147,7 @@ RestStatus RestWalAccessHandler::execute() {
                   "'/_api/wal' is not yet supported in a cluster");
     return RestStatus::DONE;
   }
-  
+
   if (ExecContext::CURRENT == nullptr ||
       !ExecContext::CURRENT->isAdminUser()) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
@@ -367,7 +367,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-    vocbase->updateReplicationClient(serverId, tickStart, InitialSyncer::defaultBatchTimeout);
+    vocbase->updateReplicationClient(serverId, tickStart, replutils::BatchInfo::DefaultTimeout);
   });
 }
 

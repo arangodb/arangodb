@@ -37,17 +37,17 @@ GlobalTailingSyncer::GlobalTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(ReplicationFeature::INSTANCE->globalReplicationApplier(),
                     configuration, initialTick, useTick, barrierId) {
-      _ignoreDatabaseMarkers = false;
-      _databaseName = TRI_VOC_SYSTEM_DATABASE;
+  _ignoreDatabaseMarkers = false;
+  _state.databaseName = TRI_VOC_SYSTEM_DATABASE;
 }
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
-  TRI_ASSERT(!_masterInfo._endpoint.empty());
-  TRI_ASSERT(_masterInfo._serverId != 0);
-  TRI_ASSERT(_masterInfo._majorVersion != 0);
+  TRI_ASSERT(!_state.master.endpoint.empty());
+  TRI_ASSERT(_state.master.serverId != 0);
+  TRI_ASSERT(_state.master.majorVersion != 0);
 
-  if (_masterInfo._majorVersion < 3 ||
-      (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
+  if (_state.master.majorVersion < 3 ||
+      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
     std::string err = "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC(ERR, Logger::REPLICATION) << err;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, err);

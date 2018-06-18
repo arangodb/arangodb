@@ -83,7 +83,7 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
     return false;
   }
 
-  // Next we sort by colleciton type so that vertex collections are recreated
+  // Next we sort by collection type so that vertex collections are recreated
   // before edge, etc.
   int leftType =
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(left, "type", 0);

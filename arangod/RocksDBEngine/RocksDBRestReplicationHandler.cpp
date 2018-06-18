@@ -27,7 +27,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -352,7 +352,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _vocbase.updateReplicationClient(
     serverId,
     tickStart == 0 ? 0 : tickStart - 1,
-    InitialSyncer::defaultBatchTimeout
+    replutils::BatchInfo::DefaultTimeout
   );
 }
 
@@ -632,7 +632,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateError(rv);
       return;
     }
-  } else {    
+  } else {
     bool success = false;
     VPackSlice const parsedIds = this->parseVPackBody(success);
 
@@ -731,7 +731,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "' using contextId '" << ctx->id() << "'";
 
   grantTemporaryRights();
-  
+
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr &&
       !exec->canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
@@ -739,15 +739,15 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                   TRI_ERROR_FORBIDDEN);
     return;
   }
-  
+
   uint64_t chunkSize = determineChunkSize();
   size_t reserve = std::max<size_t>(chunkSize, 8192);
-  
+
   if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
-    
+
     VPackBuffer<uint8_t> buffer;
     buffer.reserve(reserve); // avoid reallocs
-    
+
     auto res = ctx->dumpVPack(&_vocbase, cname, buffer, chunkSize);
     // generate the result
     if (res.fail()) {
@@ -760,14 +760,14 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       _response->setPayload(std::move(buffer), true, VPackOptions::Options::Defaults,
                             /*resolveExternals*/ false);
     }
-    
+
     // set headers
     _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                            (ctx->moreForDump(cname) ? "true" : "false"));
-    
+
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa(buffer.empty() ? 0 : res.maxTick()));
-    
+
   } else {
     auto response = dynamic_cast<HttpResponse*>(_response.get());
     StringBuffer dump(reserve, false);
@@ -777,36 +777,36 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
     // do the work!
     auto res = ctx->dumpJson(&_vocbase, cname, dump, determineChunkSize());
-    
+
     if (res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER)) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       "replication dump - " + res.errorMessage());
         return;
       }
-      
+
       generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
                     "replication dump - " + res.errorMessage());
       return;
     }
-    
+
     // generate the result
     if (dump.length() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       resetResponse(rest::ResponseCode::OK);
     }
-    
+
     response->setContentType(rest::ContentType::DUMP);
     // set headers
     _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                            (ctx->moreForDump(cname) ? "true" : "false"));
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa((dump.length() == 0) ? 0 : res.maxTick()));
-    
+
     // transfer ownership of the buffer contents
     response->body().set(dump.stringBuffer());
-    
+
     // avoid double freeing
     TRI_StealStringBuffer(dump.stringBuffer());
   }

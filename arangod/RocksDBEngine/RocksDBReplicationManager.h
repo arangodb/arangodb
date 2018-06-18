@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 
 struct TRI_vocbase_t;
@@ -73,7 +73,7 @@ class RocksDBReplicationManager {
 
   RocksDBReplicationContext* find(
       RocksDBReplicationId, bool& isBusy, bool exclusive = true,
-      double ttl = InitialSyncer::defaultBatchTimeout);
+      double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
