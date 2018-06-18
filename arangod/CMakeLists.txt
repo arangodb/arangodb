@@ -467,6 +467,7 @@ SET(ARANGOD_SOURCES
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
+  Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
   Transaction/V8Context.cpp

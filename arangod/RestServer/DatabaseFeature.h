@@ -121,7 +121,9 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   TRI_vocbase_t* lookupDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* lookupDatabase(std::string const& name);
-  void enumerateDatabases(std::function<void(TRI_vocbase_t*)>);
+  void enumerateDatabases(
+    std::function<void(TRI_vocbase_t& vocbase)> const& func
+  );
   std::string translateCollectionName(std::string const& dbName, std::string const& collectionName);
 
   void useSystemDatabase();
@@ -199,6 +201,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// (addition, removal, change) of database objects  
   VersionTracker _versionTracker;
 };
+
 }
 
 #endif

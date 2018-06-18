@@ -345,7 +345,7 @@ void RestCollectionHandler::handleCommandPut() {
 
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(
-            ctx, coll->id(), AccessMode::Type::EXCLUSIVE
+            ctx, coll, AccessMode::Type::EXCLUSIVE
           );
 
           res = trx.begin();
@@ -396,7 +396,7 @@ void RestCollectionHandler::handleCommandPut() {
         } else if (sub == "rotate") {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(
-            ctx, coll->id(), AccessMode::Type::WRITE
+            ctx, coll, AccessMode::Type::WRITE
           );
 
           res = trx.begin();
@@ -520,7 +520,7 @@ void RestCollectionHandler::collectionRepresentation(
 
   if (showCount) {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
+    SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
     Result res = trx.begin();
 
     if (res.fail()) {

@@ -422,7 +422,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     // first chunk
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      col->id(),
+      col,
       AccessMode::Type::EXCLUSIVE
     );
 
@@ -480,7 +480,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(syncer.vocbase()),
-      col->id(),
+      col,
       AccessMode::Type::EXCLUSIVE
     );
 
