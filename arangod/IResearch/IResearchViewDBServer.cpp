@@ -33,6 +33,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
 NS_LOCAL
@@ -306,8 +307,16 @@ arangodb::Result IResearchViewDBServer::appendVelocyPack(
   return arangodb::Result();
 }
 
-void IResearchViewDBServer::apply(arangodb::TransactionState& state) {
-  state.addStatusChangeCallback(_trxReadCallback);
+bool IResearchViewDBServer::apply(arangodb::transaction::Methods& trx) {
+  auto* state = trx.state();
+
+  if (!state) {
+    return false;
+  }
+
+  state->addStatusChangeCallback(_trxReadCallback);
+
+  return true;
 }
 
 arangodb::Result IResearchViewDBServer::drop() {

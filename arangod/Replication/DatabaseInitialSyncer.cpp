@@ -615,8 +615,15 @@ Result DatabaseInitialSyncer::fetchCollectionDump(
 #endif
 
     SingleCollectionTransaction trx(
+<<<<<<< HEAD
         transaction::StandaloneContext::Create(vocbase()), coll->id(),
         AccessMode::Type::EXCLUSIVE);
+=======
+      transaction::StandaloneContext::Create(vocbase()),
+      coll,
+      AccessMode::Type::EXCLUSIVE
+    );
+>>>>>>> devel
 
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
@@ -844,8 +851,15 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
   if (count.getNumber<size_t>() <= 0) {
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
+<<<<<<< HEAD
         transaction::StandaloneContext::Create(vocbase()), coll->id(),
         AccessMode::Type::EXCLUSIVE);
+=======
+      transaction::StandaloneContext::Create(vocbase()),
+      coll,
+      AccessMode::Type::EXCLUSIVE
+    );
+>>>>>>> devel
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -876,8 +890,14 @@ Result DatabaseInitialSyncer::fetchCollectionSync(
 
   // now we can fetch the complete chunk information from the master
   try {
+<<<<<<< HEAD
     return EngineSelectorFeature::ENGINE->handleSyncKeys(*this, coll,
                                                          keysId.copyString());
+=======
+    return EngineSelectorFeature::ENGINE->handleSyncKeys(
+      *this, *coll, keysId.copyString()
+    );
+>>>>>>> devel
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -904,8 +924,15 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 /// @brief determine the number of documents in a collection
 int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
   SingleCollectionTransaction trx(
+<<<<<<< HEAD
       transaction::StandaloneContext::Create(vocbase()), col->id(),
       AccessMode::Type::READ);
+=======
+    transaction::StandaloneContext::Create(vocbase()),
+    col,
+    AccessMode::Type::READ
+  );
+>>>>>>> devel
   Result res = trx.begin();
 
   if (res.fail()) {
@@ -1029,8 +1056,15 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             _config.progress.set("truncating " + collectionMsg);
 
             SingleCollectionTransaction trx(
+<<<<<<< HEAD
                 transaction::StandaloneContext::Create(vocbase()), col->id(),
                 AccessMode::Type::EXCLUSIVE);
+=======
+              transaction::StandaloneContext::Create(vocbase()),
+              col,
+              AccessMode::Type::EXCLUSIVE
+            );
+>>>>>>> devel
             Result res = trx.begin();
 
             if (!res.ok()) {
@@ -1161,8 +1195,15 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
       try {
         SingleCollectionTransaction trx(
+<<<<<<< HEAD
             transaction::StandaloneContext::Create(vocbase()), col->id(),
             AccessMode::Type::EXCLUSIVE);
+=======
+          transaction::StandaloneContext::Create(vocbase()),
+          col,
+          AccessMode::Type::EXCLUSIVE
+        );
+>>>>>>> devel
 
         res = trx.begin();
 

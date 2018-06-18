@@ -461,8 +461,10 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
       TRI_ASSERT(!_state.master.simulate32Client() ||
                  col->guid() == col->name());
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(vocbase), col->id(),
-          AccessMode::Type::WRITE);
+        transaction::StandaloneContext::Create(vocbase),
+        col,
+        AccessMode::Type::WRITE
+      );
       Result res = trx.begin();
 
       if (!res.ok()) {
@@ -568,7 +570,6 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   }
 
   auto col = resolveCollection(*vocbase, slice);
-
   if (col == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection for index");
@@ -584,8 +585,10 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
   try {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(*vocbase), col->id(),
-        AccessMode::Type::WRITE);
+      transaction::StandaloneContext::Create(*vocbase),
+      col.get(),
+      AccessMode::Type::WRITE
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {

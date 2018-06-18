@@ -389,8 +389,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // standalone operation
   // update the apply tick for all standalone operations
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(*vocbase), coll->id(),
-      AccessMode::Type::EXCLUSIVE);
+    transaction::StandaloneContext::Create(*vocbase),
+    coll,
+    AccessMode::Type::EXCLUSIVE
+  );
 
   if (_supportsSingleOperations) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);

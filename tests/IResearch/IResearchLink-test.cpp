@@ -51,12 +51,13 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
-#include "velocypack/Parser.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+
+#include <velocypack/Parser.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -606,7 +607,7 @@ SECTION("test_write") {
   CHECK((0 == reader.reopen().live_docs_count()));
   CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).errorNumber()));
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,
@@ -624,7 +625,7 @@ SECTION("test_write") {
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,
@@ -642,7 +643,7 @@ SECTION("test_write") {
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       EMPTY,

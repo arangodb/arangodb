@@ -126,8 +126,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   // note: the ditch also protects against unloading the collection
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->id(),
-        AccessMode::Type::READ);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll,
+      AccessMode::Type::READ
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -155,8 +157,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->id(),
-        AccessMode::Type::READ);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll,
+      AccessMode::Type::READ
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -307,8 +311,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   if (n > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->id(),
-        AccessMode::Type::WRITE);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll,
+      AccessMode::Type::WRITE
+    );
 
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
@@ -384,8 +390,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->id(),
-        AccessMode::Type::WRITE);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll,
+      AccessMode::Type::WRITE
+    );
 
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!

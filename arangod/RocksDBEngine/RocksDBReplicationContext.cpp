@@ -37,8 +37,8 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -146,7 +146,7 @@ void RocksDBReplicationContext::internalBind(
     auto ctx = transaction::StandaloneContext::Create(vocbase);
 
     _trx.reset(
-        new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
+        new transaction::Methods(ctx, {}, {}, {}, transactionOptions));
 
     auto state = RocksDBTransactionState::toState(_trx.get());
 

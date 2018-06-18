@@ -234,7 +234,8 @@ Result GlobalInitialSyncer::updateServerInventory(
     VPackSlice const& masterDatabases) {
   std::set<std::string> existingDBs;
   DatabaseFeature::DATABASE->enumerateDatabases(
-      [&](TRI_vocbase_t* vocbase) { existingDBs.insert(vocbase->name()); });
+    [&](TRI_vocbase_t& vocbase)->void { existingDBs.insert(vocbase.name()); }
+  );
 
   for (auto const& database : VPackObjectIterator(masterDatabases)) {
     VPackSlice it = database.value;
@@ -252,8 +253,10 @@ Result GlobalInitialSyncer::updateServerInventory(
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     "database declaration is invalid in response");
     }
+
     std::string const dbName = nameSlice.copyString();
     TRI_vocbase_t* vocbase = resolveVocbase(nameSlice);
+
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
       Result r =
@@ -341,6 +344,7 @@ Result GlobalInitialSyncer::updateServerInventory(
 
     TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
     Result r = methods::Databases::drop(system, dbname);
+
     if (r.fail()) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
       return r;
@@ -386,6 +390,7 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   }
 
   VPackSlice const slice = builder.slice();
+
   if (!slice.isObject()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION)
         << "client: InitialSyncer::run - inventoryResponse is not an object";

@@ -43,7 +43,7 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
+#include "Transaction/SmartContext.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
@@ -224,12 +224,15 @@ void RestAqlHandler::setupClusterQuery() {
   if (found) {
     ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
+  
+  // creates a StandaloneContext or a leasing context
+  auto ctx = transaction::SmartContext::Create(_vocbase);
 
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
   bool needToLock = true;
   bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                              options, ttl, needToLock, answerBuilder);
+                              options, ctx, ttl, needToLock, answerBuilder);
   if (!res) {
     // TODO we need to trigger cleanup here??
     // Registering the snippets failed.
@@ -237,8 +240,7 @@ void RestAqlHandler::setupClusterQuery() {
   }
 
   if (!traverserSlice.isNone()) {
-
-    res = registerTraverserEngines(traverserSlice, needToLock, ttl, answerBuilder);
+    res = registerTraverserEngines(traverserSlice, ctx, ttl, needToLock, answerBuilder);
 
     if (!res) {
       // TODO we need to trigger cleanup here??
@@ -257,6 +259,7 @@ bool RestAqlHandler::registerSnippets(
     VPackSlice const collectionSlice,
     VPackSlice const variablesSlice,
     std::shared_ptr<VPackBuilder> options,
+    std::shared_ptr<transaction::Context> const& ctx,
     double const ttl,
     bool& needToLock,
     VPackBuilder& answerBuilder
@@ -291,6 +294,9 @@ bool RestAqlHandler::registerSnippets(
       options,
       (needToLock ? PART_MAIN : PART_DEPENDENT)
     );
+    
+    // enables the query to get the correct transaction
+    query->setTransactionContext(ctx);
 
     bool prepared = false;
     try {
@@ -362,7 +368,9 @@ bool RestAqlHandler::registerSnippets(
   return true;
 }
 
-bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines, bool& needToLock, double ttl, VPackBuilder& answerBuilder) {
+bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
+                                              std::shared_ptr<transaction::Context> const& ctx,
+                                              double ttl, bool& needToLock, VPackBuilder& answerBuilder) {
   TRI_ASSERT(traverserEngines.isArray());
 
   TRI_ASSERT(answerBuilder.isOpenObject());
@@ -371,7 +379,7 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 
   for (auto const& te : VPackArrayIterator(traverserEngines)) {
     try {
-      auto id = _traverserRegistry->createNew(_vocbase, te, needToLock, ttl);
+      auto id = _traverserRegistry->createNew(_vocbase, ctx, te, ttl, needToLock);
 
       needToLock = false;
       TRI_ASSERT(id != 0);

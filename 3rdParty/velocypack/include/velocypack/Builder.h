@@ -297,7 +297,7 @@ class Builder {
   }
 
   // Return a Slice of the result:
-  inline Slice slice() const noexcept {
+  inline Slice slice() const {
     if (isEmpty()) {
       return Slice();
     }

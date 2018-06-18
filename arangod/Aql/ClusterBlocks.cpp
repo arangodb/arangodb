@@ -41,6 +41,8 @@
 #include "Cluster/ServerState.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -830,9 +832,8 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 /// @brief create a new document key, argument is unused here
 #ifndef USE_ENTERPRISE
 std::string DistributeBlock::createKey(VPackSlice) const {
-  ClusterInfo* ci = ClusterInfo::instance();
-  uint64_t uid = ci->uniqid();
-  return std::to_string(uid);
+  auto collInfo = _collection->getCollection();
+  return collInfo->keyGenerator()->generate();
 }
 #endif
 

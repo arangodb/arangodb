@@ -138,7 +138,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
   } else {
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(collection->vocbase()),
-      collection->id(),
+      collection,
       AccessMode::Type::READ
     );
 
@@ -260,7 +260,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   SingleCollectionTransaction trx(
     transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-    collection->id(),
+    collection,
     create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -592,7 +592,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
     SingleCollectionTransaction trx(
       transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-      collection->id(),
+      collection,
       AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();

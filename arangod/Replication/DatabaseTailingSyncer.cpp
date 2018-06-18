@@ -39,7 +39,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Hints.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"

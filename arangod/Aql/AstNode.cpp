@@ -1537,13 +1537,6 @@ bool AstNode::isSimple() const {
 
     TRI_ASSERT(numMembers() == 1);
 
-    // check if there is a C++ function handler condition
-    if (func->condition != nullptr && !func->condition()) {
-      // function execution condition is false
-      setFlag(DETERMINED_SIMPLE);
-      return false;
-    }
-
     // check simplicity of function arguments
     auto args = getMember(0);
     size_t const n = args->numMembers();
@@ -1569,7 +1562,7 @@ bool AstNode::isSimple() const {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
-  
+
   if (type == NODE_TYPE_FCALL_USER) {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
@@ -1603,14 +1596,9 @@ bool AstNode::willUseV8() const {
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
     }
-    
-    if (func->condition && !func->condition()) {
-      // a function with an execution condition
-      setFlag(DETERMINED_V8, VALUE_V8);
-      return true;
-    }
+
   }
-    
+
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {

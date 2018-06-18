@@ -490,8 +490,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   if (numChunks > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), col->id(),
-        AccessMode::Type::EXCLUSIVE);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      col,
+      AccessMode::Type::EXCLUSIVE
+    );
 
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
@@ -549,8 +551,10 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), col->id(),
-        AccessMode::Type::EXCLUSIVE);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      col,
+      AccessMode::Type::EXCLUSIVE
+    );
 
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!

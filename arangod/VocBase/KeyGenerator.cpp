@@ -22,13 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "KeyGenerator.h"
-#include "Basics/conversions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/voc-errors.h"
+#include "Cluster/ClusterInfo.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -113,9 +111,6 @@ static std::array<bool, 256> const keyCharLookupTable = { {
 KeyGenerator::KeyGenerator(bool allowUserKeys)
     : _allowUserKeys(allowUserKeys) {}
 
-/// @brief destroy the key generator
-KeyGenerator::~KeyGenerator() {}
-
 /// @brief get the generator type from VelocyPack
 KeyGenerator::GeneratorType KeyGenerator::generatorType(
     VPackSlice const& parameters) {
@@ -143,6 +138,20 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType(
   return KeyGenerator::TYPE_UNKNOWN;
 }
 
+bool KeyGenerator::canUseType(VPackSlice const& parameters) {
+  auto type = generatorType(parameters);
+  if (type == KeyGenerator::TYPE_UNKNOWN) {
+    return false;
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    // cluster only supports key generator type "traditional"
+    return type == KeyGenerator::TYPE_TRADITIONAL;
+  }
+  // single-server supports all types
+  return true;
+}
+
 /// @brief create a key generator based on the options specified
 KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   KeyGenerator::GeneratorType type;
@@ -168,10 +177,11 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   }
 
   if (type == TYPE_TRADITIONAL) {
-    return new TraditionalKeyGenerator(allowUserKeys);
-  }
-
-  else if (type == TYPE_AUTOINCREMENT) {
+    if (ServerState::instance()->isCoordinator()) {
+      return new TraditionalKeyGeneratorCluster(allowUserKeys);
+    }
+    return new TraditionalKeyGeneratorSingle(allowUserKeys);
+  } else if (type == TYPE_AUTOINCREMENT) {
     uint64_t offset = 0;
     uint64_t increment = 1;
 
@@ -224,38 +234,21 @@ int KeyGenerator::globalCheck(char const* p, size_t length, bool isRestore) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
   }
 
-  if (length == 0) {
-    // user key is empty
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  }
-
-  if (length > TRI_VOC_KEY_MAX_LENGTH) {
-    // user key is too long
+  if (length == 0 || length > maxKeyLength) {
+    // user key is empty or user key is too long
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief return a VelocyPack representation of the generator
-///        Not virtual because this is identical for all of them
-std::shared_ptr<VPackBuilder> KeyGenerator::toVelocyPack() const {
-  auto builder = std::make_shared<VPackBuilder>();
-  toVelocyPack(*builder);
-  builder->close();
-  return builder;
-}
-
 /// @brief create the key generator
 TraditionalKeyGenerator::TraditionalKeyGenerator(bool allowUserKeys)
-    : KeyGenerator(allowUserKeys), _lastValue(0) {}
-
-/// @brief destroy the key generator
-TraditionalKeyGenerator::~TraditionalKeyGenerator() {}
+    : KeyGenerator(allowUserKeys) {}
 
 /// @brief validate a key
 bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
-  if (len == 0 || len > TRI_VOC_KEY_MAX_LENGTH) {
+  if (len == 0 || len > maxKeyLength) {
     return false;
   }
 
@@ -270,8 +263,40 @@ bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
   return true;
 }
 
+/// @brief validate a key
+int TraditionalKeyGenerator::validate(char const* p, size_t length, bool isRestore) {
+  int res = globalCheck(p, length, isRestore);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  // validate user-supplied key
+  if (!validateKey(p, length)) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief track usage of a key - default implementation is to throw!
+void TraditionalKeyGenerator::track(char const*, size_t) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "this key generator cannot track keys");
+}
+
+/// @brief create a VPack representation of the generator
+void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(!builder.isClosed());
+  builder.add("type", VPackValue(name()));
+  builder.add("allowUserKeys", VPackValue(_allowUserKeys));
+}
+
+/// @brief create the key generator
+TraditionalKeyGeneratorSingle::TraditionalKeyGeneratorSingle(bool allowUserKeys)
+    : TraditionalKeyGenerator(allowUserKeys), _lastValue(0) {}
+
 /// @brief generate a key
-std::string TraditionalKeyGenerator::generate() {
+std::string TraditionalKeyGeneratorSingle::generate() {
   TRI_voc_tick_t tick = TRI_NewTickServer();
   
   {
@@ -286,24 +311,19 @@ std::string TraditionalKeyGenerator::generate() {
 
   if (tick == UINT64_MAX) {
     // sanity check
-    return "";
+    return std::string();
   }
   return arangodb::basics::StringUtils::itoa(tick);
 }
 
 /// @brief validate a key
-int TraditionalKeyGenerator::validate(char const* p, size_t length, bool isRestore) {
-  int res = globalCheck(p, length, isRestore);
+int TraditionalKeyGeneratorSingle::validate(char const* p, size_t length, bool isRestore) {
+  int res = TraditionalKeyGenerator::validate(p, length, isRestore);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  // validate user-supplied key
-  if (!validateKey(p, length)) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  }
-  
   if (length > 0 && p[0] >= '0' && p[0] <= '9') {
     // potentially numeric key
     uint64_t value = NumberUtils::atoi_zero<uint64_t>(p, p + length);
@@ -322,7 +342,7 @@ int TraditionalKeyGenerator::validate(char const* p, size_t length, bool isResto
 }
 
 /// @brief track usage of a key
-void TraditionalKeyGenerator::track(char const* p, size_t length) {
+void TraditionalKeyGeneratorSingle::track(char const* p, size_t length) {
   // check the numeric key part
   if (length > 0 && p[0] >= '0' && p[0] <= '9') {
     // potentially numeric key
@@ -340,11 +360,21 @@ void TraditionalKeyGenerator::track(char const* p, size_t length) {
 }
 
 /// @brief create a VPack representation of the generator
-void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
+void TraditionalKeyGeneratorSingle::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
-  builder.add("type", VPackValue(name()));
-  builder.add("allowUserKeys", VPackValue(_allowUserKeys));
+  TraditionalKeyGenerator::toVelocyPack(builder);
   builder.add("lastValue", VPackValue(_lastValue));
+}
+
+/// @brief create the key generator
+TraditionalKeyGeneratorCluster::TraditionalKeyGeneratorCluster(bool allowUserKeys)
+    : TraditionalKeyGenerator(allowUserKeys) {}
+
+/// @brief generate a key
+std::string TraditionalKeyGeneratorCluster::generate() {
+  ClusterInfo* ci = ClusterInfo::instance();
+  uint64_t uid = ci->uniqid();
+  return std::to_string(uid);
 }
 
 /// @brief create the generator
@@ -356,12 +386,9 @@ AutoIncrementKeyGenerator::AutoIncrementKeyGenerator(bool allowUserKeys,
       _offset(offset),
       _increment(increment) {}
 
-/// @brief destroy the generator
-AutoIncrementKeyGenerator::~AutoIncrementKeyGenerator() {}
-
 /// @brief validate a numeric key
 bool AutoIncrementKeyGenerator::validateKey(char const* key, size_t len) {
-  if (len == 0 || len > TRI_VOC_KEY_MAX_LENGTH) {
+  if (len == 0 || len > maxKeyLength) {
     return false;
   }
 
@@ -508,5 +535,5 @@ bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t len,
   ++pos;
 
   // validate document key
-  return TraditionalKeyGenerator::validateKey(p, len - pos);
+  return TraditionalKeyGeneratorSingle::validateKey(p, len - pos);
 }

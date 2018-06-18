@@ -437,7 +437,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-    collection->id(),
+    collection,
     AccessMode::Type::WRITE
   );
 
@@ -1017,7 +1017,7 @@ void MMFilesCompactorThread::run() {
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(_vocbase),
-    collection->id(),
+    collection,
     AccessMode::Type::READ
   );
 
