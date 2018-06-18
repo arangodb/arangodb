@@ -82,12 +82,12 @@ std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback>& get
 
 /// @return the status change callbacks stored in state
 ///         or nullptr if none and !create
-std::vector<arangodb::transaction::Methods::StatusChangeCallback>* getStatusChangeCallbacks(
+std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>* getStatusChangeCallbacks(
     arangodb::TransactionState& state,
     bool create = false
 ) {
   struct CookieType: public arangodb::TransactionState::Cookie {
-    std::vector<arangodb::transaction::Methods::StatusChangeCallback> _callbacks;
+    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*> _callbacks;
   };
 
   static const int key = 0; // arbitrary location in memory, common for all
@@ -170,7 +170,7 @@ void applyStatusChangeCallbacks(
     TRI_ASSERT(callback); // addStatusChangeCallback(...) ensures valid
 
     try {
-      callback(trx, status);
+      (*callback)(trx, status);
     } catch (...) {
       // we must not propagate exceptions from here
     }
@@ -246,9 +246,9 @@ static OperationResult emptyResult(OperationOptions const& options) {
 }
 
 bool transaction::Methods::addStatusChangeCallback(
-    StatusChangeCallback const& callback
+    StatusChangeCallback const* callback
 ) {
-  if (!callback) {
+  if (!callback || !*callback) {
     return true; // nothing to call back
   }
 
