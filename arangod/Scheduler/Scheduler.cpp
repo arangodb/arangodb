@@ -352,7 +352,7 @@ bool Scheduler::shouldExecuteDirect() const {
   uint64_t const nrWorking = numWorking(counters);
   uint64_t const nrBlocked = numBlocked(counters);
   
-  if (nrWorking + nrBlocked + _nrQueued < numRunning(counters) / 2 + 1) {
+  if (nrWorking + _nrQueued < _nrMaximum) {
     auto jobQueue = _jobQueue.get();
     auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
     return queueSize == 0;

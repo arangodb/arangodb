@@ -332,8 +332,8 @@ bool HttpCommTask::processRead(double startTime) {
       _fullUrl = _incompleteRequest->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        addSimpleResponse(rest::ResponseCode::REQUEST_URI_TOO_LONG, rest::ContentType::UNSET,
-                          1, VPackBuffer<uint8_t>());
+        addSimpleResponse(rest::ResponseCode::REQUEST_URI_TOO_LONG,
+                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
         LOG_TOPIC(WARN, Logger::REQUESTS) << "requst uri too long";
         _closeRequested = true;
         return false;
@@ -432,8 +432,9 @@ bool HttpCommTask::processRead(double startTime) {
                     << "'";
 
           // bad request, method not allowed
-          addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED, rest::ContentType::UNSET,
-                            1, VPackBuffer<uint8_t>());
+          addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                            rest::ContentType::UNSET, 1,
+                            VPackBuffer<uint8_t>());
 
           _closeRequested = true;
           return false;
@@ -631,8 +632,8 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    addSimpleResponse(rest::ResponseCode::LENGTH_REQUIRED, rest::ContentType::UNSET,
-                      1, VPackBuffer<uint8_t>());
+    addSimpleResponse(rest::ResponseCode::LENGTH_REQUIRED,
+                      rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return false;
   }
 
@@ -649,8 +650,8 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE, rest::ContentType::UNSET,
-                      1, VPackBuffer<uint8_t>());
+    addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+                      rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return false;
   }
 

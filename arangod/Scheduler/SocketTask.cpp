@@ -146,7 +146,7 @@ bool SocketTask::start() {
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-// caller must hold the _lock
+// must run in strand
 void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
   TRI_ASSERT(_peer->strand.running_in_this_thread());
 
@@ -169,7 +169,7 @@ void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
   asyncWriteSome();
 }
 
-// caller must hold the _lock
+// must run in strand
 bool SocketTask::completedWriteBuffer() {
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
@@ -189,7 +189,7 @@ bool SocketTask::completedWriteBuffer() {
   return true;
 }
 
-// caller must not hold the _lock
+// must run in strand
 void SocketTask::closeStream() {
   if (_abandoned.load(std::memory_order_acquire)) {
     return;
@@ -206,7 +206,7 @@ void SocketTask::closeStream() {
   });
 }
 
-// caller must hold the _lock
+// must run in strand
 void SocketTask::closeStreamNoLock() {
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
@@ -260,7 +260,7 @@ void SocketTask::resetKeepAlive() {
   }
 }
 
-// caller must hold the _lock
+// must run in strand
 void SocketTask::cancelKeepAlive() {
   if (_useKeepAliveTimer &&
       _keepAliveTimerActive.load(std::memory_order_relaxed)) {
@@ -270,7 +270,7 @@ void SocketTask::cancelKeepAlive() {
   }
 }
 
-// caller must hold the _lock
+// must run in strand
 bool SocketTask::reserveMemory() {
   TRI_ASSERT(_peer != nullptr);
   TRI_ASSERT(_peer->strand.running_in_this_thread());
@@ -332,7 +332,7 @@ bool SocketTask::trySyncRead() {
   return true;
 }
 
-// caller must hold the _lock
+// must run in strand
 // runs until _closeRequested or ProcessRead Returns false is true or task
 // becomes abandoned
 // returns bool - true value signals that processRead should continue to run

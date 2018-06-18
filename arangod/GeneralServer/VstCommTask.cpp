@@ -189,9 +189,6 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse,
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response.responseCode()) << ","
       << "\"," << Logger::FIXED(totalTime, 6);
-  
-  // process remaining requests ?
-  //processAll();
 }
 
 static uint32_t readLittleEndian32bit(char const* p) {
@@ -317,7 +314,6 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
   TRI_ASSERT(_peer->strand.running_in_this_thread());
-  //_lock.assertLockedByCurrentThread();
   
   auto& prv = _processReadVariables;
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
