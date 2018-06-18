@@ -98,7 +98,7 @@ INFO ... dignostics collected.
 INFO Report written to arango-inspector.json.
 ```
 
-If it can't connect or authentication/authorization fails, then a fatal error
+If _arangoinspect_ cannot connect or authentication/authorization fails, then a fatal error
 will be raised and the tool shuts down:
 
 ```
