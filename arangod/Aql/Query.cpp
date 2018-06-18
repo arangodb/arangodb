@@ -545,7 +545,7 @@ ExecutionPlan* Query::preparePlan() {
 }
 
 /// @brief execute an AQL query
-QueryResult Query::execute(QueryRegistry* registry) {
+ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult) {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                     << "Query::execute"
                                     << " this: " << (uintptr_t) this;
@@ -573,21 +573,19 @@ QueryResult Query::execute(QueryRegistry* registry) {
           }
         }
 
-        QueryResult res;
-
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        res.context = transaction::StandaloneContext::Create(_vocbase);
-        res.extra = std::make_shared<VPackBuilder>();
+        queryResult.context = transaction::StandaloneContext::Create(_vocbase);
+        queryResult.extra = std::make_shared<VPackBuilder>();
         {
-          VPackObjectBuilder guard(res.extra.get(), true);
-          addWarningsToVelocyPack(*res.extra);
+          VPackObjectBuilder guard(queryResult.extra.get(), true);
+          addWarningsToVelocyPack(*queryResult.extra);
         }
         TRI_ASSERT(cacheEntry->_queryResult != nullptr);
-        res.result = cacheEntry->_queryResult;
-        res.cached = true;
+        queryResult.result = cacheEntry->_queryResult;
+        queryResult.cached = true;
 
-        return res;
+        return ExecutionState::DONE;
       }
     }
 
@@ -667,37 +665,44 @@ QueryResult Query::execute(QueryRegistry* registry) {
       }
     }
 
-    QueryResult result;
-    result.result = std::move(resultBuilder);
-    result.context = _trx->transactionContext();
+    queryResult.result = std::move(resultBuilder);
+    queryResult.context = _trx->transactionContext();
     // will set warnings, stats, profile and cleanup plan and engine
-    finalize(result);
+    finalize(queryResult);
 
-    return result;
+    return ExecutionState::DONE;
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(ex.code());
-    return QueryResult(ex.code(), "AQL: " + ex.message() + QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.set(ex.code(),
+        "AQL: " + ex.message() + 
+        QueryExecutionState::toStringWithPrefix(_state));
+    return ExecutionState::DONE;
   } catch (std::bad_alloc const&) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY);
-    return QueryResult(
-        TRI_ERROR_OUT_OF_MEMORY,
-        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) + QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.set(TRI_ERROR_OUT_OF_MEMORY,
+        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
+        QueryExecutionState::toStringWithPrefix(_state));
+    return ExecutionState::DONE;
   } catch (std::exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.set(TRI_ERROR_INTERNAL,
+        ex.what() + QueryExecutionState::toStringWithPrefix(_state));
+    return ExecutionState::DONE;
   } catch (...) {
     setExecutionTime();
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL);
-    return QueryResult(TRI_ERROR_INTERNAL,
-                       TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_state));
+    queryResult.set(TRI_ERROR_INTERNAL,
+        TRI_errno_string(TRI_ERROR_INTERNAL) +
+        QueryExecutionState::toStringWithPrefix(_state));
+    return ExecutionState::DONE;
   }
 }
 
 // execute an AQL query: may only be called with an active V8 handle scope
-QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
+ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry, QueryResultV8& queryResult) {
   LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                     << "Query::executeV8"
                                     << " this: " << (uintptr_t) this;
@@ -727,17 +732,16 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
           }
         }
 
-        QueryResultV8 result;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        result.context = ctx;
+        queryResult.context = ctx;
         v8::Handle<v8::Value> values =
             TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
-                          result.context->getVPackOptions());
+                          queryResult.context->getVPackOptions());
         TRI_ASSERT(values->IsArray());
-        result.result = v8::Handle<v8::Array>::Cast(values);
-        result.cached = true;
-        return result;
+        queryResult.result = v8::Handle<v8::Array>::Cast(values);
+        queryResult.cached = true;
+        return ExecutionState::DONE;
       }
     }
 
@@ -855,13 +859,12 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       throw;
     }
 
-    QueryResultV8 result;
-    result.result = resArray;
-    result.context = _trx->transactionContext();
+    queryResult.result = resArray;
+    queryResult.context = _trx->transactionContext();
     // will set warnings, stats, profile and cleanup plan and engine
-    finalize(result);
+    finalize(queryResult);
 
-    return result;
+    return ExecutionState::DONE;
   } catch (arangodb::basics::Exception const& ex) {
     setExecutionTime();
     cleanupPlanAndEngine(ex.code());

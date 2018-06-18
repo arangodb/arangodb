@@ -57,18 +57,38 @@ RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
 
+  auto self = shared_from_this();
+  
+  RestStatus ret;
+
   if (type == rest::RequestType::POST) {
-    createQueryCursor();
+    auto continueCallback = [this, self]() {
+      if (continueCreateQueryCursor() == RestStatus::DONE) {
+        continueHandlerExecution();
+      }
+    };
+    ret = createQueryCursor(continueCallback);
   } else if (type == rest::RequestType::PUT) {
-    modifyQueryCursor();
+    auto continueCallback = [this, self]() {
+      if (continueModifyQueryCursor() == RestStatus::DONE) {
+        continueHandlerExecution();
+      }
+    };
+    ret = modifyQueryCursor(continueCallback);
   } else if (type == rest::RequestType::DELETE_REQ) {
-    deleteQueryCursor();
+    auto continueCallback = [this, self]() {
+      if (continueDeleteQueryCursor() == RestStatus::DONE) {
+        continueHandlerExecution();
+      }
+    };
+    ret = deleteQueryCursor(continueCallback);
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
   }
 
-  return RestStatus::DONE;
+  return ret;
 }
 
 bool RestCursorHandler::cancel() {
@@ -152,7 +172,15 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   );
 
   registerQuery(&query);
-  aql::QueryResult queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(_queryRegistry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
   unregisterQuery();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -375,10 +403,10 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 /// @brief was docuBlock JSF_post_api_cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::createQueryCursor() {
+RestStatus RestCursorHandler::createQueryCursor(std::function<void()> const& continueHandler) {
   if (_request->payload().isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, 600);
-    return;
+    return RestStatus::DONE;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -386,7 +414,7 @@ void RestCursorHandler::createQueryCursor() {
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/cursor");
-    return;
+    return RestStatus::DONE;
   }
 
   try {
@@ -395,7 +423,7 @@ void RestCursorHandler::createQueryCursor() {
 
     if (!parseSuccess) {
       // error message generated in parseVPackBody
-      return;
+      return RestStatus::DONE;
     }
     
     // tell RestCursorHandler::finalizeExecute that the request
@@ -407,19 +435,20 @@ void RestCursorHandler::createQueryCursor() {
     unregisterQuery();
     throw;
   }
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor_identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::modifyQueryCursor() {
+RestStatus RestCursorHandler::modifyQueryCursor(std::function<void()> const& continueHandler) {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/cursor/<cursor-id>");
-    return;
+    return RestStatus::DONE;
   }
 
   std::string const& id = suffixes[0];
@@ -440,24 +469,25 @@ void RestCursorHandler::modifyQueryCursor() {
       generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND),
                     TRI_ERROR_CURSOR_NOT_FOUND);
     }
-    return;
+    return RestStatus::DONE;
   }
 
   TRI_DEFER(cursors->release(cursor));
   generateCursorResult(rest::ResponseCode::OK, cursor);
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor_delete
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::deleteQueryCursor() {
+RestStatus RestCursorHandler::deleteQueryCursor(std::function<void()> const& continueHandler) {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/cursor/<cursor-id>");
-    return;
+    return RestStatus::DONE;
   }
 
   std::string const& id = suffixes[0];
@@ -471,7 +501,7 @@ void RestCursorHandler::deleteQueryCursor() {
 
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
-    return;
+    return RestStatus::DONE;
   }
 
   VPackBuilder builder;
@@ -483,4 +513,5 @@ void RestCursorHandler::deleteQueryCursor() {
   builder.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, builder.slice());
+  return RestStatus::DONE;
 }

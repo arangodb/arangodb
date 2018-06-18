@@ -30,6 +30,7 @@
 
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/Graphs.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryOptions.h"
@@ -199,11 +200,11 @@ class Query {
   void prepare(QueryRegistry*, uint64_t queryHash);
 
   /// @brief execute an AQL query
-  QueryResult execute(QueryRegistry*);
+  aql::ExecutionState execute(QueryRegistry*, QueryResult& res);
 
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
-  QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
+  aql::ExecutionState executeV8(v8::Isolate* isolate, QueryRegistry*, QueryResultV8&);
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
@@ -280,6 +281,28 @@ class Query {
   }
 
   QueryExecutionState::ValueType state() const { return _state; }
+
+  /// @brief continueAfterPause is to be called on the query object to
+  /// continue execution in this query part, if the query got paused
+  /// because it is waiting for network responses. The idea is that a
+  /// RemoveBlock that does an asynchronous cluster-internal request can
+  /// register a callback with the asynchronous request and then return
+  /// with the result `ExecutionState::WAITING`, which will bubble up
+  /// the stack and eventually lead to a suspension of the work on the
+  /// RestHandler. In the callback function one can first store the
+  /// results in the RemoveBlock object and can then call this method on
+  /// the query.
+  /// This will lead to the following: The original request that lead to
+  /// the network communication will be rescheduled on the ioservice and
+  /// continues its execution where it left off.
+  void continueAfterPause() {
+    _continueCallback();
+  }
+
+  /// @brief setter for the continue callback:
+  void setContinueCallback(std::function<void()> cb) {
+    _continueCallback = cb;
+  }
 
  private:
   /// @brief initializes the query
@@ -407,6 +430,11 @@ class Query {
   /// once for this expression
   /// it needs to be run once before any V8-based function is called
   bool _preparedV8Context;
+
+  /// @brief a callback function which is used to implement continueAfterPause.
+  /// Typically, the RestHandler using the Query object will put a closure
+  /// in here, which continueAfterPause simply calls.
+  std::function<void()> _continueCallback;
 
   /// Temporary Section only used during the development of
   /// async AQL

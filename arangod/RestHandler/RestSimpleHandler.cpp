@@ -229,7 +229,16 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     );
 
     registerQuery(&query);
-    auto queryResult = query.execute(_queryRegistry);
+    aql::QueryResult queryResult;
+    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+    while (true) {
+      auto state = query.execute(_queryRegistry, queryResult);
+      if (state != aql::ExecutionState::WAITING) {
+        break;
+      }
+      query.tempWaitForAsyncResponse();
+    }
+
     unregisterQuery();
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -343,7 +352,15 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     );
 
     registerQuery(&query);
-    auto queryResult = query.execute(_queryRegistry);
+    aql::QueryResult queryResult;
+    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+    while (true) {
+      auto state = query.execute(_queryRegistry, queryResult);
+      if (state != aql::ExecutionState::WAITING) {
+        break;
+      }
+      query.tempWaitForAsyncResponse();
+    }
     unregisterQuery();
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {

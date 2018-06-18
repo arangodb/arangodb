@@ -389,7 +389,17 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
           arangodb::aql::PART_MAIN
         );
 
-        auto queryResult = query.execute(_queryRegistry);
+        aql::QueryResult queryResult;
+        query.setContinueCallback([&query]() {
+                                    query.tempSignalAsyncResponse();
+                                  });
+        while (true) {
+          auto state = query.execute(_queryRegistry, queryResult);
+          if (state != aql::ExecutionState::WAITING) {
+            break;
+          }
+          query.tempWaitForAsyncResponse();
+        }
 
         if (queryResult.code != TRI_ERROR_NO_ERROR) {
           THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
@@ -707,7 +717,16 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                               queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -763,7 +782,16 @@ bool State::loadCompacted() {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                               queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -812,7 +840,16 @@ bool State::loadOrPersistConfiguration() {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                               queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -924,7 +961,16 @@ bool State::loadRemaining() {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                               queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1115,7 +1161,16 @@ bool State::compactPersisted(index_t cind) {
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                               queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1148,7 +1203,16 @@ bool State::removeObsolete(index_t cind) {
       arangodb::aql::PART_MAIN
     );
 
-    auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+    aql::QueryResult queryResult;
+    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+    while (true) {
+      auto state = query.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                                 queryResult);
+      if (state != aql::ExecutionState::WAITING) {
+        break;
+      }
+      query.tempWaitForAsyncResponse();
+    }
 
     if (queryResult.code != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1227,7 +1291,15 @@ bool State::storeLogFromSnapshot(Store& snapshot,
     arangodb::aql::PART_MAIN
   );
 
-  auto queryResult = query.execute(_queryRegistry);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(_queryRegistry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   // We ignore the result, in the worst case we have some log entries
   // too many.
@@ -1305,13 +1377,31 @@ query_t State::allLogs() const {
     arangodb::aql::PART_MAIN
   );
 
-  auto compqResult = compq.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult compqResult;
+  compq.setContinueCallback([&compq]() { compq.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = compq.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                               compqResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    compq.tempWaitForAsyncResponse();
+  }
 
   if (compqResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(compqResult.code, compqResult.details);
   }
 
-  auto logsqResult = logsq.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult logsqResult;
+  logsq.setContinueCallback([&logsq]() { logsq.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = logsq.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                              logsqResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    logsq.tempWaitForAsyncResponse();
+  }
 
   if (logsqResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(logsqResult.code, logsqResult.details);
@@ -1395,7 +1485,16 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
   arangodb::aql::Query query(false, vocbase, aql::QueryString(aql), nullptr,
                              nullptr, arangodb::aql::PART_MAIN);
 
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                               queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
@@ -1422,7 +1521,16 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
   arangodb::aql::Query query2(false, vocbase, aql::QueryString(aql), nullptr,
                               nullptr, arangodb::aql::PART_MAIN);
 
-  auto queryResult2 = query2.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult2;
+  query2.setContinueCallback([&query2]() { query2.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query2.execute(QueryRegistryFeature::QUERY_REGISTRY,
+                                queryResult2);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query2.tempWaitForAsyncResponse();
+  }
 
   if (queryResult2.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult2.code, queryResult2.details);

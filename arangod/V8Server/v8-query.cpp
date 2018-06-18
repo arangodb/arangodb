@@ -69,8 +69,18 @@ aql::QueryResultV8 AqlQuery(
     nullptr,
     arangodb::aql::PART_MAIN
   );
-  auto queryResult = query.executeV8(
-      isolate, static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry));
+
+  aql::QueryResultV8 queryResult;
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.executeV8(isolate,
+        static_cast<arangodb::aql::QueryRegistry*>(v8g->_queryRegistry),
+        queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
+    }
+    query.tempWaitForAsyncResponse();
+  }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
