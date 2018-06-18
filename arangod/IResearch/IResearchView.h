@@ -26,6 +26,7 @@
 
 #include "Containers.h"
 #include "IResearchViewMeta.h"
+#include "Transaction/Status.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalView.h"
@@ -354,8 +355,8 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   PersistedStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;
-  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
-  std::function<void(arangodb::TransactionState& state)> _trxWriteCallback; // for insert(...)/remove(...)
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
 };
 
