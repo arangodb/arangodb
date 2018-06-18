@@ -193,17 +193,17 @@ bool depIsSingletonOrConstCalc(ExecutionNode* node){
   while (node){
     node = node->getFirstDependency();
     if(node->getType() == EN::SINGLETON){
-      //LOG_DEVEL << "reached singleton";
+      LOG_DEVEL << "reached singleton";
       return true;
     }
 
     if(node->getType() != EN::CALCULATION){
-      //LOG_DEVEL << node->getTypeString() << " not a calculation node";
+      LOG_DEVEL << node->getTypeString() << " not a calculation node";
       return false;
     }
 
     if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
-      //LOG_DEVEL << "calculation not constant";
+      LOG_DEVEL << "calculation not constant";
       return false;
     }
   }
@@ -226,6 +226,7 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
                                                                    ExecutionPlan* plan,
                                                                    OptimizerRule const* rule) {
+  LOG_DEVEL << "substitute single document operation INDEX";
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -325,25 +326,20 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
 
   for(auto* node : nodes){
 
-    LOG_DEVEL << "";
-    LOG_DEVEL << "substitute single document operation";
-
-
     auto mod = static_cast<ModificationNode*>(node);
 
-      LOG_DEVEL << "optimize modification node";
       auto depType = mod->getType();
       LOG_DEVEL << ExecutionNode::getTypeString(depType);
 
 
       if(!depIsSingletonOrConstCalc(node)){
-        LOG_DEVEL << "optimization too complex";
+        //LOG_DEVEL << "optimization too complex";
         continue;
       }
 
       auto p = node->getFirstParent();
       if( p && p->getType() != EN::RETURN){
-        LOG_DEVEL << "parent is not RETURN";
+        //LOG_DEVEL << "parent is not RETURN";
         continue;
       }
 
@@ -358,25 +354,43 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
         TRI_ASSERT(vec.size() == 1);
         keyVar = vec.front();
       }
+      std::unordered_set<Variable const*> keySet;
+      keySet.emplace(keyVar);
 
-      //get setter keyvar
-      // FIXME
-      //
-      // find cacluation node
-      // get key
-
-      //if(calc->getVariablesUsedHere().size() != 0){
-      //  continue;
-      //}
-      //AstNode const* expr = calc->expression()->node();
-      //expr->dump(0);
       CalculationNode* calc = nullptr;
-      std::string key = "";
 
-      // FIXME - end
+      ExecutionNode* cursor = node;
+      while(cursor){
+        cursor = hasSingleDep(cursor, EN::CALCULATION);
+        //LOG_DEVEL << "has calcuation dep";
+        if(cursor){
+          CalculationNode* c = static_cast<CalculationNode*>(cursor);
+          if(c->setsVariable(keySet)){
+           calc = c;
+           break;
+          }
+        }
+      }
 
       if(!calc){
-        LOG_DEVEL << "calculation missing";
+        //LOG_DEVEL << "calculation missing or too complex";
+        continue;
+      }
+
+      if(!depIsSingletonOrConstCalc(cursor)){
+        continue;
+      }
+
+      AstNode const* expr = calc->expression()->node();
+      std::string key = "";
+      if(expr->isStringValue()){
+        key = expr->getString();
+      } else if (false /*functin call to docuemnt*/){
+        expr->dump(0);
+      }
+
+      if(key.empty()){
+        LOG_DEVEL << "could not extract key";
         continue;
       }
 

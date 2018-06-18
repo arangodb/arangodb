@@ -412,7 +412,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::REMOVE) {
     TRI_ASSERT(!_key.empty());
-    TRI_ASSERT(_inVariable== nullptr);
+    TRI_ASSERT(_inVariable == nullptr);
     TRI_ASSERT(_outVariable == nullptr);
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::INSERT) {
