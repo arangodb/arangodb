@@ -275,7 +275,7 @@ being equal. Coordinates of a Polygon are an array of linear ring coordinate
 arrays. The first element in the array represents the exterior ring.
 Any subsequent elements represent interior rings (holes within the surface.).
 
-- A linear ring may not be empty, a LineString needs at least three _distinct_ coordinates
+- A linear ring may not be empty, it needs at least three _distinct_ coordinates
 - Within the same linear ring consecutive coordinates may be the same, otherwise
   (except the first and last one) all coordinates need to be distinct
 
@@ -333,8 +333,6 @@ With Holes:
 of multiple polygons. The the "coordinates" member is an array of
 _Polygon_ coordinate arrays. 
 
-- Polygons within the same MultiPolygon may not intersect i.e. the boundary of a polygon 
-  may intersect neither the interior nor the exterior rings of any other polygon.
 - Polygons in the same MultiPolygon may not share edges, they may share coordinates
 - Polygons and rings must not be empty
 - Linear Rings **MUST** follow the right-hand rule for orientation (counterclockwise external rings, 
