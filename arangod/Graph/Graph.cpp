@@ -39,7 +39,7 @@
 #include "Basics/WriteLocker.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Graphs.h"
@@ -48,7 +48,7 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-using UserTransaction = transaction::UserTransaction;
+using UserTransaction = transaction::Methods;
 
 std::string const Graph::_graphs = "_graphs";
 char const* Graph::_attrDropCollections = "dropCollections";
@@ -795,7 +795,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
   OperationResult result;
   {
     std::unique_ptr<transaction::Methods> trx(
-      new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+      new UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
 
     res = trx->begin();
     if (!res.ok()) {
@@ -1017,7 +1017,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
   trxOptions.waitForSync = waitForSync;
 
   std::unique_ptr<transaction::Methods> trx(
-    new transaction::UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+    new UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
 
   Result res = trx->begin();
   if (!res.ok()) {
@@ -1062,7 +1062,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createVertex(
     std::vector<std::string> writeCollections;
     writeCollections.emplace_back(collectionName);
     std::unique_ptr<transaction::Methods> trx(
-      new transaction::UserTransaction(ctx(), {}, writeCollections, {}, trxOptions));
+      new UserTransaction(ctx(), {}, writeCollections, {}, trxOptions));
 
     Result res = trx->begin();
 
@@ -1667,7 +1667,7 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(VPackSlice
   trxOptions.waitForSync = waitForSync;
 
   std::unique_ptr<transaction::Methods> trx(
-    new transaction::UserTransaction(ctx(), readCollections, writeCollections, {}, trxOptions));
+    new UserTransaction(ctx(), readCollections, writeCollections, {}, trxOptions));
 
   Result res = trx->begin();
 

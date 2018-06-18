@@ -33,7 +33,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ResultT.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
 namespace arangodb {

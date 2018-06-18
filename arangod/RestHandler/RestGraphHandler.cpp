@@ -393,8 +393,7 @@ Result RestGraphHandler::vertexActionRead(
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
   auto resultT = gops.getVertex(collectionName, key, maybeRev);
 
@@ -678,8 +677,7 @@ Result RestGraphHandler::edgeActionRead(
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
   auto resultT = gops.getEdge(definitionName, key, maybeRev);
 
@@ -755,8 +753,7 @@ Result RestGraphHandler::edgeActionRemove(
       << "returnOld = " << returnOld << ", "
       << "rev = " << (maybeRev ? maybeRev.get() : 0ul);
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
 
   auto resultT =
@@ -880,8 +877,7 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   GraphOperations gops{*graph, ctx};
   ResultT<std::pair<OperationResult, Result>> resultT{
@@ -914,12 +910,11 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   // return new graph config
   //std::string graphName = graph->name();
   // TODO: REFACTOR THIS START !!
-  std::shared_ptr<transaction::StandaloneContext> ctxx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctxx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   std::string graphName = graph->name();
   std::shared_ptr<Graph const> graphx = _graphCache.getGraph(std::move(ctxx), graphName);
-  GraphOperations gopss{*graphx, ctx};
+  GraphOperations gopss{*graphx, ctxx};
 
   VPackBuilder builder;
   gopss.readGraph(builder);
@@ -981,8 +976,7 @@ Result RestGraphHandler::documentModify(
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
 
   ResultT<std::pair<OperationResult, Result>> resultT{
@@ -1055,8 +1049,7 @@ Result RestGraphHandler::documentCreate(
     _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
 
   ResultT<std::pair<OperationResult, Result>> resultT{
@@ -1130,8 +1123,7 @@ Result RestGraphHandler::vertexActionRemove(
       << "returnOld = " << returnOld << ", "
       << "rev = " << (maybeRev ? maybeRev.get() : 0ul);
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
 
   auto resultT =
@@ -1165,8 +1157,7 @@ Result RestGraphHandler::vertexActionRemove(
 Result RestGraphHandler::graphActionReadGraphConfig(
     const std::shared_ptr<const graph::Graph> graph) {
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
   VPackBuilder builder;
   gops.readGraph(builder);
@@ -1182,8 +1173,7 @@ Result RestGraphHandler::graphActionRemoveGraph(
   bool dropCollections =
       _request->parsedValue(Graph::_attrDropCollections, false);
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
   auto resultT = gops.removeGraph(waitForSync, dropCollections);
 
@@ -1213,8 +1203,7 @@ Result RestGraphHandler::graphActionRemoveGraph(
 }
 
 Result RestGraphHandler::graphActionCreateGraph() {
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -1229,8 +1218,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
  
   std::string graphName = body.get(StaticStrings::DataSourceName).copyString();
 
-  std::shared_ptr<transaction::StandaloneContext> ctxx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctxx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   std::shared_ptr<Graph const> graph = getGraph(ctxx, graphName);
 
   GraphOperations gops{*graph, ctxx}; // TODO moves ctx, wanted?!
@@ -1244,8 +1232,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
 }
 
 Result RestGraphHandler::graphActionReadGraphs() {
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   GraphManager gmngr{ctx};
   VPackBuilder builder;
@@ -1260,8 +1247,7 @@ Result RestGraphHandler::graphActionReadConfig(
     const std::shared_ptr<const graph::Graph> graph,
     TRI_col_type_e colType, GraphProperty property) {
 
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
   VPackBuilder builder;
 
