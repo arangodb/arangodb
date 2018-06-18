@@ -67,8 +67,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "velocypack/Iterator.h"
@@ -110,7 +108,7 @@ struct IResearchLinkCoordinatorSetup {
     auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
     indexFactory.emplaceFactory(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-      arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles
+      arangodb::iresearch::IResearchLinkCoordinator::make
     );
     indexFactory.emplaceNormalizer(
       arangodb::iresearch::DATA_SOURCE_TYPE.name(),
@@ -278,7 +276,7 @@ SECTION("test_create_drop") {
   // no view specified
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles(
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
       logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
@@ -287,7 +285,7 @@ SECTION("test_create_drop") {
   // no view can be found
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": 42 }");
-    auto link = arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles(
+    auto link = arangodb::iresearch::IResearchLinkCoordinator::make(
       logicalCollection.get(), json->slice(), 1, true
     );
     CHECK(!link);
@@ -325,7 +323,6 @@ SECTION("test_create_drop") {
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     REQUIRE((false == !index));
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -432,7 +429,6 @@ SECTION("test_create_drop") {
     CHECK(link);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
-    CHECK((true == index->allowExpansion()));
     CHECK((true == index->canBeDropped()));
     CHECK((updatedCollection.get() == index->collection()));
     CHECK((index->fieldNames().empty()));
@@ -488,4 +484,12 @@ SECTION("test_create_drop") {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate tests
+////////////////////////////////////////////////////////////////////////////////
+
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

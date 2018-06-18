@@ -25,34 +25,46 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
-using namespace arangodb;
+struct TRI_vocbase_t;
+
+namespace arangodb {
 
 /// @brief create the context
-transaction::StandaloneContext::StandaloneContext(TRI_vocbase_t* vocbase)
-    : Context(vocbase) {}
+transaction::StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
+  : Context(vocbase) {
+}
 
 /// @brief order a custom type handler for the collection
 std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::StandaloneContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
-    _customTypeHandler.reset(transaction::Context::createCustomTypeHandler(_vocbase, getResolver()));
+    _customTypeHandler.reset(
+      transaction::Context::createCustomTypeHandler(&_vocbase, &resolver())
+    );
     _options.customTypeHandler = _customTypeHandler.get();
     _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
+
   return _customTypeHandler;
 }
 
 /// @brief return the resolver
-CollectionNameResolver const* transaction::StandaloneContext::getResolver() {
+CollectionNameResolver const& transaction::StandaloneContext::resolver() {
   if (_resolver == nullptr) {
     createResolver();
   }
+
   TRI_ASSERT(_resolver != nullptr);
-  return _resolver;
+
+  return *_resolver;
 }
 
 /// @brief create a context, returned in a shared ptr
-std::shared_ptr<transaction::StandaloneContext> transaction::StandaloneContext::Create(                                                                                       TRI_vocbase_t* vocbase) {
+/*static*/ std::shared_ptr<transaction::Context> transaction::StandaloneContext::Create(
+    TRI_vocbase_t& vocbase
+) {
   return std::make_shared<transaction::StandaloneContext>(vocbase);
 }
+
+} // arangodb

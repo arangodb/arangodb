@@ -53,7 +53,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 
     dumper->appendString(toString(value, nullptr, base));
   }
-  
+
   std::string toString(VPackSlice const& value, VPackOptions const* options,
                        VPackSlice const& base) override final {
     return transaction::helpers::extractIdString(resolver, value, base);
@@ -64,7 +64,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 };
 
 /// @brief create the context
-transaction::Context::Context(TRI_vocbase_t* vocbase)
+transaction::Context::Context(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
       _resolver(nullptr), 
       _customTypeHandler(),
@@ -92,6 +92,7 @@ transaction::Context::~Context() {
   if (_ownsResolver) {
     delete _resolver;
   }
+
   _resolver = nullptr;
 }
 
@@ -100,7 +101,7 @@ VPackCustomTypeHandler* transaction::Context::createCustomTypeHandler(TRI_vocbas
                                                                     CollectionNameResolver const* resolver) {
   return new CustomTypeHandler(vocbase, resolver);
 }
-  
+
 /// @brief pin data for the collection
 void transaction::Context::pinData(LogicalCollection* collection) {
   contextData()->pinData(collection);
@@ -141,7 +142,7 @@ VPackBuilder* transaction::Context::leaseBuilder() {
 
   return b;
 }
-  
+
 /// @brief return a temporary Builder object
 void transaction::Context::returnBuilder(VPackBuilder* builder) {
   try {
@@ -152,13 +153,14 @@ void transaction::Context::returnBuilder(VPackBuilder* builder) {
     delete builder;
   }
 }
-  
+
 /// @brief get velocypack options with a custom type handler
 VPackOptions* transaction::Context::getVPackOptions() {
   if (_customTypeHandler == nullptr) {
     // this modifies options!
     orderCustomTypeHandler();
   }
+
   return &_options;
 }
 
@@ -168,6 +170,7 @@ VPackOptions* transaction::Context::getVPackOptionsForDump() {
     // this modifies options!
     orderCustomTypeHandler();
   }
+
   return &_dumpOptions;
 }
 
@@ -176,6 +179,7 @@ CollectionNameResolver const* transaction::Context::createResolver() {
   TRI_ASSERT(_resolver == nullptr);
   _resolver = new CollectionNameResolver(_vocbase);
   _ownsResolver = true;
+
   return _resolver;
 }
 
@@ -187,11 +191,13 @@ void transaction::Context::storeTransactionResult(TRI_voc_tid_t id, bool hasFail
   _transaction.id = id;
   _transaction.hasFailedOperations = hasFailedOperations;
 }
-  
+
 transaction::ContextData* transaction::Context::contextData() {
   if (_contextData == nullptr) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    _contextData.reset(engine->createTransactionContextData());
+
+    _contextData = engine->createTransactionContextData();
   }
+
   return _contextData.get();
 }

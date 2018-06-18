@@ -6,15 +6,15 @@ SSL Endpoints
 
 Given a hostname:
 
-`--server.endpoint tcp://hostname:port`
+`--server.endpoint ssl://hostname:port`
 
 Given an IPv4 address:
 
-`--server.endpoint tcp://ipv4-address:port`
+`--server.endpoint ssl://ipv4-address:port`
 
 Given an IPv6 address:
 
-`--server.endpoint tcp://[ipv6-address]:port`
+`--server.endpoint ssl://[ipv6-address]:port`
 
 **Note**: If you are using SSL-encrypted endpoints, you must also supply the
 path to a server certificate using the `--ssl.keyfile` option.
@@ -89,13 +89,17 @@ The certificates in *filename* must be PEM formatted.
 Use this option to specify the default encryption protocol to be used.  The
 following variants are available:
 
-- 1: SSLv2
+- 1: SSLv2 (unsupported)
 - 2: SSLv2 or SSLv3 (negotiated)
 - 3: SSLv3
 - 4: TLSv1
 - 5: TLSv1.2
 
 The default *value* is 5 (TLSv1.2).
+
+Note that SSLv2 is unsupported as of ArangoDB 3.4, because of the inherent 
+security vulnerabilities in this protocol. Selecting SSLv2 as protocol will
+abort the startup.
 
 ### SSL cache
 

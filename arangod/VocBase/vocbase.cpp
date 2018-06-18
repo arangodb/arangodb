@@ -224,7 +224,8 @@ bool TRI_vocbase_t::markAsDropped() {
 /// @brief signal the cleanup thread to wake up
 void TRI_vocbase_t::signalCleanup() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->signalCleanup(this);
+
+  engine->signalCleanup(*this);
 }
 
 void TRI_vocbase_t::checkCollectionInvariants() const {
@@ -775,8 +776,11 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
       if (!collection->deleted()) {
         collection->deleted(true);
+
         try {
-          engine->changeCollection(*this, collection->id(), collection, doSync);
+          engine->changeCollection(
+            *this, collection->id(), *collection, doSync
+          );
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(colName, ex.code());
@@ -796,7 +800,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       writeLocker.unlock();
 
       TRI_ASSERT(engine != nullptr);
-      engine->dropCollection(*this, collection);
+      engine->dropCollection(*this, *collection);
 
       DropCollectionCallback(collection);
       break;
@@ -828,7 +832,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       locker.unlock();
       writeLocker.unlock();
 
-      engine->dropCollection(*this, collection);
+      engine->dropCollection(*this, *collection);
       state = DROP_PERFORM;
       break;
     }
@@ -876,8 +880,8 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_COMPACTOR);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  // shutdownDatabase() stops all threads
-  engine->shutdownDatabase(this);
+
+  engine->shutdownDatabase(*this); // shutdownDatabase() stops all threads
 
   // this will signal the cleanup thread to do one last iteration
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
@@ -1121,7 +1125,7 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 /// @brief looks up a view by identifier
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
-) const noexcept {
+) const {
   if (ServerState::instance()->isCoordinator()) {
     std::string const viewId = StringUtils::itoa(id);
     return ClusterInfo::instance()->getView(name(), viewId);
@@ -1142,7 +1146,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 /// @brief looks up a view by name or stringified cid or uuid
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
-) const noexcept{
+) const {
   if (ServerState::instance()->isCoordinator()) {
     return ClusterInfo::instance()->getView(name(), nameOrId);
   }
@@ -1193,7 +1197,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-  auto res2 = engine->persistCollection(*this, collection.get());
+  auto res2 = engine->persistCollection(*this, *collection);
   // API compatibility, we always return the collection, even if creation
   // failed.
 
@@ -1268,7 +1272,8 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
 
   // wake up the cleanup thread
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->unloadCollection(*this, collection);
+
+  engine->unloadCollection(*this, *collection);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1312,8 +1317,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
         DropCollectionCallback(collection);
       } else {
         collection->deferDropCollection(DropCollectionCallback);
-        // wake up the cleanup thread
-        engine->signalCleanup(&(collection->vocbase()));
+        engine->signalCleanup(collection->vocbase()); // wake up the cleanup thread
       }
 
       if (DatabaseFeature::DATABASE != nullptr &&
@@ -1482,7 +1486,7 @@ int TRI_vocbase_t::renameCollection(
   auto res = collection->rename(std::string(newName), doSync);
 
   if (!res.ok()) {
-    res.errorNumber(); // rename failed
+    return res.errorNumber(); // rename failed
   }
 
   // The collection is renamed. Now swap cache entries.
@@ -1512,9 +1516,10 @@ int TRI_vocbase_t::renameCollection(
 
   // Tell the engine.
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
   TRI_ASSERT(engine != nullptr);
-  arangodb::Result res2 =
-    engine->renameCollection(*this, collection, oldName);
+
+  auto res2 = engine->renameCollection(*this, *collection, oldName);
 
   return res2.errorNumber();
 }
@@ -1602,20 +1607,24 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 
   if (ServerState::instance()->isCoordinator()) {
     auto* ci = ClusterInfo::instance();
-    std::string errorMsg;
-    ViewID viewId;
 
-    int const res = ci->createViewCoordinator(
-      name(), parameters, viewId, errorMsg
-    );
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      view = ci->getView(name(), viewId);
-    } else {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-        << "Could not create view in agency, error: " << errorMsg
-        << ", errorCode: " << res;
+    if (!ci) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("failed to find ClusterInfo while creating view")
+      );
     }
+
+    view = LogicalView::create(*this, parameters, true);
+
+    if (!view) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("failed to instantiate view in agency'")
+      );
+    }
+
+    view = ci->getView(name(), std::to_string(view->id())); // refresh view from Agency
   } else {
     std::shared_ptr<arangodb::LogicalView> registeredView;
     auto callback = [this, &registeredView](
@@ -1811,7 +1820,8 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->shutdownDatabase(this);
+
+  engine->shutdownDatabase(*this);
 
   // do a final cleanup of collections
   for (auto& it : _collections) {
@@ -1881,8 +1891,8 @@ bool TRI_vocbase_t::IsAllowedName(
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
+  TRI_ASSERT(_type != TRI_VOCBASE_TYPE_COORDINATOR);
   auto* applier = DatabaseReplicationApplier::create(*this);
-
   _replicationApplier.reset(applier);
 }
 
@@ -1893,7 +1903,8 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
     ttl = InitialSyncer::defaultBatchTimeout;
   }
 
-  double const expires = TRI_microtime() + ttl;
+  double const timestamp = TRI_microtime();
+  double const expires = timestamp + ttl;
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
@@ -1901,7 +1912,8 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
 
   if (it != _replicationClients.end()) {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl;
-    (*it).second.first = expires;
+    std::get<0>((*it).second) = timestamp;
+    std::get<1>((*it).second) = expires;
   } else {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "replication client entry for server '" << serverId << "' not found";
   }
@@ -1914,7 +1926,8 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
   if (ttl <= 0.0) {
     ttl = InitialSyncer::defaultBatchTimeout;
   }
-  double const expires = TRI_microtime() + ttl;
+  double const timestamp = TRI_microtime();
+  double const expires = timestamp + ttl;
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
@@ -1924,13 +1937,14 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
     if (it == _replicationClients.end()) {
       // insert new client entry
       _replicationClients.emplace(
-          serverId, std::make_pair(expires, lastFetchedTick));
+          serverId, std::make_tuple(timestamp, expires, lastFetchedTick));
       LOG_TOPIC(TRACE, Logger::REPLICATION) << "inserting replication client entry for server '" << serverId << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
     } else {
       // update an existing client entry
-      (*it).second.first = expires;
+      std::get<0>((*it).second) = timestamp;
+      std::get<1>((*it).second) = expires;
       if (lastFetchedTick > 0) {
-        (*it).second.second = lastFetchedTick;
+        std::get<2>((*it).second) = lastFetchedTick;
         LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
       } else {
         LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl;
@@ -1943,15 +1957,20 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
 }
 
 /// @brief return the progress of all replication clients
-std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
+std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>>
 TRI_vocbase_t::getReplicationClients() {
-  std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>> result;
+  std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> result;
 
   READ_LOCKER(readLocker, _replicationClientsLock);
 
   for (auto& it : _replicationClients) {
     result.emplace_back(
-        std::make_tuple(it.first, it.second.first, it.second.second));
+        std::make_tuple(it.first,
+                        std::get<0>(it.second),
+                        std::get<1>(it.second),
+                        std::get<2>(it.second)
+                        )
+    );
   }
   return result;
 }
@@ -1965,7 +1984,7 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
     auto it = _replicationClients.begin();
 
     while (it != _replicationClients.end()) {
-      double const expires = it->second.first;
+      double const expires = std::get<1>((*it).second);
       if (expireStamp > expires) {
         LOG_TOPIC(DEBUG, Logger::REPLICATION) << "removing expired replication client for server id " << it->first;
         it = _replicationClients.erase(it);

@@ -1,4 +1,4 @@
-Incompatible changes in ArangoDB 3.3
+Incompatible changes in ArangoDB 3.4
 ====================================
 
 It is recommended to check the following list of incompatible changes **before**

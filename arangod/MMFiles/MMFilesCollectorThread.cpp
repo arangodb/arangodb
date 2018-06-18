@@ -620,10 +620,13 @@ void MMFilesCollectorThread::clearQueuedOperations() {
       it.second.clear();
     }
   } catch (...) {
-    // must clear the inuse flag here
-    MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
-    TRI_ASSERT(_operationsQueueInUse); // used by us
-    _operationsQueueInUse = false;
+    {
+      // must clear the inuse flag here
+      MUTEX_LOCKER(mutexLocker, _operationsQueueLock);
+      TRI_ASSERT(_operationsQueueInUse); // used by us
+      _operationsQueueInUse = false;
+    }
+
     throw;
   }
 
@@ -751,9 +754,9 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&(collection->vocbase())),
-      collection->id(),
-      AccessMode::Type::WRITE
+    arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
+    collection,
+    AccessMode::Type::WRITE
   );
 
   trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);  // already locked by guard above

@@ -43,9 +43,6 @@ class TraversalBlock final : public ExecutionBlock {
 
   ~TraversalBlock();
 
-  /// @brief initialize, here we fetch all docs from the database
-  int initialize() override;
-
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -59,7 +56,6 @@ class TraversalBlock final : public ExecutionBlock {
   size_t skipSome(size_t atMost) override final;
 
  private:
-
   /// @brief cleanup, here we clean up all internally generated values
   void freeCaches();
 

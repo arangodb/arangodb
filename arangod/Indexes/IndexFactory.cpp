@@ -34,6 +34,11 @@
 
 namespace arangodb {
 
+void IndexFactory::clear() {
+  _factories.clear();
+  _normalizers.clear();
+}
+
 Result IndexFactory::emplaceFactory(
   std::string const& type,
   IndexTypeFactory const& factory
@@ -176,6 +181,12 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
   }
 
   return itr->second(collection, definition, id, isClusterConstructor);
+}
+  
+/// same for both storage engines
+std::vector<std::string> IndexFactory::supportedIndexes() const {
+  return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
+    "persistent", "geo",  "fulltext"};
 }
 
 TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info, 

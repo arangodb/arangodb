@@ -148,7 +148,10 @@ bool AttributeWeightShortestPathFinder::Searcher::oneStep() {
   lookupPeer(v, s->weight());
 
   Step* s2 = _myInfo._pq.find(v);
-  s2->_done = true;
+  TRI_ASSERT(s2 != nullptr);
+  if (s2 != nullptr) {
+    s2->_done = true;
+  }
   return true;
 }
 

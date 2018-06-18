@@ -37,8 +37,8 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -52,16 +52,21 @@ using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
 namespace {
+
 TRI_voc_cid_t normalizeIdentifier(transaction::Methods const& trx,
                                   std::string const& identifier) {
   TRI_voc_cid_t id{0};
   std::shared_ptr<LogicalCollection> logical{
-      trx.vocbase()->lookupCollection(identifier)};
+    trx.vocbase().lookupCollection(identifier)
+  };
+
   if (logical) {
     id = logical->id();
   }
+
   return id;
 }
+
 }  // namespace
 
 RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase,
@@ -138,10 +143,10 @@ void RocksDBReplicationContext::internalBind(
     transactionOptions.waitForSync = false;
     transactionOptions.allowImplicitCollections = true;
 
-    auto ctx = transaction::StandaloneContext::Create(&vocbase);
+    auto ctx = transaction::StandaloneContext::Create(vocbase);
 
     _trx.reset(
-        new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
+        new transaction::Methods(ctx, {}, {}, {}, transactionOptions));
 
     auto state = RocksDBTransactionState::toState(_trx.get());
 
@@ -755,7 +760,7 @@ void RocksDBReplicationContext::releaseDumpingResources() {
 
 RocksDBReplicationContext::CollectionIterator::CollectionIterator(
     LogicalCollection& collection, transaction::Methods& trx,
-    bool sorted) noexcept
+    bool sorted) 
     : logical{collection},
       iter{nullptr},
       currentTick{1},
@@ -809,6 +814,7 @@ RocksDBReplicationContext::getCollectionIterator(TRI_voc_cid_t cid, bool sorted)
   CollectionIterator* collection{nullptr};
   // check if iterator already exists
   auto it = _iterators.find(cid);
+
   if (_iterators.end() != it) {
     // exists, check if used
     if (!it->second->isUsed.load()) {
@@ -818,14 +824,18 @@ RocksDBReplicationContext::getCollectionIterator(TRI_voc_cid_t cid, bool sorted)
   } else {
     // try to create one
     std::shared_ptr<LogicalCollection> logical{
-        _trx->vocbase()->lookupCollection(cid)};
+      _trx->vocbase().lookupCollection(cid)
+    };
+
     if (nullptr != logical) {
       TRI_ASSERT(nullptr != logical);
       TRI_ASSERT(nullptr != _trx);
       auto result = _iterators.emplace(
           cid, std::make_unique<CollectionIterator>(*logical, *_trx, sorted));
+
       if (result.second) {
         collection = result.first->second.get();
+
         if (nullptr == collection->iter) {
           collection = nullptr;
           _iterators.erase(cid);

@@ -45,11 +45,6 @@ class ShortestPathBlock : public ExecutionBlock {
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
 
-  ~ShortestPathBlock();
-
-  /// @brief initialize, here we fetch all docs from the database
-  int initialize() override;
-
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -62,11 +57,8 @@ class ShortestPathBlock : public ExecutionBlock {
   // will only return less than atMost if there aren't atMost many
   // things to skip overall.
   size_t skipSome(size_t atMost) override final;
-
+  
  private:
-
-  /// SECTION private Functions
-
   /// @brief Compute the next shortest path
   bool nextPath(AqlItemBlock const*);
 

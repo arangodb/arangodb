@@ -29,8 +29,7 @@
 #include "Ssl/ssl-helper.h"
 
 // needs to come second in order to recognize ssl
-//#include "Basics/asio-helper.h"
-#include <asio/ssl.hpp>
+#include "Basics/asio_ns.h"
 
 namespace arangodb {
 class SslServerFeature : public application_features::ApplicationFeature {
@@ -42,6 +41,7 @@ class SslServerFeature : public application_features::ApplicationFeature {
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override final;
   void unprepare() override final;
 

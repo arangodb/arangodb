@@ -36,9 +36,8 @@ SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
     : ExecutionNode(plan, base), _reinsertInCluster(true),  _elements(elements), _stable(stable){}
 
 /// @brief toVelocyPack, for SortNode
-void SortNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
-  ExecutionNode::toVelocyPackHelperGeneric(nodes,
-                                           verbose);  // call base class method
+void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);  // call base class method
 
   nodes.add(VPackValue("elements"));
   {
@@ -194,8 +193,7 @@ SortInformation SortNode::getSortInformation(
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-    std::unordered_set<std::string> const&
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
 ) const {
   return std::make_unique<SortBlock>(&engine, this);
 }

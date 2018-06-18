@@ -95,7 +95,7 @@ class Query {
     QueryPart
   );
 
-  TEST_VIRTUAL ~Query();
+  virtual ~Query();
 
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
@@ -107,9 +107,14 @@ class Query {
   QueryString const& queryString() const { return _queryString; }
 
   /// @brief Inject a transaction from outside. Use with care!
-  void injectTransaction (transaction::Methods* trx) {
+  void injectTransaction(transaction::Methods* trx) {
     _trx = trx;
     init();
+  }
+  
+  /// @brief inject a transaction context to use
+  void setTransactionContext(std::shared_ptr<transaction::Context> const& ctx) {
+    _transactionContext = ctx;
   }
 
   QueryProfile* profile() const {
@@ -142,7 +147,7 @@ class Query {
   inline QueryPart part() const { return _part; }
 
   /// @brief get the vocbase
-  inline TRI_vocbase_t* vocbase() const { return &_vocbase; }
+  inline TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief collections
   inline Collections* collections() { return &_collections; }
@@ -227,6 +232,9 @@ class Query {
 
   /// @brief mark a query as modification query
   void setIsModificationQuery() { _isModificationQuery = true; }
+
+  /// @brief test is a query is a modification query
+  bool isModificationQuery() const { return _isModificationQuery; }
 
   /// @brief prepare a V8 context for execution for this expression
   /// this needs to be called once before executing any V8 function in this
@@ -321,6 +329,9 @@ class Query {
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t& _vocbase;
+  
+  /// @brief transaction context to use for this query
+  std::shared_ptr<transaction::Context> _transactionContext;
 
   /// @brief the currently used V8 context
   V8Context* _context;

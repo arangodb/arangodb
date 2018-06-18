@@ -133,32 +133,19 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   });
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Single-server or DB server index factories
-////////////////////////////////////////////////////////////////////////////////
-const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> dbServerIndexFactories = {
-  { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
-  { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Coordinator index factories
-////////////////////////////////////////////////////////////////////////////////
-const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> coordinatorIndexFactories = {
-  { "MMFilesEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkMMFiles },
-  { "RocksDBEngine", arangodb::iresearch::IResearchLinkCoordinator::createLinkRocksDB }
-};
-
 void registerIndexFactory() {
-  auto& factories = arangodb::ServerState::instance()->isCoordinator()
-    ? coordinatorIndexFactories
-    : dbServerIndexFactories;
-
+  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
+    { "ClusterEngine", arangodb::iresearch::IResearchLinkCoordinator::make },
+    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
+    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make }
+  };
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
   // register 'arangosearch' link
   for (auto& entry: factories) {
-    auto* engine = arangodb::iresearch::getFeature<arangodb::StorageEngine>(entry.first);
+    auto* engine = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::StorageEngine
+    >(entry.first);
 
     // valid situation if not running with the specified storage engine
     if (!engine) {
@@ -229,7 +216,9 @@ void registerRecoveryHelper() {
 
 void registerViewFactory() {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
-  auto* viewTypes = arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>();
+  auto* viewTypes = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::ViewTypesFeature
+  >();
 
   if (!viewTypes) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -382,8 +371,10 @@ void IResearchFeature::start() {
   ApplicationFeature::start();
 
   // register IResearchView filters
- {
-    auto* functions = getFeature<arangodb::aql::AqlFunctionFeature>("AQLFunctions");
+  {
+    auto* functions = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::aql::AqlFunctionFeature
+    >("AQLFunctions");
 
     if (functions) {
       registerFilters(*functions);

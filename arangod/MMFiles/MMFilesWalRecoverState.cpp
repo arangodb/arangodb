@@ -301,9 +301,9 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    auto ctx = transaction::StandaloneContext::Create(vocbase);
-    SingleCollectionTransaction trx(ctx, collectionId,
-                                    AccessMode::Type::WRITE);
+    auto ctx = transaction::StandaloneContext::Create(*vocbase);
+    SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::WRITE);
+
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
     trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
     trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
@@ -996,9 +996,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           ++state->errorCount;
           return state->canContinue();
         } else {
-          auto ctx = transaction::StandaloneContext::Create(vocbase);
-          arangodb::SingleCollectionTransaction trx(ctx, collectionId,
-                                                    AccessMode::Type::WRITE);
+          auto ctx = transaction::StandaloneContext::Create(*vocbase);
+          arangodb::SingleCollectionTransaction trx(ctx, col.get(), AccessMode::Type::WRITE);
           std::shared_ptr<arangodb::Index> unused;
           int res = physical->restoreIndex(&trx, payloadSlice, unused);
 
@@ -1585,7 +1584,7 @@ int MMFilesWalRecoverState::removeEmptyLogfiles() {
   for (auto it = emptyLogfiles.begin(); it != emptyLogfiles.end(); ++it) {
     auto filename = (*it);
 
-    if (basics::FileUtils::remove(filename, 0)) {
+    if (basics::FileUtils::remove(filename, nullptr)) {
       LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
           << "removing empty WAL logfile '" << filename << "'";
     }
@@ -1602,15 +1601,15 @@ int MMFilesWalRecoverState::fillIndexes() {
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {
     arangodb::LogicalCollection* collection = (*it).second;
-
     auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+
     TRI_ASSERT(physical != nullptr);
     // activate secondary indexes
     physical->useSecondaryIndexes(true);
 
-    auto ctx = transaction::StandaloneContext::Create(&(collection->vocbase()));
+    auto ctx = transaction::StandaloneContext::Create(collection->vocbase());
     arangodb::SingleCollectionTransaction trx(
-      ctx, collection->id(), AccessMode::Type::WRITE
+      ctx, collection, AccessMode::Type::WRITE
     );
     int res = physical->fillAllIndexes(&trx);
 

@@ -39,21 +39,31 @@
 struct TRI_vocbase_t;
 
 namespace rocksdb {
+
 class Transaction;
 class Slice;
 class Iterator;
+
 }  // namespace rocksdb
 
 namespace arangodb {
+
 namespace cache {
+
 struct Transaction;
+
 }
+
 class LogicalCollection;
 struct RocksDBDocumentOperation;
+
 namespace transaction {
+
 class Methods;
 struct Options;
+
 }
+
 class TransactionCollection;
 class RocksDBMethods;
 
@@ -66,7 +76,11 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedMethods;
 
  public:
-  RocksDBTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
+  RocksDBTransactionState(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_tid_t tid,
+    transaction::Options const& options
+  );
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction
@@ -106,7 +120,7 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief steal snapshot of this transaction.
   /// Does not work on a single operation
   rocksdb::Snapshot const* stealSnapshot();
-  
+
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
   uint64_t sequenceNumber() const;
@@ -150,17 +164,16 @@ class RocksDBTransactionState final : public TransactionState {
   void cleanupTransaction() noexcept;
   /// @brief internally commit a transaction
   arangodb::Result internalCommit();
-  
+
   /// @brief Trigger an intermediate commit.
   /// Handle with care if failing after this commit it will only
   /// be rolled back until this point of time.
   /// Not thread safe
   Result triggerIntermediateCommit();
-  
+
   /// @brief check sizes and call internalCommit if too big
   Result checkIntermediateCommit(uint64_t newSize);
 
- private:
   /// @brief rocksdb transaction may be null for read only transactions
   rocksdb::Transaction* _rocksTransaction;
   /// @brief rocksdb snapshot, is null if _rocksTransaction is set

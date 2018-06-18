@@ -52,7 +52,6 @@
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -63,7 +62,6 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"
@@ -357,7 +355,7 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   int64_t datetime = TRI_ObjectToInt64(args[0]);
   v8::String::Value pattern(args[1]);
 
-  TimeZone* tz = 0;
+  TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(args[2]);
 
@@ -417,7 +415,7 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value datetimeString(args[0]);
   v8::String::Value pattern(args[1]);
 
-  TimeZone* tz = 0;
+  TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(args[2]);
 

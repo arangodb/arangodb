@@ -45,8 +45,8 @@ class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
   virtual void Free(void* data, size_t) override { free(data); }
 };
 
-static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType type,
-                               v8::GCCallbackFlags flags) {
+static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
+                               v8::GCCallbackFlags /*flags*/) {
   // if (type != v8::kGCTypeMarkSweepCompact) {
   //   return;
   // }

@@ -24,6 +24,9 @@
 
 #ifdef _WIN32
 #include <DbgHelp.h>
+#if ARANGODB_ENABLE_BACKTRACE
+#include <iostream>
+#endif
 #endif
 
 #include "Basics/FileUtils.h"
@@ -132,7 +135,7 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS* e) {
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
 
-ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
+ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[],
                                          char const* InstallDirectory)
     : _binaryName(TRI_BinaryName(argv[0])),
       _binaryPath(TRI_LocateBinaryPath(argv[0])),
@@ -202,7 +205,7 @@ void ArangoGlobalContext::maskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, 0);
+  pthread_sigmask(SIG_SETMASK, &all, nullptr);
 #endif
 }
 
@@ -210,7 +213,7 @@ void ArangoGlobalContext::unmaskStandardSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
-  pthread_sigmask(SIG_UNBLOCK, &all, 0);
+  pthread_sigmask(SIG_UNBLOCK, &all, nullptr);
 #endif
 }
 

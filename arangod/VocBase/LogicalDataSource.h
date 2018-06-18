@@ -165,9 +165,9 @@ class LogicalDataSource {
   /// @brief append implementation-specific values to the data-source definition
   //////////////////////////////////////////////////////////////////////////////
   virtual Result appendVelocyPack(
-    velocypack::Builder& builder,
-      bool detailed,
-      bool forPersistence
+    velocypack::Builder&,
+      bool /*detailed*/,
+      bool /*forPersistence*/
   ) const {
     return Result(); // NOOP by default
   }

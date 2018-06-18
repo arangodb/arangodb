@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
+#include "Utils/CollectionNameResolver.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -449,7 +450,19 @@ static void JS_PropertiesViewVocbase(
     }
   }
 
+  // in the cluster the view object might contain outdated
+  // properties, which will break tests. We need an extra lookup
+  arangodb::CollectionNameResolver resolver(view->vocbase());
+  auto updatedView = resolver.getView(view->id());
+
+  if (!updatedView) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
+  view = updatedView.get();
+
   VPackBuilder vpackProperties;
+
   vpackProperties.openObject();
   view->toVelocyPack(vpackProperties, true, false);
   vpackProperties.close();

@@ -33,7 +33,6 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -45,7 +44,6 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -182,7 +180,9 @@ struct IResearchIndexSetup {
       }
     }
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("test_A", "TestInsertAnalyzer", "X"); // cache analyzer
     analyzers->emplace("test_B", "TestInsertAnalyzer", "Y"); // cache analyzer
@@ -242,8 +242,8 @@ SECTION("test_analyzer") {
     auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"seq\": 1, \"X\": \"abc\", \"Y\": \"def\" }");
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{ collection0->name(), collection1->name() };
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       collections,
       EMPTY,
@@ -394,8 +394,8 @@ SECTION("test_async_index") {
       if (!resThread0) return;
 
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&(collection0->vocbase())),
-        collection0->id(),
+        arangodb::transaction::StandaloneContext::Create(collection0->vocbase()),
+        collection0,
         arangodb::AccessMode::Type::WRITE
       );
       resThread0 = trx.begin().ok();
@@ -432,8 +432,8 @@ SECTION("test_async_index") {
       if (!resThread1) return;
 
       arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(&(collection1->vocbase())),
-        collection1->id(),
+        arangodb::transaction::StandaloneContext::Create(collection1->vocbase()),
+        collection1,
         arangodb::AccessMode::Type::WRITE
       );
       resThread1 = trx.begin().ok();
@@ -558,8 +558,8 @@ SECTION("test_fields") {
     auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"seq\": 1, \"X\": \"abc\", \"Y\": \"def\" }");
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{ collection0->name(), collection1->name() };
-    arangodb::transaction::UserTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
       collections,
       EMPTY,

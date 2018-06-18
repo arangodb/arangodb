@@ -24,6 +24,11 @@
 
 #include "Scheduler.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include <thread>
+
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -31,14 +36,11 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
+#include "Scheduler/Acceptor.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <thread>
+#include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -55,7 +57,7 @@ constexpr double MIN_SECONDS = 30.0;
 namespace {
 class SchedulerManagerThread final : public Thread {
  public:
-  SchedulerManagerThread(Scheduler* scheduler, asio::io_context* service)
+  SchedulerManagerThread(Scheduler* scheduler, asio_ns::io_context* service)
       : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerManagerThread() { shutdown(); }
@@ -74,7 +76,7 @@ class SchedulerManagerThread final : public Thread {
 
  private:
   Scheduler* _scheduler;
-  asio::io_context* _service;
+  asio_ns::io_context* _service;
 };
 }
 
@@ -85,7 +87,7 @@ class SchedulerManagerThread final : public Thread {
 namespace {
 class SchedulerThread : public Thread {
  public:
-  SchedulerThread(Scheduler* scheduler, asio::io_context* service)
+  SchedulerThread(Scheduler* scheduler, asio_ns::io_context* service)
     : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
@@ -152,7 +154,7 @@ class SchedulerThread : public Thread {
 
  private:
   Scheduler* _scheduler;
-  asio::io_context* _service;
+  asio_ns::io_context* _service;
 };
 }
 
@@ -185,14 +187,42 @@ Scheduler::~Scheduler() {
 void Scheduler::post(std::function<void()> callback) {
   ++_nrQueued;
 
-  _ioContext.get()->post([this, callback]() {
+  try {
+
+    // capture without self, ioContext will not live longer than scheduler
+    _ioContext.get()->post([this, callback]() {
+        --_nrQueued;
+
+        JobGuard guard(this);
+        guard.work();
+
+        callback();
+      });
+  } catch (...) {
     --_nrQueued;
+    throw;
+  }
+}
 
-    JobGuard guard(this);
-    guard.work();
+void Scheduler::post(asio_ns::io_context::strand& strand,
+                     std::function<void()> callback) {
+  ++_nrQueued;
 
-    callback();
-  });
+  try {
+
+    // capture without self, ioContext will not live longer than scheduler
+    strand.post([this, callback]() {
+        --_nrQueued;
+
+        JobGuard guard(this);
+        guard.work();
+
+        callback();
+      });
+  } catch (...) {
+    --_nrQueued;
+    throw;
+  }
 }
 
 bool Scheduler::start() {
@@ -229,18 +259,18 @@ bool Scheduler::start() {
 }
 
 void Scheduler::startIoService() {
-  _ioContext.reset(new asio::io_context());
-  _serviceGuard.reset(new asio::io_context::work(*_ioContext));
+  _ioContext.reset(new asio_ns::io_context());
+  _serviceGuard.reset(new asio_ns::io_context::work(*_ioContext));
 
-  _managerService.reset(new asio::io_context());
-  _managerGuard.reset(new asio::io_context::work(*_managerService));
+  _managerService.reset(new asio_ns::io_context());
+  _managerGuard.reset(new asio_ns::io_context::work(*_managerService));
 }
 
 void Scheduler::startRebalancer() {
   std::chrono::milliseconds interval(100);
-  _threadManager.reset(new asio::steady_timer(*_managerService));
+  _threadManager.reset(new asio_ns::steady_timer(*_managerService));
 
-  _threadHandler = [this, interval](const asio::error_code& error) {
+  _threadHandler = [this, interval](const asio_ns::error_code& error) {
     if (error || isStopping()) {
       return;
     }
@@ -430,6 +460,7 @@ void Scheduler::rebalanceThreads() {
 
       // all threads are maxed out
       _lastAllBusyStamp = now;
+
       // increase nrRunning by one here already, while holding the lock
       incRunning();
     }
@@ -504,10 +535,11 @@ void Scheduler::initializeSignalHandlers() {
   // ignore broken pipes
   action.sa_handler = SIG_IGN;
 
-  int res = sigaction(SIGPIPE, &action, 0);
+  int res = sigaction(SIGPIPE, &action, nullptr);
 
   if (res < 0) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot initialize signal handlers for pipe";
   }
 #endif
 }
+

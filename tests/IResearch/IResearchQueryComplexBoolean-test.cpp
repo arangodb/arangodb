@@ -33,16 +33,12 @@
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -131,7 +127,9 @@ struct IResearchQueryComplexBooleanSetup {
       }
     }
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
@@ -196,8 +194,8 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      collection->id(),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      collection,
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
@@ -228,8 +226,8 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(&vocbase),
-      collection->id(),
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      collection,
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));

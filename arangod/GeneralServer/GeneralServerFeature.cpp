@@ -454,10 +454,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
   
-  if (server()->isEnabled("V8Dealer")) {
-    _handlerFactory->addHandler(
-      "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
-  }
+  _handlerFactory->addHandler(
+    "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
   // ...........................................................................
   // /_admin
@@ -531,5 +529,5 @@ void GeneralServerFeature::defineHandlers() {
   // engine specific handlers
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);  // Engine not loaded. Startup broken
-  engine->addRestHandlers(_handlerFactory.get());
+  engine->addRestHandlers(*_handlerFactory);
 }

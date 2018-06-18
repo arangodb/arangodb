@@ -38,9 +38,9 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Meta/conversion.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Replication/ReplicationFeature.h"
 #include "Scheduler/Job.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
@@ -66,12 +66,12 @@ static std::string const Open("/_open/");
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
+GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
                                  std::unique_ptr<Socket> socket,
                                  ConnectionInfo&& info, double keepAliveTimeout,
                                  bool skipSocketInit)
-    : Task(loop, "GeneralCommTask"),
-      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
+    : Task(scheduler, "GeneralCommTask"),
+      SocketTask(scheduler, std::move(socket), std::move(info), keepAliveTimeout,
                  skipSocketInit),
       _server(server),
       _auth(nullptr) {
@@ -95,81 +95,85 @@ GeneralCommTask::~GeneralCommTask() {
 // -----------------------------------------------------------------------------
 
 namespace {
-  TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
-    DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-    
-    // get database name from request
-    std::string const& dbName = req.databaseName();
-    
-    if (dbName.empty()) {
-      // if no databases was specified in the request, use system database name
-      // as a fallback
-      req.setDatabaseName(StaticStrings::SystemDatabase);
-      if (ServerState::instance()->isCoordinator()) {
-        return databaseFeature->useDatabaseCoordinator(StaticStrings::SystemDatabase);
-      }
-      return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
-    }
-    
+TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
+  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
+
+  // get database name from request
+  std::string const& dbName = req.databaseName();
+
+  if (dbName.empty()) {
+    // if no databases was specified in the request, use system database name
+    // as a fallback
+    req.setDatabaseName(StaticStrings::SystemDatabase);
     if (ServerState::instance()->isCoordinator()) {
-      return databaseFeature->useDatabaseCoordinator(dbName);
+      return databaseFeature->useDatabaseCoordinator(
+          StaticStrings::SystemDatabase);
     }
-    return databaseFeature->useDatabase(dbName);
+    return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
+
+  if (ServerState::instance()->isCoordinator()) {
+    return databaseFeature->useDatabaseCoordinator(dbName);
+  }
+  return databaseFeature->useDatabase(dbName);
+}
 }
 
 /// Set the appropriate requestContext
 namespace {
-  bool resolveRequestContext(GeneralRequest& req) {
-    TRI_vocbase_t* vocbase = ::lookupDatabaseFromRequest(req);
-    
-    // invalid database name specified, database not found etc.
-    if (vocbase == nullptr) {
-      return false;
-    }
-    
-    TRI_ASSERT(!vocbase->isDangling());
-    
-    // the vocbase context is now responsible for releasing the vocbase
-    req.setRequestContext(VocbaseContext::create(req, *vocbase), true);
-    
-    // the "true" means the request is the owner of the context
-    return true;
+bool resolveRequestContext(GeneralRequest& req) {
+  TRI_vocbase_t* vocbase = ::lookupDatabaseFromRequest(req);
+
+  // invalid database name specified, database not found etc.
+  if (vocbase == nullptr) {
+    return false;
   }
+
+  TRI_ASSERT(!vocbase->isDangling());
+
+  // the vocbase context is now responsible for releasing the vocbase
+  req.setRequestContext(VocbaseContext::create(req, *vocbase), true);
+
+  // the "true" means the request is the owner of the context
+  return true;
+}
 }
 
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
-GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
+GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
+    GeneralRequest& req) {
   if (!::resolveRequestContext(req)) {
     addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-    
+
     return RequestFlow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
-  
+
   // check source
   bool found;
-  std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
+  std::string const& source =
+      req.header(StaticStrings::ClusterCommSource, found);
   if (found) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this << "\",\""
-    << source << "\"";
+    LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
+                                       << "\",\"" << source << "\"";
   }
-  
+
   // now check the authentication will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
   const rest::ResponseCode ok = GeneralCommTask::canAccessPath(req);
   if (ok == rest::ResponseCode::UNAUTHORIZED) {
-    addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
-                     req.messageId(), TRI_ERROR_FORBIDDEN,
+    addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
+                     req.contentTypeResponse(), req.messageId(),
+                     TRI_ERROR_FORBIDDEN,
                      "not authorized to execute this request");
     return RequestFlow::Abort;
   }
-  TRI_ASSERT(ok == rest::ResponseCode::OK); // nothing else allowed
-  
+  TRI_ASSERT(ok == rest::ResponseCode::OK);  // nothing else allowed
+
   // check for an HLC time stamp, only after authentication
   std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
   if (found) {
@@ -178,7 +182,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       TRI_HybridLogicalClock(parsed);
     }
   }
-  
+
   return RequestFlow::Continue;
 }
 
@@ -189,19 +193,18 @@ void GeneralCommTask::finishExecution(GeneralResponse& res) const {
       mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
   }
-  
+
   // TODO add server ID on coordinators ?
 }
 
 /// Push this request into the execution pipeline
-void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
-                                     std::unique_ptr<GeneralResponse>&& response) {
-  
-  
+void GeneralCommTask::executeRequest(
+    std::unique_ptr<GeneralRequest>&& request,
+    std::unique_ptr<GeneralResponse>&& response) {
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
-  
+
   // store the message id for error handling
   uint64_t messageId = 0UL;
   if (request) {
@@ -212,7 +215,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "could not find corresponding request/response";
   }
-  
+
   rest::ContentType respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   std::shared_ptr<RestHandler> handler(
@@ -223,8 +226,8 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
   if (handler == nullptr) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
-    addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType,
-                      messageId, VPackBuffer<uint8_t>());
+    addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
+                      VPackBuffer<uint8_t>());
     return;
   }
 
@@ -255,8 +258,10 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
 
       addResponse(*response, nullptr);
     } else {
-      addErrorResponse(rest::ResponseCode::SERVER_ERROR, request->contentTypeResponse(),
-                       messageId, TRI_ERROR_QUEUE_FULL, TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+      addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                       request->contentTypeResponse(), messageId,
+                       TRI_ERROR_QUEUE_FULL,
+                       TRI_errno_string(TRI_ERROR_QUEUE_FULL));
     }
   } else {
     // synchronous request
@@ -272,16 +277,16 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
 
 void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
   MUTEX_LOCKER(locker, _statisticsMutex);
-  
+
   auto iter = _statisticsMap.find(id);
-  
+
   if (iter == _statisticsMap.end()) {
     if (stat != nullptr) {
       _statisticsMap.emplace(std::make_pair(id, stat));
     }
   } else {
     iter->second->release();
-    
+
     if (stat != nullptr) {
       iter->second = stat;
     } else {
@@ -324,8 +329,10 @@ RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
 }
 
 /// @brief send response including error response body
-void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respType,
-                                       uint64_t messageId, int errorNum, std::string const& msg) {
+void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
+                                       rest::ContentType respType,
+                                       uint64_t messageId, int errorNum,
+                                       std::string const& msg) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
@@ -334,7 +341,7 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentTyp
   builder.add(StaticStrings::ErrorMessage, VPackValue(msg));
   builder.add(StaticStrings::Code, VPackValue((int)code));
   builder.close();
-  
+
   addSimpleResponse(code, respType, messageId, std::move(buffer));
 }
 
@@ -357,7 +364,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   } else if (handler->isDirect()) {
     isDirect = true;
   } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
-             _loop.scheduler->shouldExecuteDirect()) {
+             _scheduler->shouldExecuteDirect()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
@@ -371,7 +378,8 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   }
 
   if (isDirect) {
-    TRI_ASSERT(handler->queue() != JobQueue::AQL_QUEUE); // not allowed with strands
+    TRI_ASSERT(handler->queue() !=
+               JobQueue::AQL_QUEUE);  // not allowed with strands
     handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
                           std::move(handler));
     return true;
@@ -380,7 +388,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   if (isPrio) {
-    _loop.scheduler->post([self, this, handler]() {
+    _scheduler->post([self, this, handler]() {
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
                             std::move(handler));
     });
@@ -389,17 +397,20 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   // ok, we need to queue the request
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _loop.scheduler->infoStatus();
+                                    << _scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
-  auto job = std::make_unique<Job>(_server, std::move(handler),
-                                   [self, this](std::shared_ptr<RestHandler> h) {
-    handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
-  });
+  auto job = std::make_unique<Job>(
+      _server, std::move(handler),
+      [self, this](std::shared_ptr<RestHandler> h) {
+        handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
+      });
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
   if (!ok) {
-    addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, handler->request()->contentTypeResponse(),
-                     messageId, TRI_ERROR_QUEUE_FULL, TRI_errno_string(TRI_ERROR_QUEUE_FULL));
+    addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                     handler->request()->contentTypeResponse(), messageId,
+                     TRI_ERROR_QUEUE_FULL,
+                     TRI_errno_string(TRI_ERROR_QUEUE_FULL));
   }
 
   return ok;
@@ -408,23 +419,20 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 // Just run the handler, could have been called in a different thread
 void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
-  TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
-  
+  TRI_ASSERT(doLock || _peer->runningInThisThread());
+
   handler->runHandler([this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
     if (doLock) {
       auto self = shared_from_this();
       auto h = handler->shared_from_this();
-      _loop.scheduler->_nrQueued++;
-      _peer->strand.post([self, this, stat, h]() {
-        _loop.scheduler->_nrQueued--;
-        JobGuard guard(_loop);
-        guard.work();
+
+      _peer->post([self, this, stat, h]() {
         addResponse(*(h->response()), stat);
       });
     } else {
-      TRI_ASSERT(_peer->strand.running_in_this_thread());
+      TRI_ASSERT(_peer->runningInThisThread());
       addResponse(*handler->response(), stat);
     }
   });
@@ -439,12 +447,12 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
     // callback will persist the response with the AsyncJobManager
-    auto job = std::make_unique<Job>(_server, std::move(handler),
-                                     [self](std::shared_ptr<RestHandler> h) {
-                                       h->runHandler([self] (RestHandler* h) {
-                                         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
-                                       });
-                                     });
+    auto job = std::make_unique<Job>(
+        _server, std::move(handler), [self](std::shared_ptr<RestHandler> h) {
+          h->runHandler([self](RestHandler* h) {
+            GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
+          });
+        });
     return SchedulerFeature::SCHEDULER->queue(std::move(job));
   } else {
     // here the response will just be ignored
@@ -500,8 +508,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
     }
 #endif
 
-    if (result != rest::ResponseCode::OK &&
-        _auth->authenticationSystemOnly()) {
+    if (result != rest::ResponseCode::OK && _auth->authenticationSystemOnly()) {
       // authentication required, but only for /_api, /_admin etc.
 
       if (!path.empty()) {
@@ -511,7 +518,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
           // simon: upgrade rights for Foxx apps. FIXME
           result = rest::ResponseCode::OK;
           vc->forceSuperuser();
-          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
+          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for "
+                                                  << path;
         }
       }
     }

@@ -53,17 +53,6 @@ typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
 struct Functions {
 
  public:
-    static AqlValue AddOrSubtractUnitFromTimestamp(arangodb::aql::Query* query,
-                                                   tp_sys_clock_ms const& tp,
-                                                   arangodb::velocypack::Slice durationUnits,
-                                                   arangodb::velocypack::Slice durationType,
-                                                   bool isSubtract);
-
-    static AqlValue AddOrSubtractIsoDurationFromTimestamp(arangodb::aql::Query* query,
-                                                          tp_sys_clock_ms const& tp,
-                                                          std::string const& duration,
-                                                          bool isSubtract);
-
   /// @brief validate the number of parameters
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams,
@@ -72,51 +61,12 @@ struct Functions {
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams);
 
-   /// @brief register warning
-   static void RegisterWarning(arangodb::aql::Query* query,
-                       char const* functionName, int code);
-   static void RegisterWarning(arangodb::aql::Query* query,
-                       char const* functionName, Result res);
-   /// @brief register error
-   static void RegisterError(arangodb::aql::Query* query,
-                             char const* functionName, int code);
-   /// @brief register usage of an invalid function argument
-   static void RegisterInvalidArgumentWarning(arangodb::aql::Query* query,
-                                              char const* functionName);
-
-
    /// @brief extract a function parameter from the arguments
    static AqlValue ExtractFunctionParameterValue(
        VPackFunctionParameters const& parameters, size_t position);
 
-   /// @brief extra a collection name from an AqlValue
-   static std::string ExtractCollectionName(
-       transaction::Methods* trx, VPackFunctionParameters const& parameters,
-       size_t position);
-
-   /// @brief extract attribute names from the arguments
-   static void ExtractKeys(std::unordered_set<std::string>& names,
-                           arangodb::aql::Query* query,
-                           transaction::Methods* trx,
-                           VPackFunctionParameters const& parameters,
-                           size_t startParameter, char const* functionName);
-
-   /// @brief Helper function to merge given parameters
-   ///        Works for an array of objects as first parameter or arbitrary many
-   ///        object parameters
-   static AqlValue MergeParameters(arangodb::aql::Query* query,
-                                   transaction::Methods* trx,
-                                   VPackFunctionParameters const& parameters,
-                                   char const* funcName, bool recursive);
-
-    static bool ParameterToTimePoint(arangodb::aql::Query* query,
-                                     transaction::Methods* trx,
-                                     VPackFunctionParameters const& parameters,
-                                     tp_sys_clock_ms& tp,
-                                     std::string const& functionName,
-                                     size_t parameterIndex);
-
   public:
+   static void init();
    /// @brief helper function. not callable as a "normal" AQL function
    static void Stringify(transaction::Methods* trx,
                          arangodb::basics::VPackStringBufferAdapter& buffer,
@@ -150,8 +100,8 @@ struct Functions {
                              VPackFunctionParameters const&);
    static AqlValue FindLast(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
-  static AqlValue Reverse(arangodb::aql::Query*, transaction::Methods*,
-                          VPackFunctionParameters const&);
+   static AqlValue Reverse(arangodb::aql::Query*, transaction::Methods*,
+                           VPackFunctionParameters const&);
    static AqlValue First(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue Last(arangodb::aql::Query*, transaction::Methods*,
@@ -209,6 +159,7 @@ struct Functions {
    static AqlValue DateFromParameters(arangodb::aql::Query* query,
                                       transaction::Methods* trx,
                                       VPackFunctionParameters const& parameters,
+                                      char const* AFN,
                                       bool asTimestamp);
    static AqlValue DateNow(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
@@ -257,6 +208,8 @@ struct Functions {
                                 VPackFunctionParameters const&);
     static AqlValue DateDaysInMonth(arangodb::aql::Query*, transaction::Methods*,
                                     VPackFunctionParameters const&);
+    static AqlValue DateTrunc(arangodb::aql::Query*, transaction::Methods*,
+                              VPackFunctionParameters const&);
     static AqlValue DateAdd(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
     static AqlValue DateSubtract(arangodb::aql::Query*, transaction::Methods*,
@@ -291,6 +244,9 @@ struct Functions {
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& params);
 
+    static AqlValue DateFormat(arangodb::aql::Query* query,
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& params);
     static AqlValue Passthru(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
     static AqlValue Unset(arangodb::aql::Query*, transaction::Methods*,
@@ -500,6 +456,17 @@ struct Functions {
     static AqlValue Warn(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
     static AqlValue Fail(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+
+   static AqlValue CurrentUser(arangodb::aql::Query*,
+                                transaction::Methods*,
+                                VPackFunctionParameters const&);
+
+    static AqlValue Near(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+    static AqlValue Within(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+    static AqlValue Fulltext(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
 };
 

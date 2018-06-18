@@ -22,11 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ssl-helper.h"
-#include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 
 #include <openssl/err.h>
-#include <asio/ssl.hpp>
+
+#include "Basics/Exceptions.h"
+#include "Basics/asio_ns.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -46,11 +47,6 @@ asio::ssl::context arangodb::sslContext(
   context::method meth;
 
   switch (protocol) {
-#ifndef OPENSSL_NO_SSL2
-    case SSL_V2:
-      meth = context::method::sslv2;
-      break;
-#endif
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
       meth = context::method::sslv3;
@@ -107,9 +103,6 @@ asio::ssl::context arangodb::sslContext(
 
 std::string arangodb::protocolName(SslProtocol protocol) {
   switch (protocol) {
-    case SSL_V2:
-      return "SSLv2";
-
     case SSL_V23:
       return "SSLv23";
 

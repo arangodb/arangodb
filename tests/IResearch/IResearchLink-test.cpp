@@ -37,7 +37,6 @@
 
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Basics/files.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -52,12 +51,13 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
-#include "velocypack/Parser.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+
+#include <velocypack/Parser.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -204,7 +204,6 @@ SECTION("test_defaults") {
     bool created;
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
     REQUIRE((false == !link && created));
-    CHECK((true == link->allowExpansion()));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection == link->collection()));
     CHECK((link->fieldNames().empty()));
@@ -257,7 +256,6 @@ SECTION("test_defaults") {
     bool created;
     auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
     REQUIRE((false == !link && created));
-    CHECK((true == link->allowExpansion()));
     CHECK((true == link->canBeDropped()));
     CHECK((logicalCollection == link->collection()));
     CHECK((link->fieldNames().empty()));
@@ -596,7 +594,9 @@ SECTION("test_write") {
   );
   REQUIRE((false == !view));
   view->open();
-  auto* flush = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+  auto* flush = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::FlushFeature
+  >("Flush");
   REQUIRE((flush));
 
   irs::fs_directory directory(dataPath);
@@ -607,7 +607,13 @@ SECTION("test_write") {
   CHECK((0 == reader.reopen().live_docs_count()));
   CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).errorNumber()));
   {
-    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
     CHECK((trx.begin().ok()));
     CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
@@ -619,7 +625,13 @@ SECTION("test_write") {
   CHECK((1 == reader.reopen().live_docs_count()));
 
   {
-    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
     CHECK((trx.begin().ok()));
     CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));
@@ -631,7 +643,13 @@ SECTION("test_write") {
   CHECK((2 == reader.reopen().live_docs_count()));
 
   {
-    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
     CHECK((trx.begin().ok()));
     CHECK((link->remove(&trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
     CHECK((trx.commit().ok()));

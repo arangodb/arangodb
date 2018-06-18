@@ -24,25 +24,21 @@
 #include "catch.hpp"
 #include "common.h"
 
+#include "ExecutionBlockMock.h"
 #include "StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "V8/v8-globals.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
+#include "Aql/BasicBlocks.h"
+#include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -51,19 +47,18 @@
 #include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Aql/AqlItemBlock.h"
-#include "Aql/BasicBlocks.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "ExecutionBlockMock.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "V8/v8-globals.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
+
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
 #include "IResearch/VelocyPackHelper.h"
@@ -130,7 +125,9 @@ struct IResearchBlockMockSetup {
       }
     }
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
@@ -490,3 +487,7 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

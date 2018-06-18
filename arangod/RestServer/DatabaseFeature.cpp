@@ -161,7 +161,7 @@ void DatabaseManagerThread::run() {
           }
 
           try {
-            engine->dropDatabase(database);
+            engine->dropDatabase(*database);
           } catch (std::exception const& ex) {
             LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed: " << ex.what();
           } catch (...) {
@@ -469,13 +469,15 @@ void DatabaseFeature::recoveryDone() {
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
     // execute the engine-specific callbacks on successful recovery
-    engine->recoveryDone(vocbase);
+    engine->recoveryDone(*vocbase);
 
-    ReplicationFeature* replicationFeature =
-        static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
-
-    if (replicationFeature != nullptr) {
-      replicationFeature->startApplier(vocbase);
+    if (vocbase->replicationApplier()) {
+      ReplicationFeature* replicationFeature =
+      static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
+      
+      if (replicationFeature != nullptr) {
+        replicationFeature->startApplier(vocbase);
+      }
     }
   }
 }
@@ -523,12 +525,6 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
   // name not yet in use, release the read lock
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
-
-  try {
-    vocbase->addReplicationApplier();
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
 
   // increase reference counter
   vocbase->use();
@@ -598,7 +594,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     builder.close();
 
     // createDatabase must return a valid database or throw
-    vocbase.reset(engine->createDatabase(id, builder.slice()));
+    vocbase = engine->createDatabase(id, builder.slice());
 
     TRI_ASSERT(vocbase != nullptr);
 
@@ -632,8 +628,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
     if (! engine->inRecovery()) {
       // starts compactor etc.
-      engine->recoveryDone(vocbase.get());
-    
+      engine->recoveryDone(*vocbase);
+
       ReplicationFeature* replicationFeature =
         static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
 
@@ -786,7 +782,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 #endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
-    engine->prepareDropDatabase(vocbase, !engine->inRecovery(), res);
+    engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
@@ -1081,10 +1077,10 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   if (name.empty()) {
     return nullptr;
   }
-  
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
-  
+
   // database names with a number in front are invalid names
   if (name[0] >= '0' && name[0] <= '9') {
     TRI_voc_tick_t id = NumberUtils::atoi_zero<TRI_voc_tick_t>(name.data(), name.data() + name.size());
@@ -1114,7 +1110,7 @@ std::string DatabaseFeature::translateCollectionName(
   auto theLists = _databasesLists.load();
   auto itr = theLists->_databases.find(dbName);
 
-  if (itr == theLists->_coordinatorDatabases.end()) {
+  if (itr == theLists->_databases.end()) {
     return std::string();
   }
 
@@ -1123,7 +1119,7 @@ std::string DatabaseFeature::translateCollectionName(
 
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
-    CollectionNameResolver resolver(vocbase);
+    CollectionNameResolver resolver(*vocbase);
 
     return resolver.getCollectionNameCluster(NumberUtils::atoi_zero<TRI_voc_cid_t>(collectionName.data(), collectionName.data() + collectionName.size()));
   } else {
@@ -1134,7 +1130,9 @@ std::string DatabaseFeature::translateCollectionName(
   }
 }
 
-void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> func) {
+void DatabaseFeature::enumerateDatabases(
+    std::function<void(TRI_vocbase_t& vocbase)> const& func
+) {
   if (ServerState::instance()->isCoordinator()) {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
@@ -1144,7 +1142,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
       // iterate over all databases
       TRI_ASSERT(vocbase != nullptr);
       TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
-      func(vocbase);
+      func(*vocbase);
     }
   } else {
     auto unuser(_databasesProtector.use());
@@ -1155,7 +1153,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
       // iterate over all databases
       TRI_ASSERT(vocbase != nullptr);
       TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-      func(vocbase);
+      func(*vocbase);
     }
   }
 }
@@ -1208,7 +1206,6 @@ void DatabaseFeature::stopAppliers() {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    
     replicationFeature->stopApplier(vocbase);
   }
 }
@@ -1333,6 +1330,8 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
 
   auto oldLists = _databasesLists.load();
   auto newLists = new DatabasesLists(*oldLists);
+  
+  ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
   try {
     for (auto const& it : VPackArrayIterator(databases)) {
@@ -1345,9 +1344,9 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
         // ignore deleted databases here
         continue;
       }
-
+      
       std::string const databaseName = it.get("name").copyString();
-
+      
       // create app directory for database if it does not exist
       res = createApplicationDirectory(databaseName, appPath);
 
@@ -1358,14 +1357,16 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      TRI_vocbase_t* database = engine->openDatabase(it, _upgrade);
+      auto* database = engine->openDatabase(it, _upgrade).release();
 
-      try {
-        database->addReplicationApplier();
-      } catch (std::exception const& ex) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
-                   << database->name() << "' failed: " << ex.what();
-        FATAL_ERROR_EXIT();
+      if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
+        try {
+          database->addReplicationApplier();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
+          << database->name() << "' failed: " << ex.what();
+          FATAL_ERROR_EXIT();
+        }
       }
 
       if (databaseName == TRI_VOC_SYSTEM_DATABASE) {

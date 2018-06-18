@@ -278,7 +278,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
 }
 
 /// @brief get the _key attribute from an object/document
-AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getKeyAttribute(transaction::Methods* /*trx*/,
                                    bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -361,7 +361,7 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
 }
 
 /// @brief get the _from attribute from an object/document
-AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getFromAttribute(transaction::Methods* /*trx*/,
                                     bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {
@@ -400,7 +400,7 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
 }
 
 /// @brief get the _to attribute from an object/document
-AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
+AqlValue AqlValue::getToAttribute(transaction::Methods* /*trx*/,
                                   bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   switch (type()) {

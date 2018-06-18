@@ -37,7 +37,6 @@
 #endif
 
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchFeature.h"
@@ -124,7 +123,9 @@ struct IResearchLinkMetaSetup {
       }
     }
 
-    auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::iresearch::IResearchAnalyzerFeature
+    >();
 
     analyzers->emplace("empty", "empty", "en"); // cache the 'empty' analyzer
 
@@ -405,7 +406,6 @@ SECTION("test_writeCustomizedValues") {
   meta._fields["c"]->_fields["some"] = meta._fields["c"]; // initialize with parent, override below
   meta._fields["c"]->_fields["none"] = meta._fields["c"]; // initialize with parent
 
-  auto& overrideDefault = *(meta._fields["c"]->_fields["default"]);
   auto& overrideAll = *(meta._fields["c"]->_fields["all"]);
   auto& overrideSome = *(meta._fields["c"]->_fields["some"]);
   auto& overrideNone = *(meta._fields["c"]->_fields["none"]);

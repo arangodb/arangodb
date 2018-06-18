@@ -123,22 +123,21 @@ bool OperationCursor::nextCovering(IndexIterator::DocumentCallback const& callba
 ///        skipped will be increased by the amount of skipped elements afterwards
 ///        Check hasMore()==true before using this
 ///        NOTE: This will throw on OUT_OF_MEMORY
-int OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
+void OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
   if (!hasMore()) {
     TRI_ASSERT(false);
     // You requested more even if you should have checked it before.
-    return TRI_ERROR_FORBIDDEN;
+    return;
   }
 
   if (toSkip > _limit) {
     // Short-cut, we jump to the end
     _hasMore = false;
-    return TRI_ERROR_NO_ERROR;
+    return;
   }
 
   _indexIterator->skip(toSkip, skipped);
   if (skipped != toSkip || _limit == 0) {
     _hasMore = false;
   }
-  return TRI_ERROR_NO_ERROR;
 }

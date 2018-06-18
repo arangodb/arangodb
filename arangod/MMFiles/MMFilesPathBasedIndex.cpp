@@ -46,20 +46,12 @@ MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
     : MMFilesIndex(iid, collection, info),
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),
-      _useExpansion(false),
       _allowPartialIndex(allowPartialIndex) {
   TRI_ASSERT(!_fields.empty());
 
   TRI_ASSERT(iid != 0);
       
   fillPaths(_paths, _expanding);
-
-  for (auto const& it : _fields) {
-    if (TRI_AttributeNamesHaveExpansion(it)) {
-      _useExpansion = true;
-      break;
-    }
-  }
 
   TRI_ASSERT(baseSize > 0);
   

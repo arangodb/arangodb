@@ -32,14 +32,16 @@
 
 using namespace arangodb::aql;
   
-ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
-    : _engine(engine),
-      _trx(engine->getQuery()->trx()),
-      _exeNode(ep),
-      _pos(0),
-      _done(false),
-      _profile(engine->getQuery()->queryOptions().profile),
-      _getSomeBegin(0) {
+ExecutionBlock::ExecutionBlock(
+    ExecutionEngine* engine,
+    ExecutionNode const* ep)
+  : _engine(engine),
+    _trx(engine->getQuery()->trx()),
+    _exeNode(ep),
+    _pos(0),
+    _done(false),
+    _profile(engine->getQuery()->queryOptions().profile),
+    _getSomeBegin(0) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -87,8 +89,17 @@ bool ExecutionBlock::removeDependency(ExecutionBlock* ep) {
   return false;
 }
 
+/// @brief whether or not the query was killed
+bool ExecutionBlock::isKilled() const { return _engine->getQuery()->killed(); }
+
+/// @brief whether or not the query was killed
+void ExecutionBlock::throwIfKilled() {
+  if (isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+}
+  
 int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
-  DEBUG_BEGIN_BLOCK();
   for (auto& d : _dependencies) {
     int res = d->initializeCursor(items, pos);
 
@@ -103,29 +114,6 @@ int ExecutionBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _buffer.clear();
 
   _done = false;
-  return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();
-}
-
-/// @brief whether or not the query was killed
-bool ExecutionBlock::isKilled() const { return _engine->getQuery()->killed(); }
-
-/// @brief whether or not the query was killed
-void ExecutionBlock::throwIfKilled() {
-  if (isKilled()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-}
-
-/// @brief initialize
-int ExecutionBlock::initialize() {
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->initialize();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-  }
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -344,9 +332,7 @@ void ExecutionBlock::clearRegisters(AqlItemBlock* result) {
 }
 
 size_t ExecutionBlock::skipSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
-
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSome(atMost, true, result, skipped);
 
@@ -357,25 +343,17 @@ size_t ExecutionBlock::skipSome(size_t atMost) {
   }
 
   return skipped;
-  DEBUG_END_BLOCK();
 }
 
-// skip exactly <number> outputs, returns <true> if _done after
-// skipping, and <false> otherwise . . .
-bool ExecutionBlock::skip(size_t number, size_t& numActuallySkipped) {
-  DEBUG_BEGIN_BLOCK();
-  size_t skipped = skipSome(number);
+// skip exactly atMost outputs
+void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
+  size_t skipped = skipSome(atMost);
   size_t nr = skipped;
-  while (nr != 0 && skipped < number) {
-    nr = skipSome(number - skipped);
+  while (nr != 0 && skipped < atMost) {
+    nr = skipSome(atMost - skipped);
     skipped += nr;
   }
   numActuallySkipped = skipped;
-  if (nr == 0) {
-    return true;
-  }
-  return !hasMore();
-  DEBUG_END_BLOCK();
 }
 
 bool ExecutionBlock::hasMore() {
@@ -391,14 +369,6 @@ bool ExecutionBlock::hasMore() {
   }
   _done = true;
   return false;
-}
-
-int64_t ExecutionBlock::remaining() {
-  int64_t sum = 0;
-  for (auto const& it : _buffer) {
-    sum += it->size();
-  }
-  return sum + _dependencies[0]->remaining();
 }
 
 int ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,

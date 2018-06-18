@@ -27,10 +27,6 @@
 
 #include "Scheduler/Task.h"
 
-#include <list>
-#include <utility>
-#include <asio/deadline_timer.hpp>
-
 #include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
@@ -42,7 +38,6 @@ namespace arangodb {
 class ConnectionStatistics;
 
 namespace rest {
-  
 class SocketTask : virtual public Task {
   friend class HttpCommTask;
 
@@ -53,7 +48,7 @@ class SocketTask : virtual public Task {
   static size_t const READ_BLOCK_SIZE = 10000;
 
  public:
-  SocketTask(EventLoop, std::unique_ptr<Socket>, ConnectionInfo&&,
+  SocketTask(Scheduler*, std::unique_ptr<Socket>, ConnectionInfo&&,
              double keepAliveTimeout, bool skipInit);
 
   virtual ~SocketTask();
@@ -65,7 +60,7 @@ class SocketTask : virtual public Task {
   // caller will hold the _lock
   virtual bool processRead(double startTime) = 0;
   virtual void compactify() {}
-  
+
   // This function is used during the protocol switch from http
   // to VelocyStream. This way we do not require additional
   // constructor arguments. It should not be used otherwise.
@@ -105,15 +100,13 @@ class SocketTask : virtual public Task {
 
     ~WriteBuffer() { release(); }
 
-    bool empty() const noexcept {
-      return _buffer == nullptr;
-    }
-    
+    bool empty() const noexcept { return _buffer == nullptr; }
+
     void clear() noexcept {
       _buffer = nullptr;
       _statistics = nullptr;
     }
-    
+
     void release(SocketTask* task = nullptr) {
       if (_buffer != nullptr) {
         if (task != nullptr) {
@@ -133,70 +126,67 @@ class SocketTask : virtual public Task {
 
   // will be run in strand
   void addWriteBuffer(WriteBuffer&&);
+
   // will be run in strand
   void closeStream();
+
   // caller must run in _peer->strand()
   void closeStreamNoLock();
 
-  /// starts the keep alive time, no need to run on strand
+  // starts the keep alive time, no need to run on strand
   void resetKeepAlive();
-  /// cancels the keep alive timer
+
+  // cancels the keep alive timer
   void cancelKeepAlive();
 
   // abandon the task. if the task was already abandoned, this
   // method returns false. if abandoing was successful, this
   // method returns true. Used for VST upgrade
-  bool abandon() {
-    return !(_abandoned.exchange(true));
-  }
+  bool abandon() { return !(_abandoned.exchange(true)); }
 
   /// lease a string buffer from pool
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
-  
-protected:
-  
+
+ protected:
   bool processAll();
   void triggerProcessAll();
 
  private:
-  
   bool completedWriteBuffer();
 
   bool reserveMemory();
   bool trySyncRead();
-  
+
   void asyncReadSome();
   void asyncWriteSome();
-  
+
  protected:
-  
   std::unique_ptr<Socket> _peer;
   ConnectionInfo _connectionInfo;
 
   ConnectionStatistics* _connectionStatistics;
   basics::StringBuffer _readBuffer;
-  
+
  private:
   Mutex _bufferLock;
-  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
-  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _bufferLock
+  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type
+      _stringBuffersArena;
+  SmallVector<basics::StringBuffer*, 32> _stringBuffers;  // needs _bufferLock
 
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
 
   boost::posix_time::milliseconds _keepAliveTimeout;
-  asio::deadline_timer _keepAliveTimer;
+  std::unique_ptr<asio_ns::deadline_timer> _keepAliveTimer;
   bool const _useKeepAliveTimer;
-  
+
   std::atomic<bool> _keepAliveTimerActive;
   std::atomic<bool> _closeRequested;
-  /// Was task abandoned for another task
-  std::atomic<bool> _abandoned;
-  /// Close socket send
-  std::atomic<bool> _closedSend;
-  /// Closed socket received
-  std::atomic<bool> _closedReceive;
+
+  std::atomic<bool> _abandoned;  // was task abandoned for another task
+  std::atomic<bool> _closedSend;  // Close socket send
+  std::atomic<bool> _closedReceive;  // Closed socket received
 };
 }
 }

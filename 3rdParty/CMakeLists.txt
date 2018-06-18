@@ -9,6 +9,13 @@ include(ExternalProject)
 remove_definitions("-DUSE_ENTERPRISE=1")
 
 ################################################################################
+## ZLIB
+################################################################################
+
+set(SKIP_INSTALL_ALL ON)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
+
+################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -82,11 +89,23 @@ if (USE_PRECOMPILED_V8)
     FORCE
   )
 else ()
+  # meaningless IResearch circus that makes the windows build fail
+  #if (MSVC AND USE_IRESEARCH)
+  #  set(V8_TARGET_ARCHS "Debug;Release") # need to build both ICU for IResearch otherwise no library to link with
+  #endif ()
+
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
   set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
   set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 endif ()
+
+################################################################################
+## Google S2
+################################################################################
+
+add_subdirectory(s2geometry)
+set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
 ## IResearch
@@ -197,12 +216,6 @@ if (USE_IRESEARCH)
   endif()
 endif()
 
-################################################################################
-## ZLIB
-################################################################################
-
-set(SKIP_INSTALL_ALL ON)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 
 ################################################################################
 ## cURL
@@ -219,12 +232,6 @@ set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
-
-################################################################################
-## Google S2
-################################################################################
-
-add_subdirectory(s2geometry)
 
 ################################################################################
 ## SNAPPY

@@ -65,16 +65,31 @@ arangodb::Result createLink(
 ) {
   TRI_ASSERT(builder.isEmpty());
 
+  static const std::function<bool(irs::string_ref const& key)> acceptor = [](
+      irs::string_ref const& key
+  )->bool {
+    // ignored fields
+    return key != arangodb::StaticStrings::IndexType
+      && key != StaticStrings::ViewIdField;
+  };
+
   builder.openObject();
-  if (!mergeSlice(builder, link)
-      || !IResearchLinkHelper::setType(builder)
-      || !IResearchLinkHelper::setView(builder, view.id())) {
+  builder.add(
+    arangodb::StaticStrings::IndexType,
+    arangodb::velocypack::Value(IResearchLinkHelper::type())
+  );
+  builder.add(
+    StaticStrings::ViewIdField, arangodb::velocypack::Value(view.id())
+  );
+
+  if (!mergeSliceSkipKeys(builder, link, acceptor)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failed to update link definition with the view name while updating IResearch view '")
       + std::to_string(view.id()) + "' collection '" + collection.name() + "'"
     );
   }
+
   builder.close();
 
   VPackBuilder tmp;
@@ -98,8 +113,7 @@ arangodb::Result updateLinks(
     newLinks = VPackSlice::emptyObjectSlice();
   }
 
-  arangodb::CollectionNameResolver resolver(&view.vocbase());
-
+  arangodb::CollectionNameResolver resolver(view.vocbase());
   arangodb::Result res;
   std::string error;
   VPackBuilder builder;
@@ -280,26 +294,19 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& info,
-    bool /*isNew*/,
+    bool isNew,
     uint64_t planVersion,
-    LogicalView::PreCommitCallback const& /*preCommit*/
+    LogicalView::PreCommitCallback const& preCommit
 ) {
   auto view = std::shared_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
   );
-
+  auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
+  auto props = json.get(StaticStrings::PropertiesField);
+  auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'props' then assume defaults
   std::string error;
 
-  auto properties = info.get(StaticStrings::PropertiesField);
-
-  if (!properties.isObject()) {
-    // set to defaults
-    properties = VPackSlice::emptyObjectSlice();
-  }
-
-  auto& meta = view->_meta;
-
-  if (!meta.init(properties, error)) {
+  if (!view->_meta.init(properties, error)) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
         << "failed to initialize IResearch view from definition, error: " << error;
 
@@ -342,6 +349,49 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPack(
         linkMeta.json(builder);
         builder.close();
       }
+    }
+  }
+
+  if (preCommit && !preCommit(view)) {
+    LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      << "Failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
+
+    return nullptr;
+  }
+
+  if (isNew) {
+    arangodb::velocypack::Builder builder;
+    auto* ci = ClusterInfo::instance();
+
+    if (!ci) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "Failure to find ClusterInfo instance while constructing IResearch View in database '" << vocbase.id() << "'";
+
+      return nullptr;
+    }
+
+    builder.openObject();
+
+    auto res = view->toVelocyPack(builder, true, true); // include links so that Agency will always have a full definition
+
+    if (!res.ok()) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "Failure to generate definitionf created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
+
+      return nullptr;
+    }
+
+    builder.close();
+
+    auto resNum = ci->createViewCoordinator(
+      vocbase.name(), std::to_string(view->id()), builder.slice(), error
+    );
+
+    if (TRI_ERROR_NO_ERROR != resNum) {
+      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+        << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << error;
+
+      return nullptr;
     }
   }
 
@@ -510,3 +560,6 @@ Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
 } // iresearch
 } // arangodb
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

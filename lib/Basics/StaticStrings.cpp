@@ -61,6 +61,7 @@ std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::ReplaceExisting("replaceExisting");
+std::string const StaticStrings::OverWrite("overwrite");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore("x-arango-replication-checkmore");
@@ -135,11 +136,10 @@ std::string const StaticStrings::HLCHeader("x-arango-hlc");
 std::string const StaticStrings::KeepAlive("Keep-Alive");
 std::string const StaticStrings::LeaderEndpoint("x-arango-endpoint");
 std::string const StaticStrings::Location("location");
-std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
-std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Queue("x-arango-queue");
+std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::StartThread("x-arango-start-thread");
 std::string const StaticStrings::Unlimited = "unlimited";
@@ -151,3 +151,5 @@ std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
+std::string const StaticStrings::MultiPartContentType("multipart/form-data");
+

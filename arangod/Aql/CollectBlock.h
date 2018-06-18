@@ -85,10 +85,6 @@ class SortedCollectBlock final : public ExecutionBlock {
  public:
   SortedCollectBlock(ExecutionEngine*, CollectNode const*);
 
-  ~SortedCollectBlock();
-
-  int initialize() override final;
-  
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -132,7 +128,6 @@ class SortedCollectBlock final : public ExecutionBlock {
 class HashedCollectBlock : public ExecutionBlock {
  public:
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
-  ~HashedCollectBlock();
 
  private:
   int getOrSkipSome(size_t atMost, bool skipping,
@@ -157,8 +152,6 @@ class DistinctCollectBlock : public ExecutionBlock {
   DistinctCollectBlock(ExecutionEngine*, CollectNode const*);
   ~DistinctCollectBlock();
 
-  int initialize() override final;
-  
   /// @brief initializeCursor
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 

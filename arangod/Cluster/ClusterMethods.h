@@ -89,6 +89,10 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result,
                        bool sendNoLockHeader);
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the selectivity estimates from DBservers
+////////////////////////////////////////////////////////////////////////////////
 
 int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
                                       std::unordered_map<std::string, double>& result);
@@ -97,7 +101,7 @@ int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string con
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-int createDocumentOnCoordinator(
+Result createDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
     OperationOptions const& options, arangodb::velocypack::Slice const& slice,
     arangodb::rest::ResponseCode& responseCode,
@@ -121,7 +125,7 @@ int deleteDocumentOnCoordinator(
 
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    VPackSlice const slice, OperationOptions const& options,
+    VPackSlice slice, OperationOptions const& options,
     std::unique_ptr<std::unordered_map<std::string, std::string>> headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,

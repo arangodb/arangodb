@@ -53,9 +53,12 @@ class Table : public std::enable_shared_from_this<Table> {
  private:
   struct GenericBucket {
     BucketState _state;
-    uint8_t _filler[BUCKET_SIZE - sizeof(BucketState)];
+    static constexpr size_t paddingSize = BUCKET_SIZE - sizeof(BucketState);
+    uint8_t _padding[paddingSize];
+    GenericBucket();
     bool lock(uint64_t maxTries);
     void unlock();
+    void clear();
     bool isMigrated() const;
   };
   static_assert(sizeof(GenericBucket) == BUCKET_SIZE,
@@ -86,6 +89,11 @@ class Table : public std::enable_shared_from_this<Table> {
   /// @brief Construct a new table of size 2^(logSize) in disabled state.
   //////////////////////////////////////////////////////////////////////////////
   explicit Table(uint32_t logSize);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Destroy the table
+  //////////////////////////////////////////////////////////////////////////////
+  ~Table();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -189,7 +197,7 @@ class Table : public std::enable_shared_from_this<Table> {
   uint32_t idealSize();
 
  private:
-  basics::ReadWriteSpinLock<64> _lock;
+  basics::ReadWriteSpinLock _lock;
   bool _disabled;
   bool _evictions;
 
