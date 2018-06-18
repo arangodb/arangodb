@@ -133,7 +133,11 @@ EnumerateListBlock::getSome(size_t atMost) {
       size_t toSend = (std::min)(atMost, sizeInVar - _index);
 
       // create the result
-      res.reset(requestBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      // TODO replace
+      RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()
+                                                         ->getDepth()];
+      TRI_ASSERT(nrRegs == getNrOutputRegisters());
+      res.reset(requestBlock(toSend, nrRegs));
 
       inheritRegisters(cur, res.get(), _pos);
 

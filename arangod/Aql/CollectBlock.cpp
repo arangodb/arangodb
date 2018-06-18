@@ -288,12 +288,15 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
+  // TODO replace
   auto previousNode = getPlanNode()->getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegisterId const inputNrRegs =
     previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
   RegisterId const outputNrRegs =
     getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  TRI_ASSERT(inputNrRegs == getNrInputRegisters());
+  TRI_ASSERT(outputNrRegs == getNrOutputRegisters());
 
   enum class GetNextRowState { NONE, SUCCESS, WAITING };
 
@@ -689,10 +692,12 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
   enum class GetNextRowState { NONE, SUCCESS, WAITING };
 
+  // TODO replace
   auto previousNode = getPlanNode()->getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   RegisterId const inputNrRegs =
       previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  TRI_ASSERT(inputNrRegs == getNrInputRegisters());
 
   // get the next row from the current block. fetches a new block if necessary.
   auto getNextRow =
@@ -809,7 +814,9 @@ std::pair<ExecutionState, Result> HashedCollectBlock::getOrSkipSome(
 
   auto buildResult = [this, en,
                       inputNrRegs](AqlItemBlock const* src) -> AqlItemBlock* {
+    // TODO replace
     RegisterId nrRegs = en->getRegisterPlan()->nrRegs[en->getDepth()];
+    TRI_ASSERT(nrRegs == getNrOutputRegisters());
 
     std::unique_ptr<AqlItemBlock> result(
         requestBlock(_allGroups.size(), nrRegs));
@@ -1065,9 +1072,14 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
 
   if (!skipping && _res == nullptr) {
     TRI_ASSERT(_skipped == 0);
+    // TODO replace
+    RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()
+                                                        ->getDepth()];
+    TRI_ASSERT(nrRegs == getNrOutputRegisters());
     _res.reset(requestBlock(
         atMost,
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      nrRegs
+    ));
 
     TRI_ASSERT(cur->getNrRegs() <= _res->getNrRegs());
     inheritRegisters(cur, _res.get(), _pos);
@@ -1247,7 +1259,11 @@ std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost
   if (skipping) {
     skipped = 1;
   } else {
-    res.reset(requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+    // TODO replace
+    RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()
+                                                       ->getDepth()];
+    TRI_ASSERT(nrRegs == getNrOutputRegisters());
+    res.reset(requestBlock(1, nrRegs));
     res->emplaceValue(0, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_count)));
   }
    

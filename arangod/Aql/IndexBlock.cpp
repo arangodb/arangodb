@@ -619,9 +619,14 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
     // We handed sth out last call and need to reset now.
     TRI_ASSERT(_returned == 0);
     TRI_ASSERT(_copyFromRow == 0);
+    // TODO replace
+    RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()
+                                                        ->getDepth()];
+    TRI_ASSERT(nrRegs == getNrOutputRegisters());
     _resultInFlight.reset(requestBlock(
       atMost,
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+      nrRegs
+    ));
   }
 
   // The following callbacks write one index lookup result into res at
@@ -707,6 +712,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> IndexBlock::getSome(
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
     curRegs = cur->getNrRegs();
+    TRI_ASSERT(curRegs == getNrInputRegisters());
 
     TRI_ASSERT(curRegs <= _resultInFlight->getNrRegs());
 

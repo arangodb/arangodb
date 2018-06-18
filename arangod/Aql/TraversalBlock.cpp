@@ -385,6 +385,7 @@ TraversalBlock::getSome(size_t atMost) {
     // If we get here, we do have _buffer.front()
     AqlItemBlock* cur = _buffer.front();
     size_t const curRegs = cur->getNrRegs();
+    TRI_ASSERT(curRegs == getNrInputRegisters());
 
     if (_pos == 0 && !_traverser->hasMore()) {
       // Initial initialization
@@ -411,8 +412,10 @@ TraversalBlock::getSome(size_t atMost) {
     size_t available = _vertices.size() - _posInPaths;
     size_t toSend = (std::min)(atMost, available);
 
+    // TODO replace
     RegisterId nrRegs =
         getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+    TRI_ASSERT(getNrOutputRegisters());
 
     std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
     // automatically freed if we throw

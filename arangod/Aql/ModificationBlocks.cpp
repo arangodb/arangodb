@@ -292,7 +292,10 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
   bool const ignoreDocumentNotFound = ep->getOptions().ignoreDocumentNotFound;
   bool const producesOutput = (ep->_outVariableOld != nullptr);
 
-  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  // TODO replace
+  RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  TRI_ASSERT(nrRegs == getNrOutputRegisters());
+  result.reset(requestBlock(count, nrRegs));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -456,7 +459,11 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
   bool const producesOld = (ep->_outVariableOld != nullptr);
   bool const producesOutput = producesNew || producesOld;
 
-  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  // TODO replace
+  RegisterId nrRegs =
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  TRI_ASSERT(nrRegs == getNrOutputRegisters());
+  result.reset(requestBlock(count, nrRegs));
 
   OperationOptions options;
   // use "silent" mode if we do not access the results later on
@@ -628,7 +635,11 @@ std::unique_ptr<AqlItemBlock> UpdateBlock::work() {
     keyRegisterId = it->second.registerId;
   }
 
-  std::unique_ptr<AqlItemBlock> result(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  // TODO replace
+  RegisterId nrRegs =
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  TRI_ASSERT(nrRegs == getNrOutputRegisters());
+  std::unique_ptr<AqlItemBlock> result(requestBlock(count, nrRegs));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -836,7 +847,11 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
 
   std::string errorMessage;
 
-  result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  // TODO replace
+  RegisterId nrRegs =
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  TRI_ASSERT(nrRegs == getNrOutputRegisters());
+  result.reset(requestBlock(count, nrRegs));
 
   OperationOptions options;
   options.silent = !producesOutput;
@@ -1093,7 +1108,11 @@ std::unique_ptr<AqlItemBlock> ReplaceBlock::work() {
     keyRegisterId = it->second.registerId;
   }
 
-  std::unique_ptr<AqlItemBlock> result(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  // TODO replace
+  RegisterId nrRegs =
+      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  TRI_ASSERT(nrRegs == getNrOutputRegisters());
+  std::unique_ptr<AqlItemBlock> result(requestBlock(count, nrRegs));
 
   OperationOptions options;
   options.silent = !producesOutput;

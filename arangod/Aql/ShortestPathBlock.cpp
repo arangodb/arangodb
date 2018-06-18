@@ -305,6 +305,7 @@ ShortestPathBlock::getSome(size_t atMost) {
     // If we get here, we do have _buffer.front()
     AqlItemBlock* cur = _buffer.front();
     size_t const curRegs = cur->getNrRegs();
+    TRI_ASSERT(curRegs == getNrInputRegisters());
 
     // Collect the next path:
     if (_posInPath >= _pathLength) {
@@ -323,8 +324,10 @@ ShortestPathBlock::getSome(size_t atMost) {
     size_t available = _pathLength - _posInPath;
     size_t toSend = std::min(atMost, available);
 
+    // TODO replace
     RegisterId nrRegs =
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+    TRI_ASSERT(nrRegs == getNrOutputRegisters());
     std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
     // automatically freed if we throw
     TRI_ASSERT(curRegs <= res->getNrRegs());

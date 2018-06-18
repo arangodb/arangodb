@@ -173,10 +173,13 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
     TRI_ASSERT(cur != nullptr);
     TRI_ASSERT(_cursor->hasMore());
 
-    size_t curRegs = cur->getNrRegs();
 
+    // TODO replace
+    size_t curRegs = cur->getNrRegs();
     RegisterId nrRegs =
         getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+    TRI_ASSERT(nrRegs == getNrOutputRegisters());
+    TRI_ASSERT(curRegs == getNrInputRegisters());
 
     res.reset(requestBlock(atMost, nrRegs));
     // automatically freed if we throw

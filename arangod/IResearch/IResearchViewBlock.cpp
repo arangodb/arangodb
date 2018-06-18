@@ -306,8 +306,11 @@ IResearchViewBlockBase::getSome(size_t atMost) {
 
     TRI_ASSERT(cur);
 
+    // TODO replace
     auto const curRegs = cur->getNrRegs();
     auto const nrRegs = planNode.getRegisterPlan()->nrRegs[planNode.getDepth()];
+    TRI_ASSERT(curRegs == getNrInputRegisters());
+    TRI_ASSERT(nrRegs == getNrOutputRegisters());
 
     res.reset(requestBlock(atMost, nrRegs));
     // automatically freed if we throw
