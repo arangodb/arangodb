@@ -128,6 +128,8 @@ class ExecutionBlock {
   /// return a block of at most atMost items, however, it may return
   /// less (for example if there are not enough items to come). However,
   /// if it returns an actual block, it must contain at least one item.
+  /// getSome() also takes care of tracing and clearing registers; don't do it
+  /// in getOrSkipSome() implementations.
   virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
       size_t atMost);
 

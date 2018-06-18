@@ -212,8 +212,16 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
 /// return a block of at most atMost items, however, it may return
 /// less (for example if there are not enough items to come). However,
 /// if it returns an actual block, it must contain at least one item.
-
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome(size_t atMost) {
+/// getSome() also takes care of tracing and clearing registers; don't do it
+/// in getOrSkipSome() implementations.
+// TODO Blocks overriding getSome (and skipSome) instead of getOrSkipSome should
+//      still not have to call traceGetSomeBegin/~End and clearRegisters on
+//      their own. This can be solved by adding one level of indirection via a
+//      method _getSome(), which by default only calls
+//      getSomeWithoutRegisterClearout() and which can be overridden instead.
+//      Or maybe overriding getSomeWithoutRegisterClearout() instead is better.
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ExecutionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
     
