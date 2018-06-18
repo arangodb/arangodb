@@ -43,6 +43,7 @@ namespace tests {
    */
   class WaitingExecutionBlockMock final : public ExecutionBlock {
 
+    public:
     /**
      * @brief Create a WAITING ExecutionBlockMock
      *
