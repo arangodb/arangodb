@@ -825,8 +825,15 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == false, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
-    wiewImpl->apply(*state);
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    auto* state = trx.state();
+    wiewImpl->apply(trx);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     auto* snapshot = wiewImpl->snapshot(*state);
     CHECK((nullptr != snapshot));
@@ -836,8 +843,15 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = false)
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
-    wiewImpl->apply(*state);
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    auto* state = trx.state();
+    wiewImpl->apply(trx);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     auto* snapshot = wiewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
@@ -847,8 +861,15 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = false during updateStatus(), true during snapshot())
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
-    wiewImpl->apply(*state);
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    auto* state = trx.state();
+    wiewImpl->apply(trx);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     state->waitForSync(true);
     auto* snapshot = wiewImpl->snapshot(*state, true);
@@ -859,9 +880,16 @@ SECTION("test_transaction_snapshot") {
 
   // old snapshot in TransactionState (force == true, waitForSync = true during updateStatus(), false during snapshot())
   {
-    auto state = s.engine.createTransactionState(vocbase, arangodb::transaction::Options());
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    auto* state = trx.state();
     state->waitForSync(true);
-    wiewImpl->apply(*state);
+    wiewImpl->apply(trx);
     state->updateStatus(arangodb::transaction::Status::RUNNING);
     state->waitForSync(false);
     auto* snapshot = wiewImpl->snapshot(*state, true);
