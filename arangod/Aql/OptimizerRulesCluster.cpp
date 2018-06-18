@@ -311,12 +311,13 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
 bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
                                                              ExecutionPlan* plan,
                                                              OptimizerRule const* rule) {
+  LOG_DEVEL << "substitute single document operation key Expressions";
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::RETURN, true);
+  plan->findNodesOfType(nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE}, true);
 
-  if(nodes.size() != 1){ //more than one RETRUN node - we replace simple expressions only
+  if(nodes.size() != 1){ //more than one MODIFICATION node
     return modified;
   }
 
@@ -326,17 +327,21 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
     LOG_DEVEL << "substitute single document operation";
 
 
-    auto* depModification = hasSingleDep(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE});
+    auto mod = static_cast<ModificationNode*>(node);
 
-    if (depModification){
       LOG_DEVEL << "optimize modification node";
-      auto mod = static_cast<ModificationNode*>(depModification);
-      auto depType = depModification->getType();
+      auto depType = mod->getType();
       LOG_DEVEL << ExecutionNode::getTypeString(depType);
 
 
-      if(!depIsSingletonOrConstCalc(depModification)){
+      if(!depIsSingletonOrConstCalc(node)){
         LOG_DEVEL << "optimization too complex";
+        continue;
+      }
+
+      auto p = node->getFirstParent();
+      if( p && p->getType() != EN::RETURN){
+        LOG_DEVEL << "parent is not RETURN";
         continue;
       }
 
@@ -356,6 +361,7 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
       // FIXME - end
 
       if(!calc){
+        LOG_DEVEL << "calcualtion missing";
         continue;
       }
 
@@ -382,9 +388,6 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
       replaceNode(plan, mod, singleOperationNode);
       plan->unlinkNode(calc);
       modified = true;
-    } else {
-        LOG_DEVEL << "plan is too complex";
-    }
   } // for node : nodes
 
   return modified;
