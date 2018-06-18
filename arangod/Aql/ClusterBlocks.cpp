@@ -278,17 +278,20 @@ int BlockWithClients::shutdown(int errorCode) {
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 BlockWithClients::getSomeForShard(size_t atMost, std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin(atMost);
 
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
   std::unique_ptr<AqlItemBlock> result = nullptr;
   auto out = getOrSkipSomeForShard(atMost, false, result, skipped, shardId);
   if (out.first == ExecutionState::WAITING) {
+    traceGetSomeEnd(result.get(), out.first);
     return {out.first, nullptr};
   }
   if (!out.second.ok()) {
     THROW_ARANGO_EXCEPTION(out.second);
   }
+  traceGetSomeEnd(result.get(), out.first);
   return {out.first, std::move(result)};
 
   DEBUG_END_BLOCK();
@@ -403,14 +406,12 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     size_t atMost, bool skipping, std::unique_ptr<AqlItemBlock>& result, size_t& skipped,
     std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
   size_t const clientId = getClientId(shardId);
 
   if (!hasMoreForClientId(clientId)) {
-    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
@@ -421,14 +422,12 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
   if (pos.first >= _buffer.size()) {
     auto res = getBlock(atMost);
     if (res.first == ExecutionState::WAITING) {
-      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return {res.first, TRI_ERROR_NO_ERROR};
     }
     if (res.first == ExecutionState::DONE) {
       _doneForClient[clientId] = true;
     }
     if (!res.second) {
-      traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
   }
@@ -470,7 +469,6 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     }
   }
 
-  traceGetSomeEnd(result.get(), getHasMoreStateForClientId(clientId));
   return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style
@@ -573,14 +571,12 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
                                        size_t& skipped,
                                        std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
   TRI_ASSERT(atMost > 0);
 
   size_t clientId = getClientId(shardId);
 
   if (!hasMoreForClientId(clientId)) {
-    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
@@ -592,7 +588,6 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
       return {res.first, TRI_ERROR_NO_ERROR};
     }
     if (!res.second) {
-      traceGetSomeEnd(nullptr, ExecutionState::DONE);
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
     if (res.first == ExecutionState::DONE) {
@@ -607,7 +602,6 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
     for (size_t i = 0; i < skipped; i++) {
       buf.pop_front();
     }
-    traceGetSomeEnd(nullptr, getHasMoreStateForClientId(clientId));
     return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
   }
   
@@ -639,8 +633,6 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
   }
 
   // _buffer is left intact, deleted and cleared at shutdown
-
-  traceGetSomeEnd(result.get(), getHasMoreStateForClientId(clientId));
 
   return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
 

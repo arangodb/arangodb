@@ -1206,12 +1206,10 @@ std::pair<ExecutionState, arangodb::Result> CountCollectBlock::initializeCursor(
 std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost, bool skipping,
                                                                    AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atMost);
 
   TRI_ASSERT(result == nullptr && skipped == 0);
   
   if (_done) {
-    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
   
@@ -1253,7 +1251,6 @@ std::pair<ExecutionState, Result> CountCollectBlock::getOrSkipSome(size_t atMost
     res->emplaceValue(0, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_count)));
   }
    
-  traceGetSomeEnd(res.get(), ExecutionState::DONE);
   result = res.release();
 
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
