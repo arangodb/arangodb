@@ -1570,7 +1570,7 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
 
 int getDocumentOnCoordinator(
     std::string const& dbname, std::string const& collname,
-    VPackSlice const slice, OperationOptions const& options,
+    VPackSlice slice, OperationOptions const& options,
     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers,
     arangodb::rest::ResponseCode& responseCode,
     std::unordered_map<int, size_t>& errorCounter,
@@ -1606,13 +1606,27 @@ int getDocumentOnCoordinator(
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   bool useMultiple = slice.isArray();
 
+  VPackBuilder tempBuilder;
   int res = TRI_ERROR_NO_ERROR;
   bool canUseFastPath = true;
   if (useMultiple) {
     VPackValueLength length = slice.length();
     for (VPackValueLength idx = 0; idx < length; ++idx) {
+      VPackSlice current = slice.at(idx);
+      // if the input is not a document object but a string,
+      // we will construct a new object on the fly with just
+      // the "_key" attribute. this is necessary because
+      // distributeBabyOnShards prefers this format for finding 
+      // out the responsible shard for the document
+      if (current.isString()) {
+        tempBuilder.clear();
+        tempBuilder.openObject();
+        tempBuilder.add(StaticStrings::KeyString, current);
+        tempBuilder.close();
+        current = tempBuilder.slice();
+      }
       res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
-                                   reverseMapping, slice.at(idx), idx);
+                                   reverseMapping, current, idx);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
         shardMap.clear();
@@ -1621,6 +1635,17 @@ int getDocumentOnCoordinator(
       }
     }
   } else {
+    // if the input is not a document object but a string,
+    // we will construct a new object on the fly with just
+    // the "_key" attribute. this is necessary because
+    // distributeBabyOnShards prefers this format for finding 
+    // out the responsible shard for the document
+    if (slice.isString()) {
+      tempBuilder.openObject();
+      tempBuilder.add(StaticStrings::KeyString, slice);
+      tempBuilder.close();
+      slice = tempBuilder.slice();
+    }
     res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
                                  slice, 0);
     if (res != TRI_ERROR_NO_ERROR) {

@@ -1,6 +1,20 @@
 v3.3.11 (2018-XX-XX)
 --------------------
 
+* fixed AQL DOCUMENT lookup function for documents for sharded collections with
+  more than a single shard and using a custom shard key (i.e. some shard
+  key attribute other than `_key`).
+  The previous implementation of DOCUMENT restricted to lookup to a single
+  shard in all cases, though this restriction was invalid. That lead to 
+  `DOCUMENT` not finding documents in cases the wrong shard was contacted. The
+  fixed implementation in 3.3.11 will reach out to all shards to find the
+  document, meaning it will produce the correct result, but will cause more
+  cluster-internal traffic. This increase in traffic may be high if the number
+  of shards is also high, because each invocation of `DOCUMENT` will have to
+  contact all shards.
+  There will be no performance difference for non-sharded collections or
+  collections that are sharded by `_key` or that only have a single shard.
+
 * reimplemented replication view in web UI
 
 * fixed internal issue #2256: ui, document id not showing up when deleting a document
