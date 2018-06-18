@@ -232,6 +232,7 @@ function assertQueryError (errorCode, query, bindVars) {
     getQueryResults(query, bindVars);
     fail();
   } catch (e) {
+    assertFalse(e === "fail", "no exception thrown by query");
     assertTrue(e.errorNum !== undefined, 'unexpected error format while calling [' + query + ']');
     assertEqual(errorCode, e.errorNum, 'unexpected error code (' + e.errorMessage +
       " while executing: '" + query + "' expecting: " + errorCode + '): ');

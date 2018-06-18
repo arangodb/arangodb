@@ -1719,7 +1719,9 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   VPackSlice inSlice = VPackSlice::nullSlice();
   if(in) {// IF NOT REMOVE OR SELECT
    std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
+   LOG_DEVEL << "in Doc " << inRegId;
    AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
+   LOG_DEVEL << "in Doc";
    inBuilder.add(inDocument.slice());
    inSlice = inBuilder.slice();
   }
@@ -1779,7 +1781,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 
   // check operation result
   if (!result.ok()) {
-    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && node->_mode == ExecutionNode::NodeType::INDEX)) {
       // document not there is not an error in this situation.
       return nullptr;
     }
