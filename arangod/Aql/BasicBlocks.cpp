@@ -73,11 +73,7 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
   }
 
   if (!skipping) {
-    // TODO replace
-    RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()
-                                                       ->getDepth()];
-    TRI_ASSERT(nrRegs == getNrOutputRegisters());
-    result = requestBlock(1, nrRegs);
+    result = requestBlock(1, getNrOutputRegisters());
 
     try {
       if (_inputRegisterValues != nullptr) {

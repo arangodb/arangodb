@@ -413,9 +413,11 @@ TraversalBlock::getSome(size_t atMost) {
     size_t toSend = (std::min)(atMost, available);
 
     // TODO replace
+    // getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]
+    // with getNrOutputRegisters()
     RegisterId nrRegs =
         getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-    TRI_ASSERT(getNrOutputRegisters());
+    TRI_ASSERT(getNrOutputRegisters() == nrRegs);
 
     std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
     // automatically freed if we throw

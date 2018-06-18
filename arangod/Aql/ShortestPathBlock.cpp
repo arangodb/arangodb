@@ -277,6 +277,8 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ShortestPathBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
+  RegisterId const nrInRegs = getNrInputRegisters();
+  RegisterId const nrOutRegs = getNrOutputRegisters();
   while (true) {
     if (_done) {
       TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
@@ -304,8 +306,8 @@ ShortestPathBlock::getSome(size_t atMost) {
 
     // If we get here, we do have _buffer.front()
     AqlItemBlock* cur = _buffer.front();
-    size_t const curRegs = cur->getNrRegs();
-    TRI_ASSERT(curRegs == getNrInputRegisters());
+    TRI_ASSERT(cur != nullptr);
+    TRI_ASSERT(nrInRegs == cur->getNrRegs());
 
     // Collect the next path:
     if (_posInPath >= _pathLength) {
@@ -324,13 +326,9 @@ ShortestPathBlock::getSome(size_t atMost) {
     size_t available = _pathLength - _posInPath;
     size_t toSend = std::min(atMost, available);
 
-    // TODO replace
-    RegisterId nrRegs =
-      getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-    TRI_ASSERT(nrRegs == getNrOutputRegisters());
-    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
+    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrOutRegs));
     // automatically freed if we throw
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(nrInRegs <= nrOutRegs);
 
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
@@ -346,7 +344,7 @@ ShortestPathBlock::getSome(size_t atMost) {
       }
       if (j > 0) {
         // re-use already copied aqlvalues
-        res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
+        res->copyValuesFromFirstRow(j, nrInRegs);
       }
       ++_posInPath;
     }

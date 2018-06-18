@@ -200,8 +200,9 @@ class ExecutionBlock {
 
   /// @brief generic method to get or skip some
   /// Does neither do tracing (traceGetSomeBegin/~End), nor call
-  /// clearRegisters() - both is done in getSome(), which calls this (via
-  /// getSomeWithoutRegisterClearout()).
+  /// clearRegisters() - both is done in getSome(), which calls this via
+  /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
+  /// implementations.
   virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                           AqlItemBlock*& result, size_t& skipped);
 
