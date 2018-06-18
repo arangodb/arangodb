@@ -48,7 +48,7 @@ NS_BEGIN(arangodb)
 NS_BEGIN(tests)
 
 void init(bool withICU /*= false*/) {
-  arangodb::transaction::Methods::clearStateRegistrationCallbacks();
+  arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
 }
 
 bool assertRules(

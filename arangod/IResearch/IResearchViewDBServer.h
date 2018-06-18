@@ -30,15 +30,21 @@
 #include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
 class DatabasePathFeature; // forward declaration
 class TransactionState; // forward declaration
 
-NS_END // arangodb
+namespace transaction {
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+class Methods; // forward declaration
+
+} // transaction
+
+} // arangodb
+
+namespace arangodb {
+namespace iresearch {
 
 class PrimaryKeyIndexReader; // forward declaration
 
@@ -48,8 +54,9 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief apply any changes to 'state' required by this view
+  /// @return success
   ///////////////////////////////////////////////////////////////////////////////
-  void apply(arangodb::TransactionState& state);
+  bool apply(arangodb::transaction::Methods& trx);
 
   virtual arangodb::Result drop() override;
 
@@ -126,7 +133,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   );
 };
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif
