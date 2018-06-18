@@ -264,10 +264,12 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         LOG_DEVEL << ExecutionNode::getTypeString(parentType);
 
         Variable const* update = nullptr;
+        auto const& vec = mod->getVariablesUsedHere();
         if ( parentType != EN::REMOVE) {
-          auto const& vec = mod->getVariablesUsedHere();
-          TRI_ASSERT(vec.size() == 1);
           update = vec.front();
+          TRI_ASSERT(vec.size() == 2);
+        } else {
+          TRI_ASSERT(vec.size() == 1);
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(
@@ -345,6 +347,19 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
         continue;
       }
 
+      Variable const* update = nullptr;
+      Variable const* keyVar = nullptr;
+      auto const& vec = mod->getVariablesUsedHere();
+      if ( depType != EN::REMOVE) {
+        TRI_ASSERT(vec.size() == 2);
+        update = vec.front();
+        keyVar = vec.back();
+      } else {
+        TRI_ASSERT(vec.size() == 1);
+        keyVar = vec.front();
+      }
+
+      //get setter keyvar
       // FIXME
       //
       // find cacluation node
@@ -361,15 +376,8 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
       // FIXME - end
 
       if(!calc){
-        LOG_DEVEL << "calcualtion missing";
+        LOG_DEVEL << "calculation missing";
         continue;
-      }
-
-      Variable const* update = nullptr;
-      if ( depType != EN::REMOVE) {
-        auto const& vec = mod->getVariablesUsedHere();
-        TRI_ASSERT(vec.size() == 1);
-        update = vec.front();
       }
 
       ExecutionNode* singleOperationNode = plan->registerNode(
