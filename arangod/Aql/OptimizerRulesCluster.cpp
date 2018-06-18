@@ -405,8 +405,14 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                                                               std::unique_ptr<ExecutionPlan> plan,
                                                               OptimizerRule const* rule) {
 
-  bool modifiedExp = substituteClusterSingleDocumentOperationsKeyExpressions(opt, plan.get(), rule);
-  bool modifiedIndex = substituteClusterSingleDocumentOperationsIndex(opt, plan.get(), rule);
-  opt->addPlan(std::move(plan), rule, modifiedExp || modifiedIndex);
+  bool modified = false;
+  for(auto const& fun : { &substituteClusterSingleDocumentOperationsIndex
+                        , &substituteClusterSingleDocumentOperationsKeyExpressions
+                        }
+  ){
+    modified = fun(opt, plan.get(), rule);
+    if(modified){ break; }
+  }
 
+  opt->addPlan(std::move(plan), rule, modified);
 }
