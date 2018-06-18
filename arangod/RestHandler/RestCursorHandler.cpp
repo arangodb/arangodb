@@ -402,6 +402,11 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor
 ////////////////////////////////////////////////////////////////////////////////
+RestStatus RestCursorHandler::continueCreateQueryCursor() {
+  // TODO Implement me
+  TRI_ASSERT(false);
+  return RestStatus::DONE;
+}
 
 RestStatus RestCursorHandler::createQueryCursor(std::function<void()> const& continueHandler) {
   if (_request->payload().isEmptyObject()) {
@@ -442,6 +447,12 @@ RestStatus RestCursorHandler::createQueryCursor(std::function<void()> const& con
 /// @brief was docuBlock JSF_post_api_cursor_identifier
 ////////////////////////////////////////////////////////////////////////////////
 
+RestStatus RestCursorHandler::continueModifyQueryCursor() {
+  // TODO Implement me
+  TRI_ASSERT(false);
+  return RestStatus::DONE;
+}
+
 RestStatus RestCursorHandler::modifyQueryCursor(std::function<void()> const& continueHandler) {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -480,6 +491,12 @@ RestStatus RestCursorHandler::modifyQueryCursor(std::function<void()> const& con
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_post_api_cursor_delete
 ////////////////////////////////////////////////////////////////////////////////
+
+RestStatus RestCursorHandler::continueDeleteQueryCursor() {
+  // TODO Implement me
+  TRI_ASSERT(false);
+  return RestStatus::DONE;
+}
 
 RestStatus RestCursorHandler::deleteQueryCursor(std::function<void()> const& continueHandler) {
   std::vector<std::string> const& suffixes = _request->suffixes();

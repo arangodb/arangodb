@@ -47,8 +47,8 @@ struct QueryResultV8 : public QueryResult {
   explicit QueryResultV8(int code) : QueryResult(code, ""), result() {}
 
   void set(int c, std::string const& d) {
-    QueryResult::set(this, c, d);
-    result.clear();
+    QueryResult::set(c, d);
+    result.Clear();
   }
 
   v8::Handle<v8::Array> result;
