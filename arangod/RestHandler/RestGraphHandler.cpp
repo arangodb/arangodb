@@ -294,9 +294,9 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
     case RequestType::PUT:
       editEdgeDefinition(graph, edgeDefinitionName);
       return RestStatus::DONE;
-    //case RequestType::DELETE_REQ: TODO: missing
-    //  removeEdgeDefinition(graph, edgeDefinitionName);
-    //  return RestStatus::DONE;
+    case RequestType::DELETE_REQ:
+      removeEdgeDefinition(graph, edgeDefinitionName);
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -887,6 +887,8 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
     resultT = gops.createEdgeDefinition(body, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
     resultT = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
+  } else if (action == EdgeDefinitionAction::REMOVE) {
+    resultT = gops.removeEdgeDefinition(waitForSync, edgeDefinitionName);
   } else {
     TRI_ASSERT(false);
   }
@@ -927,7 +929,7 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
 
 Result RestGraphHandler::removeEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
                                                const std::string& edgeDefinitionName) {
-  return Result();
+  return modifyEdgeDefinition(graph, EdgeDefinitionAction::REMOVE, edgeDefinitionName);
 }
 
 // /_api/gharial/{graph-name}/vertex

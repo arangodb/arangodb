@@ -479,16 +479,96 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
   return result;
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
-    VPackSlice edgeDefinition, bool waitForSync, std::string edgeDefinitionName) {
+ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdgeDefinition(
+        bool waitForSync, std::string edgeDefinitionName) {
+
+  // check if edgeCollection is available
+  checkEdgeCollectionAvailabilty(edgeDefinitionName);
+
+  std::unordered_set<std::string> possibleOrphans;
+  std::unordered_set<std::string> usedVertexCollections;
+  std::unordered_map<std::string, EdgeDefinition> edgeDefs = _graph.edgeDefinitions();
+
+  VPackBuilder newEdgeDefs;
+  newEdgeDefs.add(VPackValue(VPackValueType::Array));
+
+  for (auto const& edgeDefinition : edgeDefs) {
+    if (edgeDefinition.second.getName() == edgeDefinitionName) {
+      for (auto const& from : edgeDefinition.second.getFrom()) {
+        possibleOrphans.emplace(from);
+      }
+      for (auto const& to : edgeDefinition.second.getTo()) {
+        possibleOrphans.emplace(to);
+      }
+    } else {
+      for (auto const& from : edgeDefinition.second.getFrom()) {
+        usedVertexCollections.emplace(from);
+      }
+      for (auto const& to : edgeDefinition.second.getTo()) {
+        usedVertexCollections.emplace(to);
+      }
+
+      // add still existing edgeDefinition to builder for update commit
+      newEdgeDefs.openObject();
+      newEdgeDefs.add("collection", VPackValue(edgeDefinition.second.getName()));
+      newEdgeDefs.add("from", VPackValue(VPackValueType::Array));
+      for (auto const& from : edgeDefinition.second.getFrom()) {
+        newEdgeDefs.add(VPackValue(from));
+      }
+      newEdgeDefs.close(); // array
+      newEdgeDefs.add("to", VPackValue(VPackValueType::Array));
+      for (auto const& to : edgeDefinition.second.getTo()) {
+        newEdgeDefs.add(VPackValue(to));
+      }
+      newEdgeDefs.close(); // array
+      newEdgeDefs.close(); // object
+    }
+  }
+
+  newEdgeDefs.close(); // array
+
+  // build orphan array
+  VPackBuilder newOrphColls;
+  newOrphColls.add(VPackValue(VPackValueType::Array));
+  for (auto const& orph : _graph.orphanCollections()) {
+    newOrphColls.add(VPackValue(orph));
+  }
+  for (auto const& po : possibleOrphans) {
+    if (std::find(usedVertexCollections.begin(), usedVertexCollections.end(), po) != usedVertexCollections.end()) {
+      newOrphColls.add(VPackValue(po));
+    }
+  }
+  newOrphColls.close(); // array
+
+  // remove edgeDefinition from graph config
+
   OperationOptions options;
   options.waitForSync = waitForSync;
 
-  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer = Graph::SortEdgeDefinition(edgeDefinition);
-  edgeDefinition = velocypack::Slice(buffer->data());
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
+  builder.add(_graph._attrEdgeDefs, newEdgeDefs.slice());
+  builder.add(_graph._attrOrphans, newOrphColls.slice());
+  builder.close();
 
-  // check if edgeCollection is available
-  std::string eC = edgeDefinition.get("collection").copyString();
+  SingleCollectionTransaction trx(ctx(), Graph::_graphs,
+                                  AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    return res;
+  }
+  OperationResult result = trx.update(Graph::_graphs, builder.slice(), options);
+  res = trx.finish(result.result);
+
+  return std::make_pair(std::move(result), std::move(res));
+}
+
+void GraphOperations::checkEdgeCollectionAvailabilty(std::string edgeDefinitionName) {
+  // std::string eC = edgeDefinition.get("collection").copyString(); // TODO: not needed anymore
   // ... in same graph
   bool found = false;
   for (auto const& edgeCollection : _graph.edgeCollections()) {
@@ -500,6 +580,16 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
   if (!found) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
   }
+}
+
+ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
+    VPackSlice edgeDefinition, bool waitForSync, std::string edgeDefinitionName) {
+
+  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer = Graph::SortEdgeDefinition(edgeDefinition);
+  edgeDefinition = velocypack::Slice(buffer->data());
+
+  // check if edgeCollection is available
+  checkEdgeCollectionAvailabilty(edgeDefinitionName);
 
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Array));
@@ -567,7 +657,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
   OperationResult result;
   if (graphs.get("graphs").isArray()) {
     for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-      result = changeEdgeDefinitionsForGraph(singleGraph.resolveExternals(), edgeDefinition, newCollections, possibleOrphans, waitForSync, _graph.name(), trx);
+      result = changeEdgeDefinitionsForGraph(singleGraph.resolveExternals(), edgeDefinition,
+              newCollections, possibleOrphans, waitForSync, _graph.name(), trx);
     }
   }
 

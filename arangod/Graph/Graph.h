@@ -292,20 +292,26 @@ class GraphOperations {
       VPackSlice document, bool waitForSync, bool returnNew);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create a new edge defition in an existing graph
+  /// @brief create a new edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   ResultT<std::pair<OperationResult, Result>> createEdgeDefinition(
       VPackSlice document, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create edge defition in an existing graph
+  /// @brief remove an edge definition in an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
+  ResultT <std::pair<OperationResult, Result>> removeEdgeDefinition(
+      bool waitForSync, std::string edgeDefinitionName);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   ResultT<std::pair<OperationResult, Result>> extendEdgeDefinition(
       VPackSlice edgeDefinition,
       bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create edge defition in an existing graph
+  /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   ResultT<std::pair<OperationResult, Result>> editEdgeDefinition(
       VPackSlice edgeDefinition, bool waitForSync, std::string edgeDefinitionName);
@@ -345,6 +351,7 @@ class GraphOperations {
       transaction::Methods* trx, const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
 
+    void checkEdgeCollectionAvailabilty(std::string edgeDefinitionName);
 };
 
 class GraphManager {
