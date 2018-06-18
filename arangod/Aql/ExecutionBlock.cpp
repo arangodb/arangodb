@@ -390,37 +390,6 @@ std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
   return {res.first, skipped};
 }
 
-// skip exactly atMost outputs
-void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
-  // TODO FIXME
-  size_t skipped = 0;
-  
-  while (true) {
-    auto res = skipSome(atMost);
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else { 
-      skipped = res.second;
-      break;
-    }
-  }
-
-  size_t nr = skipped;
-  while (nr != 0 && skipped < atMost) {
-    while (true) {
-      auto res = skipSome(atMost - skipped);
-      if (res.first == ExecutionState::WAITING) {
-        _engine->getQuery()->tempWaitForAsyncResponse();
-      } else { 
-        nr = res.second;
-        break;
-      }
-    }
-    skipped += nr;
-  }
-  numActuallySkipped = skipped;
-}
-
 ExecutionState ExecutionBlock::hasMoreState() {
   if (_done) {
     return ExecutionState::DONE;
@@ -452,9 +421,14 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
   while (!_done && _skipped < atMost) {
     if (_buffer.empty()) {
       if (skipping) {
-        size_t numActuallySkipped = 0;
-        // TODO test if calling skipSome() works - if so, delete skip.
-        _dependencies[0]->skip(atMost - _skipped, numActuallySkipped);
+        ExecutionState state;
+        size_t numActuallySkipped;
+        std::tie(state, numActuallySkipped) =
+            _dependencies[0]->skipSome(atMost);
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(numActuallySkipped == 0);
+          return {state, TRI_ERROR_NO_ERROR};
+        }
         _skipped += numActuallySkipped;
         break;
       } else {

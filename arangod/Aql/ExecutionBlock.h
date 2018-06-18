@@ -148,10 +148,6 @@ class ExecutionBlock {
   // TODO change the documentation of all hasMore implementations
   virtual ExecutionState hasMoreState();
   
-  // skip exactly atMost outputs
-  // TODO DELETE
-  void skip(size_t atMost, size_t& numActuallySkipped);
-  
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
   transaction::Methods* transaction() const { return _trx; }
