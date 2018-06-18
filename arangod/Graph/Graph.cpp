@@ -565,7 +565,9 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeEdgeDefinitio
   res = trx.finish(result.result);
 
   if (dropCollection) {
-    
+    // TODO: also drop collection if not used
+    // old gharial api is dropping without a check, docu says we need to check if other graphs are using
+    // the collection. what should we do?! 
   }
 
   return std::make_pair(std::move(result), std::move(res));
