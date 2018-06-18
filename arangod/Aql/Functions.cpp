@@ -6866,7 +6866,7 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query,
   if (ServerState::instance()->isCoordinator()) {
     std::shared_ptr<pregel::Conductor> c = feature->conductor(execNr);
     if (!c) {
-      ::registerWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
+      ::registerWarning(query, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
     }
     c->collectAQLResults(builder);
@@ -6874,7 +6874,7 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query,
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
     if (!worker) {
-      ::registerWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
+      ::registerWarning(query, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
     }
     worker->aqlResult(builder);

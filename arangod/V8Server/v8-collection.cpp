@@ -2075,7 +2075,7 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
   
   pregel::PregelFeature* feature = pregel::PregelFeature::instance();
   if (!feature) {
-    TRI_V8_THROW_EXCEPTION_USAGE("pregel is not enabled");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
 
   uint64_t executionNum = TRI_ObjectToUInt64(args[0], true);
