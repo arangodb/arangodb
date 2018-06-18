@@ -63,6 +63,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
+// in plan below
 ExecutionNode* hasSingleParent(ExecutionNode* in){
   auto parents = in->getParents();
   if(parents.size() == 1){
@@ -87,6 +88,37 @@ ExecutionNode* hasSingleParent(ExecutionNode* in, std::vector<EN::NodeType> type
     for(auto const& type : types){
       if(parent->getType() == type){
         return parent;
+      }
+    }
+  }
+  return nullptr;
+}
+
+// in plan above
+ExecutionNode* hasSingleDep(ExecutionNode* in){
+  auto deps = in->getDependencies();
+  if(deps.size() == 1){
+    return deps.front();
+  }
+  return nullptr;
+}
+
+ExecutionNode* hasSingleDep(ExecutionNode* in, EN::NodeType type){
+  auto* dep = hasSingleDep(in);
+  if(dep) {
+    if(dep->getType() == type){
+      return dep;
+    }
+  }
+  return nullptr;
+}
+
+ExecutionNode* hasSingleDep(ExecutionNode* in, std::vector<EN::NodeType> types){
+  auto* dep = hasSingleDep(in);
+  if(dep) {
+    for(auto const& type : types){
+      if(dep->getType() == type){
+        return dep;
       }
     }
   }
@@ -191,18 +223,16 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
 }
 
 // TODO create a rule that works without index / enumeration
-
-void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
-                                                              std::unique_ptr<ExecutionPlan> plan,
-                                                              OptimizerRule const* rule) {
+bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
+                                                                   ExecutionPlan* plan,
+                                                                   OptimizerRule const* rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::INDEX, true);
 
   if(nodes.size() != 1){ //more than one index - we replace simple expressions only
-    opt->addPlan(std::move(plan), rule, modified);
-    return;
+    return modified;
   }
 
   for(auto* node : nodes){
@@ -242,9 +272,9 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
 
         ExecutionNode* singleOperationNode = plan->registerNode(
           new SingleRemoteOperationNode(
-            plan.get(), plan->nextId(),
+            plan, plan->nextId(),
             parentType,
-            key, indexNode->collection(),
+            key, mod->collection(),
             mod->getOptions(),
             update,
             nullptr,
@@ -253,7 +283,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
           )
         );
 
-        replaceNode(plan.get(), mod, singleOperationNode);
+        replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
         modified = true;
       } else if(parentSelect){
@@ -261,11 +291,11 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
         LOG_DEVEL << "key: " << key;
 
         ExecutionNode* singleOperationNode = plan->registerNode(
-            new SingleRemoteOperationNode(plan.get(), plan->nextId()
+            new SingleRemoteOperationNode(plan, plan->nextId()
                                          ,EN::INDEX, key, indexNode->collection(), ModificationOptions{}
                                          , nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
-        replaceNode(plan.get(), indexNode, singleOperationNode);
+        replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
 
       } else {
@@ -275,5 +305,97 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
       //LOG_DEVEL << "is not primary or has more indexes";
     }
   }
-  opt->addPlan(std::move(plan), rule, modified);
+  return modified;
+}
+
+bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
+                                                             ExecutionPlan* plan,
+                                                             OptimizerRule const* rule) {
+  bool modified = false;
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::RETURN, true);
+
+  if(nodes.size() != 1){ //more than one RETRUN node - we replace simple expressions only
+    return modified;
+  }
+
+  for(auto* node : nodes){
+
+    LOG_DEVEL << "";
+    LOG_DEVEL << "substitute single document operation";
+
+
+    auto* depModification = hasSingleDep(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::UPSERT, EN::REPLACE});
+
+    if (depModification){
+      LOG_DEVEL << "optimize modification node";
+      auto mod = static_cast<ModificationNode*>(depModification);
+      auto depType = depModification->getType();
+      LOG_DEVEL << ExecutionNode::getTypeString(depType);
+
+
+      if(!depIsSingletonOrConstCalc(depModification)){
+        LOG_DEVEL << "optimization too complex";
+        continue;
+      }
+
+      // FIXME
+      //
+      // find cacluation node
+      // get key
+
+      //if(calc->getVariablesUsedHere().size() != 0){
+      //  continue;
+      //}
+      //AstNode const* expr = calc->expression()->node();
+      //expr->dump(0);
+      CalculationNode* calc = nullptr;
+      std::string key = "";
+
+      // FIXME - end
+
+      if(!calc){
+        continue;
+      }
+
+      Variable const* update = nullptr;
+      if ( depType != EN::REMOVE) {
+        auto const& vec = mod->getVariablesUsedHere();
+        TRI_ASSERT(vec.size() == 1);
+        update = vec.front();
+      }
+
+      ExecutionNode* singleOperationNode = plan->registerNode(
+        new SingleRemoteOperationNode(
+          plan, plan->nextId(),
+          depType,
+          key, mod->collection(),
+          mod->getOptions(),
+          update,
+          nullptr,
+          mod->getOutVariableOld(),
+          mod->getOutVariableNew()
+        )
+      );
+
+      replaceNode(plan, mod, singleOperationNode);
+      plan->unlinkNode(calc);
+      modified = true;
+    } else {
+        LOG_DEVEL << "plan is too complex";
+    }
+  } // for node : nodes
+
+  return modified;
+}
+
+void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
+                                                              std::unique_ptr<ExecutionPlan> plan,
+                                                              OptimizerRule const* rule) {
+
+  bool modifiedExp = substituteClusterSingleDocumentOperationsKeyExpressions(opt, plan.get(), rule);
+  bool modifiedIndex = substituteClusterSingleDocumentOperationsIndex(opt, plan.get(), rule);
+  opt->addPlan(std::move(plan), rule, modifiedExp || modifiedIndex);
+
 }
