@@ -913,7 +913,7 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   // add function invalidate (+ return)
   // return new graph config
   //std::string graphName = graph->name();
-  // TODO: REFACTOR THIS !!
+  // TODO: REFACTOR THIS START !!
   std::shared_ptr<transaction::StandaloneContext> ctxx =
       transaction::StandaloneContext::Create(_vocbase);
 
@@ -923,7 +923,7 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
 
   VPackBuilder builder;
   gopss.readGraph(builder);
-  // TODO: REFACTOR THIS !!
+  // TODO: REFACTOR THIS END !!
 
   generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
 
