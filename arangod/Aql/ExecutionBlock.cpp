@@ -47,17 +47,17 @@ namespace {
   }
 }
 
-ExecutionBlock::ExecutionBlock(
-    ExecutionEngine* engine,
-    ExecutionNode const* ep)
-  : _engine(engine),
-    _trx(engine->getQuery()->trx()),
-    _exeNode(ep),
-    _pos(0),
-    _done(false),
-    _profile(engine->getQuery()->queryOptions().profile),
-    _getSomeBegin(0),
-    _upstreamState(ExecutionState::HASMORE) {
+ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
+    : _engine(engine),
+      _trx(engine->getQuery()->trx()),
+      _exeNode(ep),
+      _pos(0),
+      _done(false),
+      _profile(engine->getQuery()->queryOptions().profile),
+      _getSomeBegin(0),
+      _upstreamState(ExecutionState::HASMORE),
+      _skipped(0),
+      _collector(&engine->_itemBlockManager) {
   TRI_ASSERT(_trx != nullptr);
 }
 
@@ -293,29 +293,6 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
   DEBUG_END_BLOCK();
 }
 
-// TODO DEPRECATED DELETE!
-bool ExecutionBlock::getBlockOld(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
-  throwIfKilled();  // check if we were aborted
-
-  while (true) {
-    auto res = _dependencies[0]->getSome(atMost);
-    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else {
-      if (res.second != nullptr) {
-        _buffer.emplace_back(res.second.release());
-        return true;
-      }
-      return false;
-    }
-  }
-  DEBUG_END_BLOCK();
-}
-
 /// @brief the following is internal to pull one more block and append it to
 /// our _buffer deque. Returns true if a new block was appended and false if
 /// the dependent node is exhausted.
@@ -335,7 +312,8 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   _upstreamState = res.first;
 
   if (res.second != nullptr) {
-    _buffer.emplace_back(res.second.release());
+    _buffer.emplace_back(res.second.get());
+    res.second.release();
     return {res.first, true};
   }
 
@@ -362,19 +340,17 @@ AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
   size_t skipped = 0;
 
   AqlItemBlock* result = nullptr;
-  int out = TRI_ERROR_INTERNAL;
   while (true) {
+    TRI_ASSERT(result == nullptr);
     auto res = getOrSkipSome(atMost, false, result, skipped);
     if (res.first == ExecutionState::WAITING) {
       _engine->getQuery()->tempWaitForAsyncResponse();
-    } else { 
-      out = res.second.errorNumber();
+    } else {
+      if (res.second.fail()) {
+        THROW_ARANGO_EXCEPTION(res.second);
+      }
       break;
     }
-  }
-
-  if (out != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(out);
   }
 
   return result;
@@ -439,58 +415,53 @@ void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
   numActuallySkipped = skipped;
 }
 
-bool ExecutionBlock::hasMore() {
+ExecutionState ExecutionBlock::hasMoreState() {
   if (_done) {
-    return false;
+    return ExecutionState::DONE;
   }
   if (!_buffer.empty()) {
-    return true;
+    return ExecutionState::HASMORE;
   }
-  if (getBlockOld(DefaultBatchSize())) {
+  ExecutionState state;
+  bool blockAppended;
+  std::tie(state, blockAppended) = getBlock(DefaultBatchSize());
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!blockAppended);
+    return ExecutionState::WAITING;
+  }
+  if (blockAppended) {
     _pos = 0;
-    return true;
+    return ExecutionState::HASMORE;
   }
   _done = true;
-  return false;
+  return ExecutionState::DONE;
 }
 
-std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
-                                                                          AqlItemBlock*& result, size_t& skipped) {
-  TRI_ASSERT(result == nullptr && skipped == 0);
-  int errCode = getOrSkipSomeOld(atMost, skipping, result, skipped);
-  if (skipping && skipped == 0) {
-    return {ExecutionState::DONE, errCode};
-  }
-  if (!skipping && result == nullptr) {
-    return {ExecutionState::DONE, errCode};
-  }
-  if (_done) {
-    return {ExecutionState::DONE, errCode};
-  }
-  return {ExecutionState::HASMORE, errCode};
-}
-
-int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
-                                     AqlItemBlock*& result, size_t& skipped) {
-  DEBUG_BEGIN_BLOCK();
-  TRI_ASSERT(result == nullptr && skipped == 0);
-
-  if (_done) {
-    return TRI_ERROR_NO_ERROR;
-  }
+std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
+    size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped_) {
+  TRI_ASSERT(result == nullptr && skipped_ == 0);
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
-  BlockCollector collector(&_engine->_itemBlockManager);
 
-  while (skipped < atMost) {
+  while (!_done && _skipped < atMost) {
     if (_buffer.empty()) {
       if (skipping) {
         size_t numActuallySkipped = 0;
-        _dependencies[0]->skip(atMost - skipped, numActuallySkipped);
-        skipped += numActuallySkipped;
-        return TRI_ERROR_NO_ERROR;
+        _dependencies[0]->skip(atMost - _skipped, numActuallySkipped);
+        _skipped += numActuallySkipped;
+        break;
       } else {
-        if (!getBlockOld(atMost - skipped)) {
+        ExecutionState state;
+        bool blockAppended;
+        std::tie(state, blockAppended) = getBlock(atMost - _skipped);
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(!blockAppended);
+          TRI_ASSERT(result == nullptr);
+          TRI_ASSERT(skipped_ == 0);
+          return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+        }
+
+        if (!blockAppended) {
           _done = true;
           break;  // must still put things in the result from the collector .
                   // . .
@@ -501,20 +472,20 @@ int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
 
     AqlItemBlock* cur = _buffer.front();
 
-    if (cur->size() - _pos > atMost - skipped) {
+    if (cur->size() - _pos > atMost - _skipped) {
       // The current block is too large for atMost:
       if (!skipping) {
         std::unique_ptr<AqlItemBlock> more(
-            cur->slice(_pos, _pos + (atMost - skipped)));
+            cur->slice(_pos, _pos + (atMost - _skipped)));
 
         TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        collector.add(std::move(more));
+        _collector.add(std::move(more));
       }
-      _pos += atMost - skipped;
-      skipped = atMost;
+      _pos += atMost - _skipped;
+      _skipped = atMost;
     } else if (_pos > 0) {
       // The current block fits into our result, but it is already
       // half-eaten:
@@ -525,22 +496,22 @@ int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        collector.add(std::move(more));
+        _collector.add(std::move(more));
       }
-      skipped += cur->size() - _pos;
+      _skipped += cur->size() - _pos;
       returnBlock(cur);
       _buffer.pop_front();
       _pos = 0;
     } else {
       // The current block fits into our result and is fresh:
-      skipped += cur->size();
+      _skipped += cur->size();
       if (!skipping) {
         // if any of the following statements throw, then cur is not lost,
         // as it is still contained in _buffer
         TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
-        collector.add(cur);
+        _collector.add(cur);
       } else {
         returnBlock(cur);
       }
@@ -550,13 +521,23 @@ int ExecutionBlock::getOrSkipSomeOld(size_t atMost, bool skipping,
   }
 
   TRI_ASSERT(result == nullptr);
-
+  
   if (!skipping) {
-    result = collector.steal();
+    result = _collector.steal();
   }
+  skipped_ = _skipped;
+  _skipped = 0;
 
-  return TRI_ERROR_NO_ERROR;
-  DEBUG_END_BLOCK();
+  if (skipping && skipped_ == 0) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  if (!skipping && result == nullptr) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  if (_done) {
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {

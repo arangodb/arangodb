@@ -43,7 +43,7 @@
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
+#include "Transaction/SmartContext.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
@@ -224,12 +224,15 @@ void RestAqlHandler::setupClusterQuery() {
   if (found) {
     ttl = arangodb::basics::StringUtils::doubleDecimal(ttlstring);
   }
+  
+  // creates a StandaloneContext or a leasing context
+  auto ctx = transaction::SmartContext::Create(_vocbase);
 
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
   bool needToLock = true;
   bool res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                              options, ttl, needToLock, answerBuilder);
+                              options, ctx, ttl, needToLock, answerBuilder);
   if (!res) {
     // TODO we need to trigger cleanup here??
     // Registering the snippets failed.
@@ -237,8 +240,7 @@ void RestAqlHandler::setupClusterQuery() {
   }
 
   if (!traverserSlice.isNone()) {
-
-    res = registerTraverserEngines(traverserSlice, needToLock, ttl, answerBuilder);
+    res = registerTraverserEngines(traverserSlice, ctx, ttl, needToLock, answerBuilder);
 
     if (!res) {
       // TODO we need to trigger cleanup here??
@@ -257,6 +259,7 @@ bool RestAqlHandler::registerSnippets(
     VPackSlice const collectionSlice,
     VPackSlice const variablesSlice,
     std::shared_ptr<VPackBuilder> options,
+    std::shared_ptr<transaction::Context> const& ctx,
     double const ttl,
     bool& needToLock,
     VPackBuilder& answerBuilder
@@ -291,6 +294,9 @@ bool RestAqlHandler::registerSnippets(
       options,
       (needToLock ? PART_MAIN : PART_DEPENDENT)
     );
+    
+    // enables the query to get the correct transaction
+    query->setTransactionContext(ctx);
 
     bool prepared = false;
     try {
@@ -362,7 +368,9 @@ bool RestAqlHandler::registerSnippets(
   return true;
 }
 
-bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines, bool& needToLock, double ttl, VPackBuilder& answerBuilder) {
+bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
+                                              std::shared_ptr<transaction::Context> const& ctx,
+                                              double ttl, bool& needToLock, VPackBuilder& answerBuilder) {
   TRI_ASSERT(traverserEngines.isArray());
 
   TRI_ASSERT(answerBuilder.isOpenObject());
@@ -371,7 +379,7 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 
   for (auto const& te : VPackArrayIterator(traverserEngines)) {
     try {
-      auto id = _traverserRegistry->createNew(_vocbase, te, needToLock, ttl);
+      auto id = _traverserRegistry->createNew(_vocbase, ctx, te, ttl, needToLock);
 
       needToLock = false;
       TRI_ASSERT(id != 0);
@@ -575,10 +583,18 @@ void RestAqlHandler::useQuery(std::string const& operation,
 // GET method for /_api/aql/<operation>/<queryId>, (internal)
 // this is using
 // the part of the cursor API without side effects. The operation must
-// be "hasMore". The result is a Json
+// be "hasMore" or "hasMoreState". "hasMore" is a synchronous operation and
+// only for backwards compatibility; new client code should only use
+// "hasMoreState".
+//
+// The result is a Json
 // with, depending on the operation, the following attributes:
-//   for "hasMore": the result has the attributes "error" (set to false)
-//                  and "hasMore" set to a boolean value.
+//   for "hasMore":
+//     the result has the attributes "error" (set to false)
+//     and "hasMore" set to a boolean value.
+//   for "hasMoreState":
+//     the result has the attributes "error" (set to false)
+//     and "hasMoreState" set to a string "DONE", "HASMORE" or "WAITING".
 void RestAqlHandler::getInfoQuery(std::string const& operation,
                                   std::string const& idString) {
   bool found;
@@ -595,12 +611,43 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
   try {
     VPackObjectBuilder guard(&answerBody);
 
-    if (operation == "hasMore") {
+    if (operation == "hasMoreState") {
+      // asynchronous API
+      ExecutionState hasMoreState;
+      if (shardId.empty()) {
+        hasMoreState = query->engine()->hasMoreState();
+      } else {
+        auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
+        if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
+            block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+            "unexpected node type");
+        }
+        hasMoreState = block->getHasMoreStateForShard(shardId);
+      }
+      switch (hasMoreState) {
+        case ExecutionState::DONE:
+          answerBody.add("hasMoreState", VPackValue("DONE"));
+          break;
+        case ExecutionState::HASMORE:
+          answerBody.add("hasMoreState", VPackValue("HASMORE"));
+          break;
+        case ExecutionState::WAITING:
+          answerBody.add("hasMoreState", VPackValue("WAITING"));
+          break;
+      }
+    } else if (operation == "hasMore") {
+      LOG_TOPIC(WARN, arangodb::Logger::AQL)
+          << "Deprecated blocking route 'hasMore' used in AQL. This should "
+             "only happen during a rolling upgrade (from <3.4 to ~3.4). "
+             "Otherwise, please report this error.";
+
+      // backwards compatible synchronous API
       bool hasMore;
       if (shardId.empty()) {
-        hasMore = query->engine()->hasMore();
+        hasMore = query->engine()->hasMoreSync();
       } else {
-        auto block = static_cast<BlockWithClients*>(query->engine()->root());
+        auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
         if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
             block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -617,7 +664,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
       return;
     }
 
-    answerBody.add("error", VPackValue(false));
+    answerBody.add(StaticStrings::Error, VPackValue(false));
   } catch (arangodb::basics::Exception const& ex) {
     _queryRegistry->close(&_vocbase, _qId);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: " << ex.message();
@@ -813,7 +860,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             }
           }
         } else {
-          auto block = static_cast<BlockWithClients*>(query->engine()->root());
+          auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
               block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -833,7 +880,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         }
         if (items.get() == nullptr) {
           answerBuilder.add("exhausted", VPackValue(true));
-          answerBuilder.add("error", VPackValue(false));
+          answerBuilder.add(StaticStrings::Error, VPackValue(false));
         } else {
           items->toVelocyPack(query->trx(), answerBuilder);
         }
@@ -853,8 +900,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             }
           }
         } else {
-          auto block =
-              static_cast<BlockWithClients*>(query->engine()->root());
+          auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
               block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -874,7 +920,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
         }
         answerBuilder.add("skipped", VPackValue(skipped));
-        answerBuilder.add("error", VPackValue(false));
+        answerBuilder.add(StaticStrings::Error, VPackValue(false));
       } else if (operation == "initialize") {
         // this is a no-op now
         answerBuilder.add(StaticStrings::Error, VPackValue(false));
@@ -887,7 +933,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
           while (true) {
             // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
+            auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
             if (tmpRes.first == ExecutionState::WAITING) {
               query->tempWaitForAsyncResponse();
             } else {
@@ -895,13 +941,12 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
               break;
             }
           }
- 
         } else {
           items.reset(new AqlItemBlock(query->resourceMonitor(),
                                        querySlice.get("items")));
           while (true) {
             // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
+            auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
             if (tmpRes.first == ExecutionState::WAITING) {
               query->tempWaitForAsyncResponse();
             } else {
@@ -944,7 +989,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
   } catch (std::exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, "unknown exception caught in handleUsequery");
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, "unknown exception caught in handleUseQuery");
   }
 }
 

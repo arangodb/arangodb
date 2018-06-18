@@ -42,7 +42,8 @@
 #include "Cluster/ServerState.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
+#include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -354,23 +355,6 @@ std::pair<ExecutionState, Result> ScatterBlock::initializeCursor(
   DEBUG_END_BLOCK();
 }
 
-/// @brief shutdown
-int ScatterBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  int res = BlockWithClients::shutdown(errorCode);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // local clean up
-  _posForClient.clear();
-
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 ExecutionState ScatterBlock::getHasMoreStateForClientId(size_t clientId) {
   if (hasMoreForClientId(clientId)) {
     return ExecutionState::HASMORE;
@@ -407,6 +391,11 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
+}
+
+ExecutionState ScatterBlock::getHasMoreStateForShard(
+    std::string const& shardId) {
+  return getHasMoreStateForClientId(getClientId(shardId));
 }
 
 /// @brief getOrSkipSomeForShard
@@ -540,23 +529,6 @@ std::pair<ExecutionState, Result> DistributeBlock::initializeCursor(
   DEBUG_END_BLOCK();
 }
 
-/// @brief shutdown
-int DistributeBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  int res = BlockWithClients::shutdown(errorCode);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  // local clean up
-  _distBuffer.clear();
-
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 ExecutionState DistributeBlock::getHasMoreStateForClientId(size_t clientId) {
   if (hasMoreForClientId(clientId)) {
     return ExecutionState::HASMORE;
@@ -587,6 +559,11 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
+}
+
+ExecutionState DistributeBlock::getHasMoreStateForShard(
+    std::string const& shardId) {
+  return getHasMoreStateForClientId(getClientId(shardId));
 }
 
 /// @brief getOrSkipSomeForShard
@@ -843,9 +820,8 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
 /// @brief create a new document key, argument is unused here
 #ifndef USE_ENTERPRISE
 std::string DistributeBlock::createKey(VPackSlice) const {
-  ClusterInfo* ci = ClusterInfo::instance();
-  uint64_t uid = ci->uniqid();
-  return std::to_string(uid);
+  auto collInfo = _collection->getCollection();
+  return collInfo->keyGenerator()->generate();
 }
 #endif
 
@@ -1156,7 +1132,6 @@ bool RemoteBlock::handleAsyncResult(ClusterCommResult* result) {
 int RemoteBlock::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
 
-
   /* We need to handle this here in ASYNC case
     if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
       // this error may happen on shutdown and is thus tolerated
@@ -1328,11 +1303,11 @@ std::pair<ExecutionState, size_t> RemoteBlock::skipSome(size_t atMost) {
 }
 
 /// @brief hasMore
-bool RemoteBlock::hasMore() {
+ExecutionState RemoteBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
-  std::unique_ptr<ClusterCommResult> res =
-      sendRequest(rest::RequestType::GET, "/_api/aql/hasMore/", std::string());
+  std::unique_ptr<ClusterCommResult> res = sendRequest(
+      rest::RequestType::GET, "/_api/aql/hasMoreState/", std::string());
   throwExceptionAfterBadSyncRequest(res.get(), false);
 
   // If we get here, then res->result is the response which will be
@@ -1345,11 +1320,24 @@ bool RemoteBlock::hasMore() {
   if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  bool hasMore = true;
-  if (slice.hasKey("hasMore")) {
-    hasMore = slice.get("hasMore").getBoolean();
+
+  if (!slice.hasKey("hasMoreState") || !slice.get("hasMoreState").isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
-  return hasMore;
+  std::string hasMoreStateString = slice.get("hasMoreState").copyString();
+
+  ExecutionState hasMoreState;
+  if (hasMoreStateString == "HASMORE") {
+    hasMoreState = ExecutionState::HASMORE;
+  } else if (hasMoreStateString == "DONE") {
+    hasMoreState = ExecutionState::DONE;
+  } else if (hasMoreStateString == "WAITING") {
+    hasMoreState = ExecutionState::WAITING;
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
+  }
+
+  return hasMoreState;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1358,26 +1346,6 @@ bool RemoteBlock::hasMore() {
 // -----------------------------------------------------------------------------
 // -- SECTION --                                            UnsortingGatherBlock
 // -----------------------------------------------------------------------------
-
-/// @brief shutdown: need our own method since our _buffer is different
-int UnsortingGatherBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  // don't call default shutdown method since it does the wrong thing to
-  // _gatherBlockBuffer
-  int ret = TRI_ERROR_NO_ERROR;
-  for (auto* dependency : _dependencies) {
-    int res = dependency->shutdown(errorCode);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      ret = res;
-    }
-  }
-
-  return ret;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
 
 /// @brief initializeCursor
 std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -1398,21 +1366,26 @@ std::pair<ExecutionState, arangodb::Result> UnsortingGatherBlock::initializeCurs
 }
 
 /// @brief hasMore: true if any position of _buffer hasMore and false
-/// otherwise.
-bool UnsortingGatherBlock::hasMore() {
+/// otherwise. TODO update this docu
+ExecutionState UnsortingGatherBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   if (_done || _dependencies.empty()) {
-    return false;
+    return ExecutionState::DONE;
   }
 
   for (auto* dependency : _dependencies) {
-    if (dependency->hasMore()) {
-      return true;
+    ExecutionState depState = dependency->hasMoreState();
+    switch (depState) {
+      case ExecutionState::WAITING:
+      case ExecutionState::HASMORE:
+        return depState;
+      case ExecutionState::DONE:
+        break;
     }
   }
 
   _done = true;
-  return false;
+  return ExecutionState::DONE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1524,39 +1497,6 @@ SortingGatherBlock::SortingGatherBlock(
   );
 }
 
-/// @brief shutdown: need our own method since our _buffer is different
-int SortingGatherBlock::shutdown(int errorCode) {
-  DEBUG_BEGIN_BLOCK();
-  // don't call default shutdown method since it does the wrong thing to
-  // _gatherBlockBuffer
-  int ret = TRI_ERROR_NO_ERROR;
-  for (auto it = _dependencies.begin(); it != _dependencies.end(); ++it) {
-    int res = (*it)->shutdown(errorCode);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      ret = res;
-    }
-  }
-
-  if (ret != TRI_ERROR_NO_ERROR) {
-    return ret;
-  }
-
-  for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
-    for (AqlItemBlock* y : x) {
-      delete y;
-    }
-    x.clear();
-  }
-  _gatherBlockBuffer.clear();
-  _gatherBlockPos.clear();
-
-  return TRI_ERROR_NO_ERROR;
-
-  // cppcheck-suppress style
-  DEBUG_END_BLOCK();
-}
-
 /// @brief initializeCursor
 std::pair<ExecutionState, arangodb::Result>
 SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -1594,36 +1534,33 @@ SortingGatherBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
 /// @brief hasMore: true if any position of _buffer hasMore and false
 /// otherwise.
-bool SortingGatherBlock::hasMore() {
+ExecutionState SortingGatherBlock::hasMoreState() {
   DEBUG_BEGIN_BLOCK();
   if (_done || _dependencies.empty()) {
-    return false;
+    return ExecutionState::DONE;
   }
 
   for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
     if (!_gatherBlockBuffer[i].empty()) {
-      return true;
-    } else {
-      while (true) {
-        // We want to get rid of HASMORE in total
-        auto res = getBlock(i, DefaultBatchSize());
-        if (res.first == ExecutionState::WAITING) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are actively blocking a thread, needs to be fixed";
-          _engine->getQuery()->tempWaitForAsyncResponse();
-        } else {
-          if (res.second) {
-            _gatherBlockPos[i] = std::make_pair(i, 0);
-            return true;
-          }
-          // Leave WHILE continue in FOR
-          break;
-        }
-      }
+      return ExecutionState::HASMORE;
+    }
+
+    // We want to get rid of HASMORE in total
+    ExecutionState state;
+    bool blockAppended;
+    std::tie(state, blockAppended) = getBlock(i, DefaultBatchSize());
+    if (state == ExecutionState::WAITING) {
+      TRI_ASSERT(!blockAppended);
+      return ExecutionState::WAITING;
+    }
+    if (blockAppended) {
+      _gatherBlockPos[i] = std::make_pair(i, 0);
+      return ExecutionState::HASMORE;
     }
   }
 
   _done = true;
-  return false;
+  return ExecutionState::DONE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

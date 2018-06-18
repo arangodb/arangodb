@@ -29,12 +29,11 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb::aql;
 
 /// @brief create the generator
 VariableGenerator::VariableGenerator() 
-    : _variables(), _id(0) {
+    : _id(0) {
   _variables.reserve(8);
 }
   
@@ -95,7 +94,13 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
   TRI_ASSERT(original != nullptr);
   std::unique_ptr<Variable> variable(original->clone());
 
-  _variables.emplace(variable->id, variable.get());
+  // check if insertion into the table actually works.
+  auto inserted = _variables.emplace(variable->id, variable.get()).second;
+  if (!inserted) {
+    // variable was already present. this is unexpected...
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cloned AQL variable already present");
+  }
+  // variable was inserted, return the clone
   return variable.release();
 }
 

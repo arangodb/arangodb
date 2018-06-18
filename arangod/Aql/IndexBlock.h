@@ -48,13 +48,11 @@ class ExecutionEngine;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {
-  Expression* expression;
+  std::unique_ptr<Expression> expression;
   std::vector<size_t> const indexPath;
 
-  NonConstExpression(Expression* exp, std::vector<size_t>&& idxPath)
-    : expression(exp), indexPath(std::move(idxPath)){}
-
-  ~NonConstExpression() { delete expression; }
+  NonConstExpression(std::unique_ptr<Expression> exp, std::vector<size_t>&& idxPath)
+    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}
 };
 
 class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
@@ -113,7 +111,7 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
 
   /// @brief _nonConstExpressions, list of all non const expressions, mapped
   /// by their _condition node path indexes
-  std::vector<NonConstExpression*> _nonConstExpressions;
+  std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpressions;
 
   /// @brief _inVars, a vector containing for each expression above
   /// a vector of Variable*, used to execute the expression

@@ -77,7 +77,7 @@ class BlockWithClients : public ExecutionBlock {
   }
 
   /// @brief hasMore
-  bool hasMore() override final {
+  ExecutionState hasMoreState() override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -92,6 +92,8 @@ class BlockWithClients : public ExecutionBlock {
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   virtual bool hasMoreForShard(std::string const& shardId) = 0;
+
+  virtual ExecutionState getHasMoreStateForShard(std::string const& shardId) = 0;
 
  protected:
   /// @brief getOrSkipSomeForShard
@@ -134,9 +136,6 @@ class ScatterBlock : public BlockWithClients {
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-  /// @brief shutdown
-  int shutdown(int) override;
-
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
 
@@ -147,6 +146,8 @@ class ScatterBlock : public BlockWithClients {
 
   /// @brief hasMoreForClientId: any more for client <cliendId>?
   bool hasMoreForClientId(size_t clientId) override;
+
+  ExecutionState getHasMoreStateForShard(const std::string &shardId) override;
 
   /// @brief getOrSkipSomeForShard
   std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
@@ -165,9 +166,6 @@ class DistributeBlock : public BlockWithClients {
 
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
-
-  /// @brief shutdown
-  int shutdown(int) override;
 
   /// @brief hasMoreForShard: any more for shard <shardId>?
   bool hasMoreForShard(std::string const& shardId) override;
@@ -188,6 +186,8 @@ class DistributeBlock : public BlockWithClients {
   /// @brief getBlockForClient: try to get at atMost pairs into
   /// _distBuffer.at(clientId).
   std::pair<ExecutionState, bool> getBlockForClient(size_t atMost, size_t clientId);
+  
+  ExecutionState getHasMoreStateForShard(const std::string &shardId) override;
 
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
@@ -251,7 +251,7 @@ class RemoteBlock final : public ExecutionBlock {
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
   /// @brief hasMore
-  bool hasMore() override final;
+  ExecutionState hasMoreState() override final;
 
   /// @brief handleAsyncResult
   bool handleAsyncResult(ClusterCommResult* result) override; 
@@ -312,15 +312,12 @@ class UnsortingGatherBlock final : public ExecutionBlock {
     TRI_ASSERT(en.elements().empty());
   }
 
-  /// @brief shutdown: need our own method since our _buffer is different
-  int shutdown(int errorCode) override final;
-
   /// @brief initializeCursor
   std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
-  bool hasMore() override final;
+  ExecutionState hasMoreState() override final;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
@@ -366,15 +363,12 @@ class SortingGatherBlock final : public ExecutionBlock {
     GatherNode const& en
   );
 
-  /// @brief shutdown: need our own method since our _buffer is different
-  int shutdown(int errorCode) override final;
-
   /// @brief initializeCursor
   std::pair<ExecutionState, arangodb::Result> initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
   /// @brief hasMore: true if any position of _buffer hasMore and false
   /// otherwise.
-  bool hasMore() override final;
+  ExecutionState hasMoreState() override final;
 
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(

@@ -98,39 +98,56 @@ class MMFilesEngine final : public StorageEngine {
 
   bool useRawDocumentPointers() override { return true; }
 
-  velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
-                                                         int& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(
+    TRI_vocbase_t& vocbase,
+    int& status
+  ) override;
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;
-  int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
+  int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
   int removeReplicationApplierConfiguration() override;
-  int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
-                                          arangodb::velocypack::Slice slice,
-                                          bool doSync) override;
+  int saveReplicationApplierConfiguration(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice slice,
+    bool doSync
+  ) override;
   int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
                                           bool doSync) override;
-  Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
-                        arangodb::LogicalCollection* col,
-                        std::string const& keysId) override;
+  Result handleSyncKeys(
+    DatabaseInitialSyncer& syncer,
+    LogicalCollection& col,
+    std::string const& keysId
+  ) override;
 
   Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) override;
   Result createTickRanges(VPackBuilder& builder) override;
   Result firstTick(uint64_t& tick) override;
-  Result lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context>, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) override;
+  Result lastLogger(
+    TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> transactionContext,
+    uint64_t tickStart,
+    uint64_t tickEnd,
+    std::shared_ptr<VPackBuilder>& builderSPtr
+  ) override;
   WalAccess const* walAccess() const override;
 
-  TransactionManager* createTransactionManager() override;
-  transaction::ContextData* createTransactionContextData() override;
+  std::unique_ptr<TransactionManager> createTransactionManager() override;
+  std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
   std::unique_ptr<TransactionState> createTransactionState(
-    CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     transaction::Options const& options
   ) override;
-  TransactionCollection* createTransactionCollection(
-      TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) override;
+  std::unique_ptr<TransactionCollection> createTransactionCollection(
+    TransactionState& state,
+    TRI_voc_cid_t cid,
+    AccessMode::Type accessType,
+    int nestingLevel
+  ) override;
 
   // create storage-engine specific collection
-  PhysicalCollection* createPhysicalCollection(LogicalCollection*,
-                                               VPackSlice const&) override;
+  std::unique_ptr<PhysicalCollection> createPhysicalCollection(
+    LogicalCollection& collection,
+    velocypack::Slice const& info
+  ) override;
 
   // inventory functionality
   // -----------------------
@@ -167,9 +184,11 @@ class MMFilesEngine final : public StorageEngine {
   ) override;
 
   // return the path for a collection
-  std::string collectionPath(TRI_vocbase_t const* vocbase,
-                             TRI_voc_cid_t id) const override {
-    return collectionDirectory(vocbase->id(), id);
+  std::string collectionPath(
+      TRI_vocbase_t const& vocbase,
+      TRI_voc_cid_t id
+  ) const override {
+    return collectionDirectory(vocbase.id(), id);
   }
 
   // database, collection and index management
@@ -191,21 +210,26 @@ class MMFilesEngine final : public StorageEngine {
 
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override {}
 
-  virtual TRI_vocbase_t* openDatabase(
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::velocypack::Slice const& parameters, bool isUpgrade,
       int&) override;
-  TRI_vocbase_t* createDatabase(TRI_voc_tick_t id,
-                                arangodb::velocypack::Slice const& args,
-                                int& status) override {
+  std::unique_ptr<TRI_vocbase_t> createDatabase(
+      TRI_voc_tick_t id,
+      velocypack::Slice const& args,
+      int& status
+  ) override {
     status = TRI_ERROR_NO_ERROR;
     return createDatabaseMMFiles(id, args);
   }
   int writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                 VPackSlice const& slice) override;
 
-  void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker,
-                           int& status) override;
-  Result dropDatabase(TRI_vocbase_t* database) override;
+  void prepareDropDatabase(
+    TRI_vocbase_t& vocbase,
+    bool useWriteMarker,
+    int& status
+  ) override;
+  Result dropDatabase(TRI_vocbase_t& database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery
@@ -216,8 +240,10 @@ class MMFilesEngine final : public StorageEngine {
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
-  TRI_vocbase_t* createDatabaseMMFiles(TRI_voc_tick_t id,
-                                       arangodb::velocypack::Slice const& data);
+  std::unique_ptr<TRI_vocbase_t> createDatabaseMMFiles(
+    TRI_voc_tick_t id,
+    velocypack::Slice const& data
+  );
 
  public:
   // asks the storage engine to create a collection as specified in the VPack
@@ -233,7 +259,7 @@ class MMFilesEngine final : public StorageEngine {
   std::string createCollection(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
-    arangodb::LogicalCollection const* collection
+    LogicalCollection const& collection
   ) override;
 
   // asks the storage engine to persist the collection.
@@ -241,7 +267,7 @@ class MMFilesEngine final : public StorageEngine {
   // This call will write wal markers.
   arangodb::Result persistCollection(
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalCollection const* collection
+    LogicalCollection const& collection
   ) override;
 
   // asks the storage engine to drop the specified collection and persist the
@@ -251,7 +277,7 @@ class MMFilesEngine final : public StorageEngine {
   // This call will write the WAL entry for collection deletion
   arangodb::Result dropCollection(
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalCollection* collection
+    LogicalCollection& collection
   ) override;
 
   // perform a physical deletion of the collection
@@ -259,7 +285,7 @@ class MMFilesEngine final : public StorageEngine {
   // assured that no one is using the collection anymore
   void destroyCollection(
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalCollection* collection
+    LogicalCollection& collection
   ) override;
 
   // asks the storage engine to change properties of the collection as specified
@@ -273,7 +299,7 @@ class MMFilesEngine final : public StorageEngine {
   void changeCollection(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
-    arangodb::LogicalCollection const* collection,
+    LogicalCollection const& collection,
     bool doSync
   ) override;
 
@@ -281,7 +307,7 @@ class MMFilesEngine final : public StorageEngine {
   // This will write a renameMarker if not in recovery
   arangodb::Result renameCollection(
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalCollection const* collection,
+    LogicalCollection const& collection,
     std::string const& oldName
   ) override;
 
@@ -322,7 +348,7 @@ class MMFilesEngine final : public StorageEngine {
 
   void unloadCollection(
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalCollection* collection
+    LogicalCollection& collection
   ) override;
 
   void changeView(
@@ -340,7 +366,7 @@ class MMFilesEngine final : public StorageEngine {
 
   void getViewProperties(
      TRI_vocbase_t& vocbase,
-     arangodb::LogicalView const* view,
+     LogicalView const& view,
      VPackBuilder& builder
   ) override;
 
@@ -359,12 +385,12 @@ class MMFilesEngine final : public StorageEngine {
 
   arangodb::Result dropView(
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalView* view
+    LogicalView& view
   ) override;
 
   void destroyView(
     TRI_vocbase_t& vocbase,
-    arangodb::LogicalView* view
+    LogicalView& view
   ) noexcept override;
 
   std::string createViewDirectoryName(std::string const& basePath,
@@ -373,7 +399,7 @@ class MMFilesEngine final : public StorageEngine {
   void saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                     arangodb::LogicalView const*, bool forceSync) const;
 
-  void signalCleanup(TRI_vocbase_t* vocbase) override;
+  void signalCleanup(TRI_vocbase_t& vocbase) override;
 
   /// @brief scans a collection and locates all files
   MMFilesEngineCollectionFiles scanCollectionDirectory(std::string const& path);
@@ -404,7 +430,7 @@ class MMFilesEngine final : public StorageEngine {
                             std::function<void(TRI_vocbase_t*)> const& callback,
                             bool checkForActiveBlockers);
 
-  int shutdownDatabase(TRI_vocbase_t* vocbase) override;
+  int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
   int openCollection(TRI_vocbase_t* vocbase, LogicalCollection* collection,
                      bool ignoreErrors);
@@ -419,7 +445,7 @@ class MMFilesEngine final : public StorageEngine {
   void addV8Functions() override;
 
   /// @brief Add engine-specific REST handlers
-  void addRestHandlers(rest::RestHandlerFactory*) override;
+  void addRestHandlers(rest::RestHandlerFactory&) override;
 
   /// @brief transfer markers into a collection
   int transferMarkers(LogicalCollection* collection, MMFilesCollectorCache*,
@@ -487,9 +513,12 @@ class MMFilesEngine final : public StorageEngine {
   std::string indexFilename(TRI_idx_iid_t indexId) const;
 
   /// @brief open an existing database. internal function
-  TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id,
-                                      std::string const& name,
-                                      bool wasCleanShutdown, bool isUpgrade);
+  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(
+    TRI_voc_tick_t id,
+    std::string const& name,
+    bool wasCleanShutdown,
+    bool isUpgrade
+  );
 
   /// @brief note the maximum local tick
   void noteTick(TRI_voc_tick_t tick) {

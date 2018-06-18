@@ -592,10 +592,11 @@ int MMFilesCollection::close() {
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")
               ->forceSyncProperties();
+
       engine->changeCollection(
         _logicalCollection->vocbase(),
         _logicalCollection->id(),
-        _logicalCollection,
+        *_logicalCollection,
         doSync
       );
     }
@@ -1769,7 +1770,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
 
   arangodb::SingleCollectionTransaction trx(
     arangodb::transaction::StandaloneContext::Create(vocbase),
-    cid,
+    _logicalCollection,
     AccessMode::Type::READ
   );
 
@@ -1839,10 +1840,11 @@ void MMFilesCollection::open(bool ignoreErrors) {
             "Database")
             ->forceSyncProperties();
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
     engine->changeCollection(
       _logicalCollection->vocbase(),
       _logicalCollection->id(),
-      _logicalCollection,
+      *_logicalCollection,
       doSync
     );
   }

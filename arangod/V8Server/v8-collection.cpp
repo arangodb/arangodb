@@ -991,7 +991,7 @@ static void JS_FiguresVocbaseCol(
 
   SingleCollectionTransaction trx(
     transaction::V8Context::Create(collection->vocbase(), true),
-    collection->id(),
+    collection,
     AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -2288,7 +2288,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   auto transactionContext =
       std::make_shared<transaction::V8Context>(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, collection->id(), AccessMode::Type::WRITE
+    transactionContext, collection, AccessMode::Type::WRITE
   );
 
   if (!payloadIsArray && !options.overwrite) {
@@ -2438,7 +2438,7 @@ static void JS_TruncateVocbaseCol(
 
   auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    ctx, collection->id(), AccessMode::Type::EXCLUSIVE
+    ctx, collection, AccessMode::Type::EXCLUSIVE
   );
   Result res = trx.begin();
 

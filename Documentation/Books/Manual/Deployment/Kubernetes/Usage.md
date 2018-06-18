@@ -9,23 +9,31 @@ cluster first.
 To do so, run (replace `<version>` with the version of the operator that you want to install):
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/crd.yaml
-kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-deployment.yaml
+export URLPREFIX=https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests
+kubectl apply -f $URLPREFIX/crd.yaml
+kubectl apply -f $URLPREFIX/arango-deployment.yaml
 ```
 
-To use `ArangoLocalStorage`, also run:
+To use `ArangoLocalStorage` resources, also run:
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-storage.yaml
+kubectl apply -f $URLPREFIX/arango-storage.yaml
+```
+
+To use `ArangoDeploymentReplication` resources, also run:
+
+```bash
+kubectl apply -f $URLPREFIX/arango-deployment-replication.yaml
 ```
 
 You can find the latest release of the ArangoDB Kubernetes Operator
 [in the kube-arangodb repository](https://github.com/arangodb/kube-arangodb/releases/latest).
 
-## Cluster creation
+## ArangoDB deployment creation
 
-Once the operator is running, you can create your ArangoDB cluster
-by creating a custom resource and deploying it.
+Once the operator is running, you can create your ArangoDB database deployment
+by creating a `ArangoDeployment` custom resource and deploying it into your
+Kubernetes cluster.
 
 For example (all examples can be found [in the kube-arangodb repository](https://github.com/arangodb/kube-arangodb/tree/master/examples)):
 
@@ -33,9 +41,9 @@ For example (all examples can be found [in the kube-arangodb repository](https:/
 kubectl apply -f examples/simple-cluster.yaml
 ```
 
-## Cluster removal
+## Deployment removal
 
-To remove an existing cluster, delete the custom
+To remove an existing ArangoDB deployment, delete the custom
 resource. The operator will then delete all created resources.
 
 For example:
@@ -44,6 +52,10 @@ For example:
 kubectl delete -f examples/simple-cluster.yaml
 ```
 
+**Note that this will also delete all data in your ArangoDB deployment!**
+
+If you want to keep your data, make sure to create a backup before removing the deployment.
+
 ## Operator removal
 
 To remove the entire ArangoDB Kubernetes Operator, remove all
@@ -51,6 +63,14 @@ clusters first and then remove the operator by running:
 
 ```bash
 kubectl delete deployment arango-deployment-operator
-# If `ArangoLocalStorage` is installed
+# If `ArangoLocalStorage` operator is installed
 kubectl delete deployment -n kube-system arango-storage-operator
+# If `ArangoDeploymentReplication` operator is installed
+kubectl delete deployment arango-deployment-replication-operator
 ```
+
+## See also
+
+- [Driver configuration](./DriverConfiguration.md)
+- [Scaling](./Scaling.md)
+- [Upgrading](./Upgrading.md)

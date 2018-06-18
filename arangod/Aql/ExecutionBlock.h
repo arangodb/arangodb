@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_H 1
 
+#include "Aql/BlockCollector.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
@@ -140,10 +141,10 @@ class ExecutionBlock {
   /// elements skipped is returned.
   virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
-  // TODO DELETE
   // Used in aql rest handler hasMore
   // Needs to be accurate
-  virtual bool hasMore();
+  // TODO change the documentation of all hasMore implementations
+  virtual ExecutionState hasMoreState();
   
   // skip exactly atMost outputs
   // TODO DELETE
@@ -182,9 +183,6 @@ class ExecutionBlock {
   /// the dependent node is exhausted.
   std::pair<ExecutionState, bool> getBlock(size_t atMost);
 
-  // TODO DEPRECATED REMOVE
-  bool getBlockOld(size_t atMost);
-
   /// @brief getSomeWithoutRegisterClearout, same as above, however, this
   /// is the actual worker which does not clear out registers at the end
   /// the idea is that somebody who wants to call the generic functionality
@@ -202,9 +200,6 @@ class ExecutionBlock {
   /// @brief generic method to get or skip some
   virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                           AqlItemBlock*& result, size_t& skipped);
-  // TODO DELETE
-  virtual int getOrSkipSomeOld(size_t atMost, bool skipping,
-                               AqlItemBlock*& result, size_t& skipped);
 
   /// @brief Returns the success return start of this block.
   ///        Can either be HASMORE or DONE.
@@ -253,6 +248,18 @@ class ExecutionBlock {
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
+
+ private:
+  /// @brief The number of skipped/processed rows in getOrSkipSome, used to keep
+  /// track of it despite WAITING interruptions. As
+  /// ExecutionBlock::getOrSkipSome is called directly in some overriden
+  /// implementations of ::getOrSkipSome, these implementations need their own
+  /// _skipped counter.
+  size_t _skipped;
+
+  /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
+  /// be a member variable due to possible WAITING interruptions.
+  aql::BlockCollector _collector;
 };
 
 }  // namespace arangodb::aql

@@ -431,7 +431,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
       }
       std::string const& body = httpreq->body();
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(isolate, body));
-      headers["content-length"] = StringUtils::itoa(request->contentLength());
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to Javascript
       // FIXME not every VPack can be converted to JSON
@@ -443,8 +443,8 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
           << jsonString;
 
       req->ForceSet(RequestBodyKey, TRI_V8_STD_STRING(isolate, jsonString));
-      headers["content-length"] = StringUtils::itoa(jsonString.size());
-      headers["content-type"] = StaticStrings::MimeTypeJson;
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(jsonString.size());
+      headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeJson;
     } else {
       throw std::logic_error("unhandled request type");
     }

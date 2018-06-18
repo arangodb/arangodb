@@ -161,7 +161,7 @@ void DatabaseManagerThread::run() {
           }
 
           try {
-            engine->dropDatabase(database);
+            engine->dropDatabase(*database);
           } catch (std::exception const& ex) {
             LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed: " << ex.what();
           } catch (...) {
@@ -594,7 +594,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     builder.close();
 
     // createDatabase must return a valid database or throw
-    vocbase.reset(engine->createDatabase(id, builder.slice()));
+    vocbase = engine->createDatabase(id, builder.slice());
 
     TRI_ASSERT(vocbase != nullptr);
 
@@ -782,7 +782,7 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 #endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
-    engine->prepareDropDatabase(vocbase, !engine->inRecovery(), res);
+    engine->prepareDropDatabase(*vocbase, !engine->inRecovery(), res);
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
@@ -1077,10 +1077,10 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   if (name.empty()) {
     return nullptr;
   }
-  
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
-  
+
   // database names with a number in front are invalid names
   if (name[0] >= '0' && name[0] <= '9') {
     TRI_voc_tick_t id = NumberUtils::atoi_zero<TRI_voc_tick_t>(name.data(), name.data() + name.size());
@@ -1110,7 +1110,7 @@ std::string DatabaseFeature::translateCollectionName(
   auto theLists = _databasesLists.load();
   auto itr = theLists->_databases.find(dbName);
 
-  if (itr == theLists->_coordinatorDatabases.end()) {
+  if (itr == theLists->_databases.end()) {
     return std::string();
   }
 
@@ -1130,7 +1130,9 @@ std::string DatabaseFeature::translateCollectionName(
   }
 }
 
-void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> func) {
+void DatabaseFeature::enumerateDatabases(
+    std::function<void(TRI_vocbase_t& vocbase)> const& func
+) {
   if (ServerState::instance()->isCoordinator()) {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
@@ -1140,7 +1142,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
       // iterate over all databases
       TRI_ASSERT(vocbase != nullptr);
       TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
-      func(vocbase);
+      func(*vocbase);
     }
   } else {
     auto unuser(_databasesProtector.use());
@@ -1151,7 +1153,7 @@ void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> fun
       // iterate over all databases
       TRI_ASSERT(vocbase != nullptr);
       TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-      func(vocbase);
+      func(*vocbase);
     }
   }
 }
@@ -1204,7 +1206,6 @@ void DatabaseFeature::stopAppliers() {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    
     replicationFeature->stopApplier(vocbase);
   }
 }
@@ -1356,7 +1357,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      TRI_vocbase_t* database = engine->openDatabase(it, _upgrade);
+      auto* database = engine->openDatabase(it, _upgrade).release();
 
       if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
         try {

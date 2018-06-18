@@ -190,8 +190,8 @@ void IndexBlock::executeExpressions() {
 
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
-    NonConstExpression* toReplace = _nonConstExpressions[posInExpressions];
-    auto exp = toReplace->expression;
+    NonConstExpression* toReplace = _nonConstExpressions[posInExpressions].get();
+    auto exp = toReplace->expression.get();
 
     bool mustDestroy;
     BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions],
@@ -238,10 +238,7 @@ void IndexBlock::initializeOnce() {
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
 
-    auto nce = std::make_unique<NonConstExpression>(e.get(), std::move(idxs));
-    e.release();
-    _nonConstExpressions.push_back(nce.get());
-    nce.release();
+    _nonConstExpressions.emplace_back(std::make_unique<NonConstExpression>(std::move(e), std::move(idxs)));
 
     // Prepare _inVars and _inRegs:
     _inVars.emplace_back();
@@ -829,9 +826,6 @@ std::pair<ExecutionState, size_t> IndexBlock::skipSome(size_t atMost) {
 
 /// @brief frees the memory for all non-constant expressions
 void IndexBlock::cleanupNonConstExpressions() {
-  for (auto& it : _nonConstExpressions) {
-    delete it;
-  }
   _nonConstExpressions.clear();
 }
 
