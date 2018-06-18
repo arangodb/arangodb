@@ -335,35 +335,31 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-  ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
-  std::unique_ptr<AqlItemBlock> blk(getSomeWithoutRegisterClearoutOld(atMost));
-  if (blk == nullptr) {
-    return {ExecutionState::DONE, nullptr};
-  }
-  return {ExecutionState::HASMORE, std::move(blk)};
-}
-
-// TODO I suppose this should be removed?
-AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
+ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(atMost > 0);
-  size_t skipped = 0;
 
-  AqlItemBlock* result = nullptr;
-  while (true) {
-    TRI_ASSERT(result == nullptr);
-    auto res = getOrSkipSome(atMost, false, result, skipped);
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else {
-      if (res.second.fail()) {
-        THROW_ARANGO_EXCEPTION(res.second);
-      }
-      break;
-    }
+  std::unique_ptr<AqlItemBlock> result;
+  ExecutionState state;
+  Result res;
+
+  {
+    AqlItemBlock* resultPtr = nullptr;
+    size_t skipped = 0;
+    std::tie(state, res) = getOrSkipSome(atMost, false, resultPtr, skipped);
+    result.reset(resultPtr);
   }
 
-  return result;
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(result == nullptr);
+    return {ExecutionState::WAITING, nullptr};
+  }
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return {state, std::move(result)};
   DEBUG_END_BLOCK();
 }
 

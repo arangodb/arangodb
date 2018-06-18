@@ -195,8 +195,7 @@ class ExecutionBlock {
   /// in a derived class but wants to modify the results before the register
   /// cleanup can use this method, internal use only
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-    getSomeWithoutRegisterClearout(size_t atMost);
-  AqlItemBlock* getSomeWithoutRegisterClearoutOld(size_t atMost);
+  getSomeWithoutRegisterClearout(size_t atMost);
 
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
