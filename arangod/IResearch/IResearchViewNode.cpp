@@ -487,36 +487,28 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   auto* trx = engine.getQuery()->trx();
 
-  if (!trx || !(trx->state())) {
+  if (!trx) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get transaction state while creating IResearchView ExecutionBlock";
+      << "failed to get transaction while creating IResearchView ExecutionBlock";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
-      "failed to get transaction state while creating IResearchView ExecutionBlock"
+      "failed to get transaction while creating IResearchView ExecutionBlock"
     );
   }
 
-  auto& state = *(trx->state());
   auto& view = *this->view();
   PrimaryKeyIndexReader* reader;
 
   if (ServerState::instance()->isDBServer()) {
-    auto* resolver = trx->resolver();
-
-    if (resolver) {
-      // FIXME cache snapshot in transaction state when transaction starts
-      reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(state, *resolver, _shards, true);
-    } else {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC) << "failed to retrieve CollectionNameResolver from the transaction";
-    }
+    reader = LogicalView::cast<IResearchViewDBServer>(view).snapshot(*trx, _shards, true);
   } else {
-    reader = LogicalView::cast<IResearchView>(view).snapshot(state);
+    reader = LogicalView::cast<IResearchView>(view).snapshot(*trx->state());
   }
 
   if (!reader) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '" << state.id() << "'";
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,

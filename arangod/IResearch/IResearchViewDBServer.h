@@ -91,8 +91,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
   PrimaryKeyIndexReader* snapshot(
-    TransactionState& state,
-    CollectionNameResolver const& resolver,
+    transaction::Methods& trx,
     std::vector<std::string> const& shards,
     bool force = false
   ) const;

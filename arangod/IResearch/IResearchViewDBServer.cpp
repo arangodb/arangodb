@@ -545,16 +545,24 @@ arangodb::Result IResearchViewDBServer::rename(
 }
 
 PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
-    TransactionState& state,
-    CollectionNameResolver const& resolver,
+    transaction::Methods& trx,
     std::vector<std::string> const& shards,
     bool force /*= false*/
 ) const {
+  auto* state = trx.state();
+
+  if (!state) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to get transaction state while creating IResearchView snapshot";
+
+    return nullptr;
+  }
+
   // TODO FIXME find a better way to look up a ViewState
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* cookie = dynamic_cast<ViewState*>(state.cookie(this));
+    auto* cookie = dynamic_cast<ViewState*>(state->cookie(this));
   #else
-    auto* cookie = static_cast<ViewState*>(state.cookie(this));
+    auto* cookie = static_cast<ViewState*>(state->cookie(this));
   #endif
 
   if (cookie) {
@@ -565,6 +573,15 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     return nullptr;
   }
 
+  auto* resolver = trx.resolver();
+
+  if (!resolver) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to retrieve CollectionNameResolver from the transaction";
+
+    return nullptr;
+  }
+
   auto cookiePtr = irs::memory::make_unique<ViewState>();
   auto& reader = cookiePtr->_snapshot;
   ReadMutex mutex(_mutex);
@@ -572,7 +589,7 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
 
   try {
     for (auto& shardId : shards) {
-      auto const cid = resolver.getCollectionIdLocal(shardId);
+      auto const cid = resolver->getCollectionIdLocal(shardId);
 
       if (0 == cid) {
         LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
@@ -588,7 +605,7 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
         continue;
       }
 
-      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(state, force);
+      auto* rdr = LogicalView::cast<IResearchView>(*shardView->second).snapshot(*state, force);
 
       if (rdr) {
         reader.add(*rdr);
@@ -609,7 +626,7 @@ PrimaryKeyIndexReader* IResearchViewDBServer::snapshot(
     return nullptr;
   }
 
-  state.cookie(this, std::move(cookiePtr));
+  state->cookie(this, std::move(cookiePtr));
 
   return &reader;
 }
