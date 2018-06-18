@@ -206,17 +206,6 @@ replication in the cluster. When enabled, the cluster will contain
 a number of `syncmaster` & `syncworker` servers.
 The default value is `false`.
 
-### `spec.sync.image: string`
-
-This setting specifies the docker image to use for all ArangoSync servers.
-When not specified, the `spec.image` value is used.
-
-### `spec.sync.imagePullPolicy: string`
-
-This setting specifies the pull policy for the docker image to use for all ArangoSync servers.
-For possible values, see `spec.imagePullPolicy`.
-When not specified, the `spec.imagePullPolicy` value is used.
-
 ### `spec.sync.externalAccess.type: string`
 
 This setting specifies the type of `Service` that will be created to provide
@@ -252,6 +241,19 @@ If not set, this setting defaults to:
 
 - If `spec.sync.externalAccess.loadBalancerIP` is set, it defaults to `https://<load-balancer-ip>:<8629>`.
 - Otherwise it defaults to `https://<sync-service-dns-name>:<8629>`.
+
+### `spec.sync.externalAccess.accessPackageSecretNames: []string`
+
+This setting specifies the names of zero of more `Secrets` that will be created by the deployment
+operator containing "access packages". An access package contains those `Secrets` that are needed
+to access the SyncMasters of this `ArangoDeployment`.
+
+By removing a name from this setting, the corresponding `Secret` is also deleted.
+Note that to remove all access packages, leave an empty array in place (`[]`).
+Completely removing the setting results in not modifying the list.
+
+See [the `ArangoDeploymentReplication` specification](./DeploymentReplicationResource.md) for more information
+on access packages.
 
 ### `spec.sync.auth.jwtSecretName: string`
 
@@ -346,6 +348,14 @@ The default value is `8Gi`.
 
 This setting is not available for group `coordinators`, `syncmasters` & `syncworkers`
 because servers in these groups do not need persistent storage.
+
+### `spec.<group>.serviceAccountName: string`
+
+This setting specifies the `serviceAccountName` for the `Pods` created
+for each server of this group.
+
+Using an alternative `ServiceAccount` is typically used to separate access rights.
+The ArangoDB deployments do not require any special rights.
 
 ### `spec.<group>.storageClassName: string`
 

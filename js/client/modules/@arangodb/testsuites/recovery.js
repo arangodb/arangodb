@@ -100,10 +100,6 @@ function runArangodRecovery (instanceInfo, options, script, setup, count) {
   ]);
 
   let binary = pu.ARANGOD_BIN;
-  if (setup) {
-    binary = pu.TOP_DIR + '/scripts/disable-cores.sh';
-    argv.unshift(pu.ARANGOD_BIN);
-  }
 
   instanceInfo.pid = pu.executeAndWait(binary, argv, options, 'recovery', instanceInfo.rootDir, setup, !setup && options.coreCheck);
 }
