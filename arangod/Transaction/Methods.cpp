@@ -87,7 +87,7 @@ std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>* getSta
     bool create = false
 ) {
   struct CookieType: public arangodb::TransactionState::Cookie {
-    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>* getStatusChangeCallbacks(
+    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*> _callbacks;
   };
 
   static const int key = 0; // arbitrary location in memory, common for all
