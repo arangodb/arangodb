@@ -37,6 +37,8 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/BasicBlocks.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
@@ -45,6 +47,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewNode.h"
+#include "IResearch/IResearchViewBlock.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "Logger/Logger.h"
@@ -193,9 +196,12 @@ SECTION("construct") {
   CHECK(!node.volatility().first); // filter volatility
   CHECK(!node.volatility().second); // sort volatility
   CHECK(node.getVariablesUsedHere().empty());
+  auto const setHere = node.getVariablesSetHere();
+  CHECK(1 == setHere.size());
+  CHECK(&outVariable == setHere[0]);
 
   size_t nrItems{};
-  CHECK(0. == node.estimateCost(nrItems));
+  CHECK(0. == node.estimateCost(nrItems)); // no dependencies
   CHECK(0 == nrItems);
 }
 
@@ -604,6 +610,107 @@ SECTION("collections") {
     CHECK(1 == expectedCollections.erase(collection.name()));
   }
   CHECK(expectedCollections.empty());
+}
+
+SECTION("createBlockSingleServer") {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto logicalView = vocbase.createView(createJson->slice());
+  REQUIRE((false == !logicalView));
+
+  // dummy query
+  arangodb::aql::Query query(
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
+    nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+    arangodb::aql::PART_MAIN
+  );
+  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
+
+  // dummy engine
+  arangodb::aql::ExecutionEngine engine(&query);
+
+  arangodb::aql::Variable const outVariable("variable", 0);
+
+  // prepare view snapshot
+
+  // no filter condition, no sort condition
+  {
+    arangodb::iresearch::IResearchViewNode node(
+      *query.plan(),
+      42, // id
+      vocbase, // database
+      logicalView, // view
+      outVariable,
+      nullptr, // no filter condition
+      {} // no sort condition
+    );
+
+    std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
+
+    // before transaction has started (no snapshot)
+    try {
+      auto block = node.createBlock(engine, EMPTY);
+      CHECK(false);
+    } catch (arangodb::basics::Exception const& e) {
+      CHECK(TRI_ERROR_INTERNAL == e.code());
+    }
+
+    // start transaction (put snapshot into)
+    REQUIRE(query.trx()->state());
+    arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*logicalView).snapshot(
+      *query.trx()->state(), true
+    );
+
+    // after transaction has started
+    {
+      auto block = node.createBlock(engine, EMPTY);
+      CHECK(nullptr != block);
+      CHECK(nullptr != dynamic_cast<arangodb::iresearch::IResearchViewUnorderedBlock*>(block.get()));
+    }
+  }
+}
+
+// FIXME TODO
+//SECTION("createBlockDBServer") {
+//}
+
+SECTION("createBlockCoordinator") {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+  auto logicalView = vocbase.createView(createJson->slice());
+  REQUIRE((false == !logicalView));
+
+  // dummy query
+  arangodb::aql::Query query(
+    false, vocbase, arangodb::aql::QueryString("RETURN 1"),
+    nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+    arangodb::aql::PART_MAIN
+  );
+  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
+
+  // dummy engine
+  arangodb::aql::ExecutionEngine engine(&query);
+
+  arangodb::aql::Variable const outVariable("variable", 0);
+
+  // no filter condition, no sort condition
+  arangodb::iresearch::IResearchViewNode node(
+    *query.plan(),
+    42, // id
+    vocbase, // database
+    logicalView, // view
+    outVariable,
+    nullptr, // no filter condition
+    {} // no sort condition
+  );
+
+  std::unordered_map<arangodb::aql::ExecutionNode*, arangodb::aql::ExecutionBlock*> EMPTY;
+
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
+  auto emptyBlock = node.createBlock(engine, EMPTY);
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
+  CHECK(nullptr != emptyBlock);
+  CHECK(nullptr != dynamic_cast<arangodb::aql::NoResultsBlock*>(emptyBlock.get()));
 }
 
 }

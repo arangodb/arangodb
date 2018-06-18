@@ -207,6 +207,10 @@ int evaluateVolatility(arangodb::iresearch::IResearchViewNode const& node) {
   return mask;
 }
 
+std::function<bool(TRI_voc_cid_t)> const viewIsEmpty = [](TRI_voc_cid_t) {
+  return false;
+};
+
 }
 
 namespace arangodb {
@@ -443,7 +447,7 @@ aql::ExecutionNode* IResearchViewNode::clone(
 }
 
 bool IResearchViewNode::empty() const noexcept {
-  return _view->visitCollections([](TRI_voc_cid_t){ return false; });
+  return _view->visitCollections(viewIsEmpty);
 }
 
 /// @brief the cost of an enumerate view node
