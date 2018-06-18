@@ -413,26 +413,20 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   } else if (_mode == NodeType::REMOVE) {
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable== nullptr);
-    //TRI_ASSERT(_outVariable == nullptr); //why?
+    TRI_ASSERT(_outVariable == nullptr);
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::INSERT) {
     TRI_ASSERT(_key.empty());
     TRI_ASSERT(_inVariable != nullptr);
-    //TRI_ASSERT(_outVariable != nullptr);
-    //TRI_ASSERT(_outVariableOld == nullptr);
-    //TRI_ASSERT(_outVariableNew == nullptr);
+    TRI_ASSERT(_outVariable == nullptr);
   } else if (_mode == NodeType::UPDATE) {
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable != nullptr);
-    //TRI_ASSERT(_outVariable != nullptr);
-    //TRI_ASSERT(_outVariableOld == nullptr);
-    //TRI_ASSERT(_outVariableNew == nullptr);
+    TRI_ASSERT(_outVariable == nullptr);
   } else if (_mode == NodeType::REPLACE) {
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable != nullptr);
-    //TRI_ASSERT(_outVariable != nullptr);
-    //TRI_ASSERT(_outVariableOld == nullptr);
-    //TRI_ASSERT(_outVariableNew == nullptr);
+    TRI_ASSERT(_outVariable == nullptr);
   //} else if (_mode == NodeType::UPSERT) {
   //  LOG_DEVEL << "not implemented";
   //  TRI_ASSERT(false);
@@ -442,14 +436,14 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   }
 }
 
-//FIXME
-/// @brief constructor for SingleRemoteOperationNode
-SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base)
-    , CollectionAccessingNode(plan, base)
-    , _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+// //FIXME / DELETEME
+// /// @brief constructor for SingleRemoteOperationNode
+// SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+//     : ExecutionNode(plan, base)
+//     , CollectionAccessingNode(plan, base)
+//     , _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {
+// }
 
-//FIXME
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     ExecutionEngine& engine,

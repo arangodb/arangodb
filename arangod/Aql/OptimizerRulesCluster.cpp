@@ -161,17 +161,17 @@ bool depIsSingletonOrConstCalc(ExecutionNode* node){
   while (node){
     node = node->getFirstDependency();
     if(node->getType() == EN::SINGLETON){
-      LOG_DEVEL << "reached singleton";
+      //LOG_DEVEL << "reached singleton";
       return true;
     }
 
     if(node->getType() != EN::CALCULATION){
-      LOG_DEVEL << node->getTypeString() << " not a calculation node";
+      //LOG_DEVEL << node->getTypeString() << " not a calculation node";
       return false;
     }
 
     if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
-      LOG_DEVEL << "calculation not constant";
+      //LOG_DEVEL << "calculation not constant";
       return false;
     }
   }
@@ -206,10 +206,10 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
   }
 
   for(auto* node : nodes){
-    LOG_DEVEL << "";
-    LOG_DEVEL << "substitute single document operation";
+    //LOG_DEVEL << "";
+    //LOG_DEVEL << "substitute single document operation";
     if(!depIsSingletonOrConstCalc(node)){
-      LOG_DEVEL << "dependency is not singleton or const calculation";
+      //LOG_DEVEL << "dependency is not singleton or const calculation";
       continue;
     }
 
@@ -220,7 +220,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
       std::string key = getFirstKey(binaryCompares);
       if(key.empty()){
         // do nothing if index does not work on a single document
-        LOG_DEVEL << "has no valid compare";
+        //LOG_DEVEL << "has no valid compare";
         continue;
       }
 
@@ -247,7 +247,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
             key, indexNode->collection(),
             mod->getOptions(),
             update,
-            indexNode->outVariable(),
+            nullptr,
             mod->getOutVariableOld(),
             mod->getOutVariableNew()
           )
@@ -269,10 +269,10 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
         modified = true;
 
       } else {
-        LOG_DEVEL << "plan following the index node is too complex";
+        //LOG_DEVEL << "plan following the index node is too complex";
       }
     } else {
-      LOG_DEVEL << "is not primary or has more indexes";
+      //LOG_DEVEL << "is not primary or has more indexes";
     }
   }
   opt->addPlan(std::move(plan), rule, modified);
