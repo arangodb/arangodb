@@ -136,12 +136,6 @@ FOR vertex[, edge[, path]]
   - **uniqueEdges** (string): optionally ensure edge uniqueness
     - "path" (default) – it is guaranteed that there is no path returned with a
       duplicate edge
-    - "global" – it is guaranteed that each edge is visited at most once during
-      the traversal, no matter how many paths lead from the start vertex to this edge.
-      If you start with a `min depth > 1`, an edge that was found before *min* depth
-      might not be returned at all (it still might be part of a path). **Note:**
-      Using this configuration the result is not deterministic any more. If there
-      are multiple paths from *startVertex* over *edge* one of those is picked.
     - "none" – no uniqueness check is applied on edges. **Note:**
       Using this configuration the traversal will follow cycles in edges.
   - **bfs** (bool): optionally use the alternative breadth-first traversal algorithm
