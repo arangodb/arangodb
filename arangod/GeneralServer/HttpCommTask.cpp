@@ -762,16 +762,13 @@ void HttpCommTask::resetState() {
 
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
   bool found;
-  std::string const& authStr =
-    request->header(StaticStrings::Authorization, found);
-  
+  std::string const& authStr = request->header(StaticStrings::Authorization, found);
   if (!found) {
     events::CredentialsMissing(request);
     return rest::ResponseCode::UNAUTHORIZED;
   }
   
   size_t methodPos = authStr.find_first_of(' ');
-  
   if (methodPos != std::string::npos) {
     // skip over authentication method
     char const* auth = authStr.c_str() + methodPos;
