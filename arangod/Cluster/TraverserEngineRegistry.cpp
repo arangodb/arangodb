@@ -29,21 +29,23 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/TraverserEngine.h"
 #include "Logger/Logger.h"
+#include "Transaction/Context.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
 using namespace arangodb::traverser;
 
 TraverserEngineRegistry::EngineInfo::EngineInfo(
     TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
     arangodb::velocypack::Slice info,
-    bool needToLock
-)
+    bool needToLock)
     : _isInUse(false),
       _toBeDeleted(false),
-      _engine(BaseEngine::BuildEngine(vocbase, info, needToLock)),
+      _engine(BaseEngine::BuildEngine(vocbase, ctx, info, needToLock)),
       _timeToLive(0),
       _expires(0) {}
 
@@ -59,14 +61,15 @@ TraverserEngineRegistry::~TraverserEngineRegistry() {
 /// @brief Create a new Engine and return it's id
 TraverserEngineID TraverserEngineRegistry::createNew(
     TRI_vocbase_t& vocbase,
+    std::shared_ptr<transaction::Context> const& ctx,
     arangodb::velocypack::Slice engineInfo,
-    bool needToLock,
-    double ttl /*= 600.0*/
+    double ttl, /*= 600.0*/
+    bool needToLock
 ) {
   TraverserEngineID id = TRI_NewTickServer();
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Register TraverserEngine with id " << id;
   TRI_ASSERT(id != 0);
-  auto info = std::make_unique<EngineInfo>(vocbase, engineInfo, needToLock);
+  auto info = std::make_unique<EngineInfo>(vocbase, ctx, engineInfo, needToLock);
   info->_timeToLive = ttl;
   info->_expires = TRI_microtime() + ttl;
 

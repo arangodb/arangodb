@@ -224,7 +224,8 @@ bool TRI_vocbase_t::markAsDropped() {
 /// @brief signal the cleanup thread to wake up
 void TRI_vocbase_t::signalCleanup() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->signalCleanup(this);
+
+  engine->signalCleanup(*this);
 }
 
 void TRI_vocbase_t::checkCollectionInvariants() const {
@@ -775,8 +776,11 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
       if (!collection->deleted()) {
         collection->deleted(true);
+
         try {
-          engine->changeCollection(*this, collection->id(), collection, doSync);
+          engine->changeCollection(
+            *this, collection->id(), *collection, doSync
+          );
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(colName, ex.code());
@@ -796,7 +800,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       writeLocker.unlock();
 
       TRI_ASSERT(engine != nullptr);
-      engine->dropCollection(*this, collection);
+      engine->dropCollection(*this, *collection);
 
       DropCollectionCallback(collection);
       break;
@@ -828,7 +832,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       locker.unlock();
       writeLocker.unlock();
 
-      engine->dropCollection(*this, collection);
+      engine->dropCollection(*this, *collection);
       state = DROP_PERFORM;
       break;
     }
@@ -876,8 +880,8 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_COMPACTOR);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  // shutdownDatabase() stops all threads
-  engine->shutdownDatabase(this);
+
+  engine->shutdownDatabase(*this); // shutdownDatabase() stops all threads
 
   // this will signal the cleanup thread to do one last iteration
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
@@ -1193,7 +1197,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-  auto res2 = engine->persistCollection(*this, collection.get());
+  auto res2 = engine->persistCollection(*this, *collection);
   // API compatibility, we always return the collection, even if creation
   // failed.
 
@@ -1268,7 +1272,8 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
 
   // wake up the cleanup thread
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->unloadCollection(*this, collection);
+
+  engine->unloadCollection(*this, *collection);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1312,8 +1317,7 @@ arangodb::Result TRI_vocbase_t::dropCollection(
         DropCollectionCallback(collection);
       } else {
         collection->deferDropCollection(DropCollectionCallback);
-        // wake up the cleanup thread
-        engine->signalCleanup(&(collection->vocbase()));
+        engine->signalCleanup(collection->vocbase()); // wake up the cleanup thread
       }
 
       if (DatabaseFeature::DATABASE != nullptr &&
@@ -1512,9 +1516,10 @@ int TRI_vocbase_t::renameCollection(
 
   // Tell the engine.
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+
   TRI_ASSERT(engine != nullptr);
-  arangodb::Result res2 =
-    engine->renameCollection(*this, collection, oldName);
+
+  auto res2 = engine->renameCollection(*this, *collection, oldName);
 
   return res2.errorNumber();
 }
@@ -1815,7 +1820,8 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->shutdownDatabase(this);
+
+  engine->shutdownDatabase(*this);
 
   // do a final cleanup of collections
   for (auto& it : _collections) {
