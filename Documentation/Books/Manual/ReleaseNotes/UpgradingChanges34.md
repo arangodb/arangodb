@@ -23,26 +23,40 @@ Geo-Index
 Client tools
 ------------
 
-REST API
+HTTP API
 --------
 
-- GET /_api/aqlfunction/ was migrated to match the general structure of ArangoDB Replies. 
-    It now returns an object with a "result" attribute that contains the list of available AQL user functions: 
-```js
-	  {
-	    code: 200,
-		error: false,
-		result: [
-	      {
-		    "name":"UnitTests::mytest1",
-			"code":"function () { return 1; }",
-			"isDeterministic":false
-		}]}
-```
-    In previous versions, this REST API returned only the list of available AQL user functions on the top level of the response.
-	Each AQL user function description now also contains the 'isDeterministic' attribute.
+- GET /_api/aqlfunction/ was migrated to match the general structure of
+  ArangoDB Replies. It now returns an object with a "result" attribute that
+  contains the list of available AQL user functions:
+
+  ```json
+  {
+    "code": 200,
+    "error": false,
+    "result": [
+      {
+        "name": "UnitTests::mytest1",
+        "code": "function () { return 1; }",
+        "isDeterministic": false
+      }
+    ]
+  }
+  ```
+
+  In previous versions, this REST API returned only the list of available
+  AQL user functions on the top level of the response.
+  Each AQL user function description now also contains the 'isDeterministic' attribute.
+
 - DELETE /_api/aqlfunction/ now returns the number of deleted functions:
-	  `{code: 200, error: false, deletedCount: 10} `
+
+  ```json
+  {
+    "code": 200,
+    "error": false,
+    "deletedCount": 10
+  }
+  ```
 
 Miscellaneous
 -------------
