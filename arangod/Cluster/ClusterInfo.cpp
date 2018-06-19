@@ -167,6 +167,8 @@ void ClusterInfo::cleanup() {
     return;
   }
 
+  theInstance->_newPlannedViews.clear();
+  theInstance->_plannedViews.clear();
   theInstance->_plannedCollections.clear();
   theInstance->_shards.clear();
   theInstance->_shardKeys.clear();
