@@ -1801,27 +1801,39 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   } else {
     LOG_DEVEL << "no result slice";
   }
+
   VPackSlice oldDocument = VPackSlice::noneSlice();
   VPackSlice newDocument = VPackSlice::noneSlice();
-  if(outDocument.hasKey("old")){
-    oldDocument = outDocument.get("old");
-  }
-  if(outDocument.hasKey("new")){
-    newDocument = outDocument.get("new");
+  if(outDocument.isObject()) {
+    if(outDocument.hasKey("old")){
+      oldDocument = outDocument.get("old");
+    }
+    if(outDocument.hasKey("new")){
+      newDocument = outDocument.get("new");
+    }
   }
 
   // place documents as in the outi variable slots of the result
+  bool aqlValueSet = false;
   if(out) {
     TRI_ASSERT(!outDocument.isNone());
     aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+    aqlValueSet = true;
+    LOG_DEVEL << "set out";
   }
   if(OLD) {
+    TRI_ASSERT(opOptions.returnOld);
     TRI_ASSERT(!oldDocument.isNone());
     aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
+    aqlValueSet = true;
+    LOG_DEVEL << "set old";
   }
   if(NEW) {
+    TRI_ASSERT(opOptions.returnNew);
     TRI_ASSERT(!newDocument.isNone());
     aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
+    aqlValueSet = true;
+    LOG_DEVEL << "set new";
   }
   throwIfKilled();  // check if we were aborted
 
@@ -1830,6 +1842,12 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   }
 
   _done = true;
+  //TRI_ASSERT(aqlValueSet);
+  if(!aqlValueSet) {
+    LOG_DEVEL << "noting set in the value even though it should";
+    return nullptr;
+  }
+
   return aqlres.release();
 
   // cppcheck-suppress style
