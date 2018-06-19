@@ -67,12 +67,12 @@ namespace velocypack {
 
 class SliceScope;
 
-class SliceStaticData {
-  friend class Slice;
+struct SliceStaticData {
   static uint8_t const FixedTypeLengths[256];
   static ValueType const TypeMap[256];
   static unsigned int const WidthMap[32];
   static unsigned int const FirstSubMap[32];
+  static uint64_t const PrecalculatedHashesForDefaultSeed[256];
 };
 
 class Slice {
@@ -87,6 +87,7 @@ class Slice {
   uint8_t const* _start;
 
  public:
+  static constexpr uint64_t defaultSeed = 0xdeadbeef;
 
   // constructor for an empty Value of type None
   constexpr Slice() noexcept : Slice("\x00") {}
@@ -171,18 +172,24 @@ class Slice {
   inline uint8_t head() const noexcept { return *_start; }
 
   // hashes the binary representation of a value
-  inline uint64_t hash(uint64_t seed = 0xdeadbeef) const {
-    return VELOCYPACK_HASH(start(), checkOverflow(byteSize()), seed);
+  inline uint64_t hash(uint64_t seed = defaultSeed) const {
+    size_t const size = checkOverflow(byteSize());
+    if (seed == defaultSeed && size == 1) {
+      uint64_t h = SliceStaticData::PrecalculatedHashesForDefaultSeed[head()];
+      VELOCYPACK_ASSERT(h != 0);
+      return h;
+    }
+    return VELOCYPACK_HASH(start(), size, seed);
   }
 
   // hashes the value, normalizing different representations of
   // arrays, objects and numbers. this function may produce different
   // hash values than the binary hash() function
-  uint64_t normalizedHash(uint64_t seed = 0xdeadbeef) const;
+  uint64_t normalizedHash(uint64_t seed = defaultSeed) const;
 
   // hashes the binary representation of a String slice. No check
   // is done if the Slice value is actually of type String
-  inline uint64_t hashString(uint64_t seed = 0xdeadbeef) const noexcept {
+  inline uint64_t hashString(uint64_t seed = defaultSeed) const noexcept {
     return VELOCYPACK_HASH(start(), static_cast<size_t>(stringSliceLength()), seed);
   }
 
