@@ -356,7 +356,7 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
       TRI_ASSERT(vec.size() == 1);
     } else {
       update = vec.front();
-      if (vec.size() >= 1) {
+      if (vec.size() > 1) {
         keyVar = vec.back();
       }
     }
