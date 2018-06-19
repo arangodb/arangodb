@@ -89,7 +89,6 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypac
   auto col = _collection->getCollection();
   builder.add(VPackValue("indexes"));
   col->getIndexesVPack(builder, false, false, [](arangodb::Index const* idx) {
-      return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
-              idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
+      return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     });
 }
