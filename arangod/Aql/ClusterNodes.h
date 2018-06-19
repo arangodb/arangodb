@@ -419,8 +419,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
                             std::string key,
                             aql::Collection const* collection,
                             ModificationOptions const& options,
-                            Variable const* out,
                             Variable const* update,
+                            Variable const* out,
                             Variable const* OLD,
                             Variable const* NEW
                             );

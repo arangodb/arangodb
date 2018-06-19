@@ -1641,10 +1641,9 @@ SingleRemoteOperationBlock::SingleRemoteOperationBlock(ExecutionEngine* engine,
                                                        )
     : ExecutionBlock(engine, static_cast<ExecutionNode const*>(en)),
       _collection(en->collection()),
-      _key(en->key()){
-  TRI_ASSERT(
-      arangodb::ServerState::instance()->isCoordinator()
-      );
+      _key(en->key())
+{
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 }
 
 std::unique_ptr<VPackBuilder>
@@ -1682,6 +1681,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   auto OLD = node->_outVariableOld;
   auto NEW = node->_outVariableNew;
 
+
   RegisterId inRegId = 0;
   RegisterId outRegId = 0;
   RegisterId oldRegId = 0;
@@ -1692,6 +1692,16 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     TRI_ASSERT(itIn != node->getRegisterPlan()->varInfo.end());
     TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
     inRegId = (*itIn).second.registerId;
+  }
+
+  if(_key.empty()){
+    if(in == nullptr) {
+      //fail! document must exist
+    }
+
+    if(false /*key not in in*/){
+      //fail! key must be in the document
+    }
   }
 
   if(out != nullptr) {
@@ -1716,7 +1726,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   }
 
   VPackBuilder inBuilder;
-  VPackSlice inSlice = VPackSlice::nullSlice();
+  VPackSlice inSlice = VPackSlice::emptyObjectSlice();
   if(in) {// IF NOT REMOVE OR SELECT
    std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
    LOG_DEVEL << "in Doc " << inRegId;
@@ -1729,52 +1739,31 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   auto const& nodeOps = node->_options;
 
   OperationOptions opOptions;
-  opOptions.ignoreRevs = true; // TODO
+  opOptions.ignoreRevs = true; // CHECKME
   opOptions.keepNull = !nodeOps.nullMeansRemove;
   opOptions.mergeObjects = nodeOps.mergeObjects;
   opOptions.returnNew = !!NEW;
   opOptions.returnOld = !!OLD;
   opOptions.waitForSync = nodeOps.waitForSync;
-  opOptions.silent = nodeOps.ignoreErrors; // TODO
+  opOptions.silent = nodeOps.ignoreErrors; // CHECKME
   opOptions.overwrite = nodeOps.overwrite;
+
+  if(!_key.empty()){
+    auto mergedBuilder = merge(inSlice, _key, 0);
+    inSlice = mergedBuilder->slice();
+  }
 
   OperationResult result;
   if(node->_mode == ExecutionNode::NodeType::INDEX) {
-    TRI_ASSERT(inSlice.isNull());
-
-    // options?!
-    auto mergedBuilder = merge(VPackSlice::emptyObjectSlice(), _key, 0);
-    result = _trx->document(_collection->name(), mergedBuilder->slice(), opOptions);
-
+    result = _trx->document(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
-    TRI_ASSERT(!inSlice.isNull());
-
-    // options?!
     result = _trx->insert(_collection->name(), inSlice, opOptions);
-
   } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
-    TRI_ASSERT(inSlice.isNull());
-
-    // options?!
-    auto mergedBuilder = merge(VPackSlice::emptyObjectSlice(), _key, 0);
-    result = _trx->remove(_collection->name(), mergedBuilder->slice() , opOptions);
-
+    result = _trx->remove(_collection->name(), inSlice , opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
-    TRI_ASSERT(!inSlice.isNull());
-
-    // options?!
-    // revision ??
-    auto mergedBuilder = merge(inSlice, _key, 0);
-    result = _trx->replace(_collection->name(), mergedBuilder->slice(), opOptions);
-
+    result = _trx->replace(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
-    TRI_ASSERT(!inSlice.isNull());
-
-    // options?!
-    // revision ??
-    auto mergedBuilder = merge(inSlice, _key, 0);
-    _trx->update(_collection->name(), mergedBuilder->slice(), opOptions);
-
+    _trx->update(_collection->name(), inSlice, opOptions);
   }
 
 

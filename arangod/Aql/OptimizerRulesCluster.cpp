@@ -270,9 +270,10 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           TRI_ASSERT(vec.size() == 1);
         } else if(parentType == EN::INSERT) {
           TRI_ASSERT(vec.size() == 1);
-        } else {
           update = vec.front();
+        } else {
           TRI_ASSERT(vec.size() == 2);
+          update = vec.front();
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(
@@ -344,6 +345,7 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
     auto depType = mod->getType();
     Variable const* update = nullptr;
     Variable const* keyVar = nullptr;
+    std::string key = "";
     auto const& vec = mod->getVariablesUsedHere();
 
     LOG_DEVEL << "optimize modification node of type: "
@@ -353,57 +355,55 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
     if ( depType == EN::REMOVE) {
       keyVar = vec.front();
       TRI_ASSERT(vec.size() == 1);
-    } else if(depType == EN::INSERT) {
-      TRI_ASSERT(vec.size() == 1);
-      update = vec.front();
     } else {
-      TRI_ASSERT(vec.size() == 2);
       update = vec.front();
-      keyVar = vec.back();
-    }
-
-    std::unordered_set<Variable const*> keySet;
-    keySet.emplace(keyVar);
-
-    CalculationNode* calc = nullptr;
-
-    ExecutionNode* cursor = node;
-    while(cursor){
-      cursor = hasSingleDep(cursor, EN::CALCULATION);
-      if(cursor){
-        CalculationNode* c = static_cast<CalculationNode*>(cursor);
-        if(c->setsVariable(keySet)){
-         //LOG_DEVEL << "found calculation that sets key-expression";
-         calc = c;
-         break;
-        }
+      if (vec.size() >= 1) {
+        keyVar = vec.back();
       }
     }
 
-    if(!calc){
-      //LOG_DEVEL << "calculation missing";
-      continue;
+    ExecutionNode* cursor = node;
+    CalculationNode* calc = nullptr;
+
+    if(keyVar){
+      std::unordered_set<Variable const*> keySet;
+      keySet.emplace(keyVar);
+
+      while(cursor){
+        cursor = hasSingleDep(cursor, EN::CALCULATION);
+        if(cursor){
+          CalculationNode* c = static_cast<CalculationNode*>(cursor);
+          if(c->setsVariable(keySet)){
+           //LOG_DEVEL << "found calculation that sets key-expression";
+           calc = c;
+           break;
+          }
+        }
+      }
+
+      if(!calc){
+        //LOG_DEVEL << "calculation missing";
+        continue;
+      }
+      AstNode const* expr = calc->expression()->node();
+      if(expr->isStringValue()){
+        key = expr->getString();
+      } else if (false){
+        // write more code here if we
+        // want to support thinks like:
+        //
+        // DOCUMENT("foo/bar")
+        expr->dump(0);
+      }
+
+      if(key.empty()){
+        //LOG_DEVEL << "could not extract key";
+        continue;
+      }
     }
 
     if(!depIsSingletonOrConstCalc(cursor)){
       //LOG_DEVEL << "plan too complex";
-      continue;
-    }
-
-    AstNode const* expr = calc->expression()->node();
-    std::string key = "";
-    if(expr->isStringValue()){
-      key = expr->getString();
-    } else if (false){
-      // write more code here if we
-      // want to support thinks like:
-      //
-      // DOCUMENT("foo/bar")
-      expr->dump(0);
-    }
-
-    if(key.empty()){
-      //LOG_DEVEL << "could not extract key";
       continue;
     }
 
@@ -415,7 +415,7 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
         depType,
         key, mod->collection(),
         mod->getOptions(),
-        update,
+        update /*in*/,
         nullptr,
         mod->getOutVariableOld(),
         mod->getOutVariableNew()
@@ -423,7 +423,9 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
     );
 
     replaceNode(plan, mod, singleOperationNode);
-    plan->unlinkNode(calc);
+    if(calc){
+      plan->unlinkNode(calc);
+    }
     modified = true;
   } // for node : nodes
 
