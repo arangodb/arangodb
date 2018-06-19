@@ -387,12 +387,19 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
       AstNode const* expr = calc->expression()->node();
       if(expr->isStringValue()){
         key = expr->getString();
-      } else if (false){
+      } else if (expr->isObject()){
+        for(std::size_t i = 0 ; i < expr->numMembers(); i++){
+          auto* anode = expr->getMemberUnchecked(i);
+          if( anode->getString() == "_key"){
+            key = anode->getMember(0)->getString();
+            break;
+          }
+        }
+      } else {
         // write more code here if we
         // want to support thinks like:
         //
         // DOCUMENT("foo/bar")
-        expr->dump(0);
       }
 
       if(key.empty()){
