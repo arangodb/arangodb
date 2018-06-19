@@ -1770,7 +1770,6 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     result = _trx->update(_collection->name(), inSlice, opOptions);
   }
 
-
   // check operation result
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && node->_mode == ExecutionNode::NodeType::INDEX)) {
