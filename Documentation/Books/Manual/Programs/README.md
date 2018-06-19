@@ -14,6 +14,7 @@ The full ArangoDB package ships with the following programs and tools:
 | `arangoexport`  | [Bulk exporter](Arangoexport/README.md) for the ArangoDB server. It supports JSON, CSV and XML.
 | `arango-dfdb`   | [Datafile debugger](Arango-dfdb/README.md) for ArangoDB (MMFiles storage engine only).
 | `arangobench`   | [Benchmark and test tool](Arangobench/README.md). It can be used for performance and server function testing.
+| `arangoinspect` | [Inspection tool](Arangoinspect/README.md) that gathers server setup information.
 | `arangovpack`   | Utility to convert [VelocyPack](https://github.com/arangodb/velocypack) data to JSON.
 
 The client package comes with a subset of programs and tools:
@@ -24,6 +25,7 @@ The client package comes with a subset of programs and tools:
 - arangodump
 - arangorestore
 - arangobench
+- arangoinspect
 - arangovpack
 
 Additional tools which are available separately:
