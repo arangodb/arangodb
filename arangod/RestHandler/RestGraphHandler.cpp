@@ -257,9 +257,9 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetsAction(
     case RequestType::GET:
       graphActionReadConfig(graph, TRI_COL_TYPE_DOCUMENT, GraphProperty::VERTICES);
       return RestStatus::DONE;
-    //case RequestType::POST:
-      //modifyVertexDefinition(graph, VertexDefinitionAction::CREATE, "");
-      //return RestStatus::DONE;
+    case RequestType::POST:
+      modifyVertexDefinition(graph, VertexDefinitionAction::CREATE, "");
+      return RestStatus::DONE;
     default:;
   }
   return boost::none;
@@ -996,19 +996,6 @@ Result RestGraphHandler::removeEdgeDefinition(std::shared_ptr<const graph::Graph
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::REMOVE, edgeDefinitionName);
 }
 
-// /_api/gharial/{graph-name}/vertex
-Result RestGraphHandler::addVertexDefinition(std::shared_ptr<const graph::Graph> graph) {
-
-
-  return Result();
-}
-
-// /_api/gharial/{graph-name}/vertex/{collection-name}
-Result RestGraphHandler::removeVertexDefinition(std::shared_ptr<const graph::Graph> graph,
-                                               const std::string& collectionName) {
-  return Result();
-}
-
 
 // TODO The tests check that, if "returnOld: true" is passed,  the result
 // contains the old value in the field "old"; and if "returnNew: true" is
@@ -1020,6 +1007,7 @@ Result RestGraphHandler::documentModify(
     std::shared_ptr<const graph::Graph> graph,
     const std::string& collectionName, const std::string& key, bool isPatch,
     TRI_col_type_e colType) {
+
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {

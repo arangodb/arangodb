@@ -250,16 +250,16 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
 
   // edges
   Result editEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph,
+    std::shared_ptr<const graph::Graph> graph, // TODO: do we need that layer of wrappers?
     const std::string& edgeDefinitionName
   );
 
   Result removeEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph,
+    std::shared_ptr<const graph::Graph> graph, // TODO: do we need that layer of wrappers?
     const std::string& edgeDefinitionName
   );
 
-  Result createEdgeDefinition(
+  Result createEdgeDefinition( // TODO: do we need that layer of wrappers?
     std::shared_ptr<const graph::Graph> graph
   );
 
@@ -273,16 +273,6 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
     std::shared_ptr<const graph::Graph> graph,
     VertexDefinitionAction action,
     std::string vertexDefinitionName
-  );
-
-  // vertices
-  Result addVertexDefinition(
-    std::shared_ptr<const graph::Graph> graph
-  );
-
-  Result removeVertexDefinition(
-    std::shared_ptr<const graph::Graph> graph,
-    const std::string& collectionName
   );
 
   };

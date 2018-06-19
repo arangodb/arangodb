@@ -796,6 +796,61 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::extendEdgeDefinitio
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createVertexDefinition(
         VPackSlice document, bool waitForSync) {
+
+  GraphManager gmngr{ctx()};
+  std::string collectionName = document.get("collection").copyString();
+  std::shared_ptr<LogicalCollection> def;
+
+  def = gmngr.getCollectionByName(ctx()->vocbase(), collectionName);
+  if (def == nullptr) {
+    gmngr.createVertexCollection(std::move(collectionName));
+  } else {
+    if (def->type() != 2) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
+    }
+  }
+
+  for (auto const& vertexCollection : _graph.vertexCollections()) {
+    if (collectionName == vertexCollection) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF);
+    }
+  }
+  for (auto const& orphanCollection : _graph.orphanCollections()) {
+    if (collectionName == orphanCollection) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS);
+    }
+  }
+
+  // TODO: create collection before save actual definition?
+  // currently it is like that in js gharial
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::KeyString, VPackValue(_graph.name()));
+  builder.add(_graph._attrOrphans, VPackValue(VPackValueType::Array));
+  for (auto const& orph : _graph.orphanCollections()) {
+    builder.add(VPackValue(orph));
+  }
+  builder.add(VPackValue(collectionName));
+  builder.close(); // array
+  builder.close(); // object
+
+  SingleCollectionTransaction trx(ctx(), Graph::_graphs,
+                                  AccessMode::Type::WRITE);
+
+  Result res = trx.begin();
+
+  if (!res.ok()) {
+    trx.finish(TRI_ERROR_NO_ERROR);
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  OperationOptions options;
+  options.waitForSync = waitForSync;
+  OperationResult result = trx.update(Graph::_graphs, builder.slice(), options);
+
+  res = trx.finish(result.result);
+  return std::make_pair(std::move(result), std::move(res));
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertexDefinition(
@@ -1666,6 +1721,7 @@ void GraphManager::findOrCreateVertexCollectionByName(
   if (def == nullptr) {
     createVertexCollection(std::move(name));
   }
+  
 }
 
 void GraphManager::checkDuplicateEdgeDefinitions(
