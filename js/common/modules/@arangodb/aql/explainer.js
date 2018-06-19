@@ -1332,18 +1332,10 @@ function processQuery (query, explain) {
         switch (node.mode) {
         case "IndexNode": {
           collectionVariables[node.outVariable.id] = node.collection;
-          indexes.push({
-            node: node.id,
-            type: 'primary',
-            sparse: false,
-            selectivityEstimate: 1,
-            unique: true,
-            fields: ['_key'],
-            collection: node.collection,
-            condition : `(${variable('X')}.${attribute(`_key`)} == ${value(JSON.stringify(node.key))})`
-          });
+          let indexRef = `${variableName(node.inDocVariable)}`;
+          node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           return `${keyword('FOR')} X ${keyword('IN')} ${collection(node.collection)} ${annotation(`/* primary index scan */`)}`;
-// `
+          // `
         }
         case 'InsertNode': {
           return 'aoeu';
