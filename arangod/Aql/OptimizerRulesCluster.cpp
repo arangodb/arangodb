@@ -225,21 +225,20 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
                                                                    ExecutionPlan* plan,
                                                                    OptimizerRule const* rule) {
-  //LOG_DEVEL << "substitute single document operation INDEX";
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::INDEX, true);
 
   if(nodes.size() != 1){
-    //LOG_DEVEL << "plan has more than one index node";
+    LOG_DEVEL << "plan has " << nodes.size() << "!=1 index nodes";
     return modified;
   }
 
   for(auto* node : nodes){
-    //LOG_DEVEL << "substitute single document operation";
+    LOG_DEVEL << "substitute single document operation INDEX";
     if(!depIsSingletonOrConstCalc(node)){
-      //LOG_DEVEL << "dependency is not singleton or const calculation";
+      LOG_DEVEL << "dependency is not singleton or const calculation";
       continue;
     }
 
@@ -249,7 +248,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       auto binaryCompares = hasBinaryCompare(node);
       std::string key = getFirstKey(binaryCompares);
       if(key.empty()){
-        //LOG_DEVEL << "could not extract key from index condition";
+        LOG_DEVEL << "could not extract key from index condition";
         continue;
       }
 
@@ -293,7 +292,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         plan->unlinkNode(indexNode);
         modified = true;
       } else if(parentSelect){
-        //LOG_DEVEL << "optimize SELECT with key: " << key;
+        LOG_DEVEL << "optimize SELECT with key: " << key;
 
         ExecutionNode* singleOperationNode = plan->registerNode(
             new SingleRemoteOperationNode(plan, plan->nextId()
@@ -304,10 +303,10 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         modified = true;
 
       } else {
-        //LOG_DEVEL << "plan following the index node is too complex";
+        LOG_DEVEL << "plan following the index node is too complex";
       }
     } else {
-      //LOG_DEVEL << "is not primary or has more indexes";
+      LOG_DEVEL << "is not primary or has more indexes";
     }
   }
   return modified;
@@ -316,29 +315,29 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
 bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
                                                              ExecutionPlan* plan,
                                                              OptimizerRule const* rule) {
-  //LOG_DEVEL << "substitute single document operation key Expressions";
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, true);
 
   if(nodes.size() != 1){
-    //LOG_DEVEL << "the plan has more than one Modification Node";
+    LOG_DEVEL << "plan has " << nodes.size() << "!=1 modification nodes";
     return modified;
   }
 
   for(auto* node : nodes){
+    LOG_DEVEL << "substitute single document operation NO INDEX";
 
     auto mod = static_cast<ModificationNode*>(node);
 
     if(!depIsSingletonOrConstCalc(node)){
-      //LOG_DEVEL << "optimization too complex";
+      LOG_DEVEL << "optimization too complex (debIsSingleOrConstCalc)";
       continue;
     }
 
     auto p = node->getFirstParent();
     if( p && p->getType() != EN::RETURN){
-      //LOG_DEVEL << "parent of modification is not a RETURN node";
+      LOG_DEVEL << "parent of modification is not a RETURN node";
       continue;
     }
 
@@ -374,7 +373,7 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
         if(cursor){
           CalculationNode* c = static_cast<CalculationNode*>(cursor);
           if(c->setsVariable(keySet)){
-           //LOG_DEVEL << "found calculation that sets key-expression";
+           LOG_DEVEL << "found calculation that sets key-expression";
            calc = c;
            break;
           }
@@ -382,7 +381,7 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
       }
 
       if(!calc){
-        //LOG_DEVEL << "calculation missing";
+        LOG_DEVEL << "calculation missing";
         continue;
       }
       AstNode const* expr = calc->expression()->node();
@@ -397,13 +396,13 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
       }
 
       if(key.empty()){
-        //LOG_DEVEL << "could not extract key";
+        LOG_DEVEL << "could not extract key";
         continue;
       }
     }
 
     if(!depIsSingletonOrConstCalc(cursor)){
-      //LOG_DEVEL << "plan too complex";
+      LOG_DEVEL << "plan too complex";
       continue;
     }
 
