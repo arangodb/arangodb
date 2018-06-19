@@ -120,11 +120,12 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
         [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 5, false ],
         [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 6, false ],
         [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 7, false ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 8, false ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 9, false ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 10, false ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 11, false ],
 
+        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 8, false ],
+        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 9, false ],
+        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 10, false ],
+        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 11, false ],
+//* /
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 1, false],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 1, false],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
@@ -145,7 +146,7 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
         [ "UPDATE {_key: '1'} WITH {foo: 'bar4b'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5b'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
-
+//*/
         [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 1, false],
         [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 1, false],
         [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
@@ -257,6 +258,7 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
         print(query[1])
         print(expectedNodes[query[1]])
         print(expectedRules[query[1]])
+        db._explain(query[0])
         assertEqual(expectedRules[query[1]], result.plan.rules, "Rules: " + JSON.stringify(query));
         assertEqual(expectedNodes[query[1]], explain(result), "Nodes: " + JSON.stringify(query));
         if (query[3]) {

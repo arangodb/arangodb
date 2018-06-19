@@ -1338,19 +1338,54 @@ function processQuery (query, explain) {
           // `
         }
         case 'InsertNode': {
-          return 'aoeu';
+          modificationFlags = node.modificationFlags;
+          collectionVariables[node.inVariable.id] = node.collection;
+          let indexRef = `${variableName(node.inVariable)}`;
+          if (node.hasOwnProperty('indexes')) {
+            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+          }
+          let OLD="";
+          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'UpdateNode': {
-          return 'aoeu';
+          modificationFlags = node.modificationFlags;
+          collectionVariables[node.inVariable.id] = node.collection;
+          let indexRef = `${variableName(node.inVariable)}`;
+          if (node.hasOwnProperty('indexes')) {
+            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+          }
+          let OLD="";
+          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'ReplaceNode': {
-          return 'aoeu';
+          modificationFlags = node.modificationFlags;
+          collectionVariables[node.inVariable.id] = node.collection;
+          let indexRef = `${variableName(node.inVariable)}`;
+          if (node.hasOwnProperty('indexes')) {
+            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+          }
+          let OLD="";
+          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'UpsertNode': {
-          return 'aoeu';
+          modificationFlags = node.modificationFlags;
+          collectionVariables[node.inVariable.id] = node.collection;
+          let indexRef = `${variableName(node.inVariable)}`;
+          if (node.hasOwnProperty('indexes')) {
+            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+          }
+          let OLD="";
+          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'RemoveNode': {
-          return 'aoeu';
+          modificationFlags = node.modificationFlags;
+          collectionVariables[node.inVariable.id] = node.collection;
+          let indexRef = `${variableName(node.inVariable)}`;
+          if (node.hasOwnProperty('indexes')) {
+            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+          }
+          let OLD="";
+          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         }
       }
