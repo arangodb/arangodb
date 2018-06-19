@@ -45,18 +45,26 @@ CreateDatabase::~CreateDatabase() {};
 bool CreateDatabase::first() {
 
   VPackSlice users;
+  auto database = _description.get(DATABASE);
 
+  LOG_TOPIC(INFO, Logger::MAINTENANCE) << "creating database " << database;
+  
   auto* systemVocbase =
-    ApplicationServer::getFeature<DatabaseFeature>(DATABASE)->systemDatabase();
+    ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
 
   if (systemVocbase == nullptr) {
-    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
+    LOG_TOPIC(FATAL, Logger::MAINTENANCE) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
-
+  
   // Assertion in constructor makes sure that we have DATABASE.
   _result = Databases::create(_description.get(DATABASE), users, properties());
+  if (!_result.ok()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "failed to create database " << database << ": " << _result;
+  }
 
+  LOG_TOPIC(INFO, Logger::MAINTENANCE) << "database  " << database << " created";
   return false;
 
 }

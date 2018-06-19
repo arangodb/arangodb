@@ -57,11 +57,9 @@ Action::Action(std::unique_ptr<ActionBase> action)
 Action::~Action() {}
 void Action::create(
   MaintenanceFeature& feature, ActionDescription const& description) {
-  std::string name = describe().name();
-  LOG_TOPIC(WARN, Logger::FIXME) << name << __LINE__;
-
+  std::string name = description.name();
   if (name == "CreateCollection") {
-    _action.reset(new CreateCollection(feature, describe()));
+    _action.reset(new CreateCollection(feature, description));
   } else if (name == "CreateDatabase") {
     _action.reset(new CreateDatabase(feature, description));
   } else if (name == "DropCollection") {

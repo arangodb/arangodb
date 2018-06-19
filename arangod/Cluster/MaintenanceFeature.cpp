@@ -312,8 +312,6 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
 
   // name should already be verified as existing ... but trust no one
   std::string name = description->get(NAME);
-  LOG_TOPIC(WARN, Logger::FIXME) << description << __LINE__;
-  LOG_TOPIC(WARN, Logger::FIXME) << name << __LINE__;
       
   // call factory
   newAction = std::make_shared<Action>(*this, *description);
