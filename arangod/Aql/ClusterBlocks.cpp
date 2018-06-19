@@ -1794,7 +1794,13 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   std::unique_ptr<AqlItemBlock> aqlres;
   aqlres.reset(requestBlock(1, node->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
-  VPackSlice outDocument = result.slice().resolveExternal();
+  TRI_ASSERT(result.ok());
+  VPackSlice outDocument = VPackSlice::noneSlice();
+  if(result.buffer){
+    outDocument = result.slice().resolveExternal();
+  } else {
+    LOG_DEVEL << "no result slice";
+  }
   VPackSlice oldDocument = VPackSlice::noneSlice();
   VPackSlice newDocument = VPackSlice::noneSlice();
   if(outDocument.hasKey("old")){
@@ -1806,12 +1812,15 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 
   // place documents as in the outi variable slots of the result
   if(out) {
+    TRI_ASSERT(!outDocument.isNone());
     aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
   }
   if(OLD) {
+    TRI_ASSERT(!oldDocument.isNone());
     aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
   }
   if(NEW) {
+    TRI_ASSERT(!newDocument.isNone());
     aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
   }
   throwIfKilled();  // check if we were aborted
