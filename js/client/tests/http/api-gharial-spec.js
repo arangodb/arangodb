@@ -24,15 +24,17 @@
 // / @author Michael Hackstein
 // //////////////////////////////////////////////////////////////////////////////
 
-const expect = require('chai').expect;
+const chai = require('chai');
+const expect = chai.expect;
+chai.Assertion.addProperty('does', function () { return this; });
 
 const arangodb = require('@arangodb');
 const request = require('@arangodb/request');
 
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
-const wait = require('internal').wait;
-const extend = require('lodash').extend;
+const internal = require('internal');
+const wait = internal.wait;
 
 describe('_api/gharial', () => {
 
@@ -522,4 +524,88 @@ describe('_api/gharial', () => {
     expect(remainingEdges.map(x => x.name))
       .to.have.members(['bob->charlie', 'dave->bob']);
   });
+
+  it('should check that edges can be replaced', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const e = db.knows.any();
+
+    const newEdge = Object.assign({}, e);
+    newEdge.newAttribute = 'new value';
+
+    const res = request.put(
+      `${url}/${exampleGraphName}/edge/${eName}/${e._key}`,
+      {body: JSON.stringify(newEdge)}
+    );
+
+    // 202 without waitForSync (default)
+    expect(res.statusCode).to.equal(202);
+    expect(res.json.code).to.equal(202);
+    expect(res.json.error).to.equal(false);
+    expect(res.json.edge._key).to.equal(e._key);
+
+    expect(db.knows.document(e._key))
+      .to.be.an('object')
+      .that.has.property('newAttribute')
+      .which.equals('new value');
+  });
+
+  it('should check that edges can NOT be replaced if their _from or _to' +
+    ' attribute is missing', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+
+    const e = db.knows.any();
+
+    let newEdge;
+    let newEdges = {};
+    newEdge = newEdges['_from missing'] = Object.assign({new: "new"}, e);
+    delete newEdge._from;
+    newEdge = newEdges['_to missing'] = Object.assign({new: "new"}, e);
+    delete newEdge._to;
+    newEdge = newEdges['_from and _to missing'] = Object.assign({new: "new"}, e);
+    delete newEdge._from;
+    delete newEdge._to;
+
+
+    for (let key in newEdges) {
+      if (!newEdges.hasOwnProperty(key)) {
+        continue;
+      }
+      const description = key;
+      const newEdge = newEdges[key];
+
+      const res = request.put(
+        `${url}/${exampleGraphName}/edge/${eName}/${e._key}`,
+        {body: JSON.stringify(newEdge)}
+      );
+
+      expect(res.statusCode, description).to.equal(400);
+      expect(res.json.errorNum, description)
+        .to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+    }
+
+    expect(db.knows.document(e._key))
+      .to.be.an('object')
+      .that.does.not.have.property('new');
+
+  });
+
 });

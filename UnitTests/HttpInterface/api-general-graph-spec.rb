@@ -848,8 +848,9 @@ describe ArangoDB do
           it "can not replace a non existing edge" do
             key = "unknownKey"
 
-            # [tg, 2018-05-24] added _from and _to, because otherwise a 400
-            # might conceal the 404. TODO what's really desired here?
+            # Added _from and _to, because otherwise a 400 might conceal the
+            # 404. Another test checking that missing _from or _to trigger
+            # errors was added to api-gharial-spec.js.
             doc = replace_edge( sync, graph_name, friend_collection, key, {"type2" => "divorced", "_from" => "1", "_to" => "2"})
             doc.code.should eq(404)
             doc.parsed_response['error'].should eq(true)
