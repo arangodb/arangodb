@@ -161,16 +161,20 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
                            [ "scatter-in-cluster",
                              "distribute-filtercalc-to-cluster",
                              "remove-unnecessary-remote-scatter" ],
-                           [],
-                           []
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations"
+                           ]
                           ];
 
       var expectedNodes = [
-        ["SingletonNode", "SingleRemoteOperationNode", "ReturnNode"],
-        ["SingletonNode", "EnumerateCollectionNode", "CalculationNode",
-         "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ],
-        [],
-        []
+        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode"],
+        [ "SingletonNode", "EnumerateCollectionNode", "CalculationNode",
+          "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode"],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode"]
       ];
 
       queries.forEach(function(query) {
