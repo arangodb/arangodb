@@ -167,7 +167,7 @@ void ClusterInfo::cleanup() {
     return;
   }
 
-  TRI_ASSERT(_newPlannedViews.empty()); // only non-empty during loadPlan()
+  TRI_ASSERT(theInstance->_newPlannedViews.empty()); // only non-empty during loadPlan()
   theInstance->_plannedViews.clear();
   theInstance->_plannedCollections.clear();
   theInstance->_shards.clear();
