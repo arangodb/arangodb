@@ -1332,9 +1332,9 @@ function processQuery (query, explain) {
         switch (node.mode) {
         case "IndexNode": {
           collectionVariables[node.outVariable.id] = node.collection;
-          let indexRef = `${variableName(node.inDocVariable)}`;
+          let indexRef = `${variableName(node.outVariable)}`; // TODO
           node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
-          return `${keyword('FOR')} X ${keyword('IN')} ${collection(node.collection)} ${annotation(`/* primary index scan */`)}`;
+          return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${annotation(`/* primary index scan */`)}`;
           // `
         }
         case 'InsertNode': {
