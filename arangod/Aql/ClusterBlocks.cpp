@@ -1734,6 +1734,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
    LOG_DEVEL << "in Doc";
    inBuilder.add(inDocument.slice());
    inSlice = inBuilder.slice();
+    LOG_DEVEL <<"#### ClusterBlock inSlice from inDoc" << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
   }
 
   auto const& nodeOps = node->_options;
@@ -1748,10 +1749,13 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   opOptions.silent = nodeOps.ignoreErrors; // CHECKME
   opOptions.overwrite = nodeOps.overwrite;
 
+  std::unique_ptr<VPackBuilder> mergedBuilder;
   if(!_key.empty()){
-    auto mergedBuilder = merge(inSlice, _key, 0);
+    mergedBuilder = merge(inSlice, _key, 0);
     inSlice = mergedBuilder->slice();
   }
+
+  LOG_DEVEL <<"#### ClusterBlock inSlice " << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
 
   OperationResult result;
   if(node->_mode == ExecutionNode::NodeType::INDEX) {
