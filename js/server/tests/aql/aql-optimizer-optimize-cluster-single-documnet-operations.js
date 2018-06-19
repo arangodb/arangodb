@@ -77,10 +77,21 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, true],
         [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, false],
 
+//*
 
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 2, true],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 3, true],
 
-        [ "INSERT {insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 2, true],
-        [ "INSERT {insert2: true} INTO " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 3, true],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD" ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD" ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW" ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW" ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]" ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]" ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }" ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }" ]
+
+//*/
         
 /*
         Insert
@@ -145,6 +156,7 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
       ];
 
       queries.forEach(function(query) {
+        print(query)
         var result = AQL_EXPLAIN(query[0], { }, thisRuleEnabled);
         assertEqual(expectedRules[query[1]], result.plan.rules, query);
         assertEqual(expectedNodes[query[1]], explain(result), query);
