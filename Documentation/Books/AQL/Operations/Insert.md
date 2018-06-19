@@ -24,7 +24,7 @@ traversal operations, or AQL functions that can read documents.
 The syntax for an insert operation is:
 
 ```
-INSERT document IN collection options
+INSERT document IN collection [ OPTIONS {options} ]
 ```
 
 **Note**: The *INTO* keyword is also allowed in the place of *IN*.
@@ -75,6 +75,19 @@ FOR i IN 1..1000
     name: "test",
     foobar: true
   } INTO users OPTIONS { waitForSync: true }
+```
+
+If you want to replace existing documents with documents having the same key
+there is the *overwrite* query option. This will let you safely replace the
+documents instead of raising an "unique constraint violated error":
+
+```js
+FOR i IN 1..1000
+  INSERT {
+    _key: CONCAT('test', i),
+    name: "test",
+    foobar: true
+  } INTO users OPTIONS { overwrite: true }
 ```
 
 Returning the inserted documents
