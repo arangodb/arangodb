@@ -34,6 +34,9 @@ boolean flag to indicate whether an error occurred (*false* in this case)
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
 
+@RESTREPLYBODY{isNewlyCreated,boolean,required,}
+boolean flag to indicate whether the function was newly created (*false* in this case)
+
 @RESTRETURNCODE{201}
 If the function can be registered by the server, the server will respond with
 *HTTP 201*.
@@ -43,6 +46,9 @@ boolean flag to indicate whether an error occurred (*false* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
+
+@RESTREPLYBODY{isNewlyCreated,boolean,required,}
+boolean flag to indicate whether the function was newly created (*true* in this case)
 
 
 @RESTRETURNCODE{400}
