@@ -128,6 +128,8 @@ class ExecutionBlock {
   /// return a block of at most atMost items, however, it may return
   /// less (for example if there are not enough items to come). However,
   /// if it returns an actual block, it must contain at least one item.
+  /// getSome() also takes care of tracing and clearing registers; don't do it
+  /// in getOrSkipSome() implementations.
   virtual std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
       size_t atMost);
 
@@ -146,10 +148,6 @@ class ExecutionBlock {
   // TODO change the documentation of all hasMore implementations
   virtual ExecutionState hasMoreState();
   
-  // skip exactly atMost outputs
-  // TODO DELETE
-  void skip(size_t atMost, size_t& numActuallySkipped);
-  
   ExecutionNode const* getPlanNode() const { return _exeNode; }
   
   transaction::Methods* transaction() const { return _trx; }
@@ -163,6 +161,10 @@ class ExecutionBlock {
     TRI_ASSERT(false);
     return true;
   }
+
+  RegisterId getNrInputRegisters() const;
+
+  RegisterId getNrOutputRegisters() const;
 
  protected:
   /// @brief request an AqlItemBlock from the memory manager
@@ -189,8 +191,7 @@ class ExecutionBlock {
   /// in a derived class but wants to modify the results before the register
   /// cleanup can use this method, internal use only
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-    getSomeWithoutRegisterClearout(size_t atMost);
-  AqlItemBlock* getSomeWithoutRegisterClearoutOld(size_t atMost);
+  getSomeWithoutRegisterClearout(size_t atMost);
 
   /// @brief clearRegisters, clears out registers holding values that are no
   /// longer needed by later nodes
@@ -198,6 +199,10 @@ class ExecutionBlock {
   
 
   /// @brief generic method to get or skip some
+  /// Does neither do tracing (traceGetSomeBegin/~End), nor call
+  /// clearRegisters() - both is done in getSome(), which calls this via
+  /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
+  /// implementations.
   virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                           AqlItemBlock*& result, size_t& skipped);
 

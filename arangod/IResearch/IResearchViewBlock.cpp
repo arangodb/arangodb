@@ -264,7 +264,8 @@ IResearchViewBlockBase::getSome(size_t atMost) {
   size_t send = 0;
   std::unique_ptr<AqlItemBlock> res;
 
-  auto const& planNode = getViewNode(*this);
+  RegisterId const nrInRegs = getNrInputRegisters();
+  RegisterId const nrOutRegs = getNrOutputRegisters();
 
   do {
     do {
@@ -305,13 +306,11 @@ IResearchViewBlockBase::getSome(size_t atMost) {
     } while (needMore);
 
     TRI_ASSERT(cur);
+    TRI_ASSERT(nrInRegs == cur->getNrRegs());
 
-    auto const curRegs = cur->getNrRegs();
-    auto const nrRegs = planNode.getRegisterPlan()->nrRegs[planNode.getDepth()];
-
-    res.reset(requestBlock(atMost, nrRegs));
+    res.reset(requestBlock(atMost, nrOutRegs));
     // automatically freed if we throw
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(nrInRegs <= res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
@@ -322,7 +321,7 @@ IResearchViewBlockBase::getSome(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasMore = next(*res, curRegs, send, atMost);
+    _hasMore = next(*res, nrInRegs, send, atMost);
 
     // If the collection is actually empty we cannot forward an empty block
   } while (send == 0);
