@@ -1,6 +1,10 @@
 v3.3.11 (2018-XX-XX)
 --------------------
 
+* fixed internal issue #2559: "unexpected document key" error when custom
+  shard keys are used and the "allowUserKeys" key generator option is set
+  to false
+
 * fixed AQL DOCUMENT lookup function for documents for sharded collections with
   more than a single shard and using a custom shard key (i.e. some shard
   key attribute other than `_key`).
