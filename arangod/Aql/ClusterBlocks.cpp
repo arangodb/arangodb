@@ -1767,7 +1767,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
     result = _trx->replace(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
-    _trx->update(_collection->name(), inSlice, opOptions);
+    result = _trx->update(_collection->name(), inSlice, opOptions);
   }
 
 
