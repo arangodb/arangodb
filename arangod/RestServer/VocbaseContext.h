@@ -58,7 +58,7 @@ class VocbaseContext : public arangodb::ExecContext {
   VocbaseContext(
     GeneralRequest& req,
     TRI_vocbase_t& vocbase,
-    bool isInternal,
+    uint32_t flags,
     auth::Level systemLevel,
     auth::Level dbLevel
   );

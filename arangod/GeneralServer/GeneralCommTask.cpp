@@ -147,7 +147,6 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                      TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND));
-
     return RequestFlow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
@@ -159,6 +158,60 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
   if (found) {
     LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"request-source\",\"" << (void*)this
                                        << "\",\"" << source << "\"";
+  }
+  
+  std::string const& path = req.requestPath();
+  
+  // In the shutdown phase we simply return 503:
+  if (application_features::ApplicationServer::isStopping()) {
+    std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+    addResponse(*res, nullptr);
+    return RequestFlow::Abort;
+  }
+  
+  // In the bootstrap phase, we would like that coordinators answer the
+  // following endpoints, but not yet others:
+  ServerState::Mode mode = ServerState::serverMode();
+  switch (mode) {
+    case ServerState::Mode::MAINTENANCE: {
+      if ((!ServerState::instance()->isCoordinator() &&
+           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+           path.find("/_api/aql") == std::string::npos)) {
+            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+            std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+            addResponse(*res, nullptr);
+            return RequestFlow::Abort;
+          }
+      break;
+    }
+    case ServerState::Mode::REDIRECT:
+    case ServerState::Mode::TRYAGAIN: {
+      if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/cluster/health") == std::string::npos &&
+          path.find("/_admin/log") == std::string::npos &&
+          path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_admin/server/availability") == std::string::npos &&
+          path.find("/_admin/status") == std::string::npos &&
+          path.find("/_admin/statistics") == std::string::npos &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/cluster/") == std::string::npos &&
+          path.find("/_api/replication") == std::string::npos &&
+          path.find("/_api/version") == std::string::npos &&
+          path.find("/_api/wal") == std::string::npos) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Redirect/Try-again: refused path: " << path;
+        std::unique_ptr<GeneralResponse> res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
+        ReplicationFeature::prepareFollowerResponse(res.get(), mode);
+        addResponse(*res, nullptr);
+        return RequestFlow::Abort;
+      }
+      break;
+    }
+    case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::READ_ONLY:
+    case ServerState::Mode::INVALID:
+      // no special handling required
+      break;
   }
 
   // now check the authentication will determine if the user can access

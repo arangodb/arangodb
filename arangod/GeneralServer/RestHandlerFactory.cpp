@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHandlerFactory.h"
-#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/GlobalReplicationApplier.h"
@@ -36,33 +35,6 @@ using namespace arangodb::rest;
 
 static std::string const ROOT_PATH = "/";
 
-namespace {
-class MaintenanceHandler : public RestBaseHandler {
-  ServerState::Mode _mode;
- public:
-  MaintenanceHandler(GeneralRequest* request,
-                     GeneralResponse* response,
-                     ServerState::Mode mode)
-      : RestBaseHandler(request, response), _mode(mode) {}
-
-  char const* name() const override final { return "MaintenanceHandler"; }
-
-  bool isDirect() const override { return true; };
-  
-  // returns the queue name, should trigger processing without job
-  size_t queue() const override { return JobQueue::AQL_QUEUE; }
-
-  RestStatus execute() override {
-    ReplicationFeature::prepareFollowerResponse(_response.get(), _mode);
-    return RestStatus::DONE;
-  }
-
-  void handleError(const Exception& error) override {
-    resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
-  }
-};
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,51 +43,6 @@ RestHandler* RestHandlerFactory::createHandler(
     std::unique_ptr<GeneralRequest> req,
     std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
-  
-  // In the shutdown phase we simply return 503:
-  if (application_features::ApplicationServer::isStopping()) {
-    return new MaintenanceHandler(req.release(), res.release(), ServerState::Mode::INVALID);
-  }
-
-  // In the bootstrap phase, we would like that coordinators answer the
-  // following endpoints, but not yet others:
-  ServerState::Mode mode = ServerState::serverMode();
-  switch (mode) {
-    case ServerState::Mode::MAINTENANCE: {
-      if ((!ServerState::instance()->isCoordinator() &&
-          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-          path.find("/_api/aql") == std::string::npos)) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-        return new MaintenanceHandler(req.release(), res.release(), mode);
-      }
-      break;
-    }
-    case ServerState::Mode::REDIRECT:
-    case ServerState::Mode::TRYAGAIN: {
-      if (path.find("/_admin/shutdown") == std::string::npos &&
-          path.find("/_admin/cluster/health") == std::string::npos &&
-          path.find("/_admin/log") == std::string::npos &&
-          path.find("/_admin/server/role") == std::string::npos &&
-          path.find("/_admin/server/availability") == std::string::npos &&
-          path.find("/_admin/status") == std::string::npos &&
-          path.find("/_admin/statistics") == std::string::npos &&
-          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-          path.find("/_api/cluster/") == std::string::npos &&
-          path.find("/_api/replication") == std::string::npos &&
-          path.find("/_api/version") == std::string::npos &&
-          path.find("/_api/wal") == std::string::npos) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-        return new MaintenanceHandler(req.release(), res.release(), mode);
-      }
-      break;
-    }
-    case ServerState::Mode::DEFAULT:
-    case ServerState::Mode::READ_ONLY:
-    case ServerState::Mode::INVALID:    
-      // no special handling required
-      break;
-  }
 
   auto const& ii = _constructors;
   std::string const* modifiedPath = &path;

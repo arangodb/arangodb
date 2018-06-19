@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecContext.h"
+
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
 
@@ -54,12 +56,12 @@ ExecContext* ExecContext::create(std::string const& user,
       sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
   }
-  return new ExecContext(false, user, dbname, sysLvl, dbLvl);
+  return new ExecContext(0, user, dbname, sysLvl, dbLvl);
 }
 
 bool ExecContext::canUseDatabase(std::string const& db,
                                  auth::Level requested) const {
-  if (_internal || _database == db) {
+  if (_flags & FLAG_INTERNAL || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
   }
@@ -67,16 +69,20 @@ bool ExecContext::canUseDatabase(std::string const& db,
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (af->isActive()) {
-    auth::Level allowed = af->userManager()->databaseAuthLevel(_user, db);
+    auth::Level allowed = af->userManager()->databaseAuthLevel(_user, db, true);
+    if (allowed > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+      return false;
+    }
     return requested <= allowed;
   }
+  
   return true;
 }
 
 /// @brief returns auth level for user
 auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
                                              std::string const& coll) const {
-  if (_internal) {
+  if (_flags & FLAG_INTERNAL) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }
@@ -99,5 +105,13 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   
   auth::UserManager* um = af->userManager();
   TRI_ASSERT(um != nullptr);
-  return um->collectionAuthLevel(_user, dbname, coll);
+  auth::Level lvl = um->collectionAuthLevel(_user, dbname, coll, true);
+  
+  //if (!configured) {
+    static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
+    if (lvl > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+      return auth::Level::RO;
+    }
+  //}
+  return lvl;
 }
