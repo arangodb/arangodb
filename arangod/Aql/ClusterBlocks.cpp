@@ -1775,19 +1775,23 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     auto mergedBuilder = merge(inSlice, _key, 0);
     _trx->update(_collection->name(), mergedBuilder->slice(), opOptions);
 
-  } else if(node->_mode == ExecutionNode::NodeType::UPSERT) {
-    //TRI_ASSERT(!inSlice.isNull());
   }
 
+
   // check operation result
-  if (!result.ok() || !(out || OLD || NEW)) {
+  if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && node->_mode == ExecutionNode::NodeType::INDEX)) {
       // document not there is not an error in this situation.
+      _done = true;
       return nullptr;
-    }
-    else {
+    } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
+    TRI_ASSERT(false);
+  }
+
+  if (!(out || OLD || NEW)) {
+    _done = true;
     return nullptr;
   }
 

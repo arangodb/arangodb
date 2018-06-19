@@ -427,9 +427,6 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable == nullptr);
-  //} else if (_mode == NodeType::UPSERT) {
-  //  LOG_DEVEL << "not implemented";
-  //  TRI_ASSERT(false);
   } else {
     LOG_DEVEL << "Ctor failed unkown node type";
     TRI_ASSERT(false);
