@@ -71,55 +71,9 @@ function optimizerClusterSingleDocumentTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test plans that should result
 ////////////////////////////////////////////////////////////////////////////////
-
-    testRuleFetch : function () {
-      var queries = [
-        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, true],
-        [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, false],
-
-//*
-
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 2, false],
-        [ "INSERT {_key: 'test1', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 3, true],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD" ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD" ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW" ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW" ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]" ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]" ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }" ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }" ]
-
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN   " + cn1 + " OPTIONS {}", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar1b'} INTO " + cn1 + " OPTIONS {}", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar2b'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar3b'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4b'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar5b'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
-
-        [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 1, false],
-        [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 1, false],
-        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-
-        //*/
         
 /*
-
+"INSERT {_key: 'test1', insert1: true} INTO UnitTestsCollection OPTIONS {waitForSync: true, ignoreErrors:true}"
 INSERT {_key: 'chris' } INTO persons RETURN NEW
 
 Update/Replace
@@ -152,6 +106,52 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
 
 */
 
+
+    testRuleFetch : function () {
+      var queries = [
+        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, true],
+        [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, false],
+
+//*
+
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 2, false],
+        [ "INSERT {_key: 'test1', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 3, true],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 4, false],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 5, false ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 6, false ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 7, false ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 8, false ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 9, false ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 10, false ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 11, false ],
+
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 1, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 1, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN   " + cn1 + " OPTIONS {}", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar1b'} INTO " + cn1 + " OPTIONS {}", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar2b'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar3b'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4b'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar5b'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
+
+        [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 1, false],
+        [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 1, false],
+        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
+        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
+
+        //*/
         
       ];
       var expectedRules = [[ "use-indexes",
@@ -166,22 +166,99 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
                            ],
                            [ "remove-data-modification-out-variables", 
                              "optimize-cluster-single-documnet-operations"
-                           ]
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [ "remove-data-modification-out-variables", 
+                             "optimize-cluster-single-documnet-operations" 
+                           ],
+                           [
+                           ],
+                           [
+                           ],
+                           [
+                           ],
+                           [
+                           ],
+                           [
+                           ],
+                           [
+                           ],
+                           [
+                           ],
+                           [
+                           ],
+                           [
+                           ],
+
                           ];
 
       var expectedNodes = [
-        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode"],
+        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [ "SingletonNode", "EnumerateCollectionNode", "CalculationNode",
           "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode"],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode"]
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [
+        ],
+        [
+        ],
+        [
+        ],
+        [
+        ],
+        [
+        ],
+        [
+        ],
+        [
+        ],
+        [
+        ],
+        [
+        ],
+
+        
       ];
 
       queries.forEach(function(query) {
         print(query)
         var result = AQL_EXPLAIN(query[0], { }, thisRuleEnabled);
-        assertEqual(expectedRules[query[1]], result.plan.rules, query);
-        assertEqual(expectedNodes[query[1]], explain(result), query);
+        print(query[1])
+        print(expectedNodes[query[1]])
+        print(expectedRules[query[1]])
+        assertEqual(expectedRules[query[1]], result.plan.rules, "Rules: " + JSON.stringify(query));
+        assertEqual(expectedNodes[query[1]], explain(result), "Nodes: " + JSON.stringify(query));
         if (query[3]) {
           assertEqual(AQL_EXECUTE(query[0], {}, thisRuleEnabled),
                       AQL_EXECUTE(query[0], {}, thisRuleDisabled),
