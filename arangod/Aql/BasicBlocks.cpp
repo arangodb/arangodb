@@ -65,17 +65,15 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::initializeCursor(
 std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK();  
-  traceGetSomeBegin(atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
 
   if (_done) {
     TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
-    traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
 
   if (!skipping) {
-    result = requestBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+    result = requestBlock(1, getNrOutputRegisters());
 
     try {
       if (_inputRegisterValues != nullptr) {
@@ -121,7 +119,6 @@ std::pair<ExecutionState, arangodb::Result> SingletonBlock::getOrSkipSome(
 
   _done = true;
   TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
-  traceGetSomeEnd(result, ExecutionState::DONE);
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 
   // cppcheck-suppress style

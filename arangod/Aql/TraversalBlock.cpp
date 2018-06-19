@@ -359,6 +359,10 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 TraversalBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
+
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+  RegisterId const nrInRegs = getNrInputRegisters();
+
   while (true) {
     if (_done) {
       TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
@@ -367,7 +371,7 @@ TraversalBlock::getSome(size_t atMost) {
     }
 
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+      size_t toFetch = std::min(DefaultBatchSize(), atMost);
       auto res = ExecutionBlock::getBlock(toFetch);
       if (res.first == ExecutionState::WAITING) {
         traceGetSomeEnd(nullptr, ExecutionState::WAITING);
@@ -384,7 +388,8 @@ TraversalBlock::getSome(size_t atMost) {
 
     // If we get here, we do have _buffer.front()
     AqlItemBlock* cur = _buffer.front();
-    size_t const curRegs = cur->getNrRegs();
+    TRI_ASSERT(cur != nullptr);
+    TRI_ASSERT(nrInRegs == cur->getNrRegs());
 
     if (_pos == 0 && !_traverser->hasMore()) {
       // Initial initialization
@@ -409,14 +414,11 @@ TraversalBlock::getSome(size_t atMost) {
     }
 
     size_t available = _vertices.size() - _posInPaths;
-    size_t toSend = (std::min)(atMost, available);
+    size_t toSend = std::min(atMost, available);
 
-    RegisterId nrRegs =
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-
-    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
+    std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrOutRegs));
     // automatically freed if we throw
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(nrInRegs <= res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
@@ -433,7 +435,7 @@ TraversalBlock::getSome(size_t atMost) {
       }
       if (j > 0) {
         // re-use already copied AqlValues
-        res->copyValuesFromFirstRow(j, static_cast<RegisterId>(curRegs));
+        res->copyValuesFromFirstRow(j, nrInRegs);
       }
       ++_posInPaths;
     }

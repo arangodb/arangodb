@@ -74,7 +74,6 @@ ExecutionBlockMock::ExecutionBlockMock(
     arangodb::aql::ExecutionNode const& node
 ) : arangodb::aql::ExecutionBlock(&engine, &node),
     _data(&data),
-    _upstreamState(arangodb::aql::ExecutionState::HASMORE),
     _inflight(0) {
 }
 

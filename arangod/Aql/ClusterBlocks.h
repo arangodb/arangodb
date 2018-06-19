@@ -65,7 +65,8 @@ class BlockWithClients : public ExecutionBlock {
   int shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override final {
+  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
+      size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -384,17 +385,23 @@ class SortingGatherBlock final : public ExecutionBlock {
    *
    *
    * @param atMost The amount of data requested per block.
-   * @param nonEmptyIndex an index of a non-empty GatherBlock buffer
    *
    * @return Will return {WAITING, 0} if it had to request new data from upstream.
    *         If everything is in place: all buffers are either filled, or the upstream
    *         block is DONE. Will return {DONE, SUM(_gatherBlockBuffer)} on success.
    */
-  std::pair<ExecutionState, size_t> fillBuffers(size_t atMost, size_t& nonEmptyIndex);
+  std::pair<ExecutionState, size_t> fillBuffers(size_t atMost);
  
   /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
   /// non-simple case only
-  std::pair<ExecutionState, bool> getBlock(size_t i, size_t atMost);
+  std::pair<ExecutionState, bool> getBlocks(size_t i, size_t atMost);
+
+  /// @brief Updates _gatherBlockBuffer and _gatherBlockPos so they point to the
+  /// next row.
+  void nextRow(size_t i);
+
+  /// @brief Calculates and returns the number of available rows in buffer i.
+  size_t availableRows(size_t i) const;
 
  private:
 

@@ -246,6 +246,8 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       // return used block: this will reset value to a nullptr
       engine->_itemBlockManager.returnBlock(std::move(value)); 
       if (!done) {
+        // TODO MAX: We need to use hasMoreState() here instead, and sleep if
+        // it returns WAITING
         hasMore = engine->hasMoreSync();
       }
     }

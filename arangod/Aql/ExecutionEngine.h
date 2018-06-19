@@ -84,8 +84,8 @@ class ExecutionEngine {
   /// @brief hasMore
   inline ExecutionState hasMoreState() const { return _root->hasMoreState(); }
 
-  /// @brief hasMore - synchronous (cannot return WAITING)
-  /// TODO should be removed, but the AQL HTTP API has to be changed for this
+  /// @brief hasMore - synchronous (cannot return WAITING, but blocks the
+  /// thread)
   inline bool hasMoreSync() const {
     ExecutionState state = _root->hasMoreState();
 

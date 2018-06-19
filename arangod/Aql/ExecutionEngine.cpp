@@ -513,9 +513,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     QueryRegistry* queryRegistry, Query* query, ExecutionPlan* plan,
     bool planRegisters) {
   auto role = arangodb::ServerState::instance()->getRole();
-  bool const isCoordinator =
-      arangodb::ServerState::instance()->isCoordinator(role);
-  bool const isDBServer = arangodb::ServerState::instance()->isDBServer(role);
+  bool const isCoordinator = arangodb::ServerState::isCoordinator(role);
+  bool const isDBServer = arangodb::ServerState::isDBServer(role);
 
   TRI_ASSERT(queryRegistry != nullptr);
 
@@ -600,6 +599,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
     if (plan->isResponsibleForInitialize()) {
       // TODO REMOVE THIS LOOP
+      // TODO if possible, remove the initializeCursor() call completely.
       while (true) {
         auto res = root->initializeCursor(nullptr, 0);
         if (res.first == ExecutionState::WAITING) {

@@ -179,7 +179,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), std::move(stats));
+      _engine->_stats.nodes.emplace(en->id(), stats);
     }
     
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -212,8 +212,16 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
 /// return a block of at most atMost items, however, it may return
 /// less (for example if there are not enough items to come). However,
 /// if it returns an actual block, it must contain at least one item.
-
-std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> ExecutionBlock::getSome(size_t atMost) {
+/// getSome() also takes care of tracing and clearing registers; don't do it
+/// in getOrSkipSome() implementations.
+// TODO Blocks overriding getSome (and skipSome) instead of getOrSkipSome should
+//      still not have to call traceGetSomeBegin/~End and clearRegisters on
+//      their own. This can be solved by adding one level of indirection via a
+//      method _getSome(), which by default only calls
+//      getSomeWithoutRegisterClearout() and which can be overridden instead.
+//      Or maybe overriding getSomeWithoutRegisterClearout() instead is better.
+std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
+ExecutionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
     
@@ -327,33 +335,31 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
 /// in a derived class but wants to modify the results before the register
 /// cleanup can use this method, internal use only
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
-  ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
-  std::unique_ptr<AqlItemBlock> blk(getSomeWithoutRegisterClearoutOld(atMost));
-  if (blk == nullptr) {
-    return {ExecutionState::DONE, nullptr};
-  }
-  return {ExecutionState::HASMORE, std::move(blk)};
-}
-AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearoutOld(size_t atMost) {
+ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(atMost > 0);
-  size_t skipped = 0;
 
-  AqlItemBlock* result = nullptr;
-  while (true) {
-    TRI_ASSERT(result == nullptr);
-    auto res = getOrSkipSome(atMost, false, result, skipped);
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else {
-      if (res.second.fail()) {
-        THROW_ARANGO_EXCEPTION(res.second);
-      }
-      break;
-    }
+  std::unique_ptr<AqlItemBlock> result;
+  ExecutionState state;
+  Result res;
+
+  {
+    AqlItemBlock* resultPtr = nullptr;
+    size_t skipped = 0;
+    std::tie(state, res) = getOrSkipSome(atMost, false, resultPtr, skipped);
+    result.reset(resultPtr);
   }
 
-  return result;
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(result == nullptr);
+    return {ExecutionState::WAITING, nullptr};
+  }
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return {state, std::move(result)};
   DEBUG_END_BLOCK();
 }
 
@@ -382,37 +388,6 @@ std::pair<ExecutionState, size_t> ExecutionBlock::skipSome(size_t atMost) {
   }
 
   return {res.first, skipped};
-}
-
-// skip exactly atMost outputs
-void ExecutionBlock::skip(size_t atMost, size_t& numActuallySkipped) {
-  // TODO FIXME
-  size_t skipped = 0;
-  
-  while (true) {
-    auto res = skipSome(atMost);
-    if (res.first == ExecutionState::WAITING) {
-      _engine->getQuery()->tempWaitForAsyncResponse();
-    } else { 
-      skipped = res.second;
-      break;
-    }
-  }
-
-  size_t nr = skipped;
-  while (nr != 0 && skipped < atMost) {
-    while (true) {
-      auto res = skipSome(atMost - skipped);
-      if (res.first == ExecutionState::WAITING) {
-        _engine->getQuery()->tempWaitForAsyncResponse();
-      } else { 
-        nr = res.second;
-        break;
-      }
-    }
-    skipped += nr;
-  }
-  numActuallySkipped = skipped;
 }
 
 ExecutionState ExecutionBlock::hasMoreState() {
@@ -446,8 +421,14 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
   while (!_done && _skipped < atMost) {
     if (_buffer.empty()) {
       if (skipping) {
-        size_t numActuallySkipped = 0;
-        _dependencies[0]->skip(atMost - _skipped, numActuallySkipped);
+        ExecutionState state;
+        size_t numActuallySkipped;
+        std::tie(state, numActuallySkipped) =
+            _dependencies[0]->skipSome(atMost);
+        if (state == ExecutionState::WAITING) {
+          TRI_ASSERT(numActuallySkipped == 0);
+          return {state, TRI_ERROR_NO_ERROR};
+        }
         _skipped += numActuallySkipped;
         break;
       } else {
@@ -549,4 +530,22 @@ ExecutionState ExecutionBlock::getHasMoreState() {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
+}
+
+RegisterId ExecutionBlock::getNrInputRegisters() const {
+  ExecutionNode const* previousNode = getPlanNode()->getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId const inputNrRegs =
+    previousNode->getRegisterPlan()->nrRegs[previousNode->getDepth()];
+
+  return inputNrRegs;
+}
+
+RegisterId ExecutionBlock::getNrOutputRegisters() const {
+  ExecutionNode const* planNode = getPlanNode();
+  TRI_ASSERT(planNode != nullptr);
+  RegisterId const outputNrRegs =
+    planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
+
+  return outputNrRegs;
 }

@@ -128,6 +128,9 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
     traceGetSomeEnd(nullptr, ExecutionState::DONE);
     return {ExecutionState::DONE, nullptr};
   }
+
+  RegisterId const nrInRegs = getNrInputRegisters();
+  RegisterId const nrOutRegs = getNrOutputRegisters();
     
   bool needMore = false;
   AqlItemBlock* cur = nullptr;
@@ -173,14 +176,11 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
     TRI_ASSERT(cur != nullptr);
     TRI_ASSERT(_cursor->hasMore());
 
-    size_t curRegs = cur->getNrRegs();
+    TRI_ASSERT(cur->getNrRegs() == nrInRegs);
 
-    RegisterId nrRegs =
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-
-    res.reset(requestBlock(atMost, nrRegs));
+    res.reset(requestBlock(atMost, nrOutRegs));
     // automatically freed if we throw
-    TRI_ASSERT(curRegs <= res->getNrRegs());
+    TRI_ASSERT(nrInRegs <= res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
@@ -196,13 +196,13 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
       tmp = _cursor->nextDocument([&](LocalDocumentId const&, VPackSlice slice) {
-        _documentProducer(res.get(), slice, curRegs, _inflight, 0);
+        _documentProducer(res.get(), slice, nrInRegs, _inflight, 0);
       }, atMost);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
       tmp = _cursor->next([&](LocalDocumentId const&) {
-        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, _inflight, 0);
+        _documentProducer(res.get(), VPackSlice::nullSlice(), nrInRegs, _inflight, 0);
       }, atMost);
     }
     if (!tmp) {
