@@ -89,8 +89,8 @@ struct IResearchViewDBServerSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::WARN);
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEBUG);
+    irs::logger::output_le(iresearch::logger::IRL_DEBUG, stderr);
 
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
@@ -636,7 +636,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     arangodb::aql::Variable variable("testVariable", 0);
 std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     // test insert + query
-    for (size_t i = 1; i < 200; ++i) {
+    for (size_t i = 1; i < 200; ++i) {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
       // insert
       {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"seq\": ") + std::to_string(i) + " }");
@@ -666,9 +666,9 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, true);
         CHECK(i == snapshot->docs_count());
         CHECK((trx.commit().ok()));
-      }
-    }
-  }
+      }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+    }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+  }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
 }
 
 SECTION("test_rename") {
