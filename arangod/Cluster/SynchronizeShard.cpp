@@ -304,6 +304,10 @@ arangodb::Result synchroniseOneShard(
 
 SynchronizeShard::~SynchronizeShard() {};
 
+bool SynchronizeShard::first() {
+  return true;
+}
+
 arangodb::Result SynchronizeShard::run(
   std::chrono::duration<double> const&, bool& finished) {
   arangodb::Result res;

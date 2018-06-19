@@ -82,6 +82,9 @@ public:
   /// @brief describe action
   ActionDescription const& describe() const;
 
+  /// @brief describe action
+  MaintenanceFeature& feature() const;
+
   // @brief get properties
   std::shared_ptr<VPackBuilder> const properties() const;
 
@@ -152,8 +155,12 @@ public:
   bool runable() const {return _action->runable();}
 
 private:
-  
-  std::unique_ptr<ActionBase> _action;
+
+  /// @brief actually create the concrete action
+  void create(MaintenanceFeature&, ActionDescription const&);
+
+  /// @brief concrete action
+  std::unique_ptr<ActionBase> _action; 
 
 };
 

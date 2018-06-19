@@ -178,10 +178,11 @@ private:
 
 }}
 
-std::ostream& operator<< (
-  std::ostream& o, arangodb::maintenance::ActionDescription const& d);
+
 
 namespace std {
+ostream& operator<< (
+  ostream& o, arangodb::maintenance::ActionDescription const& d);
 /// @brief Hash function used by std::unordered_map<ActionDescription,...>
 template<> struct hash<arangodb::maintenance::ActionDescription> {
   typedef arangodb::maintenance::ActionDescription argument_t;

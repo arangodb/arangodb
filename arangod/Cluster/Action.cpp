@@ -24,8 +24,12 @@
 
 #include "Action.h"
 
+#include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
+#include "Cluster/DropCollection.h"
 #include "Cluster/DropDatabase.h"
+#include "Cluster/EnsureIndex.h"
+#include "Cluster/SynchronizeShard.h"
 #include "Cluster/UpdateCollection.h"
 
 #include "Logger/Logger.h"
@@ -33,48 +37,57 @@
 using namespace arangodb::maintenance;
 
 Action::Action(
-  MaintenanceFeature& feature, ActionDescription const& d)
-  : _action(nullptr) {
-  TRI_ASSERT(d.has("name"));
-  std::string name = d.name();
-  if (name == "CreateDatabase") {
-    _action.reset(new CreateDatabase(feature, d));
-  } else if (name == "DropDatabase") {
-    _action.reset(new DropDatabase(feature, d));
-  } else if (name == "UpdateCollection") {
-    _action.reset(new UpdateCollection(feature, d));
-  } else {
-    // We should never get here
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
-  }
+  MaintenanceFeature& feature,
+  ActionDescription const& description) : _action(nullptr) {
+  TRI_ASSERT(description.has("name"));
+  create(feature, description);
 }
 
 Action::Action(
-  MaintenanceFeature& feature, std::shared_ptr<ActionDescription> const desc)
+  MaintenanceFeature& feature,
+  std::shared_ptr<ActionDescription> const description)
   : _action(nullptr) {
-  auto const& d = *desc;
-  TRI_ASSERT(d.has("name"));
-  std::string name = d.name();
-  if (name == "CreateDatabase") {
-    _action.reset(new CreateDatabase(feature, d));
-  } else if (name == "DropDatabase") {
-    _action.reset(new DropDatabase(feature, d));
-  } else if (name == "UpdateCollection") {
-    _action.reset(new UpdateCollection(feature, d));
-  } else {
-    // We should never get here
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
-  }
+  TRI_ASSERT(description->has("name"));
+  create(feature, *description);
 }
 
 Action::Action(std::unique_ptr<ActionBase> action)
   : _action(std::move(action)) {}
 
 Action::~Action() {}
+void Action::create(
+  MaintenanceFeature& feature, ActionDescription const& description) {
+  std::string name = describe().name();
+  LOG_TOPIC(WARN, Logger::FIXME) << name << __LINE__;
+
+  if (name == "CreateCollection") {
+    _action.reset(new CreateCollection(feature, describe()));
+  } else if (name == "CreateDatabase") {
+    _action.reset(new CreateDatabase(feature, description));
+  } else if (name == "DropCollection") {
+    _action.reset(new DropCollection(feature, description));
+  } else if (name == "DropDatabase") {
+    _action.reset(new DropDatabase(feature, description));
+  } else if (name == "EnsureIndex") {
+    _action.reset(new EnsureIndex(feature, description));
+  } else if (name == "SynchronizeShard") {
+    _action.reset(new SynchronizeShard(feature, description));
+  } else if (name == "UpdateCollection") {
+    _action.reset(new UpdateCollection(feature, description));
+  } else {
+    // We should never get here
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
+  }
+}
 
 ActionDescription const& Action::describe() const {
   TRI_ASSERT(_action != nullptr);
   return _action->describe();
+}
+
+arangodb::MaintenanceFeature& Action::feature() const {
+  TRI_ASSERT(_action != nullptr);
+  return _action->feature();
 }
 
 std::shared_ptr<VPackBuilder> const Action::properties() const {

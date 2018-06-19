@@ -103,6 +103,8 @@ class ActionBase {
 
   ActionDescription const& describe() const;
 
+  MaintenanceFeature& feature() const;
+
   std::string const& get(std::string const&) const;
 
   VPackSlice const properties() const;

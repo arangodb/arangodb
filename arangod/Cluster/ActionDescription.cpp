@@ -130,11 +130,12 @@ namespace std {
 std::size_t hash<ActionDescription>::operator()(
   ActionDescription const& a) const noexcept {
   return a.hash();
-}}
+}
 
-
-std::ostream& operator<< (
-  std::ostream& out, arangodb::maintenance::ActionDescription const& d) {
+ostream& operator<< (
+  ostream& out, arangodb::maintenance::ActionDescription const& d) {
   out << d.toJson();
   return out;
 }
+}
+

@@ -49,6 +49,9 @@ constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 CreateCollection::CreateCollection(
   MaintenanceFeature& feature, ActionDescription const& desc)
   : ActionBase(feature, desc) {
+
+  //Todo: runtime behaviour
+  
   TRI_ASSERT(desc.has(COLLECTION));
   TRI_ASSERT(desc.has(DATABASE));
   TRI_ASSERT(desc.has(ID));
