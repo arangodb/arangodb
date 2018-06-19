@@ -993,7 +993,7 @@ function processQuery (query, explain) {
     return '';
   };
   
-  var iterateIndices = function (idx, i, node, types, variable) {
+  var iterateIndexes = function (idx, i, node, types, variable) {
     var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
     if (types.length === 0 || what !== types[types.length - 1]) {
       types.push(what);
@@ -1030,6 +1030,7 @@ function processQuery (query, explain) {
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
         //`
       case 'TraversalNode':
@@ -1292,7 +1293,7 @@ function processQuery (query, explain) {
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
         }
-        node.indexes.forEach(function(idx, i) { iterateIndices(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('UPDATE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'ReplaceNode': {
@@ -1309,13 +1310,13 @@ function processQuery (query, explain) {
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
           }
-        node.indexes.forEach(function(idx, i) { iterateIndices(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REPLACE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'UpsertNode':
         modificationFlags = node.modificationFlags;
         let indexRef = `${variableName(node.inDocVariable)}`;
-        node.indexes.forEach(function(idx, i) { iterateIndices(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return keyword('UPSERT') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('INSERT') + ' ' + variableName(node.insertVariable) + ' ' + keyword(node.isReplace ? 'REPLACE' : 'UPDATE') + ' ' + variableName(node.updateVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
       case 'RemoveNode': {
         modificationFlags = node.modificationFlags;
@@ -1324,7 +1325,7 @@ function processQuery (query, explain) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
           }
         let indexRef = `${variableName(node.inVariable)}`;
-        node.indexes.forEach(function(idx, i) { iterateIndices(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'SingleRemoteOperationNode': {
