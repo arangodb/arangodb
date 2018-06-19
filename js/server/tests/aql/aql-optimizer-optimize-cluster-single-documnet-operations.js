@@ -111,7 +111,12 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5b'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
 
-//*/
+        [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 1, false],
+        [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 1, false],
+        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
+        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
+
+        //*/
         
 /*
 
