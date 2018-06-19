@@ -556,12 +556,13 @@ void RestVocbaseBaseHandler::prepareExecute() {
 /// @brief finalizeExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::finalizeExecute() {
+void RestVocbaseBaseHandler::finalizeExecute() noexcept {
   if (_nolockHeaderSet != nullptr) {
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }
   CollectionLockState::_noLockHeaders = nullptr;
 
+  // This is noexcept
   RestBaseHandler::finalizeExecute();
 }

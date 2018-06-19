@@ -106,14 +106,20 @@ void RestHandler::runHandlerStateMachine() {
   while (true) {
     switch (_state) {
       case HandlerState::PREPARE:
-        this->prepareEngine();
+        prepareEngine();
         break;
         
       case HandlerState::EXECUTE: {
-        int res = this->executeEngine();
-        if (res != TRI_ERROR_NO_ERROR) {
-          this->finalizeEngine();
+        executeEngine(false);
+        if (_state == HandlerState::PAUSED) {
+          LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
+          return; // stop state machine
         }
+        break;
+      }
+
+      case HandlerState::CONTINUED: {
+        executeEngine(true);
         if (_state == HandlerState::PAUSED) {
           LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
           return; // stop state machine
@@ -123,17 +129,23 @@ void RestHandler::runHandlerStateMachine() {
         
       case HandlerState::PAUSED:
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Resuming rest handler execution";
-        TRI_ASSERT(_response != nullptr);
-        _callback(this);
-        _state = HandlerState::FINALIZE;
+        _state = HandlerState::CONTINUED;
         break;
         
       case HandlerState::FINALIZE:
-        this->finalizeEngine();
+        RequestStatistics::SET_REQUEST_END(_statistics);
+        // Callback may stealStatistics!
+        _callback(this);
+        // Schedule callback BEFORE! finalize
+        finalizeEngine();
         break;
-        
-      case HandlerState::DONE:
       case HandlerState::FAILED:
+        RequestStatistics::SET_REQUEST_END(_statistics);
+        // Callback may stealStatistics!
+        _callback(this);
+        // No need to finalize here!
+        return;
+      case HandlerState::DONE:
         return;
     }
   }
@@ -148,14 +160,13 @@ int RestHandler::prepareEngine() {
   RequestStatistics::SET_REQUEST_START_END(_statistics);
 
   if (_canceled) {
-    _state = HandlerState::DONE;
+    _state = HandlerState::FAILED;
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
     handleError(err);
 
-    _callback(this);
     return TRI_ERROR_REQUEST_CANCELED;
   }
 
@@ -177,11 +188,16 @@ int RestHandler::prepareEngine() {
   }
 
   _state = HandlerState::FAILED;
-  _callback(this);
   return TRI_ERROR_INTERNAL;
 }
 
 int RestHandler::finalizeEngine() {
+  // This is NOEXCEPT!
+  finalizeExecute();
+  _state = HandlerState::DONE;
+  return TRI_ERROR_NO_ERROR;
+}
+  /* TODO REMOVE ME!
   int res = TRI_ERROR_NO_ERROR;
 
   try {
@@ -211,25 +227,15 @@ int RestHandler::finalizeEngine() {
     handleError(err);
     res = TRI_ERROR_INTERNAL;
   }
-
-  RequestStatistics::SET_REQUEST_END(_statistics);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    _state = HandlerState::DONE;
-  } else {
-    _state = HandlerState::FAILED;
-    _callback(this);
-  }
-  
   return res;
-}
+  */
 
-int RestHandler::executeEngine() {
+int RestHandler::executeEngine(bool isContinue) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
   try {
-    RestStatus result = execute();
+    RestStatus result = (isContinue ? continueExecute() : execute());
 
     if (result == RestStatus::FAIL) {
       LOG_TOPIC(WARN, Logger::REQUESTS) << "Rest handler reported fail";
@@ -244,7 +250,6 @@ int RestHandler::executeEngine() {
     }
 
     _state = HandlerState::FINALIZE;
-    _callback(this);
     return TRI_ERROR_NO_ERROR;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -288,7 +293,6 @@ int RestHandler::executeEngine() {
   }
 
   _state = HandlerState::FAILED;
-  _callback(this);
   return TRI_ERROR_INTERNAL;
 }
 

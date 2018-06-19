@@ -63,9 +63,7 @@ RestStatus RestCursorHandler::execute() {
 
   if (type == rest::RequestType::POST) {
     auto continueCallback = [this, self]() {
-      if (continueCreateQueryCursor() == RestStatus::DONE) {
-        continueHandlerExecution();
-      }
+      continueHandlerExecution();
     };
     ret = createQueryCursor(continueCallback);
   } else if (type == rest::RequestType::PUT) {
@@ -89,6 +87,31 @@ RestStatus RestCursorHandler::execute() {
   }
 
   return ret;
+}
+
+RestStatus RestCursorHandler::continueExecute() {
+  // extract the sub-request type
+  rest::RequestType const type = _request->requestType();
+
+  if (type == rest::RequestType::POST) {
+    if (_query != nullptr) {
+      // We are in the non-streaming case
+      try {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are in the repeating case! We have actually slept!";
+        return processQuery();
+      } catch (...) {
+        unregisterQuery();
+        throw;
+      }
+    }
+    // Query should not be taken!
+    TRI_ASSERT(false);
+    return RestStatus::DONE;
+  }
+
+  // NOT YET IMPLEMENTED
+  TRI_ASSERT(false);
+  return RestStatus::DONE;
 }
 
 bool RestCursorHandler::cancel() {
@@ -429,15 +452,16 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_post_api_cursor
-////////////////////////////////////////////////////////////////////////////////
 RestStatus RestCursorHandler::continueCreateQueryCursor() {
   // TODO !!
   // THIS NEEDS TO POST something on the io service. 
   // Do we need to try () catch () sth here or are errors handled?
   return processQuery();
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JSF_post_api_cursor
+////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::createQueryCursor(std::function<void()> const& continueHandler) {
   if (_request->payload().isEmptyObject()) {

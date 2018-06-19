@@ -341,7 +341,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finalizeExecute, to react to X-Arango-Nolock header
   //////////////////////////////////////////////////////////////////////////////
-  virtual void finalizeExecute() override;
+  virtual void finalizeExecute() noexcept override;
 
   virtual bool cancel() override {
     _context.cancel();

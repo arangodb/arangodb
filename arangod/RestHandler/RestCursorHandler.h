@@ -55,10 +55,11 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
  public:
   virtual RestStatus execute() override;
+  virtual RestStatus continueExecute() override;
   char const* name() const override final { return "RestCursorHandler"; }
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() override;
+  void finalizeExecute() noexcept override;
 #endif
 
   bool cancel() override final;

@@ -91,7 +91,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   virtual void prepareExecute() {}
   virtual RestStatus execute() = 0;
-  virtual void finalizeExecute() {}
+  virtual RestStatus continueExecute() { return RestStatus::DONE; }
+  virtual void finalizeExecute() noexcept {}
 
   // you might need to implment this in you handler
   // if it will be executed in an async job
@@ -108,12 +109,16 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   
  private:
   
-  enum class HandlerState { PREPARE, EXECUTE, PAUSED, FINALIZE, DONE, FAILED };
+  enum class HandlerState { PREPARE, EXECUTE, PAUSED, CONTINUED, FINALIZE, DONE, FAILED };
   
   void runHandlerStateMachine();
   
   int prepareEngine();
-  int executeEngine();
+  /// @brief Executes the RestHandler
+  ///        May set the state to PAUSED, FINALIZE or FAILED
+  ///        If isContinue == true it will call continueExecute()
+  ///        otherwise execute() will be called
+  int executeEngine(bool isContinue);
   int finalizeEngine();
 
  protected:

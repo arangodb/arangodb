@@ -37,7 +37,7 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestDocumentHandler"; }
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() override;
+  void finalizeExecute() noexcept override;
 #endif
 
  protected:
