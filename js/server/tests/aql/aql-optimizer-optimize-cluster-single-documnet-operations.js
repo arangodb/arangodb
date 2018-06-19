@@ -62,7 +62,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       print(query)
       print(expectedNodes[query[1]])
       print(expectedRules[query[2]])
-      db._explain(query[0])
+      // db._explain(query[0])
       assertEqual(expectedRules[query[1]], result.plan.rules, "Rules: " + JSON.stringify(query));
       assertEqual(expectedNodes[query[2]], explain(result), "Nodes: " + JSON.stringify(query));
       if (query[3]) {
@@ -231,38 +231,24 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
 
     testRuleRemove : function () {
       var queries = [
-        /*
+        
         [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, false],
         [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, false],
-        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 0, false],
-        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 0, false],
-        //*/
-        
+        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, false],
+        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, false],
       ];
       var expectedRules = [
-        [ ]
+        ["remove-data-modification-out-variables", 
+         "optimize-cluster-single-documnet-operations" ]
       ];
 
       
       var expectedNodes = [
-        [
-        ],
-        [
-        ],
-        [
-        ],
-        [
-        ],
-        [
-        ],
-        [
-        ],
-        [
-        ],
-        [
-        ],
-
-        
+        ["SingletonNode", 
+         "SingleRemoteOperationNode" ],
+        [ "SingletonNode", 
+          "SingleRemoteOperationNode", 
+          "ReturnNode" ],
       ];
       runTestSet(queries, expectedNodes, expectedRules);
     }
