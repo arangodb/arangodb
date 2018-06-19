@@ -73,25 +73,25 @@ struct IResearchViewDBServerSetup {
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::string testFilesystemPath;
 
-  IResearchViewDBServerSetup(): server(nullptr, nullptr) {
+  IResearchViewDBServerSetup(): server(nullptr, nullptr) {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true);
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true); // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_PRIMARY);
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     // suppress INFO {cluster} Starting up with role PRIMARY
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::WARN);
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEBUG);
     irs::logger::output_le(iresearch::logger::IRL_DEBUG, stderr);
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
     features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
@@ -103,25 +103,25 @@ struct IResearchViewDBServerSetup {
     features.emplace_back(new arangodb::AgencyFeature(&server), false);
     features.emplace_back(new arangodb::ClusterFeature(&server), false);
     features.emplace_back(new arangodb::V8DealerFeature(&server), false);
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
-
-    for (auto& f: features) {
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << " " << f.first->name() << std::endl;
       f.first->prepare();
 
       if (f.first->name() == "Authentication") {
         f.first->forceDisable();
       }
     }
-
-    for (auto& f: features) {
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << " " << f.first->name() << std::endl;
       if (f.second) {
         f.first->start();
       }
     }
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     testFilesystemPath = (
       (irs::utf8_path()/=
       TRI_GetTempPath())/=
@@ -129,12 +129,13 @@ struct IResearchViewDBServerSetup {
     ).utf8();
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     long systemError;
     std::string systemErrorStr;
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
-
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     agencyCommManager->start(); // initialize agency
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
   }
 
   ~IResearchViewDBServerSetup() {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
@@ -145,13 +146,13 @@ struct IResearchViewDBServerSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
 std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     // destroy application features
-    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << " " << f.first->name() << std::endl;
       if (f.second) {
         f.first->stop();
       }
     }
 std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << " " << f.first->name() << std::endl;
       f.first->unprepare();
     }
 std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
@@ -615,18 +616,18 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     REQUIRE((false == !wiewImpl));
     arangodb::Result res = logicalWiew->updateProperties(viewUpdateJson->slice(), true, false);
     REQUIRE(true == res.ok());
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+std::cerr << __FILE__ << ":" << __LINE__ << std::endl;{
     // start flush thread
     auto flush = std::make_shared<std::atomic<bool>>(true);
     std::thread flushThread([feature, flush]()->void{
       while (flush->load()) {
         feature->executeCallbacks();
       }
-    });
+    });{
     auto flushStop = irs::make_finally([flush, &flushThread]()->void{
       flush->store(false);
       flushThread.join();
-    });
+    });{
 std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
@@ -669,6 +670,9 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
       }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
   }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+}std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+}std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+}std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
 }
 
 SECTION("test_rename") {
