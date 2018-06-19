@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global assertEqual */
+/*global AQL_EXPLAIN */
 
 "use strict";
 
@@ -32,12 +32,49 @@ const helper = require('@arangodb/aql-helper');
 const internal = require('internal');
 const console = require('console');
 const jsunity = require("jsunity");
+const assert = jsunity.jsUnity.assertions;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief test suite for AQL tracing/profiling
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlProfilerTestSuite () {
+
+  const getPlanNodeTypes = function (result) {
+    return helper.getCompactPlan(result).map(function (node) {
+      return node.type;
+    });
+  };
+
+  const zipPlanNodesIntoStatsNodes = function (profile) {
+    const planNodesById = profile.plan.nodes.reduce(
+      (accum, node) => {
+        accum[node.id] = node;
+        return accum;
+      },
+      {}
+    );
+
+    return profile.stats.nodes.map(node => (
+      { id: node.id, fromStats: node, fromPlan: planNodesById[node.id] }
+    ));
+  };
+
+  const getStatsNodeTypes = function (profile) {
+    return zipPlanNodesIntoStatsNodes(profile).map(
+      node => node.fromPlan.type
+    );
+  };
+
+  const getCompactStatsNodes = function (profile) {
+    return zipPlanNodesIntoStatsNodes(profile).map(
+      node => ({
+        type: node.fromPlan.type,
+        calls: node.fromStats.calls,
+        items: node.fromStats.items,
+      })
+    );
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assert structure of profile.stats
@@ -239,6 +276,18 @@ function ahuacatlProfilerTestSuite () {
     assertIsProfilePlanObject(profile.plan);
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief assert that the list of AQL nodes in the explain result matches the
+/// list of AQL nodes of the profile.
+////////////////////////////////////////////////////////////////////////////////
+
+  const assertStatsNodesMatchPlanNodes = function (profile) {
+    assert.assertEqual(
+      profile.plan.nodes.map(node => node.id),
+      profile.stats.nodes.map(node => node.id)
+    );
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,9 +309,10 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testProfile0Fields : function () {
-      const profileDefault = db._query('RETURN 1', {}).getExtra();
-      const profile0 = db._query('RETURN 1', {}, {profile: 0}).getExtra();
-      const profileFalse = db._query('RETURN 1', {}, {profile: false}).getExtra();
+      const query = 'RETURN 1';
+      const profileDefault = db._query(query, {}).getExtra();
+      const profile0 = db._query(query, {}, {profile: 0}).getExtra();
+      const profileFalse = db._query(query, {}, {profile: false}).getExtra();
 
       assertIsLevel0Profile(profileDefault);
       assertIsLevel0Profile(profile0);
@@ -274,8 +324,9 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testProfile1Fields : function () {
-      const profile1 = db._query('RETURN 1', {}, {profile: 1}).getExtra();
-      const profileTrue = db._query('RETURN 1', {}, {profile: true}).getExtra();
+      const query = 'RETURN 1';
+      const profile1 = db._query(query, {}, {profile: 1}).getExtra();
+      const profileTrue = db._query(query, {}, {profile: true}).getExtra();
 
       assertIsLevel1Profile(profile1);
       assertIsLevel1Profile(profileTrue);
@@ -286,11 +337,77 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testProfile2Fields : function () {
-      const profile2 = db._query('RETURN 1', {}, {profile: 2}).getExtra();
+      const query = 'RETURN 1';
+      const profile2 = db._query(query, {}, {profile: 2}).getExtra();
 
       assertIsLevel2Profile(profile2);
+      assertStatsNodesMatchPlanNodes(profile2);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief minimal stats test
+////////////////////////////////////////////////////////////////////////////////
+
+    testStatsMinimal : function () {
+      const query = 'RETURN 1';
+      const profile = db._query(query, {}, {profile: 2}).getExtra();
+
+      assertIsLevel2Profile(profile);
+      assertStatsNodesMatchPlanNodes(profile);
+
+      assert.assertEqual(
+        [
+          { type : "SingletonNode", calls : 2, items : 1 },
+          { type : "CalculationNode", calls : 2, items : 1 },
+          { type : "ReturnNode", calls : 2, items : 1 }
+        ],
+        getCompactStatsNodes(profile)
+      );
+    },
+
+// TODO Every block must be tested separately. Here follows the list of blocks
+// (partly grouped due to the inheritance hierarchy). Intermediate blocks
+// like ModificationBlock and BlockWithClients are never instantiated separately
+// and therefore don't need to be tested on their own.
+
+// CalculationBlock
+// CountCollectBlock
+// DistinctCollectBlock
+// EnumerateCollectionBlock
+// EnumerateListBlock
+// ExecutionBlockMock
+// FilterBlock
+// HashedCollectBlock
+// IndexBlock
+// LimitBlock
+// NoResultsBlock
+// RemoteBlock
+// ReturnBlock
+// ShortestPathBlock
+// SingletonBlock
+// SortBlock
+// SortedCollectBlock
+// SortingGatherBlock
+// SubqueryBlock
+// TraversalBlock
+// UnsortingGatherBlock
+// WaitingExecutionBlockMock
+//
+// ModificationBlock
+// -> RemoveBlock
+// -> InsertBlock
+// -> UpdateBlock
+// -> ReplaceBlock
+// -> UpsertBlock
+//
+// BlockWithClients
+// -> ScatterBlock
+// -> DistributeBlock
+//
+// IResearchViewBlockBase
+// -> IResearchViewUnorderedBlock
+//    -> IResearchViewBlock
+// -> IResearchViewOrderedBlock
 
   };
 }
