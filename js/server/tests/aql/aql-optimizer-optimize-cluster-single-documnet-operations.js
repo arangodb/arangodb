@@ -150,17 +150,17 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
 
     testRuleInsert : function () {
       var queries = [
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 2, false],
-        [ "INSERT {_key: 'test1', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 3, true],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 4, false],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 5, false ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 6, false ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 7, false ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 0, false],
+        [ "INSERT {_key: 'test1', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 1, true],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 2, false],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 3, false ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 4, false ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 5, false ],
 
-        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 8, false ],
-        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 9, false ],
-        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 10, false ],
-        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 11, false ],
+        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 6, false ],
+        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 7, false ],
+        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 8, false ],
+        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 9, false ],
         //* /
       ];
       
@@ -214,37 +214,83 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
       runTestSet(queries, expectedNodes, expectedRules);
     },
 
-    testRuleInsert : function () {
+    testRuleUpdate : function () {
 
       var queries = [
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN   " + cn1 + " OPTIONS {}", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar1b'} INTO " + cn1 + " OPTIONS {}", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar2b'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar3b'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4b'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar5b'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 1, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 2, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 3, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 4, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 5, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 6, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 7, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 8, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 9, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 10, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN   " + cn1 + " OPTIONS {}", 11, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar1b'} INTO " + cn1 + " OPTIONS {}", 12, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 13, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar2b'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 14, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 15, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar3b'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 16, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 17, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4b'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 18, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 19, false],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar5b'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 20, false],
         //*/
       ];
 
-      var expectedRules = [[ ]];
+      var expectedRules = [
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+      ];
 
       var expectedNodes = [
-        [
-        ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [
         ],
         [
@@ -296,7 +342,7 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
 
         
       ];
-      runTestSet(queries, expectedNodes, expectedRules);
+      // runTestSet(queries, expectedNodes, expectedRules);
     }
   };
 }
