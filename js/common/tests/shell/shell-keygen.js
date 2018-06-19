@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, fail, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators
@@ -33,7 +33,13 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
-const cluster = require("@arangodb/cluster");
+let cluster;
+// quick hack to check if we are arangod or arangosh
+if (typeof ArangoClusterComm === "object") {
+  cluster = require("@arangodb/cluster");
+} else {
+  cluster = {};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: traditional key gen
@@ -71,7 +77,7 @@ function TraditionalSuite () {
     },
     
     testCreateInvalidKeyNonDefaultSharding2 : function () {
-      if (!cluster.isCluster()) {
+      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
         return;
       }
 
@@ -88,7 +94,7 @@ function TraditionalSuite () {
     },
     
     testCreateKeyNonDefaultSharding : function () {
-      if (!cluster.isCluster()) {
+      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
         return;
       }
 
