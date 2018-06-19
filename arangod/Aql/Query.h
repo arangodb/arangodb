@@ -70,7 +70,7 @@ class Query;
 struct QueryProfile;
 class QueryRegistry;
 
-/// @brief equery part
+/// @brief query part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
 
 /// @brief an AQL query
@@ -435,6 +435,10 @@ class Query {
   /// Typically, the RestHandler using the Query object will put a closure
   /// in here, which continueAfterPause simply calls.
   std::function<void()> _continueCallback;
+
+  /// Create the result in this builder. It is also used to determine
+  /// if we are continuing the query or of we called
+  std::shared_ptr<arangodb::velocypack::Builder> _resultBuilder;
 
   /// Temporary Section only used during the development of
   /// async AQL

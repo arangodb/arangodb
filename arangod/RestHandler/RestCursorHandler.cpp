@@ -46,9 +46,9 @@ RestCursorHandler::RestCursorHandler(
     GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
+      _query(nullptr),
       _queryRegistry(queryRegistry),
       _queryLock(),
-      _query(nullptr),
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false) {}
@@ -104,11 +104,13 @@ size_t RestCursorHandler::queue() const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief processes the query and returns the results/cursor
+/// @brief register the query either as streaming cursor or in _query
+/// the query is not executed here.
 /// this method is also used by derived classes
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::processQuery(VPackSlice const& slice) {
+void RestCursorHandler::registerQueryOrCursor(
+    VPackSlice const& slice, std::function<void()> const& continueHandler) {
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
@@ -134,11 +136,11 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     bindVarsBuilder->add(bindVars);
   }
 
-  auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
-  VPackSlice opts = options->slice();
+  TRI_ASSERT(_options == nullptr);
+  buildOptions(slice);
+  TRI_ASSERT(_options != nullptr);
+  VPackSlice opts = _options->slice();
 
-  CursorRepository* cursors = _vocbase.cursorRepository();
-  TRI_ASSERT(cursors != nullptr);
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
   size_t batchSize =
@@ -150,8 +152,10 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER, "cannot use 'count' option for a streaming query"));
     } else {
+      CursorRepository* cursors = _vocbase.cursorRepository();
+      TRI_ASSERT(cursors != nullptr);
       Cursor* cursor = cursors->createQueryStream(
-          querySlice.copyString(), bindVarsBuilder, options, batchSize, ttl);
+          querySlice.copyString(), bindVarsBuilder, _options, batchSize, ttl);
       TRI_DEFER(cursors->release(cursor));
       generateCursorResult(rest::ResponseCode::CREATED, cursor);
     }
@@ -162,25 +166,43 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   char const* queryStr = querySlice.getString(l);
   TRI_ASSERT(l > 0);
 
-  aql::Query query(
+  auto query = std::make_unique<aql::Query>(
     false,
     _vocbase,
     arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
     bindVarsBuilder,
-    options,
+    _options,
     arangodb::aql::PART_MAIN
   );
 
-  registerQuery(&query);
-  aql::QueryResult queryResult;
-  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
-  while (true) {
-    auto state = query.execute(_queryRegistry, queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
-    }
-    query.tempWaitForAsyncResponse();
+  query->setContinueCallback(continueHandler);
+  registerQuery(std::move(query));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Process the query registered in _query.
+/// The function is repeatable, so whenever we need to WAIT
+/// in AQL we can post a handler calling this function again.
+//////////////////////////////////////////////////////////////////////////////
+
+RestStatus RestCursorHandler::processQuery() {
+  TRI_ASSERT(_query != nullptr);
+  if (_query == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Illegal state in RestQueryHandler, query not found.");
   }
+  aql::QueryResult queryResult;
+  try {
+    auto state = _query->execute(_queryRegistry, queryResult);
+    if (state == aql::ExecutionState::WAITING) {
+      return RestStatus::WAITING;
+    }
+    TRI_ASSERT(state == aql::ExecutionState::DONE);
+  } catch (...) {
+    // In case something on the query is wrong, we need to clear it.
+    unregisterQuery();
+    throw;
+  }
+  // We cannot get into HASMORE here, or we would loose results.
   unregisterQuery();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -198,6 +220,13 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   }
 
   TRI_ASSERT(qResult.isArray());
+  TRI_ASSERT(_options != nullptr);
+  VPackSlice opts = _options->slice();
+
+  size_t batchSize =
+      VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
+  bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
   _response->setContentType(rest::ContentType::JSON);
   size_t const n = static_cast<size_t>(qResult.length());
@@ -250,6 +279,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     generateResult(rest::ResponseCode::CREATED, std::move(buffer),
                    queryResult.context);
   } else {
+    CursorRepository* cursors = _vocbase.cursorRepository();
+    TRI_ASSERT(cursors != nullptr);
     // result is bigger than batchSize, and a cursor will be created
     TRI_ASSERT(queryResult.result.get() != nullptr);
     // steal the query result, cursor will take over the ownership
@@ -259,13 +290,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     TRI_DEFER(cursors->release(cursor));
     generateCursorResult(rest::ResponseCode::CREATED, cursor);
   }
+  return RestStatus::DONE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
+void RestCursorHandler::registerQuery(std::unique_ptr<arangodb::aql::Query> query) {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_queryKilled) {
@@ -273,7 +305,7 @@ void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
   }
 
   TRI_ASSERT(_query == nullptr);
-  _query = query;
+  _query = std::move(query);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +314,7 @@ void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
 
 void RestCursorHandler::unregisterQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
-  _query = nullptr;
+  _query.reset();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,9 +350,9 @@ bool RestCursorHandler::wasCanceled() {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
-  VPackBuilder options;
-  VPackObjectBuilder obj(&options);
+void RestCursorHandler::buildOptions(VPackSlice const& slice) {
+  _options = std::make_shared<VPackBuilder>();
+  VPackObjectBuilder obj(_options.get());
 
   bool hasCache = false;
   VPackSlice opts = slice.get("options");
@@ -338,16 +370,16 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
       } else if (keyName == "cache") {
         hasCache = true;  // don't honor if appears below
       }
-      options.add(keyName, it.value);
+      _options->add(keyName, it.value);
     }
   }
 
   if (!isStream) {  // ignore cache & count for streaming queries
     bool val = VelocyPackHelper::getBooleanValue(slice, "count", false);
-    options.add("count", VPackValue(val));
+    _options->add("count", VPackValue(val));
     if (!hasCache && slice.hasKey("cache")) {
       val = VelocyPackHelper::getBooleanValue(slice, "cache", false);
-      options.add("cache", VPackValue(val));
+      _options->add("cache", VPackValue(val));
     }
   }
 
@@ -358,20 +390,18 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
     }
-    options.add("batchSize", batchSize);
+    _options->add("batchSize", batchSize);
   } else {
-    options.add("batchSize", VPackValue(1000));
+    _options->add("batchSize", VPackValue(1000));
   }
 
   VPackSlice memoryLimit = slice.get("memoryLimit");
   if (memoryLimit.isNumber()) {
-    options.add("memoryLimit", memoryLimit);
+    _options->add("memoryLimit", memoryLimit);
   }
 
   VPackSlice ttl = slice.get("ttl");
-  options.add("ttl", VPackValue(ttl.isNumber() ? ttl.getNumber<double>() : 30));
-
-  return options;
+  _options->add("ttl", VPackValue(ttl.isNumber() ? ttl.getNumber<double>() : 30));
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -403,9 +433,10 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 /// @brief was docuBlock JSF_post_api_cursor
 ////////////////////////////////////////////////////////////////////////////////
 RestStatus RestCursorHandler::continueCreateQueryCursor() {
-  // TODO Implement me
-  TRI_ASSERT(false);
-  return RestStatus::DONE;
+  // TODO !!
+  // THIS NEEDS TO POST something on the io service. 
+  // Do we need to try () catch () sth here or are errors handled?
+  return processQuery();
 }
 
 RestStatus RestCursorHandler::createQueryCursor(std::function<void()> const& continueHandler) {
@@ -422,23 +453,28 @@ RestStatus RestCursorHandler::createQueryCursor(std::function<void()> const& con
     return RestStatus::DONE;
   }
 
-  try {
-    bool parseSuccess = false;
-    VPackSlice body = this->parseVPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
 
-    if (!parseSuccess) {
-      // error message generated in parseVPackBody
-      return RestStatus::DONE;
+  if (!parseSuccess) {
+    // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+  
+  // tell RestCursorHandler::finalizeExecute that the request
+  // could be parsed successfully and that it may look at it
+  _isValidForFinalize = true;
+
+  TRI_ASSERT(_query == nullptr);
+  registerQueryOrCursor(body, continueHandler);
+  if (_query != nullptr) {
+    // We are in the non-streaming case
+    try {
+      return processQuery();
+    } catch (...) {
+      unregisterQuery();
+      throw;
     }
-    
-    // tell RestCursorHandler::finalizeExecute that the request
-    // could be parsed successfully and that it may look at it
-    _isValidForFinalize = true;
-
-    processQuery(body);
-  } catch (...) {
-    unregisterQuery();
-    throw;
   }
   return RestStatus::DONE;
 }

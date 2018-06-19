@@ -157,9 +157,20 @@ void RestSimpleQueryHandler::allDocuments() {
   }
   data.close();
 
-  VPackSlice s = data.slice();
   // now run the actual query and handle the result
-  processQuery(s);
+
+  auto continueHandler = [&] () {
+    _query->tempSignalAsyncResponse();
+  };
+  registerQueryOrCursor(data.slice(), continueHandler);
+  // We do not support streaming here!
+  TRI_ASSERT(_query != nullptr);
+  // now run the actual query and handle the result
+  while (processQuery() == RestStatus::WAITING) {
+    // TODO Replace this by a POST to io-service
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
+    _query->tempWaitForAsyncResponse();
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -226,9 +237,18 @@ void RestSimpleQueryHandler::allDocumentKeys() {
 
   data.close();
 
-  VPackSlice s = data.slice();
+  auto continueHandler = [&] () {
+    _query->tempSignalAsyncResponse();
+  };
+  registerQueryOrCursor(data.slice(), continueHandler);
+  // We do not support streaming here!
+  TRI_ASSERT(_query != nullptr);
   // now run the actual query and handle the result
-  processQuery(s);
+  while (processQuery() == RestStatus::WAITING) {
+    // TODO Replace this by a POST to io-service
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
+    _query->tempWaitForAsyncResponse();
+  }
 }
 
 static void buildExampleQuery(VPackBuilder& result,
@@ -319,6 +339,16 @@ void RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
+  auto continueHandler = [&] () {
+    _query->tempSignalAsyncResponse();
+  };
+  registerQueryOrCursor(data.slice(), continueHandler);
+  // We do not support streaming here!
+  TRI_ASSERT(_query != nullptr);
   // now run the actual query and handle the result
-  processQuery(data.slice());
+  while (processQuery() == RestStatus::WAITING) {
+    // TODO Replace this by a POST to io-service
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
+    _query->tempWaitForAsyncResponse();
+  }
 }

@@ -555,44 +555,60 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
     bool useQueryCache = canUseQueryCache();
     uint64_t queryHash = hash();
 
-    if (useQueryCache) {
-      // check the query cache for an existing result
-      auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
-        &_vocbase, queryHash, _queryString
-      );
-      arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
+    if (_resultBuilder == nullptr) {
+      if (useQueryCache) {
+        // check the query cache for an existing result
+        auto cacheEntry = arangodb::aql::QueryCache::instance()->lookup(
+          &_vocbase, queryHash, _queryString
+        );
+        arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
-      if (cacheEntry != nullptr) {
-        ExecContext const* exe = ExecContext::CURRENT;
-        // got a result from the query cache
-        if(exe != nullptr) {
-          for (std::string const& collectionName : cacheEntry->_collections) {
-            if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+        if (cacheEntry != nullptr) {
+          ExecContext const* exe = ExecContext::CURRENT;
+          // got a result from the query cache
+          if(exe != nullptr) {
+            for (std::string const& collectionName : cacheEntry->_collections) {
+              if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
+                THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+              }
             }
           }
-        }
 
-        // we don't have yet a transaction when we're here, so let's create
-        // a mimimal context to build the result
-        queryResult.context = transaction::StandaloneContext::Create(_vocbase);
-        queryResult.extra = std::make_shared<VPackBuilder>();
-        {
-          VPackObjectBuilder guard(queryResult.extra.get(), true);
-          addWarningsToVelocyPack(*queryResult.extra);
-        }
-        TRI_ASSERT(cacheEntry->_queryResult != nullptr);
-        queryResult.result = cacheEntry->_queryResult;
-        queryResult.cached = true;
+          // we don't have yet a transaction when we're here, so let's create
+          // a mimimal context to build the result
+          queryResult.context = transaction::StandaloneContext::Create(_vocbase);
+          queryResult.extra = std::make_shared<VPackBuilder>();
+          {
+            VPackObjectBuilder guard(queryResult.extra.get(), true);
+            addWarningsToVelocyPack(*queryResult.extra);
+          }
+          TRI_ASSERT(cacheEntry->_queryResult != nullptr);
+          queryResult.result = cacheEntry->_queryResult;
+          queryResult.cached = true;
 
-        return ExecutionState::DONE;
+          return ExecutionState::DONE;
+        }
       }
+
+      // will throw if it fails
+      prepare(registry, queryHash);
+
+      log();
+
+      VPackOptions options = VPackOptions::Defaults;
+      options.buildUnindexedArrays = true;
+      options.buildUnindexedObjects = true;
+
+      _resultBuilder = std::make_shared<VPackBuilder>(&options);
+
+      // reserve some space in Builder to avoid frequent reallocs
+      _resultBuilder->reserve(16 * 1024);
+
+      _resultBuilder->openArray();
     }
 
-    // will throw if it fails
-    prepare(registry, queryHash);
-
-    log();
+    TRI_ASSERT(_resultBuilder != nullptr);
+    TRI_ASSERT(_resultBuilder->isOpenArray());
     TRI_ASSERT(_trx != nullptr);
 
     if (useQueryCache && (_isModificationQuery || !_warnings.empty() ||
@@ -600,53 +616,41 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
       useQueryCache = false;
     }
 
-    VPackOptions options = VPackOptions::Defaults;
-    options.buildUnindexedArrays = true;
-    options.buildUnindexedObjects = true;
-
-    auto resultBuilder = std::make_shared<VPackBuilder>(&options);
-    resultBuilder->reserve(
-        16 * 1024);  // reserve some space in Builder to avoid frequent reallocs
-
     TRI_ASSERT(_engine != nullptr);
 
     // this is the RegisterId our results can be found in
     RegisterId const resultRegister = _engine->resultRegister();
-    std::unique_ptr<AqlItemBlock> value;
 
-    resultBuilder->openArray();
-
-    // TODO MAX: Please fix these double true loops ;)
+    // We loop as long as we are having ExecState::DONE returned
+    // In case of WAITING we return, this function is repeatable!
+    // In case of HASMORE we loop
     while (true) {
-      while (true) {
-        // TODO MAX: We need to let the thread sleep here instead of while loop
-        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
-        if (res.first == ExecutionState::WAITING) {
-          tempWaitForAsyncResponse();
-        } else {
-          value.swap(res.second);
-          break;
-        }
+      auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+      if (res.first == ExecutionState::WAITING) {
+        return res.first;
       }
-      // TODO Later we can break on DONE after processing value
-      if (value == nullptr) {
+      if (res.second == nullptr) {
+        TRI_ASSERT(res.first == ExecutionState::DONE);
         break;
       }
-      size_t const n = value->size();
+      size_t const n = res.second->size();
 
       for (size_t i = 0; i < n; ++i) {
-        AqlValue const& val = value->getValueReference(i, resultRegister);
+        AqlValue const& val = res.second->getValueReference(i, resultRegister);
 
         if (!val.isEmpty()) {
-          val.toVelocyPack(_trx, *resultBuilder, useQueryCache);
+          val.toVelocyPack(_trx, *_resultBuilder, useQueryCache);
         }
       }
-      _engine->_itemBlockManager.returnBlock(std::move(value));
+      _engine->_itemBlockManager.returnBlock(std::move(res.second));
+      if (res.first == ExecutionState::DONE) {
+        break;
+      }
     }
 
     // must close result array here because it must be passed as a closed
     // array to the query cache
-    resultBuilder->close();
+    _resultBuilder->close();
 
     if (useQueryCache) {
       if (_warnings.empty()) {
@@ -655,7 +659,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
           &_vocbase,
           queryHash,
           _queryString,
-          resultBuilder,
+          _resultBuilder,
           _trx->state()->collectionNames()
         );
 
@@ -665,7 +669,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
       }
     }
 
-    queryResult.result = std::move(resultBuilder);
+    queryResult.result = std::move(_resultBuilder);
     queryResult.context = _trx->transactionContext();
     // will set warnings, stats, profile and cleanup plan and engine
     finalize(queryResult);
@@ -1195,7 +1199,6 @@ void Query::init() {
     // already called
     return;
   }
-
   TRI_ASSERT(_id == 0);
   _id = Query::NextId();
   TRI_ASSERT(_id != 0);
