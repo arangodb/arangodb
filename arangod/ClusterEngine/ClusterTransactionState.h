@@ -51,7 +51,7 @@ class ClusterTransactionState final : public TransactionState {
 
  public:
   ClusterTransactionState(
-    CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     TRI_voc_tid_t tid,
     transaction::Options const& options
   );

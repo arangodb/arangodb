@@ -61,7 +61,7 @@ CollectionNameResolver const& transaction::StandaloneContext::resolver() {
 }
 
 /// @brief create a context, returned in a shared ptr
-/*static*/ std::shared_ptr<transaction::StandaloneContext> transaction::StandaloneContext::Create(
+/*static*/ std::shared_ptr<transaction::Context> transaction::StandaloneContext::Create(
     TRI_vocbase_t& vocbase
 ) {
   return std::make_shared<transaction::StandaloneContext>(vocbase);

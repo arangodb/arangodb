@@ -132,11 +132,11 @@ std::unique_ptr<transaction::ContextData> ClusterEngine::createTransactionContex
 }
 
 std::unique_ptr<TransactionState> ClusterEngine::createTransactionState(
-    CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     transaction::Options const& options
 ) {
   return std::make_unique<ClusterTransactionState>(
-    resolver, TRI_NewTickServer(), options
+    vocbase, TRI_NewTickServer(), options
   );
 }
 

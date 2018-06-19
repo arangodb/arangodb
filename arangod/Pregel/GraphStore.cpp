@@ -32,9 +32,9 @@
 #include "Pregel/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
@@ -333,13 +333,13 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(
 
 template <typename V, typename E>
 std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
-  transaction::Options transactionOptions;
-  transactionOptions.waitForSync = false;
-  transactionOptions.allowImplicitCollections = true;
+  transaction::Options trxOpts;
+  trxOpts.waitForSync = false;
+  trxOpts.allowImplicitCollections = true;
   auto ctx =
     transaction::StandaloneContext::Create(_vocbaseGuard.database());
-  std::unique_ptr<transaction::Methods> trx(
-      new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
+  auto trx = std::unique_ptr<transaction::Methods>(
+                new transaction::Methods(ctx, {}, {}, {}, trxOpts));
   Result res = trx->begin();
 
   if (!res.ok()) {
@@ -496,7 +496,7 @@ template <typename V, typename E>
 void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
                                       RangeIterator<VertexEntry>& it) {
   // transaction on one shard
-  std::unique_ptr<transaction::UserTransaction> trx;
+  std::unique_ptr<transaction::Methods> trx;
   PregelShard currentShard = (PregelShard)-1;
   Result res = TRI_ERROR_NO_ERROR;
 
@@ -520,7 +520,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 
       transactionOptions.waitForSync = false;
       transactionOptions.allowImplicitCollections = false;
-      trx.reset(new transaction::UserTransaction(
+      trx.reset(new transaction::Methods(
         transaction::StandaloneContext::Create(_vocbaseGuard.database()),
         {},
         {shard},
