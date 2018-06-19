@@ -460,6 +460,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
 void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes);

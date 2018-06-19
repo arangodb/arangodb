@@ -76,6 +76,54 @@ function optimizerClusterSingleDocumentTestSuite () {
       var queries = [
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, true],
         [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, false],
+
+
+
+        [ "INSERT {insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 2, true],
+        [ "INSERT {insert2: true} INTO " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 3, true],
+        
+/*
+        Insert
+------
+INSERT ... IN/INTO collection OPTIONS ...
+INSERT ... IN/INTO collection OPTIONS ... RETURN OLD
+INSERT ... IN/INTO collection OPTIONS ... RETURN NEW
+INSERT ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
+INSERT ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
+
+INSERT {_key: 'chris' } INTO persons RETURN NEW
+
+Update/Replace
+--------------
+UPDATE ... IN/INTO collection OPTIONS ...
+UPDATE ... IN/INTO collection OPTIONS ... RETURN OLD
+UPDATE ... IN/INTO collection OPTIONS ... RETURN NEW
+UPDATE ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
+UPDATE ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
+UPDATE ... WITH ... IN/INTO collection OPTIONS ...
+UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN OLD
+UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN NEW
+UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
+UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
+
+
+UPDATE DOCUMENT('persons/bob') WITH {foo: 'bar'} IN persons RETURN NEW
+UPDATE 'bob' WITH {foo: 'bar'} IN persons RETURN NEW
+FOR u IN persons FILTER u._key == 'bob' UPDATE u WITH {foo: 'bar'} IN persons RETURN NEW
+UPDATE 'bob' WITH {foo: 'bar'} IN persons RETURN NEW
+
+REPLACE wie UPDATE
+
+Remove
+------
+REMOVE ... IN/INTO collection OPTIONS ...
+REMOVE ... IN/INTO collection OPTIONS ... RETURN OLD
+FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ...
+FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ... RETURN OLD
+
+*/
+
+        
       ];
       var expectedRules = [[ "use-indexes",
                              "remove-filter-covered-by-index",
@@ -83,13 +131,17 @@ function optimizerClusterSingleDocumentTestSuite () {
                              "optimize-cluster-single-documnet-operations" ],
                            [  "scatter-in-cluster",
                               "distribute-filtercalc-to-cluster",
-                              "remove-unnecessary-remote-scatter" ]
+                              "remove-unnecessary-remote-scatter" ],
+                           [],
+                           []
                           ];
 
       var expectedNodes = [
           ["SingletonNode", "SingleRemoteOperationNode", "ReturnNode"],
           ["SingletonNode", "EnumerateCollectionNode", "CalculationNode",
-           "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ]
+           "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ],
+        [],
+        []
       ];
 
       queries.forEach(function(query) {

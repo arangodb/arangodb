@@ -30,6 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -82,4 +83,12 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
   if (!_restrictedTo.empty()) {
     builder.add("restrictedTo", VPackValue(_restrictedTo));
   }
+}
+
+void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
+  auto col = _collection->getCollection();
+  builder.add(VPackValue("indexes"));
+  col->getIndexesVPack(builder, false, false, [](arangodb::Index const* idx) {
+      return (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX);
+    });
 }
