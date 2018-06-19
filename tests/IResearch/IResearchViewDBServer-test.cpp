@@ -73,25 +73,25 @@ struct IResearchViewDBServerSetup {
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
   std::string testFilesystemPath;
 
-  IResearchViewDBServerSetup(): server(nullptr, nullptr) {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+  IResearchViewDBServerSetup(): server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true);
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore, true); // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_PRIMARY);
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // suppress INFO {cluster} Starting up with role PRIMARY
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::WARN);
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEBUG);
-    irs::logger::output_le(iresearch::logger::IRL_DEBUG, stderr);
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(&server), false); // required for AgencyComm::send(...)
     features.emplace_back(arangodb::DatabaseFeature::DATABASE = new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::renameView(...)
@@ -103,25 +103,25 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     features.emplace_back(new arangodb::AgencyFeature(&server), false);
     features.emplace_back(new arangodb::ClusterFeature(&server), false);
     features.emplace_back(new arangodb::V8DealerFeature(&server), false);
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << " " << f.first->name() << std::endl;
+
+    for (auto& f: features) {
       f.first->prepare();
 
       if (f.first->name() == "Authentication") {
         f.first->forceDisable();
       }
     }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << " " << f.first->name() << std::endl;
+
+    for (auto& f: features) {
       if (f.second) {
         f.first->start();
       }
     }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     testFilesystemPath = (
       (irs::utf8_path()/=
       TRI_GetTempPath())/=
@@ -129,39 +129,37 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     ).utf8();
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     long systemError;
     std::string systemErrorStr;
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     agencyCommManager->start(); // initialize agency
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
   }
 
-  ~IResearchViewDBServerSetup() {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+  ~IResearchViewDBServerSetup() {
     TRI_RemoveDirectory(testFilesystemPath.c_str());
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::ClusterInfo::cleanup(); // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
+    //arangodb::ClusterInfo::cleanup(); // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
     arangodb::application_features::ApplicationServer::server = nullptr;
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // destroy application features
-    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << " " << f.first->name() << std::endl;
+    for (auto& f: features) {
       if (f.second) {
         f.first->stop();
       }
     }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-    for (auto& f: features) {std::cerr << __FILE__ << ":" << __LINE__ << " " << f.first->name() << std::endl;
+
+    for (auto& f: features) {
       f.first->unprepare();
     }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     ClusterCommControl::reset();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_SINGLE);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
     arangodb::AgencyCommManager::MANAGER.reset();
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
   }
 };
 
@@ -402,13 +400,13 @@ SECTION("test_open") {
   }
 }
 
-SECTION("test_query") {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+SECTION("test_query") {
   auto* ci = arangodb::ClusterInfo::instance();
   REQUIRE((nullptr != ci));
   auto* databaseFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>("Database");
   REQUIRE((nullptr != databaseFeature));
   std::string error;
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": \"42\", \
     \"name\": \"testView\", \
@@ -419,7 +417,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
   arangodb::aql::AstNode noopChild(true, arangodb::aql::AstNodeValueType::VALUE_TYPE_BOOL); // all
 
   noop.addMember(&noopChild);
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // no filter/order provided, means "RETURN *"
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -434,7 +432,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     REQUIRE((false == !logicalView));
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((false == !viewImpl));
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
@@ -447,7 +445,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     CHECK(0 == snapshot->docs_count());
     CHECK((trx.commit().ok()));
   }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // ordered iterator
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -461,7 +459,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     auto logicalView = wiewImpl->ensure(logicalCollection->id());
     REQUIRE((false == !logicalView));
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // fill with test data
     {
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
@@ -475,15 +473,15 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
       for (size_t i = 0; i < 12; ++i) {
         viewImpl->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
       }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
       CHECK((trx.commit().ok()));
       viewImpl->sync();
     }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       EMPTY,
@@ -496,14 +494,14 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     CHECK(12 == snapshot->docs_count());
     CHECK((trx.commit().ok()));
   }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // snapshot isolation
   {
     auto links = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \"testCollection\": { \"includeAllFields\" : true } } \
     }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\":442 }");
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
     REQUIRE((TRI_ERROR_NO_ERROR == databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
     REQUIRE((nullptr != vocbase));
@@ -518,7 +516,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     arangodb::Result res = logicalWiew->updateProperties(links->slice(), true, false);
     CHECK(true == res.ok());
     CHECK((false == logicalCollection->getIndexes().empty()));
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // fill with test data
     {
       arangodb::transaction::Methods trx(
@@ -529,7 +527,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
       arangodb::ManagedDocumentResult inserted;
       TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
@@ -537,13 +535,13 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
         logicalCollection->insert(&trx, doc->slice(), inserted, options, tick, false);
       }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
       CHECK((trx.commit().ok()));
     }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     arangodb::transaction::Options trxOptions;
     trxOptions.waitForSync = true;
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     arangodb::transaction::Methods trx0(
       arangodb::transaction::StandaloneContext::Create(*vocbase),
       collections,
@@ -555,7 +553,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     auto* snapshot0 = wiewImpl->snapshot(trx0, { logicalCollection->name() }, true);
     CHECK(12 == snapshot0->docs_count());
     CHECK((trx0.commit().ok()));
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // add more data
     {
       arangodb::transaction::Methods trx(
@@ -566,7 +564,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
       arangodb::ManagedDocumentResult inserted;
       TRI_voc_tick_t tick;
       arangodb::OperationOptions options;
@@ -574,13 +572,13 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"key\": ") + std::to_string(i) + " }");
         logicalCollection->insert(&trx, doc->slice(), inserted, options, tick, false);
       }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
       CHECK(trx.commit().ok());
     }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // old reader sees same data as before
     CHECK(12 == snapshot0->docs_count());
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // new reader sees new data
     arangodb::transaction::Methods trx1(
       arangodb::transaction::StandaloneContext::Create(*vocbase),
@@ -594,7 +592,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     CHECK(24 == snapshot1->docs_count());
     CHECK((trx1.commit().ok()));
   }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // query while running FlushThread
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
@@ -616,28 +614,28 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     REQUIRE((false == !wiewImpl));
     arangodb::Result res = logicalWiew->updateProperties(viewUpdateJson->slice(), true, false);
     REQUIRE(true == res.ok());
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;{
+
     // start flush thread
     auto flush = std::make_shared<std::atomic<bool>>(true);
     std::thread flushThread([feature, flush]()->void{
       while (flush->load()) {
         feature->executeCallbacks();
       }
-    });{
+    });
     auto flushStop = irs::make_finally([flush, &flushThread]()->void{
       flush->store(false);
       flushThread.join();
-    });{
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+    });
+
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     options.waitForSync = true;
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     arangodb::aql::Variable variable("testVariable", 0);
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
     // test insert + query
-    for (size_t i = 1; i < 200; ++i) {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+    for (size_t i = 1; i < 200; ++i) {
       // insert
       {
         auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"seq\": ") + std::to_string(i) + " }");
@@ -648,12 +646,12 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
           EMPTY,
           options
         );
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
         CHECK((trx.begin().ok()));
         CHECK((trx.insert(logicalCollection->name(), doc->slice(), arangodb::OperationOptions()).ok()));
         CHECK((trx.commit().ok()));
       }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
       // query
       {
         arangodb::transaction::Methods trx(
@@ -667,12 +665,9 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         auto* snapshot = wiewImpl->snapshot(trx, { logicalCollection->name() }, true);
         CHECK(i == snapshot->docs_count());
         CHECK((trx.commit().ok()));
-      }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-    }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-  }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-}std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-}std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-}std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+      }
+    }
+  }
 }
 
 SECTION("test_rename") {
@@ -842,7 +837,7 @@ SECTION("test_toVelocyPack") {
   }
 }
 
-SECTION("test_transaction_snapshot") {std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+SECTION("test_transaction_snapshot") {
   static std::vector<std::string> const EMPTY;
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"commit\": { \"commitIntervalMsec\": 0 } }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
@@ -857,7 +852,7 @@ SECTION("test_transaction_snapshot") {std::cerr << __FILE__ << ":" << __LINE__ <
   REQUIRE((false == !logicalView));
   auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
   REQUIRE((nullptr != viewImpl));
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // add a single document to view (do not sync)
   {
     auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
@@ -874,7 +869,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     viewImpl->insert(trx, 42, arangodb::LocalDocumentId(0), doc->slice(), meta);
     CHECK((trx.commit().ok()));
   }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // no snapshot in TransactionState (force == false, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
@@ -889,7 +884,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     CHECK((nullptr == snapshot));
     CHECK((trx.commit().ok()));
   }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // no snapshot in TransactionState (force == true, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
@@ -905,7 +900,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     CHECK((0 == snapshot->live_docs_count()));
     CHECK((trx.commit().ok()));
   }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // no snapshot in TransactionState (force == false, waitForSync = true)
   {
     arangodb::transaction::Options opts;
@@ -922,7 +917,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     CHECK((nullptr == snapshot));
     CHECK((trx.commit().ok()));
   }
-std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+
   // no snapshot in TransactionState (force == true, waitForSync = true)
   {
     arangodb::transaction::Options opts;
@@ -939,7 +934,7 @@ std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
     CHECK((trx.commit().ok()));
-  }std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
+  }
 }
 
 SECTION("test_updateProperties") {
