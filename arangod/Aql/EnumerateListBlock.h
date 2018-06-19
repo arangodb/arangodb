@@ -34,7 +34,7 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-class EnumerateListBlock : public ExecutionBlock {
+class EnumerateListBlock final : public ExecutionBlock {
  public:
   EnumerateListBlock(ExecutionEngine*, EnumerateListNode const*);
   ~EnumerateListBlock();

@@ -40,7 +40,7 @@ namespace aql {
 
 class ShortestPathNode;
 
-class ShortestPathBlock : public ExecutionBlock {
+class ShortestPathBlock final : public ExecutionBlock {
 
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);

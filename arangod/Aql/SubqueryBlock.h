@@ -34,7 +34,7 @@ class AqlItemBlock;
 
 class ExecutionEngine;
 
-class SubqueryBlock : public ExecutionBlock {
+class SubqueryBlock final : public ExecutionBlock {
  public:
   SubqueryBlock(ExecutionEngine*, SubqueryNode const*, ExecutionBlock*);
   ~SubqueryBlock() = default;

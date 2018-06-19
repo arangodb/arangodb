@@ -128,7 +128,7 @@ class BlockWithClients : public ExecutionBlock {
   bool _wasShutdown;
 };
 
-class ScatterBlock : public BlockWithClients {
+class ScatterBlock final : public BlockWithClients {
  public:
   ScatterBlock(ExecutionEngine* engine, ScatterNode const* ep,
                std::vector<std::string> const& shardIds)
@@ -159,7 +159,7 @@ class ScatterBlock : public BlockWithClients {
   std::vector<std::pair<size_t, size_t>> _posForClient;
 };
 
-class DistributeBlock : public BlockWithClients {
+class DistributeBlock final : public BlockWithClients {
  public:
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                   std::vector<std::string> const& shardIds,
