@@ -389,7 +389,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
                                                      std::string key,
                                                      aql::Collection const* collection,
                                                      ModificationOptions const& options,
-                                                     Variable const* update,
+                                                     Variable const* in,
                                                      Variable const* out,
                                                      Variable const* OLD,
                                                      Variable const* NEW
@@ -398,11 +398,18 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   , CollectionAccessingNode(collection)
   , _key(key)
   , _mode(mode)
-  , _inVariable(update)
+  , _inVariable(in)
   , _outVariable(out)
   , _outVariableOld(OLD)
   , _outVariableNew(NEW)
 {
+  LOG_DEVEL << "Creating SingleRemoteOperationNode for "
+            << ExecutionNode::getTypeString(_mode)
+            << std::boolalpha << " -"
+            << " in " << !!_inVariable
+            << " out " << !!_outVariable
+            << " OLD " << !!_outVariableOld
+            << " NEW " << !!_outVariableNew;
 
   if (_mode == NodeType::INDEX) { //select
     TRI_ASSERT(!_key.empty());

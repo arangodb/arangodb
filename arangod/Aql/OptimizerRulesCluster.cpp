@@ -259,16 +259,20 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       if (parentModification){
         auto mod = static_cast<ModificationNode*>(parentModification);
         auto parentType = parentModification->getType();
-        //LOG_DEVEL << "optimize modification node of type: ";
-        //          << ExecutionNode::getTypeString(parentType);
-
         Variable const* update = nullptr;
         auto const& vec = mod->getVariablesUsedHere();
-        if ( parentType != EN::REMOVE) {
+
+        LOG_DEVEL << "optimize modification node of type: "
+                  << ExecutionNode::getTypeString(parentType)
+                  << "  " << vec.size();
+
+        if ( parentType == EN::REMOVE) {
+          TRI_ASSERT(vec.size() == 1);
+        } else if(parentType == EN::INSERT) {
+          TRI_ASSERT(vec.size() == 1);
+        } else {
           update = vec.front();
           TRI_ASSERT(vec.size() == 2);
-        } else {
-          TRI_ASSERT(vec.size() == 1);
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(
@@ -341,14 +345,23 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
     Variable const* update = nullptr;
     Variable const* keyVar = nullptr;
     auto const& vec = mod->getVariablesUsedHere();
-    if ( depType != EN::REMOVE) {
+
+    LOG_DEVEL << "optimize modification node of type: "
+              << ExecutionNode::getTypeString(depType)
+              << "  " << vec.size();
+
+    if ( depType == EN::REMOVE) {
+      keyVar = vec.front();
+      TRI_ASSERT(vec.size() == 1);
+    } else if(depType == EN::INSERT) {
+      TRI_ASSERT(vec.size() == 1);
+      update = vec.front();
+    } else {
       TRI_ASSERT(vec.size() == 2);
       update = vec.front();
       keyVar = vec.back();
-    } else {
-      TRI_ASSERT(vec.size() == 1);
-      keyVar = vec.front();
     }
+
     std::unordered_set<Variable const*> keySet;
     keySet.emplace(keyVar);
 
