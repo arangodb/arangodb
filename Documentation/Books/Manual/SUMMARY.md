@@ -60,6 +60,9 @@
   * [Arangobench](Programs/Arangobench/README.md)
     * [Examples](Programs/Arangobench/Examples.md)
     * [Options](Programs/Arangobench/Options.md)
+  * [Arangoinspect](Programs/Arangoinspect/README.md)
+    * [Examples](Programs/Arangoinspect/Examples.md)
+    * [Options](Programs/Arangoinspect/Options.md)
   * [Datafile Debugger](Programs/Arango-dfdb/README.md)
     * [Examples](Programs/Arango-dfdb/Examples.md)
 #   https://@github.com/arangodb/foxx-cli.git;foxx-cli;docs/Manual;;/
