@@ -41,6 +41,7 @@ class RestSimpleHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() override final;
   char const* name() const override final { return "RestSimpleHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
   bool cancel() override;
 
  private:

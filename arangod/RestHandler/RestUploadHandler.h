@@ -39,6 +39,7 @@ class RestUploadHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() override;
   char const* name() const override final { return "RestUploadHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parses a multi-part request body and determines the boundaries of

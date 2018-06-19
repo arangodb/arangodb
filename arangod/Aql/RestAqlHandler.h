@@ -51,6 +51,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestAqlHandler"; }
   bool isDirect() const override;
   size_t queue() const override;
+  RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
   RestStatus execute() override;
 
  public:

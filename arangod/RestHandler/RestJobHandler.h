@@ -46,6 +46,7 @@ class RestJobHandler : public RestBaseHandler {
   char const* name() const override final { return "RestJobHandler"; }
 
   bool isDirect() const override;
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief executes the handler

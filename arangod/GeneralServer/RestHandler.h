@@ -28,6 +28,7 @@
 
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/Scheduler.h"
+#include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
 class GeneralRequest;
@@ -91,6 +92,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // priority of this request
   virtual size_t queue() const { return Scheduler::CLIENT_QUEUE; }
+
+  // what lane to use for this request
+  virtual RequestLane lane() const = 0;
 
   virtual void prepareExecute() {}
   virtual RestStatus execute() = 0;

@@ -35,6 +35,7 @@ class RestQueryCacheHandler : public RestVocbaseBaseHandler {
  public:
   char const* name() const override final { return "RestQueryCacheHandler"; }
   bool isDirect() const override;
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
  protected:

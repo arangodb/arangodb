@@ -41,6 +41,7 @@ class RestAdminLogHandler : public RestBaseHandler {
   char const* name() const override final { return "RestAdminLogHandler"; }
 
   bool isDirect() const override;
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
  private:

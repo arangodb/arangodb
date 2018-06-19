@@ -34,6 +34,7 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   
   virtual char const* name() const override { return "RestClusterHandler"; }
   bool isDirect() const override { return true; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
 private:
