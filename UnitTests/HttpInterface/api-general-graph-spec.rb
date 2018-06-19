@@ -1282,8 +1282,9 @@ describe ArangoDB do
             end
 
             it "replace edge" do
-            # [tg, 2018-05-24] added _from and _to, because otherwise a 400
-            # might conceal the 404. TODO what's really desired here?
+              # Added _from and _to, because otherwise a 400 might conceal the
+              # 404. Another test checking that missing _from or _to trigger
+              # errors was added to api-gharial-spec.js.
               check404(replace_edge( sync, graph_name, friend_collection, unknown_name, {"_from" => "1", "_to" => "2"}))
             end
 
