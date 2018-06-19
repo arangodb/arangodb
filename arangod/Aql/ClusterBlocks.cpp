@@ -1780,7 +1780,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   }
 
   // check operation result
-  if (!result.ok()) {
+  if (!result.ok() || !(out || OLD || NEW)) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && node->_mode == ExecutionNode::NodeType::INDEX)) {
       // document not there is not an error in this situation.
       return nullptr;
