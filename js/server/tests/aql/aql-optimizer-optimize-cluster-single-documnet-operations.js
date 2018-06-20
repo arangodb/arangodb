@@ -110,31 +110,26 @@ function optimizerClusterSingleDocumentTestSuite () {
       assertEqual(expectedRules[set[expectedRulesField]], result.plan.rules, "Rules: " + JSON.stringify(set));
       assertEqual(expectedNodes[set[expectedNodesField]], explain(result), "Nodes: " + JSON.stringify(set));
       if (set[WilliBool]) {
-        var r1, r2;
+        var r1 = {json: []}, r2 = {json: []};
 
         // run it first without the rule
         set[4]();
         try {
           r2 = AQL_EXECUTE(set[0], {}, thisRuleDisabled);
-          assertEqual(0, set[WilliError], "expect no error");
+          assertEqual(0, set[WilliError], "we have no error in the original, but the tests expects an exception");
         }
         catch (y) {
-          print(JSON.stringify(y));
           assertTrue(set[5].hasOwnProperty('code'), "original plan throws, but we don't expect an exception");
           assertEqual(y.errorNum, set[WilliError].code, "match other error code");
         }
 
         // Run it again with our rule
         set[setupFunction]();
-        print(set[WilliError])
-        print(set[WilliError].code)
         try {
           r1 = AQL_EXECUTE(set[query], {}, thisRuleEnabled);
-          assertEqual(0, set[WilliError], "expect no error");
+          assertEqual(0, set[WilliError], "we have no error in our plan, but the tests expects an exception");
         }
         catch (x) {
-          print(JSON.stringify(x));
-          print(x.errorNum);
           assertTrue(set[WilliError].hasOwnProperty('code'), "our plan throws, but we don't expect an exception");
           assertEqual(x.errorNum, set[WilliError].code, "match our error code");
         }
@@ -225,18 +220,17 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
 
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
 
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
 
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ],
+        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, 0 ],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
 
+        
         // [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 0, false ],
-        // [ `INSERT {_key: 'test', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 0, false ],
         // [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
-        // [ `INSERT {_key: 'test', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
         //* /
       ];
 
