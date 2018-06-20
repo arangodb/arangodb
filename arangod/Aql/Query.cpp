@@ -618,32 +618,32 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     resultBuilder->openArray();
 
-    // TODO MAX: Please fix these double true loops ;)
-    while (true) {
-      while (true) {
-        // TODO MAX: We need to let the thread sleep here instead of while loop
-        auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
-        if (res.first == ExecutionState::WAITING) {
-          tempWaitForAsyncResponse();
-        } else {
-          value.swap(res.second);
-          break;
-        }
+    ExecutionState state = ExecutionState::HASMORE;
+    while (state != ExecutionState::DONE) {
+      auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+      state = res.first;
+      // TODO MAX: We need to let the thread sleep here instead of while loop
+      while (state == ExecutionState::WAITING) {
+        tempWaitForAsyncResponse();
+        res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
       }
-      // TODO Later we can break on DONE after processing value
-      if (value == nullptr) {
-        break;
-      }
-      size_t const n = value->size();
+      value.swap(res.second);
 
-      for (size_t i = 0; i < n; ++i) {
-        AqlValue const& val = value->getValueReference(i, resultRegister);
+      // value == nullptr => state == DONE
+      TRI_ASSERT(value != nullptr || state == ExecutionState::DONE);
 
-        if (!val.isEmpty()) {
-          val.toVelocyPack(_trx, *resultBuilder, useQueryCache);
+      if (value != nullptr) {
+        size_t const n = value->size();
+
+        for (size_t i = 0; i < n; ++i) {
+          AqlValue const &val = value->getValueReference(i, resultRegister);
+
+          if (!val.isEmpty()) {
+            val.toVelocyPack(_trx, *resultBuilder, useQueryCache);
+          }
         }
+        _engine->_itemBlockManager.returnBlock(std::move(value));
       }
-      _engine->_itemBlockManager.returnBlock(std::move(value));
     }
 
     // must close result array here because it must be passed as a closed
@@ -770,33 +770,33 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         builder->openArray();
 
         uint32_t j = 0;
-        // TODO MAX: Please fix these double true loops ;)
-        while (true) {
-          while (true) {
-            // TODO MAX: We need to let the thread sleep here instead of while loop
-            auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
-            if (res.first == ExecutionState::WAITING) {
-              tempWaitForAsyncResponse();
-            } else {
-              value.swap(res.second);
-              break;
-            }
+        ExecutionState state = ExecutionState::HASMORE;
+        while (state != ExecutionState::DONE) {
+          auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+          state = res.first;
+          // TODO MAX: We need to let the thread sleep here instead of while loop
+          while (state == ExecutionState::WAITING) {
+            tempWaitForAsyncResponse();
+            res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           }
-          // TODO Later we can break on DONE after processing value
-          if (value == nullptr) {
-            break;
-          }
-          size_t const n = value->size();
+          value.swap(res.second);
 
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = value->getValueReference(i, resultRegister);
+          // value == nullptr => state == DONE
+          TRI_ASSERT(value != nullptr || state == ExecutionState::DONE);
 
-            if (!val.isEmpty()) {
-              resArray->Set(j++, val.toV8(isolate, _trx));
-              val.toVelocyPack(_trx, *builder, true);
+          if (value != nullptr) {
+            size_t const n = value->size();
+
+            for (size_t i = 0; i < n; ++i) {
+              AqlValue const &val = value->getValueReference(i, resultRegister);
+
+              if (!val.isEmpty()) {
+                resArray->Set(j++, val.toV8(isolate, _trx));
+                val.toVelocyPack(_trx, *builder, true);
+              }
             }
+            _engine->_itemBlockManager.returnBlock(std::move(value));
           }
-          _engine->_itemBlockManager.returnBlock(std::move(value));
         }
 
         builder->close();
@@ -814,38 +814,41 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       } else {
         // iterate over result and return it
         uint32_t j = 0;
-        // TODO MAX: Please fix these double true loops ;)
-        while (true) {
-          while (true) {
-            // TODO MAX: We need to let the thread sleep here instead of while loop
-            auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
-            if (res.first == ExecutionState::WAITING) {
-              tempWaitForAsyncResponse();
-            } else {
-              value.swap(res.second);
-              break;
-            }
+        ExecutionState state = ExecutionState::HASMORE;
+        while (state != ExecutionState::DONE) {
+          auto res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+          state = res.first;
+          // TODO MAX: We need to let the thread sleep here instead of while loop
+          while (state == ExecutionState::WAITING) {
+            tempWaitForAsyncResponse();
+            res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           }
-          // TODO Later we can break on DONE after processing value
-          if (value == nullptr) {
-            break;
-          }
-          if (!_queryOptions.silent) {
-            size_t const n = value->size();
+          value.swap(res.second);
 
-            for (size_t i = 0; i < n; ++i) {
-              AqlValue const& val = value->getValueReference(i, resultRegister);
+          // value == nullptr => state == DONE
+          TRI_ASSERT(value != nullptr || state == ExecutionState::DONE);
 
-              if (!val.isEmpty()) {
-                resArray->Set(j++, val.toV8(isolate, _trx));
+          if (value != nullptr) {
+            if (!_queryOptions.silent) {
+              size_t const n = value->size();
+
+              for (size_t i = 0; i < n; ++i) {
+                AqlValue const &val = value->getValueReference(
+                  i, resultRegister
+                );
+
+                if (!val.isEmpty()) {
+                  resArray->Set(j++, val.toV8(isolate, _trx));
+                }
+
+                if (V8PlatformFeature::isOutOfMemory(isolate)) {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+                }
               }
-
-              if (V8PlatformFeature::isOutOfMemory(isolate)) {
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-              }
             }
+
+            _engine->_itemBlockManager.returnBlock(std::move(value));
           }
-          _engine->_itemBlockManager.returnBlock(std::move(value));
         }
       }
     } catch (...) {

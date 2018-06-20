@@ -105,6 +105,8 @@ void ExecutionBlock::throwIfKilled() {
   }
 }
 
+// TODO check that *all* initializeCursor implementations reset the new state
+// added for WAITING!
 std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
     AqlItemBlock* items, size_t pos) {
   for (auto& d : _dependencies) {
@@ -427,7 +429,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
 
-  while (!_done && _skipped < atMost) {
+  while (getHasMoreState() != ExecutionState::DONE && _skipped < atMost) {
     if (_buffer.empty()) {
       if (skipping) {
         ExecutionState state;
@@ -444,6 +446,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
         ExecutionState state;
         bool blockAppended;
         std::tie(state, blockAppended) = getBlock(atMost - _skipped);
+
         if (state == ExecutionState::WAITING) {
           TRI_ASSERT(!blockAppended);
           TRI_ASSERT(result == nullptr);
@@ -451,12 +454,15 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
           return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
         }
 
-        if (!blockAppended) {
-          _done = true;
-          break;  // must still put things in the result from the collector .
-                  // . .
-        }
         _pos = 0;
+
+        // !blockAppended => DONE
+        TRI_ASSERT(blockAppended || state == ExecutionState::DONE);
+
+        if (!blockAppended) {
+          // buffer is empty, don't try to add the next block
+          break;
+        }
       }
     }
 
@@ -511,23 +517,14 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
   }
 
   TRI_ASSERT(result == nullptr);
-  
+
   if (!skipping) {
     result = _collector.steal();
   }
   skipped_ = _skipped;
   _skipped = 0;
 
-  if (skipping && skipped_ == 0) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  if (!skipping && result == nullptr) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  if (_done) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-  return {ExecutionState::HASMORE, TRI_ERROR_NO_ERROR};
+  return {getHasMoreState(), TRI_ERROR_NO_ERROR};
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {
