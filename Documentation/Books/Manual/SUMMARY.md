@@ -11,6 +11,10 @@
   * [Accessing the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
 #
+* [Tutorials](Tutorials/README.md)
+  * [Kubernetes](Tutorials/Kubernetes/README.md)
+  * [Datacenter to datacenter Replication on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
+#  
 * [Highlights](Highlights.md)
 #
 * [Scalability](Scalability/README.md)
