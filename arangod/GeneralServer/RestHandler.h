@@ -32,7 +32,7 @@ namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
   
-enum class RestStatus { DONE, WAITING, FAIL};
+enum class RestStatus { DONE, WAITING };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
@@ -89,10 +89,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// @brief priority of this request
   virtual size_t queue() const { return JobQueue::STANDARD_QUEUE; }
 
-  virtual void prepareExecute() {}
+  virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
-  virtual void finalizeExecute() noexcept {}
+  virtual void shutdownExecute(bool isFinalized) noexcept {}
 
   // you might need to implment this in you handler
   // if it will be executed in an async job
@@ -113,13 +113,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   
   void runHandlerStateMachine();
   
-  int prepareEngine();
+  void prepareEngine();
   /// @brief Executes the RestHandler
   ///        May set the state to PAUSED, FINALIZE or FAILED
   ///        If isContinue == true it will call continueExecute()
   ///        otherwise execute() will be called
-  int executeEngine(bool isContinue);
-  int finalizeEngine();
+  void executeEngine(bool isContinue);
+  void shutdownEngine();
 
  protected:
   uint64_t const _handlerId;

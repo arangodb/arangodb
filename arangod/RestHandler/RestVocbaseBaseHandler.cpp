@@ -531,38 +531,53 @@ void RestVocbaseBaseHandler::extractStringParameter(
 /// @brief prepareExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::prepareExecute() {
-  RestBaseHandler::prepareExecute();
-
-  bool found;
-  std::string const& shardId = _request->header("x-arango-nolock", found);
-
-  if (found) {
-    _nolockHeaderSet = new std::unordered_set<std::string>();
-    // Split value at commas, if there are any, otherwise take full value:
-    size_t pos = shardId.find(',');
-    size_t oldpos = 0;
-    while (pos != std::string::npos) {
-      _nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
-      oldpos = pos + 1;
-      pos = shardId.find(',', oldpos);
-    }
-    _nolockHeaderSet->emplace(shardId.substr(oldpos));
-    CollectionLockState::_noLockHeaders = _nolockHeaderSet;
-  }
+void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
+  RestBaseHandler::prepareExecute(isContinue);
+  pickupNoLockHeaders();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief finalizeExecute, to react to X-Arango-Nolock header
+/// @brief shutdownExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestVocbaseBaseHandler::finalizeExecute() noexcept {
-  if (_nolockHeaderSet != nullptr) {
-    delete _nolockHeaderSet;
-    _nolockHeaderSet = nullptr;
-  }
-  CollectionLockState::_noLockHeaders = nullptr;
+void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
+  clearNoLockHeaders();
+  RestBaseHandler::shutdownExecute(isFinalized);
+}
 
-  // This is noexcept
-  RestBaseHandler::finalizeExecute();
+////////////////////////////////////////////////////////////////////////////////
+/// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
+////////////////////////////////////////////////////////////////////////////////
+  
+void RestVocbaseBaseHandler::pickupNoLockHeaders() {
+  bool found;
+  std::string const& shardId = _request->header("x-arango-nolock", found);
+
+  if (!found) {
+    return;
+  }
+
+  TRI_ASSERT(_nolockHeaderSet == nullptr);
+
+  _nolockHeaderSet = new std::unordered_set<std::string>();
+  // Split value at commas, if there are any, otherwise take full value:
+  size_t pos = shardId.find(',');
+  size_t oldpos = 0;
+  while (pos != std::string::npos) {
+    _nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
+    oldpos = pos + 1;
+    pos = shardId.find(',', oldpos);
+  }
+  _nolockHeaderSet->emplace(shardId.substr(oldpos));
+  CollectionLockState::_noLockHeaders = _nolockHeaderSet;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears the tls variable that stores the X-Arango-Nolock headers
+////////////////////////////////////////////////////////////////////////////////
+
+void RestVocbaseBaseHandler::clearNoLockHeaders() noexcept {
+  delete _nolockHeaderSet;
+  _nolockHeaderSet = nullptr;
+  CollectionLockState::_noLockHeaders = nullptr;
 }

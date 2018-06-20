@@ -164,12 +164,13 @@ void RestSimpleQueryHandler::allDocuments() {
   };
   registerQueryOrCursor(data.slice(), continueHandler);
   // We do not support streaming here!
-  TRI_ASSERT(_query != nullptr);
   // now run the actual query and handle the result
-  while (processQuery() == RestStatus::WAITING) {
-    // TODO Replace this by a POST to io-service
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
-    _query->tempWaitForAsyncResponse();
+  if (_query != nullptr) {
+    while (processQuery() == RestStatus::WAITING) {
+      // TODO Replace this by a POST to io-service
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
+      _query->tempWaitForAsyncResponse();
+    }
   }
 }
 
@@ -242,12 +243,13 @@ void RestSimpleQueryHandler::allDocumentKeys() {
   };
   registerQueryOrCursor(data.slice(), continueHandler);
   // We do not support streaming here!
-  TRI_ASSERT(_query != nullptr);
   // now run the actual query and handle the result
-  while (processQuery() == RestStatus::WAITING) {
-    // TODO Replace this by a POST to io-service
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
-    _query->tempWaitForAsyncResponse();
+  if (_query != nullptr) {
+    while (processQuery() == RestStatus::WAITING) {
+      // TODO Replace this by a POST to io-service
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
+      _query->tempWaitForAsyncResponse();
+    }
   }
 }
 
@@ -344,11 +346,12 @@ void RestSimpleQueryHandler::byExample() {
   };
   registerQueryOrCursor(data.slice(), continueHandler);
   // We do not support streaming here!
-  TRI_ASSERT(_query != nullptr);
-  // now run the actual query and handle the result
-  while (processQuery() == RestStatus::WAITING) {
-    // TODO Replace this by a POST to io-service
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
-    _query->tempWaitForAsyncResponse();
+  if (_query != nullptr) {
+    // now run the actual query and handle the result
+    while (processQuery() == RestStatus::WAITING) {
+      // TODO Replace this by a POST to io-service
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "blocking Query Execution " << __FILE__ << ":" << __LINE__;
+      _query->tempWaitForAsyncResponse();
+    }
   }
 }
