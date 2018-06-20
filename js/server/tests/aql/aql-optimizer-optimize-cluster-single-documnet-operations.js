@@ -34,6 +34,7 @@ var errors = internal.errors;
 var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
+var errors = internal.errors;
 const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +46,9 @@ function optimizerClusterSingleDocumentTestSuite () {
   // various choices to control the optimizer:
   var thisRuleEnabled  = { optimizer: { rules: [ "+all" ] } }; // we can only work after other rules
   var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
-
+  var notHereDoc = "notHereDoc";
+  var yeOldeDoc = "yeOldeDoc";
+  
   var cn1 = "UnitTestsCollection";
   var c1;
 
@@ -70,6 +73,7 @@ function optimizerClusterSingleDocumentTestSuite () {
     print("flush!");
     db._drop(cn2);
     c2 = db._create(cn2, { numberOfShards: 5 });
+    c2.save({_key: yeOldeDoc});
   }
 
   var setupC3 = function() {
@@ -98,10 +102,35 @@ function optimizerClusterSingleDocumentTestSuite () {
       assertEqual(expectedRules[query[1]], result.plan.rules, "Rules: " + JSON.stringify(query));
       assertEqual(expectedNodes[query[2]], explain(result), "Nodes: " + JSON.stringify(query));
       if (query[3]) {
+        var r1, r2;
+
+        // run it first without the rule
         query[4]();
-        let r1 = AQL_EXECUTE(query[0], {}, thisRuleEnabled);
+        try {
+          r2 = AQL_EXECUTE(query[0], {}, thisRuleDisabled);
+          assertEqual(0, query[5], "expect no error");
+        }
+        catch (y) {
+          print(JSON.stringify(y));
+          assertTrue(query[5].hasOwnProperty('code'), "we should recommend an exception");
+          assertEqual(y.errorNum, query[5].code, "match other error code");
+        }
+
+        // Run it again with our rule
         query[4]();
-        let r2 = AQL_EXECUTE(query[0], {}, thisRuleDisabled);
+        print(query[5])
+        print(query[5].code)
+        try {
+          r1 = AQL_EXECUTE(query[0], {}, thisRuleEnabled);
+          assertEqual(0, query[5], "expect no error");
+        }
+        catch (x) {
+          print(JSON.stringify(x));
+          print(x.errorNum);
+          assertTrue(query[5].hasOwnProperty('code'), "we should recommend an exception");
+          assertEqual(x.errorNum, query[5].code, "match our error code");
+        }
+
         assertEqual(r1.json, r2.json, query);
       }
       count += 1;
@@ -160,8 +189,8 @@ function optimizerClusterSingleDocumentTestSuite () {
     
     testRuleFetch : function () {
       var queries = [
-        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s],
-        [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s],
+        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s, 0],
+        [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s, 0],
 
       ];
       var expectedRules = [[ "use-indexes",
@@ -183,17 +212,27 @@ function optimizerClusterSingleDocumentTestSuite () {
 
     testRuleInsert : function () {
       var queries = [
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 0, 0, true, s ],
-        [ "INSERT {_key: 'test1', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 0, 0, true, s ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 0, 1, true, setupC2 ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 0, 1, true, setupC2 ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 0, 1, true, setupC2 ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 0, 1, true, setupC2 ],
+        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
+        [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
+        
+        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ],
+        
+        [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED  ],
+        
+        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
+        
+        [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
+        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ],
 
-        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 1, 0, false ],
-        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 1, 0, false ],
-        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 1, 0, false ],
-        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 1, 0, false ],
+        // [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 0, false ],
+        // [ `INSERT {_key: 'test', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 0, false ],
+        // [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
+        // [ `INSERT {_key: 'test', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
         //* /
       ];
       
