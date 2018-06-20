@@ -45,6 +45,10 @@ class ShortestPathBlock final : public ExecutionBlock {
  public:
   ShortestPathBlock(ExecutionEngine* engine, ShortestPathNode const* ep);
 
+  Type getType() const override final {
+    return Type::SHORTEST_PATH;
+  }
+
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 

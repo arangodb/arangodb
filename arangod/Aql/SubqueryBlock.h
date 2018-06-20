@@ -39,6 +39,10 @@ class SubqueryBlock final : public ExecutionBlock {
   SubqueryBlock(ExecutionEngine*, SubqueryNode const*, ExecutionBlock*);
   ~SubqueryBlock() = default;
 
+  Type getType() const override final {
+    return Type::SUBQUERY;
+  }
+
   /// @brief getSome
   std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(
       size_t atMost) override final;

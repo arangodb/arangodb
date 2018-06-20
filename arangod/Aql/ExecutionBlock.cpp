@@ -123,6 +123,14 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
 
   _done = false;
   _upstreamState = ExecutionState::HASMORE;
+
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    // Set block type in per-block statistics.
+    // Intentionally using operator[], which inserts a new element if it can't
+    // find one.
+    _engine->_stats.nodes[getPlanNode()->id()].type = this->getType();
+  }
+
   TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }

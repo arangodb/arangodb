@@ -40,6 +40,10 @@ class CalculationBlock final : public ExecutionBlock {
 
   ~CalculationBlock();
 
+  Type getType() const override final {
+    return Type::CALCULATION;
+  }
+
  private:
   /// @brief fill the target register in the item block with a reference to
   /// another variable

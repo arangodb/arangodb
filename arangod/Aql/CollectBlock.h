@@ -95,6 +95,10 @@ class SortedCollectBlock final : public ExecutionBlock {
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
+  Type getType() const override final {
+    return Type::SORTED_COLLECT;
+  }
+
  private:
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                   AqlItemBlock*& result,
@@ -147,6 +151,10 @@ class HashedCollectBlock final : public ExecutionBlock {
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
   ~HashedCollectBlock() final;
 
+  Type getType() const override final {
+    return Type::HASHED_COLLECT;
+  }
+
  private:
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                   AqlItemBlock*& result,
@@ -185,6 +193,10 @@ class DistinctCollectBlock final : public ExecutionBlock {
   DistinctCollectBlock(ExecutionEngine*, CollectNode const*);
   ~DistinctCollectBlock();
 
+  Type getType() const override final {
+    return Type::DISTINCT_COLLECT;
+  }
+
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -207,6 +219,10 @@ class DistinctCollectBlock final : public ExecutionBlock {
 class CountCollectBlock final : public ExecutionBlock {
  public:
   CountCollectBlock(ExecutionEngine*, CollectNode const*);
+
+  Type getType() const override final {
+    return Type::COUNT_COLLECT;
+  }
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
   

@@ -134,6 +134,10 @@ class ScatterBlock final : public BlockWithClients {
                std::vector<std::string> const& shardIds)
       : BlockWithClients(engine, ep, shardIds) {}
 
+  Type getType() const override final {
+    return Type::SCATTER;
+  }
+
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -164,6 +168,10 @@ class DistributeBlock final : public BlockWithClients {
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                   std::vector<std::string> const& shardIds,
                   Collection const* collection);
+
+  Type getType() const override final {
+    return Type::DISTRIBUTE;
+  }
 
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
@@ -255,8 +263,12 @@ class RemoteBlock final : public ExecutionBlock {
   ExecutionState hasMoreState() override final;
 
   /// @brief handleAsyncResult
-  bool handleAsyncResult(ClusterCommResult* result) override; 
-  
+  bool handleAsyncResult(ClusterCommResult* result) override;
+
+  Type getType() const override final {
+    return Type::REMOTE;
+  }
+
  private:
   /// @brief internal method to send a request
   /// TODO:Deprecated!
@@ -327,6 +339,10 @@ class UnsortingGatherBlock final : public ExecutionBlock {
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
+  Type getType() const override final {
+    return Type::UNSORTING_GATHER;
+  }
+
  private:
   /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
   size_t _atDep{};
@@ -377,6 +393,10 @@ class SortingGatherBlock final : public ExecutionBlock {
 
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
+
+  Type getType() const override final {
+    return Type::SORTING_GATHER;
+  }
 
  private:
 
