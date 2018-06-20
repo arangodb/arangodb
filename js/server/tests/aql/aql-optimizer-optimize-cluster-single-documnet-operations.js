@@ -42,7 +42,7 @@ const isCluster = require("@arangodb/cluster").isCluster();
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerClusterSingleDocumentTestSuite () {
-  var ruleName = "optimize-cluster-single-documnet-operations";
+  var ruleName = "optimize-cluster-single-document-operations";
   // various choices to control the optimizer:
   var thisRuleEnabled  = { optimizer: { rules: [ "+all" ] } }; // we can only work after other rules
   var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
@@ -198,7 +198,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       var expectedRules = [[ "use-indexes",
                              "remove-filter-covered-by-index",
                              "remove-unnecessary-calculations-2",
-                             "optimize-cluster-single-documnet-operations" ],
+                             "optimize-cluster-single-document-operations" ],
                            [ "scatter-in-cluster",
                              "distribute-filtercalc-to-cluster",
                              "remove-unnecessary-remote-scatter" ]
@@ -226,13 +226,13 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
 
-        // [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 0, false ],
-        // [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
+        [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 0, false ],
+        [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
         //* /
       ];
 
       var expectedRules = [[ "remove-data-modification-out-variables",
-                             "optimize-cluster-single-documnet-operations"
+                             "optimize-cluster-single-document-operations"
                            ]];
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
@@ -267,11 +267,11 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
 
       var expectedRules = [
-        [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables",
-          "optimize-cluster-single-documnet-operations"],
+          "optimize-cluster-single-document-operations"],
         [ "move-calculations-up", "move-calculations-up-2",
-          "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
+          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
       ];
 
       var expectedNodes = [
@@ -292,7 +292,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
       var expectedRules = [
         ["remove-data-modification-out-variables",
-         "optimize-cluster-single-documnet-operations" ]
+         "optimize-cluster-single-document-operations" ]
       ];
 
       var expectedNodes = [
