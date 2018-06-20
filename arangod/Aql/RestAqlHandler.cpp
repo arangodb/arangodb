@@ -529,12 +529,12 @@ void RestAqlHandler::createQueryFromVelocyPack() {
 // set, then the root block of the stored query must be a ScatterBlock
 // and the shard ID is given as an additional argument to the ScatterBlock's
 // special API.
-void RestAqlHandler::useQuery(std::string const& operation,
-                              std::string const& idString) {
+RestStatus RestAqlHandler::useQuery(std::string const& operation,
+                                    std::string const& idString) {
   // the PUT verb
   Query* query = nullptr;
   if (findQuery(idString, query)) {
-    return;
+    return RestStatus::DONE;
   }
 
   TRI_ASSERT(_qId > 0);
@@ -545,11 +545,14 @@ void RestAqlHandler::useQuery(std::string const& operation,
   if (!success) {
     _queryRegistry->close(&_vocbase, _qId);
 
-    return;
+    return RestStatus::DONE;
   }
 
   try {
-    handleUseQuery(operation, query, querySlice);
+    auto status = handleUseQuery(operation, query, querySlice);
+    if (status == RestStatus::WAITING) {
+      return status;
+    }
 
     if (_qId != 0) {
       try {
@@ -578,6 +581,7 @@ void RestAqlHandler::useQuery(std::string const& operation,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
+  return RestStatus::DONE;
 }
 
 // GET method for /_api/aql/<operation>/<queryId>, (internal)
@@ -724,7 +728,10 @@ RestStatus RestAqlHandler::execute() {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown PUT API";
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "unknown PUT API");
       } else {
-        useQuery(suffixes[0], suffixes[1]);
+        auto status = useQuery(suffixes[0], suffixes[1]);
+        if (status == RestStatus::WAITING) {
+          return status;
+        }
       }
       break;
     }
@@ -755,6 +762,23 @@ RestStatus RestAqlHandler::execute() {
   // arangodb::ServerState::instance()->getId() << ": " <<
   // _request->fullUrl() << ": " << _response->responseCode() << ",
   // CONTENT-LENGTH: " << _response->contentLength() << "\n";
+
+  return RestStatus::DONE;
+}
+
+RestStatus RestAqlHandler::continueExecute() {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+
+  // extract the sub-request type
+  rest::RequestType type = _request->requestType();
+
+  if (type == rest::RequestType::PUT) {
+    // This cannot be changed!
+    TRI_ASSERT(suffixes.size() == 2);
+    return useQuery(suffixes[0], suffixes[1]);
+  }
+  generateError(rest::ResponseCode::SERVER_ERROR,
+                TRI_ERROR_INTERNAL, "continued non-continuable method for /_api/aql");
 
   return RestStatus::DONE;
 }
@@ -798,8 +822,14 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
 }
 
 // handle for useQuery
-void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
-                                    VPackSlice const querySlice) {
+RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
+                                          VPackSlice const querySlice) {
+  auto self = shared_from_this();
+  query->setContinueHandler([this, self]() {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Posted continuation on Scheduler";
+    continueHandlerExecution();
+  });
   bool found;
   std::string const& shardId = _request->header("shard-id", found);
 
@@ -809,19 +839,14 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
   // this is because the request may contain additional data
   if ((operation == "getSome" || operation == "skipSome") &&
       !query->engine()->initializeCursorCalled()) {
-    while (true) {
-      // TODO MAX: Handle Thread Sleep / Wakeup here! 
-      auto res = query->engine()->initializeCursor(nullptr, 0);
-      if (res.first == ExecutionState::WAITING) {
-        query->tempWaitForAsyncResponse();
-      } else {
-        if (!res.second.ok()) {
-          generateError(GeneralResponse::responseCode(res.second.errorNumber()),
-                        res.second.errorNumber(), "cannot initialize cursor for AQL query");
-          return;
-        }
-        break;
-      }
+    auto res = query->engine()->initializeCursor(nullptr, 0);
+    if (res.first == ExecutionState::WAITING) {
+      return RestStatus::WAITING;
+    }
+    if (!res.second.ok()) {
+      generateError(GeneralResponse::responseCode(res.second.errorNumber()),
+                    res.second.errorNumber(), "cannot initialize cursor for AQL query");
+      return RestStatus::DONE;
     }
   }
 
@@ -849,16 +874,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         std::unique_ptr<AqlItemBlock> items;
         if (shardId.empty()) {
-          while (true) {
-            // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = query->engine()->getSome(atMost);
-            if (tmpRes.first == ExecutionState::WAITING) {
-              query->tempWaitForAsyncResponse();
-            } else {
-              items.swap(tmpRes.second);
-              break;
-            }
+          auto tmpRes = query->engine()->getSome(atMost);
+          if (tmpRes.first == ExecutionState::WAITING) {
+            return RestStatus::WAITING;
           }
+          items.swap(tmpRes.second);
         } else {
           auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
@@ -866,17 +886,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "unexpected node type");
           }
-          while (true) {
-            // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = block->getSomeForShard(atMost, shardId);
-            if (tmpRes.first == ExecutionState::WAITING) {
-              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are now actively blocking a thread. Needs to be fixed";
-              query->tempWaitForAsyncResponse();
-            } else {
-              items.swap(tmpRes.second);
-              break;
-            }
+          auto tmpRes = block->getSomeForShard(atMost, shardId);
+          if (tmpRes.first == ExecutionState::WAITING) {
+            return RestStatus::WAITING;
           }
+          items.swap(tmpRes.second);
         }
         if (items.get() == nullptr) {
           answerBuilder.add("exhausted", VPackValue(true));
@@ -889,16 +903,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         size_t skipped;
         if (shardId.empty()) {
-          while (true) {
-            // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = query->engine()->skipSome(atMost);
-            if (tmpRes.first == ExecutionState::WAITING) {
-              query->tempWaitForAsyncResponse();
-            } else {
-              skipped = tmpRes.second;
-              break;
-            }
+          auto tmpRes = query->engine()->skipSome(atMost);
+          if (tmpRes.first == ExecutionState::WAITING) {
+            return RestStatus::WAITING;
           }
+          skipped = tmpRes.second;
         } else {
           auto block = dynamic_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
@@ -907,17 +916,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                                             "unexpected node type");
           }
 
-          while (true) {
-            // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = block->skipSomeForShard(atMost, shardId);
-            if (tmpRes.first == ExecutionState::WAITING) {
-              LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "We are now actively blocking a thread. Needs to be fixed";
-              query->tempWaitForAsyncResponse();
-            } else {
-              skipped = tmpRes.second;
-              break;
-            }
+          auto tmpRes = block->skipSomeForShard(atMost, shardId);
+          if (tmpRes.first == ExecutionState::WAITING) {
+            return RestStatus::WAITING;
           }
+          skipped = tmpRes.second;
         }
         answerBuilder.add("skipped", VPackValue(skipped));
         answerBuilder.add(StaticStrings::Error, VPackValue(false));
@@ -931,29 +934,19 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         std::unique_ptr<AqlItemBlock> items;
         Result res;
         if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
-          while (true) {
-            // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
-            if (tmpRes.first == ExecutionState::WAITING) {
-              query->tempWaitForAsyncResponse();
-            } else {
-              res = tmpRes.second;
-              break;
-            }
+          auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
+          if (tmpRes.first == ExecutionState::WAITING) {
+            return RestStatus::WAITING;
           }
+          res = tmpRes.second;
         } else {
           items.reset(new AqlItemBlock(query->resourceMonitor(),
                                        querySlice.get("items")));
-          while (true) {
-            // TODO MAX: Handle Thread Sleep / Wakeup here! 
-            auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
-            if (tmpRes.first == ExecutionState::WAITING) {
-              query->tempWaitForAsyncResponse();
-            } else {
-              res = tmpRes.second;
-              break;
-            }
+          auto tmpRes = query->engine()->initializeCursor(items.get(), pos);
+          if (tmpRes.first == ExecutionState::WAITING) {
+            return RestStatus::WAITING;
           }
+          res = tmpRes.second;
         }
         answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
         answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
@@ -979,7 +972,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        return;
+        return RestStatus::DONE;
       }
     }
 
@@ -991,6 +984,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
   } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, "unknown exception caught in handleUseQuery");
   }
+  return RestStatus::DONE;
 }
 
 // extract the VelocyPack from the request
