@@ -26,7 +26,7 @@ Client tools
 HTTP API
 --------
 
-- GET /_api/aqlfunction/ was migrated to match the general structure of
+- `GET /_api/aqlfunction` was migrated to match the general structure of
   ArangoDB Replies. It now returns an object with a "result" attribute that
   contains the list of available AQL user functions:
 
@@ -48,7 +48,19 @@ HTTP API
   AQL user functions on the top level of the response.
   Each AQL user function description now also contains the 'isDeterministic' attribute.
 
-- DELETE /_api/aqlfunction/ now returns the number of deleted functions:
+- `POST /_api/aqlfunction` now includes an "isNewlyCreated" attribute that indicates
+  if a new function was created or if an existing one was replaced (in addition to the
+  "code" attribute, which remains 200 for replacement and 201 for creation):
+
+  ```json
+  {
+    "code": "201",
+    "error": false,
+    "isNewlyCreated": true
+  }
+  ```
+
+- `DELETE /_api/aqlfunction` now returns the number of deleted functions:
 
   ```json
   {
