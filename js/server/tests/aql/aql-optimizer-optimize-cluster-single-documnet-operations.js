@@ -113,13 +113,13 @@ function optimizerClusterSingleDocumentTestSuite () {
         var r1 = {json: []}, r2 = {json: []};
 
         // run it first without the rule
-        set[4]();
+        set[setupFunction]();
         try {
-          r2 = AQL_EXECUTE(set[0], {}, thisRuleDisabled);
+          r2 = AQL_EXECUTE(set[query], {}, thisRuleDisabled);
           assertEqual(0, set[WilliError], "we have no error in the original, but the tests expects an exception");
         }
         catch (y) {
-          assertTrue(set[5].hasOwnProperty('code'), "original plan throws, but we don't expect an exception");
+          assertTrue(set[WilliError].hasOwnProperty('code'), "original plan throws, but we don't expect an exception");
           assertEqual(y.errorNum, set[WilliError].code, "match other error code");
         }
 
@@ -228,7 +228,6 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
 
-        
         // [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 0, false ],
         // [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
         //* /

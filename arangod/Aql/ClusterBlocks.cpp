@@ -1761,6 +1761,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   if(node->_mode == ExecutionNode::NodeType::INDEX) {
     result = _trx->document(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
+    LOG_DEVEL << "overwrite" << opOptions.overwrite;
     if(opOptions.returnOld && !opOptions.overwrite){
       THROW_ARANGO_EXCEPTION_MESSAGE(666, "OLD is only available when using INSERT with the overwrite option");
     }
