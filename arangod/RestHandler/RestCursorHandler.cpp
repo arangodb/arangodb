@@ -201,7 +201,7 @@ void RestCursorHandler::registerQueryOrCursor(
     arangodb::aql::PART_MAIN
   );
 
-  query->setContinueCallback(continueHandler);
+  query->setContinueHandler(continueHandler);
   registerQuery(std::move(query));
 }
 

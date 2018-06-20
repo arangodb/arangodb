@@ -295,13 +295,32 @@ class Query {
   /// This will lead to the following: The original request that lead to
   /// the network communication will be rescheduled on the ioservice and
   /// continues its execution where it left off.
-  std::function<void()> continueAfterPause() {
+  void continueAfterPause() {
+    TRI_ASSERT(!hasHandler());
+    _continueCallback();
+  }
+
+  std::function<void()> continueHandler() {
+    TRI_ASSERT(hasHandler());
     return _continueCallback;
   }
 
+  bool hasHandler() {
+    return _hasHandler;
+  }
+
   /// @brief setter for the continue callback:
+  ///        We can either have a handler or a callback
   void setContinueCallback(std::function<void()> cb) {
     _continueCallback = cb;
+    _hasHandler = false;
+  }
+
+  /// @brief setter for the continue handler:
+  ///        We can either have a handler or a callback
+  void setContinueHandler(std::function<void()> handler) {
+    _continueCallback = handler;
+    _hasHandler = true;
   }
 
  private:
@@ -435,6 +454,10 @@ class Query {
   /// Typically, the RestHandler using the Query object will put a closure
   /// in here, which continueAfterPause simply calls.
   std::function<void()> _continueCallback;
+
+  /// @brief decide if the _continueCallback needs to be pushed onto the ioservice
+  ///        or if it has to be executed in this thread.
+  bool _hasHandler;
 
   /// Create the result in this builder. It is also used to determine
   /// if we are continuing the query or of we called
