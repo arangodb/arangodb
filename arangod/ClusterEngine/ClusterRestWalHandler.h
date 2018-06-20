@@ -37,6 +37,7 @@ class ClusterRestWalHandler : public RestBaseHandler {
   bool isDirect() const override {
     return false;
   }
+  RequestLane lane() const override final { return RequestLane::SERVER_REPLICATION; }
   
   RestStatus execute() override final;
   char const* name() const override final { return "ClusterRestWalHandler"; }

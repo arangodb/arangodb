@@ -35,6 +35,7 @@ class RocksDBRestExportHandler : public RestVocbaseBaseHandler {
   RocksDBRestExportHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
   char const* name() const override final { return "RocksDBRestExportHandler"; }
 

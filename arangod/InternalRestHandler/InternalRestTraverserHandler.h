@@ -39,7 +39,7 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
   RestStatus execute() override final;
   char const* name() const override final { return "InternalRestTraverserHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_TRAVERSER; }
+  RequestLane lane() const override final { return RequestLane::CLUSTER_INTERNAL; }
 
  private:
 
