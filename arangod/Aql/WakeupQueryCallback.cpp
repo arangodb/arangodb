@@ -36,12 +36,16 @@ bool WakeupQueryCallback::operator()(ClusterCommResult* result) {
   // TODO Validate that _initiator and _query have not been deleted (ttl)
   // TODO Handle exceptions
   bool res = _initiator->handleAsyncResult(result);
-  auto scheduler = SchedulerFeature::SCHEDULER;
-  TRI_ASSERT(scheduler != nullptr);
-  if (scheduler == nullptr) {
-    // We are shutting down
-    return false;
+  if (_query->hasHandler()) {
+    auto scheduler = SchedulerFeature::SCHEDULER;
+    TRI_ASSERT(scheduler != nullptr);
+    if (scheduler == nullptr) {
+      // We are shutting down
+      return false;
+    }
+    scheduler->post(_query->continueHandler());
+  } else {
+    _query->continueAfterPause();
   }
-  scheduler->post(_query->continueAfterPause());
   return res;
 }
