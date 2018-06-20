@@ -331,8 +331,8 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
 }
 
 bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
-                                                             ExecutionPlan* plan,
-                                                             OptimizerRule const* rule) {
+                                                      ExecutionPlan* plan,
+                                                      OptimizerRule const* rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
