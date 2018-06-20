@@ -539,42 +539,25 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
   TRI_ASSERT(_qId > 0);
   TRI_ASSERT(query->engine() != nullptr);
+  TRI_DEFER(try { _queryRegistry->close(&_vocbase, _qId); } catch (...) { /* ignore errors */ });
 
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
-    _queryRegistry->close(&_vocbase, _qId);
-
     return RestStatus::DONE;
   }
 
   try {
-    auto status = handleUseQuery(operation, query, querySlice);
-    if (status == RestStatus::WAITING) {
-      return status;
-    }
-
-    if (_qId != 0) {
-      try {
-        _queryRegistry->close(&_vocbase, _qId);
-      } catch (...) {
-        // ignore errors on unregistering
-        // an error might occur if "shutdown" is called
-      }
-    }
+    return handleUseQuery(operation, query, querySlice);
   } catch (arangodb::basics::Exception const& ex) {
-    _queryRegistry->close(&_vocbase, _qId);
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    _queryRegistry->close(&_vocbase, _qId);
-
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of Query: "
                                             << ex.what();
 
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   } catch (...) {
-    _queryRegistry->close(&_vocbase, _qId);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "failed during use of Query: Unknown exception occurred";
 
