@@ -84,7 +84,24 @@ function optimizerClusterSingleDocumentTestSuite () {
       c3.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
     }
   }
-
+  var pruneRevisions = function(obj) {
+    if (typeof obj instanceof Array) {
+      obj.forEach(function (doc) { pruneRevisions(doc);});
+    } else {
+      if ((obj !== null) && (typeof obj !== "string")) {
+        if (obj instanceof Object) {
+          if (obj.hasOwnProperty('_rev')) {
+            obj._rev = "wedontcare";
+          }
+          for (var property in obj) {
+            if (!obj.hasOwnProperty(property)) continue;
+            pruneRevisions(obj[property]);
+          }
+        }
+      }
+    }
+  };
+  
   var explain = function (result) {
     return helper.getCompactPlan(result).map(function(node)
                                              { return node.type; });
@@ -118,7 +135,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         }
         catch (y) {
           assertTrue(set[errorCode].hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + queryInfo);
-          assertEqual(y.errorNum, set[errorCode].code, "match other error code - got: " + y + queryInfo);
+          assertEqual(y.errorNum, set[errorCode].code, "match other error code - got: " + JSON.stringify(y) + y + queryInfo);
         }
 
         // Run it again with our rule
@@ -129,10 +146,10 @@ function optimizerClusterSingleDocumentTestSuite () {
         }
         catch (x) {
           assertTrue(set[errorCode].hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + queryInfo);
-          assertEqual(x.errorNum, set[errorCode].code, "match our error code" + queryInfo);
+          assertEqual(x.errorNum, set[errorCode].code, "match our error code" + JSON.stringify(x) + queryInfo);
         }
-        r1.json.forEach(function(document){if (document !== null) {document._rev = "wedontcare";}});
-        r2.json.forEach(function(document){if (document !== null) {document._rev = "wedontcare";}});
+        pruneRevisions(r1);
+        pruneRevisions(r2);
         assertEqual(r1.json, r2.json, set);
       }
       count += 1;
@@ -227,17 +244,21 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
 
-        [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 0, false ],
-        [ `INSERT {_key: 'test', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
-        //* /
+        [ `INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 2, true, setupC2, 0 ],
+        [ `INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 2, true, setupC2, 0 ]
       ];
 
-      var expectedRules = [[ "remove-data-modification-out-variables",
-                             "optimize-cluster-single-document-operations"
-                           ]];
+      var expectedRules = [
+        [ "remove-data-modification-out-variables",
+          "optimize-cluster-single-document-operations"
+        ],
+        [  "optimize-cluster-single-document-operations" ]
+      ];
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ]
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", 
+          "ReturnNode" ]
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
