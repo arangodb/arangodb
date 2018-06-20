@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, fail, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators
@@ -33,7 +33,13 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
-
+let cluster;
+// quick hack to check if we are arangod or arangosh
+if (typeof ArangoClusterComm === "object") {
+  cluster = require("@arangodb/cluster");
+} else {
+  cluster = {};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: traditional key gen
@@ -51,6 +57,52 @@ function TraditionalSuite () {
 
     tearDown : function () {
       db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create with key
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateInvalidKeyNonDefaultSharding1 : function () {
+      var c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: "traditional", allowUserKeys: false } });
+
+      try {
+        c.save({ _key: "1234" }); // no user keys allowed
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
+                   err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
+      }
+    },
+    
+    testCreateInvalidKeyNonDefaultSharding2 : function () {
+      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+        return;
+      }
+
+      var c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: "traditional", allowUserKeys: true } });
+
+      try {
+        c.save({ _key: "1234" }); // no user keys allowed
+        fail();
+      }
+      catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED.code ||
+                   err.errorNum === ERRORS.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code);
+      }
+    },
+    
+    testCreateKeyNonDefaultSharding : function () {
+      if (!cluster || !cluster.isCluster || !cluster.isCluster()) {
+        return;
+      }
+
+      var c = db._create(cn, { shardKeys: ["value"], keyOptions: { type: "traditional", allowUserKeys: true } });
+
+      let key = c.save({ value: "1" }); // no user keys allowed
+      let doc = c.document(key);
+      assertEqual("1", doc.value);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

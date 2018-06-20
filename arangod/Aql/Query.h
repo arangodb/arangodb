@@ -25,9 +25,6 @@
 #define ARANGOD_AQL_QUERY_H 1
 
 #include "Basics/Common.h"
-
-#include <velocypack/Builder.h>
-
 #include "Aql/BindParameters.h"
 #include "Aql/Collections.h"
 #include "Aql/ExecutionState.h"
@@ -40,13 +37,13 @@
 #include "Aql/RegexCache.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "V8Server/V8Context.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Builder.h>
 
-// TODO remove
-#include <condition_variable>
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -467,23 +464,22 @@ class Query {
   /// async AQL
   /// TODO REMOVE
  private:
-  std::condition_variable _tempWaitForAsyncResponse;
-  std::mutex _tempMutex;
+  basics::ConditionVariable _tempWaitForAsyncResponse;
   bool _wasNotified = false;
 
  public:
   void tempSignalAsyncResponse() {
-    std::unique_lock<std::mutex> lock(_tempMutex);
+    CONDITION_LOCKER(guard, _tempWaitForAsyncResponse);
     _wasNotified = true;
-    _tempWaitForAsyncResponse.notify_all();
+    guard.signal();
   }
 
   /// TODO This has to stay for a backwards-compatible AQL HTTP API (hasMore).
   /// So it needs to be renamed.
   void tempWaitForAsyncResponse() {
-    std::unique_lock<std::mutex> lock(_tempMutex);
+    CONDITION_LOCKER(guard, _tempWaitForAsyncResponse);
     if (!_wasNotified) {
-      _tempWaitForAsyncResponse.wait(lock);
+      _tempWaitForAsyncResponse.wait();
     }
     _wasNotified = false;
   }

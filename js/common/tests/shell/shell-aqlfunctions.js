@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 200, unused: false*/
-/*global assertEqual, fail */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 /* unused for functions with 'what' parameter.*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +188,6 @@ function AqlFunctionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testToArray2 : function () {
-
       aqlfunctions.register("UnitTests::tryme::foo", function (what) { return what * 2; }, true);
       aqlfunctions.register("UnitTests::tryme::bar", function (what) { return what * 2; }, true);
       aqlfunctions.register("UnitTests58::tryme::bar", function (what) { return what * 2; }, true);
@@ -204,7 +203,6 @@ function AqlFunctionsSuite () {
 
       aqlfunctions.unregister("UnitTests58::tryme::bar");
       aqlfunctions.unregister("UnitTests58::whyme::bar");
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,7 +249,7 @@ function AqlFunctionsSuite () {
 
     testRegisterString1 : function () {
       unregister("UnitTests::tryme");
-      aqlfunctions.register("UnitTests::tryme", "function (what) { return what * 2; }", true);
+      assertFalse(aqlfunctions.register("UnitTests::tryme", "function (what) { return what * 2; }", true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +258,7 @@ function AqlFunctionsSuite () {
 
     testRegisterString2 : function () {
       unregister("UnitTests::tryme::foo");
-      aqlfunctions.register("UnitTests::tryme::foo", "function (what) { return what * 2; }", true);
+      assertFalse(aqlfunctions.register("UnitTests::tryme::foo", "function (what) { return what * 2; }", true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,7 +267,7 @@ function AqlFunctionsSuite () {
 
     testRegisterString3 : function () {
       unregister("UnitTests::tryme::foo");
-      aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! */ \n function (what) { return what * 2; }", true);
+      assertFalse(aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! */ \n function (what) { return what * 2; }", true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -278,8 +276,8 @@ function AqlFunctionsSuite () {
 
     testReRegister : function () {
       unregister("UnitTests::tryme");
-      aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true);
-      aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true);
+      assertFalse(aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true));
+      assertTrue(aqlfunctions.register("UnitTests::tryme", function (what) { return what * 2; }, true));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
