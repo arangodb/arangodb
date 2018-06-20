@@ -138,8 +138,8 @@ function optimizerClusterSingleDocumentTestSuite () {
           assertTrue(set[WilliError].hasOwnProperty('code'), "our plan throws, but we don't expect an exception");
           assertEqual(x.errorNum, set[WilliError].code, "match our error code");
         }
-        r1.json.forEach(function(document){document._rev = "wedontcare";});
-        r2.json.forEach(function(document){document._rev = "wedontcare";});
+        r1.json.forEach(function(document){if (document !== null) {document._rev = "wedontcare";}});
+        r2.json.forEach(function(document){if (document !== null) {document._rev = "wedontcare";}});
         assertEqual(r1.json, r2.json, set);
       }
       count += 1;
@@ -223,14 +223,9 @@ function optimizerClusterSingleDocumentTestSuite () {
       var queries = [
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
 
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ],
-
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED  ],
 
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
