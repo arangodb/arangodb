@@ -121,7 +121,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         catch (y) {
           print(JSON.stringify(y));
           assertTrue(set[WilliError].hasOwnProperty('code'), "original plan throws, but we don't expect an exception");
-          assertEqual(y.errorNum, set[WilliError].code, "match other error code");
+          assertEqual(y.errorNum, set[WilliError].code, "match other error code - query '" + set[query] + "' returned: " + y.errorNum);
         }
 
         // Run it again with our rule
