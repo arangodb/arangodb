@@ -1761,6 +1761,9 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   if(node->_mode == ExecutionNode::NodeType::INDEX) {
     result = _trx->document(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
+    if(opOptions.returnOld && !opOptions.overwrite){
+      THROW_ARANGO_EXCEPTION_MESSAGE(666, "OLD is only available when using INSERT with the overwrite option");
+    }
     result = _trx->insert(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
     result = _trx->remove(_collection->name(), inSlice , opOptions);
@@ -1776,10 +1779,10 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
       // document not there is not an error in this situation.
       _done = true;
       return nullptr;
-    } else {
+    } else if (!opOptions.silent){
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
-    TRI_ASSERT(false);
+    return nullptr;
   }
 
   if (!(out || OLD || NEW)) {
@@ -1815,22 +1818,31 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   // place documents as in the outi variable slots of the result
   bool aqlValueSet = false;
   if(out) {
-    TRI_ASSERT(!outDocument.isNone());
-    aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+    if(!outDocument.isNone()){
+      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+    } else {
+      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
+    }
     aqlValueSet = true;
     LOG_DEVEL << "set out";
   }
   if(OLD) {
     TRI_ASSERT(opOptions.returnOld);
-    TRI_ASSERT(!oldDocument.isNone());
-    aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
+    if(!oldDocument.isNone()){
+      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
+    } else {
+      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
+    }
     aqlValueSet = true;
     LOG_DEVEL << "set old";
   }
   if(NEW) {
     TRI_ASSERT(opOptions.returnNew);
-    TRI_ASSERT(!newDocument.isNone());
-    aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
+    if(!newDocument.isNone()){
+      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
+    } else {
+      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
+    }
     aqlValueSet = true;
     LOG_DEVEL << "set new";
   }

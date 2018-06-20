@@ -211,24 +211,17 @@ bool depIsSingletonOrConstCalc(ExecutionNode* node){
 }
 
 bool parentIsReturnOrConstCalc(ExecutionNode* node){
+  node = node->getFirstParent();
   while (node){
-    node = node->getFirstParent();
-    if(node->getType() == EN::RETURN){
-      //LOG_DEVEL << "reached singleton";
-      return true;
-    }
-
-    if(node->getType() != EN::CALCULATION){
-      //LOG_DEVEL << node->getTypeString() << " not a calculation node";
+    auto type = node->getType();
+    // we do not need to check the order because
+    // we expect a valid plan
+    if(type != EN::CALCULATION && type != EN::RETURN){
       return false;
     }
-
-    //if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
-    //  //LOG_DEVEL << "calculation not constant";
-    //  return false;
-    //}
+    node = node->getFirstParent();
   }
-  return false;
+  return true;
 }
 
 void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode){
@@ -244,8 +237,8 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
 }
 
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
-                                                                   ExecutionPlan* plan,
-                                                                   OptimizerRule const* rule) {
+                                                    ExecutionPlan* plan,
+                                                    OptimizerRule const* rule) {
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
