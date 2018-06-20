@@ -96,7 +96,7 @@ function optimizerClusterSingleDocumentTestSuite () {
     const expectedRulesField = 1
     const expectedNodesField = 2
     const doFullTest = 3 // Do advanced checking
-    const setupFunction = 4 // This resets the setup
+    const setupFunction = 4 // this resets the setup
     const errorCode = 5 // expected error code
 
 
@@ -104,7 +104,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       const queryString = set[query];
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set)
 
-      var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled);
+      var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled); //CHECKME - @willi - thisRuleDisabled?!
       assertEqual(expectedRules[set[expectedRulesField]], result.plan.rules, "rules mismatch: " + queryInfo);
       assertEqual(expectedNodes[set[expectedNodesField]], explain(result), "nodes mismatch: " + queryInfo);
       if (set[doFullTest]) {
@@ -214,6 +214,7 @@ function optimizerClusterSingleDocumentTestSuite () {
 
     testRuleInsert : function () {
       var queries = [
+        // [ query, expectedRulesField, expectedNodesField, doFullTest, setupFunction, errorCode ]
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
 
