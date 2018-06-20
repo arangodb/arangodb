@@ -310,7 +310,7 @@ std::function<void(const asio::error_code&)> V8Task::callbackFunction() {
 
     // now do the work:
     SchedulerFeature::SCHEDULER->queue(
-        Scheduler::INTERNAL_V8_QUEUE, [self, this, execContext] {
+        PriorityRequestLane(RequestLane::TASK_V8), [self, this, execContext] {
           ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                                : execContext.get());
 

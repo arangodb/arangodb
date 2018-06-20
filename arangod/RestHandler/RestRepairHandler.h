@@ -61,10 +61,7 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   RestRepairHandler(GeneralRequest* request, GeneralResponse* response);
 
   char const* name() const override final { return "RestRepairHandler"; }
-
-  bool isDirect() const override { return false; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-
   RestStatus execute() override;
 
  private:

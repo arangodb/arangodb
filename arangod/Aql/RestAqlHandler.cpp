@@ -69,11 +69,6 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request,
   TRI_ASSERT(_traverserRegistry != nullptr);
 }
 
-// returns the queue name
-size_t RestAqlHandler::queue() const { return Scheduler::INTERNAL_AQL_QUEUE; }
-
-bool RestAqlHandler::isDirect() const { return false; }
-
 // POST method for /_api/aql/setup (internal)
 // Only available on DBServers in the Cluster.
 // This route sets-up all the query engines required

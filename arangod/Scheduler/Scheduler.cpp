@@ -206,7 +206,7 @@ Scheduler::~Scheduler() {
   }
 }
 
-void Scheduler::post(std::function<void()> callback) {
+void Scheduler::post(std::function<void()> const& callback) {
   incQueued();
 
   try {
@@ -226,7 +226,7 @@ void Scheduler::post(std::function<void()> callback) {
 }
 
 void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> callback) {
+                     std::function<void()> const& callback) {
   incQueued();
 
   try {
@@ -245,29 +245,34 @@ void Scheduler::post(asio_ns::io_context::strand& strand,
   }
 }
 
-bool Scheduler::queue(size_t fifo, std::function<void()> callback) {
+bool Scheduler::queue(RequestPriority prio,
+                      std::function<void()> const& callback) {
   bool ok = true;
 
-  if (fifo == 1) {
-    if (0 < _fifoSize[0]) {
-      ok = pushToFifo(fifo, callback);
-    } else if (canPostDirectly()) {
-      post(callback);
-    } else {
-      ok = pushToFifo(fifo, callback);
-    }
-  } else if (fifo == 2) {
-    if (0 < _fifoSize[0]) {
-      ok = pushToFifo(fifo, callback);
-    } else if (0 < _fifoSize[1]) {
-      ok = pushToFifo(fifo, callback);
-    } else if (canPostDirectly()) {
-      post(callback);
-    } else {
-      pushToFifo(fifo, callback);
-    }
-  } else {
-    TRI_ASSERT(1 <= fifo && fifo <= 2);
+  switch (prio) {
+    case RequestPriority::HIGH:
+      if (0 < _fifoSize[0]) {
+        ok = pushToFifo(static_cast<int>(prio), callback);
+      } else if (canPostDirectly()) {
+        post(callback);
+      } else {
+        ok = pushToFifo(static_cast<int>(prio), callback);
+      }
+      break;
+    case RequestPriority::LOW:
+      if (0 < _fifoSize[0]) {
+        ok = pushToFifo(static_cast<int>(prio), callback);
+      } else if (0 < _fifoSize[1]) {
+        ok = pushToFifo(static_cast<int>(prio), callback);
+      } else if (canPostDirectly()) {
+        post(callback);
+      } else {
+        pushToFifo(static_cast<int>(prio), callback);
+      }
+      break;
+    default:
+      TRI_ASSERT(false);
+      break;
   }
 
   return ok;
@@ -328,7 +333,7 @@ bool Scheduler::canPostDirectly() const noexcept {
   return nrWorking + nrQueued <= _maxQueueSize;
 }
 
-bool Scheduler::pushToFifo(size_t fifo, std::function<void()> callback) {
+bool Scheduler::pushToFifo(size_t fifo, std::function<void()> const& callback) {
   size_t p = fifo - 1;
   TRI_ASSERT(0 < fifo && p < NUMBER_FIFOS);
 

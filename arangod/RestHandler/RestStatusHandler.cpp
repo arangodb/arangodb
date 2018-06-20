@@ -52,8 +52,6 @@ RestStatusHandler::RestStatusHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
-bool RestStatusHandler::isDirect() const { return true; }
-
 RestStatus RestStatusHandler::execute() {
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));

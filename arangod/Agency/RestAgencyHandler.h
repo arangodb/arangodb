@@ -39,9 +39,7 @@ class RestAgencyHandler : public RestBaseHandler {
 
  public:
   char const* name() const override final { return "RestAgencyHandler"; }
-  bool isDirect() const override;
   RequestLane lane() const override final { return RequestLane::AGENCY_CLUSTER; }
-  bool needsOwnThread() const { return true; }
   RestStatus execute() override;
 
  private:

@@ -33,7 +33,6 @@ class RestPleaseUpgradeHandler : public rest::RestHandler {
 
  public:
   char const* name() const override final { return "RestPleaseUpgradeHandler"; }
-  bool isDirect() const override;
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
   void handleError(const basics::Exception&) override;

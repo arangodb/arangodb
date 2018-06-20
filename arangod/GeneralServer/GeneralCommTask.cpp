@@ -351,22 +351,10 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  size_t const queue = handler->queue();
-  bool isDirect = handler->isDirect() || handler->needsOwnThread();
-
-  if (isDirect && !allowDirectHandling()) {
-    isDirect = false;
-  }
-
-  if (isDirect) {
-    handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
-                          std::move(handler));
-    return true;
-  }
-
+  auto const lane = handler->lane();
   auto self = shared_from_this();
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(queue, [self, this, handler]() {
+  bool ok = SchedulerFeature::SCHEDULER->queue(PriorityRequestLane(lane), [self, this, handler]() {
     handleRequestDirectly(basics::ConditionalLocking::DoLock,
                           std::move(handler));
   });
@@ -415,7 +403,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->queue(
-        handler->queue(), [self, handler] {
+        PriorityRequestLane(handler->lane()), [self, handler] {
           handler->runHandler([](RestHandler* h) {
             GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
           });
@@ -423,7 +411,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->queue(
-        handler->queue(),
+      PriorityRequestLane(handler->lane()),
         [self, handler] { handler->runHandler([](RestHandler*) {}); });
   }
 }

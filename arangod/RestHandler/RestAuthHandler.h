@@ -38,7 +38,6 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestAuthHandler"; }
-  bool isDirect() const override;
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 

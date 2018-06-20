@@ -46,12 +46,7 @@ class MaintenanceHandler : public RestBaseHandler {
       : RestBaseHandler(request, response), _mode(mode) {}
 
   char const* name() const override final { return "MaintenanceHandler"; }
-
-  bool isDirect() const override { return true; };
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  
-  // returns the queue name, should trigger processing without job
-  size_t queue() const override { return Scheduler::CLIENT_QUEUE; }
 
   RestStatus execute() override {
     ReplicationFeature::prepareFollowerResponse(_response.get(), _mode);

@@ -33,7 +33,6 @@ class RestStatusHandler : public arangodb::RestBaseHandler {
 
  public:
   char const* name() const override final { return "RestStatusHandler"; }
-  bool isDirect() const override;
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 };

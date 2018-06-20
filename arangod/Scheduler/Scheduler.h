@@ -33,6 +33,7 @@
 #include "Basics/asio_ns.h"
 #include "Basics/socket-utils.h"
 #include "Endpoint/Endpoint.h"
+#include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
 class JobGuard;
@@ -89,18 +90,10 @@ class Scheduler {
     uint64_t _queued;
   };
 
-  static size_t const INTERNAL_QUEUE = 1;
-  static size_t const INTERNAL_AQL_QUEUE = 1;
-  static size_t const INTERNAL_V8_QUEUE = 2;
-  static size_t const CLIENT_QUEUE = 2;
-  static size_t const CLIENT_SLOW_QUEUE = 2;
-  static size_t const CLIENT_AQL_QUEUE = 2;
-  static size_t const CLIENT_V8_QUEUE = 2;
+  void post(std::function<void()> const& callback);
+  void post(asio_ns::io_context::strand&, std::function<void()> const& callback);
 
-  void post(std::function<void()> callback);
-  void post(asio_ns::io_context::strand&, std::function<void()> callback);
-
-  bool queue(size_t fifo, std::function<void()>);
+  bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();
 
   void addQueueStatistics(velocypack::Builder&) const;
@@ -180,11 +173,11 @@ class Scheduler {
   // queue is full
 
   struct FifoJob {
-    FifoJob(std::function<void()> callback) : _callback(callback) {}
+    FifoJob(std::function<void()> const& callback) : _callback(callback) {}
     std::function<void()> _callback;
   };
 
-  bool pushToFifo(size_t fifo, std::function<void()> callback);
+  bool pushToFifo(size_t fifo, std::function<void()> const& callback);
   bool popFifo(size_t fifo);
 
   static int64_t const NUMBER_FIFOS = 2;

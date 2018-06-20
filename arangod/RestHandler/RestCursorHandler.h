@@ -65,8 +65,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 #endif
 
   bool cancel() override final;
-  
-  size_t queue() const override final { return rest::Scheduler::CLIENT_AQL_QUEUE; }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

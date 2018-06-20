@@ -66,9 +66,7 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
 
  public:
   char const* name() const override final { return "RestAgencyPrivHandler"; }
-  bool isDirect() const override;
   RequestLane lane() const override final { return RequestLane::AGENCY_INTERNAL; }
-  bool needsOwnThread() const { return true; }
   RestStatus execute() override;
 
  private:
