@@ -54,6 +54,10 @@ namespace arangodb {
 namespace basics {
 namespace Nonce {
 
+void setInitialSize(size_t size) {
+  SizeNonces = size;
+}
+
 void create(size_t size) {
   if (SizeNonces < 64) {
     SizeNonces = 64;
