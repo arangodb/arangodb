@@ -210,6 +210,27 @@ bool depIsSingletonOrConstCalc(ExecutionNode* node){
   return false;
 }
 
+bool parentIsReturnOrConstCalc(ExecutionNode* node){
+  while (node){
+    node = node->getFirstParent();
+    if(node->getType() == EN::RETURN){
+      //LOG_DEVEL << "reached singleton";
+      return true;
+    }
+
+    if(node->getType() != EN::CALCULATION){
+      //LOG_DEVEL << node->getTypeString() << " not a calculation node";
+      return false;
+    }
+
+    //if(!static_cast<CalculationNode*>(node)->arangodb::aql::ExecutionNode::getVariablesUsedHere().empty()){
+    //  //LOG_DEVEL << "calculation not constant";
+    //  return false;
+    //}
+  }
+  return false;
+}
+
 void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode){
   if(oldNode == plan->root()) {
     for(auto* dep : oldNode->getDependencies()) {
@@ -253,7 +274,6 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       }
 
       auto* parentModification = hasSingleParent(node,{EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
-      auto* parentSelect = hasSingleParent(node,EN::RETURN);
 
       if (parentModification){
         auto mod = static_cast<ModificationNode*>(parentModification);
@@ -288,10 +308,15 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           )
         );
 
+        if(!parentIsReturnOrConstCalc(mod)){
+          LOG_DEVEL << "parents are not calc* return";
+          continue;
+        }
+
         replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
         modified = true;
-      } else if(parentSelect){
+      } else if(parentIsReturnOrConstCalc(node)){
         LOG_DEVEL << "optimize SELECT with key: " << key;
 
         ExecutionNode* singleOperationNode = plan->registerNode(
@@ -312,7 +337,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
   return modified;
 }
 
-bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
+bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
                                                              ExecutionPlan* plan,
                                                              OptimizerRule const* rule) {
   bool modified = false;
@@ -335,9 +360,8 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
       continue;
     }
 
-    auto p = node->getFirstParent();
-    if( p && p->getType() != EN::RETURN){
-      LOG_DEVEL << "parent of modification is not a RETURN node";
+    if(!parentIsReturnOrConstCalc (node)){
+      LOG_DEVEL << "parents are not [calc]*->[return]";
       continue;
     }
 
@@ -409,7 +433,7 @@ bool substituteClusterSingleDocumentOperationsKeyExpressions(Optimizer* opt,
     }
 
     if(!depIsSingletonOrConstCalc(cursor)){
-      LOG_DEVEL << "plan too complex";
+      LOG_DEVEL << "dependencies are not [calc]*->[singleton]";
       continue;
     }
 
@@ -445,7 +469,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
   LOG_DEVEL << "enter singleOperationNode rule";
   bool modified = false;
   for(auto const& fun : { &substituteClusterSingleDocumentOperationsIndex
-                        , &substituteClusterSingleDocumentOperationsKeyExpressions
+                        , &substituteClusterSingleDocumentOperationsNoIndex
                         }
   ){
     modified = fun(opt, plan.get(), rule);
