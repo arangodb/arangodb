@@ -48,7 +48,7 @@ function optimizerClusterSingleDocumentTestSuite () {
   var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
   var notHereDoc = "notHereDoc";
   var yeOldeDoc = "yeOldeDoc";
-  
+
   var cn1 = "UnitTestsCollection";
   var c1;
 
@@ -68,7 +68,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       c1.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
     }
   }
-  
+
   var setupC2 = function() {
     print("flush!");
     db._drop(cn2);
@@ -89,49 +89,57 @@ function optimizerClusterSingleDocumentTestSuite () {
     return helper.getCompactPlan(result).map(function(node)
                                              { return node.type; });
   };
-  var runTestSet = function(queries, expectedRules, expectedNodes) {
+  var runTestSet = function(sets, expectedRules, expectedNodes) {
     let count = 0;
-    queries.forEach(function(query) {
-      print(query)
-      var result = AQL_EXPLAIN(query[0], { }, thisRuleEnabled);
+
+    let query = 0;
+    let expectedRulesField = 1
+    let expectedNodesField = 2
+    let WilliBool = 3
+    let setupFunction = 4
+    let WilliError = 5
+
+    sets.forEach(function(set) {
+      print(set)
+      var result = AQL_EXPLAIN(set[query], { }, thisRuleEnabled);
       print(count)
-      print(query)
-      print(expectedRules[query[1]])
-      print(expectedNodes[query[2]])
-      // db._explain(query[0])
-      assertEqual(expectedRules[query[1]], result.plan.rules, "Rules: " + JSON.stringify(query));
-      assertEqual(expectedNodes[query[2]], explain(result), "Nodes: " + JSON.stringify(query));
-      if (query[3]) {
+      print(set)
+      print(expectedRules[set[expectedRulesField]])
+      print(expectedNodes[set[expectedNodesField]])
+      // db._explain(set[0])
+      assertEqual(expectedRules[set[expectedRulesField]], result.plan.rules, "Rules: " + JSON.stringify(set));
+      assertEqual(expectedNodes[set[expectedNodesField]], explain(result), "Nodes: " + JSON.stringify(set));
+      if (set[WilliBool]) {
         var r1, r2;
 
         // run it first without the rule
-        query[4]();
+        set[4]();
         try {
-          r2 = AQL_EXECUTE(query[0], {}, thisRuleDisabled);
-          assertEqual(0, query[5], "expect no error");
+          r2 = AQL_EXECUTE(set[0], {}, thisRuleDisabled);
+          assertEqual(0, set[WilliError], "expect no error");
         }
         catch (y) {
           print(JSON.stringify(y));
-          assertTrue(query[5].hasOwnProperty('code'), "we should recommend an exception");
-          assertEqual(y.errorNum, query[5].code, "match other error code");
+          assertTrue(set[5].hasOwnProperty('code'), "we should recommend an exception");
+          assertEqual(y.errorNum, set[WilliError].code, "match other error code");
         }
 
         // Run it again with our rule
-        query[4]();
-        print(query[5])
-        print(query[5].code)
+        set[setupFunction]();
+        print(set[WilliError])
+        print(set[WilliError].code)
         try {
-          r1 = AQL_EXECUTE(query[0], {}, thisRuleEnabled);
-          assertEqual(0, query[5], "expect no error");
+          r1 = AQL_EXECUTE(set[query], {}, thisRuleEnabled);
+          assertEqual(0, set[WilliError], "expect no error");
         }
         catch (x) {
           print(JSON.stringify(x));
           print(x.errorNum);
-          assertTrue(query[5].hasOwnProperty('code'), "we should recommend an exception");
-          assertEqual(x.errorNum, query[5].code, "match our error code");
+          assertTrue(set[WilliError].hasOwnProperty('code'), "we should recommend an exception");
+          assertEqual(x.errorNum, set[WilliError].code, "match our error code");
         }
 
-        assertEqual(r1.json, r2.json, query);
+        assertEqual(r1.json, r2.json, set);
       }
       count += 1;
     });
@@ -151,7 +159,7 @@ function optimizerClusterSingleDocumentTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test plans that should result
     ////////////////////////////////////////////////////////////////////////////////
-    
+
     /*
       "INSERT {_key: 'test1', insert1: true} INTO UnitTestsCollection OPTIONS {waitForSync: true, ignoreErrors:true}"
       INSERT {_key: 'chris' } INTO persons RETURN NEW
@@ -186,7 +194,7 @@ function optimizerClusterSingleDocumentTestSuite () {
 
     */
 
-    
+
     testRuleFetch : function () {
       var queries = [
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s, 0],
@@ -216,16 +224,16 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
         [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
-        
+
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ],
-        
+
         [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN OLD`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED  ],
-        
+
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
-        
+
         [ `INSERT {_key: '${notHereDoc}', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED ],
 
@@ -235,16 +243,16 @@ function optimizerClusterSingleDocumentTestSuite () {
         // [ `INSERT {_key: 'test', insert1: true} INTO ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 0, false ],
         //* /
       ];
-      
-      var expectedRules = [[ "remove-data-modification-out-variables", 
-                             "optimize-cluster-single-documnet-operations" 
+
+      var expectedRules = [[ "remove-data-modification-out-variables",
+                             "optimize-cluster-single-documnet-operations"
                            ]];
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ]
       ];
 
-      
+
       runTestSet(queries, expectedRules, expectedNodes);
     },
     testRuleUpdate : function () {
@@ -274,7 +282,7 @@ function optimizerClusterSingleDocumentTestSuite () {
 
       var expectedRules = [
         [ "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", 
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables",
           "optimize-cluster-single-documnet-operations"],
         [ "move-calculations-up", "move-calculations-up-2",
           "remove-data-modification-out-variables", "optimize-cluster-single-documnet-operations" ],
@@ -290,22 +298,22 @@ function optimizerClusterSingleDocumentTestSuite () {
 
     testRuleRemove : function () {
       var queries = [
-        
+
         [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, false],
         [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, false],
         [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, false],
         [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, false],
       ];
       var expectedRules = [
-        ["remove-data-modification-out-variables", 
+        ["remove-data-modification-out-variables",
          "optimize-cluster-single-documnet-operations" ]
       ];
 
       var expectedNodes = [
-        ["SingletonNode", 
+        ["SingletonNode",
          "SingleRemoteOperationNode" ],
-        [ "SingletonNode", 
-          "SingleRemoteOperationNode", 
+        [ "SingletonNode",
+          "SingleRemoteOperationNode",
           "ReturnNode" ],
       ];
       runTestSet(queries, expectedRules, expectedNodes);
