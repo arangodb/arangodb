@@ -1724,11 +1724,17 @@
                     "description": "boolean flag to indicate whether an error occurred (*false* in this case)\n\n", 
                     "format": "", 
                     "type": "boolean"
+                }, 
+                "isNewlyCreated": {
+                    "description": "boolean flag to indicate whether the function was newly created (*false* in this case)\n\n", 
+                    "format": "", 
+                    "type": "boolean"
                 }
             }, 
             "required": [
                 "error", 
-                "code"
+                "code", 
+                "isNewlyCreated"
             ], 
             "type": "object", 
             "x-filename": "/var/lib/jenkins/workspace/RELEASE__BuildFrontend/Documentation/DocuBlocks/Rest/AQL/post_api_aqlfunction.md"
@@ -1736,7 +1742,7 @@
         "post_api_aqlfunction_rc_201": {
             "properties": {
                 "code": {
-                    "description": "the HTTP status code\n\n\n", 
+                    "description": "the HTTP status code\n\n", 
                     "format": "int64", 
                     "type": "integer"
                 }, 
@@ -1744,11 +1750,17 @@
                     "description": "boolean flag to indicate whether an error occurred (*false* in this case)\n\n", 
                     "format": "", 
                     "type": "boolean"
+                }, 
+                "isNewlyCreated": {
+                    "description": "boolean flag to indicate whether the function was newly created (*true* in this case)\n\n\n", 
+                    "format": "", 
+                    "type": "boolean"
                 }
             }, 
             "required": [
                 "error", 
-                "code"
+                "code", 
+                "isNewlyCreated"
             ], 
             "type": "object", 
             "x-filename": "/var/lib/jenkins/workspace/RELEASE__BuildFrontend/Documentation/DocuBlocks/Rest/AQL/post_api_aqlfunction.md"
@@ -4583,7 +4595,7 @@
                 "x-filename": "/var/lib/jenkins/workspace/RELEASE__BuildFrontend/Documentation/DocuBlocks/Rest/AQL/get_api_aqlfunction.md"
             }, 
             "post": {
-                "description": "\n**A JSON object with these properties is required:**\n\n  - **isDeterministic**: an optional boolean value to indicate whether the function\n   results are fully deterministic (function return value solely depends on\n   the input value and return value is the same for repeated calls with same\n   input). The *isDeterministic* attribute is currently not used but may be\n   used later for optimisations.\n  - **code**: a string representation of the function body.\n  - **name**: the fully qualified name of the user functions.\n\n\n\n\n\nIn case of success, HTTP 200 is returned.\nIf the function isn't valid etc. HTTP 400 including a detailed error message will be returned.\n\n\n#### HTTP 200\n*A json document with these Properties is returned:*\n\nIf the function already existed and was replaced by the\ncall, the server will respond with *HTTP 200*.\n\n- **code**: the HTTP status code\n- **error**: boolean flag to indicate whether an error occurred (*false* in this case)\n\n\n#### HTTP 201\n*A json document with these Properties is returned:*\n\nIf the function can be registered by the server, the server will respond with\n*HTTP 201*.\n\n- **code**: the HTTP status code\n- **error**: boolean flag to indicate whether an error occurred (*false* in this case)\n\n\n#### HTTP 400\n*A json document with these Properties is returned:*\n\nIf the JSON representation is malformed or mandatory data is missing from the\nrequest, the server will respond with *HTTP 400*.\n\n- **errorMessage**: a descriptive error message\n- **errorNum**: the server error number\n- **code**: the HTTP status code\n- **error**: boolean flag to indicate whether an error occurred (*true* in this case)\n\n\n\n\n**Example:**\n \n\n<pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction &lt;&lt;EOF\n{ \n  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"myfunctions::temperature::celsiustofahrenheit\"</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-string\">\"function (celsius) { return celsius * 1.8 + 32; }\"</span>, \n  <span class=\"hljs-string\">\"isDeterministic\"</span> : <span class=\"hljs-literal\">true</span> \n}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">201</span> Created\ncontent-type: application/json; charset=utf<span class=\"hljs-number\">-8</span>\nx-content-type-options: nosniff\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">201</span> \n}\n</code></pre>\n\n\n\n\n", 
+                "description": "\n**A JSON object with these properties is required:**\n\n  - **isDeterministic**: an optional boolean value to indicate whether the function\n   results are fully deterministic (function return value solely depends on\n   the input value and return value is the same for repeated calls with same\n   input). The *isDeterministic* attribute is currently not used but may be\n   used later for optimisations.\n  - **code**: a string representation of the function body.\n  - **name**: the fully qualified name of the user functions.\n\n\n\n\n\nIn case of success, HTTP 200 is returned.\nIf the function isn't valid etc. HTTP 400 including a detailed error message will be returned.\n\n\n#### HTTP 200\n*A json document with these Properties is returned:*\n\nIf the function already existed and was replaced by the\ncall, the server will respond with *HTTP 200*.\n\n- **code**: the HTTP status code\n- **isNewlyCreated**: boolean flag to indicate whether the function was newly created (*false* in this case)\n- **error**: boolean flag to indicate whether an error occurred (*false* in this case)\n\n\n#### HTTP 201\n*A json document with these Properties is returned:*\n\nIf the function can be registered by the server, the server will respond with\n*HTTP 201*.\n\n- **code**: the HTTP status code\n- **isNewlyCreated**: boolean flag to indicate whether the function was newly created (*true* in this case)\n- **error**: boolean flag to indicate whether an error occurred (*false* in this case)\n\n\n#### HTTP 400\n*A json document with these Properties is returned:*\n\nIf the JSON representation is malformed or mandatory data is missing from the\nrequest, the server will respond with *HTTP 400*.\n\n- **errorMessage**: a descriptive error message\n- **errorNum**: the server error number\n- **code**: the HTTP status code\n- **error**: boolean flag to indicate whether an error occurred (*true* in this case)\n\n\n\n\n**Example:**\n \n\n<pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/aqlfunction &lt;&lt;EOF\n{ \n  <span class=\"hljs-string\">\"name\"</span> : <span class=\"hljs-string\">\"myfunctions::temperature::celsiustofahrenheit\"</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-string\">\"function (celsius) { return celsius * 1.8 + 32; }\"</span>, \n  <span class=\"hljs-string\">\"isDeterministic\"</span> : <span class=\"hljs-literal\">true</span> \n}\nEOF\n\nHTTP/<span class=\"hljs-number\">1.1</span> <span class=\"hljs-number\">201</span> Created\ncontent-type: application/json; charset=utf<span class=\"hljs-number\">-8</span>\nx-content-type-options: nosniff\n\n{ \n  <span class=\"hljs-string\">\"error\"</span> : <span class=\"hljs-literal\">false</span>, \n  <span class=\"hljs-string\">\"code\"</span> : <span class=\"hljs-number\">201</span> \n}\n</code></pre>\n\n\n\n\n", 
                 "parameters": [
                     {
                         "in": "body", 
