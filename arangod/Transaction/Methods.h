@@ -143,7 +143,7 @@ class Methods {
           transaction::Options const& options = transaction::Options());
 
  public:
-  
+
   /// @brief create the transaction, used to be UserTransaction
   Methods(std::shared_ptr<transaction::Context> const& ctx,
           std::vector<std::string> const& readCollections,
@@ -154,18 +154,29 @@ class Methods {
   /// @brief destroy the transaction
   virtual ~Methods();
 
-  typedef Result(*StateRegistrationCallback)(LogicalDataSource& dataSource, TransactionState& state);
+  typedef Result(*DataSourceRegistrationCallback)(LogicalDataSource& dataSource, Methods& trx);
 
-  /// @brief add a callback to be called for state instance association events
-  ///        e.g. addCollection(...)
+  /// @brief definition from TransactionState::StatusChangeCallback
+  /// @param status the new status of the transaction
+  ///               will match trx.state()->status() for top-level transactions
+  ///               may not match trx.state()->status() for embeded transactions
+  ///               since their staus is not updated from RUNNING
+  typedef std::function<void(transaction::Methods& trx, transaction::Status& status)> StatusChangeCallback;
+
+  /// @brief add a callback to be called for LogicalDataSource instance
+  ///        association events, e.g. addCollection(...)
   /// @note not thread-safe on the assumption of static factory registration
-  static void addStateRegistrationCallback(StateRegistrationCallback callback);
+  static void addDataSourceRegistrationCallback(DataSourceRegistrationCallback const& callback);
 
-  /// @brief clear all called for state instance association events
+  /// @brief add a callback to be called for state change events
+  /// @return success
+  bool addStatusChangeCallback(StatusChangeCallback const& callback);
+
+  /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
   /// @note FOR USE IN TESTS ONLY to reset test state
   /// FIXME TODO StateRegistrationCallback logic should be moved into its own feature
-  static void clearStateRegistrationCallbacks();
+  static void clearDataSourceRegistrationCallbacks();
 
   /// @brief default batch size for index and other operations
   static constexpr uint64_t defaultBatchSize() { return 1000; }
@@ -584,12 +595,6 @@ class Methods {
   /// @brief Get all indexes for a collection name, coordinator case
   std::vector<std::shared_ptr<arangodb::Index>> indexesForCollectionCoordinator(
       std::string const&) const;
-
-  /// @brief add a collection to an embedded transaction
-  Result addCollectionEmbedded(TRI_voc_cid_t, std::string const& name, AccessMode::Type);
-
-  /// @brief add a collection to a top-level transaction
-  Result addCollectionToplevel(TRI_voc_cid_t, std::string const& name, AccessMode::Type);
 
  protected:
   /// @brief the state

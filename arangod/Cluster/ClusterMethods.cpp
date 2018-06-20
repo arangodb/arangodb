@@ -319,8 +319,19 @@ static int distributeBabyOnShards(
   // Now find the responsible shard:
   bool usesDefaultShardingAttributes;
   ShardID shardID;
-  int error = ci->getResponsibleShard(collinfo.get(), value, false, shardID,
-                                      usesDefaultShardingAttributes);
+  int error;
+  if (value.isString()) {
+    VPackBuilder temp;
+    temp.openObject();
+    temp.add(StaticStrings::KeyString, value);
+    temp.close();
+  
+    error = ci->getResponsibleShard(collinfo.get(), temp.slice(), false, shardID,
+                                    usesDefaultShardingAttributes);
+  } else {
+    error = ci->getResponsibleShard(collinfo.get(), value, false, shardID,
+                                    usesDefaultShardingAttributes);
+  }
   if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
   }
@@ -1612,23 +1623,10 @@ int getDocumentOnCoordinator(
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   bool useMultiple = slice.isArray();
 
-  VPackBuilder tempBuilder;
   int res = TRI_ERROR_NO_ERROR;
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      // if the input is not a document object but a string,
-      // we will construct a new object on the fly with just
-      // the "_key" attribute. this is necessary because
-      // distributeBabyOnShards prefers this format for finding 
-      // out the responsible shard for the document
-      if (value.isString()) {
-        tempBuilder.clear();
-        tempBuilder.openObject();
-        tempBuilder.add(StaticStrings::KeyString, value);
-        tempBuilder.close();
-        value = tempBuilder.slice();
-      }
       res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
                                    reverseMapping, value);
       if (res != TRI_ERROR_NO_ERROR) {
@@ -1639,17 +1637,6 @@ int getDocumentOnCoordinator(
       }
     }
   } else {
-    // if the input is not a document object but a string,
-    // we will construct a new object on the fly with just
-    // the "_key" attribute. this is necessary because
-    // distributeBabyOnShards prefers this format for finding 
-    // out the responsible shard for the document
-    if (slice.isString()) {
-      tempBuilder.openObject();
-      tempBuilder.add(StaticStrings::KeyString, slice);
-      tempBuilder.close();
-      slice = tempBuilder.slice();
-    }
     res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
                                  slice);
     if (res != TRI_ERROR_NO_ERROR) {

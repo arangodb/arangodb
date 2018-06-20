@@ -969,8 +969,16 @@ IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
   return _memoryNode->_store;
 }
 
-void IResearchView::apply(arangodb::TransactionState& state) {
-  state.addStatusChangeCallback(_trxReadCallback);
+bool IResearchView::apply(arangodb::transaction::Methods& trx) {
+  auto* state = trx.state();
+
+  if (!state) {
+    return false;
+  }
+
+  state->addStatusChangeCallback(_trxReadCallback);
+
+  return true;
 }
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
