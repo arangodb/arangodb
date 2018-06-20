@@ -21,6 +21,7 @@
   * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
   * [Kubernetes](Tutorials/Kubernetes/README.md)
+  * [Datacenter to datacenter Replication on Kubernetes](Tutorials/Kubernetes/DC2DC.md)
 * [Programs & Tools](Programs/README.md)
   * [ArangoDB Server](Programs/Arangod/README.md)
     * [Options](Programs/Arangod/Options.md)
@@ -59,6 +60,9 @@
   * [Arangobench](Programs/Arangobench/README.md)
     * [Examples](Programs/Arangobench/Examples.md)
     * [Options](Programs/Arangobench/Options.md)
+  * [Arangoinspect](Programs/Arangoinspect/README.md)
+    * [Examples](Programs/Arangoinspect/Examples.md)
+    * [Options](Programs/Arangoinspect/Options.md)
   * [Datafile Debugger](Programs/Arango-dfdb/README.md)
     * [Examples](Programs/Arango-dfdb/Examples.md)
 #   https://@github.com/arangodb/foxx-cli.git;foxx-cli;docs/Manual;;/
