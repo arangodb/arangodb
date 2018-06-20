@@ -59,7 +59,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestCursorHandler"; }
 
 #ifdef USE_ENTERPRISE
-  void finalizeExecute() noexcept override;
+  void shutdownExecute(bool isFinalized) noexcept override;
 #endif
 
   bool cancel() override final;

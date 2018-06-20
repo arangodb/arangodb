@@ -135,6 +135,8 @@ size_t RestCursorHandler::queue() const {
 
 void RestCursorHandler::registerQueryOrCursor(
     VPackSlice const& slice, std::function<void()> const& continueHandler) {
+  TRI_ASSERT(_query == nullptr);
+
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     return;
