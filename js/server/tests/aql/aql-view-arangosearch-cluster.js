@@ -437,21 +437,21 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(function() {
+jsunity.run(function IResearchAqlTestSuite_s1_r1() {
   return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 })
 });
 
-jsunity.run(function() {
+jsunity.run(function IResearchAqlTestSuite_s4_r1() {
   return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 })
 });
 
 /*
 
-jsunity.run(function() {
+jsunity.run(function IResearchAqlTestSuite_s1_r2() {
   return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 })
 });
 
-jsunity.run(function() {
+jsunity.run(function IResearchAqlTestSuite_s4_r3() {
   return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 })
 });
 
