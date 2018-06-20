@@ -376,6 +376,15 @@ void ClusterInfo::loadPlan() {
                               // reread from the agency!
   MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
 
+  // For ArangoSearch views we need to get access to immediately created views
+  // in order to allow links to be created correctly.
+  // For the scenario above, we track such views in '_newPlannedViews' member
+  // which is supposed to be empty before and after 'ClusterInfo::loadPlan()' execution.
+  // In addition, we do the following "trick" to provide access to '_newPlannedViews'
+  // from outside 'ClusterInfo': in case if 'ClusterInfo::getView' has been called
+  // from within 'ClusterInfo::loadPlan', we redirect caller to search view in
+  // '_newPlannedViews' member instead of '_plannedViews'
+
   // set plan loader
   TRI_ASSERT(_newPlannedViews.empty());
   _planLoader = std::this_thread::get_id();
