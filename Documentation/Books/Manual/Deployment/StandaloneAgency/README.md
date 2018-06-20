@@ -1,8 +1,6 @@
 Launching ArangoDB's standalone _Agency_
 ========================================
 
-TMP
-
 Multiple ArangoDB instances can be deployed as a fault-tolerant distributed state machine.
 
 What is a fault-tolerant state machine in the first place?

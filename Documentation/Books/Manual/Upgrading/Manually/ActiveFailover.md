@@ -1,2 +1,0 @@
-Upgrading an Active Failover
-============================
