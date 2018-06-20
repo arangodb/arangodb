@@ -75,12 +75,7 @@ RestStatus RestCursorHandler::execute() {
     };
     ret = modifyQueryCursor(continueCallback);
   } else if (type == rest::RequestType::DELETE_REQ) {
-    auto continueCallback = [this, self]() {
-      if (continueDeleteQueryCursor() == RestStatus::DONE) {
-        continueHandlerExecution();
-      }
-    };
-    ret = deleteQueryCursor(continueCallback);
+    ret = deleteQueryCursor();
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -555,13 +550,7 @@ RestStatus RestCursorHandler::modifyQueryCursor(std::function<void()> const& con
 /// @brief was docuBlock JSF_post_api_cursor_delete
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::continueDeleteQueryCursor() {
-  // TODO Implement me
-  TRI_ASSERT(false);
-  return RestStatus::DONE;
-}
-
-RestStatus RestCursorHandler::deleteQueryCursor(std::function<void()> const& continueHandler) {
+RestStatus RestCursorHandler::deleteQueryCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {

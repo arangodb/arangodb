@@ -150,13 +150,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief dispose an existing cursor
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus deleteQueryCursor(std::function<void()> const& continueHandler);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief dispose an existing cursor, continuation
-  //////////////////////////////////////////////////////////////////////////////
-
-  RestStatus continueDeleteQueryCursor();
+  RestStatus deleteQueryCursor();
 
  protected:
 
