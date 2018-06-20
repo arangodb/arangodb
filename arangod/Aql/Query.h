@@ -285,18 +285,18 @@ class Query {
   /// @brief continueAfterPause is to be called on the query object to
   /// continue execution in this query part, if the query got paused
   /// because it is waiting for network responses. The idea is that a
-  /// RemoveBlock that does an asynchronous cluster-internal request can
+  /// RemoteBlock that does an asynchronous cluster-internal request can
   /// register a callback with the asynchronous request and then return
   /// with the result `ExecutionState::WAITING`, which will bubble up
   /// the stack and eventually lead to a suspension of the work on the
   /// RestHandler. In the callback function one can first store the
-  /// results in the RemoveBlock object and can then call this method on
+  /// results in the RemoteBlock object and can then call this method on
   /// the query.
   /// This will lead to the following: The original request that lead to
   /// the network communication will be rescheduled on the ioservice and
   /// continues its execution where it left off.
-  void continueAfterPause() {
-    _continueCallback();
+  std::function<void()> continueAfterPause() {
+    return _continueCallback;
   }
 
   /// @brief setter for the continue callback:
