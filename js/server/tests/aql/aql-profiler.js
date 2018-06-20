@@ -40,6 +40,85 @@ const assert = jsunity.jsUnity.assertions;
 
 function ahuacatlProfilerTestSuite () {
 
+  const batchSize = 1000;
+
+  const testRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
+
+  const CalculationNode = 'CalculationNode';
+  const CollectNode = 'CollectNode';
+  const DistributeNode = 'DistributeNode';
+  const EnumerateCollectionNode = 'EnumerateCollectionNode';
+  const EnumerateListNode = 'EnumerateListNode';
+  const EnumerateViewNode = 'EnumerateViewNode';
+  const FilterNode = 'FilterNode';
+  const GatherNode = 'GatherNode';
+  const IndexNode = 'IndexNode';
+  const InsertNode = 'InsertNode';
+  const LimitNode = 'LimitNode';
+  const NoResultsNode = 'NoResultsNode';
+  const RemoteNode = 'RemoteNode';
+  const RemoveNode = 'RemoveNode';
+  const ReplaceNode = 'ReplaceNode';
+  const ReturnNode = 'ReturnNode';
+  const ScatterNode = 'ScatterNode';
+  const ShortestPathNode = 'ShortestPathNode';
+  const SingletonNode = 'SingletonNode';
+  const SortNode = 'SortNode';
+  const SubqueryNode = 'SubqueryNode';
+  const TraversalNode = 'TraversalNode';
+  const UpdateNode = 'UpdateNode';
+  const UpsertNode = 'UpsertNode';
+
+  const nodeTypesList = [
+    CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
+    EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
+    InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
+    ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
+    SubqueryNode, TraversalNode, UpdateNode, UpsertNode
+  ];
+
+  const CalculationBlock = 'CalculationBlock';
+  const CountCollectBlock = 'CountCollectBlock';
+  const DistinctCollectBlock = 'DistinctCollectBlock';
+  const EnumerateCollectionBlock = 'EnumerateCollectionBlock';
+  const EnumerateListBlock = 'EnumerateListBlock';
+  const FilterBlock = 'FilterBlock';
+  const HashedCollectBlock = 'HashedCollectBlock';
+  const IndexBlock = 'IndexBlock';
+  const LimitBlock = 'LimitBlock';
+  const NoResultsBlock = 'NoResultsBlock';
+  const RemoteBlock = 'RemoteBlock';
+  const ReturnBlock = 'ReturnBlock';
+  const ShortestPathBlock = 'ShortestPathBlock';
+  const SingletonBlock = 'SingletonBlock';
+  const SortBlock = 'SortBlock';
+  const SortedCollectBlock = 'SortedCollectBlock';
+  const SortingGatherBlock = 'SortingGatherBlock';
+  const SubqueryBlock = 'SubqueryBlock';
+  const TraversalBlock = 'TraversalBlock';
+  const UnsortingGatherBlock = 'UnsortingGatherBlock';
+  const RemoveBlock = 'RemoveBlock';
+  const InsertBlock = 'InsertBlock';
+  const UpdateBlock = 'UpdateBlock';
+  const ReplaceBlock = 'ReplaceBlock';
+  const UpsertBlock = 'UpsertBlock';
+  const ScatterBlock = 'ScatterBlock';
+  const DistributeBlock = 'DistributeBlock';
+  const IResearchViewUnorderedBlock = 'IResearchViewUnorderedBlock';
+  const IResearchViewBlock = 'IResearchViewBlock';
+  const IResearchViewOrderedBlock = 'IResearchViewOrderedBlock';
+
+  const blockTypesList = [
+    CalculationBlock, CountCollectBlock, DistinctCollectBlock,
+    EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
+    HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
+    ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
+    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
+    UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
+    IResearchViewBlock, IResearchViewOrderedBlock
+  ];
+
   const getPlanNodeTypes = function (result) {
     return helper.getCompactPlan(result).map(function (node) {
       return node.type;
@@ -67,9 +146,12 @@ function ahuacatlProfilerTestSuite () {
   };
 
   const getCompactStatsNodes = function (profile) {
+    // TODO as long as we don't need the node(!) type anymore, we could map the
+    // stats directly (without zipping the plan nodes)
     return zipPlanNodesIntoStatsNodes(profile).map(
       node => ({
-        type: node.fromPlan.type,
+        // type: node.fromPlan.type,
+        type: node.fromStats.blockType,
         calls: node.fromStats.calls,
         items: node.fromStats.items,
       })
@@ -188,15 +270,7 @@ function ahuacatlProfilerTestSuite () {
 
       expect(node.type)
         .to.be.a('string')
-        .and.to.be.oneOf([
-          "CalculationNode", "CollectNode", "DistributeNode",
-          "EnumerateCollectionNode", "EnumerateListNode", "EnumerateViewNode",
-          "FilterNode", "GatherNode", "IndexNode", "InsertNode", "LimitNode",
-          "NoResultsNode", "RemoteNode", "RemoveNode", "ReplaceNode",
-          "ReturnNode", "ScatterNode", "ShortestPathNode", "SingletonNode",
-          "SortNode", "SubqueryNode", "TraversalNode", "UpdateNode",
-          "UpsertNode",
-        ]);
+        .and.to.be.oneOf(nodeTypesList);
 
       expect(node.dependencies)
         .to.be.an('array');
@@ -288,6 +362,32 @@ function ahuacatlProfilerTestSuite () {
     );
   };
 
+  // @brief Common checks for most blocks
+  // @param query string - is assumed to have one bind parameter 'rows'
+  // @param genNodeList function: (rows, batches) => [ { type, calls, items } ]
+  // Example for genNodeList:
+  // genNodeList(2500, 3) ===
+  // [
+  //   { type : SingletonNode, calls : 1, items : 1 },
+  //   { type : EnumerateListNode, calls : 3, items : 2500 },
+  //   { type : ReturnNode, calls : 3, items : 2500 }
+  // ]
+  const runDefaultChecks = function (query, genNodeList) {
+    for (const rows of testRowCounts) {
+      const profile = db._query(query, {rows}, {profile: 2}).getExtra();
+
+      assertIsLevel2Profile(profile);
+      assertStatsNodesMatchPlanNodes(profile);
+
+      const batches = Math.ceil(rows / batchSize);
+
+      assert.assertEqual(
+        genNodeList(rows, batches),
+        getCompactStatsNodes(profile)
+      );
+    }
+  };
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -357,12 +457,50 @@ function ahuacatlProfilerTestSuite () {
 
       assert.assertEqual(
         [
-          { type : "SingletonNode", calls : 2, items : 1 },
-          { type : "CalculationNode", calls : 2, items : 1 },
-          { type : "ReturnNode", calls : 2, items : 1 }
+          { type : SingletonBlock, calls : 1, items : 1 },
+          { type : CalculationBlock, calls : 1, items : 1 },
+          { type : ReturnBlock, calls : 1, items : 1 }
         ],
         getCompactStatsNodes(profile)
       );
+    },
+
+    // EnumerateListBlock
+    testEnumerateListBlock : function () {
+      const query = 'FOR i IN 1..@rows RETURN i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : ReturnBlock, calls : batches, items : rows }
+      ];
+      runDefaultChecks(query, genNodeList);
+    },
+
+    // CalculationBlock
+    testCalculationBlock : function () {
+      const query = 'FOR i IN 1..@rows RETURN i*i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : CalculationBlock, calls : batches, items : rows },
+        { type : ReturnBlock, calls : batches, items : rows }
+      ];
+      runDefaultChecks(query, genNodeList);
+    },
+
+    // CountCollectBlock
+    testCountCollectBlock : function () {
+      const query = 'FOR i IN 1..@rows COLLECT WITH COUNT INTO c RETURN c';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : CountCollectBlock, calls : 1, items : 1 },
+        { type : ReturnBlock, calls : 1, items : 1 }
+      ];
+      runDefaultChecks(query, genNodeList);
     },
 
 // TODO Every block must be tested separately. Here follows the list of blocks
@@ -370,12 +508,11 @@ function ahuacatlProfilerTestSuite () {
 // like ModificationBlock and BlockWithClients are never instantiated separately
 // and therefore don't need to be tested on their own.
 
-// CalculationBlock
-// CountCollectBlock
+// *CalculationBlock
+// *CountCollectBlock
 // DistinctCollectBlock
 // EnumerateCollectionBlock
-// EnumerateListBlock
-// ExecutionBlockMock
+// *EnumerateListBlock
 // FilterBlock
 // HashedCollectBlock
 // IndexBlock
@@ -391,7 +528,6 @@ function ahuacatlProfilerTestSuite () {
 // SubqueryBlock
 // TraversalBlock
 // UnsortingGatherBlock
-// WaitingExecutionBlockMock
 //
 // ModificationBlock
 // -> RemoveBlock
