@@ -183,6 +183,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
     stats.calls = 1;
     stats.items = result != nullptr ? result->size() : 0;
     stats.runtime = TRI_microtime() - _getSomeBegin;
+    stats.type = getType();
     auto it = _engine->_stats.nodes.find(en->id());
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
@@ -556,4 +557,72 @@ RegisterId ExecutionBlock::getNrOutputRegisters() const {
     planNode->getRegisterPlan()->nrRegs[planNode->getDepth()];
 
   return outputNrRegs;
+}
+
+std::string ExecutionBlock::typeToString(ExecutionBlock::Type type) {
+  switch (type) {
+    case Type::_UNDEFINED:
+      return "-undefined-";
+    case Type::CALCULATION:
+      return "CalculationBlock";
+    case Type::COUNT_COLLECT:
+      return "CountCollectBlock";
+    case Type::DISTINCT_COLLECT:
+      return "DistinctCollectBlock";
+    case Type::ENUMERATE_COLLECTION:
+      return "EnumerateCollectionBlock";
+    case Type::ENUMERATE_LIST:
+      return "EnumerateListBlock";
+    case Type::FILTER:
+      return "FilterBlock";
+    case Type::HASHED_COLLECT:
+      return "HashedCollectBlock";
+    case Type::INDEX:
+      return "IndexBlock";
+    case Type::LIMIT:
+      return "LimitBlock";
+    case Type::NO_RESULTS:
+      return "NoResultsBlock";
+    case Type::REMOTE:
+      return "RemoteBlock";
+    case Type::RETURN:
+      return "ReturnBlock";
+    case Type::SHORTEST_PATH:
+      return "ShortestPathBlock";
+    case Type::SINGLETON:
+      return "SingletonBlock";
+    case Type::SORT:
+      return "SortBlock";
+    case Type::SORTED_COLLECT:
+      return "SortedCollectBlock";
+    case Type::SORTING_GATHER:
+      return "SortingGatherBlock";
+    case Type::SUBQUERY:
+      return "SubqueryBlock";
+    case Type::TRAVERSAL:
+      return "TraversalBlock";
+    case Type::UNSORTING_GATHER:
+      return "UnsortingGatherBlock";
+    case Type::REMOVE:
+      return "RemoveBlock";
+    case Type::INSERT:
+      return "InsertBlock";
+    case Type::UPDATE:
+      return "UpdateBlock";
+    case Type::REPLACE:
+      return "ReplaceBlock";
+    case Type::UPSERT:
+      return "UpsertBlock";
+    case Type::SCATTER:
+      return "ScatterBlock";
+    case Type::DISTRIBUTE:
+      return "DistributeBlock";
+    case Type::IRESEARCH_VIEW:
+      return "IresearchViewBlock";
+    case Type::IRESEARCH_VIEW_ORDERED:
+      return "IresearchViewOrderedBlock";
+    case Type::IRESEARCH_VIEW_UNORDERED:
+      return "IresearchViewUnorderedBlock";
+  }
+  TRI_ASSERT(false);
 }

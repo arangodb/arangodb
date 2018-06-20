@@ -119,6 +119,8 @@ class ExecutionBlock {
   // BlockWithClients (scatter, distribute)
   // IResearchViewBlockBase (IResearchView*)
 
+  static std::string typeToString(Type type);
+
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
