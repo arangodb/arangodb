@@ -249,9 +249,9 @@ function optimizerClusterSingleDocumentTestSuite () {
 
       var expectedRules = [
         [ "remove-data-modification-out-variables",
-          "optimize-cluster-single-documnet-operations"
+          "optimize-cluster-single-document-operations"
         ],
-        [  "optimize-cluster-single-documnet-operations" ]
+        [  "optimize-cluster-single-document-operations" ]
       ];
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
