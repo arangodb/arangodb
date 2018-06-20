@@ -164,22 +164,23 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
   // now check the authentication will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
-  const rest::ResponseCode ok = GeneralCommTask::canAccessPath(req);
-  if (ok == rest::ResponseCode::UNAUTHORIZED) {
+  const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
+  if (code == rest::ResponseCode::UNAUTHORIZED) {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                      req.contentTypeResponse(), req.messageId(),
                      TRI_ERROR_FORBIDDEN,
                      "not authorized to execute this request");
     return RequestFlow::Abort;
   }
-  TRI_ASSERT(ok == rest::ResponseCode::OK);  // nothing else allowed
-
-  // check for an HLC time stamp, only after authentication
-  std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
-  if (found) {
-    uint64_t parsed = basics::HybridLogicalClock::decodeTimeStamp(timeStamp);
-    if (parsed != 0 && parsed != UINT64_MAX) {
-      TRI_HybridLogicalClock(parsed);
+  
+  if (code == rest::ResponseCode::OK && req.authenticated()) {
+    // check for an HLC time stamp only with auth
+    std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
+    if (found) {
+      uint64_t parsed = basics::HybridLogicalClock::decodeTimeStamp(timeStamp);
+      if (parsed != 0 && parsed != UINT64_MAX) {
+        TRI_HybridLogicalClock(parsed);
+      }
     }
   }
 
@@ -475,6 +476,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
+  } else if (ServerState::serverMode() == ServerState::Mode::MAINTENANCE) {
+    return rest::ResponseCode::SERVICE_UNAVAILABLE;
   }
 
   std::string const& path = request.requestPath();
