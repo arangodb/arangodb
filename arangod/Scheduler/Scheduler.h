@@ -31,10 +31,10 @@
 #include "Basics/socket-utils.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/Job.h"
+#include "Scheduler/JobQueue.h"
 #include "Scheduler/Socket.h"
 
 namespace arangodb {
-class JobQueue;
 class JobGuard;
 
 namespace velocypack {
@@ -127,6 +127,10 @@ class Scheduler {
     if (--_nrQueued == UINT64_MAX) {
       TRI_ASSERT(false);
     }
+  }
+
+  inline void wakeupJobQueue() noexcept {
+    _jobQueue->wakeup();
   }
 
  private:

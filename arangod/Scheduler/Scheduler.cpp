@@ -350,7 +350,6 @@ bool Scheduler::shouldQueueMore() const {
 bool Scheduler::shouldExecuteDirect() const {
   uint64_t const counters = _counters.load();
   uint64_t const nrWorking = numWorking(counters);
-  uint64_t const nrBlocked = numBlocked(counters);
   
   if (nrWorking + _nrQueued < _nrMaximum) {
     auto jobQueue = _jobQueue.get();

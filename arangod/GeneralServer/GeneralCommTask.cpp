@@ -382,6 +382,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
                JobQueue::AQL_QUEUE);  // not allowed with strands
     handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
                           std::move(handler));
+    _loop.scheduler->wakeupJobQueue();
     return true;
   }
 
@@ -391,6 +392,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     _loop.scheduler->post([self, this, handler]() {
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
                             std::move(handler));
+      _loop.scheduler->wakeupJobQueue();
     });
     return true;
   }

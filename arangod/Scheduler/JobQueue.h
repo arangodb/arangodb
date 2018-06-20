@@ -90,8 +90,8 @@ private:
     return ok;
   }
   
+ public:
   void wakeup();
-  void waitForWork();
   
  private:
   int64_t const _maxQueueSize;
