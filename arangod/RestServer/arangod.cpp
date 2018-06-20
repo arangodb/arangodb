@@ -51,6 +51,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
+#include "Cluster/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
@@ -177,6 +178,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
     server.addFeature(new ServerIdFeature(&server));
+    server.addFeature(new ShardingFeature(&server));
     server.addFeature(new ShellColorsFeature(&server));
     server.addFeature(new ShutdownFeature(&server, {"Script"}));
     server.addFeature(new SslFeature(&server));

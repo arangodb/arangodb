@@ -1,0 +1,93 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Jan Steemann
+////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ARANGOD_CLUSTER_SHARDING_STRATEGY_DEFAULT_H
+#define ARANGOD_CLUSTER_SHARDING_STRATEGY_DEFAULT_H 1
+
+#include "Basics/Common.h"
+#include "Cluster/ShardingStrategy.h"
+
+#include <velocypack/Slice.h>
+
+namespace arangodb {
+class LogicalCollection;
+
+/// @brief a sharding implementation that will always fail when asking
+/// for a shard. this can be used on the DB server or on the single server
+class ShardingStrategyNone final : public ShardingStrategy {
+ public:
+  ShardingStrategyNone() 
+      : ShardingStrategy() {}
+
+  char const* name() const override { return NAME; }
+  
+  int getResponsibleShard(arangodb::velocypack::Slice,
+                          bool docComplete, ShardID& shardID,
+                          bool& usesDefaultShardKeys,
+                          std::string const& key = "") override;
+  
+  static constexpr char const* NAME = "none";
+};
+
+/// @brief base class for hash-based sharding
+class ShardingStrategyHash : public ShardingStrategy {
+ public:
+  explicit ShardingStrategyHash(LogicalCollection* collection);
+  
+  virtual int getResponsibleShard(arangodb::velocypack::Slice,
+                                  bool docComplete, ShardID& shardID,
+                                  bool& usesDefaultShardKeys,
+                                  std::string const& key = "") override;
+  
+ protected:
+  bool usesDefaultShardKeys() const { return _usesDefaultShardKeys; }
+  
+  virtual uint64_t hashByAttributes(
+    arangodb::velocypack::Slice slice, std::vector<std::string> const& attributes,
+    bool docComplete, int& error, std::string const& key) = 0;
+
+ protected:
+  LogicalCollection* _collection;
+  std::vector<ShardID> _shards;
+  bool _usesDefaultShardKeys;
+};
+
+/// @brief old version of the sharding used in the community edition
+/// this is DEPRECATED and should not be used for new collections
+class ShardingStrategyCommunity final : public ShardingStrategyHash {
+ public:
+  explicit ShardingStrategyCommunity(LogicalCollection* collection);
+  
+  char const* name() const override { return NAME; }
+  
+  static constexpr char const* NAME = "community";
+
+ protected:
+  uint64_t hashByAttributes(
+    arangodb::velocypack::Slice slice, std::vector<std::string> const& attributes,
+    bool docComplete, int& error, std::string const& key) override;
+};
+
+}
+
+#endif
