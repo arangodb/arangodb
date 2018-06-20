@@ -138,7 +138,8 @@ function optimizerClusterSingleDocumentTestSuite () {
           assertTrue(set[WilliError].hasOwnProperty('code'), "our plan throws, but we don't expect an exception");
           assertEqual(x.errorNum, set[WilliError].code, "match our error code");
         }
-
+        r1.json.forEach(function(document){document._rev = "wedontcare";});
+        r2.json.forEach(function(document){document._rev = "wedontcare";});
         assertEqual(r1.json, r2.json, set);
       }
       count += 1;
