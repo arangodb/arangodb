@@ -299,10 +299,10 @@ function optimizerClusterSingleDocumentTestSuite () {
     testRuleRemove : function () {
       var queries = [
 
-        [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, false],
-        [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, false],
-        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, false],
-        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, false],
+        [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
+        [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
+        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
+        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
       ];
       var expectedRules = [
         ["remove-data-modification-out-variables",
@@ -316,7 +316,7 @@ function optimizerClusterSingleDocumentTestSuite () {
           "SingleRemoteOperationNode",
           "ReturnNode" ],
       ];
-      //runTestSet(queries, expectedRules, expectedNodes);
+      runTestSet(queries, expectedRules, expectedNodes);
     }
   };
 }
