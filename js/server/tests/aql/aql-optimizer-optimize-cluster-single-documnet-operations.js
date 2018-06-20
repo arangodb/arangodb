@@ -113,14 +113,14 @@ function optimizerClusterSingleDocumentTestSuite () {
         var r1, r2;
 
         // run it first without the rule
-        set[4]();
+        set[setupFunction]();
         try {
-          r2 = AQL_EXECUTE(set[0], {}, thisRuleDisabled);
-          assertEqual(0, set[WilliError], "expect no error");
+          r2 = AQL_EXECUTE(set[query], {}, thisRuleDisabled);
+          assertEqual(0, set[WilliError], "expect no error when executing: " + set[query]);
         }
         catch (y) {
           print(JSON.stringify(y));
-          assertTrue(set[5].hasOwnProperty('code'), "original plan throws, but we don't expect an exception");
+          assertTrue(set[WilliError].hasOwnProperty('code'), "original plan throws, but we don't expect an exception");
           assertEqual(y.errorNum, set[WilliError].code, "match other error code");
         }
 
