@@ -402,6 +402,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   , _outVariable(out)
   , _outVariableOld(OLD)
   , _outVariableNew(NEW)
+  , _options(options)
 {
   LOG_DEVEL << "Creating SingleRemoteOperationNode for "
             << ExecutionNode::getTypeString(_mode)

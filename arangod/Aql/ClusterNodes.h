@@ -504,6 +504,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   std::string const& key() const { return _key; }
 
  private:
+  /// the key of the document we're intending to work with
   std::string _key;
 
   NodeType _mode;
@@ -518,12 +519,6 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
 
   /// @brief modification operation options
   ModificationOptions _options;
-
-  /// the key of the document we're intending to work with
-
-  /// @brief whether or not this node will forward initializeCursor and shutDown
-  /// requests
-  bool _isResponsibleForInitializeCursor = false;
 };
 
 }  // namespace arangodb::aql

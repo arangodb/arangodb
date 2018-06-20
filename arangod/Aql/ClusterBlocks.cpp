@@ -1775,6 +1775,9 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 
   // check operation result
   if (!result.ok()) {
+    LOG_DEVEL << "result not ok: " <<  result.errorMessage();
+    LOG_DEVEL << "silent " <<  opOptions.silent;
+    LOG_DEVEL << "ignoreErrors " <<  nodeOps.ignoreErrors; // CHECKME
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && node->_mode == ExecutionNode::NodeType::INDEX)) {
       // document not there is not an error in this situation.
       _done = true;
@@ -1782,8 +1785,13 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     } else if (!opOptions.silent){
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
-    return nullptr;
+
+    if (node->_mode == ExecutionNode::NodeType::INDEX) {
+      return nullptr;
+    }
   }
+
+  LOG_DEVEL << "error checking done: " <<  result.errorMessage();
 
   if (!(out || OLD || NEW)) {
     _done = true;
