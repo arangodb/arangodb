@@ -47,28 +47,62 @@ function optimizerClusterSingleDocumentTestSuite () {
   var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   var cn1 = "UnitTestsCollection";
-  var c;
+  var c1;
+
+  var cn2 = "UnitTestsCollectionEmty";
+  var c2;
+
+  var cn3 = "UnitTestsCollectionModify";
+  var c3;
+
+  var s = function() {}
+
+  var setupC1 = function() {
+    db._drop(cn1);
+    c1 = db._create(cn1, { numberOfShards: 5 });
+
+    for (var i = 0; i < 20; ++i) {
+      c1.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
+    }
+  }
+  
+  var setupC2 = function() {
+    print("flush!");
+    db._drop(cn2);
+    c2 = db._create(cn2, { numberOfShards: 5 });
+  }
+
+  var setupC3 = function() {
+    db._drop(cn3);
+    c3 = db._create(cn3, { numberOfShards: 5 });
+
+    for (var i = 0; i < 20; ++i) {
+      c3.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
+    }
+  }
 
   var explain = function (result) {
     return helper.getCompactPlan(result).map(function(node)
                                              { return node.type; });
   };
-  var runTestSet = function(queries, expectedNodes, expectedRules) {
+  var runTestSet = function(queries, expectedRules, expectedNodes) {
     let count = 0;
     queries.forEach(function(query) {
       print(query)
       var result = AQL_EXPLAIN(query[0], { }, thisRuleEnabled);
       print(count)
       print(query)
-      print(expectedNodes[query[1]])
-      print(expectedRules[query[2]])
+      print(expectedRules[query[1]])
+      print(expectedNodes[query[2]])
       // db._explain(query[0])
       assertEqual(expectedRules[query[1]], result.plan.rules, "Rules: " + JSON.stringify(query));
       assertEqual(expectedNodes[query[2]], explain(result), "Nodes: " + JSON.stringify(query));
       if (query[3]) {
-        assertEqual(AQL_EXECUTE(query[0], {}, thisRuleEnabled).json,
-                    AQL_EXECUTE(query[0], {}, thisRuleDisabled).json,
-                    query);
+        query[4]();
+        let r1 = AQL_EXECUTE(query[0], {}, thisRuleEnabled);
+        query[4]();
+        let r2 = AQL_EXECUTE(query[0], {}, thisRuleDisabled);
+        assertEqual(r1.json, r2.json, query);
       }
       count += 1;
     });
@@ -76,61 +110,58 @@ function optimizerClusterSingleDocumentTestSuite () {
 
   return {
     setUp : function () {
-      db._drop(cn1);
-      c = db._create(cn1, { numberOfShards: 5 });
-
-      for (var i = 0; i < 20; ++i) {
-        c.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
-      }
+      setupC1();
+      setupC2();
+      setupC3();
     },
 
     tearDown : function () {
       db._drop(cn1);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test plans that should result
-////////////////////////////////////////////////////////////////////////////////
-        
-/*
-"INSERT {_key: 'test1', insert1: true} INTO UnitTestsCollection OPTIONS {waitForSync: true, ignoreErrors:true}"
-INSERT {_key: 'chris' } INTO persons RETURN NEW
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test plans that should result
+    ////////////////////////////////////////////////////////////////////////////////
+    
+    /*
+      "INSERT {_key: 'test1', insert1: true} INTO UnitTestsCollection OPTIONS {waitForSync: true, ignoreErrors:true}"
+      INSERT {_key: 'chris' } INTO persons RETURN NEW
 
-Update/Replace
---------------
-UPDATE ... IN/INTO collection OPTIONS ...
-UPDATE ... IN/INTO collection OPTIONS ... RETURN OLD
-UPDATE ... IN/INTO collection OPTIONS ... RETURN NEW
-UPDATE ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
-UPDATE ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
-UPDATE ... WITH ... IN/INTO collection OPTIONS ...
-UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN OLD
-UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN NEW
-UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
-UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
+      Update/Replace
+      --------------
+      UPDATE ... IN/INTO collection OPTIONS ...
+      UPDATE ... IN/INTO collection OPTIONS ... RETURN OLD
+      UPDATE ... IN/INTO collection OPTIONS ... RETURN NEW
+      UPDATE ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
+      UPDATE ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
+      UPDATE ... WITH ... IN/INTO collection OPTIONS ...
+      UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN OLD
+      UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN NEW
+      UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
+      UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
 
 
-UPDATE DOCUMENT('persons/bob') WITH {foo: 'bar'} IN persons RETURN NEW
-UPDATE 'bob' WITH {foo: 'bar'} IN persons RETURN NEW
-FOR u IN persons FILTER u._key == 'bob' UPDATE u WITH {foo: 'bar'} IN persons RETURN NEW
-UPDATE 'bob' WITH {foo: 'bar'} IN persons RETURN NEW
+      UPDATE DOCUMENT('persons/bob') WITH {foo: 'bar'} IN persons RETURN NEW
+      UPDATE 'bob' WITH {foo: 'bar'} IN persons RETURN NEW
+      FOR u IN persons FILTER u._key == 'bob' UPDATE u WITH {foo: 'bar'} IN persons RETURN NEW
+      UPDATE 'bob' WITH {foo: 'bar'} IN persons RETURN NEW
 
-REPLACE wie UPDATE
+      REPLACE wie UPDATE
 
-Remove
-------
-REMOVE ... IN/INTO collection OPTIONS ...
-REMOVE ... IN/INTO collection OPTIONS ... RETURN OLD
-FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ...
-FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ... RETURN OLD
+      Remove
+      ------
+      REMOVE ... IN/INTO collection OPTIONS ...
+      REMOVE ... IN/INTO collection OPTIONS ... RETURN OLD
+      FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ...
+      FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ... RETURN OLD
 
-*/
+    */
 
     
     testRuleFetch : function () {
       var queries = [
-        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true],
-        [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false],
+        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s],
+        [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s],
 
       ];
       var expectedRules = [[ "use-indexes",
@@ -147,23 +178,22 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
         [ "SingletonNode", "EnumerateCollectionNode", "CalculationNode",
           "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ]
       ];
-      runTestSet(queries, expectedNodes, expectedRules);
+      runTestSet(queries, expectedRules, expectedNodes);
     },
-    //*
 
     testRuleInsert : function () {
       var queries = [
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 0, 0, false],
-        [ "INSERT {_key: 'test1', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 0, 0, true],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 0, 1, false],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 0, 1, false ],
-        [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 0, 1, false ],
-        [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 0, 1, false ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 0, 0, true, s ],
+        [ "INSERT {_key: 'test1', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, ignoreErrors:true}", 0, 0, true, s ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 0, 1, true, setupC2 ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN OLD", 0, 1, true, setupC2 ],
+        [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 0, 1, true, setupC2 ],
+        [ "INSERT {_key: 'test', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN NEW", 0, 1, true, setupC2 ],
 
-        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 1, 0, false ],
-        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 1, 0, false ],
-        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 1, 0, false ],
-        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn1 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 1, 0, false ],
+        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 1, 0, false ],
+        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]", 1, 0, false ],
+        // [ "INSERT {_key: 'test', insert1: true} IN   " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 1, 0, false ],
+        // [ "INSERT {_key: 'test', insert1: true} INTO " + cn2 + " OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }", 1, 0, false ],
         //* /
       ];
       
@@ -176,9 +206,8 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
       ];
 
       
-      runTestSet(queries, expectedNodes, expectedRules);
+      runTestSet(queries, expectedRules, expectedNodes);
     },
-
     testRuleUpdate : function () {
 
       var queries = [
@@ -202,7 +231,6 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
         //[ "UPDATE {_key: '1'} WITH {foo: 'bar4b'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
         //[ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],
         //[ "UPDATE {_key: '1'} WITH {foo: 'bar5b'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],
-        //*/
       ];
 
       var expectedRules = [
@@ -215,18 +243,10 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
 
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [
-        ],
-        [
-        ],
-        [
-        ],
-        [
-        ]
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ]
       ];
 
-      runTestSet(queries, expectedNodes, expectedRules);
+      runTestSet(queries, expectedRules, expectedNodes);
     },
 
     testRuleRemove : function () {
@@ -242,7 +262,6 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
          "optimize-cluster-single-documnet-operations" ]
       ];
 
-      
       var expectedNodes = [
         ["SingletonNode", 
          "SingleRemoteOperationNode" ],
@@ -250,7 +269,7 @@ FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collectio
           "SingleRemoteOperationNode", 
           "ReturnNode" ],
       ];
-      runTestSet(queries, expectedNodes, expectedRules);
+      runTestSet(queries, expectedRules, expectedNodes);
     }
   };
 }
