@@ -121,7 +121,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       const queryString = set[query];
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set)
 
-      var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled); //CHECKME - @willi - thisRuleDisabled?!
+      var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled); // explain - only
       assertEqual(expectedRules[set[expectedRulesField]], result.plan.rules, "rules mismatch: " + queryInfo);
       assertEqual(expectedNodes[set[expectedNodesField]], explain(result), "nodes mismatch: " + queryInfo);
       if (set[doFullTest]) {
