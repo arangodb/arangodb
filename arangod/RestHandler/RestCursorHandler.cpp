@@ -63,7 +63,13 @@ RestStatus RestCursorHandler::execute() {
 
   if (type == rest::RequestType::POST) {
     auto continueCallback = [this, self]() {
-      continueHandlerExecution();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Callback has been issued";
+      auto scheduler = SchedulerFeature::SCHEDULER;
+      TRI_ASSERT(scheduler != nullptr);
+      scheduler->post([this, self]() {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Posted continuation on Scheduler";
+        continueHandlerExecution();
+      });
     };
     ret = createQueryCursor(continueCallback);
   } else if (type == rest::RequestType::PUT) {
