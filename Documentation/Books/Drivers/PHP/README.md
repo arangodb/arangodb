@@ -4,6 +4,7 @@ The official ArangoDB PHP Driver.
 
 - [Getting Started](GettingStarted/README.md)
 - [Tutorial](Tutorial/README.md)
+- [Changelog](https://github.com/arangodb/arangodb-php/blob/devel/CHANGELOG.md#readme)
 
 # More information
 
