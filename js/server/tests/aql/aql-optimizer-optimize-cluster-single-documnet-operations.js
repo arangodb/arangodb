@@ -138,7 +138,8 @@ function optimizerClusterSingleDocumentTestSuite () {
           assertTrue(set[WilliError].hasOwnProperty('code'), "our plan throws, but we don't expect an exception");
           assertEqual(x.errorNum, set[WilliError].code, "match our error code");
         }
-
+        r1.json.forEach(function(document){document._rev = "wedontcare";});
+        r2.json.forEach(function(document){document._rev = "wedontcare";});
         assertEqual(r1.json, r2.json, set);
       }
       count += 1;
@@ -298,10 +299,10 @@ function optimizerClusterSingleDocumentTestSuite () {
     testRuleRemove : function () {
       var queries = [
 
-        [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, false],
-        [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, false],
-        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, false],
-        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, false],
+        [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
+        [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
+        [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
+        [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
       ];
       var expectedRules = [
         ["remove-data-modification-out-variables",
@@ -315,7 +316,7 @@ function optimizerClusterSingleDocumentTestSuite () {
           "SingleRemoteOperationNode",
           "ReturnNode" ],
       ];
-      //runTestSet(queries, expectedRules, expectedNodes);
+      runTestSet(queries, expectedRules, expectedNodes);
     }
   };
 }
