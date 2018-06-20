@@ -191,8 +191,12 @@ void RestHandler::prepareEngine() {
 }
 
 void RestHandler::shutdownEngine() {
-  // This is NOEXCEPT!
+  RestHandler::CURRENT_HANDLER = this;
+
+  // shutdownExecute is noexcept
   shutdownExecute(true);
+  
+  RestHandler::CURRENT_HANDLER = nullptr;
   _state = HandlerState::DONE;
 }
   /* TODO REMOVE ME!
@@ -232,6 +236,9 @@ void RestHandler::executeEngine(bool isContinue) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
   ExecContextScope scope(exec);
+
+  RestHandler::CURRENT_HANDLER = this;
+
   try {
     RestStatus result = RestStatus::DONE;
     if (isContinue) {
@@ -242,6 +249,8 @@ void RestHandler::executeEngine(bool isContinue) {
     } else {
       result = execute();
     }
+  
+    RestHandler::CURRENT_HANDLER = nullptr;
 
     if (result == RestStatus::WAITING) {
       _state = HandlerState::PAUSED; // wait for someone to continue the state machine
@@ -297,6 +306,7 @@ void RestHandler::executeEngine(bool isContinue) {
     handleError(err);
   }
 
+  RestHandler::CURRENT_HANDLER = nullptr;
   _state = HandlerState::FAILED;
 }
 
