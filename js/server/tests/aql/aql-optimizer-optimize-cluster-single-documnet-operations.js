@@ -112,9 +112,9 @@ function optimizerClusterSingleDocumentTestSuite () {
     const query = 0;
     const expectedRulesField = 1
     const expectedNodesField = 2
-    const WilliBool = 3 // What is the bool for?
-    const setupFunction = 4 // Is this a setup finction?
-    const WilliError = 5 // Waht kind ob object are we expecting here?
+    const doFullTest = 3 // Do advanced checking
+    const setupFunction = 4 // This resets the setup
+    const errorCode = 5 // expected error code
 
 
     sets.forEach(function(set) {
@@ -124,29 +124,29 @@ function optimizerClusterSingleDocumentTestSuite () {
       var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled);
       assertEqual(expectedRules[set[expectedRulesField]], result.plan.rules, "rules mismatch: " + queryInfo);
       assertEqual(expectedNodes[set[expectedNodesField]], explain(result), "nodes mismatch: " + queryInfo);
-      if (set[WilliBool]) {
+      if (set[doFullTest]) {
         var r1 = {json: []}, r2 = {json: []};
 
         // run it first without the rule
         set[setupFunction]();
         try {
           r2 = AQL_EXECUTE(set[query], {}, thisRuleDisabled);
-          assertEqual(0, set[WilliError], "we have no error in the original, but the tests expects an exception: " + queryInfo);
+          assertEqual(0, set[errorCode], "we have no error in the original, but the tests expects an exception: " + queryInfo);
         }
         catch (y) {
-          assertTrue(set[WilliError].hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + queryInfo);
-          assertEqual(y.errorNum, set[WilliError].code, "match other error code - got: " + JSON.stringify(y) + queryInfo);
+          assertTrue(set[errorCode].hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + queryInfo);
+          assertEqual(y.errorNum, set[errorCode].code, "match other error code - got: " + JSON.stringify(y) + y + queryInfo);
         }
 
         // Run it again with our rule
         set[setupFunction]();
         try {
           r1 = AQL_EXECUTE(set[query], {}, thisRuleEnabled);
-          assertEqual(0, set[WilliError], "we have no error in our plan, but the tests expects an exception" + queryInfo);
+          assertEqual(0, set[errorCode], "we have no error in our plan, but the tests expects an exception" + queryInfo);
         }
         catch (x) {
-          assertTrue(set[WilliError].hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + queryInfo);
-          assertEqual(x.errorNum, set[WilliError].code, "match our error code" + + JSON.stringify(x) + queryInfo);
+          assertTrue(set[errorCode].hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + queryInfo);
+          assertEqual(x.errorNum, set[errorCode].code, "match our error code" + JSON.stringify(x) + queryInfo);
         }
         pruneRevisions(r1);
         pruneRevisions(r2);
