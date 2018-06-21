@@ -886,11 +886,13 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
       Result(TRI_ERROR_INTERNAL)};
   
   if (action == EdgeDefinitionAction::CREATE) {
-    resultT = gops.createEdgeDefinition(body, waitForSync);
+    resultT = gops.addEdgeDefinition(body, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
     resultT = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
-    resultT = gops.removeEdgeDefinition(waitForSync, edgeDefinitionName, dropCollections);
+    resultT = gops.eraseEdgeDefinition(
+      waitForSync, edgeDefinitionName, dropCollections
+    );
   } else {
     TRI_ASSERT(false);
   }
@@ -950,9 +952,11 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
           Result(TRI_ERROR_INTERNAL)};
 
   if (action == VertexDefinitionAction::CREATE) {
-    resultT = gops.createVertexDefinition(body, waitForSync);
+    resultT = gops.addOrphanCollection(body, waitForSync);
   } else if (action == VertexDefinitionAction::REMOVE) {
-    resultT = gops.removeVertexDefinition(waitForSync, vertexDefinitionName, dropCollections);
+    resultT = gops.eraseOrphanCollection(
+      waitForSync, vertexDefinitionName, dropCollections
+    );
   } else {
     TRI_ASSERT(false);
   }

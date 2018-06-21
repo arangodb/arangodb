@@ -92,10 +92,10 @@ class Graph {
   bool _isSmart;
 
   /// @brief number of shards of this graph
-  int _numberOfShards;
+  uint64_t _numberOfShards;
 
   /// @brief replication factor of this graph
-  int _replicationFactor;
+  uint64_t _replicationFactor;
 
   /// @brief smarGraphAttribute of this graph
   std::string _smartGraphAttribute;
@@ -154,9 +154,11 @@ class Graph {
   /// @brief get the cids of all edgeCollections
   std::vector<std::string> const& edgeDefinitionNames() const;
 
+  bool hasEdgeCollection(std::string const& collectionName) const;
+
   bool const& isSmart() const;
-  int const& numberOfShards() const;
-  int const& replicationFactor() const;
+  uint64_t numberOfShards() const;
+  uint64_t replicationFactor() const;
   std::string const& smartGraphAttribute() const;
   std::string const& id() const;
   std::string const& rev() const;
@@ -185,19 +187,19 @@ class Graph {
   void addOrphanCollection(std::string&&);
 
   /// @brief Add Collections to the object
-  void insertVertexCollections(velocypack::Slice& arr);
+  void insertVertexCollections(velocypack::Slice arr);
 
   /// @brief Add orphanCollections to the object
-  void insertOrphanCollections(velocypack::Slice& arr);
+  void insertOrphanCollections(velocypack::Slice arr);
 
   /// @brief Set isSmart to the graph definition
   void setSmartState(bool state);
 
   /// @brief Set numberOfShards to the graph definition
-  void setNumberOfShards(int numberOfShards);
+  void setNumberOfShards(uint64_t numberOfShards);
 
   /// @brief Set replicationFactor to the graph definition
-  void setReplicationFactor(int setReplicationFactor);
+  void setReplicationFactor(uint64_t setReplicationFactor);
 
   /// @brief Set smartGraphAttribute to the graph definition
   void setSmartGraphAttribute(std::string&& smartGraphAttribute);
@@ -254,13 +256,10 @@ class GraphOperations {
   ResultT<std::pair<OperationResult, Result>> removeVertex(
       const std::string& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
-  
-  /// @brief Remove a vertex collection from a graph
-  ResultT<std::pair<OperationResult, Result>> removeVertex(
-      const std::string& collectionName);
 
   /// @brief Remove a graph and optional all connected collections
-  ResultT<std::pair<OperationResult, Result>> removeGraph(bool waitForSync, bool dropCollections);
+  ResultT<std::pair<OperationResult, Result>> removeGraph(bool waitForSync,
+                                                          bool dropCollections);
 
   ResultT<std::pair<OperationResult, Result>> updateEdge(
       const std::string& definitionName, const std::string& key,
@@ -291,35 +290,28 @@ class GraphOperations {
       VPackSlice document, bool waitForSync, bool returnNew);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create a new edge definition in an existing graph
+  /// @brief add an orphan to collection to an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> createVertexDefinition(
+  ResultT<std::pair<OperationResult, Result>> addOrphanCollection(
       VPackSlice document, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove an edge definition in an existing graph
+  /// @brief remove an orphan collection from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT <std::pair<OperationResult, Result>> removeVertexDefinition(
-      bool waitForSync, std::string vertexDefinitionName, bool dropCollection);
+  ResultT<std::pair<OperationResult, Result>> eraseOrphanCollection(
+      bool waitForSync, std::string collectionName, bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a new edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> createEdgeDefinition(
-      VPackSlice document, bool waitForSync);
+  ResultT<std::pair<OperationResult, Result>> addEdgeDefinition(
+      VPackSlice edgeDefinition, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief remove an edge definition in an existing graph
+  /// @brief remove an edge definition from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT <std::pair<OperationResult, Result>> removeEdgeDefinition(
+  ResultT<std::pair<OperationResult, Result>> eraseEdgeDefinition(
       bool waitForSync, std::string edgeDefinitionName, bool dropCollection);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create edge definition in an existing graph
-  ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> extendEdgeDefinition(
-      VPackSlice edgeDefinition,
-      bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
@@ -403,7 +395,7 @@ class GraphManager {
    ////////////////////////////////////////////////////////////////////////////////
    void getEdgeCollections(std::vector<std::string>& collections, VPackSlice edgeDefinitions);
 
-   public:
+  public:
    GraphManager() = delete;
    GraphManager(std::shared_ptr<transaction::Context> ctx_)
         : _ctx(std::move(ctx_)) {}
@@ -434,12 +426,18 @@ class GraphManager {
    void createVertexCollection(std::string const& name);
 
    ////////////////////////////////////////////////////////////////////////////////
-   /// @brief create a vertex collection
+   /// @brief remove a vertex collection
    ////////////////////////////////////////////////////////////////////////////////
    void removeVertexCollection(
      std::string const& collectionName,
      bool dropCollection
    );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check if the edge definition conflicts with one in an existing graph
+  ////////////////////////////////////////////////////////////////////////////////
+   Result checkForEdgeDefinitionConflicts(std::string const& edgeDefinitionName,
+                                          VPackSlice edgeDefinition);
 };
 
 
