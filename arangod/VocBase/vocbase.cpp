@@ -27,6 +27,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
+#include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
@@ -117,10 +118,7 @@ namespace {
       // recursive locking of the same instance is not yet supported (create a new instance instead)
       TRI_ASSERT(_update != owned);
 
-      if (_locker.tryLock()) {
-        _owner.store(std::this_thread::get_id());
-        _update = owned;
-      } else if (std::this_thread::get_id() != _owner.load()) { // not recursive
+      if (std::this_thread::get_id() != _owner.load()) { // not recursive
         _locker.lock();
         _owner.store(std::this_thread::get_id());
         _update = owned;
@@ -128,7 +126,6 @@ namespace {
     }
 
     void unlock() {
-      _locker.unlock();
       _update(*this);
     }
 
@@ -141,6 +138,7 @@ namespace {
     static void owned(RecursiveWriteLocker& locker) {
       static std::thread::id unowned;
       locker._owner.store(unowned);
+      locker._locker.unlock();
       locker._update = noop;
     }
   };

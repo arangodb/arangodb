@@ -161,7 +161,7 @@ class Methods {
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
   ///               since their staus is not updated from RUNNING
-  typedef std::function<void(transaction::Methods& trx, transaction::Status& status)> StatusChangeCallback;
+  typedef std::function<void(transaction::Methods& trx, transaction::Status status)> StatusChangeCallback;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -169,8 +169,9 @@ class Methods {
   static void addDataSourceRegistrationCallback(DataSourceRegistrationCallback const& callback);
 
   /// @brief add a callback to be called for state change events
+  /// @param callback nullptr and empty functers are ignored, treated as success
   /// @return success
-  bool addStatusChangeCallback(StatusChangeCallback const& callback);
+  bool addStatusChangeCallback(StatusChangeCallback const* callback);
 
   /// @brief clear all called for LogicalDataSource instance association events
   /// @note not thread-safe on the assumption of static factory registration
