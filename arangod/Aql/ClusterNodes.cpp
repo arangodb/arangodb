@@ -425,13 +425,13 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::INSERT) {
     TRI_ASSERT(_key.empty());
-    TRI_ASSERT(_inVariable != nullptr);
+    //TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable == nullptr);
   } else if (_mode == NodeType::UPDATE) {
-    TRI_ASSERT(_inVariable != nullptr);
+    //TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable == nullptr);
   } else if (_mode == NodeType::REPLACE) {
-    TRI_ASSERT(_inVariable != nullptr);
+    //TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable == nullptr);
   } else {
     LOG_DEVEL << "Ctor failed unkown node type";

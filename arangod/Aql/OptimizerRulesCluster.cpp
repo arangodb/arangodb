@@ -318,14 +318,6 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           }
         }
 
-        if(!update){
-          LOG_DEVEL << "no update provided";
-          // this could be relaxed
-          // if the update is not mandatory in
-          // the single operation node
-          continue;
-        }
-
         LOG_DEVEL << "key:" << key;
         LOG_DEVEL_IF(update) << "update" << update->name;
         ExecutionNode* singleOperationNode = plan->registerNode(
