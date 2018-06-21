@@ -133,7 +133,7 @@ function request (req) {
   let contentType;
   let body = req.body;
   if (req.json) {
-    body = JSON.stringify(body);
+    body = JSON.stringify(req.json);
     contentType = 'application/json';
   } else if (typeof body === 'string') {
     contentType = 'text/plain; charset=utf-8';

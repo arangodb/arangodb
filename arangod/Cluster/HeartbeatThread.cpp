@@ -324,7 +324,6 @@ void HeartbeatThread::runDBServer() {
               AgencyCommManager::path("Shutdown"),
               AgencyCommManager::path("Readonly"),
               AgencyCommManager::path("Current/Version"),
-              AgencyCommManager::path("Sync/Commands", _myId),
               "/.agency"}));
 
         AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
@@ -344,9 +343,6 @@ void HeartbeatThread::runDBServer() {
             ApplicationServer::server->beginShutdown();
             break;
           }
-          LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-              << "Looking at Sync/Commands/" + _myId;
-          handleStateChange(result);
 
           VPackSlice s = result.slice()[0].get(std::vector<std::string>(
               {AgencyCommManager::path(), std::string("Current"),
@@ -506,8 +502,8 @@ void HeartbeatThread::runSingleServer() {
       AgencyReadTransaction trx(
         std::vector<std::string>({
             AgencyCommManager::path("Shutdown"),
+            AgencyCommManager::path("Readonly"),
             AgencyCommManager::path("Plan/AsyncReplication"),
-            AgencyCommManager::path("Sync/Commands", _myId),
             "/.agency"}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
       if (!result.successful()) {
@@ -532,9 +528,10 @@ void HeartbeatThread::runSingleServer() {
         ApplicationServer::server->beginShutdown();
         break;
       }
-
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Looking at Sync/Commands/" << _myId;
-      handleStateChange(result);
+      
+      auto readOnlySlice = response.get(std::vector<std::string>(
+                                    {AgencyCommManager::path(), "Readonly"}));
+      updateServerMode(readOnlySlice);
 
       // performing failover checks
       VPackSlice async = response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
@@ -748,7 +745,6 @@ void HeartbeatThread::runCoordinator() {
            AgencyCommManager::path("Plan/Version"),
            AgencyCommManager::path("Readonly"),
            AgencyCommManager::path("Shutdown"),
-           AgencyCommManager::path("Sync/Commands", _myId),
            AgencyCommManager::path("Sync/UserVersion"),
            AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
@@ -770,11 +766,6 @@ void HeartbeatThread::runCoordinator() {
           ApplicationServer::server->beginShutdown();
           break;
         }
-
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-            << "Looking at Sync/Commands/" + _myId;
-
-        handleStateChange(result);
 
         // mop: order is actually important here...FoxxmasterQueueupdate will
         // be set only when somebody registers some new queue stuff (for example
@@ -1201,32 +1192,6 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handles a state change
-/// this is triggered if the watch command reports a change
-/// when this is called, it will update the index value of the last command
-/// (we'll pass the updated index value to the next watches so we don't get
-/// notified about this particular change again).
-////////////////////////////////////////////////////////////////////////////////
-
-bool HeartbeatThread::handleStateChange(AgencyCommResult& result) {
-  VPackSlice const slice = result.slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Sync", "Commands", _myId}));
-
-  if (slice.isString()) {
-    std::string command = slice.copyString();
-    ServerState::StateEnum newState = ServerState::stringToState(command);
-
-    if (newState != ServerState::STATE_UNDEFINED) {
-      // state change.
-      ServerState::instance()->setState(newState);
-      return true;
-    }
-  }
-
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sends the current server's state to the agency
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1294,7 +1259,7 @@ void HeartbeatThread::logThreadDeaths(bool force) {
     LOG_TOPIC(INFO, Logger::HEARTBEAT) << "HeartbeatThread ok.";
     std::string buffer;
     buffer.reserve(40);
-    for (auto const it : deadThreads) {
+    for (auto const& it : deadThreads) {
       buffer = date::format("%FT%TZ", date::floor<std::chrono::milliseconds>(it.first));
 
       LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Prior crash of thread " << it.second

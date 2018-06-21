@@ -319,7 +319,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
       << "Restarting with persisted UUID " << id;
   }
-  setId(id);
+  _id = id;
 
   if (!registerAtAgency(comm, role, id)) {
     FATAL_ERROR_EXIT();
@@ -730,7 +730,7 @@ std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum r
 
 Result ServerState::propagateClusterReadOnly(bool mode) {
   // Agency enabled will work for single server replication as well as cluster
-  if (isCoordinator()) {
+  if (AgencyCommManager::isEnabled()) {
     std::vector<AgencyOperation> operations;
     VPackBuilder builder;
     builder.add(VPackValue(mode));

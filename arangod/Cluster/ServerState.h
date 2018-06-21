@@ -25,9 +25,7 @@
 #define ARANGOD_CLUSTER_SERVER_STATE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-
-#include <iosfwd>
+#include "Basics/ReadWriteSpinLock.h"
 
 namespace arangodb {
 class AgencyComm;
@@ -283,7 +281,7 @@ private:
   std::atomic<bool> _readOnly;
   
   /// @brief r/w lock for state
-  mutable arangodb::basics::ReadWriteLock _lock;
+  mutable arangodb::basics::ReadWriteSpinLock _lock;
 
   /// @brief the server's id, can be set just once
   std::string _id;

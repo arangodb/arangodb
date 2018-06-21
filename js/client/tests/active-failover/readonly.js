@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, assertTrue, assertEqual */
+/*global print, assertTrue, assertEqual, fail */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,12 +27,13 @@
 
 const jsunity = require('jsunity');
 const internal = require('internal');
-const fs = require('fs');
+
 
 const arangosh = require('@arangodb/arangosh');
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
-const tasks = require("@arangodb/tasks");
+var arangodb = require("@arangodb");
+var ERRORS = arangodb.errors;
 
 const arango = internal.arango;
 const compareTicks = require("@arangodb/replication").compareTicks;
@@ -240,6 +241,27 @@ function checkForFailover(leader) {
   throw "No failover occured";
 }
 
+function setReadOnly(endpoint, ro) {
+  print("Setting read-only ", ro);
+
+  let str = (ro === true ? "readonly" : "default");
+  var res = request.put({
+    url: getUrl(endpoint) + "/_db/_system/_admin/server/mode",
+    auth: {
+      bearer: jwtRoot,
+    },
+    json: {"mode" : str}
+  });
+  print(JSON.stringify(res));
+
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('json'));
+  let json = arangosh.checkRequestResult(res.json);
+  assertTrue(json.hasOwnProperty('mode'));
+  assertTrue(json.mode === (ro ? "readonly" : "default"));
+}
+
 // Testsuite that quickly checks some of the basic premises of
 // the active failover functionality. It is designed as a quicker
 // variant of the node resilience tests (for active failover).
@@ -273,10 +295,13 @@ function ActiveFailoverSuite() {
       currentLead = leaderInAgency();
       print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
+
+      setReadOnly(currentLead, false);
       if (db._collection(cname)) {
         db._drop(cname);
       }
 
+      setReadOnly(currentLead, false);
       assertTrue(checkInSync(currentLead, servers));
 
       let endpoints = getClusterEndpoints();
@@ -284,9 +309,9 @@ function ActiveFailoverSuite() {
       assertTrue(endpoints[0] === currentLead);
     },
 
-    // Basic test if followers get in sync
-    testFollowerInSync: function () {
+    testReadFromLeader: function () {
       assertEqual(servers[0], currentLead);
+      setReadOnly(currentLead, true);
 
       let col = db._collection(cname);
       assertEqual(col.count(), 10000);
@@ -294,12 +319,41 @@ function ActiveFailoverSuite() {
       assertEqual(checkData(currentLead), 10000);
     },
 
-    // Simple failover case: Leader is suspended, slave needs to 
-    // take over within a reasonable amount of time
-    testFailover: function () {
+    testWriteToLeader: function () {
+      assertEqual(servers[0], currentLead);
+      setReadOnly(currentLead, true);
+
+      let col = db._collection(cname);
+      assertEqual(col.count(), 10000);
+      assertTrue(checkInSync(currentLead, servers));
+
+      try {
+        col.save({abc:1337});
+        fail();
+      } catch(err) {
+        print(err);
+        assertEqual(ERRORS.ERROR_ARANGO_READ_ONLY.code, err.errorNum);
+      }
+
+      try {
+        col.drop();
+        fail();
+      } catch(err) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err.errorNum);
+      }
+    },
+
+    testReadFromFollower: function () {
+      // impossible as of now
+    },
+
+    testLeaderAfterFailover: function () {
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
+
+      // set it read-only
+      setReadOnly(currentLead, true);
 
       suspended = instanceinfo.arangods.filter(arangod => arangod.endpoint === currentLead);
       suspended.forEach(arangod => {
@@ -320,158 +374,24 @@ function ActiveFailoverSuite() {
       // check the remaining followers get in sync
       assertTrue(checkInSync(currentLead, servers, oldLead));
 
-      // restart the old leader
-      suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
-        assertTrue(continueExternal(arangod.pid));
-      });
-      suspended = [];
-
-      assertTrue(checkInSync(currentLead, servers));
-    },
-
-    // More complex case: We want to get the most up to date follower
-    // Insert a number of documents, suspend n-1 followers for a few seconds.
-    // We then suspend the leader and expect a specific follower to take over
-    testFollowerSelection: function () {
-
-      assertTrue(checkInSync(currentLead, servers));
-      assertEqual(checkData(currentLead), 10000);
-
-      // we assume the second leader is still the leader
-      let endpoints = getClusterEndpoints();
-      assertTrue(endpoints.length === servers.length);
-      assertTrue(endpoints[0] === currentLead);
-
-      print("Starting data creation task on ", currentLead, " (expect it to fail later)");
+      print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
-      /// this task should stop once the server becomes a slave
-      var task = tasks.register({
-        name: "UnitTestsFailover",
-        command: `
-          const db = require('@arangodb').db;
-          let col = db._collection("UnitTestActiveFailover");
-          let cc = col.count();
-          for (let i = 0; i < 1000000; i++) {
-            col.save({attr: i + cc});
-          }`
-      });
 
-      internal.wait(2.5);
-
-      // pick a random follower
-      let nextLead = endpoints[2]; // could be any one of them
-      // suspend remaining followers
-      print("Suspending followers, except one");
-      suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
-        arangod.endpoint !== currentLead &&
-        arangod.endpoint !== nextLead);
-      suspended.forEach(arangod => {
-        print("Suspending: ", arangod.endpoint);
-        assertTrue(suspendExternal(arangod.pid));
-      });
-
-      // check our leader stays intact, while remaining followers fail
-      let i = 20;
-      //let expected = servers.length - suspended.length; // should be 2
-      do {
-        endpoints = getClusterEndpoints();
-        assertEqual(endpoints[0], currentLead, "Unwanted leadership failover");
-        internal.wait(1.0); // Health status may take some time to change
-      } while (endpoints.length !== 2 && i-- > 0);
-      assertTrue(i > 0, "timed-out waiting for followers to fail");
-      assertEqual(endpoints.length, 2);
-      assertEqual(endpoints[1], nextLead); // this server must become new leader
-
-      // resume followers
-      print("Resuming followers");
-      suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
-        assertTrue(continueExternal(arangod.pid));
-      });
-      suspended = [];
-
-      let upper = checkData(currentLead);
-      print("Leader inserted ", upper, " documents so far");
-      print("Suspending leader ", currentLead);
-      instanceinfo.arangods.forEach(arangod => {
-        if (arangod.endpoint === currentLead) {
-          print("Suspending: ", arangod.endpoint);
-          suspended.push(arangod);
-          assertTrue(suspendExternal(arangod.pid));
-        }
-      });
-
-      // await failover and check that follower get in sync
-      let oldLead = currentLead;
-      currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead === nextLead, "Did not fail to best in-sync follower");
-
-      internal.wait(2.5); // settle down, heartbeat interval is 1s
-      let cc = checkData(currentLead);
-      // we expect to find documents within an acceptable range
-      assertTrue(10000 <= cc && cc <= upper + 500, "Leader has too little or too many documents");
-      print("Number of documents is in acceptable range");
-
-      assertTrue(checkInSync(currentLead, servers, oldLead));
-      print("Remaining followers are in sync");
-
-      // Resuming stopped second leader
-      print("Resuming server that still thinks it is leader (ArangoError 1004 is expected)");
-      suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
-        assertTrue(continueExternal(arangod.pid));
-      });
-      suspended = [];
-
-      assertTrue(checkInSync(currentLead, servers));
-    },
-
-    // try to failback to the original leader
-    testFailback: function() {
-      if (currentLead === firstLeader) {
-        return; // nevermind then
+      let col = db._collection(cname);
+      try {
+        col.save({abc:1337});
+        fail();
+      } catch(err) {
+        assertEqual(ERRORS.ERROR_ARANGO_READ_ONLY.code, err.errorNum);
       }
 
-      assertTrue(checkInSync(currentLead, servers));
-      assertEqual(checkData(currentLead), 10000);
-
-      print("Suspending followers, except original leader");
-      suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
-        arangod.endpoint !== firstLeader);
-      suspended.forEach(arangod => {
-        print("Suspending: ", arangod.endpoint);
-        assertTrue(suspendExternal(arangod.pid));
-      });
-
-      // await failover and check that follower get in sync
-      currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead === firstLeader, "Did not fail to original leader");
-
-      suspended.forEach(arangod => {
-        print("Resuming: ", arangod.endpoint);
-        assertTrue(continueExternal(arangod.pid));
-      });
-      suspended = [];
-
-      assertTrue(checkInSync(currentLead, servers));
-      assertEqual(checkData(currentLead), 10000);
+      try {
+        col.drop();
+        fail();
+      } catch(err) {
+        assertEqual(ERRORS.ERROR_FORBIDDEN.code, err.errorNum);
+      }
     }
-
-    // Try to cleanup everything that was created
-    /*testCleanup: function () {
-
-      let res = readAgencyValue("/arango/Plan/AsyncReplication/Leader");
-      assertTrue(res !== null);
-      let uuid = res[0].arango.Plan.AsyncReplication.Leader;
-      res = readAgencyValue("/arango/Supervision/Health");
-      let lead = res[0].arango.Supervision.Health[uuid].Endpoint;
-
-      connectToServer(lead);
-      db._drop(cname);
-
-      assertTrue(checkInSync(lead, servers));
-    }*/
 
   };
 }
