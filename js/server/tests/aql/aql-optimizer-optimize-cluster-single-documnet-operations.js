@@ -132,7 +132,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         // run it first without the rule
         set[setupFunction]();
         try {
-          r2 = AQL_EXECUTE(set[query], {}, thisRuleDisabled);
+          r1 = AQL_EXECUTE(set[query], {}, thisRuleDisabled);
           assertEqual(0, set[errorCode], "we have no error in the original, but the tests expects an exception: " + queryInfo);
         }
         catch (y) {
@@ -143,7 +143,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         // Run it again with our rule
         set[setupFunction]();
         try {
-          r1 = AQL_EXECUTE(set[query], {}, thisRuleEnabled);
+          r2 = AQL_EXECUTE(set[query], {}, thisRuleEnabled);
           assertEqual(0, set[errorCode], "we have no error in our plan, but the tests expects an exception" + queryInfo);
         }
         catch (x) {
@@ -174,41 +174,6 @@ function optimizerClusterSingleDocumentTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test plans that should result
     ////////////////////////////////////////////////////////////////////////////////
-
-    /*
-      "INSERT {_key: 'test1', insert1: true} INTO UnitTestsCollection OPTIONS {waitForSync: true, ignoreErrors:true}"
-      INSERT {_key: 'chris' } INTO persons RETURN NEW
-
-      Update/Replace
-      --------------
-      UPDATE ... IN/INTO collection OPTIONS ...
-      UPDATE ... IN/INTO collection OPTIONS ... RETURN OLD
-      UPDATE ... IN/INTO collection OPTIONS ... RETURN NEW
-      UPDATE ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
-      UPDATE ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
-      UPDATE ... WITH ... IN/INTO collection OPTIONS ...
-      UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN OLD
-      UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN NEW
-      UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN [OLD, NEW]
-      UPDATE ... WITH ... IN/INTO collection OPTIONS ... RETURN { old: OLD, new: NEW }
-
-
-      UPDATE DOCUMENT('persons/bob') WITH {foo: 'bar'} IN persons RETURN NEW
-      UPDATE 'bob' WITH {foo: 'bar'} IN persons RETURN NEW
-      FOR u IN persons FILTER u._key == 'bob' UPDATE u WITH {foo: 'bar'} IN persons RETURN NEW
-      UPDATE 'bob' WITH {foo: 'bar'} IN persons RETURN NEW
-
-      REPLACE wie UPDATE
-
-      Remove
-      ------
-      REMOVE ... IN/INTO collection OPTIONS ...
-      REMOVE ... IN/INTO collection OPTIONS ... RETURN OLD
-      FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ...
-      FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ... RETURN OLD
-
-    */
-/*
 
     testRuleFetch : function () {
       var queries = [
@@ -267,11 +232,10 @@ function optimizerClusterSingleDocumentTestSuite () {
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
-*/
+
     testRuleUpdate : function () {
 
       var queries = [
-        /*
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
@@ -282,7 +246,6 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
-        */
         [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, true, setupC1, 0],          
         [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
@@ -323,7 +286,6 @@ function optimizerClusterSingleDocumentTestSuite () {
     testRuleReplace : function () {
 
       var queries = [
-        /*
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
@@ -338,8 +300,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],   
-*/     
-        [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
+        [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 7, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 6, 3, true, setupC1, 0],
@@ -370,7 +331,6 @@ function optimizerClusterSingleDocumentTestSuite () {
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
-/*
     testRuleRemove : function () {
       var queries = [
 
@@ -395,7 +355,6 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
       runTestSet(queries, expectedRules, expectedNodes);
     }
-*/
   };
 }
 jsunity.run(optimizerClusterSingleDocumentTestSuite);
