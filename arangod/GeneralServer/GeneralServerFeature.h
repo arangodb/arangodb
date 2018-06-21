@@ -24,7 +24,6 @@
 #define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Graph/Graph.h"
 
 namespace arangodb {
 

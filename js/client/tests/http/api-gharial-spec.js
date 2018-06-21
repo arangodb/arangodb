@@ -462,10 +462,6 @@ describe('_api/gharial', () => {
     });
   });
 
-  // TODO add another test that deletes a vertex that has incident edges in
-  // both an edge collection in the graph, and in another edge collection
-  // that is *not* in the graph. Check that the edges in the non-graph
-  // edge-collection aren't deleted with the vertex.
   it('should check that non-graph incident edges are not deleted with a' +
     ' vertex', () => {
     const examples = require('@arangodb/graph-examples/example-graph');
@@ -524,6 +520,10 @@ describe('_api/gharial', () => {
     expect(remainingEdges.map(x => x.name))
       .to.have.members(['bob->charlie', 'dave->bob']);
   });
+
+  // TODO deleting a vertex via the graph api should probably delete all
+  // edges that are in any graph's edge collection, not only the "current"
+  // graph. Decide this and write a test.
 
   it('should check that edges can be replaced', () => {
     const examples = require('@arangodb/graph-examples/example-graph');

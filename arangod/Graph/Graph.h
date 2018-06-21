@@ -82,8 +82,7 @@ class Graph {
   /// @brief the cids of all edgeCollections
   std::unordered_set<std::string> _edgeColls;
   
-  /// @brief ordered edge definition names of this graph,
-  /// ordered as in the database
+  /// @brief edge definition names of this graph, ordered as in the database
   std::vector<std::string> _edgeDefsNames;
 
   /// @brief edge definitions of this graph
@@ -192,13 +191,13 @@ class Graph {
   void insertOrphanCollections(velocypack::Slice& arr);
 
   /// @brief Set isSmart to the graph definition
-  void setSmartState(bool&& state);
+  void setSmartState(bool state);
 
   /// @brief Set numberOfShards to the graph definition
-  void setNumberOfShards(int&& numberOfShards);
+  void setNumberOfShards(int numberOfShards);
 
   /// @brief Set replicationFactor to the graph definition
-  void setReplicationFactor(int&& setReplicationFactor);
+  void setReplicationFactor(int setReplicationFactor);
 
   /// @brief Set smartGraphAttribute to the graph definition
   void setSmartGraphAttribute(std::string&& smartGraphAttribute);
@@ -340,6 +339,8 @@ class GraphOperations {
   void checkIfCollectionMayBeDropped(std::string colName, std::string graphName,
       std::vector<std::string>& toBeRemoved);
 
+  // TODO should these operations always fetch a new definition from the
+  // database?
   void readGraph(VPackBuilder& builder);
   void readEdges(VPackBuilder& builder);
   void readVertices(VPackBuilder& builder);

@@ -120,39 +120,39 @@ std::string const& Graph::rev() const {
 }
 
 void Graph::addEdgeCollection(std::string&& name) {
-  _edgeColls.insert(name);
+  _edgeColls.emplace(std::move(name));
 }
 
 void Graph::addVertexCollection(std::string&& name) {
-  _vertexColls.insert(name);
+  _vertexColls.emplace(std::move(name));
 }
 
 void Graph::addOrphanCollection(std::string&& name) {
-  _orphanColls.insert(name);
+  _orphanColls.emplace(std::move(name));
 }
 
-void Graph::setSmartState(bool&& state) {
+void Graph::setSmartState(bool state) {
   _isSmart = state;
 }
 
-void Graph::setNumberOfShards(int&& numberOfShards) {
+void Graph::setNumberOfShards(int numberOfShards) {
   _numberOfShards = numberOfShards;
 }
 
-void Graph::setReplicationFactor(int&& replicationFactor) {
+void Graph::setReplicationFactor(int replicationFactor) {
   _replicationFactor = replicationFactor;
 }
 
 void Graph::setSmartGraphAttribute(std::string&& smartGraphAttribute) {
-  _smartGraphAttribute = smartGraphAttribute;
+  _smartGraphAttribute = std::move(smartGraphAttribute);
 }
 
 void Graph::setId(std::string&& id) {
-  _id = id;
+  _id = std::move(id);
 }
 
 void Graph::setRev(std::string&& rev) {
-  _rev = rev;
+  _rev = std::move(rev);
 }
 
 void Graph::toVelocyPack(VPackBuilder& builder) const {
@@ -233,10 +233,10 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
     setSmartState(slice.get(_attrIsSmart).getBool());
   }
   if (slice.hasKey(_attrNumberOfShards)) {
-    setNumberOfShards(slice.get(_attrNumberOfShards).getInt());
+    setNumberOfShards(slice.get(_attrNumberOfShards).getUInt());
   }
   if (slice.hasKey(_attrReplicationFactor)) {
-    setReplicationFactor(slice.get(_attrReplicationFactor).getInt());
+    setReplicationFactor(slice.get(_attrReplicationFactor).getUInt());
   }
   if (slice.hasKey(_attrSmartGraphAttribute)) {
     setSmartGraphAttribute(slice.get(_attrSmartGraphAttribute).copyString());
