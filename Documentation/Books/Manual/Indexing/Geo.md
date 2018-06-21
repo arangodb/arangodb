@@ -299,7 +299,9 @@ With Holes:
 
 - The exterior ring should not self-intersect.
 - The interior rings must be contained in the outer ring
+- No two rings can cross each other, i.e. no ring may intersect both the interior and exterior face of another ring
 - Rings cannot share edges, they may however share vertices
+- No ring may be empty
 - Polygon rings should follow the right-hand rule for orientation
   (counterclockwise external rings, clockwise internal rings).
 
