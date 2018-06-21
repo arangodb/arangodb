@@ -118,6 +118,7 @@ function optimizerClusterSingleDocumentTestSuite () {
 
 
     sets.forEach(function(set) {
+      print(set)
       const queryString = set[query];
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set)
 
@@ -272,20 +273,16 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
-        //[ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
-        //[ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
-        //[ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],
-        //[ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN   " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar1b'} INTO " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar2b'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar3b'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        //[ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
-        //[ "UPDATE {_key: '1'} WITH {foo: 'bar4b'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
-        //[ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],
-        //[ "UPDATE {_key: '1'} WITH {foo: 'bar5b'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],          
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],
+        
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
       ];
 
       var expectedRules = [
@@ -294,11 +291,15 @@ function optimizerClusterSingleDocumentTestSuite () {
           "optimize-cluster-single-document-operations"],
         [ "move-calculations-up", "move-calculations-up-2",
           "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [   "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", 
+            "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ]
       ];
 
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ]
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"]
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
