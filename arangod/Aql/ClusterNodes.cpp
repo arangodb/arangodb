@@ -386,6 +386,7 @@ double GatherNode::estimateCost(size_t& nrItems) const {
 SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
                                                      size_t id,
                                                      NodeType mode,
+                                                     bool replaceIndexNode,
                                                      std::string key,
                                                      aql::Collection const* collection,
                                                      ModificationOptions const& options,
@@ -396,6 +397,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
                                                      )
   : ExecutionNode(plan, id)
   , CollectionAccessingNode(collection)
+  , _replaceIndexNode(replaceIndexNode)
   , _key(key)
   , _mode(mode)
   , _inVariable(in)
@@ -407,6 +409,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   LOG_DEVEL << "Creating SingleRemoteOperationNode for "
             << ExecutionNode::getTypeString(_mode)
             << std::boolalpha << " -"
+            << " replaceIndexNode " << !! _replaceIndexNode
             << " in " << !!_inVariable
             << " out " << !!_outVariable
             << " OLD " << !!_outVariableOld
@@ -465,6 +468,8 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   CollectionAccessingNode::toVelocyPack(nodes);
 
   nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
+  nodes.add("replaceIndexNode", VPackValue(_replaceIndexNode));
+
   if(!_key.empty()){
     nodes.add("key", VPackValue(_key));
   }

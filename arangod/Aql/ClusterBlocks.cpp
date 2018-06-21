@@ -1769,7 +1769,11 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
     result = _trx->remove(_collection->name(), inSlice , opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
-    result = _trx->replace(_collection->name(), inSlice, opOptions);
+    if (node->_replaceIndexNode && (in == nullptr)) {
+      result = _trx->update(_collection->name(), inSlice, opOptions);
+    } else {
+      result = _trx->replace(_collection->name(), inSlice, opOptions);
+    }
   } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
     result = _trx->update(_collection->name(), inSlice, opOptions);
   }

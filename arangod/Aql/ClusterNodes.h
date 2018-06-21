@@ -416,6 +416,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   SingleRemoteOperationNode(ExecutionPlan* plan,
                             size_t id,
                             NodeType mode,
+                            bool replaceIndexNode,
                             std::string key,
                             aql::Collection const* collection,
                             ModificationOptions const& options,
@@ -454,7 +455,7 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
     return cloneHelper(
       std::make_unique<SingleRemoteOperationNode>(
         plan, _id,
-        _mode, _key, collection(),
+        _mode, _replaceIndexNode, _key, collection(),
         _options,
         _inVariable, _outVariable, _outVariableOld, _outVariableNew
       ),
@@ -504,6 +505,9 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   std::string const& key() const { return _key; }
 
  private:
+  // whether we replaced an index node
+  bool _replaceIndexNode;
+
   /// the key of the document we're intending to work with
   std::string _key;
 

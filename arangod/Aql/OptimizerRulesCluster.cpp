@@ -324,7 +324,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           new SingleRemoteOperationNode(
             plan, plan->nextId(),
             parentType,
-            key, mod->collection(),
+            true, key, mod->collection(),
             mod->getOptions(),
             update,
             nullptr,
@@ -348,8 +348,8 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
 
         ExecutionNode* singleOperationNode = plan->registerNode(
             new SingleRemoteOperationNode(plan, plan->nextId()
-                                         ,EN::INDEX, key, indexNode->collection(), ModificationOptions{}
-                                         , nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
+                                          ,EN::INDEX, true, key, indexNode->collection(), ModificationOptions{}
+                                          , nullptr /*in*/ , indexNode->outVariable() /*out*/, nullptr /*old*/, nullptr /*new*/)
         );
         replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
@@ -477,7 +477,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       new SingleRemoteOperationNode(
         plan, plan->nextId(),
         depType,
-        key, mod->collection(),
+        false, key, mod->collection(),
         mod->getOptions(),
         update /*in*/,
         nullptr,
