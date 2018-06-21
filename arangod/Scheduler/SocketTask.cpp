@@ -132,9 +132,7 @@ bool SocketTask::start() {
       << _connectionInfo.clientPort;
 
   auto self = shared_from_this();
-  _loop.scheduler->_nrQueued++;
   _peer->strand.post([self, this]() {
-    _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
     asyncReadSome();
@@ -197,9 +195,7 @@ void SocketTask::closeStream() {
   // strand::dispatch may execute this immediately if this
   // is called on a thread inside the same strand
   auto self = shared_from_this();
-  _loop.scheduler->_nrQueued++;
   _peer->strand.post([self, this] {
-    _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
     closeStreamNoLock();
@@ -446,17 +442,13 @@ void SocketTask::asyncReadSome() {
           return;
         }
 
-        _loop.scheduler->_nrQueued++;
         _peer->strand.post([self, this, transferred] {
-          _loop.scheduler->_nrQueued--;
           JobGuard guard(_loop);
           guard.work();
 
           _readBuffer.increaseLength(transferred);
           if (processAll()) {
-            _loop.scheduler->_nrQueued++;
             _peer->strand.post([self, this]() {
-              _loop.scheduler->_nrQueued--;
               JobGuard guard(_loop);
               guard.work();
               asyncReadSome();
@@ -537,9 +529,7 @@ void SocketTask::asyncWriteSome() {
           return;
         }
 
-        _loop.scheduler->_nrQueued++;
         _peer->strand.post([self, this, transferred] {
-          _loop.scheduler->_nrQueued--;
           JobGuard guard(_loop);
           guard.work();
 
@@ -551,9 +541,7 @@ void SocketTask::asyncWriteSome() {
                                             transferred);
 
           if (completedWriteBuffer()) {
-            _loop.scheduler->_nrQueued++;
             _peer->strand.post([self, this] {
-              _loop.scheduler->_nrQueued--;
               JobGuard guard(_loop);
               guard.work();
               if (!_abandoned.load(std::memory_order_acquire)) {
@@ -617,9 +605,7 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
 void SocketTask::triggerProcessAll() {
   // try to process remaining request data
   auto self = shared_from_this();
-  _loop.scheduler->_nrQueued++;
   _peer->strand.post([self, this] {
-    _loop.scheduler->_nrQueued--;
     JobGuard guard(_loop);
     guard.work();
     processAll();

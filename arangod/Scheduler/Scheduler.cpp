@@ -167,7 +167,6 @@ Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/,
       _nrMinimum(nrMinimum),
       _nrMaximum(nrMaximum),
       _counters(0),
-      _nrQueued(0),
       _lastAllBusyStamp(0.0) {
   // setup signal handlers
   initializeSignalHandlers();
@@ -184,11 +183,7 @@ Scheduler::~Scheduler() {
 }
 
 void Scheduler::post(std::function<void()> callback) {
-  ++_nrQueued;
-
   _ioContext.get()->post([this, callback]() {
-    --_nrQueued;
-
     {
       JobGuard guard(this);
       guard.work();
@@ -301,9 +296,6 @@ bool Scheduler::stopThreadIfTooMany(double now) {
   // make sure no extra threads are created while we check the timestamp
   // and while we modify nrRunning
   
-  uint64_t const queueCap = std::max(uint64_t(1), uint64_t(_nrMaximum / 4));
-  uint64_t const nrQueued = std::min(_nrQueued.load(), queueCap);
-  
   MUTEX_LOCKER(locker, _threadCreateLock);
   
   // fetch all counters in one atomic operation
@@ -319,7 +311,7 @@ bool Scheduler::stopThreadIfTooMany(double now) {
     return false;
   }
 
-  if (nrRunning <= nrWorking + nrQueued) {
+  if (nrRunning <= nrWorking) {
     return false;
   }
   
@@ -343,7 +335,7 @@ bool Scheduler::shouldQueueMore() const {
   uint64_t const counters = _counters.load();
   uint64_t const nrWorking = numWorking(counters);
 
-  if (nrWorking /* + _nrQueued */ < _nrMaximum) {
+  if (nrWorking < _nrMaximum) {
     return true;
   }
 
@@ -354,7 +346,7 @@ bool Scheduler::shouldExecuteDirect() const {
   uint64_t const counters = _counters.load();
   uint64_t const nrWorking = numWorking(counters);
   
-  if (nrWorking /* + _nrQueued */ < _nrMaximum) {
+  if (nrWorking < _nrMaximum) {
     auto jobQueue = _jobQueue.get();
     auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
     return queueSize == 0;
@@ -375,8 +367,7 @@ std::string Scheduler::infoStatus() {
   auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
 
   uint64_t const counters = _counters.load();
-  return "working: " + std::to_string(numWorking(counters)) + ", queued: " +
-         std::to_string(_nrQueued) + ", blocked: " +
+  return "working: " + std::to_string(numWorking(counters)) + ", blocked: " +
          std::to_string(numBlocked(counters)) + ", running: " +
          std::to_string(numRunning(counters)) + ", outstanding: " +
          std::to_string(queueSize) + ", min/max: " +
@@ -394,14 +385,10 @@ void Scheduler::rebalanceThreads() {
     LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: " << infoStatus();
   }
       
-  uint64_t const queueCap = std::max(uint64_t(1), uint64_t(_nrMaximum / 4));
-
   while (true) {
     {
       double const now = TRI_microtime();
       
-      uint64_t const nrQueued = std::min(_nrQueued.load(), queueCap);
-
       MUTEX_LOCKER(locker, _threadCreateLock);
 
       uint64_t const counters = _counters.load();
@@ -409,7 +396,7 @@ void Scheduler::rebalanceThreads() {
       uint64_t const nrWorking = numWorking(counters);
       uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + nrQueued + 1)) {
+      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + 1)) {
         // all threads are working, and none are blocked. so there is no
         // need to start a new thread now
         if (nrWorking == nrRunning) {
