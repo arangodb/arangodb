@@ -266,7 +266,7 @@ void assertFilter(
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, exprCtx, ref };
     CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
-    CHECK((!execOk || expected == actual));
+    CHECK((!execOk || (expected == actual && expected.boost() == actual.boost())));
   }
 }
 
