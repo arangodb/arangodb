@@ -237,7 +237,9 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
             if (collection) {
               // ensure the shard collection is registered with the cluster-wide view
               // required from creating snapshots for per-cid views loaded from WAL
-              wiew->ensure(collection->id());
+              // only register existing per-cid view instances, do not create new per-cid view
+              // instances since they will be created/registered  by their per-cid links just below
+              wiew->ensure(collection->id(), false);
             }
           }
         }

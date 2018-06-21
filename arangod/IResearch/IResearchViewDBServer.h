@@ -63,11 +63,15 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure there is a view instance for the specified 'cid'
+  /// @param force creation of a new instance if none is available in vocbase
   /// @return an existing instance or create a new instance if none is registred
   ///         on ptr reset the view will be dropped if it has no collections
   /// @note view created in vocbase() to match callflow during regular startup
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalView> ensure(TRI_voc_cid_t cid);
+  std::shared_ptr<arangodb::LogicalView> ensure(
+      TRI_voc_cid_t cid,
+      bool create = true
+  );
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory

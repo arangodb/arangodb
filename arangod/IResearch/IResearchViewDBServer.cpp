@@ -332,7 +332,8 @@ arangodb::Result IResearchViewDBServer::drop(TRI_voc_cid_t cid) noexcept {
 }
 
 std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
-    TRI_voc_cid_t cid
+    TRI_voc_cid_t cid,
+    bool create /*= true*/
 ) {
   WriteMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // 'collections_' can be asynchronously read
@@ -349,6 +350,10 @@ std::shared_ptr<arangodb::LogicalView> IResearchViewDBServer::ensure(
     _collections.emplace(cid, view); // track the IResearchView instance from vocbase
 
     return view; // do not wrap in deleter since view already present in vocbase (as if already present in '_collections')
+  }
+
+  if (!create) {
+    return nullptr;
   }
 
   static const std::function<bool(irs::string_ref const& key)> acceptor = [](
