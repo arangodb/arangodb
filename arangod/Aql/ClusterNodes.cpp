@@ -465,7 +465,9 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   CollectionAccessingNode::toVelocyPack(nodes);
 
   nodes.add("mode", VPackValue(ExecutionNode::getTypeString(_mode)));
-  nodes.add("key", VPackValue(_key));
+  if(!_key.empty()){
+    nodes.add("key", VPackValue(_key));
+  }
 
   // add out variables
   if (_outVariableOld != nullptr) {
