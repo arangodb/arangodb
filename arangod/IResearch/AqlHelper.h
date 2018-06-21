@@ -586,30 +586,6 @@ aql::AstNode const* checkAttributeAccess(
   aql::Variable const& ref
 ) noexcept;
 
-namespace compare {
-
-typedef int(*Func)(
-  irs::sort::prepared const* comparer,
-  transaction::Methods* trx,
-  aql::AqlValue const& lhs,
-  aql::AqlValue const& rhs
-);
-
-int compareIResearchScores(
-  irs::sort::prepared const* comparer,
-  transaction::Methods*,
-  aql::AqlValue const& lhs,
-  aql::AqlValue const& rhs
-);
-
-int compareAqlValues(
-  irs::sort::prepared const*,
-  transaction::Methods* trx,
-  aql::AqlValue const& lhs,
-  aql::AqlValue const& rhs
-);
-
-} // compare
 } // iresearch
 } // arangodb
 
