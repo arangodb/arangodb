@@ -282,23 +282,52 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       if (parentModification){
         auto mod = static_cast<ModificationNode*>(parentModification);
         auto parentType = parentModification->getType();
-        Variable const* update = nullptr;
         auto const& vec = mod->getVariablesUsedHere();
 
         LOG_DEVEL << "optimize modification node of type: "
                   << ExecutionNode::getTypeString(parentType)
                   << "  " << vec.size();
 
+        Variable const* update = nullptr;
+        Variable const* keyVar = nullptr;
+
+
         if ( parentType == EN::REMOVE) {
+          keyVar = vec.front();
           TRI_ASSERT(vec.size() == 1);
-        } else if(parentType == EN::INSERT) {
-          TRI_ASSERT(vec.size() == 1);
-          update = vec.front();
         } else {
-          TRI_ASSERT(vec.size() == 2);
           update = vec.front();
+          if(vec.size() > 1){
+            keyVar = vec.back();
+          }
         }
 
+        if(keyVar && indexNode->outVariable()->id != keyVar->id){
+          LOG_DEVEL << "the index out var is not used in modification as keyVariable";
+          continue;
+        }
+
+        if(!keyVar){
+          if (update && indexNode->outVariable()->id == update->id){
+            // the update document is already described by the key provided
+            // in the index condition
+            update = nullptr;
+          } else {
+            LOG_DEVEL << "the index out var is not used in modification as keyVariable";
+            continue;
+          }
+        }
+
+        if(!update){
+          LOG_DEVEL << "no update provided";
+          // this could be relaxed
+          // if the update is not mandatory in
+          // the single operation node
+          continue;
+        }
+
+        LOG_DEVEL << "key:" << key;
+        LOG_DEVEL_IF(update) << "update" << update->name;
         ExecutionNode* singleOperationNode = plan->registerNode(
           new SingleRemoteOperationNode(
             plan, plan->nextId(),
@@ -385,7 +414,9 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       keyVar = vec.front();
       TRI_ASSERT(vec.size() == 1);
     } else {
-      update = vec.front();
+      update = vec.front(); // this can be same as keyvar!
+                            // this use is possible because we
+                            // not delete the variable's setter
       if (vec.size() > 1) {
         keyVar = vec.back();
       }
