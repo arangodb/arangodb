@@ -122,6 +122,8 @@ function optimizerClusterSingleDocumentTestSuite () {
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set)
 
       var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled); // explain - only
+      print(result)
+      db._explain(queryString)
       assertEqual(expectedRules[set[expectedRulesField]], result.plan.rules, "rules mismatch: " + queryInfo);
       assertEqual(expectedNodes[set[expectedNodesField]], explain(result), "nodes mismatch: " + queryInfo);
       if (set[doFullTest]) {
@@ -263,6 +265,7 @@ function optimizerClusterSingleDocumentTestSuite () {
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
+
     testRuleUpdate : function () {
 
       var queries = [
@@ -300,6 +303,54 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", 
           "optimize-cluster-single-document-operations" ]
 
+      ];
+
+      var expectedNodes = [
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
+        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ]
+      ];
+
+      runTestSet(queries, expectedRules, expectedNodes);
+    },
+
+    testRuleReplace : function () {
+
+      var queries = [
+        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
+        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
+        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
+        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
+        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],          
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],        
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 7, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 6, 3, true, setupC1, 0],
+      ];
+
+      var expectedRules = [
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables",
+          "optimize-cluster-single-document-operations"],
+        [ "move-calculations-up", "move-calculations-up-2",
+          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [   "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", 
+            "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
+        [ "optimize-cluster-single-document-operations" ],
+        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", 
+          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", 
+          "optimize-cluster-single-document-operations" ]
       ];
 
       var expectedNodes = [
