@@ -7,7 +7,7 @@ This section describes how to start an Active Failover setup the tool [_Starter_
 Local Tests
 -----------
 
-If you want to start a local Active Failover setup quickly, use the `--starter.local`
+If you want to start a local _Active Failover_ setup quickly, use the `--starter.local`
 option of the _Starter_. This will start all servers within the context of a single
 starter process:
 

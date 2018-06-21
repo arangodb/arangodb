@@ -1,7 +1,7 @@
 Starting Manually
 =================
 
-An ArangoDB Active Failover setup consists of several running _tasks_ or _processes_. 
+An ArangoDB _Active Failover_ setup consists of several running _tasks_ or _processes_. 
 
 This section describes how to start an Active Failover by manually starting all
 the needed processes.
@@ -201,7 +201,7 @@ instead of IP addresses.
 Manual Start in Docker
 ----------------------
 
-Manually starting an Active Failover via Docker is basically the same as described in the 
+Manually starting an _Active Failover_ via Docker is basically the same as described in the 
 paragraphs above. 
 
 A bit of extra care has to be invested due to the way in which Docker isolates its network. 
