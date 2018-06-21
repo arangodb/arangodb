@@ -135,6 +135,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool _needsOwnThread = false;
   HandlerState _state;
   std::function<void(rest::RestHandler*)> _callback;
+
+  mutable Mutex _executionMutex;
 };
 
 }

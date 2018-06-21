@@ -102,6 +102,7 @@ void RestHandler::setStatistics(RequestStatistics* stat) {
 
 void RestHandler::runHandlerStateMachine() {
   TRI_ASSERT(_callback);
+  MUTEX_LOCKER(locker, _executionMutex);
   
   while (true) {
     switch (_state) {
