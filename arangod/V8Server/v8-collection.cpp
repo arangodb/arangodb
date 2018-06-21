@@ -2833,7 +2833,7 @@ static void JS_CountVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  OperationResult opResult = trx.count(collectionName, !details);
+  OperationResult opResult = trx.count(collectionName, details);
   res = trx.finish(opResult.result);
 
   if (res.fail()) {
