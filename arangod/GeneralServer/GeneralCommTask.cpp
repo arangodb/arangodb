@@ -422,20 +422,19 @@ void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
-  handler->runHandler([this, doLock](rest::RestHandler* handler) {
+  auto self = shared_from_this();
+  handler->runHandler([self, this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     // TODO we could reduce all of this to strand::dispatch ?
     if (doLock || !_peer->runningInThisThread()) {
       // Note that the latter is for the case that a handler was put to sleep
       // and woke up in a different thread.
-      auto self = shared_from_this();
       auto h = handler->shared_from_this();
 
       _peer->post([self, this, stat, h]() {
         addResponse(*(h->response()), stat);
       });
     } else {
-      TRI_ASSERT(_peer->runningInThisThread());
       addResponse(*handler->response(), stat);
     }
   });
