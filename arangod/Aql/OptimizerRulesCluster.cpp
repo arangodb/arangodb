@@ -252,7 +252,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::INDEX, true);
+  plan->findNodesOfType(nodes, EN::INDEX, false);
 
   if(nodes.size() != 1){
     //LOG_DEVEL << "plan has " << nodes.size() << "!=1 index nodes";
@@ -349,7 +349,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
   bool modified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, true);
+  plan->findNodesOfType(nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, false);
 
   if(nodes.size() != 1){
     //LOG_DEVEL << "plan has " << nodes.size() << "!=1 modification nodes";
@@ -489,22 +489,17 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
   //log_devel << "enter singleoperationnode rule";
   bool modified = false;
 
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::SUBQUERY, true);
-
-  if (nodes.empty()){ //prevent execution in subqueries
-    for(auto const& fun : { &substituteClusterSingleDocumentOperationsIndex
-                          , &substituteClusterSingleDocumentOperationsNoIndex
-                          }
-    ){
-      modified = fun(opt, plan.get(), rule);
-      if(modified){ break; }
-    }
+  for(auto const& fun : { &substituteClusterSingleDocumentOperationsIndex
+                        , &substituteClusterSingleDocumentOperationsNoIndex
+                        }
+  ){
+    modified = fun(opt, plan.get(), rule);
+    if(modified){ break; }
   }
 
   LOG_DEVEL_IF(modified) << "applied singleOperationNode rule !!!!!!!!!!!!!!!!!";
 
-  opt->addPlan(std::move(plan), rule, modified);
+  LOG_DEVEL << plan->toVelocyPack(plan->getAst(),true)->toJson();
+  //opt->addPlan(std::move(plan), rule, modified);
   //LOG_DEVEL << "exit singleOperationNode rule";
 }
