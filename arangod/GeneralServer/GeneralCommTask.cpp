@@ -392,7 +392,6 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     _loop.scheduler->post([self, this, handler]() {
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
                             std::move(handler));
-      _loop.scheduler->wakeupJobQueue();
     });
     return true;
   }

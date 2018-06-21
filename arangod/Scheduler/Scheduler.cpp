@@ -189,10 +189,13 @@ void Scheduler::post(std::function<void()> callback) {
   _ioContext.get()->post([this, callback]() {
     --_nrQueued;
 
-    JobGuard guard(this);
-    guard.work();
+    {
+      JobGuard guard(this);
+      guard.work();
 
-    callback();
+      callback();
+    }
+    wakeupJobQueue();
   });
 }
 
@@ -340,7 +343,7 @@ bool Scheduler::shouldQueueMore() const {
   uint64_t const counters = _counters.load();
   uint64_t const nrWorking = numWorking(counters);
 
-  if (nrWorking + _nrQueued < _nrMaximum) {
+  if (nrWorking /* + _nrQueued */ < _nrMaximum) {
     return true;
   }
 
@@ -351,7 +354,7 @@ bool Scheduler::shouldExecuteDirect() const {
   uint64_t const counters = _counters.load();
   uint64_t const nrWorking = numWorking(counters);
   
-  if (nrWorking + _nrQueued < _nrMaximum) {
+  if (nrWorking /* + _nrQueued */ < _nrMaximum) {
     auto jobQueue = _jobQueue.get();
     auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
     return queueSize == 0;

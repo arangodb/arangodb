@@ -87,8 +87,6 @@ class JobQueueThread final
             LOG_TOPIC(WARN, Logger::THREADS)
                 << "caught unknown exception while executing job callback";
           }
-
-          this->_jobQueue->wakeup();
         });
 
         guard.lock();
