@@ -1332,7 +1332,7 @@ function processQuery (query, explain) {
         switch (node.mode) {
         case "IndexNode": {
           collectionVariables[node.outVariable.id] = node.collection;
-          let indexRef = `${variableName(node.outVariable)}`; // TODO
+          let indexRef = `${variable(JSON.stringify(node.key))}`;
           node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${annotation(`/* primary index scan */`)}`;
           // `
@@ -1349,23 +1349,49 @@ function processQuery (query, explain) {
         }
         case 'UpdateNode': {
           modificationFlags = node.modificationFlags;
-          collectionVariables[node.inVariable.id] = node.collection;
-          let indexRef = `${variableName(node.inVariable)}`;
+          if (node.hasOwnProperty('inVariable')) {
+            collectionVariables[node.inVariable.id] = node.collection;
+          }
+          let indexRef;
+          let keyCondition;
+          if (node.hasOwnProperty('key')) {
+            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))}}`;
+            indexRef = `${variable(JSON.stringify(node.key))}`;
+          } else if (node.hasOwnProperty('inVariable')) {
+            keyCondition = `${variableName(node.inVariable)}`;
+            indexRef = `${variableName(node.inVariable)}`;
+          } else {
+            keyCondition = "WTFFF?"
+            indexRef = "WTF?";
+          }
           if (node.hasOwnProperty('indexes')) {
             node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           }
           let OLD="";
-          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          return `${keyword('UPDATE')} ${keyCondition} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'ReplaceNode': {
           modificationFlags = node.modificationFlags;
-          collectionVariables[node.inVariable.id] = node.collection;
-          let indexRef = `${variableName(node.inVariable)}`;
+          if (node.hasOwnProperty('inVariable')) {
+            collectionVariables[node.inVariable.id] = node.collection;
+          }
+          let indexRef;
+          let keyCondition;
+          if (node.hasOwnProperty('key')) {
+            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))}}`;
+            indexRef = `${variable(JSON.stringify(node.key))}`;
+          } else if (node.hasOwnProperty('inVariable')) {
+            keyCondition = `${variableName(node.inVariable)}`;
+            indexRef = `${variableName(node.inVariable)}`;
+          } else {
+            keyCondition = "WTFFF?"
+            indexRef = "WTF?";
+          }
           if (node.hasOwnProperty('indexes')) {
             node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           }
           let OLD="";
-          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          return `${keyword('REPLACE')} ${keyCondition} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'UpsertNode': {
           modificationFlags = node.modificationFlags;
@@ -1375,7 +1401,7 @@ function processQuery (query, explain) {
             node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           }
           let OLD="";
-          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          return `${keyword('UPSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'RemoveNode': {
           modificationFlags = node.modificationFlags;
@@ -1385,7 +1411,7 @@ function processQuery (query, explain) {
             node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           }
           let OLD="";
-          return `${keyword('INSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         }
       }
