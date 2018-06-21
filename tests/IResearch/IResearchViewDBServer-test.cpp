@@ -30,6 +30,7 @@
 #include "Aql/Variable.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -81,6 +82,7 @@ struct IResearchViewDBServerSetup {
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
+    features.emplace_back(new arangodb::ShardingFeature(&server), false); 
     features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), false); // required for instantiating IResearchView*
 

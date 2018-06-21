@@ -298,6 +298,7 @@ SET(ARANGOD_SOURCES
   Cluster/ServerState.cpp
   Cluster/ShardDistributionReporter.cpp
   Cluster/ShardingFeature.cpp
+  Cluster/ShardingInfo.cpp
   Cluster/ShardingStrategy.cpp
   Cluster/ShardingStrategyDefault.cpp
   Cluster/TraverserEngine.cpp

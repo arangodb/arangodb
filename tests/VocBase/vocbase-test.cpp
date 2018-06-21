@@ -24,6 +24,7 @@
 #include "catch.hpp"
 #include "../IResearch/common.h"
 #include "../IResearch/StorageEngineMock.h"
+#include "Cluster/ShardingFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -97,6 +98,7 @@ struct VocbaseSetup {
     features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for TRI_vocbase_t::dropCollection(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for TRI_vocbase_t instantiation
     features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for TRI_vocbase_t::createView(...)
+    features.emplace_back(new arangodb::ShardingFeature(&server), false);
 
     for (auto& f: features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);

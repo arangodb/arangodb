@@ -30,7 +30,7 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class LogicalCollection;
+class ShardingInfo;
 
 /// @brief a sharding implementation that will always fail when asking
 /// for a shard. this can be used on the DB server or on the single server
@@ -39,35 +39,41 @@ class ShardingStrategyNone final : public ShardingStrategy {
   ShardingStrategyNone() 
       : ShardingStrategy() {}
 
-  char const* name() const override { return NAME; }
+  std::string const& name() const override { return NAME; }
+  
+  static std::string const NAME;
+  
+  /// @brief does not really matter here
+  bool usesDefaultShardKeys() override { return true; }
   
   int getResponsibleShard(arangodb::velocypack::Slice,
                           bool docComplete, ShardID& shardID,
                           bool& usesDefaultShardKeys,
                           std::string const& key = "") override;
-  
-  static constexpr char const* NAME = "none";
 };
 
 /// @brief base class for hash-based sharding
 class ShardingStrategyHash : public ShardingStrategy {
  public:
-  explicit ShardingStrategyHash(LogicalCollection* collection);
+  explicit ShardingStrategyHash(ShardingInfo* sharding);
   
   virtual int getResponsibleShard(arangodb::velocypack::Slice,
                                   bool docComplete, ShardID& shardID,
                                   bool& usesDefaultShardKeys,
                                   std::string const& key = "") override;
   
- protected:
-  bool usesDefaultShardKeys() const { return _usesDefaultShardKeys; }
+  /// @brief does not really matter here
+  bool usesDefaultShardKeys() override { return _usesDefaultShardKeys; }
   
   virtual uint64_t hashByAttributes(
     arangodb::velocypack::Slice slice, std::vector<std::string> const& attributes,
     bool docComplete, int& error, std::string const& key) = 0;
 
+ private:
+  void determineShards();
+
  protected:
-  LogicalCollection* _collection;
+  ShardingInfo* _sharding;
   std::vector<ShardID> _shards;
   bool _usesDefaultShardKeys;
 };
@@ -76,11 +82,11 @@ class ShardingStrategyHash : public ShardingStrategy {
 /// this is DEPRECATED and should not be used for new collections
 class ShardingStrategyCommunity final : public ShardingStrategyHash {
  public:
-  explicit ShardingStrategyCommunity(LogicalCollection* collection);
+  explicit ShardingStrategyCommunity(ShardingInfo* sharding);
   
-  char const* name() const override { return NAME; }
+  std::string const& name() const override { return NAME; }
   
-  static constexpr char const* NAME = "community";
+  static std::string const NAME;
 
  protected:
   uint64_t hashByAttributes(

@@ -326,11 +326,9 @@ static int distributeBabyOnShards(
     temp.add(StaticStrings::KeyString, value);
     temp.close();
   
-    error = ci->getResponsibleShard(collinfo.get(), temp.slice(), false, shardID,
-                                    usesDefaultShardingAttributes);
+    error = collinfo->getResponsibleShard(temp.slice(), false, shardID, usesDefaultShardingAttributes);
   } else {
-    error = ci->getResponsibleShard(collinfo.get(), value, false, shardID,
-                                    usesDefaultShardingAttributes);
+    error = collinfo->getResponsibleShard(value, false, shardID, usesDefaultShardingAttributes);
   }
   if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -399,11 +397,9 @@ static int distributeBabyOnShards(
     bool usesDefaultShardingAttributes;
     int error = TRI_ERROR_NO_ERROR;
     if (userSpecifiedKey) {
-      error = ci->getResponsibleShard(collinfo.get(), value, true, shardID,
-                                      usesDefaultShardingAttributes);
+      error = collinfo->getResponsibleShard(value, true, shardID, usesDefaultShardingAttributes);
     } else {
-      error = ci->getResponsibleShard(collinfo.get(), value, true, shardID,
-                                      usesDefaultShardingAttributes, _key);
+      error = collinfo->getResponsibleShard(value, true, shardID, usesDefaultShardingAttributes, _key);
     }
     if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -570,18 +566,10 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   }
 
   // We need to replace the distribute with the cid.
-  col->distributeShardsLike(cidString);
-
+  col->distributeShardsLike(cidString, other->shardingInfo());
+  
   if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
     return result;
-  }
-
-  if (col->replicationFactor() != other->replicationFactor()) {
-    col->replicationFactor(other->replicationFactor());
-  }
-
-  if (col->numberOfShards() != other->numberOfShards()) {
-    col->numberOfShards(other->numberOfShards());
   }
 
   auto shards = other->shardIds();
@@ -602,8 +590,6 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   }
   return result;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a copy of all HTTP headers to forward
@@ -1295,8 +1281,7 @@ int deleteDocumentOnCoordinator(
       } else {
         // Now find the responsible shard:
         bool usesDefaultShardingAttributes;
-        int error = ci->getResponsibleShard(
-            collinfo.get(),
+        int error = collinfo->getResponsibleShard(
             arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 

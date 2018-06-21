@@ -507,16 +507,6 @@ class ClusterInfo {
   std::shared_ptr<std::vector<ShardID>> getShardList(CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the shard that is responsible for a document
-  //////////////////////////////////////////////////////////////////////////////
-
-  int getResponsibleShard(LogicalCollection*, arangodb::velocypack::Slice,
-                          bool docComplete, ShardID& shardID,
-                          bool& usesDefaultShardingAttributes,
-                          std::string const& key = "");
-
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief return the list of coordinator server names
   //////////////////////////////////////////////////////////////////////////////
 

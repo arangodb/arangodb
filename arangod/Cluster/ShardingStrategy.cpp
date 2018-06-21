@@ -22,28 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingStrategy.h"
-#include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-
-bool ShardingStrategy::usesDefaultShardKeys(std::vector<std::string> const& shardKeys) {
-  if (shardKeys.size() != 1) {
-    return false;
+  
+void ShardingStrategy::toVelocyPack(VPackBuilder& result) {
+  // only need to print sharding strategy if we are in a cluster
+  if (ServerState::instance()->isRunningInCluster()) {
+    result.add("shardingStrategy", VPackValue(name()));
   }
-
-  size_t const n = shardKeys[0].size();
-  if (n == 0) {
-    return false;
-  }
-
-  TRI_ASSERT(shardKeys.size() == 1); 
-
-  return (shardKeys[0] == StaticStrings::KeyString ||
-          (shardKeys[0][0] == ':' &&
-           shardKeys[0].compare(1, n - 1,
-                                StaticStrings::KeyString) == 0) ||
-          (shardKeys[0].back() == ':' &&
-           shardKeys[0].compare(0, n - 1,
-                                StaticStrings::KeyString) == 0)
-         );
 }

@@ -313,17 +313,11 @@ std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* nod
   }
 
   // all shard keys found!!
-  auto ci = ClusterInfo::instance();
-
-  if (ci == nullptr) {
-    return std::string();
-  }
 
   // find the responsible shard for the data
-  bool usedDefaultSharding;
   std::string shardId;
 
-  int res = ci->getResponsibleShard(collection->getCollection().get(), builder.slice(), true, shardId, usedDefaultSharding);
+  int res = collection->getCollection()->getResponsibleShard(builder.slice(), true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // some error occurred. better do not use the
@@ -335,7 +329,7 @@ std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* nod
   return shardId;
 }
 
-}
+} // namespace
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void arangodb::aql::sortInValuesRule(Optimizer* opt,

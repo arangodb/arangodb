@@ -26,6 +26,11 @@
 #include "ExpressionContextMock.h"
 #include "StorageEngineMock.h"
 
+#include "Aql/Ast.h"
+#include "Aql/Query.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Cluster/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -45,10 +50,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/AqlFunctionFeature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -161,6 +162,7 @@ struct IResearchFilterSetup {
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for IResearchFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
+    features.emplace_back(new arangodb::ShardingFeature(&server), true);
     features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);

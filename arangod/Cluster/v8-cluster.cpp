@@ -843,9 +843,7 @@ static void JS_GetResponsibleShardClusterInfo(
   auto collInfo = ci->getCollection(vocbase.name(), collectionId);
   bool usesDefaultShardingAttributes;
 
-  res = ClusterInfo::instance()->getResponsibleShard(
-      collInfo.get(), builder.slice(), documentIsComplete, shardId,
-      usesDefaultShardingAttributes);
+  res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete, shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

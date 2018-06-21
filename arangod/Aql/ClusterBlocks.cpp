@@ -810,12 +810,9 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
   }
 
   std::string shardId;
-  bool usesDefaultShardingAttributes;
-  auto clusterInfo = arangodb::ClusterInfo::instance();
   auto collInfo = _collection->getCollection();
 
-  int res = clusterInfo->getResponsibleShard(collInfo.get(), value, true,
-      shardId, usesDefaultShardingAttributes);
+  int res = collInfo->getResponsibleShard(value, true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

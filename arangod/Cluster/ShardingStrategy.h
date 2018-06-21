@@ -28,9 +28,10 @@
 #include "Cluster/ClusterInfo.h"
 
 namespace arangodb {
-class LogicalCollection;
+class ShardingInfo;
 
 namespace velocypack {
+class Builder;
 class Slice;
 }
 
@@ -40,25 +41,39 @@ class ShardingStrategy {
   ShardingStrategy& operator=(ShardingStrategy const&) = delete;
 
  public:
-  typedef std::function<std::unique_ptr<ShardingStrategy>(LogicalCollection*)> FactoryFunction;
+  typedef std::function<std::unique_ptr<ShardingStrategy>(ShardingInfo*)> FactoryFunction;
 
   ShardingStrategy() = default; 
   virtual ~ShardingStrategy() = default; 
 
-  virtual char const* name() const = 0;
+  virtual std::string const& name() const = 0;
 
+  virtual bool usesDefaultShardKeys() = 0;
+
+  virtual void toVelocyPack(arangodb::velocypack::Builder& result);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief find the shard that is responsible for a document, which is given
+  /// as a VelocyPackSlice.
+  ///
+  /// There are two modes, one assumes that the document is given as a
+  /// whole (`docComplete`==`true`), in this case, the non-existence of
+  /// values for some of the sharding attributes is silently ignored
+  /// and treated as if these values were `null`. In the second mode
+  /// (`docComplete`==false) leads to an error which is reported by
+  /// returning TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, which is the only
+  /// error code that can be returned.
+  ///
+  /// In either case, if the collection is found, the variable
+  /// shardID is set to the ID of the responsible shard and the flag
+  /// `usesDefaultShardingAttributes` is used set to `true` if and only if
+  /// `_key` is the one and only sharding attribute.
+  ////////////////////////////////////////////////////////////////////////////////
+  
   virtual int getResponsibleShard(arangodb::velocypack::Slice,
                                   bool docComplete, ShardID& shardID,
                                   bool& usesDefaultShardKeys,
                                   std::string const& key = "") = 0;
-
-#if 0
-  /// @brief whether or not the collection uses the default shard keys
-  virtual bool usesDefaultShardKeys() = 0;
-#endif
-  /// @brief whether or not the shard keys passed are the default
-  /// shard keys
-  static bool usesDefaultShardKeys(std::vector<std::string> const& shardKeys);
 };
 
 }

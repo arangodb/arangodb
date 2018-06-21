@@ -22,16 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingFeature.h"
+#include "Cluster/ServerState.h"
+#include "Cluster/ShardingInfo.h"
 #include "Cluster/ShardingStrategyDefault.h"
+#include "VocBase/LogicalCollection.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/ShardingStrategyEE.h"
 #endif
 
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
-using namespace arangodb::options;
 
 ShardingFeature::ShardingFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Sharding") {
@@ -41,15 +45,18 @@ ShardingFeature::ShardingFeature(application_features::ApplicationServer* server
 }
 
 void ShardingFeature::prepare() {
-  registerFactory(ShardingStrategyNone::NAME, [](LogicalCollection*) { 
+  registerFactory(ShardingStrategyNone::NAME, [](ShardingInfo*) { 
     return std::make_unique<ShardingStrategyNone>();
   });
-  registerFactory(ShardingStrategyCommunity::NAME, [](LogicalCollection* collection) { 
-    return std::make_unique<ShardingStrategyCommunity>(collection);
+  registerFactory(ShardingStrategyCommunity::NAME, [](ShardingInfo* sharding) { 
+    return std::make_unique<ShardingStrategyCommunity>(sharding);
   });
 #ifdef USE_ENTERPRISE
-  registerFactory(ShardingStrategyEnterprise::NAME, [](LogicalCollection* collection) { 
-    return std::make_unique<ShardingStrategyEnterprise>(collection);
+  registerFactory(ShardingStrategyEnterprise::NAME, [](ShardingInfo* sharding) { 
+    return std::make_unique<ShardingStrategyEnterprise>(sharding);
+  });
+  registerFactory(ShardingStrategyEnterpriseSmartEdge::NAME, [](ShardingInfo* sharding) { 
+    return std::make_unique<ShardingStrategyEnterpriseSmartEdge>(sharding);
   });
 #endif
 }
@@ -63,12 +70,57 @@ void ShardingFeature::registerFactory(std::string const& name,
   }
 }
 
-std::unique_ptr<ShardingStrategy> ShardingFeature::create(std::string const& name, LogicalCollection* collection) {
+std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice slice, 
+                                                                  ShardingInfo* sharding) {
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid collection meta data");
+  }
+
+  std::string name;
+  
+  if (!ServerState::instance()->isRunningInCluster()) {
+    // not running in cluster... so no sharding
+    name = ShardingStrategyNone::NAME;
+  } else {
+    // running in cluster... determine the correct method for sharding
+    VPackSlice s = slice.get("shardingStrategy");
+    if (s.isString()) {
+      name = s.copyString();
+    } else {
+      name = getDefaultShardingStrategy(sharding);
+    }
+  }
+
+  return create(name, sharding);
+}
+
+std::unique_ptr<ShardingStrategy> ShardingFeature::create(std::string const& name, ShardingInfo* sharding) {
   auto it = _factories.find(name);
   
   if (it == _factories.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("unknown sharding factory function '") + name + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("unknown sharding type '") + name + "'");
   }
 
-  return (*it).second(collection);
+  return (*it).second(sharding);
+}
+
+std::string ShardingFeature::getDefaultShardingStrategy(ShardingInfo const* sharding) const {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+  
+  if (ServerState::instance()->isDBServer()) {
+    // on a DB server, we will not use sharding
+    return ShardingStrategyNone::NAME;
+  }
+
+#ifdef USE_ENTERPRISE
+  // no sharding strategy found in collection meta data
+  if (sharding->collection()->isSmart() && sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
+    // smart edge collection
+    return ShardingStrategyEnterpriseSmartEdge::NAME;
+  }
+   
+  return ShardingStrategyEnterprise::NAME;
+#else
+  return ShardingStrategyDefault::NAME;
+#endif 
 }

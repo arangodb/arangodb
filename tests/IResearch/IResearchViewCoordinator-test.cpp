@@ -45,11 +45,12 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Agency/AgencyFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterComm.h"
-#include "Agency/AgencyFeature.h"
+#include "Cluster/ShardingFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -137,6 +138,7 @@ struct IResearchViewCoordinatorSetup {
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
+    features.emplace_back(new arangodb::ShardingFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature

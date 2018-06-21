@@ -25,8 +25,9 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/hashes.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
@@ -34,6 +35,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+std::string const ShardingStrategyNone::NAME("none");
+std::string const ShardingStrategyCommunity::NAME("community");
 
 int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
                                               bool docComplete, ShardID& shardID,
@@ -43,33 +47,22 @@ int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
 }
 
 /// @brief base class for hash-based sharding
-ShardingStrategyHash::ShardingStrategyHash(LogicalCollection* collection)
+ShardingStrategyHash::ShardingStrategyHash(ShardingInfo* sharding)
     : ShardingStrategy(),
-      _collection(collection),
+      _sharding(sharding),
+      _shards(),
       _usesDefaultShardKeys(false) {
-  
+
+  auto shardKeys = _sharding->shardKeys();
+    
   // validate shard keys
-  if (_collection->shardKeys().empty()) {
+  if (shardKeys.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid shard keys");
   }
-  for (auto const& it : _collection->shardKeys()) {
+  for (auto const& it : shardKeys) {
     if (it.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid shard keys");
     }
-  }
-
-  // whether or not the collection uses the default shard attributes (["_key"])
-  _usesDefaultShardKeys = ShardingStrategy::usesDefaultShardKeys(_collection->shardKeys());
-
-  // determine all available shards (which will stay const afterwards)
-  auto shardIds = _collection->shardIds();
-
-  if (shardIds->empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid shard count");
-  }
-
-  for (auto const& it : *shardIds) {
-    _shards.emplace_back(it.first);
   }
 }
 
@@ -80,20 +73,46 @@ int ShardingStrategyHash::getResponsibleShard(arangodb::velocypack::Slice slice,
   static constexpr char const* magicPhrase = "Foxx you have stolen the goose, give she back again!";
   static constexpr size_t magicLength = 52;
 
+  determineShards();
+
   int res = TRI_ERROR_NO_ERROR;
-  usesDefaultShardKeys = this->usesDefaultShardKeys();
+  usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
-  uint64_t hash = hashByAttributes(slice, _collection->shardKeys(), docComplete, res, key);
+  uint64_t hash = hashByAttributes(slice, _sharding->shardKeys(), docComplete, res, key);
   // To improve our hash function result:
   hash = TRI_FnvHashBlock(hash, magicPhrase, magicLength);
   shardID = _shards[hash % _shards.size()];
   return res;
 }
 
+void ShardingStrategyHash::determineShards() {
+  if (!_shards.empty()) {
+    return;
+  }
+
+  // determine all available shards (which will stay const afterwards)
+  auto ci = ClusterInfo::instance();
+  auto shards = ci->getShardList(std::to_string(_sharding->collection()->id()));
+
+  _shards = *shards;
+
+  if (_shards.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid shard count");
+  }
+}
+
 /// @brief old version of the sharding used in the community edition
 /// this is DEPRECATED and should not be used for new collections
-ShardingStrategyCommunity::ShardingStrategyCommunity(LogicalCollection* collection)
-    : ShardingStrategyHash(collection) {}
+ShardingStrategyCommunity::ShardingStrategyCommunity(ShardingInfo* sharding)
+    : ShardingStrategyHash(sharding) {
+  // whether or not the collection uses the default shard attributes (["_key"])
+  TRI_ASSERT(_usesDefaultShardKeys);
+  
+  auto shardKeys = _sharding->shardKeys();
+  if (shardKeys.size() == 1 && shardKeys[0] == StaticStrings::KeyString) {
+    _usesDefaultShardKeys = true;
+  }
+}
 
 uint64_t ShardingStrategyCommunity::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,

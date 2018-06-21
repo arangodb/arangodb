@@ -166,8 +166,6 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
     merge.add("journalSize", VPackValue(journalSize));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    LOG_DEVEL << "updateProperties rocksdb";
-
     bool def = Helper::readBooleanValue(_info.slice(), "cacheEnabled", false);
     merge.add("cacheEnabled",
               VPackValue(Helper::readBooleanValue(slice, "cacheEnabled", def)));
