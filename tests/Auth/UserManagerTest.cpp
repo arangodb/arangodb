@@ -92,7 +92,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     testUser.grantDatabase("*", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
-    state->setServerMode(ServerState::Mode::READ_ONLY);
+    state->setReadOnly(true);
 
     um.setAuthInfo(userEntryMap);
     auth::Level authLevel = um.databaseAuthLevel("test", "test");
@@ -105,7 +105,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     testUser.grantDatabase("*", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
-    state->setServerMode(ServerState::Mode::READ_ONLY);
+    state->setReadOnly(true);
 
     um.setAuthInfo(userEntryMap);
     auth::Level authLevel = um.databaseAuthLevel("test", "test", /*configured*/ true);
@@ -119,7 +119,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     testUser.grantCollection("test", "test", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
-    state->setServerMode(ServerState::Mode::READ_ONLY);
+    state->setReadOnly(true);
 
     um.setAuthInfo(userEntryMap);
     auth::Level authLevel = um.collectionAuthLevel("test", "test", "test");
@@ -133,7 +133,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     testUser.grantCollection("test", "test", auth::Level::RW);
     userEntryMap.emplace("test", testUser);
 
-    state->setServerMode(ServerState::Mode::READ_ONLY);
+    state->setReadOnly(true);
 
     um.setAuthInfo(userEntryMap);
     auth::Level authLevel = um.collectionAuthLevel("test", "test", "test", /*configured*/ true);
@@ -141,6 +141,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
   }
 
   state->setServerMode(ServerState::Mode::DEFAULT);
+  state->setReadOnly(false);
 }
 
 }

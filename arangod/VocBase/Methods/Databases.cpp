@@ -147,7 +147,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::instance()->readOnly()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
@@ -373,7 +373,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   if (exec != nullptr) {
     if (exec->systemAuthLevel() != auth::Level::RW) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+    } else if (!exec->isSuperuser() && ServerState::instance()->readOnly()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }

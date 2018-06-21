@@ -203,8 +203,9 @@ void HeartbeatThread::run() {
   // think
   // ohhh the dbserver is online...pump some documents into it
   // which fails when it is still in maintenance mode
-  if (!ServerState::instance()->isCoordinator(role)) {
-    while (ServerState::isMaintenance()) {
+  auto server = ServerState::instance();
+  if (!server->isCoordinator(role)) {
+    while (server->isMaintenance()) {
       if (isStopping()) {
         // startup aborted
         return;
@@ -517,7 +518,7 @@ void HeartbeatThread::runSingleServer() {
 
         if (!applier->isActive()) { // assume agency and leader are gone
           ServerState::instance()->setFoxxmaster(_myId);
-          ServerState::setServerMode(ServerState::Mode::DEFAULT);
+          ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
         }
         continue;
       }
@@ -550,7 +551,7 @@ void HeartbeatThread::runSingleServer() {
         << "attempting a takeover";
 
         // if we stay a slave, the redirect will be turned on again
-        ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
+        ServerState::instance()->setServerMode(ServerState::Mode::TRYAGAIN);
         if (leader.isNone()) {
           result = _agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
                                     /*ttl*/ 0, /*timeout*/ 5.0);
@@ -586,7 +587,7 @@ void HeartbeatThread::runSingleServer() {
 
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
-        auto prv = ServerState::setServerMode(ServerState::Mode::DEFAULT);
+        auto prv = ServerState::instance()->setServerMode(ServerState::Mode::DEFAULT);
         if (prv == ServerState::Mode::REDIRECT) {
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Sucessfull leadership takeover";
         }
@@ -606,7 +607,7 @@ void HeartbeatThread::runSingleServer() {
       }
 
       // enable redirections to leader
-      auto prv = ServerState::setServerMode(ServerState::Mode::REDIRECT);
+      auto prv = ServerState::instance()->setServerMode(ServerState::Mode::REDIRECT);
       if (prv == ServerState::Mode::DEFAULT) {
         // we were leader previously, now we need to ensure no ongoing operations
         // on this server may prevent us from being a proper follower. We wait for
@@ -700,14 +701,8 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
   if (readOnlySlice.isBoolean()) {
     readOnly = readOnlySlice.getBool();
   }
-
-  auto currentMode = ServerState::serverMode();
-  // do not switch from maintenance or any other non expected mode
-  if (currentMode == ServerState::Mode::DEFAULT && readOnly == true) {
-    ServerState::setServerMode(ServerState::Mode::READ_ONLY);
-  } else if (currentMode == ServerState::Mode::READ_ONLY && readOnly == false) {
-    ServerState::setServerMode(ServerState::Mode::DEFAULT);
-  }
+  
+  ServerState::instance()->setReadOnly(readOnly);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

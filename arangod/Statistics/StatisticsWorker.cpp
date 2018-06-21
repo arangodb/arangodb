@@ -1042,7 +1042,7 @@ void StatisticsWorker::beginShutdown() {
 }
 
 void StatisticsWorker::run() {
-  while (ServerState::isMaintenance()) {
+  while (ServerState::instance()->isMaintenance()) {
     if (isStopping()) {
       // startup aborted
       return;

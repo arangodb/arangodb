@@ -62,8 +62,6 @@ class ServerState {
     TRYAGAIN = 2,
     /// redirect to lead server if possible
     REDIRECT = 3,
-    /// redirect to lead server if possible
-    READ_ONLY = 4,
     INVALID = 255, // this mode is used to indicate shutdown
   };
 
@@ -101,24 +99,6 @@ class ServerState {
 
   /// @brief convert a string representation to a mode
   static Mode stringToMode(std::string const&);
-
-  /// @brief sets server mode, returns previously held
-  /// value (performs atomic read-modify-write operation)
-  static Mode setServerMode(Mode mode);
-
-  /// @brief atomically load current server mode
-  static Mode serverMode();
-
-  /// @brief checks maintenance mode
-  static bool isMaintenance() {
-    return serverMode() == Mode::MAINTENANCE;
-  }
-
-  /// @brief should not allow DDL operations / transactions
-  static bool writeOpsEnabled() {
-    Mode mode = serverMode();
-    return mode == Mode::DEFAULT || mode == Mode::MAINTENANCE;
-  }
 
  public:
   /// @brief sets the initialized flag
@@ -179,24 +159,50 @@ class ServerState {
     return isClusterRole(role);
   }
 
-  /// @brief check whether the server is a single server or coordinator
+  /// @brief check whether the server is a single or coordinator
   bool isSingleServerOrCoordinator() {
     RoleEnum role = loadRole();
     return isCoordinator(role) || isSingleServer(role);
   }
 
   /// @brief get the server role
-  RoleEnum getRole();
+  inline RoleEnum getRole() const { return loadRole(); }
 
+  /// @brief register with agency, create / load server ID
   bool integrateIntoCluster(RoleEnum role, std::string const& myAddr);
 
+  /// @brief unregister this server with the agency
   bool unregister();
 
   /// @brief set the server role
   void setRole(RoleEnum);
+  
+  /// @brief atomically load current server mode
+  Mode mode() const {
+    return _mode.load(std::memory_order_acquire);;
+  }
+  
+  /// @brief sets server mode, returns previously held
+  /// value (performs atomic read-modify-write operation)
+  Mode setServerMode(Mode mode);
+  
+  /// @brief checks maintenance mode
+  bool isMaintenance() const {
+    return mode() == Mode::MAINTENANCE;
+  }
+  
+  /// @brief should not allow DDL operations / transactions
+  bool readOnly() const {
+    return _readOnly.load(std::memory_order_acquire);
+  }
+
+  /// @brief set server read-only
+  bool setReadOnly(bool ro) {
+    return _readOnly.exchange(ro, std::memory_order_release);
+  }
 
   /// @brief get the server id
-  std::string getId();
+  std::string getId() const;
 
   /// @brief set the server id
   void setId(std::string const&);
@@ -224,9 +230,6 @@ class ServerState {
   /// @brief gets the JavaScript startup path
   std::string getJavaScriptPath();
 
-  /// @brief forces a specific role
-  void forceRole(RoleEnum role);
-
   /// @brief sets the JavaScript startup path
   void setJavaScriptPath(std::string const&);
 
@@ -246,14 +249,14 @@ class ServerState {
   std::string generatePersistedId(RoleEnum const&);
 
   /// @brief sets server mode and propagates new mode to agency
-  Result propagateClusterServerMode(Mode);
+  Result propagateClusterReadOnly(bool);
 
   /// file where the server persists it's UUID
   std::string getUuidFilename();
 
  private:
   /// @brief atomically fetches the server role
-  RoleEnum loadRole() {
+  inline RoleEnum loadRole() const {
     return _role.load(std::memory_order_consume);
   }
 
@@ -267,6 +270,20 @@ class ServerState {
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
+  
+private:
+  
+  /// @brief server role
+  std::atomic<RoleEnum> _role;
+  
+  /// @brief server mode
+  std::atomic<ServerState::Mode> _mode;
+  
+  /// @brief is this server in the read-only mode
+  std::atomic<bool> _readOnly;
+  
+  /// @brief r/w lock for state
+  mutable arangodb::basics::ReadWriteLock _lock;
 
   /// @brief the server's id, can be set just once
   std::string _id;
@@ -279,12 +296,6 @@ class ServerState {
 
   /// @brief an identification string for the host a server is running on
   std::string _host;
-
-  /// @brief r/w lock for state
-  arangodb::basics::ReadWriteLock _lock;
-
-  /// @brief the server role
-  std::atomic<RoleEnum> _role;
 
   /// @brief the current state
   StateEnum _state;

@@ -654,8 +654,7 @@ Result auth::UserManager::removeAllUsers() {
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
-  if (username.empty() || IsRole(username) ||
-      ServerState::serverMode() == ServerState::Mode::MAINTENANCE) {
+  if (username.empty() || IsRole(username)) {
     return false; // we cannot authenticate during bootstrap
   }
 
@@ -712,7 +711,7 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
 
   auth::Level level = it->second.databaseAuthLevel(dbname);
   if (!configured) {
-    if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    if (level > auth::Level::RO && ServerState::instance()->readOnly()) {
       return auth::Level::RO;
     }
   }
@@ -747,7 +746,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
 
   if (!configured) {
     static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-    if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+    if (level > auth::Level::RO && ServerState::instance()->readOnly()) {
       return auth::Level::RO;
     }
   }

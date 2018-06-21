@@ -169,9 +169,10 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
     return RequestFlow::Abort;
   }
   
+  ServerState* server = ServerState::instance();
   // In the bootstrap phase, we would like that coordinators answer the
   // following endpoints, but not yet others:
-  ServerState::Mode mode = ServerState::serverMode();
+  ServerState::Mode mode = server->mode();
   switch (mode) {
     case ServerState::Mode::MAINTENANCE: {
       if ((!ServerState::instance()->isCoordinator() &&
@@ -208,7 +209,6 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
       break;
     }
     case ServerState::Mode::DEFAULT:
-    case ServerState::Mode::READ_ONLY:
     case ServerState::Mode::INVALID:
       // no special handling required
       break;
@@ -242,7 +242,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
 
 /// Must be called from addResponse, before response is rendered
 void GeneralCommTask::finishExecution(GeneralResponse& res) const {
-  ServerState::Mode mode = ServerState::serverMode();
+  ServerState::Mode mode = ServerState::instance()->mode();
   if (mode == ServerState::Mode::REDIRECT ||
       mode == ServerState::Mode::TRYAGAIN) {
     ReplicationFeature::setEndpointHeader(&res, mode);
@@ -527,7 +527,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
-  } else if (ServerState::serverMode() == ServerState::Mode::MAINTENANCE) {
+  } else if (ServerState::instance()->isMaintenance()) {
     return rest::ResponseCode::SERVICE_UNAVAILABLE;
   }
 

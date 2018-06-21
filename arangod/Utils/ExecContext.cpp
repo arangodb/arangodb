@@ -61,7 +61,7 @@ ExecContext* ExecContext::create(std::string const& user,
 
 bool ExecContext::canUseDatabase(std::string const& db,
                                  auth::Level requested) const {
-  if (_flags & FLAG_INTERNAL || _database == db) {
+  if (isInternal() || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
   }
@@ -69,20 +69,16 @@ bool ExecContext::canUseDatabase(std::string const& db,
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (af->isActive()) {
-    auth::Level allowed = af->userManager()->databaseAuthLevel(_user, db, true);
-    if (allowed > auth::Level::RO && !ServerState::writeOpsEnabled()) {
-      return false;
-    }
+    auth::Level allowed = af->userManager()->databaseAuthLevel(_user, db);
     return requested <= allowed;
   }
-  
   return true;
 }
 
 /// @brief returns auth level for user
 auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
                                              std::string const& coll) const {
-  if (_flags & FLAG_INTERNAL) {
+  if (isInternal()) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }
@@ -105,13 +101,5 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   
   auth::UserManager* um = af->userManager();
   TRI_ASSERT(um != nullptr);
-  auth::Level lvl = um->collectionAuthLevel(_user, dbname, coll, true);
-  
-  //if (!configured) {
-    static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-    if (lvl > auth::Level::RO && !ServerState::writeOpsEnabled()) {
-      return auth::Level::RO;
-    }
-  //}
-  return lvl;
+  return um->collectionAuthLevel(_user, dbname, coll);
 }
