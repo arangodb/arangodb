@@ -229,10 +229,20 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
     for(auto* dep : oldNode->getDependencies()) {
       newNode->addDependency(dep);
     }
+    LOG_DEVEL << "replacing root node";
     plan->root(newNode,true);
   } else {
+    // replaceNode does not seem to work well with subqueries
+    // if the subqueries root is replaced.
+    // It looks like Subquery node will still point to
+    // the old node.
+
     TRI_ASSERT(oldNode != plan->root());
+    LOG_DEVEL << "replacing " << oldNode->getTypeString();
+    LOG_DEVEL << "with " << newNode->getTypeString();
     plan->replaceNode(oldNode, newNode);
+    TRI_ASSERT(!oldNode->hasDependency());
+    TRI_ASSERT(!oldNode->hasParent());
   }
 }
 
@@ -245,12 +255,13 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::INDEX, true);
 
   if(nodes.size() != 1){
-    LOG_DEVEL << "plan has " << nodes.size() << "!=1 index nodes";
+    //LOG_DEVEL << "plan has " << nodes.size() << "!=1 index nodes";
     return modified;
   }
 
   for(auto* node : nodes){
     LOG_DEVEL << "substitute single document operation INDEX";
+
     if(!depIsSingletonOrConstCalc(node)){
       LOG_DEVEL << "dependency is not singleton or const calculation";
       continue;
@@ -301,6 +312,8 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           )
         );
 
+        LOG_DEVEL << "mod is modification node" << mod->isModificationNode();
+
         if(!parentIsReturnOrConstCalc(mod)){
           LOG_DEVEL << "parents are not calc* return";
           continue;
@@ -339,7 +352,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
   plan->findNodesOfType(nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, true);
 
   if(nodes.size() != 1){
-    LOG_DEVEL << "plan has " << nodes.size() << "!=1 modification nodes";
+    //LOG_DEVEL << "plan has " << nodes.size() << "!=1 modification nodes";
     return modified;
   }
 
@@ -378,10 +391,14 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       }
     }
 
+    LOG_DEVEL_IF(update) << "inVariable id: " << update->name;
+    LOG_DEVEL_IF(keyVar) << "keyVariable id: " << keyVar->name;
+
     ExecutionNode* cursor = node;
     CalculationNode* calc = nullptr;
 
     if(keyVar){
+      LOG_DEVEL << "inspecting keyVar";
       std::unordered_set<Variable const*> keySet;
       keySet.emplace(keyVar);
 
@@ -431,6 +448,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
     }
 
     LOG_DEVEL << mod->collection()->name();
+    LOG_DEVEL_IF(update) << "inputvar " << update->name;
 
     ExecutionNode* singleOperationNode = plan->registerNode(
       new SingleRemoteOperationNode(
@@ -445,11 +463,21 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       )
     );
 
+    LOG_DEVEL << "mod is modification node" << mod->isModificationNode();
     replaceNode(plan, mod, singleOperationNode);
+
     if(calc){
+      LOG_DEVEL << "unlinkNode clac setting var: " << calc->getVariablesSetHere()[0]->name;
       plan->unlinkNode(calc);
     }
     modified = true;
+
+    if(update) {
+      auto setter = plan->getVarSetBy(update->id);
+      LOG_DEVEL_IF(!setter) << "setter not found";
+      LOG_DEVEL_IF(setter) << "setter for " << update->name << " is of type" << setter->getTypeString();
+    }
+
   } // for node : nodes
 
   return modified;
@@ -458,19 +486,25 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
 void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
                                                               std::unique_ptr<ExecutionPlan> plan,
                                                               OptimizerRule const* rule) {
-
-  LOG_DEVEL << "enter singleOperationNode rule";
+  //log_devel << "enter singleoperationnode rule";
   bool modified = false;
-  for(auto const& fun : { &substituteClusterSingleDocumentOperationsIndex
-                        , &substituteClusterSingleDocumentOperationsNoIndex
-                        }
-  ){
-    modified = fun(opt, plan.get(), rule);
-    if(modified){ break; }
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::SUBQUERY, true);
+
+  if (nodes.empty()){ //prevent execution in subqueries
+    for(auto const& fun : { &substituteClusterSingleDocumentOperationsIndex
+                          , &substituteClusterSingleDocumentOperationsNoIndex
+                          }
+    ){
+      modified = fun(opt, plan.get(), rule);
+      if(modified){ break; }
+    }
   }
 
   LOG_DEVEL_IF(modified) << "applied singleOperationNode rule !!!!!!!!!!!!!!!!!";
 
   opt->addPlan(std::move(plan), rule, modified);
-  LOG_DEVEL << "exit singleOperationNode rule";
+  //LOG_DEVEL << "exit singleOperationNode rule";
 }
