@@ -326,7 +326,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
   }
 
   Logger::setRole(roleToString(role)[0]);
-  _role = role;
+  _role.store(role, std::memory_order_release);
   
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
     << roleToString(role) << " and our id is "
@@ -622,24 +622,25 @@ void ServerState::setState(StateEnum state) {
     return;
   }
 
-  if (_role == ROLE_PRIMARY) {
+  auto role = getRole();
+  if (role == ROLE_PRIMARY) {
     result = checkPrimaryState(state);
-  } else if (_role == ROLE_COORDINATOR) {
+  } else if (role == ROLE_COORDINATOR) {
     result = checkCoordinatorState(state);
-  } else if (_role == ROLE_SINGLE) {
+  } else if (role == ROLE_SINGLE) {
     result = true;
   }
 
   if (result) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
-        << "changing state of " << ServerState::roleToString(_role)
+        << "changing state of " << ServerState::roleToString(role)
         << " server from " << ServerState::stateToString(_state) << " to "
         << ServerState::stateToString(state);
 
     _state = state;
   } else {
     LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "invalid state transition for " << ServerState::roleToString(_role)
+        << "invalid state transition for " << ServerState::roleToString(role)
         << " server from " << ServerState::stateToString(_state) << " to "
         << ServerState::stateToString(state);
   }
