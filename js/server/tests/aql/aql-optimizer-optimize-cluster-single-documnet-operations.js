@@ -282,6 +282,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],        
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 6, 3, true, s, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 7, 2, true, setupC1, 0],
       ];
 
       var expectedRules = [
@@ -295,7 +296,9 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
         [ "optimize-cluster-single-document-operations" ],
         [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", 
-          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
+          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", 
+          "optimize-cluster-single-document-operations" ]
 
       ];
 
