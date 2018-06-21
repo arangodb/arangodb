@@ -3,7 +3,7 @@ Starting Manually
 
 An ArangoDB _Active Failover_ setup consists of several running _tasks_ or _processes_. 
 
-This section describes how to start an Active Failover by manually starting all
+This section describes how to start an _Active Failover_ by manually starting all
 the needed processes.
 
 Before continuing, be sure to read the [Architecture](../../Scalability/ActiveFailover/Architecture.md)
