@@ -150,6 +150,8 @@ function optimizerClusterSingleDocumentTestSuite () {
           assertTrue(set[errorCode].hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + JSON.stringify(x) + queryInfo);
           assertEqual(x.errorNum, set[errorCode].code, "match our error code" + JSON.stringify(x) + queryInfo);
         }
+        print(r1)
+        print(r2)
         pruneRevisions(r1);
         pruneRevisions(r2);
         assertEqual(r1.json, r2.json, set);
@@ -206,7 +208,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       FOR doc IN collection FILTER doc._key == fixedValue REMOVE doc IN/INTO collection OPTIONS ... RETURN OLD
 
     */
-
+/*
 
     testRuleFetch : function () {
       var queries = [
@@ -265,10 +267,11 @@ function optimizerClusterSingleDocumentTestSuite () {
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
-
+*/
     testRuleUpdate : function () {
 
       var queries = [
+        /*
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
@@ -278,7 +281,9 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],          
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
+        */
+        [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, true, setupC1, 0],          
         [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
@@ -318,6 +323,7 @@ function optimizerClusterSingleDocumentTestSuite () {
     testRuleReplace : function () {
 
       var queries = [
+        /*
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
@@ -331,7 +337,9 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REPLACE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],        
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],   
+*/     
+        [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 7, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 6, 3, true, setupC1, 0],
@@ -362,7 +370,7 @@ function optimizerClusterSingleDocumentTestSuite () {
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
-
+/*
     testRuleRemove : function () {
       var queries = [
 
@@ -387,6 +395,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
       runTestSet(queries, expectedRules, expectedNodes);
     }
+*/
   };
 }
 jsunity.run(optimizerClusterSingleDocumentTestSuite);
