@@ -134,8 +134,8 @@ function optimizerClusterSingleDocumentTestSuite () {
           assertEqual(0, set[errorCode], "we have no error in the original, but the tests expects an exception: " + queryInfo);
         }
         catch (y) {
-          assertTrue(set[errorCode].hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + queryInfo);
-          assertEqual(y.errorNum, set[errorCode].code, "match other error code - got: " + JSON.stringify(y) + y + queryInfo);
+          assertTrue(set[errorCode].hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + JSON.stringify(y) + queryInfo);
+          assertEqual(y.errorNum, set[errorCode].code, "match other error code - got: " + JSON.stringify(y) + queryInfo);
         }
 
         // Run it again with our rule
@@ -145,7 +145,7 @@ function optimizerClusterSingleDocumentTestSuite () {
           assertEqual(0, set[errorCode], "we have no error in our plan, but the tests expects an exception" + queryInfo);
         }
         catch (x) {
-          assertTrue(set[errorCode].hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + queryInfo);
+          assertTrue(set[errorCode].hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + JSON.stringify(x) + queryInfo);
           assertEqual(x.errorNum, set[errorCode].code, "match our error code" + JSON.stringify(x) + queryInfo);
         }
         pruneRevisions(r1);
@@ -282,6 +282,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],        
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 6, 3, true, s, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 7, 2, true, setupC1, 0],
       ];
 
       var expectedRules = [
@@ -295,7 +296,9 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
         [ "optimize-cluster-single-document-operations" ],
         [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", 
-          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
+          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", 
+          "optimize-cluster-single-document-operations" ]
 
       ];
 
@@ -316,11 +319,13 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
         [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
         [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, setupC1, 0],
       ];
       var expectedRules = [
-        ["remove-data-modification-out-variables",
-         "optimize-cluster-single-document-operations" ]
-      ];
+        ["remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", 
+          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
+     ];
 
       var expectedNodes = [
         ["SingletonNode",
