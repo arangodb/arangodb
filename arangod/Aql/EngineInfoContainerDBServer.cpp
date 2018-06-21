@@ -157,6 +157,13 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:{
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
+
+      // FIXME should we have a separate optimizer rule for that?
+      //
+      // evaluate node volatility before the distribution
+      // can't do it on DB servers since only parts of the plan will be sent
+      viewNode.volatility(true);
+
       _type = ExecutionNode::ENUMERATE_IRESEARCH_VIEW;
       _view = viewNode.view().get();
       break;
