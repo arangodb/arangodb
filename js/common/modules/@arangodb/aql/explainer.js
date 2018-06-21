@@ -1405,13 +1405,26 @@ function processQuery (query, explain) {
         }
         case 'RemoveNode': {
           modificationFlags = node.modificationFlags;
-          collectionVariables[node.inVariable.id] = node.collection;
-          let indexRef = `${variableName(node.inVariable)}`;
+          if (node.hasOwnProperty('inVariable')) {
+            collectionVariables[node.inVariable.id] = node.collection;
+          }
+          let indexRef;
+          let keyCondition;
+          if (node.hasOwnProperty('key')) {
+            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))}}`;
+            indexRef = `${variable(JSON.stringify(node.key))}`;
+          } else if (node.hasOwnProperty('inVariable')) {
+            keyCondition = `${variableName(node.inVariable)}`;
+            indexRef = `${variableName(node.inVariable)}`;
+          } else {
+            keyCondition = "WTFFF?"
+            indexRef = "WTF?";
+          }
           if (node.hasOwnProperty('indexes')) {
             node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           }
           let OLD="";
-          return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          return `${keyword('REMOVE')} ${keyCondition} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         }
       }
