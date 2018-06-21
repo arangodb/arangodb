@@ -70,7 +70,6 @@ function optimizerClusterSingleDocumentTestSuite () {
   }
 
   var setupC2 = function() {
-    print("flush!");
     db._drop(cn2);
     c2 = db._create(cn2, { numberOfShards: 5 });
     c2.save({_key: yeOldeDoc});
@@ -273,16 +272,16 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 0, 1, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 0, 1, false],          
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],          
         [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],
-        
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],        
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 6, 3, true, s, 0],
       ];
 
       var expectedRules = [
@@ -293,13 +292,18 @@ function optimizerClusterSingleDocumentTestSuite () {
           "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [   "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", 
             "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ]
+        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
+        [ "optimize-cluster-single-document-operations" ],
+        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", 
+          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
+
       ];
 
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"]
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
+        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ]
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
