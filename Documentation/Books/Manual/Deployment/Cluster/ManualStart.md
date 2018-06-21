@@ -355,3 +355,29 @@ this example) to port 8530 inside the container. Within the command we are telli
 _arangod_ how it can be reached from the outside `--cluster.my-address tcp://192.168.1.1:10000`.
 This information will be forwarded to the _Agency_ so that the other processes in
 your Cluster can see how this particular _DBServer_ may be reached.
+
+### Authentication
+
+To start the official Docker container you will have to decide on an authentication
+method, otherwise the container will not start.
+
+Provide one of the arguments to Docker as an environment variable. There are three
+options:
+
+1. ARANGO_NO_AUTH=1
+
+   Disable authentication completely. Useful for local testing or for operating
+   in a trusted network (without a public interface).
+        
+2. ARANGO_ROOT_PASSWORD=password
+
+   Start ArangoDB with the given password for root.
+        
+3. ARANGO_RANDOM_ROOT_PASSWORD=1
+
+   Let ArangoDB generate a random root password.
+       
+For an in depth guide about Docker and ArangoDB please check the official documentation:
+https://hub.docker.com/r/arangodb/arangodb/ . Note that we are using the image
+`arangodb/arangodb` here which is always the most current one. There is also the
+"official" one called `arangodb` whose documentation is here: https://hub.docker.com/_/arangodb/
