@@ -137,7 +137,7 @@ Index* hasSingleIndexHandle(ExecutionNode* node){
 
 Index* hasSingleIndexHandle(ExecutionNode* node, Index::IndexType type){
   auto* idx = hasSingleIndexHandle(node);
-  if (idx->type() == type ){
+  if (idx && idx->type() == type ){
     return idx;
   }
   return nullptr;
