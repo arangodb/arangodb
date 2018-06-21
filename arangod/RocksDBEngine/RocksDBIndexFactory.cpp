@@ -672,11 +672,19 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
           to.close();
 
           auto idxFrom = prepareIndexFromSlice(from.slice(), false, col, true);
+
+          if (!idxFrom) {
+            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              << "error creating index from definition '" << from.slice().toString() << "'";
+
+            continue;
+          }
+
           auto idxTo = prepareIndexFromSlice(to.slice(), false, col, true);
 
-          if (!idxFrom || !idxTo) {
+          if (!idxTo) {
             LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-              << "error creating index from definition '" << indexesSlice.toString() << "'";
+              << "error creating index from definition '" << to.slice().toString() << "'";
 
             continue;
           }
@@ -708,7 +716,7 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
 
         if (!idx) {
           LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-            << "error creating index from definition '" << indexesSlice.toString() << "'";
+            << "error creating index from definition '" << b.slice().toString() << "'";
 
           continue;
         }
@@ -723,7 +731,7 @@ void RocksDBIndexFactory::prepareIndexes(LogicalCollection* col, VPackSlice cons
 
     if (!idx) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-        << "error creating index from definition '" << indexesSlice.toString() << "'";
+        << "error creating index from definition '" << v.toString() << "'";
 
       continue;
     }
