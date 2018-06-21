@@ -152,6 +152,13 @@ void RestAdminServerHandler::handleMode() {
   if (requestType == rest::RequestType::GET) {
     writeModeResult(ServerState::instance()->readOnly());
   } else if (requestType == rest::RequestType::PUT) {
+    
+    ExecContext const* exec = ExecContext::CURRENT;
+    if (exec != nullptr && !exec->isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+      return;
+    }
+    
     bool parseSuccess = false;
     VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
