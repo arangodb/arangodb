@@ -31,7 +31,7 @@ var db = require("@arangodb").db;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function iResearchFeatureAqlTestSuite () {
+function IResearchFeatureDDLTestSuite () {
   return {
     setUpAll : function () {
     },
@@ -44,8 +44,89 @@ function iResearchFeatureAqlTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchFeature tests
+/// @brief IResearchFeatureDDLTestSuite tests
 ////////////////////////////////////////////////////////////////////////////////
+
+    testStressAddRemoveView : function() {
+      db._dropView("TestView");
+      for (i = 0; i < 100; ++i) {
+        db._createView("TestView", "arangosearch", {});
+        assertTrue(null != db._view("TestView"));
+        db._dropView("TestView")
+        assertTrue(null == db._view("TestView"));
+      }
+    },
+
+    testStressAddRemoveViewWithLink : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+
+      var addLink = { links: { "TestCollection0": {} } };
+
+      for (i = 0; i < 100; ++i) {
+        var view = db._createView("TestView", "arangosearch", {});
+        view.properties(addLink, true); // partial update
+        properties = view.properties();
+        assertTrue(Array === properties.collections.constructor);
+        assertEqual(1, properties.collections.length);
+        var indexes = db.TestCollection0.getIndexes();
+        assertEqual(2, indexes.length);
+        var link = indexes[1];
+        assertEqual("primary", indexes[0].type);
+        assertNotEqual(null, link)
+        assertEqual("arangosearch", link.type)
+        db._dropView("TestView")
+        assertEqual(null, db._view("TestView"))
+        assertEqual(1, db.TestCollection0.getIndexes().length);
+      }
+    },
+
+    testStressAddRemoveLink : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+      db._create("TestCollection0");
+      var view = db._createView("TestView", "arangosearch", {});
+
+      var addLink = { links: { "TestCollection0": {} } };
+      var removeLink = { links: { "TestCollection0": null } };
+
+      for (i = 0; i < 100; ++i) {
+        view.properties(addLink, true); // partial update
+        properties = view.properties();
+        assertTrue(Array === properties.collections.constructor);
+        assertEqual(1, properties.collections.length);
+        var indexes = db.TestCollection0.getIndexes();
+        assertEqual(2, indexes.length);
+        var link = indexes[1];
+        assertEqual("primary", indexes[0].type);
+        assertNotEqual(null, link)
+        assertEqual("arangosearch", link.type)
+        view.properties(removeLink, false);
+        properties = view.properties();
+        assertTrue(Array === properties.collections.constructor);
+        assertEqual(0, properties.collections.length);
+        assertEqual(1, db.TestCollection0.getIndexes().length);
+      }
+    },
+
+//FIXME
+//    testRemoveLinkViaCollection : function() {
+//      db._drop("TestCollection0");
+//      db._dropView("TestView");
+//
+//      var view = db._createView("TestView", "arangosearch", {});
+//      db._create("TestCollection0");
+//      var addLink = { links: { "TestCollection0": {} } };
+//      view.properties(addLink, true); // partial update
+//      properties = view.properties();
+//      assertTrue(Array === properties.collections.constructor);
+//      assertEqual(1, properties.collections.length);
+//      db._drop("TestCollection0");
+//      properties = view.properties();
+//      assertTrue(Array === properties.collections.constructor);
+//      assertEqual(0, properties.collections.length);
+//    },
 
     testViewDDL: function() {
       // collections
@@ -686,6 +767,6 @@ function iResearchFeatureAqlTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(iResearchFeatureAqlTestSuite);
+jsunity.run(IResearchFeatureDDLTestSuite);
 
 return jsunity.done();
