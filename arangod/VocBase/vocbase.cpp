@@ -118,25 +118,15 @@ namespace {
       // recursive locking of the same instance is not yet supported (create a new instance instead)
       TRI_ASSERT(_update != owned);
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "LOCK ATTEMPT " << std::this_thread::get_id();
-
       if (std::this_thread::get_id() != _owner.load()) { // not recursive
         _locker.lock();
         _owner.store(std::this_thread::get_id());
         _update = owned;
-//      } else if (_locker.tryLock()) {
-//        _owner.store(std::this_thread::get_id());
-//        _update = owned;
       }
-
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "LOCKED " << std::this_thread::get_id();
     }
 
     void unlock() {
-      _locker.unlock();
       _update(*this);
-
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "UNLOCKED " << std::this_thread::get_id();
     }
 
    private:
@@ -148,6 +138,7 @@ namespace {
     static void owned(RecursiveWriteLocker& locker) {
       static std::thread::id unowned;
       locker._owner.store(unowned);
+      locker._locker.unlock();
       locker._update = noop;
     }
   };
