@@ -34,7 +34,6 @@ var errors = internal.errors;
 var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
-var errors = internal.errors;
 const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,7 +57,7 @@ function optimizerClusterSingleDocumentTestSuite () {
   var cn3 = "UnitTestsCollectionModify";
   var c3;
 
-  var s = function() {}
+  var s = function() {};
 
   var setupC1 = function() {
     db._drop(cn1);
@@ -67,13 +66,13 @@ function optimizerClusterSingleDocumentTestSuite () {
     for (var i = 0; i < 20; ++i) {
       c1.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
     }
-  }
+  };
 
   var setupC2 = function() {
     db._drop(cn2);
     c2 = db._create(cn2, { numberOfShards: 5 });
     c2.save({_key: yeOldeDoc});
-  }
+  };
 
   var setupC3 = function() {
     db._drop(cn3);
@@ -82,7 +81,8 @@ function optimizerClusterSingleDocumentTestSuite () {
     for (var i = 0; i < 20; ++i) {
       c3.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
     }
-  }
+  };
+
   var pruneRevisions = function(obj) {
     if (typeof obj instanceof Array) {
       obj.forEach(function (doc) { pruneRevisions(doc);});
@@ -109,11 +109,11 @@ function optimizerClusterSingleDocumentTestSuite () {
     let count = 0;
 
     const query = 0;
-    const expectedRulesField = 1
-    const expectedNodesField = 2
-    const doFullTest = 3 // Do advanced checking
-    const setupFunction = 4 // this resets the setup
-    const errorCode = 5 // expected error code
+    const expectedRulesField = 1;
+    const expectedNodesField = 2;
+    const doFullTest = 3; // Do advanced checking
+    const setupFunction = 4; // this resets the setup
+    const errorCode = 5; // expected error code
 
 
     sets.forEach(function(set) {
@@ -150,8 +150,6 @@ function optimizerClusterSingleDocumentTestSuite () {
           assertTrue(set[errorCode].hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + JSON.stringify(x) + queryInfo);
           assertEqual(x.errorNum, set[errorCode].code, "match our error code" + JSON.stringify(x) + queryInfo);
         }
-        print(r1)
-        print(r2)
         pruneRevisions(r1);
         pruneRevisions(r2);
         assertEqual(r1.json, r2.json, set);
@@ -331,6 +329,7 @@ function optimizerClusterSingleDocumentTestSuite () {
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
+    
     testRuleRemove : function () {
       var queries = [
 
