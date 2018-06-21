@@ -250,7 +250,8 @@ function setReadOnly(endpoint, ro) {
     auth: {
       bearer: jwtRoot,
     },
-    json: {"mode" : str}
+    body: {"mode" : str},
+    json: true
   });
   print(JSON.stringify(res));
 
