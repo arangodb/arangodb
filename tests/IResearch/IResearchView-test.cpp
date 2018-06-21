@@ -2504,12 +2504,12 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     auto* state = trx.state();
-    viewImpl->apply(trx);
-    state->updateStatus(arangodb::transaction::Status::RUNNING);
+    CHECK((true == viewImpl->apply(trx)));
+    CHECK((true == trx.begin().ok()));
     auto* snapshot = viewImpl->snapshot(*state);
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
-    state->updateStatus(arangodb::transaction::Status::ABORTED); // prevent assertion ind destructor
+    CHECK((true == state->abortTransaction(&trx).ok())); // prevent assertion in destructor
   }
 
   // old snapshot in TransactionState (force == true, waitForSync = false)
@@ -2522,12 +2522,12 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     auto* state = trx.state();
-    viewImpl->apply(trx);
-    state->updateStatus(arangodb::transaction::Status::RUNNING);
+    CHECK((true == viewImpl->apply(trx)));
+    CHECK((true == trx.begin().ok()));
     auto* snapshot = viewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
-    state->updateStatus(arangodb::transaction::Status::ABORTED); // prevent assertion ind destructor
+    CHECK((true == state->abortTransaction(&trx).ok())); // prevent assertion in destructor
   }
 
   // old snapshot in TransactionState (force == true, waitForSync = false during updateStatus(), true during snapshot())
@@ -2540,13 +2540,13 @@ SECTION("test_transaction_snapshot") {
       arangodb::transaction::Options()
     );
     auto* state = trx.state();
-    viewImpl->apply(trx);
-    state->updateStatus(arangodb::transaction::Status::RUNNING);
+    CHECK((true == viewImpl->apply(trx)));
+    CHECK((true == trx.begin().ok()));
     state->waitForSync(true);
     auto* snapshot = viewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
     CHECK((1 == snapshot->live_docs_count()));
-    state->updateStatus(arangodb::transaction::Status::ABORTED); // prevent assertion ind destructor
+    CHECK((true == state->abortTransaction(&trx).ok())); // prevent assertion in destructor
   }
 
   // old snapshot in TransactionState (force == true, waitForSync = true during updateStatus(), false during snapshot())
@@ -2560,13 +2560,13 @@ SECTION("test_transaction_snapshot") {
     );
     auto* state = trx.state();
     state->waitForSync(true);
-    viewImpl->apply(trx);
-    state->updateStatus(arangodb::transaction::Status::RUNNING);
+    CHECK((true == viewImpl->apply(trx)));
+    CHECK((true == trx.begin().ok()));
     state->waitForSync(false);
     auto* snapshot = viewImpl->snapshot(*state, true);
     CHECK((nullptr != snapshot));
     CHECK((2 == snapshot->live_docs_count()));
-    state->updateStatus(arangodb::transaction::Status::ABORTED); // prevent assertion ind destructor
+    CHECK((true == state->abortTransaction(&trx).ok())); // prevent assertion in destructor
   }
 }
 

@@ -233,14 +233,17 @@ IResearchViewDBServer::IResearchViewDBServer(
   auto* viewPtr = this;
 
   // initialize transaction read callback
-  _trxReadCallback = [viewPtr](arangodb::TransactionState& state)->void {
-    switch(state.status()) {
-     case arangodb::transaction::Status::RUNNING:
-      viewPtr->snapshot(state, true);
-      return;
-     default:
-      {} // NOOP
+  _trxReadCallback = [viewPtr](
+      arangodb::transaction::Methods& trx,
+      arangodb::transaction::Status status
+  )->void {
+    auto* state = trx.state();
+
+    if (!state || arangodb::transaction::Status::RUNNING != status) {
+      return; // NOOP
     }
+
+    viewPtr->snapshot(*state, true);
   };
 }
 
@@ -308,15 +311,8 @@ arangodb::Result IResearchViewDBServer::appendVelocyPack(
 }
 
 bool IResearchViewDBServer::apply(arangodb::transaction::Methods& trx) {
-  auto* state = trx.state();
-
-  if (!state) {
-    return false;
-  }
-
-  state->addStatusChangeCallback(_trxReadCallback);
-
-  return true;
+  // called from IResearchView when this view is added to a transaction
+  return trx.addStatusChangeCallback(&_trxReadCallback); // add shapshot
 }
 
 arangodb::Result IResearchViewDBServer::drop() {

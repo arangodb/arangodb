@@ -86,9 +86,6 @@ class TransactionState {
   );
   virtual ~TransactionState();
 
-  /// @brief add a callback to be called for state change events
-  void addStatusChangeCallback(StatusChangeCallback const& callback);
-
   /// @return a cookie associated with the specified key, nullptr if none
   Cookie* cookie(void const* key) noexcept;
 
@@ -239,8 +236,6 @@ class TransactionState {
  private:
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
-  /// functrs to call for status change (pointer to allow for use of std::vector)
-  std::vector<StatusChangeCallback const*> _statusChangeCallbacks;
 };
 
 }

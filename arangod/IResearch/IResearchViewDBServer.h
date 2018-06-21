@@ -27,6 +27,8 @@
 #include "utils/async_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/utf8_path.hpp"
+
+#include "Transaction/Status.h"
 #include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
@@ -123,7 +125,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   arangodb::velocypack::Builder _meta; // the view definition
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
   irs::utf8_path const _persistedPath;
-  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,
