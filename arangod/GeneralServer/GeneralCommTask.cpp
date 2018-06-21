@@ -172,7 +172,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
                      "not authorized to execute this request");
     return RequestFlow::Abort;
   }
-  
+
   if (code == rest::ResponseCode::OK && req.authenticated()) {
     // check for an HLC time stamp only with auth
     std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
@@ -229,6 +229,13 @@ void GeneralCommTask::executeRequest(
         << "no handler is known, giving up";
     addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
                       VPackBuffer<uint8_t>());
+    return;
+  }
+
+  // forward to correct server if necessary
+  if (handler->shouldForwardRequest()) {
+    handler->forwardRequest();
+    addResponse(*handler->response(), handler->stealStatistics());
     return;
   }
 

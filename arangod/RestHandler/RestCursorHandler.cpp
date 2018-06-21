@@ -377,7 +377,7 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 
 void RestCursorHandler::createQueryCursor() {
   if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, 600);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 
@@ -397,7 +397,7 @@ void RestCursorHandler::createQueryCursor() {
       // error message generated in parseVPackBody
       return;
     }
-    
+
     // tell RestCursorHandler::finalizeExecute that the request
     // could be parsed successfully and that it may look at it
     _isValidForFinalize = true;
@@ -483,4 +483,35 @@ void RestCursorHandler::deleteQueryCursor() {
   builder.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, builder.slice());
+}
+
+/// @brief whether the request should be forwarded to a different server
+bool RestCursorHandler::shouldForwardRequest() {
+  rest::RequestType const type = _request->requestType();
+  if (type != rest::RequestType::PUT && type != rest::RequestType::DELETE_REQ) {
+    return false;
+  }
+
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return false;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+
+  return (sourceServer != ServerState::instance()->getShortId());
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestCursorHandler::forwardingTarget() {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (suffixes.size() < 1) {
+    return false;
+  }
+
+  uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
+  uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+  LOG_TOPIC(ERR, Logger::FIXME) << "forwarding target is " << sourceServer;
+  return sourceServer;
 }

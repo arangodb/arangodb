@@ -31,13 +31,13 @@
 namespace arangodb {
 class GeneralRequest;
 class RequestStatistics;
-  
+
 enum class RestStatus { DONE, WAITING, FAIL};
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
   friend class GeneralCommTask;
-  
+
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
 
@@ -65,7 +65,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics* stealStatistics() {
     return _statistics.exchange(nullptr);
   }
-  
+
   void setStatistics(RequestStatistics* stat);
 
   /// Execute the rest handler state machine
@@ -73,14 +73,17 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     TRI_ASSERT(_state == HandlerState::PAUSED);
     runHandlerStateMachine();
   }
-  
+
   /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> cb) {
     TRI_ASSERT(_state == HandlerState::PREPARE);
     _callback = std::move(cb);
     runHandlerStateMachine();
   }
-  
+
+  /// @brief forwards the request to the appropriate server
+  void forwardRequest();
+
  public:
   /// @brief rest handler name
   virtual char const* name() const = 0;
@@ -102,19 +105,27 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   virtual void handleError(basics::Exception const&) = 0;
 
+  /// @brief whether the request should be forwarded to a different server
+  virtual bool shouldForwardRequest() { return false; }
+
  protected:
-  
+
+  /// @brief returns the short id of the server which should handle this request
+  virtual uint32_t forwardingTarget() { return 0; }
+
   void resetResponse(rest::ResponseCode);
-  
+
  private:
-  
+
   enum class HandlerState { PREPARE, EXECUTE, PAUSED, FINALIZE, DONE, FAILED };
-  
+
   void runHandlerStateMachine();
-  
+
   int prepareEngine();
   int executeEngine();
   int finalizeEngine();
+
+  void generateError(rest::ResponseCode, int, std::string const&);
 
  protected:
   uint64_t const _handlerId;
