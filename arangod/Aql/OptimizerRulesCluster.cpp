@@ -499,7 +499,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
 
   LOG_DEVEL_IF(modified) << "applied singleOperationNode rule !!!!!!!!!!!!!!!!!";
 
-  LOG_DEVEL << plan->toVelocyPack(plan->getAst(),true)->toJson();
-  //opt->addPlan(std::move(plan), rule, modified);
+  //LOG_DEVEL << plan->toVelocyPack(plan->getAst(),true)->toJson();
+  opt->addPlan(std::move(plan), rule, modified);
   //LOG_DEVEL << "exit singleOperationNode rule";
 }
