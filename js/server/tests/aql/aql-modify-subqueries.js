@@ -35,7 +35,7 @@ var helper = require("@arangodb/aql-helper");
 var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 var assertQueryError = helper.assertQueryError;
 const isCluster = require('@arangodb/cluster').isCluster();
-const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } }
+const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } };
 
 var sanitizeStats = function (stats) {
   // remove these members from the stats because they don't matter
@@ -92,7 +92,7 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "UPDATE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2 } IN " + cn;
-      let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
+      let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
       let plan = AQL_EXPLAIN(query,{},disableSingleDocOp).plan;
       assertFalse(hasDistributeNode(plan.nodes));
@@ -124,7 +124,7 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { id: 'test', value: 2 } IN " + cn;
-      let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
+      let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
       let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
 
       assertFalse(hasDistributeNode(plan.nodes));
@@ -153,7 +153,7 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", id: 'test" + i + "' } IN " + cn;
-        let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
           let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
@@ -179,7 +179,7 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", a: { b: 'test" + i + "' } } IN " + cn;
-        let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
           let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
@@ -205,7 +205,7 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", _key: 'test" + i + "' } IN " + cn;
-        let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
           let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
@@ -237,7 +237,7 @@ function ahuacatlModifySuite () {
       for (let i = 0; i < 30; ++i) {
         let expected = { writesExecuted: 1, writesIgnored: 0 };
         let query = "INSERT { value: " + i + ", _key: NOOPT(CONCAT('test', '" + i + "')) } IN " + cn;
-        let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
+        let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
 
         if (isCluster) {
           let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
@@ -398,7 +398,7 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " FILTER d._key == 'test93' REMOVE d IN " + cn;
-      let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
+      let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
       if (isCluster) {
         let plan = AQL_EXPLAIN(query, {}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
@@ -420,7 +420,7 @@ function ahuacatlModifySuite () {
 
       let expected = { writesExecuted: 1, writesIgnored: 0 };
       let query = "FOR d IN " + cn + " FILTER d._key == 'test93' REMOVE d IN " + cn + " RETURN OLD";
-      let actual = AQL_EXECUTE(query, {}, disableSingleDocOp);
+      let actual = getModifyQueryResultsRaw(query, {}, disableSingleDocOp);
       if (isCluster) {
         let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
         assertFalse(hasDistributeNode(plan.nodes));
