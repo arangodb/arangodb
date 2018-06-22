@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE */
+/*global assertEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -236,7 +236,7 @@ function ahuacatlRemoveSuite () {
 
     testRemoveIgnore1 : function () {
       var expected = { writesExecuted: 0, writesIgnored: 100 };
-      var actual = getModifyQueryResults("FOR d IN @@cn REMOVE 'foo' IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
+      var actual = getModifyQueryResults("FOR d IN @@cn REMOVE 'foo' IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 }, disableSingleDocOp);
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
@@ -340,7 +340,7 @@ function ahuacatlRemoveSuite () {
 
     testSingle : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
-      var actual = getModifyQueryResults("REMOVE 'test0' IN @@cn", { "@cn": cn1 });
+      var actual = getModifyQueryResults("REMOVE 'test0' IN @@cn", { "@cn": cn1 }, disableSingleDocOp);
 
       assertEqual(99, c1.count());
       assertEqual(expected, sanitizeStats(actual));
@@ -886,7 +886,7 @@ function ahuacatlInsertSuite () {
 
     testSingle : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
-      var actual = getModifyQueryResults("INSERT { value: 'foobar', _key: 'test' } IN @@cn", { "@cn": cn1 });
+      var actual = getModifyQueryResults("INSERT { value: 'foobar', _key: 'test' } IN @@cn", { "@cn": cn1 }, disableSingleDocOp);
 
       assertEqual(101, c1.count());
       assertEqual("foobar", c1.document("test").value);
@@ -1282,7 +1282,7 @@ function ahuacatlUpdateSuite () {
 
     testSingle : function () {
       var expected = { writesExecuted: 1, writesIgnored: 0 };
-      var actual = getModifyQueryResults("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn", { "@cn": cn1 });
+      var actual = getModifyQueryResults("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn", { "@cn": cn1 }, disableSingleDocOp);
 
       assertEqual("foobar", c1.document("test17").value);
       assertEqual(expected, sanitizeStats(actual));

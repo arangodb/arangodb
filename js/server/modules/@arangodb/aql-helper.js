@@ -1,5 +1,5 @@
 /* jshint strict: false */
-/* global assertTrue, assertFalse, assertEqual, fail, 
+/* global assertTrue, assertFalse, assertEqual, fail, print,
   AQL_EXECUTE, AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -94,8 +94,8 @@ function getQueryExplanation (query, bindVars) {
 // / @brief return the results of a modify-query
 // //////////////////////////////////////////////////////////////////////////////
 
-function getModifyQueryResults (query, bindVars) {
-  var queryResult = AQL_EXECUTE(query, bindVars);
+function getModifyQueryResults (query, bindVars, options = {}) {
+  var queryResult = AQL_EXECUTE(query, bindVars, options);
 
   return queryResult.stats;
 }
@@ -104,8 +104,8 @@ function getModifyQueryResults (query, bindVars) {
 // / @brief return the results of a modify-query
 // //////////////////////////////////////////////////////////////////////////////
 
-function getModifyQueryResultsRaw (query, bindVars) {
-  var queryResult = AQL_EXECUTE(query, bindVars);
+function getModifyQueryResultsRaw (query, bindVars, options = {}) {
+  var queryResult = AQL_EXECUTE(query, bindVars, options);
 
   return queryResult;
 }
@@ -114,11 +114,18 @@ function getModifyQueryResultsRaw (query, bindVars) {
 // / @brief return the results of a query, version
 // //////////////////////////////////////////////////////////////////////////////
 
-function getRawQueryResults (query, bindVars) {
-  var queryResult = AQL_EXECUTE(query, bindVars, {
-    count: true,
-    batchSize: 3000
-  });
+function getRawQueryResults (query, bindVars, options = {}) {
+  print("##running query #####################################");
+  print(query);
+  print("bindVars:");
+  print(bindVars);
+  print("options:");
+  print(options);
+  var finalOptions = Object.assign({ count: true, batchSize: 3000 }, options);
+  print("finalOptions:");
+  print(finalOptions);
+  print("#####################################################");
+  var queryResult = AQL_EXECUTE(query, bindVars, finalOptions);
   return queryResult.json;
 }
 
@@ -126,8 +133,11 @@ function getRawQueryResults (query, bindVars) {
 // / @brief return the results of a query in a normalized way
 // //////////////////////////////////////////////////////////////////////////////
 
-function getQueryResults (query, bindVars, recursive) {
-  var result = getRawQueryResults(query, bindVars);
+function getQueryResults (query, bindVars, recursive, options = {}) {
+  var result = getRawQueryResults(query, bindVars, options);
+  print("#####################################################");
+  print(result);
+  print("#####################################################");
 
   if (Array.isArray(result)) {
     result = result.map(function (row) {
@@ -227,11 +237,14 @@ function isEqual (lhs, rhs) {
 // / @brief assert a specific error code when running a query
 // //////////////////////////////////////////////////////////////////////////////
 
-function assertQueryError (errorCode, query, bindVars) {
+function assertQueryError (errorCode, query, bindVars, options = {}) {
   try {
-    getQueryResults(query, bindVars);
+    getQueryResults(query, bindVars, options);
     fail();
   } catch (e) {
+    print("exception###########################################")
+    print(e)
+    print("#####################################################")
     assertFalse(e === "fail", "no exception thrown by query");
     assertTrue(e.errorNum !== undefined, 'unexpected error format while calling [' + query + ']');
     assertEqual(errorCode, e.errorNum, 'unexpected error code (' + e.errorMessage +

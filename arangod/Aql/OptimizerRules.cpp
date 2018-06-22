@@ -141,8 +141,6 @@ std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* nod
     return std::string();
   }
 
-  LOG_DEVEL << "node type in getSingleShardId " << node->getTypeString();
-
   TRI_ASSERT(node->getType() == EN::INDEX ||
              node->getType() == EN::INSERT ||
              node->getType() == EN::UPDATE ||
@@ -152,16 +150,13 @@ std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* nod
   Variable const* inputVariable = nullptr;
 
   if (node->getType() == EN::INDEX) {
-    LOG_DEVEL << "indexNode 1";
     inputVariable = node->getVariablesSetHere()[0];
   } else {
     std::vector<Variable const*> v = node->getVariablesUsedHere();
     if (v.size() > 1) {
       // If there is a key variable:
-      LOG_DEVEL << "index 1";
       inputVariable = v[1];
     } else {
-      LOG_DEVEL << "index 0";
       inputVariable = v[0];
     }
   }
@@ -172,7 +167,6 @@ std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* nod
   auto setter = plan->getVarSetBy(inputVariable->id);
 
   if (setter == nullptr) {
-    LOG_DEVEL << "variable " << inputVariable->name;
     // oops!
     TRI_ASSERT(false);
     return std::string();

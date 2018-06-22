@@ -407,13 +407,13 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   , _options(options)
 {
   //LOG_DEVEL << "Creating SingleRemoteOperationNode for "
-            << ExecutionNode::getTypeString(_mode)
-            << std::boolalpha << " -"
-            << " replaceIndexNode " << !! _replaceIndexNode
-            << " in " << !!_inVariable
-            << " out " << !!_outVariable
-            << " OLD " << !!_outVariableOld
-            << " NEW " << !!_outVariableNew;
+  //          << ExecutionNode::getTypeString(_mode)
+  //          << std::boolalpha << " -"
+  //          << " replaceIndexNode " << !! _replaceIndexNode
+  //          << " in " << !!_inVariable
+  //          << " out " << !!_outVariable
+  //          << " OLD " << !!_outVariableOld
+  //          << " NEW " << !!_outVariableNew;
 
   if (_mode == NodeType::INDEX) { //select
     TRI_ASSERT(!_key.empty());

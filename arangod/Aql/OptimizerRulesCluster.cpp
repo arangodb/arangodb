@@ -285,8 +285,8 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         auto const& vec = mod->getVariablesUsedHere();
 
         //LOG_DEVEL << "optimize modification node of type: "
-                  << ExecutionNode::getTypeString(parentType)
-                  << "  " << vec.size();
+        //          << ExecutionNode::getTypeString(parentType)
+        //          << "  " << vec.size();
 
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
@@ -399,8 +399,8 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
     auto const& vec = mod->getVariablesUsedHere();
 
     //LOG_DEVEL << "optimize modification node of type: "
-              << ExecutionNode::getTypeString(depType)
-              << "  " << vec.size();
+    //          << ExecutionNode::getTypeString(depType)
+    //          << "  " << vec.size();
 
     if ( depType == EN::REMOVE) {
       keyVar = vec.front();
