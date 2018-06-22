@@ -809,8 +809,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
                                           VPackSlice const querySlice) {
   auto self = shared_from_this();
   query->setContinueHandler([this, self]() {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Posted continuation on Scheduler";
     continueHandlerExecution();
   });
   bool found;
