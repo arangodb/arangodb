@@ -35,17 +35,24 @@ var db = require("@arangodb").db;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function iResearchAqlTestSuite () {
+function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
   var c;
   var v;
+
+  // provided arguments
+  var args = {
+    numberOfShards: numberOfShards, 
+    replicationFactor: replicationFactor 
+  };
+  console.info("Test suite arguments: " + JSON.stringify(args));
 
   return {
     setUp : function () {
       db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", args);
 
       db._drop("AnotherUnitTestsCollection");
-      var ac = db._create("AnotherUnitTestsCollection");
+      var ac = db._create("AnotherUnitTestsCollection", args);
 
       db._dropView("UnitTestsView");
       v = db._createView("UnitTestsView", "arangosearch", {});
@@ -88,53 +95,6 @@ function iResearchAqlTestSuite () {
       v.drop();
       db._drop("UnitTestsCollection");
       db._drop("AnotherUnitTestsCollection");
-    },
-
-    testTransactionRegistration : function () {
-      // read lock
-      var result = db._executeTransaction({
-        collections: {
-          allowImplicit: false,
-          read: [ v.name() ]
-        },
-        action: function () {
-          var db = require("@arangodb").db;
-          var c = db._collection("UnitTestsCollection");
-          assertEqual(1, c.document('foo').xyz);
-          return c.toArray().length;
-        }
-      });
-      assertEqual(28, result);
-
-      // write lock
-      result = db._executeTransaction({
-        collections: {
-          allowImplicit: false,
-          write: [ v.name() ]
-        },
-        action: function () {
-          var db = require("@arangodb").db;
-          var c = db._collection("UnitTestsCollection");
-          c.save({ _key: "bar", xyz: 2 });
-          return c.toArray().length;
-        }
-      });
-      assertEqual(29, result);
-
-      // exclusive lock
-      result = db._executeTransaction({
-        collections: {
-          allowImplicit: false,
-          exclusive: [ v.name() ]
-        },
-        action: function () {
-          var db = require("@arangodb").db;
-          var c = db._collection("UnitTestsCollection");
-          c.save({ _key: "baz", xyz: 3 });
-          return c.toArray().length;
-        }
-      });
-      assertEqual(30, result);
     },
 
     testAttributeEqualityFilter : function () {
@@ -445,7 +405,7 @@ function iResearchAqlTestSuite () {
         assertEqual(doc.c, res.c);
       });
     },
-
+/*
     testViewInInnerLoopSortByTFIDF_BM25_Attribute : function() {
       var expected = [];
       expected.push({ a: "baz", b: "foo", c: 1 });
@@ -469,6 +429,7 @@ function iResearchAqlTestSuite () {
         assertEqual(doc.c, res.c);
       });
     },
+*/
   };
 }
 
@@ -476,6 +437,24 @@ function iResearchAqlTestSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(iResearchAqlTestSuite);
+jsunity.run(function IResearchAqlTestSuite_s1_r1() {
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 })
+});
+
+jsunity.run(function IResearchAqlTestSuite_s4_r1() {
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 })
+});
+
+/*
+
+jsunity.run(function IResearchAqlTestSuite_s1_r2() {
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 2 })
+});
+
+jsunity.run(function IResearchAqlTestSuite_s4_r3() {
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 3 })
+});
+
+*/
 
 return jsunity.done();

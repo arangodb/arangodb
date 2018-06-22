@@ -240,12 +240,14 @@ void ClusterIndexFactory::prepareIndexes(
     }
 
     auto idx = prepareIndexFromSlice(v, false, col, true);
+
     if (!idx) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-          << "error creating index from definition '" << indexesSlice.toString()
-          << "'";
+        << "error creating index from definition '" << v.toString() << "'";
+
       continue;
     }
+
     indexes.emplace_back(std::move(idx));
   }
 }
