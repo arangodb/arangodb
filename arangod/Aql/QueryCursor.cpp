@@ -154,8 +154,6 @@ QueryStreamCursor::QueryStreamCursor(
       _guard(vocbase),
       _queryString(query) {
   TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
-  auto prevLockHeaders = CollectionLockState::_noLockHeaders;
-  TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
   _query = std::make_unique<Query>(
     false,
@@ -167,19 +165,10 @@ QueryStreamCursor::QueryStreamCursor(
   );
   _query->prepare(QueryRegistryFeature::QUERY_REGISTRY, aql::Query::DontCache);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
-
-  // If we have set _noLockHeaders, we need to unset it:
-  if (CollectionLockState::_noLockHeaders != nullptr &&
-      CollectionLockState::_noLockHeaders == _query->engine()->lockedShards()) {
-    CollectionLockState::_noLockHeaders = nullptr;
-  }
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
   if (_query) { // cursor is canceled or timed-out
-    auto prevLockHeaders = CollectionLockState::_noLockHeaders;
-    CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
-    TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
     /*QueryResult result;
     _query->finalize(result);*/
     // Query destructor will  cleanup plan and abort transaction
@@ -189,11 +178,6 @@ QueryStreamCursor::~QueryStreamCursor() {
 
 Result QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
-  auto prevLockHeaders = CollectionLockState::_noLockHeaders;
-  // If we had set _noLockHeaders, we need to reset it:
-  CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
-  TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
-
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
                                     << _queryString.substr(1024) << "'";
 

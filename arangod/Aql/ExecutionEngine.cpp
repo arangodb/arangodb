@@ -181,7 +181,6 @@ ExecutionEngine::ExecutionEngine(Query* query)
       _resultRegister(0),
       _initializeCursorCalled(false),
       _wasShutdown(false),
-      _previouslyLockedShards(nullptr),
       _lockedShards(nullptr) {
   _blocks.reserve(8);
 }
@@ -488,17 +487,6 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 int ExecutionEngine::shutdown(int errorCode) {
   int res = TRI_ERROR_NO_ERROR;
   if (_root != nullptr && !_wasShutdown) {
-    // Take care of locking prevention measures in the cluster:
-    if (_lockedShards != nullptr) {
-      if (CollectionLockState::_noLockHeaders == _lockedShards) {
-        CollectionLockState::_noLockHeaders = _previouslyLockedShards;
-      }
-
-      delete _lockedShards;
-      _lockedShards = nullptr;
-      _previouslyLockedShards = nullptr;
-    }
-
     res = _root->shutdown(errorCode);
 
     // prevent a duplicate shutdown
@@ -533,6 +521,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     if (isCoordinator) {
       try {
         std::unordered_set<std::string> lockedShards;
+        TRI_ASSERT(CollectionLockState::_noLockHeaders == nullptr);
+        // TODO Remove
         if (CollectionLockState::_noLockHeaders != nullptr) {
           lockedShards = *CollectionLockState::_noLockHeaders;
         }
@@ -555,13 +545,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         engine = result.engine();
         TRI_ASSERT(engine != nullptr);
 
-        // We can always use the _noLockHeaders. They have not been modified
-        // until now
-        // And it is correct to set the previously locked to nullptr if the
-        // headers are nullptr.
-        engine->_previouslyLockedShards = CollectionLockState::_noLockHeaders;
-
-        // Now update _noLockHeaders;
+        // Now update _noLockHeaders:
+        // No need to cleanup, the RestHandler will make sure they are removed.
         CollectionLockState::_noLockHeaders = engine->_lockedShards;
 
         root = engine->root();

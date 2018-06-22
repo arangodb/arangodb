@@ -213,8 +213,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(
     GeneralResponse* response
 ): RestBaseHandler(request, response),
    _context(*static_cast<VocbaseContext*>(request->requestContext())),
-   _vocbase(_context.vocbase()),
-   _nolockHeaderSet(nullptr) {
+   _vocbase(_context.vocbase()) {
   TRI_ASSERT(request->requestContext());
 }
 
@@ -550,26 +549,28 @@ void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
 ////////////////////////////////////////////////////////////////////////////////
   
 void RestVocbaseBaseHandler::pickupNoLockHeaders() {
-  bool found;
-  std::string const& shardId = _request->header("x-arango-nolock", found);
+  if (ServerState::instance()->isDBServer()) {
+    // Only DBServer needs to react to them!
+    bool found;
+    std::string const& shardId = _request->header("x-arango-nolock", found);
 
-  if (!found) {
-    return;
+    if (!found) {
+      return;
+    }
+
+
+    auto nolockHeaderSet = std::make_unique<std::unordered_set<std::string>>();
+    // Split value at commas, if there are any, otherwise take full value:
+    size_t pos = shardId.find(',');
+    size_t oldpos = 0;
+    while (pos != std::string::npos) {
+      nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
+      oldpos = pos + 1;
+      pos = shardId.find(',', oldpos);
+    }
+    nolockHeaderSet->emplace(shardId.substr(oldpos));
+    CollectionLockState::_noLockHeaders = nolockHeaderSet.release();
   }
-
-  TRI_ASSERT(_nolockHeaderSet == nullptr);
-
-  _nolockHeaderSet = new std::unordered_set<std::string>();
-  // Split value at commas, if there are any, otherwise take full value:
-  size_t pos = shardId.find(',');
-  size_t oldpos = 0;
-  while (pos != std::string::npos) {
-    _nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
-    oldpos = pos + 1;
-    pos = shardId.find(',', oldpos);
-  }
-  _nolockHeaderSet->emplace(shardId.substr(oldpos));
-  CollectionLockState::_noLockHeaders = _nolockHeaderSet;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -577,7 +578,9 @@ void RestVocbaseBaseHandler::pickupNoLockHeaders() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::clearNoLockHeaders() noexcept {
-  delete _nolockHeaderSet;
-  _nolockHeaderSet = nullptr;
+  // Let all servers just remove these headers
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    delete CollectionLockState::_noLockHeaders;
+  }
   CollectionLockState::_noLockHeaders = nullptr;
 }

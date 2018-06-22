@@ -158,10 +158,6 @@ class ExecutionEngine {
   /// @brief whether or not shutdown() was executed
   bool _wasShutdown;
   
-  /// @brief _previouslyLockedShards, this is read off at instanciating
-  /// time from a thread local variable
-  std::unordered_set<std::string>* _previouslyLockedShards;
-
   /// @brief _lockedShards, these are the shards we have locked for our query
   std::unordered_set<std::string>* _lockedShards;
 };

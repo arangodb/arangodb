@@ -32,6 +32,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace aql {
+class ExecutionEngine;
 class Query;
 
 /*inline if 17*/
@@ -84,6 +85,16 @@ class QueryRegistry {
 
   /// @brief for shutdown, we need to shut down all queries:
   void destroyAll();
+
+ private:
+
+  /**
+   * @brief Set the thread-local _noLockHeaders variable
+   *
+   * @param engine The Query engine that contains the no-lock-header
+   *        information.
+   */
+  void setNoLockHeaders(ExecutionEngine* engine) const;
 
  private:
   /// @brief a struct for all information regarding one query in the registry
