@@ -522,10 +522,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       try {
         std::unordered_set<std::string> lockedShards;
         TRI_ASSERT(CollectionLockState::_noLockHeaders == nullptr);
-        // TODO Remove
-        if (CollectionLockState::_noLockHeaders != nullptr) {
-          lockedShards = *CollectionLockState::_noLockHeaders;
-        }
 
         CoordinatorInstanciator inst(query);
 
