@@ -25,8 +25,10 @@
 #define ARANGOD_HTTP_SERVER_REST_HANDLER_H 1
 
 #include "Basics/Common.h"
+
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/JobQueue.h"
+#include "Scheduler/Scheduler.h"
+#include "GeneralServer/RequestLane.h"
 
 namespace arangodb {
 class GeneralRequest;
@@ -50,7 +52,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  public:
   uint64_t handlerId() const { return _handlerId; }
-  bool needsOwnThread() const { return _needsOwnThread; }
   uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
@@ -82,12 +83,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
   
  public:
-  /// @brief rest handler name
+  // rest handler name for debugging and logging
   virtual char const* name() const = 0;
-  /// @brief allow execution on the network thread
-  virtual bool isDirect() const = 0;
-  /// @brief priority of this request
-  virtual size_t queue() const { return JobQueue::STANDARD_QUEUE; }
+
+  // what lane to use for this request
+  virtual RequestLane lane() const = 0;
 
   virtual void prepareExecute() {}
   virtual RestStatus execute() = 0;
@@ -127,7 +127,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::atomic<RequestStatistics*> _statistics;
 
  private:
-  bool _needsOwnThread = false;
   HandlerState _state;
   std::function<void(rest::RestHandler*)> _callback;
 };

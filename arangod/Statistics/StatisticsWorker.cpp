@@ -813,8 +813,6 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
       application_features::ApplicationServer::getFeature<V8DealerFeature>(
           "V8Dealer");
 
-  auto threadCounters = SchedulerFeature::SCHEDULER->getCounters();
-
   builder.openObject();
   if (!_clusterId.empty()) {
     builder.add("clusterId", VPackValue(_clusterId));
@@ -907,13 +905,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   }
 
   builder.add("threads", VPackValue(VPackValueType::Object));
-  builder.add("running",
-              VPackValue(rest::Scheduler::numRunning(threadCounters)));
-  builder.add("working",
-              VPackValue(rest::Scheduler::numWorking(threadCounters)));
-  builder.add("blocked",
-              VPackValue(rest::Scheduler::numBlocked(threadCounters)));
-  builder.add("queued", VPackValue(SchedulerFeature::SCHEDULER->numQueued()));
+  SchedulerFeature::SCHEDULER->addQueueStatistics(builder);
   builder.close();
 
   builder.close();

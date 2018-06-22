@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,6 @@
 #include "Rest/GeneralResponse.h"
 #include "Scheduler/Acceptor.h"
 #include "Scheduler/JobGuard.h"
-#include "Scheduler/JobQueue.h"
 #include "Scheduler/Task.h"
 #include "Statistics/RequestStatistics.h"
 
@@ -46,7 +45,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-namespace {    
+namespace {
 constexpr double MIN_SECONDS = 30.0;
 }
 
@@ -58,7 +57,9 @@ namespace {
 class SchedulerManagerThread final : public Thread {
  public:
   SchedulerManagerThread(Scheduler* scheduler, asio_ns::io_context* service)
-      : Thread("SchedulerManager", true), _scheduler(scheduler), _service(service) {}
+      : Thread("SchedulerManager", true),
+        _scheduler(scheduler),
+        _service(service) {}
 
   ~SchedulerManagerThread() { shutdown(); }
 
@@ -88,23 +89,23 @@ namespace {
 class SchedulerThread : public Thread {
  public:
   SchedulerThread(Scheduler* scheduler, asio_ns::io_context* service)
-    : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
+      : Thread("Scheduler", true), _scheduler(scheduler), _service(service) {}
 
   ~SchedulerThread() { shutdown(); }
 
  public:
   void run() override {
-    constexpr size_t EVERY_LOOP = size_t(MIN_SECONDS);
-    
-    // when we enter this method, 
+    constexpr size_t everyXSeconds = size_t(MIN_SECONDS);
+
+    // when we enter this method,
     // _nrRunning has already been increased for this thread
     LOG_TOPIC(DEBUG, Logger::THREADS) << "started thread ("
                                       << _scheduler->infoStatus() << ")";
-  
+
     // some random delay value to avoid all initial threads checking for
     // their deletion at the very same time
-    double const randomWait =
-        static_cast<double>(RandomGenerator::interval(int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
+    double const randomWait = static_cast<double>(RandomGenerator::interval(
+        int64_t(0), static_cast<int64_t>(MIN_SECONDS * 0.5)));
 
     double start = TRI_microtime() + randomWait;
     size_t counter = 0;
@@ -114,41 +115,45 @@ class SchedulerThread : public Thread {
       try {
         _service->run_one();
       } catch (std::exception const& ex) {
-        LOG_TOPIC(ERR, Logger::THREADS)
-            << "scheduler loop caught exception: " << ex.what();
+        LOG_TOPIC(ERR, Logger::THREADS) << "scheduler loop caught exception: "
+                                        << ex.what();
       } catch (...) {
         LOG_TOPIC(ERR, Logger::THREADS)
             << "scheduler loop caught unknown exception";
       }
-          
-      if (++counter > EVERY_LOOP) {
+
+      try {
+        _scheduler->drain();
+      } catch (...) {
+      }
+
+      if (++counter > everyXSeconds) {
         counter = 0;
 
         double const now = TRI_microtime();
 
         if (now - start > MIN_SECONDS) {
-          // test if we should stop this thread
-          // if this returns true, nrRunning will have been
-          // decremented by one already
-          if (_scheduler->stopThreadIfTooMany(now)) {
+          // test if we should stop this thread, if this returns true,
+          // numRunning
+          // will have been decremented by one already
+          if (_scheduler->threadShouldStop(now)) {
             // nrRunning was decremented already. now exit thread
-            // main loop
             doDecrement = false;
             break;
           }
-         
-          // use new start time 
+
+          // use new start time
           start = now;
         }
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped ("
-                                      << _scheduler->infoStatus() << ")";
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "stopped (" << _scheduler->infoStatus()
+                                      << ")";
 
     if (doDecrement) {
       // only decrement here if this wasn't already done above
-      _scheduler->stopThread();
+      _scheduler->threadHasStopped();
     }
   }
 
@@ -162,77 +167,250 @@ class SchedulerThread : public Thread {
 // --SECTION--                                                         Scheduler
 // -----------------------------------------------------------------------------
 
-Scheduler::Scheduler(uint64_t nrMinimum, uint64_t /*nrDesired*/, 
-                     uint64_t nrMaximum, uint64_t maxQueueSize)
+Scheduler::Scheduler(uint64_t nrMinimum, uint64_t nrMaximum,
+                     uint64_t maxQueueSize)
     : _maxQueueSize(maxQueueSize),
-      _nrMinimum(nrMinimum),
-      _nrMaximum(nrMaximum),
       _counters(0),
-      _nrQueued(0),
+      _maxFifoSize{16 * 4096, 4096},
+      _fifo1(_maxFifoSize[0]),
+      _fifo2(_maxFifoSize[1]),
+      _fifos{&_fifo1, &_fifo2},
+      _minThreads(nrMinimum),
+      _maxThreads(nrMaximum),
       _lastAllBusyStamp(0.0) {
+  _fifoSize[0] = 0;
+  _fifoSize[1] = 0;
+
   // setup signal handlers
   initializeSignalHandlers();
 }
 
 Scheduler::~Scheduler() {
   stopRebalancer();
-  
+
   _managerGuard.reset();
-  _managerService.reset();
+  _managerContext.reset();
 
   _serviceGuard.reset();
   _ioContext.reset();
+
+  FifoJob* job = nullptr;
+
+  for (int i = 0; i < NUMBER_FIFOS; ++i) {
+    _fifoSize[i] = 0;
+
+    while (_fifos[i]->pop(job) && job != nullptr) {
+      delete job;
+      job = nullptr;
+    }
+  }
 }
 
-void Scheduler::post(std::function<void()> callback) {
-  ++_nrQueued;
+void Scheduler::post(std::function<void()> const& callback) {
+  incQueued();
 
   try {
-
     // capture without self, ioContext will not live longer than scheduler
     _ioContext.get()->post([this, callback]() {
-        --_nrQueued;
+      JobGuard guard(this);
+      guard.work();
 
-        JobGuard guard(this);
-        guard.work();
+      decQueued();
 
-        callback();
-      });
+      callback();
+    });
   } catch (...) {
-    --_nrQueued;
+    decQueued();
     throw;
   }
 }
 
 void Scheduler::post(asio_ns::io_context::strand& strand,
-                     std::function<void()> callback) {
-  ++_nrQueued;
+                     std::function<void()> const& callback) {
+  incQueued();
 
   try {
-
     // capture without self, ioContext will not live longer than scheduler
     strand.post([this, callback]() {
-        --_nrQueued;
+      decQueued();
 
-        JobGuard guard(this);
-        guard.work();
+      JobGuard guard(this);
+      guard.work();
 
-        callback();
-      });
+      callback();
+    });
   } catch (...) {
-    --_nrQueued;
+    decQueued();
     throw;
   }
+}
+
+bool Scheduler::queue(RequestPriority prio,
+                      std::function<void()> const& callback) {
+  bool ok = true;
+
+  switch (prio) {
+    case RequestPriority::HIGH:
+      if (0 < _fifoSize[0]) {
+        ok = pushToFifo(static_cast<int>(prio), callback);
+      } else if (canPostDirectly()) {
+        post(callback);
+      } else {
+        ok = pushToFifo(static_cast<int>(prio), callback);
+      }
+      break;
+    case RequestPriority::LOW:
+      if (0 < _fifoSize[0]) {
+        ok = pushToFifo(static_cast<int>(prio), callback);
+      } else if (0 < _fifoSize[1]) {
+        ok = pushToFifo(static_cast<int>(prio), callback);
+      } else if (canPostDirectly()) {
+        post(callback);
+      } else {
+        pushToFifo(static_cast<int>(prio), callback);
+      }
+      break;
+    default:
+      TRI_ASSERT(false);
+      break;
+  }
+
+  return ok;
+}
+
+void Scheduler::drain() {
+  while (canPostDirectly()) {
+    bool found = popFifo(1);
+
+    if (!found) {
+      found = popFifo(2);
+
+      if (!found) {
+        break;
+      }
+    }
+  }
+}
+
+void Scheduler::addQueueStatistics(velocypack::Builder& b) const {
+  auto counters = getCounters();
+
+  b.add("scheduler-threads",
+        VPackValue(static_cast<int32_t>(numRunning(counters))));
+  b.add("in-progress", VPackValue(static_cast<int32_t>(numWorking(counters))));
+  b.add("queued", VPackValue(static_cast<int32_t>(numQueued(counters))));
+  b.add("max-queue-size", VPackValue(static_cast<int32_t>(_maxQueueSize)));
+  b.add("fifo1-size", VPackValue(static_cast<int32_t>(_fifoSize[0])));
+  b.add("max-fifo1-size", VPackValue(static_cast<int32_t>(_maxFifoSize[0])));
+  b.add("fifo2-size", VPackValue(static_cast<int32_t>(_fifoSize[1])));
+  b.add("max-fifo2-size", VPackValue(static_cast<int32_t>(_maxFifoSize[1])));
+}
+
+Scheduler::QueueStatistics Scheduler::queueStatistics() const {
+  auto counters = getCounters();
+
+  return QueueStatistics{numRunning(counters), numWorking(counters),
+                         numQueued(counters)};
+}
+
+std::string Scheduler::infoStatus() {
+  uint64_t const counters = _counters.load();
+
+  return "scheduler threads " + std::to_string(numRunning(counters)) + " (" +
+         std::to_string(_minThreads) + "<" + std::to_string(_maxThreads) +
+         ") in-progress " + std::to_string(numWorking(counters)) + " queued " +
+         std::to_string(numQueued(counters)) + " (<" +
+         std::to_string(_maxQueueSize + 1) + ") fifo1 " +
+         std::to_string(_fifoSize[0]) + " fifo2 " +
+         std::to_string(_fifoSize[1]);
+}
+
+bool Scheduler::canPostDirectly() const noexcept {
+  auto counters = getCounters();
+  auto nrWorking = numWorking(counters);
+  auto nrQueued = numQueued(counters);
+
+  return nrWorking + nrQueued <= _maxQueueSize;
+}
+
+bool Scheduler::pushToFifo(size_t fifo, std::function<void()> const& callback) {
+  size_t p = fifo - 1;
+  TRI_ASSERT(0 < fifo && p < NUMBER_FIFOS);
+
+  std::unique_ptr<FifoJob> job(new FifoJob(callback));
+
+  try {
+    if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
+      return false;
+    }
+
+    if (!_fifos[p]->push(job.get())) {
+      return false;
+    }
+
+    job.release();
+    ++_fifoSize[p];
+
+    // then check, otherwise we might miss to wake up a thread
+    auto counters = getCounters();
+    auto nrWorking = numRunning(counters);
+    auto nrQueued = numQueued(counters);
+
+    if (0 == nrWorking + nrQueued) {
+      post([] { /*wakeup call for scheduler thread*/ });
+    }
+  } catch (...) {
+    return false;
+  }
+
+  return true;
+}
+
+bool Scheduler::popFifo(size_t fifo) {
+  int64_t p = fifo - 1;
+  TRI_ASSERT(0 <= p && p < NUMBER_FIFOS);
+
+  FifoJob* job = nullptr;
+  bool ok = _fifos[p]->pop(job) && job != nullptr;
+
+  if (ok) {
+    post(job->_callback);
+    delete job;
+
+    --_fifoSize[p];
+  }
+
+  return ok;
+}
+
+void Scheduler::initializeSignalHandlers() {
+#ifdef _WIN32
+// Windows does not support POSIX signal handling
+#else
+  struct sigaction action;
+  memset(&action, 0, sizeof(action));
+  sigfillset(&action.sa_mask);
+
+  // ignore broken pipes
+  action.sa_handler = SIG_IGN;
+
+  int res = sigaction(SIGPIPE, &action, nullptr);
+
+  if (res < 0) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "cannot initialize signal handlers for pipe";
+  }
+#endif
 }
 
 bool Scheduler::start() {
   // start the I/O
   startIoService();
 
-  TRI_ASSERT(0 < _nrMinimum);
-  TRI_ASSERT(_nrMinimum <= _nrMaximum);
+  TRI_ASSERT(0 < _minThreads);
+  TRI_ASSERT(_minThreads <= _maxThreads);
 
-  for (uint64_t i = 0; i < _nrMinimum; ++i) {
+  for (uint64_t i = 0; i < _minThreads; ++i) {
     {
       MUTEX_LOCKER(locker, _threadCreateLock);
       incRunning();
@@ -249,26 +427,69 @@ bool Scheduler::start() {
   startManagerThread();
   startRebalancer();
 
-  // initialize the queue handling
-  _jobQueue.reset(new JobQueue(_maxQueueSize, this));
-  _jobQueue->start();
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      << "all scheduler threads are up and running";
 
-  // done
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "all scheduler threads are up and running";
   return true;
+}
+
+void Scheduler::beginShutdown() {
+  if (isStopping()) {
+    return;
+  }
+
+  stopRebalancer();
+  _threadManager.reset();
+
+  _managerGuard.reset();
+  _managerContext->stop();
+
+  _serviceGuard.reset();
+  _ioContext->stop();
+
+  // set the flag AFTER stopping the threads
+  setStopping();
+}
+
+void Scheduler::shutdown() {
+  while (true) {
+    uint64_t const counters = _counters.load();
+
+    if (numRunning(counters) == 0 && numWorking(counters) == 0) {
+      break;
+    }
+
+    std::this_thread::yield();
+    // we can be quite generous here with waiting...
+    // as we are in the shutdown already, we do not care if we need to wait for
+    // a
+    // bit longer
+    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+  }
+
+  _managerContext.reset();
+  _ioContext.reset();
 }
 
 void Scheduler::startIoService() {
   _ioContext.reset(new asio_ns::io_context());
   _serviceGuard.reset(new asio_ns::io_context::work(*_ioContext));
 
-  _managerService.reset(new asio_ns::io_context());
-  _managerGuard.reset(new asio_ns::io_context::work(*_managerService));
+  _managerContext.reset(new asio_ns::io_context());
+  _managerGuard.reset(new asio_ns::io_context::work(*_managerContext));
+}
+
+void Scheduler::startManagerThread() {
+  auto thread = new SchedulerManagerThread(this, _managerContext.get());
+  if (!thread->start()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "unable to start rebalancer thread");
+  }
 }
 
 void Scheduler::startRebalancer() {
   std::chrono::milliseconds interval(100);
-  _threadManager.reset(new asio_ns::steady_timer(*_managerService));
+  _threadManager.reset(new asio_ns::steady_timer(*_managerContext));
 
   _threadHandler = [this, interval](const asio_ns::error_code& error) {
     if (error || isStopping()) {
@@ -301,165 +522,47 @@ void Scheduler::stopRebalancer() noexcept {
   }
 }
 
-void Scheduler::startManagerThread() {
-  auto thread = new SchedulerManagerThread(this, _managerService.get());
-  if (!thread->start()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start rebalancer thread");
-  }
-}
-
-void Scheduler::startNewThread() {
-  auto thread = new SchedulerThread(this, _ioContext.get());
-  if (!thread->start()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start scheduler thread");
-  }
-}
-    
-void Scheduler::stopThread() {
-  MUTEX_LOCKER(locker, _threadCreateLock);
-  decRunning();
-}
-
-// check if the current thread should be stopped
-// returns true if yes, otherwise false. when the function returns
-// true, it has already decremented the nrRunning counter!
-bool Scheduler::stopThreadIfTooMany(double now) {
-  // make sure no extra threads are created while we check the timestamp
-  // and while we modify nrRunning
-  
-  uint64_t const queueCap = std::max(uint64_t(1), uint64_t(_nrMaximum / 4));
-  uint64_t const nrQueued = std::min(_nrQueued.load(), queueCap);
-  
-  MUTEX_LOCKER(locker, _threadCreateLock);
-  
-  // fetch all counters in one atomic operation
-  uint64_t counters = _counters.load();
-  uint64_t const nrRunning = numRunning(counters);
-  uint64_t const nrBlocked = numBlocked(counters);
-  uint64_t const nrWorking = numWorking(counters);
-
-  if (nrRunning <= _nrMinimum + nrBlocked) {
-    // don't stop a thread if we already reached the minimum 
-    // number of threads
-    _lastAllBusyStamp = now;
-    return false;
-  }
-
-  if (nrRunning <= nrWorking + nrQueued) {
-    return false;
-  }
-  
-  if (_lastAllBusyStamp + 1.25 * MIN_SECONDS >= now) {
-    // last time all threads were busy is less than x seconds ago
-    return false;
-  }
-  
-  // set the all busy stamp. this avoids that we shut down all threads
-  // at the same time
-  if (_lastAllBusyStamp < now - MIN_SECONDS / 2.0) {
-    _lastAllBusyStamp = now - MIN_SECONDS / 2.0;
-  }
-
-  // decrement nrRunning by one already in here while holding the lock
-  decRunning();
-  return true;
-}
-
-bool Scheduler::shouldQueueMore() const {
-  uint64_t const counters = _counters.load();
-  uint64_t const nrWorking = numWorking(counters);
-
-  if (nrWorking + _nrQueued < _nrMaximum) {
-    return true;
-  }
-
-  return false;
-}
-
-bool Scheduler::shouldExecuteDirect() const {
-  uint64_t const counters = _counters.load();
-  uint64_t const nrWorking = numWorking(counters);
-  uint64_t const nrBlocked = numBlocked(counters);
-  
-  if (nrWorking + nrBlocked + _nrQueued < numRunning(counters) / 2 + 1) {
-    auto jobQueue = _jobQueue.get();
-    auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
-    return queueSize == 0;
-  }
-  
-  return false;
-}
-
-bool Scheduler::queue(std::unique_ptr<Job> job) {
-  TRI_ASSERT(_jobQueue);
-  auto queueSize = _jobQueue->queueSize();
-  RequestStatistics::SET_QUEUE_START(job->_handler->statistics(), queueSize);
-  return _jobQueue->queue(std::move(job));
-}
-
-std::string Scheduler::infoStatus() {
-  auto jobQueue = _jobQueue.get();
-  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
-
-  uint64_t const counters = _counters.load();
-  return "working: " + std::to_string(numWorking(counters)) + ", queued: " +
-         std::to_string(_nrQueued) + ", blocked: " +
-         std::to_string(numBlocked(counters)) + ", running: " +
-         std::to_string(numRunning(counters)) + ", outstanding: " +
-         std::to_string(queueSize) + ", min/max: " +
-         std::to_string(_nrMinimum) + "/" + std::to_string(_nrMaximum);
-}
-
 void Scheduler::rebalanceThreads() {
   static uint64_t count = 0;
 
   ++count;
 
   if (count % 50 == 0) {
-    LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads: " << infoStatus();
+    LOG_TOPIC(DEBUG, Logger::THREADS) << "rebalancing threads: "
+                                      << infoStatus();
   } else if (count % 5 == 0) {
-    LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: " << infoStatus();
+    LOG_TOPIC(TRACE, Logger::THREADS) << "rebalancing threads: "
+                                      << infoStatus();
   }
-      
-  uint64_t const queueCap = std::max(uint64_t(1), uint64_t(_nrMaximum / 4));
 
   while (true) {
-    {
-      double const now = TRI_microtime();
-      
-      uint64_t const nrQueued = std::min(_nrQueued.load(), queueCap);
+    double const now = TRI_microtime();
 
+    {
       MUTEX_LOCKER(locker, _threadCreateLock);
 
       uint64_t const counters = _counters.load();
-      uint64_t const nrRunning = numRunning(counters);
-      uint64_t const nrWorking = numWorking(counters);
-      uint64_t const nrBlocked = numBlocked(counters);
 
-      if (nrRunning >= std::max(_nrMinimum, nrWorking + nrBlocked + nrQueued + 1)) {
-        // all threads are working, and none are blocked. so there is no
-        // need to start a new thread now
-        if (nrWorking == nrRunning) {
-          // still note that all threads are maxed out
-          _lastAllBusyStamp = now;
-        }
-        break;
-      }
-
-      if (nrRunning >= _nrMaximum + nrBlocked) {
-        // reached the maximum now
-        break;
-      }
-    
       if (isStopping(counters)) {
         // do not start any new threads in case we are already shutting down
         break;
       }
-      
-      // LOG_TOPIC(ERR, Logger::THREADS) << "starting new thread. " << this->infoStatus();
+
+      uint64_t const nrRunning = numRunning(counters);
+      uint64_t const nrWorking = numWorking(counters);
+
+      // some threads are idle
+      if (nrWorking < nrRunning) {
+        break;
+      }
 
       // all threads are maxed out
       _lastAllBusyStamp = now;
+
+      // reached maximum
+      if (nrRunning >= _maxThreads) {
+        break;
+      }
 
       // increase nrRunning by one here already, while holding the lock
       incRunning();
@@ -467,7 +570,6 @@ void Scheduler::rebalanceThreads() {
 
     // create thread and sleep without holding the mutex
     try {
-      // actually start the new thread
       startNewThread();
     } catch (...) {
       // cannot create new thread or start new thread
@@ -485,61 +587,41 @@ void Scheduler::rebalanceThreads() {
   }
 }
 
-void Scheduler::beginShutdown() {
-  if (isStopping()) {
-    return;
-  }
-  
-  _jobQueue->beginShutdown();
-
-  stopRebalancer();
-  _threadManager.reset();
-
-  _managerGuard.reset();
-  _managerService->stop();
-
-  _serviceGuard.reset();
-  _ioContext->stop();
-
-  // set the flag AFTER stopping the threads
-  setStopping();
+void Scheduler::threadHasStopped() {
+  MUTEX_LOCKER(locker, _threadCreateLock);
+  decRunning();
 }
 
-void Scheduler::shutdown() {
-  while (true) {
-    uint64_t const counters = _counters.load();
-    
-    if (numRunning(counters) == 0 && numWorking(counters) == 0) {
-      break;
-    }
+bool Scheduler::threadShouldStop(double now) {
+  // make sure no extra threads are created while we check the timestamp
+  // and while we modify nrRunning
 
-    std::this_thread::yield();
-    // we can be quite generous here with waiting...
-    // as we are in the shutdown already, we do not care if we need to wait for a
-    // bit longer
-    std::this_thread::sleep_for(std::chrono::microseconds(20000)); 
+  MUTEX_LOCKER(locker, _threadCreateLock);
+
+  // fetch all counters in one atomic operation
+  uint64_t counters = _counters.load();
+  uint64_t const nrRunning = numRunning(counters);
+
+  if (nrRunning <= _minThreads) {
+    // don't stop a thread if we already reached the minimum
+    // number of threads
+    return false;
   }
 
-  _managerService.reset();
-  _ioContext.reset();
-}
-
-void Scheduler::initializeSignalHandlers() {
-#ifdef _WIN32
-// Windows does not support POSIX signal handling
-#else
-  struct sigaction action;
-  memset(&action, 0, sizeof(action));
-  sigfillset(&action.sa_mask);
-
-  // ignore broken pipes
-  action.sa_handler = SIG_IGN;
-
-  int res = sigaction(SIGPIPE, &action, nullptr);
-
-  if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot initialize signal handlers for pipe";
+  if (_lastAllBusyStamp + 1.25 * MIN_SECONDS >= now) {
+    // last time all threads were busy is less than x seconds ago
+    return false;
   }
-#endif
+
+  // decrement nrRunning by one already in here while holding the lock
+  decRunning();
+  return true;
 }
 
+void Scheduler::startNewThread() {
+  auto thread = new SchedulerThread(this, _ioContext.get());
+  if (!thread->start()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+                                   "unable to start scheduler thread");
+  }
+}

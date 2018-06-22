@@ -22,6 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlHandler.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionBlock.h"
@@ -41,15 +46,11 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Scheduler/JobGuard.h"
-#include "Scheduler/JobQueue.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
-
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -67,11 +68,6 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request,
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(_traverserRegistry != nullptr);
 }
-
-// returns the queue name
-size_t RestAqlHandler::queue() const { return JobQueue::AQL_QUEUE; }
-
-bool RestAqlHandler::isDirect() const { return false; }
 
 // POST method for /_api/aql/setup (internal)
 // Only available on DBServers in the Cluster.
@@ -323,32 +319,26 @@ bool RestAqlHandler::registerSnippets(
         // For all others locking is pointless
         needToLock = false;
 
-        {
-          JobGuard guard(SchedulerFeature::SCHEDULER);
-          guard.block();
-
-          try {
-            int res = query->trx()->lockCollections();
-            if (res != TRI_ERROR_NO_ERROR) {
-              generateError(rest::ResponseCode::SERVER_ERROR,
-                  res, TRI_errno_string(res));
-              return false;
-            }
-          } catch (basics::Exception  const& e) {
+        try {
+          int res = query->trx()->lockCollections();
+          if (res != TRI_ERROR_NO_ERROR) {
             generateError(rest::ResponseCode::SERVER_ERROR,
-                e.code(), e.message());
-            return false;
-          } catch (...) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR,
-                          "Unable to lock all collections.");
+                          res, TRI_errno_string(res));
             return false;
           }
-          // If we get here we successfully locked the collections.
-          // If we bail out up to this point nothing is kept alive.
-          // No need to cleanup...
+        } catch (basics::Exception  const& e) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        e.code(), e.message());
+          return false;
+        } catch (...) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR,
+                        "Unable to lock all collections.");
+          return false;
         }
-
+        // If we get here we successfully locked the collections.
+        // If we bail out up to this point nothing is kept alive.
+        // No need to cleanup...
       }
 
       _queryRegistry->insert(qId, query.get(), ttl, prepared);
@@ -834,13 +824,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         // Mark current thread as potentially blocking:
         int res = TRI_ERROR_INTERNAL;
 
-        {
-          JobGuard guard(SchedulerFeature::SCHEDULER);
-          guard.block();
-
-          // let exceptions propagate from here
-          res = query->trx()->lockCollections();
-        }
+        // let exceptions propagate from here
+        res = query->trx()->lockCollections();
 
         answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add(StaticStrings::Code, VPackValue(res));

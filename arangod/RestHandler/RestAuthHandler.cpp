@@ -41,8 +41,6 @@ RestAuthHandler::RestAuthHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response),
       _validFor(60 * 60 * 24 * 30) {}
 
-bool RestAuthHandler::isDirect() const { return false; }
-
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
   std::chrono::seconds exp =

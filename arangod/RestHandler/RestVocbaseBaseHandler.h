@@ -331,8 +331,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   TRI_vocbase_t& _vocbase;
 
  public:
-  bool isDirect() const override { return false; }
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief prepareExecute, to react to X-Arango-Nolock header
   //////////////////////////////////////////////////////////////////////////////

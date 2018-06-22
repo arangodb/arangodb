@@ -1033,13 +1033,9 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
-  {
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
 
-    return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                           std::move(url), body, headers, defaultTimeOut);
-  }
+  return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                         std::move(url), body, headers, defaultTimeOut);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
