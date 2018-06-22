@@ -70,7 +70,7 @@ struct Index {
         std::vector<std::vector<basics::AttributeName>> const&);
 
  public:
-  /// @brief Parse document and return cells to index
+  /// @brief Parse document and return cells for indexing
   Result indexCells(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
                     S2Point& centroid) const;
 
