@@ -38,7 +38,7 @@
 using namespace arangodb;
 
 std::string const ShardingStrategyNone::NAME("none");
-std::string const ShardingStrategyCommunity::NAME("community");
+std::string const ShardingStrategyCommunityCompat::NAME("community-compat");
       
 ShardingStrategyNone::ShardingStrategyNone()
     : ShardingStrategy() {
@@ -56,7 +56,7 @@ int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
 }
 
 /// @brief base class for hash-based sharding
-ShardingStrategyHash::ShardingStrategyHash(ShardingInfo* sharding)
+ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
     : ShardingStrategy(),
       _sharding(sharding),
       _shards(),
@@ -75,14 +75,16 @@ ShardingStrategyHash::ShardingStrategyHash(ShardingInfo* sharding)
   }
 }
 
-int ShardingStrategyHash::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                              bool docComplete, ShardID& shardID,
-                                              bool& usesDefaultShardKeys,
-                                              std::string const& key) {
+int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                                  bool docComplete, ShardID& shardID,
+                                                  bool& usesDefaultShardKeys,
+                                                  std::string const& key) {
   static constexpr char const* magicPhrase = "Foxx you have stolen the goose, give she back again!";
   static constexpr size_t magicLength = 52;
 
   determineShards();
+  
+  TRI_ASSERT(!_sharding->shardKeys().empty());
 
   int res = TRI_ERROR_NO_ERROR;
   usesDefaultShardKeys = _usesDefaultShardKeys;
@@ -94,7 +96,7 @@ int ShardingStrategyHash::getResponsibleShard(arangodb::velocypack::Slice slice,
   return res;
 }
 
-void ShardingStrategyHash::determineShards() {
+void ShardingStrategyHashBase::determineShards() {
   if (!_shards.empty()) {
     return;
   }
@@ -112,8 +114,8 @@ void ShardingStrategyHash::determineShards() {
 
 /// @brief old version of the sharding used in the community edition
 /// this is DEPRECATED and should not be used for new collections
-ShardingStrategyCommunity::ShardingStrategyCommunity(ShardingInfo* sharding)
-    : ShardingStrategyHash(sharding) {
+ShardingStrategyCommunityCompat::ShardingStrategyCommunityCompat(ShardingInfo* sharding)
+    : ShardingStrategyHashBase(sharding) {
   // whether or not the collection uses the default shard attributes (["_key"])
   // this setting is initialized to false, and we may change it now
   TRI_ASSERT(!_usesDefaultShardKeys);
@@ -128,7 +130,7 @@ ShardingStrategyCommunity::ShardingStrategyCommunity(ShardingInfo* sharding)
   }
 }
 
-uint64_t ShardingStrategyCommunity::hashByAttributes(
+uint64_t ShardingStrategyCommunityCompat::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
     bool docComplete, int& error, std::string const& key) {
 

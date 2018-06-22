@@ -48,10 +48,15 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _shardIds(new ShardMap()),
       _shardingStrategy() {
   
-  VPackSlice shardKeysSlice = info.get("shardKeys");
+  bool const isSmart = basics::VelocyPackHelper::readBooleanValue(info, "isSmart", false);
 
+  if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
+    // smart edge collection
+    _numberOfShards = 0;
+  }
+
+  VPackSlice shardKeysSlice = info.get("shardKeys");
   if (ServerState::instance()->isCoordinator()) {
-    bool const isSmart = basics::VelocyPackHelper::readBooleanValue(info, "isSmart", false);
     if ((_numberOfShards == 0 && !isSmart) || _numberOfShards > 1000) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid number of shards");
@@ -196,7 +201,7 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collect
 ShardingInfo::~ShardingInfo() {}
 
 bool ShardingInfo::usesSameShardingStrategy(ShardingInfo const* other) const {
-  return (_shardingStrategy->name() == other->_shardingStrategy->name());
+  return _shardingStrategy->isCompatible(other->_shardingStrategy.get());
 }
 
 LogicalCollection* ShardingInfo::collection() const {
@@ -272,7 +277,7 @@ std::string ShardingInfo::distributeShardsLike() const {
 
 void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo const* other) {
   if (!usesSameShardingStrategy(other)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "can only distribute shards like a collection with same sharding strategy");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "can only distribute shards like a collection with the same sharding strategy");
   }
   
   _distributeShardsLike = cid;
@@ -319,6 +324,7 @@ bool ShardingInfo::usesDefaultShardKeys() const {
 }
 
 std::vector<std::string> const& ShardingInfo::shardKeys() const {
+  TRI_ASSERT(!_shardKeys.empty());
   return _shardKeys;
 }
 

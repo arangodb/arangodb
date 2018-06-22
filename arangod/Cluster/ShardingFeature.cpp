@@ -48,15 +48,15 @@ void ShardingFeature::prepare() {
   registerFactory(ShardingStrategyNone::NAME, [](ShardingInfo*) { 
     return std::make_unique<ShardingStrategyNone>();
   });
-  registerFactory(ShardingStrategyCommunity::NAME, [](ShardingInfo* sharding) { 
-    return std::make_unique<ShardingStrategyCommunity>(sharding);
+  registerFactory(ShardingStrategyCommunityCompat::NAME, [](ShardingInfo* sharding) { 
+    return std::make_unique<ShardingStrategyCommunityCompat>(sharding);
   });
 #ifdef USE_ENTERPRISE
-  registerFactory(ShardingStrategyEnterprise::NAME, [](ShardingInfo* sharding) { 
-    return std::make_unique<ShardingStrategyEnterprise>(sharding);
+  registerFactory(ShardingStrategyEnterpriseCompat::NAME, [](ShardingInfo* sharding) { 
+    return std::make_unique<ShardingStrategyEnterpriseCompat>(sharding);
   });
-  registerFactory(ShardingStrategyEnterpriseSmartEdge::NAME, [](ShardingInfo* sharding) { 
-    return std::make_unique<ShardingStrategyEnterpriseSmartEdge>(sharding);
+  registerFactory(ShardingStrategyEnterpriseSmartEdgeCompat::NAME, [](ShardingInfo* sharding) {
+    return std::make_unique<ShardingStrategyEnterpriseSmartEdgeCompat>(sharding);
   });
 #endif
 }
@@ -113,15 +113,16 @@ std::string ShardingFeature::getDefaultShardingStrategy(ShardingInfo const* shar
     return ShardingStrategyNone::NAME;
   }
 
-#ifdef USE_ENTERPRISE
   // no sharding strategy found in collection meta data
-  if (sharding->collection()->isSmart() && sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
+#ifdef USE_ENTERPRISE
+  if (sharding->collection()->isSmart() && 
+      sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
-    return ShardingStrategyEnterpriseSmartEdge::NAME;
+    return ShardingStrategyEnterpriseSmartEdgeCompat::NAME;
   }
    
-  return ShardingStrategyEnterprise::NAME;
+  return ShardingStrategyEnterpriseCompat::NAME;
 #else
-  return ShardingStrategyDefault::NAME;
+  return ShardingStrategyCommunityCompat::NAME;
 #endif 
 }

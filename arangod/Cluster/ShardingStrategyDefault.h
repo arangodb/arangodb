@@ -52,9 +52,9 @@ class ShardingStrategyNone final : public ShardingStrategy {
 };
 
 /// @brief base class for hash-based sharding
-class ShardingStrategyHash : public ShardingStrategy {
+class ShardingStrategyHashBase : public ShardingStrategy {
  public:
-  explicit ShardingStrategyHash(ShardingInfo* sharding);
+  explicit ShardingStrategyHashBase(ShardingInfo* sharding);
   
   virtual int getResponsibleShard(arangodb::velocypack::Slice,
                                   bool docComplete, ShardID& shardID,
@@ -79,9 +79,9 @@ class ShardingStrategyHash : public ShardingStrategy {
 
 /// @brief old version of the sharding used in the community edition
 /// this is DEPRECATED and should not be used for new collections
-class ShardingStrategyCommunity final : public ShardingStrategyHash {
+class ShardingStrategyCommunityCompat final : public ShardingStrategyHashBase {
  public:
-  explicit ShardingStrategyCommunity(ShardingInfo* sharding);
+  explicit ShardingStrategyCommunityCompat(ShardingInfo* sharding);
   
   std::string const& name() const override { return NAME; }
   

@@ -28,6 +28,11 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+
+bool ShardingStrategy::isCompatible(ShardingStrategy const* other) const {
+  return name() == other->name();
+}
   
 void ShardingStrategy::toVelocyPack(VPackBuilder& result) {
   // only need to print sharding strategy if we are in a cluster

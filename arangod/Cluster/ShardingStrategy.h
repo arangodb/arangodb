@@ -46,6 +46,8 @@ class ShardingStrategy {
   ShardingStrategy() = default; 
   virtual ~ShardingStrategy() = default; 
 
+  virtual bool isCompatible(ShardingStrategy const* other) const;
+
   virtual std::string const& name() const = 0;
 
   virtual bool usesDefaultShardKeys() = 0;
