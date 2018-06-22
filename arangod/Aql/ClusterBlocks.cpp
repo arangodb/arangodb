@@ -1669,7 +1669,7 @@ merge(VPackSlice document, std::string key, TRI_voc_rid_t revision){
 /// @brief getSome
 AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  // For every call we simply forward via HTTP
+  int possibleWrites = 0; // TODO - get real statistic values!
 
   if (_done) {
     return nullptr;
@@ -1766,8 +1766,10 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
       THROW_ARANGO_EXCEPTION_MESSAGE(666, "OLD is only available when using INSERT with the overwrite option");
     }
     result = _trx->insert(_collection->name(), inSlice, opOptions);
+    possibleWrites = 1;
   } else if(node->_mode == ExecutionNode::NodeType::REMOVE) {
     result = _trx->remove(_collection->name(), inSlice , opOptions);
+    possibleWrites = 1;
   } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
     if (node->_replaceIndexNode && (in == nullptr)) {
       // we have a FOR .. IN FILTER doc._key == ... REPLACE - no WITH.
@@ -1776,8 +1778,10 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     } else {
       result = _trx->replace(_collection->name(), inSlice, opOptions);
     }
+    possibleWrites = 1;
   } else if(node->_mode == ExecutionNode::NodeType::UPDATE) {
     result = _trx->update(_collection->name(), inSlice, opOptions);
+    possibleWrites = 1;
   }
 
   // check operation result
@@ -1785,11 +1789,15 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     //LOG_DEVEL << "result not ok: " <<  result.errorMessage();
     //LOG_DEVEL << "silent " <<  opOptions.silent;
     //LOG_DEVEL << "ignoreErrors " <<  nodeOps.ignoreErrors; // CHECKME
-    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && node->_mode == ExecutionNode::NodeType::INDEX)) {
-      // document not there is not an error in this situation.
-      _done = true;
-      return nullptr;
-    } else if (!opOptions.silent){
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+        (( node->_mode == ExecutionNode::NodeType::INDEX) ||
+         ( node->_mode == ExecutionNode::NodeType::REMOVE && node->_replaceIndexNode)))
+      {
+        // document not there is not an error in this situation.
+        // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
+        _done = true;
+        return nullptr;
+      } else if (!opOptions.silent){
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
 
@@ -1799,6 +1807,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   }
 
   //LOG_DEVEL << "error checking done: " <<  result.errorMessage();
+  _engine->_stats.writesExecuted += possibleWrites;
 
   if (!(out || OLD || NEW)) {
     _done = true;
