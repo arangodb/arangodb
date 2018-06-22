@@ -355,6 +355,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'indexBuckets': true,
     'replicationFactor': true,
     'distributeShardsLike': false,
+    'shardingStrategy': false,
     'cacheEnabled': true
   };
   var a;

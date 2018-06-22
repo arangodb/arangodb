@@ -62,10 +62,10 @@ void ShardingFeature::prepare() {
 }
   
 void ShardingFeature::registerFactory(std::string const& name, 
-                                      ShardingStrategy::FactoryFunction const& func) {
+                                      ShardingStrategy::FactoryFunction const& creator) {
   LOG_TOPIC(TRACE, Logger::CLUSTER) << "registering sharding strategy '" << name << "'";
 
-  if (!_factories.emplace(name, func).second) {
+  if (!_factories.emplace(name, creator).second) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("sharding factory function '") + name + "' already registered");
   }
 }
@@ -77,7 +77,7 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice sli
   }
 
   std::string name;
-  
+
   if (!ServerState::instance()->isRunningInCluster()) {
     // not running in cluster... so no sharding
     name = ShardingStrategyNone::NAME;
@@ -101,6 +101,7 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::create(std::string const& nam
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("unknown sharding type '") + name + "'");
   }
 
+  // now create a sharding strategy instance
   return (*it).second(sharding);
 }
 

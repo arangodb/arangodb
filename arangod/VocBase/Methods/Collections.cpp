@@ -304,7 +304,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
   if (!ServerState::instance()->isCoordinator()) {
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
-                       "replicationFactor", "shardKeys"});
+                       "replicationFactor", "shardKeys", "shardingStrategy"});
 
     auto ctx =
       transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);

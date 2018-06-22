@@ -27,6 +27,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Cluster/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -38,6 +39,14 @@ using namespace arangodb;
 
 std::string const ShardingStrategyNone::NAME("none");
 std::string const ShardingStrategyCommunity::NAME("community");
+      
+ShardingStrategyNone::ShardingStrategyNone()
+    : ShardingStrategy() {
+
+  if (ServerState::instance()->isCoordinator()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("sharding strategy ") + NAME + " cannot be used for sharded collections");
+  }
+}
 
 int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
                                               bool docComplete, ShardID& shardID,
@@ -106,11 +115,16 @@ void ShardingStrategyHash::determineShards() {
 ShardingStrategyCommunity::ShardingStrategyCommunity(ShardingInfo* sharding)
     : ShardingStrategyHash(sharding) {
   // whether or not the collection uses the default shard attributes (["_key"])
-  TRI_ASSERT(_usesDefaultShardKeys);
-  
+  // this setting is initialized to false, and we may change it now
+  TRI_ASSERT(!_usesDefaultShardKeys);
   auto shardKeys = _sharding->shardKeys();
   if (shardKeys.size() == 1 && shardKeys[0] == StaticStrings::KeyString) {
     _usesDefaultShardKeys = true;
+  }
+  
+  if (_sharding->collection()->isSmart() && 
+      _sharding->collection()->type() == TRI_COL_TYPE_EDGE) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, std::string("sharding strategy ") + NAME + " cannot be used for smart edge collection");
   }
 }
 

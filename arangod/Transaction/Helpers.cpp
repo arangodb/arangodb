@@ -379,7 +379,7 @@ OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std
     }
     resultBuilder.add(VPackValue(result));
   } else {
-    resultBuilder.openObject();
+    resultBuilder.openObject(true);
     for (auto const& it : count) {
       resultBuilder.add(it.first, VPackValue(it.second));
     }

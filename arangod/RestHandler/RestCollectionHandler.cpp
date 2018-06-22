@@ -258,7 +258,8 @@ void RestCollectionHandler::handleCommandPost() {
           "doCompact", "isSystem", "id", "isVolatile", "journalSize",
           "indexBuckets", "keyOptions", "waitForSync", "cacheEnabled",
           "shardKeys", "numberOfShards", "distributeShardsLike", "avoidServers",
-          "isSmart", "smartGraphAttribute", "replicationFactor", "servers"});
+          "isSmart", "shardingStrategy", "smartGraphAttribute", "replicationFactor", 
+          "servers"});
   VPackSlice const parameters = filtered.slice();
 
   // now we can create the collection

@@ -36,8 +36,7 @@ class ShardingInfo;
 /// for a shard. this can be used on the DB server or on the single server
 class ShardingStrategyNone final : public ShardingStrategy {
  public:
-  ShardingStrategyNone() 
-      : ShardingStrategy() {}
+  ShardingStrategyNone(); 
 
   std::string const& name() const override { return NAME; }
   

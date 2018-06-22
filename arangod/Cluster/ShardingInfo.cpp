@@ -262,6 +262,8 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
     }
     result.close();
   }
+
+  _shardingStrategy->toVelocyPack(result);
 }
   
 std::string ShardingInfo::distributeShardsLike() const {
