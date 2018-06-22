@@ -562,12 +562,12 @@ class ClusterInfo {
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
   
-  uint64_t getPlanVersion() const {
+  uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
   }
 
-  uint64_t getCurrentVersion() const {
+  uint64_t getCurrentVersion() {
     READ_LOCKER(guard, _currentProt.lock);
     return _currentVersion;
   }
