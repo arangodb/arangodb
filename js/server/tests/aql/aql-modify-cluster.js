@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE*/
+/*global assertEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -34,7 +34,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getModifyQueryResults = helper.getModifyQueryResults;
 var assertQueryError = helper.assertQueryError;
-const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } };
+const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } }
 
 var sanitizeStats = function (stats) {
   // remove these members from the stats because they don't matter
