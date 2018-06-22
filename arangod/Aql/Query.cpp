@@ -626,6 +626,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
       while (state == ExecutionState::WAITING) {
         tempWaitForAsyncResponse();
         res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+        state = res.first;
       }
       value.swap(res.second);
 
@@ -778,6 +779,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
           while (state == ExecutionState::WAITING) {
             tempWaitForAsyncResponse();
             res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+            state = res.first;
           }
           value.swap(res.second);
 
@@ -822,6 +824,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
           while (state == ExecutionState::WAITING) {
             tempWaitForAsyncResponse();
             res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
+            state = res.first;
           }
           value.swap(res.second);
 
