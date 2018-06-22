@@ -561,6 +561,14 @@ class ClusterInfo {
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
   
+  uint64_t getPlanVersion() const {
+    return _planVersion;
+  }
+
+  uint64_t getCurrentVersion() const {
+    return _currentVersion;
+  }
+
  private:
 
   void loadClusterId();
