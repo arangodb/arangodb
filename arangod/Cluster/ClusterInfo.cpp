@@ -436,7 +436,7 @@ void ClusterInfo::loadPlan() {
         if (_planProt.isValid && newPlanVersion <= _planVersion) {
           LOG_TOPIC(DEBUG, Logger::CLUSTER)
             << "We already know this or a later version, do not update. "
-            << "newPlanVersion=" << newPlanVersion, " _planVersion="
+            << "newPlanVersion=" << newPlanVersion << " _planVersion="
             << _planVersion;
           return;
         }
@@ -854,7 +854,7 @@ void ClusterInfo::loadCurrent() {
         if (_currentProt.isValid && newCurrentVersion <= _currentVersion) {
           LOG_TOPIC(DEBUG, Logger::CLUSTER)
             << "We already know this or a later version, do not update. "
-            << "newCurrentVersion=" << newCurrentVersion, " _currentVersion="
+            << "newCurrentVersion=" << newCurrentVersion << " _currentVersion="
             << _currentVersion;
           return;
         }
