@@ -375,7 +375,7 @@ SECTION("test_create_drop") {
 
     // drop view
     CHECK(vocbase->dropView(logicalView->planId(), false).ok());
-    CHECK(nullptr == vocbase->lookupView(viewId));
+    CHECK(nullptr == ci->getView(vocbase->name(), viewId));
 
     // old index remains valid
     {
