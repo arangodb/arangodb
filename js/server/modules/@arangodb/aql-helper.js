@@ -1,5 +1,5 @@
 /* jshint strict: false */
-/* global assertTrue, assertFalse, assertEqual, fail, print,
+/* global assertTrue, assertFalse, assertEqual, fail,
   AQL_EXECUTE, AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -115,16 +115,7 @@ function getModifyQueryResultsRaw (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getRawQueryResults (query, bindVars, options = {}) {
-  print("##running query #####################################");
-  print(query);
-  print("bindVars:");
-  print(bindVars);
-  print("options:");
-  print(options);
   var finalOptions = Object.assign({ count: true, batchSize: 3000 }, options);
-  print("finalOptions:");
-  print(finalOptions);
-  print("#####################################################");
   var queryResult = AQL_EXECUTE(query, bindVars, finalOptions);
   return queryResult.json;
 }
@@ -135,9 +126,6 @@ function getRawQueryResults (query, bindVars, options = {}) {
 
 function getQueryResults (query, bindVars, recursive, options = {}) {
   var result = getRawQueryResults(query, bindVars, options);
-  print("#####################################################");
-  print(result);
-  print("#####################################################");
 
   if (Array.isArray(result)) {
     result = result.map(function (row) {
@@ -242,9 +230,6 @@ function assertQueryError (errorCode, query, bindVars, options = {}) {
     getQueryResults(query, bindVars, options);
     fail();
   } catch (e) {
-    print("exception###########################################")
-    print(e)
-    print("#####################################################")
     assertFalse(e === "fail", "no exception thrown by query");
     assertTrue(e.errorNum !== undefined, 'unexpected error format while calling [' + query + ']');
     assertEqual(errorCode, e.errorNum, 'unexpected error code (' + e.errorMessage +
