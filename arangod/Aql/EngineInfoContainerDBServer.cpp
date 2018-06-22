@@ -936,6 +936,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
 
+  // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 
