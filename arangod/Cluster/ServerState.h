@@ -97,6 +97,24 @@ class ServerState {
 
   /// @brief convert a string representation to a mode
   static Mode stringToMode(std::string const&);
+  
+  /// @brief atomically load current server mode
+  static Mode mode();
+  
+  /// @brief sets server mode, returns previously held
+  /// value (performs atomic read-modify-write operation)
+  static  Mode setServerMode(Mode mode);
+  
+  /// @brief checks maintenance mode
+  static bool isMaintenance() {
+    return mode() == Mode::MAINTENANCE;
+  }
+  
+  /// @brief should not allow DDL operations / transactions
+  static bool readOnly();
+  
+  /// @brief set server read-only
+  static bool setReadOnly(bool ro);
 
  public:
   /// @brief sets the initialized flag
@@ -174,30 +192,6 @@ class ServerState {
 
   /// @brief set the server role
   void setRole(RoleEnum);
-  
-  /// @brief atomically load current server mode
-  Mode mode() const {
-    return _mode.load(std::memory_order_acquire);;
-  }
-  
-  /// @brief sets server mode, returns previously held
-  /// value (performs atomic read-modify-write operation)
-  Mode setServerMode(Mode mode);
-  
-  /// @brief checks maintenance mode
-  bool isMaintenance() const {
-    return mode() == Mode::MAINTENANCE;
-  }
-  
-  /// @brief should not allow DDL operations / transactions
-  bool readOnly() const {
-    return _readOnly.load(std::memory_order_acquire);
-  }
-
-  /// @brief set server read-only
-  bool setReadOnly(bool ro) {
-    return _readOnly.exchange(ro, std::memory_order_release);
-  }
 
   /// @brief get the server id
   std::string getId() const;
@@ -273,12 +267,6 @@ private:
   
   /// @brief server role
   std::atomic<RoleEnum> _role;
-  
-  /// @brief server mode
-  std::atomic<ServerState::Mode> _mode;
-  
-  /// @brief is this server in the read-only mode
-  std::atomic<bool> _readOnly;
   
   /// @brief r/w lock for state
   mutable arangodb::basics::ReadWriteSpinLock _lock;

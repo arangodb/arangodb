@@ -55,7 +55,6 @@ static ServerState Instance;
 
 ServerState::ServerState()
     : _role(RoleEnum::ROLE_UNDEFINED),
-      _mode(ServerState::Mode::DEFAULT),
       _lock(),
       _id(),
       _javaScriptStartupPath(),
@@ -258,6 +257,13 @@ ServerState::Mode ServerState::stringToMode(std::string const& value) {
 static std::atomic<ServerState::Mode> _serverstate_mode(ServerState::Mode::DEFAULT);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically load current server mode
+////////////////////////////////////////////////////////////////////////////////
+ServerState::Mode ServerState::mode() {
+  return _serverstate_mode.load(std::memory_order_acquire);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief change server mode, returns previously set mode
 ////////////////////////////////////////////////////////////////////////////////
 ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
@@ -268,6 +274,20 @@ ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
   return value;
 }
 
+static std::atomic<bool> _serverstate_readonly(false);
+
+bool ServerState::readOnly() {
+  return _serverstate_readonly.load(std::memory_order_acquire);
+}
+
+/// @brief set server read-only
+bool ServerState::setReadOnly(bool ro) {
+  return _serverstate_readonly.exchange(ro, std::memory_order_release);
+}
+
+// ============ Instance methods =================
+
+/// @brief unregister this server with the agency
 bool ServerState::unregister() {
   TRI_ASSERT(!getId().empty());
   TRI_ASSERT(AgencyCommManager::isEnabled());

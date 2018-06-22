@@ -123,9 +123,8 @@ void RestAdminServerHandler::handleAvailability() {
     return;
   }
   
-  auto mode = ServerState::instance()->mode();
   bool available = false;
-  switch (mode) {
+  switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
       available = !application_features::ApplicationServer::isStopping();
       break;
@@ -143,14 +142,14 @@ void RestAdminServerHandler::handleAvailability() {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
   } else {
     // this will produce an HTTP 200 result
-    writeModeResult(ServerState::instance()->readOnly());
+    writeModeResult(ServerState::readOnly());
   }
 }
 
 void RestAdminServerHandler::handleMode() {
   auto const requestType = _request->requestType();
   if (requestType == rest::RequestType::GET) {
-    writeModeResult(ServerState::instance()->readOnly());
+    writeModeResult(ServerState::readOnly());
   } else if (requestType == rest::RequestType::PUT) {
     
     ExecContext const* exec = ExecContext::CURRENT;
@@ -201,7 +200,7 @@ void RestAdminServerHandler::handleMode() {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER, "cannot set requested mode");
     }
-    writeModeResult(ServerState::instance()->readOnly());
+    writeModeResult(ServerState::readOnly());
     
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
