@@ -47,7 +47,6 @@ DatabasePathFeature::DatabasePathFeature(ApplicationServer* server)
   startsAfter("PageSize");
   startsAfter("Random");
   startsAfter("Temp");
-  startsAfter("WorkMonitor");
 }
 
 void DatabasePathFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

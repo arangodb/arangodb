@@ -63,9 +63,6 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
   if (found) {
     _needsOwnThread = StringUtils::boolean(startThread);
   }
-
-  _context =
-    std::make_shared<WorkContext>(_request->user(), _request->databaseName());
 }
 
 RestHandler::~RestHandler() {

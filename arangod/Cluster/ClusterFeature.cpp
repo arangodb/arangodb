@@ -60,7 +60,6 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
   startsAfter("Authentication");
   startsAfter("CacheManager");
   startsAfter("Logger");
-  startsAfter("WorkMonitor");
   startsAfter("Database");
   startsAfter("Scheduler");
   startsAfter("V8Dealer");

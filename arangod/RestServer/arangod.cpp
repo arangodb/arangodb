@@ -79,7 +79,6 @@
 #include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RestServer/WorkMonitorFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Ssl/SslFeature.h"
 #include "Ssl/SslServerFeature.h"
@@ -186,7 +185,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new V8PlatformFeature(&server));
     server.addFeature(new VersionFeature(&server));
     server.addFeature(new ViewTypesFeature(&server));
-    server.addFeature(new WorkMonitorFeature(&server));
     server.addFeature(new RocksDBOptionFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK

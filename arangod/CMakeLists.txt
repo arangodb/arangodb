@@ -329,7 +329,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
-  RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
@@ -352,7 +351,6 @@ SET(ARANGOD_SOURCES
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
-  RestServer/WorkMonitorFeature.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
   Scheduler/Job.cpp
@@ -429,13 +427,11 @@ include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
 add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
-add_library(arangowm STATIC Utils/WorkMonitorArangod.cpp)
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
-  arangowm
   ${LINENOISE_LIBS}
   ${MSVC_LIBS}
   ${V8_LIBS}

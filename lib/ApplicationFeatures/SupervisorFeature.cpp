@@ -120,7 +120,6 @@ SupervisorFeature::SupervisorFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
   startsAfter("Logger");
-  startsAfter("WorkMonitor");
 }
 
 void SupervisorFeature::collectOptions(
