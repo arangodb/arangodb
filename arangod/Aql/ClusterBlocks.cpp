@@ -993,16 +993,11 @@ Result RemoteBlock::sendAsyncRequest(
 
   ++_engine->_stats.requests;
   std::shared_ptr<ClusterCommCallback> callback = std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
-  {
-    // TODO Do we need this jobguard?
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
 
-    // TODO Returns OperationID do we need it in any way?
-    cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
-                     std::move(url), body, headers, callback, defaultTimeOut,
-                     true);
-  }
+  // TODO Returns OperationID do we need it in any way?
+  cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
+                   std::move(url), body, headers, callback, defaultTimeOut,
+                   true);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
