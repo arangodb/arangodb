@@ -60,7 +60,6 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Statistics");
   startsAfter("Upgrade");
   startsAfter("V8Dealer");
-  startsAfter("WorkMonitor");
   startsAfter("Temp");
 }
 

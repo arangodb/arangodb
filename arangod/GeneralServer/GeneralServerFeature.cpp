@@ -78,7 +78,6 @@
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/RestWalAccessHandler.h"
-#include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -470,10 +469,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/routing",
       RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
-
-  _handlerFactory->addPrefixHandler(
-      "/_admin/work-monitor",
-      RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
   _handlerFactory->addHandler(
       "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);

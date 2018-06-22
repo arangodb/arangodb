@@ -67,8 +67,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return _statistics.exchange(nullptr);
   }
   
-  std::shared_ptr<WorkContext> context() { return _context; }
-
   void setStatistics(RequestStatistics* stat);
 
   /// Execute the rest handler state machine
@@ -126,8 +124,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-
-  std::shared_ptr<WorkContext> _context;
 
   std::atomic<RequestStatistics*> _statistics;
 

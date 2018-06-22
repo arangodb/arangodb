@@ -46,10 +46,6 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
   startsAfter("ShellColors");
   startsAfter("Version");
 
-  if (threaded) {
-    startsAfter("WorkMonitor");
-  }
-
   _levels.push_back("info");
 
   // if stdout is a tty, then the default for _foregroundTty becomes true
