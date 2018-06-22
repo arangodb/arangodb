@@ -128,9 +128,9 @@ bool OurLessThan::operator()(
       cmp = AqlValue::Compare(_trx, aa, bb, true);
     }
 
-    if (cmp == -1) {
+    if (cmp < 0) {
       return reg.asc;
-    } else if (cmp == 1) {
+    } else if (cmp > 0) {
       return !reg.asc;
     }
   }

@@ -258,12 +258,17 @@ size_t directoryMemory(irs::directory const& directory, TRI_voc_cid_t viewId) no
 ///        similar to the data path calculation for collections
 ////////////////////////////////////////////////////////////////////////////////
 irs::utf8_path getPersistedPath(
-    arangodb::DatabasePathFeature const& dbPathFeature, TRI_voc_cid_t id
+    arangodb::DatabasePathFeature const& dbPathFeature,
+    TRI_vocbase_t const& vocbase,
+    TRI_voc_cid_t id
 ) {
   irs::utf8_path dataPath(dbPathFeature.directory());
   static const std::string subPath("databases");
+  static const std::string dbPath("database-");
 
   dataPath /= subPath;
+  dataPath /= dbPath;
+  dataPath += std::to_string(vocbase.id());
   dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
   dataPath += "-";
   dataPath += std::to_string(id);
@@ -683,7 +688,7 @@ IResearchView::IResearchView(
    _asyncTerminate(false),
    _memoryNode(&_memoryNodes[0]), // set current memory node (arbitrarily 0)
    _toFlush(&_memoryNodes[1]), // set flush-pending memory node (not same as _memoryNode)
-   _storePersisted(getPersistedPath(dbPathFeature, id())),
+   _storePersisted(getPersistedPath(dbPathFeature, vocbase, id())),
    _threadPool(0, 0), // 0 == create pool with no threads, i.e. not running anything
    _inRecovery(false) {
   // set up in-recovery insertion hooks
@@ -748,21 +753,30 @@ IResearchView::IResearchView(
   auto* viewPtr = this;
 
   // initialize transaction read callback
-  _trxReadCallback = [viewPtr](arangodb::TransactionState& state)->void {
-    if (arangodb::transaction::Status::RUNNING != state.status()) {
+  _trxReadCallback = [viewPtr](
+      arangodb::transaction::Methods& trx,
+      arangodb::transaction::Status status
+  )->void {
+    if (arangodb::transaction::Status::RUNNING != status) {
       return; // NOOP
     }
 
-    viewPtr->snapshot(state, true);
+    viewPtr->snapshot(trx, true);
   };
 
   // initialize transaction write callback
-  _trxWriteCallback = [viewPtr](arangodb::TransactionState& state)->void {
-    if (arangodb::transaction::Status::COMMITTED != state.status()) {
+  _trxWriteCallback = [viewPtr](
+      arangodb::transaction::Methods& trx,
+      arangodb::transaction::Status status
+  )->void {
+    auto* state = trx.state();
+
+    // check state of the top-most transaction only
+    if (!state || arangodb::transaction::Status::COMMITTED != state->status()) {
       return; // NOOP
     }
 
-    auto* cookie = ViewStateHelper::write(state, *viewPtr);
+    auto* cookie = ViewStateHelper::write(*state, *viewPtr);
     TRI_ASSERT(cookie); // must have been added together with this callback
     ReadMutex mutex(viewPtr->_mutex); // '_memoryStore'/'_storePersisted' can be asynchronously modified
 
@@ -797,20 +811,20 @@ IResearchView::IResearchView(
         viewPtr->_asyncCondition.notify_all(); // trigger recheck of sync
       }
 
-      if (state.waitForSync() && !viewPtr->sync()) {
+      if (state->waitForSync() && !viewPtr->sync()) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failed to sync while committing transaction for IResearch view '" << viewPtr->name()
-          << "', tid '" << state.id() << "'";
+          << "', tid '" << state->id() << "'";
       }
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "caught exception while committing transaction for IResearch view '" << viewPtr->name()
-        << "', tid '" << state.id() << "': " << e.what();
+        << "', tid '" << state->id() << "': " << e.what();
       IR_LOG_EXCEPTION();
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "caught exception while committing transaction for iResearch view '" << viewPtr->name()
-        << "', tid '" << state.id() << "'";
+        << "', tid '" << state->id() << "'";
       IR_LOG_EXCEPTION();
     }
   };
@@ -970,15 +984,8 @@ IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
 }
 
 bool IResearchView::apply(arangodb::transaction::Methods& trx) {
-  auto* state = trx.state();
-
-  if (!state) {
-    return false;
-  }
-
-  state->addStatusChangeCallback(_trxReadCallback);
-
-  return true;
+  // called from IResearchView when this view is added to a transaction
+  return trx.addStatusChangeCallback(&_trxReadCallback); // add shapshot
 }
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
@@ -1355,15 +1362,14 @@ int IResearchView::insert(
 
       store = ptr.get();
 
-      if (!ViewStateHelper::write(state, *this, std::move(ptr))) {
+      if (!ViewStateHelper::write(state, *this, std::move(ptr))
+          || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failed to store state into a TransactionState for insert into IResearch view '" << name() << "'"
           << "', tid '" << state.id() << "', collection '" << cid << "', revision '" << documentId.id() << "'";
 
         return TRI_ERROR_INTERNAL;
       }
-
-      state.addStatusChangeCallback(_trxWriteCallback);
     }
   }
 
@@ -1434,15 +1440,14 @@ int IResearchView::insert(
 
       store = ptr.get();
 
-      if (!ViewStateHelper::write(state, *this, std::move(ptr))) {
+      if (!ViewStateHelper::write(state, *this, std::move(ptr))
+          || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "failed to store state into a TransactionState for insert into IResearch view '" << name() << "'"
           << "', tid '" << state.id() << "', collection '" << cid << "'";
 
         return TRI_ERROR_INTERNAL;
       }
-
-      state.addStatusChangeCallback(_trxWriteCallback);
     }
   }
 
@@ -1681,15 +1686,14 @@ int IResearchView::remove(
 
     store = ptr.get();
 
-    if (!ViewStateHelper::write(state, *this, std::move(ptr))) {
+    if (!ViewStateHelper::write(state, *this, std::move(ptr))
+        || !trx.addStatusChangeCallback(&_trxWriteCallback)) {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failed to store state into a TransactionState for insert into IResearch view '" << name() << "'"
         << "', tid '" << state.id() << "', collection '" << cid << "', revision '" << documentId.id() << "'";
 
       return TRI_ERROR_INTERNAL;
     }
-
-    state.addStatusChangeCallback(_trxWriteCallback);
   }
 
   TRI_ASSERT(store && false == !*store);
@@ -1719,10 +1723,19 @@ int IResearchView::remove(
 }
 
 PrimaryKeyIndexReader* IResearchView::snapshot(
-    TransactionState& state,
+    transaction::Methods& trx,
     bool force /*= false*/
 ) const {
-  auto* cookie = ViewStateHelper::read(state, *this);
+  auto* state = trx.state();
+
+  if (!state) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "failed to get transaction state while creating IResearchView snapshot";
+
+    return nullptr;
+  }
+
+  auto* cookie = ViewStateHelper::read(*state, *this);
 
   if (cookie) {
     return &(cookie->_snapshot);
@@ -1732,7 +1745,7 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
     return nullptr;
   }
 
-  if (state.waitForSync() && !const_cast<IResearchView*>(this)->sync()) {
+  if (state->waitForSync() && !const_cast<IResearchView*>(this)->sync()) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to sync while creating snapshot for IResearch view '" << name() << "', previous snapshot will be used instead";
   }
@@ -1758,23 +1771,23 @@ PrimaryKeyIndexReader* IResearchView::snapshot(
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while collecting readers for snapshot of IResearch view '" << name()
-      << "', tid '" << state.id() << "': " << e.what();
+      << "', tid '" << state->id() << "': " << e.what();
     IR_LOG_EXCEPTION();
 
     return nullptr;
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "caught exception while collecting readers for snapshot of IResearch view '" << name()
-      << "', tid '" << state.id() << "'";
+      << "', tid '" << state->id() << "'";
     IR_LOG_EXCEPTION();
 
     return nullptr;
   }
 
-  if (!ViewStateHelper::read(state, *this, std::move(cookiePtr))) {
+  if (!ViewStateHelper::read(*state, *this, std::move(cookiePtr))) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to store state into a TransactionState for snapshot of IResearch view '" << name()
-      << "', tid '" << state.id() << "'";
+      << "', tid '" << state->id() << "'";
 
     return nullptr;
   }
@@ -1991,25 +2004,17 @@ void IResearchView::verifyKnownCollections() {
   auto cids = _meta._collections;
 
   {
-    static const arangodb::transaction::Options defaults;
-    struct State final: public arangodb::TransactionState {
-      State(TRI_vocbase_t& vocbase)
-        : arangodb::TransactionState(vocbase, 0, defaults) {}
-      virtual arangodb::Result abortTransaction(
-          arangodb::transaction::Methods*
-      ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
-      virtual arangodb::Result beginTransaction(
-          arangodb::transaction::Hints
-      ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
-      virtual arangodb::Result commitTransaction(
-          arangodb::transaction::Methods*
-      ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
-      virtual bool hasFailedOperations() const override { return false; }
+    struct DummyTransaction : transaction::Methods {
+      explicit DummyTransaction(std::shared_ptr<transaction::Context> const& ctx)
+        : transaction::Methods(ctx) {
+      }
     };
 
-    State state(vocbase());
+    transaction::StandaloneContext context(vocbase());
+    std::shared_ptr<transaction::Context> dummy;  // intentionally empty
+    DummyTransaction trx(std::shared_ptr<transaction::Context>(dummy, &context)); // use aliasing constructor
 
-    if (!appendKnownCollections(cids, *snapshot(state, true))) {
+    if (!appendKnownCollections(cids, *snapshot(trx, true))) {
       LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
         << "failed to collect collection IDs for IResearch view '" << id() << "'";
 
