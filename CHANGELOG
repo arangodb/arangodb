@@ -1,13 +1,13 @@
 devel
 -----
+
 * replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
   new optimizer rule.
 
   - The NEAR function now does not default to a limit of 100 documents any more.
   - "fulltext-index-optimizer" optimizer rule has been removed.
 
-
-* PR 5552: add "--latency true" option to arangoimport.  Lists microsecond latency
+* added option "--latency true" option to arangoimport. Lists microsecond latency
   statistics on 10 second intervals.
 
 * fixed internal issue #2256: ui, document id not showing up when deleting a document

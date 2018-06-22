@@ -949,13 +949,17 @@ function geoJsonTestSuite() {
     assertEqual(expected, result2.sort(), query.string);
   }
 
-  // GeoJSON test data. https://gist.github.com/aaronlidman/7894176?short_path=2b56a92
+  // GeoJSON test data, located over Borneo, Sumatra and malaysia
   // Mostly from the spec: http://geojson.org/geojson-spec.html.
-  // stuff over Java island
   let indonesia = [
     { "type": "Polygon", "coordinates": [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]]] },
     { "type": "LineString", "coordinates": [[102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]] },
-    { "type": "Point", "coordinates": [102.0, 0.5] }];
+    { "type": "Point", "coordinates": [102.0, 0.5] },
+    { "type": "MultiPolygon", "coordinates": [
+      [[[102.0, 2.0], [103.0, 2.0], [103.0, 3.0], [102.0, 3.0], [102.0, 2.0]]],
+      [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]],
+        [[100.2, 0.2], [100.2, 0.8], [100.8, 0.8], [100.8, 0.2], [100.2, 0.2]]]]
+    }];
   let indonesiaKeys = [];
 
   // EMEA region
@@ -1007,7 +1011,7 @@ function geoJsonTestSuite() {
         bindVars: {
           "@cc": locations.name(),
         },
-        expected: indonesiaKeys
+        expected: indonesiaKeys.slice(0,3)
       });
     },
 
@@ -1054,7 +1058,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle contains
+    /// @brief test polygon contains
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsPolygon1: function () {
@@ -1069,7 +1073,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle contains using a reference
+    /// @brief test polygon contains
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsPolygon2: function () {
@@ -1087,7 +1091,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle contains
+    /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon1: function () {
@@ -1102,7 +1106,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle intersection
+    /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon2: function () {
@@ -1117,7 +1121,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle intersection
+    /// @brief test polygon intersection
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon3: function () {
@@ -1132,7 +1136,7 @@ function geoJsonTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple rectangle intersection using a reference
+    /// @brief test polygon intersection using a reference
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon4: function () {
@@ -1147,8 +1151,122 @@ function geoJsonTestSuite() {
         },
         expected: emeaKeys.slice(0, 1)
       });
+    }
+  };
+}
+
+
+function geoFunctionsTestSuite() {
+
+  function runQuery(query) {
+    var result1 = getQueryResults(query.string, query.bindVars || {}, false);
+    var result2 = getQueryResults(query.string, query.bindVars || {}, false,
+      { optimizer: { rules: ["-all"] } });
+    let expected = query.expected.slice().sort();
+    /*
+    result1.forEach(k => internal.print("Res: ", locations.document(k)));
+    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
+
+    assertEqual(expected, result1.sort(), query.string);
+    assertEqual(expected, result2.sort(), query.string);
+  }
+
+  let locations;
+  return {
+
+    testContainsPolygon1: function () {
+      // simple triangle
+      let triangle = {type:"Polygon", coordinates:[[[0,0], [1,0], [0,1], [0,0]]]};
+      let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49]];
+
+      const query = "RETURN GEO_CONTAINS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": triangle, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": triangle, "cc": [1.0, 1.0]}), [false]);
     },
 
+    testContainsPolygon2: function () {
+      // polygon with nested rings
+      let polygon = {type:"Polygon", coordinates:[[[-1,-1], [2,-1], [2,2], [-1,2], [-1,-1]],
+                                                  [[0,0], [1,0], [1,1], [0,1], [0,0]]]};
+      let valid = [[-0.99, -0.99], [1.99, -0.99], [1.99, 1.99], [-0.99, 1.99], 
+                   [-0.5, 0.5], [0.5, 1.5], [1.5, -0.5], [0.5, -0.5]];
+
+      const query = "RETURN GEO_CONTAINS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": polygon, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [0.5, 0.5]}), [false]);
+      assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [3.0, 3.0]}), [false]);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsMultiPolygon: function () {
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
+      let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49],
+                   [2.01, 2.01], [2.01, 2.99], [2.99, 2.01], [2.49, 2.49]];
+
+      const query = "RETURN GEO_CONTAINS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [1.0, 1.0]}), [false]);
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [3.0, 3.0]}), [false]);
+    },
+
+    testIntersectsPolygon1: function () {
+      // polygon with nested rings
+      let polygon = {type:"Polygon", coordinates:[[[-1,-1], [2,-1], [2,2], [-1,2], [-1,-1]],
+      [[0,0], [1,0], [1,1], [0,1], [0,0]]]};
+      let valid = [[-0.99, -0.99], [1.99, -0.99], [1.99, 1.99], [-0.99, 1.99], 
+      [-0.5, 0.5], [0.5, 1.5], [1.5, -0.5], [0.5, -0.5]];
+
+      const query = "RETURN GEO_INTERSECTS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": polygon, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [0.5, 0.5]}), [false]);
+      assertEqual(getQueryResults(query, {"polygon": polygon, "cc": [3.0, 3.0]}), [false]);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsMultiPolygon1: function () {
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
+      let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49],
+                   [2.01, 2.01], [2.01, 2.99], [2.99, 2.01], [2.49, 2.49]];
+
+      const query = "RETURN GEO_INTERSECTS(@polygon, @cc)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [1.0, 1.0]}), [false]);
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "cc": [3.0, 3.0]}), [false]);
+    },
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsMultiPolygon2: function () {
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
+      let valid = [{"type": "Polygon","coordinates": [[[2.5,2],[3,2.0],[3,2.5],[2.5,2.5],[2.5,2]]]},
+                   {"type": "LineString","coordinates": [[2,2.5],[2.5,3.0]]}, 
+                   {"type": "LineString","coordinates": [[-0,0.5],[0.5,1],[0.5,-0.5]]}];
+
+      const query = "RETURN GEO_INTERSECTS(@polygon, @other)";
+      valid.forEach(c => {
+        assertEqual(getQueryResults(query, {"polygon": multipoly, "other": c}), [true]);
+      });
+      assertEqual(getQueryResults(query, {"polygon": multipoly, "other": {"type": "LineString","coordinates": [[2.5,1],[3,0.05]]}}), [false]);
+    },
   };
 }
 
@@ -1156,5 +1274,6 @@ jsunity.run(ahuacatlLegacyGeoTestSuite);
 jsunity.run(legacyGeoTestSuite);
 jsunity.run(pointsTestSuite);
 jsunity.run(geoJsonTestSuite);
+jsunity.run(geoFunctionsTestSuite);
 
 return jsunity.done();
