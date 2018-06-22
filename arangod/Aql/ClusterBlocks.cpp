@@ -1770,6 +1770,8 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     result = _trx->remove(_collection->name(), inSlice , opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::REPLACE) {
     if (node->_replaceIndexNode && (in == nullptr)) {
+      // we have a FOR .. IN FILTER doc._key == ... REPLACE - no WITH.
+      // in this case replace needs to behave as if it was UPDATE.
       result = _trx->update(_collection->name(), inSlice, opOptions);
     } else {
       result = _trx->replace(_collection->name(), inSlice, opOptions);
