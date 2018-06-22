@@ -164,6 +164,8 @@ function optimizerClusterSingleDocumentTestSuite () {
 
     tearDown : function () {
       db._drop(cn1);
+      db._drop(cn2);
+      db._drop(cn3);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -335,6 +337,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
         [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, s, 0],
       ];
       var expectedRules = [
         ["remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
