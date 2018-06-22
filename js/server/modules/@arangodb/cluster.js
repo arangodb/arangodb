@@ -828,6 +828,11 @@ function executePlanForCollections(plannedCollections) {
                 let save = {id: collectionInfo.id, name: collectionInfo.name};
                 delete collectionInfo.id;     // must not
                 delete collectionInfo.name;
+                if (collectionInfo.keyOptions && 
+                    (collectionInfo.shardKeys.length !== 1 || collectionInfo.shardKeys[0] !== '_key')) {
+                  // custom sharding... we must allow the coordinator to set a _key
+                  collectionInfo.keyOptions.allowUserKeys = true;
+                }
                 if (collectionInfo.hasOwnProperty('globallyUniqueId')) {
                   console.warn('unexpected globallyUniqueId in %s',
                     JSON.stringify(collectionInfo));
