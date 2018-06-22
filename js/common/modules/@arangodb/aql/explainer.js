@@ -1334,7 +1334,7 @@ function processQuery (query, explain) {
           collectionVariables[node.outVariable.id] = node.collection;
           let indexRef = `${variable(JSON.stringify(node.key))}`;
           node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
-          return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${annotation(`/* primary index scan */`)}`;
+          return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variable('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
           // `
         }
         case 'InsertNode': {
@@ -1349,18 +1349,20 @@ function processQuery (query, explain) {
         }
         case 'UpdateNode': {
           modificationFlags = node.modificationFlags;
+          let OLD="";
           if (node.hasOwnProperty('inVariable')) {
             collectionVariables[node.inVariable.id] = node.collection;
+            OLD = `${keyword('WITH')} ${variableName(node.inVariable)} `;
           }
           let indexRef;
-          let keyCondition;
+          let keyCondition = "";
           let filterCondition;
           if (node.hasOwnProperty('key')) {
-            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))}}`;
-            indexRef = `${variable(JSON.stringify(node.key))}`;
+            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
+            indexRef = `${variable(JSON.stringify(node.key))} `;
             filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
           } else if (node.hasOwnProperty('inVariable')) {
-            keyCondition = `${variableName(node.inVariable)}`;
+            keyCondition = `${variableName(node.inVariable)} `;
             indexRef = `${variableName(node.inVariable)}`;
           } else {
             keyCondition = "WTFFF?";
@@ -1369,28 +1371,29 @@ function processQuery (query, explain) {
           if (node.hasOwnProperty('indexes')) {
             node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           }
-          let OLD="";
           let FORSTATEMENT="";
           if (node.replaceIndexNode) {
             FORSTATEMENT=`${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
-            keyCondition = "";
+            keyCondition = `${variable('doc')} `;
           }
-          return `${FORSTATEMENT}${keyword('UPDATE')} ${keyCondition} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          return `${FORSTATEMENT}${keyword('UPDATE')} ${keyCondition}${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'ReplaceNode': {
           modificationFlags = node.modificationFlags;
+          let OLD="";
           if (node.hasOwnProperty('inVariable')) {
             collectionVariables[node.inVariable.id] = node.collection;
+            OLD = `${keyword('WITH')} ${variableName(node.inVariable)} `;
           }
           let indexRef;
-          let keyCondition;
+          let keyCondition = "";
           let filterCondition;
           if (node.hasOwnProperty('key')) {
-            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))}}`;
+            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
             indexRef = `${variable(JSON.stringify(node.key))}`;
             filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
           } else if (node.hasOwnProperty('inVariable')) {
-            keyCondition = `${variableName(node.inVariable)}`;
+            keyCondition = `${variableName(node.inVariable)} `;
             indexRef = `${variableName(node.inVariable)}`;
           } else {
             keyCondition = "WTFFF?";
@@ -1399,23 +1402,12 @@ function processQuery (query, explain) {
           if (node.hasOwnProperty('indexes')) {
             node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           }
-          let OLD="";
           let FORSTATEMENT="";
           if (node.replaceIndexNode) {
             FORSTATEMENT=`${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
-            keyCondition = "";
+            keyCondition = `${variable('doc')} `;
           }
-          return `${FORSTATEMENT}${keyword('REPLACE')} ${keyCondition} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
-        }
-        case 'UpsertNode': {
-          modificationFlags = node.modificationFlags;
-          collectionVariables[node.inVariable.id] = node.collection;
-          let indexRef = `${variableName(node.inVariable)}`;
-          if (node.hasOwnProperty('indexes')) {
-            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
-          }
-          let OLD="";
-          return `${keyword('UPSERT')} ${variableName(node.inVariable)} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          return `${FORSTATEMENT}${keyword('REPLACE')} ${keyCondition}${OLD}${keyword('IN')} ${collection(node.collection)}`;
         }
         case 'RemoveNode': {
           modificationFlags = node.modificationFlags;
@@ -1426,11 +1418,11 @@ function processQuery (query, explain) {
           let keyCondition;
           let filterCondition;
           if (node.hasOwnProperty('key')) {
-            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))}}`;
+            keyCondition = `{ _key: ${variable(JSON.stringify(node.key))} } `;
             indexRef = `${variable(JSON.stringify(node.key))}`;
             filterCondition = `${variable('doc._key')} == ${variable(JSON.stringify(node.key))}`;
           } else if (node.hasOwnProperty('inVariable')) {
-            keyCondition = `${variableName(node.inVariable)}`;
+            keyCondition = `${variableName(node.inVariable)} `;
             indexRef = `${variableName(node.inVariable)}`;
           } else {
             keyCondition = "WTFFF?";
@@ -1439,13 +1431,12 @@ function processQuery (query, explain) {
           if (node.hasOwnProperty('indexes')) {
             node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
           }
-          let OLD="";
           let FORSTATEMENT="";
           if (node.replaceIndexNode) {
             FORSTATEMENT=`${keyword('FOR')} ${variable('doc')} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${filterCondition} `;
-            keyCondition = "";
+            keyCondition = `${variable('doc')} `;
           }
-          return `${FORSTATEMENT}${keyword('REMOVE')} ${keyCondition} ${OLD}${keyword('IN')} ${collection(node.collection)}`;
+          return `${FORSTATEMENT}${keyword('REMOVE')} ${keyCondition}${keyword('IN')} ${collection(node.collection)}`;
         }
         }
       }
