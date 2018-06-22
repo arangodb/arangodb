@@ -290,61 +290,6 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
   RegisterId const nrInRegs = getNrInputRegisters();
   RegisterId const nrOutRegs = getNrOutputRegisters();
 
-  enum class GetNextRowState { NONE, SUCCESS, WAITING };
-
-  // get the next row from the current block. fetches a new block if necessary.
-  // TODO unify with the one from HashedCollectBlock::getOrSkipSome
-  // TODO The way this works now, is that it returns a row (via block+position)
-  //      and saves the next row in the state of the block.
-  //      It may be more understandable if the block state always points to the
-  //      current position, and more in line with the original implementations.
-  //      So think about if that's feasible or creates more problems than it
-  //      solves.
-  //      Otherwise, document this behaviour clearly; and also how this
-  //      interacts with WAITING.
-  auto getNextRow =
-      [this,
-        nrInRegs]() -> std::tuple<GetNextRowState, AqlItemBlock*, size_t> {
-    // this lambda must not have changed the state of *this when returning
-    // WAITING, so calling it again resumes the previous execution.
-
-    // try to ensure a nonempty buffer
-    if (_buffer.empty()) {
-      TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      ExecutionState state;
-      bool blockAppended;
-      std::tie(state, blockAppended) =
-          ExecutionBlock::getBlock(DefaultBatchSize());
-      if (state == ExecutionState::WAITING) {
-        TRI_ASSERT(!blockAppended);
-        return std::make_tuple(GetNextRowState::WAITING, nullptr, 0);
-      }
-    }
-
-    // check if we're done
-    if (_buffer.empty()) {
-      return std::make_tuple(GetNextRowState::NONE, nullptr, 0);
-    }
-
-    // save current position (to return)
-    AqlItemBlock* cur = _buffer.front();
-    size_t pos = _pos;
-
-    TRI_ASSERT(nrInRegs == cur->getNrRegs());
-
-    // calculate next position
-    ++_pos;
-    if (_pos >= cur->size()) {
-      _pos = 0;
-      _buffer.pop_front();
-    }
-
-    return std::make_tuple(GetNextRowState::SUCCESS, cur, pos);
-  };
-
   auto updateCurrentGroup = [this, skipping](
       AqlItemBlock const* cur, size_t const pos, AqlItemBlock* res) {
     bool newGroup = false;
@@ -435,25 +380,33 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    GetNextRowState state;
-    AqlItemBlock* cur = nullptr;
-    size_t pos = 0;
-    std::tie(state, cur, pos) = getNextRow();
+    if (!_buffer.empty()) {
+      TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
 
-    if (state == GetNextRowState::NONE) {
-      // no more rows
-      break;
-    } else if (state == GetNextRowState::WAITING) {
-      // continue later
+    BufferState bufferState = getBlockIfNeeded(DefaultBatchSize());
+    if (bufferState == BufferState::WAITING) {
+      TRI_ASSERT(skipped == 0);
+      TRI_ASSERT(result == nullptr);
       return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
     }
-    TRI_ASSERT(state == GetNextRowState::SUCCESS);
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
+
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(!_buffer.empty());
+
+    AqlItemBlock* cur = _buffer.front();
+    TRI_ASSERT(cur != nullptr);
 
     // TODO this is dirty. if you have an idea how to improve this, please do.
     // Can't we omit this?
     if (_lastBlock == nullptr) {
       // call only on the first row of the first block
-      TRI_ASSERT(pos == 0);
+      TRI_ASSERT(_pos == 0);
       inheritRegisters(cur, _result.get(), 0);
     }
 
@@ -471,12 +424,11 @@ std::pair<ExecutionState, Result> SortedCollectBlock::getOrSkipSome(
     // then, add the current row to the current group.
     // returns true iff a group was emitted (so false when called on the first
     // empty current group, while still initializing it)
-    bool emittedGroup = updateCurrentGroup(cur, pos, _result.get());
+    bool emittedGroup = updateCurrentGroup(cur, _pos, _result.get());
 
-    if (emittedGroup) {
-      // increase output row count
-      ++_skipped;
-    }
+    // never return the block here
+    _returnFrontBlock = false;
+    advanceCursor(1, emittedGroup ? 1 : 0);
   }
 
   bool done = _skipped < atMost;

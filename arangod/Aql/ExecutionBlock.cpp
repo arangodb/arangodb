@@ -473,6 +473,9 @@ void ExecutionBlock::advanceCursor(
   if (_pos >= cur->size()) {
     _buffer.pop_front();
     _pos = 0;
+    // TODO maybe instead of adding state via _returnFrontBlock let this
+    // function return cur iff it's removed from buffer and let the caller
+    // handle returnBlock().
     if (_returnFrontBlock) {
       returnBlock(cur);
     }
