@@ -1206,7 +1206,7 @@ function geoFunctionsTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsMultiPolygon: function () {
-      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] }
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
       let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49],
                    [2.01, 2.01], [2.01, 2.99], [2.99, 2.01], [2.49, 2.49]];
 
@@ -1238,7 +1238,7 @@ function geoFunctionsTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsMultiPolygon1: function () {
-      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] }
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
       let valid = [[0.01, 0.01], [0.01, 0.99], [0.99, 0.01], [0.49, 0.49],
                    [2.01, 2.01], [2.01, 2.99], [2.99, 2.01], [2.49, 2.49]];
 
@@ -1256,7 +1256,7 @@ function geoFunctionsTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsMultiPolygon2: function () {
-      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] }
+      let multipoly = {"type": "MultiPolygon", "coordinates": [[[[0,0], [1,0], [0,1], [0,0]]],[[[2,2], [3,2], [2,3], [2,2]]]] };
       let valid = [{"type": "Polygon","coordinates": [[[2.5,2],[3,2.0],[3,2.5],[2.5,2.5],[2.5,2]]]},
                    {"type": "LineString","coordinates": [[2,2.5],[2.5,3.0]]}, 
                    {"type": "LineString","coordinates": [[-0,0.5],[0.5,1],[0.5,-0.5]]}];

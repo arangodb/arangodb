@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, AQL_EXECUTE */
+/*global assertUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -49,10 +49,10 @@ function IResearchFeatureDDLTestSuite () {
 
     testStressAddRemoveView : function() {
       db._dropView("TestView");
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         db._createView("TestView", "arangosearch", {});
         assertTrue(null != db._view("TestView"));
-        db._dropView("TestView")
+        db._dropView("TestView");
         assertTrue(null == db._view("TestView"));
       }
     },
@@ -64,20 +64,20 @@ function IResearchFeatureDDLTestSuite () {
 
       var addLink = { links: { "TestCollection0": {} } };
 
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         var view = db._createView("TestView", "arangosearch", {});
         view.properties(addLink, true); // partial update
-        properties = view.properties();
+        let properties = view.properties();
         assertTrue(Array === properties.collections.constructor);
         assertEqual(1, properties.collections.length);
         var indexes = db.TestCollection0.getIndexes();
         assertEqual(2, indexes.length);
         var link = indexes[1];
         assertEqual("primary", indexes[0].type);
-        assertNotEqual(null, link)
-        assertEqual("arangosearch", link.type)
-        db._dropView("TestView")
-        assertEqual(null, db._view("TestView"))
+        assertNotEqual(null, link);
+        assertEqual("arangosearch", link.type);
+        db._dropView("TestView");
+        assertEqual(null, db._view("TestView"));
         assertEqual(1, db.TestCollection0.getIndexes().length);
       }
     },
@@ -91,17 +91,17 @@ function IResearchFeatureDDLTestSuite () {
       var addLink = { links: { "TestCollection0": {} } };
       var removeLink = { links: { "TestCollection0": null } };
 
-      for (i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         view.properties(addLink, true); // partial update
-        properties = view.properties();
+        let properties = view.properties();
         assertTrue(Array === properties.collections.constructor);
         assertEqual(1, properties.collections.length);
         var indexes = db.TestCollection0.getIndexes();
         assertEqual(2, indexes.length);
         var link = indexes[1];
         assertEqual("primary", indexes[0].type);
-        assertNotEqual(null, link)
-        assertEqual("arangosearch", link.type)
+        assertNotEqual(null, link);
+        assertEqual("arangosearch", link.type);
         view.properties(removeLink, false);
         properties = view.properties();
         assertTrue(Array === properties.collections.constructor);
