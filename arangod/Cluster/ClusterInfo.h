@@ -33,6 +33,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
