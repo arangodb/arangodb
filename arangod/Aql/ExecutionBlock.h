@@ -320,7 +320,6 @@ class ExecutionBlock {
   /// removes the first block of the buffer, it also sets this to true again.
   bool _returnFrontBlock;
 
- private:
   /// @brief The number of skipped/processed rows in getOrSkipSome, used to keep
   /// track of it despite WAITING interruptions. As
   /// ExecutionBlock::getOrSkipSome is called directly in some overriden
@@ -328,6 +327,7 @@ class ExecutionBlock {
   /// _skipped counter.
   size_t _skipped;
 
+ private:
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;

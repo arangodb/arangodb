@@ -363,9 +363,9 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
           atMost = _limit - _count;
         }
         AqlItemBlock* res = nullptr;
-        TRI_ASSERT(_skipped == 0);
+        TRI_ASSERT(_limitSkipped == 0);
         auto state = ExecutionBlock::getOrSkipSome(atMost, skipping, res,
-          _skipped);
+          _limitSkipped);
         TRI_ASSERT(_result == nullptr);
         _result.reset(res);
         if (state.first == ExecutionState::WAITING) {
@@ -374,19 +374,19 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
           return state;
         }
 
-        if (_skipped == 0) {
+        if (_limitSkipped == 0) {
           _state = State::DONE;
           TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
           result_ = _result.release();
-          // there should be no need to assign skipped_ = _skipped and
-          // _skipped = 0 here:
+          // there should be no need to assign skipped_ = _limitSkipped and
+          // _limitSkipped = 0 here:
           TRI_ASSERT(skipped_ == 0);
           return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
         }
 
-        _count += _skipped;
+        _count += _limitSkipped;
         if (_fullCount) {
-          _engine->_stats.fullCount += static_cast<int64_t>(_skipped);
+          _engine->_stats.fullCount += static_cast<int64_t>(_limitSkipped);
         }
       }
       if (_count >= _limit) {
@@ -427,8 +427,8 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::getOrSkipSome(
   }
 
   result_ = _result.release();
-  skipped_ = _skipped;
-  _skipped = 0;
+  skipped_ = _limitSkipped;
+  _limitSkipped = 0;
 
   return {getHasMoreState(), TRI_ERROR_NO_ERROR};
 

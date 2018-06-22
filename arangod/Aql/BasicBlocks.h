@@ -118,7 +118,7 @@ class LimitBlock final : public ExecutionBlock {
         _count(0),
         _state(State::INITFULLCOUNT),  // start in the beginning
         _fullCount(ep->_fullCount),
-        _skipped(0),
+        _limitSkipped(0),
         _result(nullptr) {}
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) final override;
@@ -154,7 +154,10 @@ class LimitBlock final : public ExecutionBlock {
   /// @brief whether or not the block should count what it limits
   bool const _fullCount;
 
-  size_t _skipped;
+  /// @brief skipped count. We cannot use _skipped here, has it would interfere
+  /// with calling ExecutionBlock::getOrSkipSome in this getOrSkipSome
+  /// implementation.
+  size_t _limitSkipped;
 
   /// @brief result to return in getOrSkipSome
   std::unique_ptr<AqlItemBlock> _result;

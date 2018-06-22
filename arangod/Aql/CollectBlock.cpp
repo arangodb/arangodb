@@ -152,7 +152,6 @@ SortedCollectBlock::SortedCollectBlock(ExecutionEngine* engine,
       _groupRegisters(),
       _aggregateRegisters(),
       _currentGroup(en->_count),
-      _skipped(0),
       _lastBlock(nullptr),
       _expressionRegister(ExecutionNode::MaxRegisterId),
       _collectRegister(ExecutionNode::MaxRegisterId),
@@ -614,7 +613,6 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
       _groupRegisters(),
       _aggregateRegisters(),
       _collectRegister(ExecutionNode::MaxRegisterId),
-      _skipped(0),
       _lastBlock(nullptr),
       _allGroups(1024, AqlValueGroupHash(_trx, en->_groupVariables.size()),
                  AqlValueGroupEqual(_trx)) {
@@ -950,8 +948,7 @@ DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
                                            CollectNode const* en)
     : ExecutionBlock(engine, en),
       _groupRegisters(),
-      _res(nullptr),
-      _skipped(0) {
+      _res(nullptr) {
   for (auto const& p : en->_groupVariables) {
     // We know that planRegisters() has been run, so
     // getPlanNode()->_registerPlan is set up
@@ -968,8 +965,8 @@ DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
 
   TRI_ASSERT(!_groupRegisters.empty());
       
-  _seen.reset(new std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>(
-      1024, AqlValueGroupHash(transaction(), _groupRegisters.size()), AqlValueGroupEqual(transaction())));
+  _seen = std::make_unique<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>>(
+    1024, AqlValueGroupHash(transaction(), _groupRegisters.size()), AqlValueGroupEqual(transaction()));
 }
 
 DistinctCollectBlock::~DistinctCollectBlock() {
