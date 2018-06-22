@@ -25,9 +25,9 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBExportCursor.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
@@ -43,8 +43,9 @@ using namespace arangodb;
 using namespace arangodb::rest;
 
 RocksDBRestExportHandler::RocksDBRestExportHandler(GeneralRequest* request,
-                                                   GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _restrictions() {}
+                                                   GeneralResponse* response,
+                                                   aql::QueryRegistry* queryRegistry)
+    : RestCursorHandler(request, response, queryRegistry), _restrictions() {}
 
 RestStatus RocksDBRestExportHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
@@ -63,13 +64,11 @@ RestStatus RocksDBRestExportHandler::execute() {
   }
 
   if (type == rest::RequestType::PUT) {
-    modifyCursor();
-    return RestStatus::DONE;
+    return RestCursorHandler::execute();
   }
 
   if (type == rest::RequestType::DELETE_REQ) {
-    deleteCursor();
-    return RestStatus::DONE;
+    return RestCursorHandler::execute();
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -81,7 +80,8 @@ RestStatus RocksDBRestExportHandler::execute() {
 /// @brief build options for the query as JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-VPackBuilder RocksDBRestExportHandler::buildOptions(VPackSlice const& slice) {
+VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cname,
+                                                         VPackSlice const& slice) {
   VPackBuilder options;
   options.openObject();
 
@@ -103,12 +103,85 @@ VPackBuilder RocksDBRestExportHandler::buildOptions(VPackSlice const& slice) {
   } else {
     options.add("batchSize", VPackValue(1000));
   }
-
+  
+  VPackSlice ttl = slice.get("ttl");
+  if (ttl.isNumber()) {
+    options.add("ttl", ttl);
+  } else {
+    options.add("ttl", VPackValue(30));
+  }
+  
+  options.add("options", VPackValue(VPackValueType::Object));
+  options.add("stream", VPackValue(true)); // important!!
+  options.close(); // options
+  
+  std::string query = "FOR doc IN @@collection ";
+  
+  options.add("bindVars", VPackValue(VPackValueType::Object));
+  options.add("@collection", VPackValue(cname));
   VPackSlice limit = slice.get("limit");
   if (limit.isNumber()) {
+    query.append("LIMIT @limit ");
     options.add("limit", limit);
   }
+  
+  // handle "restrict" parameter
+  VPackSlice restrct = slice.get("restrict");
+  if (restrct.isObject()) {
+    // "restrict"."type"
+    VPackSlice type = restrct.get("type");
+    if (!type.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "expecting string for 'restrict.type'");
+    }
+    
+    VPackSlice fields = restrct.get("fields");
+    if (!fields.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "expecting array for 'restrict.fields'");
+    }
+    
+    if (fields.length() == 0) {
+      query.append("RETURN doc");
+    } else {
+      std::string typeString = type.copyString();
+      if (typeString == "include") {
+        query.append("RETURN KEEP(doc");
+        //restrictions.type = CollectionExport::Restrictions::RESTRICTION_INCLUDE;
+      } else if (typeString == "exclude") {
+        query.append("RETURN UNSET(doc");
+        //_restrictions.type = CollectionExport::Restrictions::RESTRICTION_EXCLUDE;
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "expecting either 'include' or 'exclude' for 'restrict.type'");
+      }
+      
+      // "restrict"."fields"
+      for (auto const& name : VPackArrayIterator(fields)) {
+        if (name.isString()) {
+          query.append(", `");
+          query.append(name.copyString());
+          query.append("`");
+        }
+      }
+      query += ")";
+    }
+    
+  } else {
+    if (!restrct.isNone()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting object for 'restrict'");
+    }
+    query += " RETURN doc";
+  }
+  
+  options.close(); // bindVars
+  options.add("query", VPackValue(query));
+  options.close();
+  
+  LOG_DEVEL << options.slice().toJson();
 
+  
+  /*
   VPackSlice flush = slice.get("flush");
   if (flush.isBool()) {
     options.add("flush", flush);
@@ -116,59 +189,13 @@ VPackBuilder RocksDBRestExportHandler::buildOptions(VPackSlice const& slice) {
     options.add("flush", VPackValue(false));
   }
 
-  VPackSlice ttl = slice.get("ttl");
-  if (ttl.isNumber()) {
-    options.add("ttl", ttl);
-  } else {
-    options.add("ttl", VPackValue(30));
-  }
 
   VPackSlice flushWait = slice.get("flushWait");
   if (flushWait.isNumber()) {
     options.add("flushWait", flushWait);
   } else {
     options.add("flushWait", VPackValue(10));
-  }
-  options.close();
-
-  // handle "restrict" parameter
-  VPackSlice restrct = slice.get("restrict");
-  if (!restrct.isObject()) {
-    if (!restrct.isNone()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR,
-                                     "expecting object for 'restrict'");
-    }
-  } else {
-    // "restrict"."type"
-    VPackSlice type = restrct.get("type");
-    if (!type.isString()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "expecting string for 'restrict.type'");
-    }
-    std::string typeString = type.copyString();
-
-    if (typeString == "include") {
-      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_INCLUDE;
-    } else if (typeString == "exclude") {
-      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_EXCLUDE;
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "expecting either 'include' or 'exclude' for 'restrict.type'");
-    }
-
-    // "restrict"."fields"
-    VPackSlice fields = restrct.get("fields");
-    if (!fields.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "expecting array for 'restrict.fields'");
-    }
-    for (auto const& name : VPackArrayIterator(fields)) {
-      if (name.isString()) {
-        _restrictions.fields.emplace(name.copyString());
-      }
-    }
-  }
+  } */
 
   return options;
 }
@@ -205,13 +232,15 @@ void RocksDBRestExportHandler::createCursor() {
     return;
   }
 
-  VPackBuilder optionsBuilder;
-  if (!body.isNone()) {
+  VPackBuilder queryBody = buildQueryOptions(name, body);
+  RestCursorHandler::processQuery(queryBody.slice());
+  
+  /*if (!body.isNone()) {
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
       return;
     }
-    optionsBuilder = buildOptions(body);
+    
   } else {
     // create an empty options object
     optionsBuilder.openObject();
@@ -228,9 +257,9 @@ void RocksDBRestExportHandler::createCursor() {
   double ttl = arangodb::basics::VelocyPackHelper::getNumericValue<double>(
       options, "ttl", 30);
   bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      options, "count", false);
+      options, "count", false);*/
 
-  auto cursors = _vocbase.cursorRepository();
+  /*auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
@@ -268,9 +297,9 @@ void RocksDBRestExportHandler::createCursor() {
   builder.close();
 
   _response->setContentType(rest::ContentType::JSON);
-  generateResult(rest::ResponseCode::CREATED, std::move(buffer));
+  generateResult(rest::ResponseCode::CREATED, std::move(buffer));*/
 }
-
+/*
 void RocksDBRestExportHandler::modifyCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -348,4 +377,4 @@ void RocksDBRestExportHandler::deleteCursor() {
   result.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, result.slice());
-}
+}*/
