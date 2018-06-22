@@ -430,6 +430,7 @@ include(MMFiles/CMakeLists.txt)
 
 add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
 add_library(arangowm STATIC Utils/WorkMonitorArangod.cpp)
+target_link_libraries(arangowm boost_boost boost_system)
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
