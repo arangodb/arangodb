@@ -33,6 +33,7 @@
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -130,23 +131,26 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  arangodb::aql::Query query(
-    false,
-    _vocbase,
-    arangodb::aql::QueryString(garbageCollectionQuery),
-    _bindVars,
-    nullptr,
-    arangodb::aql::PART_MAIN
-  );
-
   aql::QueryResult queryResult;
-  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
-  while (true) {
-    auto state = query.execute(_queryRegistry, queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
+  {
+    TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
+    arangodb::aql::Query query(
+      false,
+      _vocbase,
+      arangodb::aql::QueryString(garbageCollectionQuery),
+      _bindVars,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
+
+    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+    while (true) {
+      auto state = query.execute(_queryRegistry, queryResult);
+      if (state != aql::ExecutionState::WAITING) {
+        break;
+      }
+      query.tempWaitForAsyncResponse();
     }
-    query.tempWaitForAsyncResponse();
   }
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -264,6 +268,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   bindVars->close();
 
+  TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
   arangodb::aql::Query query(
     false,
     _vocbase,
@@ -309,6 +314,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
+  TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
   arangodb::aql::Query query(
     false,
     _vocbase,

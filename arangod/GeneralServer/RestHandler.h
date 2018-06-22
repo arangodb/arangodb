@@ -69,17 +69,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void setStatistics(RequestStatistics* stat);
 
   /// Execute the rest handler state machine
-  void continueHandlerExecution() {
-    TRI_ASSERT(_state == HandlerState::PAUSED);
-    runHandlerStateMachine();
-  }
-  
-  /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> cb) {
     TRI_ASSERT(_state == HandlerState::PREPARE);
     _callback = std::move(cb);
     runHandlerStateMachine();
   }
+
+  /// Execute the rest handler state machine
+  void continueHandlerExecution();
   
  public:
   /// @brief rest handler name

@@ -29,6 +29,11 @@
 namespace arangodb {
 
 struct CollectionLockState {
+  static void setNoLockHeaders(std::unordered_set<std::string>* headers);
+  static void clearNoLockHeaders();
+  static bool isLocked(std::string const& name);
+
+ private:
   /// @brief collections for which there does not need to be an extra lock
   static thread_local std::unordered_set<std::string>* _noLockHeaders;
 };

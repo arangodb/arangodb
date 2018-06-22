@@ -2821,10 +2821,8 @@ static void JS_CountVocbaseCol(
     AccessMode::Type::READ
   );
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    if (CollectionLockState::_noLockHeaders->find(collectionName) != CollectionLockState::_noLockHeaders->end()) {
-      trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
-    }
+  if (CollectionLockState::isLocked(collectionName)) {
+    trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
 
   Result res = trx.begin();

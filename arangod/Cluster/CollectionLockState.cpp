@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectionLockState.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -31,3 +32,25 @@ using namespace arangodb;
 thread_local std::unordered_set<std::string>* CollectionLockState::_noLockHeaders =
     nullptr;
   
+void CollectionLockState::setNoLockHeaders(std::unordered_set<std::string>* headers) {
+  LOG_TOPIC(DEBUG, arangodb::Logger::COMMUNICATION) << "Setting nolock headers";
+  _noLockHeaders = headers;
+}
+
+
+void CollectionLockState::clearNoLockHeaders() {
+  LOG_TOPIC(DEBUG, arangodb::Logger::COMMUNICATION) << "Clearing nolock headers";
+  _noLockHeaders = nullptr;
+}
+
+bool CollectionLockState::isLocked(std::string const& name) {
+  if (_noLockHeaders != nullptr) {
+    auto it = _noLockHeaders->find(name);
+    if (it != _noLockHeaders->end()) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::COMMUNICATION) << name << " is locked by nolock header";
+      return true;
+    }
+  }
+  LOG_TOPIC(DEBUG, arangodb::Logger::COMMUNICATION) << name << " is not locked by nolock header";
+  return false;
+}

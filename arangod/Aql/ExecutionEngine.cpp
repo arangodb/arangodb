@@ -542,7 +542,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
         // Now update _noLockHeaders:
         // No need to cleanup, the RestHandler will make sure they are removed.
-        CollectionLockState::_noLockHeaders = engine->_lockedShards;
+        CollectionLockState::setNoLockHeaders(engine->_lockedShards.get());
 
         root = engine->root();
         TRI_ASSERT(root != nullptr);

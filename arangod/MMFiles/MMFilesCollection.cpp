@@ -2425,16 +2425,9 @@ void MMFilesCollection::invokeOnAllElements(
 
 /// @brief read locks a collection, with a timeout (in µseconds)
 int MMFilesCollection::lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginReadTimed blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (CollectionLockState::isLocked(_logicalCollection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   // LOCKING-DEBUG
@@ -2542,16 +2535,9 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, dou
 
 /// @brief write locks a collection, with a timeout
 int MMFilesCollection::lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "BeginWriteTimed blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (CollectionLockState::isLocked(_logicalCollection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   // LOCKING-DEBUG
@@ -2658,15 +2644,9 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, do
 
 /// @brief read unlocks a collection
 int MMFilesCollection::unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndRead blocked: " << _name << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (CollectionLockState::isLocked(_logicalCollection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   if (useDeadlockDetector) {
@@ -2687,16 +2667,9 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid) {
 
 /// @brief write unlocks a collection
 int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid) {
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    auto it =
-        CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "EndWrite blocked: " << _name <<
-      // std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (CollectionLockState::isLocked(_logicalCollection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   if (useDeadlockDetector) {

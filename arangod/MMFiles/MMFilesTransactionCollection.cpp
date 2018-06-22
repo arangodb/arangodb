@@ -102,12 +102,9 @@ bool MMFilesTransactionCollection::isLocked() const {
   if (_collection == nullptr) {
     return false;
   }
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      return true;
-    }
+  std::string collName(_collection->name());
+  if (CollectionLockState::isLocked(collName)) {
+    return true;
   }
   return (_lockType != AccessMode::Type::NONE);
 }
@@ -324,13 +321,9 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      return TRI_ERROR_NO_ERROR;
-    }
+  if (CollectionLockState::isLocked(_collection->name())) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(!isLocked());
@@ -383,15 +376,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    std::string collName(_collection->name());
-    auto it = CollectionLockState::_noLockHeaders->find(collName);
-    if (it != CollectionLockState::_noLockHeaders->end()) {
-      // do not lock by command
-      // LOCKING-DEBUG
-      // std::cout << "UnlockCollection blocked: " << collName << std::endl;
-      return TRI_ERROR_NO_ERROR;
-    }
+  std::string collName(_collection->name());
+  if (CollectionLockState::isLocked(collName)) {
+    // do not lock by command
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(isLocked());

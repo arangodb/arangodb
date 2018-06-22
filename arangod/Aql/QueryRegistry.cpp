@@ -74,8 +74,7 @@ QueryRegistry::~QueryRegistry() {
  */
 void QueryRegistry::setNoLockHeaders(ExecutionEngine* engine) const {
   if (ServerState::instance()->isCoordinator() && engine != nullptr) {
-    // std::cout << "Setting _noLockHeaders\n";
-    CollectionLockState::_noLockHeaders = engine->lockedShards();
+    CollectionLockState::setNoLockHeaders(engine->lockedShards());
     // No need to clean up, the BaseHandler resets the ThreadLocal variable
   }
 }

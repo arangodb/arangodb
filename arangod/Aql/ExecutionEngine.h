@@ -123,12 +123,12 @@ class ExecutionEngine {
 
   /// @brief _lockedShards
   TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string>* lockedShards) {
-    _lockedShards = lockedShards;
+    _lockedShards.reset(lockedShards);
   }
 
   /// @brief _lockedShards
   std::unordered_set<std::string>* lockedShards() const {
-    return _lockedShards;
+    return _lockedShards.get();
   }
 
  public:
@@ -159,7 +159,7 @@ class ExecutionEngine {
   bool _wasShutdown;
   
   /// @brief _lockedShards, these are the shards we have locked for our query
-  std::unordered_set<std::string>* _lockedShards;
+  std::unique_ptr<std::unordered_set<std::string>> _lockedShards;
 };
 }
 }

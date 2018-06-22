@@ -559,17 +559,19 @@ void RestVocbaseBaseHandler::pickupNoLockHeaders() {
     }
 
 
-    auto nolockHeaderSet = std::make_unique<std::unordered_set<std::string>>();
+    TRI_ASSERT(_nolockHeaderSet == nullptr);
+    _nolockHeaderSet = std::make_unique<std::unordered_set<std::string>>();
+
     // Split value at commas, if there are any, otherwise take full value:
     size_t pos = shardId.find(',');
     size_t oldpos = 0;
     while (pos != std::string::npos) {
-      nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
+      _nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
       oldpos = pos + 1;
       pos = shardId.find(',', oldpos);
     }
-    nolockHeaderSet->emplace(shardId.substr(oldpos));
-    CollectionLockState::_noLockHeaders = nolockHeaderSet.release();
+    _nolockHeaderSet->emplace(shardId.substr(oldpos));
+    CollectionLockState::setNoLockHeaders(_nolockHeaderSet.get());
   }
 }
 
@@ -578,9 +580,8 @@ void RestVocbaseBaseHandler::pickupNoLockHeaders() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestVocbaseBaseHandler::clearNoLockHeaders() noexcept {
-  // Let all servers just remove these headers
-  if (CollectionLockState::_noLockHeaders != nullptr) {
-    delete CollectionLockState::_noLockHeaders;
-  }
-  CollectionLockState::_noLockHeaders = nullptr;
+  // The thread local variable does never take responsibility for
+  // the _noLockHeaders content, always the creator has to delete it
+  CollectionLockState::clearNoLockHeaders();
+  _nolockHeaderSet.reset();
 }

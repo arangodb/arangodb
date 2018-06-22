@@ -113,6 +113,7 @@ void RestHandler::runHandlerStateMachine() {
       case HandlerState::EXECUTE: {
         executeEngine(false);
         if (_state == HandlerState::PAUSED) {
+          shutdownExecute(false);
           LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "Pausing rest handler execution";
           return; // stop state machine
         }
@@ -189,6 +190,15 @@ void RestHandler::prepareEngine() {
   }
 
   _state = HandlerState::FAILED;
+}
+
+/// Execute the rest handler state machine
+void RestHandler::continueHandlerExecution() {
+  {
+    MUTEX_LOCKER(locker, _executionMutex);
+    TRI_ASSERT(_state == HandlerState::PAUSED);
+  }
+  runHandlerStateMachine();
 }
 
 void RestHandler::shutdownEngine() {

@@ -50,6 +50,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/CollectionLockState.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -499,6 +500,8 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const queryString(TRI_ObjectToString(args[0]));
+  // If we execute an AQL query from V8 we need to unset the nolock headers
+  TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
   arangodb::aql::Query query(
     true,
     vocbase,
@@ -636,6 +639,7 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
   // bind parameters will be freed by the query later
   arangodb::aql::Query query(
     true,
@@ -727,6 +731,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
+  TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
   arangodb::aql::Query query(
     true,
     vocbase,
@@ -835,6 +840,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
+  TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
   arangodb::aql::Query query(
     true,
     vocbase,
