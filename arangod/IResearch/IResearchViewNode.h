@@ -163,11 +163,13 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     std::unordered_set<aql::Variable const*>& vars
   ) const override final;
 
-  /// @brief node has nondeterministic filter condition or located inside a loop
-  bool volatile_filter() const;
-
-  /// @brief node has nondeterministic sort condition or located inside a loop
-  bool volatile_sort() const;
+  /// @brief node volatility, determines how often query has
+  ///        to be rebuilt during the execution
+  /// @note first - node has nondeterministic/dependent (inside a loop)
+  ///       filter condition
+  ///       second - node has nondeterministic/dependent (inside a loop)
+  ///       sort condition
+  std::pair<bool, bool> volatility(bool force = false) const;
 
   void planNodeRegisters(
     std::vector<aql::RegisterId>& nrRegsHere,
@@ -202,6 +204,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief list of shards involved, need this for the cluster
   std::vector<std::string> _shards;
+
+  /// @brief volatility mask
+  mutable int _volatilityMask{ -1 };
 }; // IResearchViewNode
 
 } // iresearch
