@@ -125,6 +125,8 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
 
   _done = false;
   _upstreamState = ExecutionState::HASMORE;
+  _returnFrontBlock = true;
+  _pos = 0;
 
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     // Set block type in per-block statistics.
@@ -234,6 +236,10 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result, ExecutionState 
 std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  if (_done) {
+    LOG_DEVEL << "getSome() called when already _done! Fix caller block.";
+  }
+
   traceGetSomeBegin(atMost);
     
   auto res = getSomeWithoutRegisterClearout(atMost);
@@ -317,6 +323,11 @@ void ExecutionBlock::inheritRegisters(AqlItemBlock const* src,
 /// the dependent node is exhausted.
 std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+
+  if (_upstreamState == ExecutionState::DONE) {
+    LOG_DEVEL << "getBlock() called when already _done! Fix caller block.";
+  }
+
   throwIfKilled();  // check if we were aborted
 
   auto res = _dependencies[0]->getSome(atMost);
@@ -423,56 +434,73 @@ ExecutionState ExecutionBlock::hasMoreState() {
   return ExecutionState::DONE;
 }
 
+ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
+  if (!_buffer.empty()) {
+    return BufferState::HAS_BLOCKS;
+  }
+
+  // _pos must be reset to 0 during both initialize and after removing an item
+  // from _buffer, so if the buffer is empty, it must always be 0
+  TRI_ASSERT(_pos == 0);
+
+  ExecutionState state;
+  bool blockAppended;
+  std::tie(state, blockAppended) = getBlock(atMost);
+
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!blockAppended);
+    return BufferState::WAITING;
+  }
+
+  // !blockAppended => DONE
+  TRI_ASSERT(blockAppended || state == ExecutionState::DONE);
+
+  if (blockAppended) {
+    return BufferState::HAS_BLOCKS;
+  }
+
+  return BufferState::NO_MORE_BLOCKS;
+}
+
+void ExecutionBlock::advanceCursor(
+  size_t numInputRowsConsumed, size_t numOutputRowsCreated) {
+  AqlItemBlock* cur = _buffer.front();
+  TRI_ASSERT(cur != nullptr);
+
+  _skipped += numOutputRowsCreated;
+  _pos += numInputRowsConsumed;
+
+  if (_pos >= cur->size()) {
+    _buffer.pop_front();
+    _pos = 0;
+    if (_returnFrontBlock) {
+      returnBlock(cur);
+    }
+    _returnFrontBlock = true;
+  }
+}
+
 std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
     size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped_) {
   TRI_ASSERT(result == nullptr && skipped_ == 0);
 
+  TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
+    LOG_DEVEL << "ExecutionBlock::getOrSkipSome2 is registered";
+  }
+
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
 
-  while (getHasMoreState() != ExecutionState::DONE && _skipped < atMost) {
-    if (_buffer.empty()) {
-      if (skipping) {
-        ExecutionState state;
-        size_t numActuallySkipped;
-        std::tie(state, numActuallySkipped) =
-            _dependencies[0]->skipSome(atMost);
-        if (state == ExecutionState::WAITING) {
-          TRI_ASSERT(numActuallySkipped == 0);
-          return {state, TRI_ERROR_NO_ERROR};
-        }
-        _skipped += numActuallySkipped;
-        break;
-      } else {
-        ExecutionState state;
-        bool blockAppended;
-        std::tie(state, blockAppended) = getBlock(atMost - _skipped);
-
-        if (state == ExecutionState::WAITING) {
-          TRI_ASSERT(!blockAppended);
-          TRI_ASSERT(result == nullptr);
-          TRI_ASSERT(skipped_ == 0);
-          return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
-        }
-
-        _pos = 0;
-
-        // !blockAppended => DONE
-        TRI_ASSERT(blockAppended || state == ExecutionState::DONE);
-
-        if (!blockAppended) {
-          // buffer is empty, don't try to add the next block
-          break;
-        }
-      }
-    }
-
+  auto processRows = [this](size_t atMost, bool skipping) -> std::pair<size_t,
+    size_t> {
     AqlItemBlock* cur = _buffer.front();
+    TRI_ASSERT(cur != nullptr);
 
-    if (cur->size() - _pos > atMost - _skipped) {
+    size_t rowsProcessed = 0;
+
+    if (cur->size() - _pos > atMost) {
       // The current block is too large for atMost:
       if (!skipping) {
-        std::unique_ptr<AqlItemBlock> more(
-            cur->slice(_pos, _pos + (atMost - _skipped)));
+        std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + atMost));
 
         TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -480,8 +508,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
 
         _collector.add(std::move(more));
       }
-      _pos += atMost - _skipped;
-      _skipped = atMost;
+      rowsProcessed = atMost;
     } else if (_pos > 0) {
       // The current block fits into our result, but it is already
       // half-eaten:
@@ -494,13 +521,9 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
 
         _collector.add(std::move(more));
       }
-      _skipped += cur->size() - _pos;
-      returnBlock(cur);
-      _buffer.pop_front();
-      _pos = 0;
+      rowsProcessed = cur->size() - _pos;
     } else {
       // The current block fits into our result and is fresh:
-      _skipped += cur->size();
       if (!skipping) {
         // if any of the following statements throw, then cur is not lost,
         // as it is still contained in _buffer
@@ -508,12 +531,52 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
         _collector.add(cur);
-      } else {
-        returnBlock(cur);
+        // claim ownership of cur
+        _returnFrontBlock = false;
       }
-      _buffer.pop_front();
-      _pos = 0;
+      rowsProcessed = cur->size();
     }
+
+    // Number of input and output rows is always equal here
+    return {rowsProcessed, rowsProcessed};
+  };
+
+  while (ExecutionBlock::getHasMoreState() != ExecutionState::DONE &&
+         _skipped < atMost) {
+
+    if (skipping && _buffer.empty()) {
+      // Skip upstream directly if possible
+      ExecutionState state;
+      size_t numActuallySkipped;
+      std::tie(state, numActuallySkipped) = _dependencies[0]->skipSome(atMost);
+      if (state == ExecutionState::WAITING) {
+        TRI_ASSERT(numActuallySkipped == 0);
+        return {state, TRI_ERROR_NO_ERROR};
+      }
+      _upstreamState = state;
+      _skipped += numActuallySkipped;
+
+      break;
+    }
+
+    BufferState bufferState = getBlockIfNeeded(atMost - _skipped);
+    if (bufferState == BufferState::WAITING) {
+      TRI_ASSERT(skipped_ == 0);
+      TRI_ASSERT(result == nullptr);
+      return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    }
+    if (bufferState == BufferState::NO_MORE_BLOCKS) {
+      break;
+    }
+
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(!_buffer.empty());
+
+    size_t numInputRowsConsumed;
+    size_t numOutputRowsCreated;
+    std::tie(numInputRowsConsumed, numOutputRowsCreated) =
+        processRows(atMost - _skipped, skipping);
+    advanceCursor(numInputRowsConsumed, numOutputRowsCreated);
   }
 
   TRI_ASSERT(result == nullptr);
@@ -524,7 +587,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
   skipped_ = _skipped;
   _skipped = 0;
 
-  return {getHasMoreState(), TRI_ERROR_NO_ERROR};
+  return {ExecutionBlock::getHasMoreState(), TRI_ERROR_NO_ERROR};
 }
 
 ExecutionState ExecutionBlock::getHasMoreState() {
