@@ -1178,10 +1178,10 @@ void HeartbeatThread::syncDBServerStatusQuo(bool asyncPush) {
 
   // First invalidate the caches in ClusterInfo:
   auto ci = ClusterInfo::instance();
-  if (_desiredVersion->plan > ci->getPlanVersion()) {
+  if (_desiredVersions->plan > ci->getPlanVersion()) {
     ci->invalidatePlan();
   }
-  if (_desiredVersion->current > ci->getCurrentVersion()) {
+  if (_desiredVersions->current > ci->getCurrentVersion()) {
     ci->invalidateCurrent();
   }
 
