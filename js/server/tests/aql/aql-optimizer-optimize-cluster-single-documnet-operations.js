@@ -117,13 +117,10 @@ function optimizerClusterSingleDocumentTestSuite () {
 
 
     sets.forEach(function(set) {
-      print(set)
       const queryString = set[query];
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set)
 
       var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled); // explain - only
-      print(result)
-      db._explain(queryString)
       assertEqual(expectedRules[set[expectedRulesField]], result.plan.rules, "rules mismatch: " + queryInfo);
       assertEqual(expectedNodes[set[expectedNodesField]], explain(result), "nodes mismatch: " + queryInfo);
       if (set[doFullTest]) {
