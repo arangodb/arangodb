@@ -52,18 +52,6 @@
 
 NS_LOCAL
 
-inline arangodb::iresearch::IResearchViewNode const& getViewNode(
-    arangodb::iresearch::IResearchViewBlockBase const& block
-) noexcept {
-  TRI_ASSERT(block.getPlanNode());
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  return dynamic_cast<arangodb::iresearch::IResearchViewNode const&>(*block.getPlanNode());
-#else
-  return static_cast<arangodb::iresearch::IResearchViewNode const&>(*block.getPlanNode());
-#endif
-}
-
 inline arangodb::aql::RegisterId getRegister(
     arangodb::aql::Variable const& var,
     arangodb::aql::ExecutionNode const& node
@@ -128,7 +116,7 @@ IResearchViewBlockBase::IResearchViewBlockBase(
     IResearchViewNode const& en)
   : ExecutionBlock(&engine, &en),
     _filterCtx(1), // arangodb::iresearch::ExpressionExecutionContext
-    _ctx(getViewNode(*this)),
+    _ctx(en),
     _reader(reader),
     _filter(irs::filter::prepared::empty()),
     _execCtx(*_trx, _ctx),
@@ -169,7 +157,7 @@ void IResearchViewBlockBase::reset() {
   _ctx._data = _buffer.front();
   _ctx._pos = _pos;
 
-  auto& viewNode = getViewNode(*this);
+  auto& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
   auto* plan = const_cast<ExecutionPlan*>(viewNode.plan());
 
   arangodb::iresearch::QueryContext const queryCtx = {
@@ -204,12 +192,14 @@ void IResearchViewBlockBase::reset() {
 
       // compile order
       _order = order.prepare();
-      _volatileSort = viewNode.volatile_sort();
     }
 
     // compile filter
     _filter = root.prepare(_reader, _order, irs::boost::no_boost(), _filterCtx);
-    _volatileFilter = _volatileSort || viewNode.volatile_filter();
+
+    auto const& volatility = viewNode.volatility();
+    _volatileSort = volatility.second;
+    _volatileFilter = _volatileSort || volatility.first;
   }
 }
 
@@ -440,7 +430,8 @@ bool IResearchViewBlock::next(
     size_t& pos,
     size_t limit) {
   TRI_ASSERT(_filter);
-  auto const numSorts = getViewNode(*this).sortCondition().size();
+  auto const& viewNode = *ExecutionNode::castTo<IResearchViewNode const*>(getPlanNode());
+  auto const numSorts = viewNode.sortCondition().size();
 
   for (size_t count = _reader.size(); _readerOffset < count; ) {
     bool done = false;
@@ -464,7 +455,7 @@ bool IResearchViewBlock::next(
         }
 
         // evaluate scores
-        TRI_ASSERT(!getViewNode(*this).sortCondition().empty());
+        TRI_ASSERT(!viewNode.sortCondition().empty());
         _scr->evaluate();
 
         // copy scores, registerId's are sequential
