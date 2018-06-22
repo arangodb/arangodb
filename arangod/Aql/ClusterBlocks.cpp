@@ -1729,12 +1729,12 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   VPackSlice inSlice = VPackSlice::emptyObjectSlice();
   if(in) {// IF NOT REMOVE OR SELECT
    std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
-   LOG_DEVEL << "in Doc " << inRegId;
+   //LOG_DEVEL << "in Doc " << inRegId;
    AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
-   LOG_DEVEL << "in Doc";
+   //LOG_DEVEL << "in Doc";
    inBuilder.add(inDocument.slice());
    inSlice = inBuilder.slice();
-    LOG_DEVEL <<"#### ClusterBlock inSlice from inDoc" << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
+    //LOG_DEVEL <<"#### ClusterBlock inSlice from inDoc" << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
   }
 
   auto const& nodeOps = node->_options;
@@ -1755,13 +1755,13 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     inSlice = mergedBuilder->slice();
   }
 
-  LOG_DEVEL <<"#### ClusterBlock inSlice " << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
+  //LOG_DEVEL <<"#### ClusterBlock inSlice " << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
 
   OperationResult result;
   if(node->_mode == ExecutionNode::NodeType::INDEX) {
     result = _trx->document(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
-    LOG_DEVEL << "overwrite" << opOptions.overwrite;
+    //LOG_DEVEL << "overwrite" << opOptions.overwrite;
     if(opOptions.returnOld && !opOptions.overwrite){
       THROW_ARANGO_EXCEPTION_MESSAGE(666, "OLD is only available when using INSERT with the overwrite option");
     }
@@ -1780,9 +1780,9 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
 
   // check operation result
   if (!result.ok()) {
-    LOG_DEVEL << "result not ok: " <<  result.errorMessage();
-    LOG_DEVEL << "silent " <<  opOptions.silent;
-    LOG_DEVEL << "ignoreErrors " <<  nodeOps.ignoreErrors; // CHECKME
+    //LOG_DEVEL << "result not ok: " <<  result.errorMessage();
+    //LOG_DEVEL << "silent " <<  opOptions.silent;
+    //LOG_DEVEL << "ignoreErrors " <<  nodeOps.ignoreErrors; // CHECKME
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && node->_mode == ExecutionNode::NodeType::INDEX)) {
       // document not there is not an error in this situation.
       _done = true;
@@ -1796,7 +1796,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     }
   }
 
-  LOG_DEVEL << "error checking done: " <<  result.errorMessage();
+  //LOG_DEVEL << "error checking done: " <<  result.errorMessage();
 
   if (!(out || OLD || NEW)) {
     _done = true;
@@ -1814,7 +1814,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   if(result.buffer){
     outDocument = result.slice().resolveExternal();
   } else {
-    LOG_DEVEL << "no result slice";
+    //LOG_DEVEL << "no result slice";
   }
 
   VPackSlice oldDocument = VPackSlice::noneSlice();
@@ -1837,7 +1837,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
       aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
-    LOG_DEVEL << "set out";
+    //LOG_DEVEL << "set out";
   }
   if(OLD) {
     TRI_ASSERT(opOptions.returnOld);
@@ -1847,7 +1847,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
       aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
-    LOG_DEVEL << "set old";
+    //LOG_DEVEL << "set old";
   }
   if(NEW) {
     TRI_ASSERT(opOptions.returnNew);
@@ -1857,7 +1857,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
       aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
-    LOG_DEVEL << "set new";
+    //LOG_DEVEL << "set new";
   }
   throwIfKilled();  // check if we were aborted
 
@@ -1866,9 +1866,8 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   }
 
   _done = true;
-  //TRI_ASSERT(aqlValueSet);
   if(!aqlValueSet) {
-    LOG_DEVEL << "noting set in the value even though it should";
+    //LOG_DEVEL << "noting set in the value even though it should";
     return nullptr;
   }
 

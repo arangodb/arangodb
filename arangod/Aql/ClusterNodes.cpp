@@ -406,7 +406,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   , _outVariableNew(NEW)
   , _options(options)
 {
-  LOG_DEVEL << "Creating SingleRemoteOperationNode for "
+  //LOG_DEVEL << "Creating SingleRemoteOperationNode for "
             << ExecutionNode::getTypeString(_mode)
             << std::boolalpha << " -"
             << " replaceIndexNode " << !! _replaceIndexNode
@@ -437,7 +437,7 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
     //TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable == nullptr);
   } else {
-    LOG_DEVEL << "Ctor failed unkown node type";
+    //LOG_DEVEL << "Ctor failed unkown node type";
     TRI_ASSERT(false);
   }
 }

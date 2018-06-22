@@ -229,7 +229,7 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
     for(auto* dep : oldNode->getDependencies()) {
       newNode->addDependency(dep);
     }
-    LOG_DEVEL << "replacing root node";
+    //LOG_DEVEL << "replacing root node";
     plan->root(newNode,true);
   } else {
     // replaceNode does not seem to work well with subqueries
@@ -238,8 +238,8 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
     // the old node.
 
     TRI_ASSERT(oldNode != plan->root());
-    LOG_DEVEL << "replacing " << oldNode->getTypeString();
-    LOG_DEVEL << "with " << newNode->getTypeString();
+    //LOG_DEVEL << "replacing " << oldNode->getTypeString();
+    //LOG_DEVEL << "with " << newNode->getTypeString();
     plan->replaceNode(oldNode, newNode);
     TRI_ASSERT(!oldNode->hasDependency());
     TRI_ASSERT(!oldNode->hasParent());
@@ -260,10 +260,10 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
   }
 
   for(auto* node : nodes){
-    LOG_DEVEL << "substitute single document operation INDEX";
+    //LOG_DEVEL << "substitute single document operation INDEX";
 
     if(!depIsSingletonOrConstCalc(node)){
-      LOG_DEVEL << "dependency is not singleton or const calculation";
+      //LOG_DEVEL << "dependency is not singleton or const calculation";
       continue;
     }
 
@@ -273,7 +273,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
       auto binaryCompares = hasBinaryCompare(node);
       std::string key = getFirstKey(binaryCompares);
       if(key.empty()){
-        LOG_DEVEL << "could not extract key from index condition";
+        //LOG_DEVEL << "could not extract key from index condition";
         continue;
       }
 
@@ -284,7 +284,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         auto parentType = parentModification->getType();
         auto const& vec = mod->getVariablesUsedHere();
 
-        LOG_DEVEL << "optimize modification node of type: "
+        //LOG_DEVEL << "optimize modification node of type: "
                   << ExecutionNode::getTypeString(parentType)
                   << "  " << vec.size();
 
@@ -303,7 +303,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         }
 
         if(keyVar && indexNode->outVariable()->id != keyVar->id){
-          LOG_DEVEL << "the index out var is not used in modification as keyVariable";
+          //LOG_DEVEL << "the index out var is not used in modification as keyVariable";
           continue;
         }
 
@@ -313,13 +313,13 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
             // in the index condition
             update = nullptr;
           } else {
-            LOG_DEVEL << "the index out var is not used in modification as keyVariable";
+            //LOG_DEVEL << "the index out var is not used in modification as keyVariable";
             continue;
           }
         }
 
-        LOG_DEVEL << "key:" << key;
-        LOG_DEVEL_IF(update) << "update" << update->name;
+        //LOG_DEVEL << "key:" << key;
+        //LOG_DEVEL_IF(update) << "update" << update->name;
         ExecutionNode* singleOperationNode = plan->registerNode(
           new SingleRemoteOperationNode(
             plan, plan->nextId(),
@@ -333,10 +333,10 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
           )
         );
 
-        LOG_DEVEL << "mod is modification node" << mod->isModificationNode();
+        //LOG_DEVEL << "mod is modification node" << mod->isModificationNode();
 
         if(!parentIsReturnOrConstCalc(mod)){
-          LOG_DEVEL << "parents are not calc* return";
+          //LOG_DEVEL << "parents are not calc* return";
           continue;
         }
 
@@ -344,7 +344,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         plan->unlinkNode(indexNode);
         modified = true;
       } else if(parentIsReturnOrConstCalc(node)){
-        LOG_DEVEL << "optimize SELECT with key: " << key;
+        //LOG_DEVEL << "optimize SELECT with key: " << key;
 
         ExecutionNode* singleOperationNode = plan->registerNode(
             new SingleRemoteOperationNode(plan, plan->nextId()
@@ -355,10 +355,10 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
         modified = true;
 
       } else {
-        LOG_DEVEL << "plan following the index node is too complex";
+        //LOG_DEVEL << "plan following the index node is too complex";
       }
     } else {
-      LOG_DEVEL << "is not primary or has more indexes";
+      //LOG_DEVEL << "is not primary or has more indexes";
     }
   }
   return modified;
@@ -378,17 +378,17 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
   }
 
   for(auto* node : nodes){
-    LOG_DEVEL << "substitute single document operation NO INDEX";
+    //LOG_DEVEL << "substitute single document operation NO INDEX";
 
     auto mod = static_cast<ModificationNode*>(node);
 
     if(!depIsSingletonOrConstCalc(node)){
-      LOG_DEVEL << "optimization too complex (debIsSingleOrConstCalc)";
+      //LOG_DEVEL << "optimization too complex (debIsSingleOrConstCalc)";
       continue;
     }
 
     if(!parentIsReturnOrConstCalc (node)){
-      LOG_DEVEL << "parents are not [calc]*->[return]";
+      //LOG_DEVEL << "parents are not [calc]*->[return]";
       continue;
     }
 
@@ -398,7 +398,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
     std::string key = "";
     auto const& vec = mod->getVariablesUsedHere();
 
-    LOG_DEVEL << "optimize modification node of type: "
+    //LOG_DEVEL << "optimize modification node of type: "
               << ExecutionNode::getTypeString(depType)
               << "  " << vec.size();
 
@@ -414,14 +414,14 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       }
     }
 
-    LOG_DEVEL_IF(update) << "inVariable id: " << update->name;
-    LOG_DEVEL_IF(keyVar) << "keyVariable id: " << keyVar->name;
+    //LOG_DEVEL_IF(update) << "inVariable id: " << update->name;
+    //LOG_DEVEL_IF(keyVar) << "keyVariable id: " << keyVar->name;
 
     ExecutionNode* cursor = node;
     CalculationNode* calc = nullptr;
 
     if(keyVar){
-      LOG_DEVEL << "inspecting keyVar";
+      //LOG_DEVEL << "inspecting keyVar";
       std::unordered_set<Variable const*> keySet;
       keySet.emplace(keyVar);
 
@@ -430,7 +430,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
         if(cursor){
           CalculationNode* c = static_cast<CalculationNode*>(cursor);
           if(c->setsVariable(keySet)){
-           LOG_DEVEL << "found calculation that sets key-expression";
+           //LOG_DEVEL << "found calculation that sets key-expression";
            calc = c;
            break;
           }
@@ -438,7 +438,7 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       }
 
       if(!calc){
-        LOG_DEVEL << "calculation missing";
+        //LOG_DEVEL << "calculation missing";
         continue;
       }
       AstNode const* expr = calc->expression()->node();
@@ -460,18 +460,18 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       }
 
       if(key.empty()){
-        LOG_DEVEL << "could not extract key";
+        //LOG_DEVEL << "could not extract key";
         continue;
       }
     }
 
     if(!depIsSingletonOrConstCalc(cursor)){
-      LOG_DEVEL << "dependencies are not [calc]*->[singleton]";
+      //LOG_DEVEL << "dependencies are not [calc]*->[singleton]";
       continue;
     }
 
-    LOG_DEVEL << mod->collection()->name();
-    LOG_DEVEL_IF(update) << "inputvar " << update->name;
+    //LOG_DEVEL << mod->collection()->name();
+    //LOG_DEVEL_IF(update) << "inputvar " << update->name;
 
     ExecutionNode* singleOperationNode = plan->registerNode(
       new SingleRemoteOperationNode(
@@ -486,20 +486,20 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt,
       )
     );
 
-    LOG_DEVEL << "mod is modification node" << mod->isModificationNode();
+    //LOG_DEVEL << "mod is modification node" << mod->isModificationNode();
     replaceNode(plan, mod, singleOperationNode);
 
     if(calc){
-      LOG_DEVEL << "unlinkNode clac setting var: " << calc->getVariablesSetHere()[0]->name;
+      //LOG_DEVEL << "unlinkNode clac setting var: " << calc->getVariablesSetHere()[0]->name;
       plan->unlinkNode(calc);
     }
     modified = true;
 
-    if(update) {
-      auto setter = plan->getVarSetBy(update->id);
-      LOG_DEVEL_IF(!setter) << "setter not found";
-      LOG_DEVEL_IF(setter) << "setter for " << update->name << " is of type" << setter->getTypeString();
-    }
+    // if(update) {
+    //   auto setter = plan->getVarSetBy(update->id);
+    //   //LOG_DEVEL_IF(!setter) << "setter not found";
+    //   //LOG_DEVEL_IF(setter) << "setter for " << update->name << " is of type" << setter->getTypeString();
+    // }
 
   } // for node : nodes
 
@@ -520,7 +520,7 @@ void arangodb::aql::substituteClusterSingleDocumentOperations(Optimizer* opt,
     if(modified){ break; }
   }
 
-  LOG_DEVEL_IF(modified) << "applied singleOperationNode rule !!!!!!!!!!!!!!!!!";
+  //LOG_DEVEL_IF(modified) << "applied singleOperationNode rule !!!!!!!!!!!!!!!!!";
 
   //LOG_DEVEL << plan->toVelocyPack(plan->getAst(),true)->toJson();
   opt->addPlan(std::move(plan), rule, modified);
