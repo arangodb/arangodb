@@ -2362,7 +2362,7 @@ int LogicalCollection::update(Transaction* trx, VPackSlice const newSlice,
     
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear(0);
+      result.setCache(0, nullptr);
     }
 
     res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
@@ -2525,7 +2525,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
     
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear(0);
+      result.setCache(0, nullptr);
     }
 
     res = updateDocument(trx, oldRevisionId, oldDoc, revisionId, newDoc,
@@ -2543,7 +2543,7 @@ int LogicalCollection::replace(Transaction* trx, VPackSlice const newSlice,
   } else {
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
-      result.clear(0);
+      result.setCache(0, nullptr);
     }
     readRevision(trx, result, revisionId);
 

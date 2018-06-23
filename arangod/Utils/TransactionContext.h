@@ -100,7 +100,7 @@ class TransactionContext {
   
   DocumentDitch* ditch(TRI_voc_cid_t) const;
 
-  void addChunk(RevisionCacheChunk*);
+  virtual void addChunk(RevisionCacheChunk*);
   void clearChunks(size_t threshold);
 
   void stealChunks(std::unordered_set<RevisionCacheChunk*>&); 

@@ -176,7 +176,7 @@ DocumentDitch* TransactionContext::ditch(TRI_voc_cid_t cid) const {
   
 void TransactionContext::addChunk(RevisionCacheChunk* chunk) {
   TRI_ASSERT(chunk != nullptr);
-
+  TRI_ASSERT(chunk->isUsed());
   {
     MUTEX_LOCKER(locker, _chunksLock);
     if (_chunks.emplace(chunk).second) {
@@ -188,6 +188,7 @@ void TransactionContext::addChunk(RevisionCacheChunk* chunk) {
   // another thread had inserted the same chunk already
   // now need to keep track of it twice
   chunk->release();
+  TRI_ASSERT(chunk->isUsed());
 }
 
 // clear chunks if they use too much memory

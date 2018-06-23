@@ -45,6 +45,14 @@ V8TransactionContext::V8TransactionContext(TRI_vocbase_t* vocbase,
       _currentTransaction(nullptr),
       _embeddable(embeddable) {}
 
+void V8TransactionContext::addChunk(RevisionCacheChunk* chunk) {
+  if (_sharedTransactionContext != this) {
+    _sharedTransactionContext->addChunk(chunk);
+  } else {
+    TransactionContext::addChunk(chunk);
+  }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order a custom type handler for the collection
 //////////////////////////////////////////////////////////////////////////////

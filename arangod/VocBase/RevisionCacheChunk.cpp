@@ -43,6 +43,7 @@ ChunkProtector::ChunkProtector(RevisionCacheChunk* chunk, uint32_t offset, uint3
     _isResponsible = false;
   } else if (!_chunk->use(expectedVersion)) {
     // invalid
+    _offset = UINT32_MAX;
     _chunk = nullptr;
     _isResponsible = false;
   }
@@ -156,7 +157,9 @@ bool RevisionCacheChunk::invalidate(std::vector<TRI_voc_rid_t>& revisions) {
   if (!findRevisions(revisions)) {
     return false;
   }
-  invalidate();
+  if (!invalidateIfUnused()) {
+    return false;
+  }
   if (!revisions.empty()) {
     _collectionCache->removeRevisions(revisions);
   }
@@ -199,6 +202,23 @@ void RevisionCacheChunk::invalidate() {
       break;
     }
   } 
+}
+
+bool RevisionCacheChunk::invalidateIfUnused() { 
+  // increasing the chunk's version number
+  // this will make all future reads ignore data in the chunk
+  while (true) {
+    uint64_t old = _versionAndRefCount.load();
+    if (refCountPart(old) > 0) {
+      return false;
+    }
+    uint64_t desired = increaseVersion(old);
+    // LOG(ERR) << "OLD: " << old << ", VERSIONPART(OLD): " << versionPart(old) << ", REFPART(OLD): " << refCountPart(old) << ", DESIRED: " << desired;
+    if (_versionAndRefCount.compare_exchange_strong(old, desired)) {
+      break;
+    }
+  } 
+  return true;
 }
   
 bool RevisionCacheChunk::use(uint32_t expectedVersion) noexcept {

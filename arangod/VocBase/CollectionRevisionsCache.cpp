@@ -135,6 +135,7 @@ bool CollectionRevisionsCache::lookupRevision(Transaction* trx, ManagedDocumentR
       wal::Logfile* logfile = found.logfile();
       // now move it into read cache
       ChunkProtector protector = _readCache.insertAndLease(revisionId, reinterpret_cast<uint8_t const*>(logfile->data() + found.offset()), result);
+      TRI_ASSERT(protector);
       // must have succeeded (otherwise an exception was thrown)
       // and insert result into the hash
       insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version(), shouldLock);
@@ -161,6 +162,7 @@ bool CollectionRevisionsCache::lookupRevision(Transaction* trx, ManagedDocumentR
   }
   // insert found revision into our hash
   ChunkProtector protector = _readCache.insertAndLease(revisionId, vpack, result);
+  TRI_ASSERT(protector);
   // insert result into the hash
   insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version(), shouldLock);
   return true;
@@ -176,6 +178,7 @@ bool CollectionRevisionsCache::lookupRevisionConditional(Transaction* trx, Manag
   }
   // insert found revision into our hash
   ChunkProtector protector = _readCache.insertAndLease(revisionId, vpack, result);
+  TRI_ASSERT(protector);
   // insert result into the hash
   insertRevision(revisionId, protector.chunk(), protector.offset(), protector.version(), shouldLock);
   return true;

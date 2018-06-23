@@ -121,6 +121,7 @@ class RevisionCacheChunk {
   
   bool findRevisions(std::vector<TRI_voc_rid_t>& revisions);
   void invalidate();
+  bool invalidateIfUnused();
 
   static inline uint32_t versionPart(uint64_t value) {
     return static_cast<uint32_t>((value & 0xffffffff00000000ULL) >> 32);

@@ -54,6 +54,8 @@ class V8TransactionContext final : public TransactionContext {
 
   std::shared_ptr<VPackCustomTypeHandler> orderCustomTypeHandler() override final;
   
+  void addChunk(RevisionCacheChunk*) override;
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the resolver
   //////////////////////////////////////////////////////////////////////////////

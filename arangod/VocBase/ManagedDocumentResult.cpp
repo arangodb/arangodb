@@ -77,9 +77,8 @@ void ManagedDocumentResult::clear(size_t threshold) {
   if (_trx != nullptr) {
     _trx->clearChunks(threshold);
   }
-  _vpack = nullptr;
-  _lastRevisionId = 0;
   _chunkCache.clear();
+  setCache(0, nullptr);
 }
   
 ManagedDocumentResult& ManagedDocumentResult::operator=(ManagedDocumentResult const& other) {
