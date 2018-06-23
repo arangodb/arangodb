@@ -152,15 +152,19 @@ QueryStreamCursor::QueryStreamCursor(
 )
     : Cursor(id, batchSize, ttl, /*hasCount*/ false),
       _guard(vocbase),
-      _queryString(query) {
+      _exportCount(-1) {
   TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
   auto prevLockHeaders = CollectionLockState::_noLockHeaders;
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
+  if (opts->slice().hasKey("exportCount")) {
+    _exportCount = opts->slice().get("exportCount").getNumber<int64_t>();
+  }
+
   _query = std::make_unique<Query>(
     false,
     _guard.database(),
-    aql::QueryString(_queryString.c_str(), _queryString.length()),
+    aql::QueryString(query),
     std::move(bindVars),
     std::move(opts),
     arangodb::aql::PART_MAIN
@@ -195,7 +199,7 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
   LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
-                                    << _queryString.substr(1024) << "'";
+                                    << _query->queryString().extract(1024) << "'";
 
   VPackOptions const* oldOptions = builder.options;
   TRI_DEFER(builder.options = oldOptions);
@@ -241,7 +245,9 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       if (hasMore) {
         builder.add("id", VPackValue(std::to_string(id())));
       }
-
+      if (_exportCount >= 0) { // this is coming from /_api/export
+        builder.add("count", VPackValue(_exportCount));
+      }
       builder.add("cached", VPackValue(false));
     } catch (...) {
       delete value;
@@ -250,7 +256,7 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
 
     if (!hasMore) {
       QueryResult result;
-      _query->finalize(result);
+      _query->finalize(result); // will commit transaction
       if (result.extra && result.extra->slice().isObject()) {
         builder.add("extra", result.extra->slice());
       }
