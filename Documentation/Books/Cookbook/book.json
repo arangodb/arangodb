@@ -36,7 +36,7 @@
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
-      "prefix": "https://docs.arangodb.com/devel/cookbook/",
+      "prefix": "https://docs.arangodb.com/devel/Cookbook/",
       "changefreq": "@GCHANGE_FREQ@",
       "priority": @GPRIORITY@
     },

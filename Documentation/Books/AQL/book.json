@@ -14,7 +14,7 @@
     "sitemap-general@git+https://github.com/Simran-B/gitbook-plugin-sitemap-general.git",
     "ga",
     "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
-    "edit-link@git+https://github.com/Simran-B/gitbook-plugin-edit-link.git",
+    "edit-link",
     "localized-footer"
   ],
   "pdf": {
@@ -48,8 +48,7 @@
     },
     "edit-link": {
       "base": "https://github.com/arangodb/arangodb/edit/devel/Documentation/Books/AQL",
-      "label": "Edit Page",
-      "extension": ".mdpp"
+      "label": "Edit Page"
     }
   }
 }

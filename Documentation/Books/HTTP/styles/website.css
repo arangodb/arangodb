@@ -23,6 +23,10 @@ div.example_show_button {
   margin-bottom: 0.85em;
 }
 
+.book .book-body .alert p:last-child {
+  margin-bottom: 0;
+}
+
 .columns-3 {
   -webkit-column-count: 3;
   -moz-column-count: 3;

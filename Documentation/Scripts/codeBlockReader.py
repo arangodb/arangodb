@@ -3,13 +3,21 @@ import sys
 import re
 import inspect
 
-validExtensions = (".cpp", ".h", ".js", ".mdpp", ".md")
+validExtensions = (".cpp", ".h", ".js", ".md")
 # specify the paths in which docublocks are searched. note that js/apps/* must not be included because it contains js/apps/system/
 # and that path also contains copies of some files present in js/ anyway.
+
+searchMDPaths = [
+  "Manual",
+  "AQL",
+  "HTTP",
+  "Cookbook"
+]
 searchPaths = [
   "Documentation/Books/Manual/",
   "Documentation/Books/AQL/",
   "Documentation/Books/HTTP/",
+  "Documentation/Books/Cookbook/",
   "Documentation/DocuBlocks/"
 ]
 fullSuccess = True
@@ -28,8 +36,12 @@ def file_content(filepath):
 
   for line in enumerate(filelines):
     if "@startDocuBlock" in line[1]:
-      # in the mdpp's we have non-terminated startDocuBlocks, else its an error:
-      if _start != None and not 'mdpp' in filepath:
+      # in the unprocessed md files we have non-terminated startDocuBlocks, else it is an error:
+      if ((_start != None) and
+          (not searchMDPaths[0] in filepath) and
+          (not searchMDPaths[1] in filepath) and
+          (not searchMDPaths[2] in filepath) and
+          (not searchMDPaths[3] in filepath)):
         print "next startDocuBlock found without endDocuBlock inbetween in file %s [%s]" %(filepath, line)
         raise
       _start = line[0]
@@ -218,6 +230,8 @@ def fetch_comments(dirpath):
               elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text or \
                 "@END_EXAMPLE_ARANGOSH_RUN" in _text):
                 shouldIgnoreLine = False
+            else:
+              fh.write("\n")
   fh.close()
 
 if __name__ == "__main__":

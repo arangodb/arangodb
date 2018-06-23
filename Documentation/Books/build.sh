@@ -37,7 +37,7 @@ newVersionNumber=$( tr -d '\r\n' < ../../VERSION)
 
 declare -A ALL_GSEARCH_ID
 for book in ${ALLBOOKS}; do
-    ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:-]*\)".*;\1;')
+    ALL_GSEARCH_ID[$book]=$(  grep "GSEARCH_ID_${book}" ../../VERSIONS |sed 's;.*"\([0-9a-zA-Z:_-]*\)".*;\1;')
 done
 
 
@@ -357,14 +357,15 @@ function build-book-symlinks()
     echo "${STD_COLOR}##### generate backwards compatibility symlinks for ${NAME}${RESET}"
     cd "books/${NAME}"
     pwd
-    find . -name "README.mdpp" |\
-        sed -e 's:README\.mdpp$::' |\
+    find . -name "README.md" |\
+        sed -e 's:README\.md$::' |\
         awk '{print "ln -s index.html " "$1" "README.html"}' |\
         bash
 }
 
 function build-book()
 {
+    python ../Scripts/codeBlockReader.py || exit 1
     export NAME="$1"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
@@ -395,9 +396,6 @@ function build-book()
         cd "ppbooks/${NAME}"
         if ! test -L SUMMARY.md; then
             ln -s "../../${NAME}/SUMMARY.md" .
-        fi
-        if ! test -f HEADER.html ; then
-            cp "../../${NAME}/HEADER.html" .
         fi
         if ! test -f FOOTER.html ; then
             cp "../../${NAME}/FOOTER.html" .
@@ -445,7 +443,7 @@ function build-book()
         cp "${NAME}/book.json" "ppbooks/${NAME}"
     fi
 
-    for facilityfile in book.json styles/header.js HEADER.html README.md; do
+    for facilityfile in book.json styles/header.js README.md; do
         export facilityfile
         export RELEASE_DIRECTORY
         (
@@ -463,7 +461,7 @@ function build-book()
 
     echo "${STD_COLOR} - Building Version ${VERSION}${RESET}"
 
-    if test -n "${NODE_MODULES_DIR}"; then
+    if test -d "${NODE_MODULES_DIR}"; then
         echo "${STD_COLOR}#### Installing plugins from ${NODE_MODULES_DIR}${RESET}"
         cp -a "${NODE_MODULES_DIR}" "ppbooks/${NAME}"
     else
@@ -472,7 +470,6 @@ function build-book()
     fi
     echo "${STD_COLOR} - Building Book ${NAME} ${RESET}"
     (cd "ppbooks/${NAME}" && gitbook "${GITBOOK_ARGS[@]}" build "./" "./../../books/${NAME}")
-    rm -f "./books/${NAME}/HEADER.html"
     rm -f "./books/${NAME}/FOOTER.html"
     echo "${STD_COLOR} - deleting markdown files in output (gitbook 3.x bug)"
     find "./books/${NAME}/" -type f -name "*.md" -delete
@@ -528,7 +525,7 @@ function clean-book-intermediate()
 #
 function check-docublocks()
 {
-    grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+    grep -R '@startDocuBlock' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v '@startDocuBlockInline' |\
         grep -v ppbook |\
         grep -v allComments.txt |\
@@ -537,7 +534,7 @@ function check-docublocks()
         grep -v '.*#.*:.*' \
              > /tmp/rawindoc.txt
 
-    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
         grep -v allComments.txt |\
         grep -v Makefile |\
@@ -548,9 +545,9 @@ function check-docublocks()
     sed  -e "s;.*ck ;;" -e "s;.*ne ;;" < /tmp/rawindoc.txt |sort -u > /tmp/indoc.txt
 
     set +e
-    grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" --include "*.mdpp" |grep -v aardvark > /tmp/rawinprog.txt
+    grep -R '^@startDocuBlock' ../DocuBlocks --include "*.md" |grep -v aardvark > /tmp/rawinprog.txt
     # searching the Inline docublocks needs some more blacklisting:
-    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.mdpp" . |\
+    grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
         grep -v allComments.txt |\
         grep -v Makefile |\
@@ -611,7 +608,6 @@ function build-book-keep-md()
 {
     NAME="$1"
     test -d books || mkdir books
-    python ../Scripts/codeBlockReader.py || exit 1
     build-book "${NAME}"
 }
 

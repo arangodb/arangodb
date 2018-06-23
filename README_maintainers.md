@@ -390,24 +390,6 @@ Dependencies to build documentation:
 
 - [swagger 2](http://swagger.io/) for the API-Documentation inside aardvark (no installation required)
 
-- Python Setuptools
-
-    https://pypi.python.org/pypi/setuptools
-
-    Download setuptools zip file, extract to any folder to install:
-
-        python ez_install.py
-
-  This will place the required files in python's Lib/site-packages folder.
-
-- MarkdownPP
-
-    https://github.com/arangodb-helper/markdown-pp/
-
-    Checkout the code with Git, use your system python to install:
-
-        python setup.py install
-
 - [Node.js](https://nodejs.org/)
 
     Make sure the option to *Add to PATH* is enabled.
@@ -463,7 +445,7 @@ restrictions.
 
 To only regereneate one file (faster) you may specify a filter:
 
-    make build-book NAME=Manual FILTER=Manual/Aql/Invoke.mdpp
+    make build-book NAME=Manual FILTER=Manual/Aql/Invoke.md
 
 (regular expressions allowed)
 
@@ -511,7 +493,7 @@ generate
 
 write markdown
 --------------
-*mdpp* files are used for the structure. To join it with parts extracted from the program documentation
+*md* files are used for the structure. To join it with parts extracted from the program documentation
 you need to place hooks:
   - `@startDocuBlock <tdocuBlockName>` is replaced by a Docublock extracted from source.
   - `@startDocuBlockInline <docuBlockName>` till `@endDocuBlock <docuBlockName>`
@@ -536,8 +518,8 @@ arangod Example tool
 `./utils/generateExamples.sh` picks examples from the code documentation, executes them, and creates a transcript including their results.
 
 Here is how its details work:
-  - all *Documentation/DocuBlocks/*.md* and *Documentation/Books/*.mdpp* are searched.
-  - all lines inside of source code starting with '///' are matched, all lines in .mdpp files.
+  - all *Documentation/DocuBlocks/*.md* and *Documentation/Books/*.md* are searched.
+  - all lines inside of source code starting with '///' are matched, all lines in .md files.
   - an example start is marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
   - the example is named by the string provided in brackets after the above key
   - the output is written to `Documentation/Examples/<name>.generated`

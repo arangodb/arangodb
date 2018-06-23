@@ -2,7 +2,19 @@ import sys
 import re
 import os
 import json
-#import MarkdownPP
+
+
+RESET  = '\033[0m'
+def make_std_color(No):
+    # defined for 1 through 7
+    return '\033[3' + No+ 'm'
+def make_color(No):
+    # defined for 1 through 255
+    return '\033[38;5;'+ No + 'm'
+
+WRN_COLOR = make_std_color('3')
+ERR_COLOR = make_std_color('1')
+STD_COLOR = make_color('8')
 
 ################################################################################
 ### @brief length of the swagger definition namespace
@@ -27,12 +39,14 @@ thisVerb = {}
 route = ''
 verb = ''
 
+################################################################################
+### Swagger Markdown rendering
+################################################################################
 def getReference(name, source, verb):
     try:
         ref = name['$ref'][defLen:]
     except Exception as x:
-        print >>sys.stderr, "No reference in: "
-        print >>sys.stderr, name
+        print >>sys.stderr, ERR_COLOR + "No reference in: " + name + RESET
         raise
     if not ref in swagger['definitions']:
         fn = ''
@@ -40,7 +54,7 @@ def getReference(name, source, verb):
             fn = swagger['paths'][route][verb]['x-filename']
         else:
             fn = swagger['definitions'][source]['x-filename']
-        print >> sys.stderr, json.dumps(swagger['definitions'], indent=4, separators=(', ',': '), sort_keys=True)
+        print >> sys.stderr, STD_COLOR + json.dumps(swagger['definitions'], indent=4, separators=(', ',': '), sort_keys=True) + RESET
         raise Exception("invalid reference: " + ref + " in " + fn)
     return ref
 
@@ -85,8 +99,8 @@ def unwrapPostJson(reference, layer):
                 try:
                     subStructRef = getReference(thisParam['items'], reference, None)
                 except:
-                    print >>sys.stderr, "while analyzing: " + param
-                    print >>sys.stderr, thisParam
+                    print >>sys.stderr, ERR_COLOR + "while analyzing: " + param  + RESET
+                    print >>sys.stderr, WRN_COLOR + thisParam + RESET
                 rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
         else:
             rc += ' ' * layer + " - **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
@@ -99,9 +113,7 @@ def getRestBodyParam():
         if thisVerb['parameters'][nParam]['in'] == 'body':
             descOffset = thisVerb['parameters'][nParam]['x-description-offset']
             addText = ''
-            if 'additionalProperties' in thisVerb['parameters'][nParam]['schema']:
-                addText = "free style json body"
-            else:
+            if 'additionalProperties' not in thisVerb['parameters'][nParam]['schema']:
                 addText = unwrapPostJson(
                     getReference(thisVerb['parameters'][nParam]['schema'], route, verb),0)
     rc += addText
@@ -117,13 +129,13 @@ def getRestDescription():
         return ""
         
 def getRestReplyBodyParam(param):
-    rc = "\n**Reply Body**\n"
+    rc = "\n**Response Body**\n"
 
     try:
         rc += unwrapPostJson(getReference(thisVerb['responses'][param]['schema'], route, verb), 0)
     except Exception:
-        print >>sys.stderr,"failed to search " + param + " in: "
-        print >>sys.stderr,json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True)
+        print >>sys.stderr, ERR_COLOR + "failed to search " + param + " in: " + RESET
+        print >>sys.stderr, WRN_COLOR + json.dumps(thisVerb, indent=4, separators=(', ',': '), sort_keys=True) + RESET
         raise
     return rc + "\n"
 
@@ -240,7 +252,7 @@ RX = [
 RX2 = [
     # parameters - extract their type and whether mandatory or not.
     (re.compile(r"@RESTPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"* *\g<1>* (\g<3>):"),
-    (re.compile(r"@RESTALLBODYPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"\n**Post Body**\n\n *\g<1>* (\g<3>):"),
+    (re.compile(r"@RESTALLBODYPARAM{(\s*[\w\-]*)\s*,\s*([\w\_\|-]*)\s*,\s*(required|optional)}"), r"\n**Request Body** (\g<3>)\n\n"),
 
     (re.compile(r"@RESTRETURNCODE{(.*)}"), r"* *\g<1>*:")
 ]
@@ -273,14 +285,15 @@ def replaceCode(lines, blockName):
             (verb,route) =  headerMatch.group(1).split(',')[0].split(' ')
             verb = verb.lower()
         except:
-            print >> sys.stderr, "failed to parse header from: " + headerMatch.group(1) + " while analysing " + blockName
+            print >> sys.stderr, ERR_COLOR + "failed to parse header from: " + headerMatch.group(1) + " while analysing " + blockName + RESET
             raise
 
         try:
             thisVerb = swagger['paths'][route][verb]
         except:
-            print >> sys.stderr, "failed to locate route in the swagger json: [" + verb + " " + route + "]" + " while analysing " + blockName
-            print >> sys.stderr, lines
+            print >> sys.stderr, ERR_COLOR + "failed to locate route in the swagger json: [" + verb + " " + route + "]" + " while analysing " + blockName + RESET
+            print >> sys.stderr, WRN_COLOR + lines + RESET
+            print >> sys.stderr, "Did you forget to run utils/generateSwagger.sh?"
             raise
 
     for (oneRX, repl) in RX:
@@ -304,7 +317,7 @@ def replaceCode(lines, blockName):
                     lineR[r] = '@RESTDESCRIPTION'
                 foundRestBodyParam = True
                 r+=1
-                while ((len(lineR[r]) > 0) and
+                while ((len(lineR[r]) == 0) or
                        ((lineR[r][0] != '@') or
                        have_RESTBODYPARAM.search(lineR[r]))):
                     # print "xxx - %d %s" %(len(lineR[r]), lineR[r])
@@ -377,10 +390,10 @@ def walk_on_files(inDirPath, outDirPath):
     skipped = 0
     for root, dirs, files in os.walk(inDirPath):
         for file in files:
-            if file.endswith(".mdpp"):
+            if file.endswith(".md") and not file.endswith("SUMMARY.md"):
                 count += 1
                 inFileFull = os.path.join(root, file)
-                outFileFull = os.path.join(outDirPath, re.sub(r'mdpp$', 'md', inFileFull))
+                outFileFull = os.path.join(outDirPath, inFileFull)
                 if fileFilter != None:
                     if fileFilter.match(inFileFull) == None:
                         skipped += 1
@@ -388,17 +401,11 @@ def walk_on_files(inDirPath, outDirPath):
                         continue;
                 # print "%s -> %s" % (inFileFull, outFileFull)
                 _mkdir_recursive(os.path.join(outDirPath, root))
-                mdpp = open(inFileFull, "r")
-                md = open(outFileFull, "w")
-                #MarkdownPP.MarkdownPP(input=mdpp, output=md, modules=MarkdownPP.modules.keys())
-                md.write(mdpp.read())
-                mdpp.close()
-                md.close()
-                findStartCode(md, outFileFull)
-    print "Processed %d files, skipped %d" % (count, skipped)
+                findStartCode(inFileFull, outFileFull)
+    print STD_COLOR + "Processed %d files, skipped %d" % (count, skipped) + RESET
 
-def findStartCode(fd,full_path):
-    inFD = open(full_path, "r")
+def findStartCode(inFileFull, outFileFull):
+    inFD = open(inFileFull, "r")
     textFile = inFD.read()
     inFD.close()
     #print "-" * 80
@@ -407,8 +414,8 @@ def findStartCode(fd,full_path):
     if matchInline:
         for find in matchInline:
             #print "7"*80
-            #print full_path + " " + find
-            textFile = replaceTextInline(textFile, full_path, find)
+            #print inFileFull + " " + find
+            textFile = replaceTextInline(textFile, inFileFull, find)
             #print textFile
 
     match = re.findall(r'@startDocuBlock\s*(\w+)', textFile)
@@ -416,32 +423,31 @@ def findStartCode(fd,full_path):
         for find in match:
             #print "8"*80
             #print find
-            textFile = replaceText(textFile, full_path, find)
+            textFile = replaceText(textFile, inFileFull, find)
             #print textFile
 
     try:
         textFile = replaceCodeFullFile(textFile)
     except:
-        print >>sys.stderr, "while parsing :\n"  + textFile
+        print >>sys.stderr, ERR_COLOR + "while parsing :      "  + inFileFull + RESET
         raise
     #print "9" * 80
     #print textFile
-    outFD = open(full_path, "w")
-
-    outFD.truncate()
+    outFD = open(outFileFull, "w")
     outFD.write(textFile)
     outFD.close()
 #JSF_put_api_replication_synchronize
 
 def replaceText(text, pathOfFile, searchText):
-  ''' reads the mdpp and generates the md '''
+  ''' inserts docublocks into md '''
   #print '7'*80
   global dokuBlocks
   if not searchText in dokuBlocks[0]:
-      print >> sys.stderr, "Failed to locate the docublock '%s' for replacing it into the file '%s'\n have:" % (searchText, pathOfFile)
-      print >> sys.stderr, dokuBlocks[0].keys()
-      print >> sys.stderr, '*' * 80
-      print >> sys.stderr, text
+      print >> sys.stderr, ERR_COLOR + "Failed to locate the docublock '" + searchText + "' for replacing it into the file '" +pathOfFile + "'\n have:" + RESET
+      print >> sys.stderr, WRN_COLOR + dokuBlocks[0].keys() + RESET
+      print >> sys.stderr, ERR_COLOR + '*' * 80 + RESET
+      print >> sys.stderr, WRN_COLOR + text + RESET
+      print >> sys.stderr, ERR_COLOR + "Failed to locate the docublock '" + searchText + "' for replacing it into the file '" +pathOfFile + "' For details scroll up!" + RESET
       exit(1)
   #print '7'*80
   #print dokuBlocks[0][searchText]
@@ -450,25 +456,26 @@ def replaceText(text, pathOfFile, searchText):
   return rc
 
 def replaceTextInline(text, pathOfFile, searchText):
-  ''' reads the mdpp and generates the md '''
+  ''' inserts docublocks into md '''
   global dokuBlocks
   if not searchText in dokuBlocks[1]:
-      print >> sys.stderr, "Failed to locate the inline docublock '%s' for replacing it into the file '%s'\n have:" % (searchText, pathOfFile)
-      print >> sys.stderr, dokuBlocks[1].keys()
-      print >> sys.stderr, '*' * 80
-      print >> sys.stderr, text
+      print >> sys.stderr, ERR_COLOR + "Failed to locate the inline docublock '" + searchText + "' for replacing it into the file '" + pathOfFile + "'\n have: " + RESET
+      print >> sys.stderr, "%s%s%s" %(WRN_COLOR, dokuBlocks[1].keys(), RESET)
+      print >> sys.stderr, ERR_COLOR + '*' * 80 + RESET
+      print >> sys.stderr, WRN_COLOR + text + RESET
+      print >> sys.stderr, ERR_COLOR + "Failed to locate the inline docublock '" + searchText + "' for replacing it into the file '" + pathOfFile + "' For details scroll up!" + RESET
       exit(1)
   rePattern = r'(?s)\s*@startDocuBlockInline\s+'+ searchText +'\s.*?@endDocuBlock\s' + searchText
   # (?s) is equivalent to flags=re.DOTALL but works in Python 2.6
   match = re.search(rePattern, text)
 
-  if (match == None): 
-      print >> sys.stderr, "failed to match with '%s' for %s in file %s in: \n%s" % (rePattern, searchText, pathOfFile, text)
+  if (match == None):
+      print >> sys.stderr, ERR_COLOR + "failed to match with '" + rePattern + "' for " + searchText + " in file " + pathOfFile + " in: \n" + text + RESET
       exit(1)
 
   subtext = match.group(0)
   if (len(re.findall('@startDocuBlock', subtext)) > 1):
-      print >> sys.stderr, "failed to snap with '%s' on end docublock for %s in %s our match is:\n%s" % (rePattern, searchText, pathOfFile, subtext)
+      print >> sys.stderr, ERR_COLOR + "failed to snap with '" + rePattern + "' on end docublock for " + searchText + " in " + pathOfFile + " our match is:\n" + subtext + RESET
       exit(1)
 
   return re.sub(rePattern, dokuBlocks[1][searchText], text)
@@ -495,7 +502,7 @@ def readStartLine(line):
         try:
             thisBlockName = SEARCH_START.search(line).group(1).strip()
         except:
-            print >> sys.stderr, "failed to read startDocuBlock: [" + line + "]"
+            print >> sys.stderr, ERR_COLOR + "failed to read startDocuBlock: [" + line + "]"  + RESET
             exit(1)
         dokuBlocks[thisBlockType][thisBlockName] = ""
         return STATE_SEARCH_END
@@ -525,10 +532,10 @@ def loadDokuBlocks():
         
     if blockFilter != None:
         remainBlocks= {}
-        print "filtering blocks"
+        print STD_COLOR + "filtering blocks" + RESET
         for oneBlock in dokuBlocks[0]:
             if blockFilter.match(oneBlock) != None:
-                print "found block %s" % oneBlock
+                print "%sfound block %s%s" % (STD_COLOR, oneBlock, RESET)
                 #print dokuBlocks[0][oneBlock]
                 remainBlocks[oneBlock] = dokuBlocks[0][oneBlock]
         dokuBlocks[0] = remainBlocks
@@ -541,14 +548,14 @@ def loadDokuBlocks():
             #print dokuBlocks[0][oneBlock]
             #print "6"*80
         except:
-            print >>sys.stderr, "while parsing :\n"  + oneBlock
+            print >>sys.stderr, ERR_COLOR + "while parsing :\n"  + oneBlock + RESET
             raise
 
     for oneBlock in dokuBlocks[1]:
         try:
             dokuBlocks[1][oneBlock] = replaceCode(dokuBlocks[1][oneBlock], oneBlock)
         except:
-            print >>sys.stderr, "while parsing :\n"  + oneBlock
+            print >>sys.stderr, WRN_COLOR + "while parsing :\n"  + oneBlock + RESET
             raise
 
 
@@ -560,15 +567,15 @@ if __name__ == '__main__':
     outDir = sys.argv[2]
     swaggerJson = sys.argv[3]
     if len(sys.argv) > 4 and sys.argv[4].strip() != '':
-        print "filtering " + sys.argv[4]
+        print STD_COLOR + "filtering " + sys.argv[4] + RESET
         fileFilter = re.compile(sys.argv[4])
     if len(sys.argv) > 5 and sys.argv[5].strip() != '':
-        print "filtering Docublocks: " + sys.argv[5]
+        print STD_COLOR + "filtering Docublocks: " + sys.argv[5] + RESET
         blockFilter = re.compile(sys.argv[5])
     f=open(swaggerJson, 'rU')
     swagger= json.load(f)
     f.close()
     loadDokuBlocks()
-    print "loaded %d / %d docu blocks" % (len(dokuBlocks[0]), len(dokuBlocks[1]))
+    print "%sloaded %d / %d docu blocks%s" % (STD_COLOR, len(dokuBlocks[0]), len(dokuBlocks[1]), RESET)
     #print dokuBlocks[0].keys()
     walk_on_files(inDir, outDir)
