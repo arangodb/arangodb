@@ -12,24 +12,24 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-11-07T15:57:42Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-06-23T10:33:54Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"fetching master state information"</span>, 
-      <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
+      <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">1</span> 
     }, 
-    <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">0</span>, 
+    <span class="hljs-string">"totalRequests"</span> : <span class="hljs-number">3</span>, 
+    <span class="hljs-string">"totalFailedConnects"</span> : <span class="hljs-number">3</span>, 
     <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"totalOperationsExcluded"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"lastError"</span> : { 
-      <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1402</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-11-07T15:57:42Z"</span>, 
-      <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"got invalid response from master at tcp://127.0.0.1:8529: HTTP 401: Unauthorized"</span> 
+      <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1412</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-06-23T10:33:54Z"</span>, 
+      <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"could not connect to master at tcp://127.0.0.1:8529: Could not connect to 'http+tcp://127.0.0.1:8529' 'connect() failed with #111 - Connection refused'"</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-11-07T15:57:42Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-06-23T10:33:54Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.1.28"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"246885162208192"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.1.29"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"112668884275533"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 

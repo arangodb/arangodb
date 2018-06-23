@@ -16,5 +16,9 @@ then the return value you produce will be returned as content type
 *true*, the result will be a JSON object describing the return value
 directly, otherwise a string produced by JSON.stringify will be
 returned.
-@endDocuBlock
 
+@RESTRETURNCODES
+
+@RESTRETURNCODE{200} is returned when everything went well.
+
+@endDocuBlock

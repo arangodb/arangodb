@@ -8,12 +8,12 @@ arangosh&gt; db.demo.figures()
   <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"compactionStatus"</span> : { 
     <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-11-07T15:58:34Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-06-23T10:34:56Z"</span> 
   }, 
   <span class="hljs-string">"readCache"</span> : { 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"size"</span> : <span class="hljs-number">48192</span>, 
-    <span class="hljs-string">"total"</span> : <span class="hljs-number">13631488</span> 
+    <span class="hljs-string">"total"</span> : <span class="hljs-number">377487360</span> 
   }, 
   <span class="hljs-string">"documentReferences"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"waitingFor"</span> : <span class="hljs-string">"-"</span>, 

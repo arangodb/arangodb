@@ -14,7 +14,7 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/10473"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/10451"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span> 

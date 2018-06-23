@@ -1,6 +1,6 @@
 arangosh&gt; db.test.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"hash"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"a"</span> ], <span class="hljs-attr">sparse</span>: <span class="hljs-literal">true</span> });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/14626"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/14605"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span> 
@@ -13,7 +13,7 @@ arangosh&gt; db.test.ensureIndex({ <span class="hljs-attr">type</span>: <span cl
 }
 arangosh&gt; db.test.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"hash"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span> ], <span class="hljs-attr">unique</span>: <span class="hljs-literal">true</span> });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/14629"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/14608"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span>, 

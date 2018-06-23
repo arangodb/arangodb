@@ -1,9 +1,9 @@
 shell> curl --header 'x-arango-async: store' --dump - http://localhost:8529/_admin/sleep?duration=30
 
 HTTP/1.1 202 Accepted
-content-type: text/plain; charset=utf-8
 x-content-type-options: nosniff
-x-arango-async-id: 151007019842877
+x-arango-async-id: 152974999457331
+content-type: text/plain; charset=utf-8
 
 shell> curl --dump - http://localhost:8529/_api/job/pending
 
@@ -12,9 +12,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 [ 
-  <span class="hljs-string">"151007019842877"</span> 
+  <span class="hljs-string">"152974999457331"</span> 
 ]
-shell> curl -X DELETE --dump - http://localhost:8529/_api/job/151007019842877
+shell> curl -X DELETE --dump - http://localhost:8529/_api/job/152974999457331
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>

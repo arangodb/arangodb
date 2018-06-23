@@ -115,10 +115,12 @@ void SslClientConnection::init(uint64_t sslProtocol) {
   SSL_METHOD SSL_CONST* meth = nullptr;
 
   switch (protocol_e(sslProtocol)) {
+#if 0
 #ifndef OPENSSL_NO_SSL2
     case SSL_V2:
       meth = SSLv2_method();
       break;
+#endif
 #endif
 
 #ifndef OPENSSL_NO_SSL3_METHOD

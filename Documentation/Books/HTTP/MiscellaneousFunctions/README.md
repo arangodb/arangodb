@@ -34,8 +34,5 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 @startDocuBlock JSF_get_api_initiate
 
 <!-- js/actions/api-system.js -->
-@startDocuBlock JSF_post_admin_test
-
-<!-- js/actions/api-system.js -->
 @startDocuBlock JSF_post_admin_execute
 
