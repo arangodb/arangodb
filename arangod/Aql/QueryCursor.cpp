@@ -157,6 +157,8 @@ QueryStreamCursor::QueryStreamCursor(
   auto prevLockHeaders = CollectionLockState::_noLockHeaders;
   TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
+  // we replace the rocksdb export cursor with a stream AQL query
+  // for this case we need to support printing the collection "count" 
   if (opts->slice().hasKey("exportCount")) {
     _exportCount = opts->slice().get("exportCount").getNumber<int64_t>();
   }
