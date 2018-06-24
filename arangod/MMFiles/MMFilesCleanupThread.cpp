@@ -70,7 +70,13 @@ void MMFilesCleanupThread::run() {
         // cursors must be cleaned before collections are handled
         // otherwise the cursors may still hold barriers on collections
         // and collections cannot be closed properly
-        cleanupCursors(true);
+        auto cursors = _vocbase->cursorRepository();
+        TRI_ASSERT(cursors != nullptr);
+        try {
+          cursors->garbageCollect(true);
+        } catch (...) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception during cursor cleanup";
+        }
       }
         
       // check if we can get the compactor lock exclusively
@@ -102,8 +108,6 @@ void MMFilesCleanupThread::run() {
 
       // server is still running, clean up unused cursors
       if (iterations % cleanupCursorIterations() == 0) {
-        cleanupCursors(false);
-
         // clean up expired compactor locks
         engine->cleanupCompactionBlockers(_vocbase);
       }
@@ -127,19 +131,6 @@ void MMFilesCleanupThread::run() {
   }
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down cleanup thread";
-}
-
-/// @brief clean up cursors
-void MMFilesCleanupThread::cleanupCursors(bool force) {
-  // clean unused cursors
-  auto cursors = _vocbase->cursorRepository();
-  TRI_ASSERT(cursors != nullptr);
-
-  try {
-    cursors->garbageCollect(force);
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught exception during cursor cleanup";
-  }
 }
 
 /// @brief checks all datafiles of a collection
