@@ -109,8 +109,18 @@ std::string mangleStringIdentity(std::string name) {
   return name;
 }
 
+auto expressionExtractor = [](arangodb::aql::AstNode* root) {
+  return root->getMember(0);
+};
+
+auto boostedExpressionExtractor = [](arangodb::aql::AstNode* root) {
+  return expressionExtractor(root)->getMember(0)->getMember(0);
+};
+
 void assertExpressionFilter(
     std::string const& queryString,
+    irs::boost::boost_t boost = irs::boost::no_boost(),
+    std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor = expressionExtractor,
     std::string const& refName = "d"
 ) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -177,16 +187,18 @@ void assertExpressionFilter(
     auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
     irs::Or expected;
-    expected.add<arangodb::iresearch::ByExpression>().init(
+    auto& exprFilter = expected.add<arangodb::iresearch::ByExpression>();
+    exprFilter.init(
       *dummyPlan,
       *ast,
-      *filterNode->getMember(0) // 'd.a.b[_REFERENCE_('c')]
+      *expressionExtractor(filterNode)
     );
 
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
     CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
-    CHECK((expected == actual));
+    CHECK(expected == actual);
+    CHECK(boost == actual.begin()->boost());
   }
 }
 
@@ -451,6 +463,19 @@ SECTION("AttributeAccess") {
     assertFilterSuccess("LET x={} FOR d IN collection FILTER x.a.b RETURN d", expected, &ctx);
   }
 
+  // attribute access, non empty object, boost
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{ \"a\": { \"b\": \"1\" } }");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::all>().boost(1.5f);
+
+    assertFilterSuccess("LET x={} FOR d IN collection FILTER BOOST(x.a.b, 1.5) RETURN d", expected, &ctx);
+  }
+
   // attribute access, empty object
   {
     auto obj = arangodb::velocypack::Parser::fromJson("{}");
@@ -464,12 +489,29 @@ SECTION("AttributeAccess") {
     assertFilterSuccess("LET x={} FOR d IN collection FILTER x.a.b RETURN d", expected, &ctx);
   }
 
+  // attribute access, empty object, boost
+  {
+    auto obj = arangodb::velocypack::Parser::fromJson("{}");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x={} FOR d IN collection FILTER BOOST(x.a.b, 2.5) RETURN d", expected, &ctx);
+  }
+
   assertExpressionFilter("FOR d IN collection FILTER d RETURN d"); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d, 1.5) RETURN d", 1.5, boostedExpressionExtractor); // no reference to `d`
   assertExpressionFilter("FOR d IN collection FILTER d.a.b.c RETURN d"); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b.c, 2.5) RETURN d", 2.5, boostedExpressionExtractor); // no reference to `d`
   assertExpressionFilter("FOR d IN collection FILTER d.a.b[TO_STRING('c')] RETURN d"); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b[TO_STRING('c')], 3.5) RETURN d", 3.5, boostedExpressionExtractor); // no reference to `d`
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter("FOR d IN collection FILTER d.a.b[_NONDETERM_('c')] RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b[_NONDETERM_('c')], 1.5) RETURN d", 1.5, boostedExpressionExtractor);
 }
 
 SECTION("ValueReference") {
@@ -729,11 +771,35 @@ SECTION("ValueReference") {
     assertFilterSuccess("LET nullVal=null FOR d IN collection FILTER (nullVal && true) RETURN d", expected, &ctx);
   }
 
+  // string value == true, boosted
+  {
+    irs::Or expected;
+    expected.add<irs::all>().boost(2.5);
+
+    assertFilterSuccess("FOR d IN collection FILTER BOOST('1', 2.5) RETURN d", expected);
+  }
+
+  // null expression, boost
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+
+    irs::Or expected;
+    auto& root = expected.add<irs::And>();
+    root.boost(0.75);
+    root.add<irs::empty>();
+    root.add<irs::all>();
+
+    assertFilterSuccess("LET nullVal=null FOR d IN collection FILTER BOOST(nullVal && true, 0.75) RETURN d", expected, &ctx);
+  }
+
   // self-reference
   assertExpressionFilter("FOR d IN collection FILTER d RETURN d");
   assertExpressionFilter("FOR d IN collection FILTER d[1] RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d[1], 1.5) RETURN d", 1.5, boostedExpressionExtractor);
   assertExpressionFilter("FOR d IN collection FILTER d.a[1] RETURN d");
   assertExpressionFilter("FOR d IN collection FILTER d[*] RETURN d");
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d[*], 0.5) RETURN d", 0.5, boostedExpressionExtractor);
   assertExpressionFilter("FOR d IN collection FILTER d.a[*] RETURN d");
 }
 
@@ -760,6 +826,28 @@ SECTION("SystemFunctions") {
     assertFilterSuccess("LET x=0 FOR d IN collection FILTER TO_BOOL(x) RETURN d", expected, &ctx); // reference
   }
 
+  // scalar with boost
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{1})));
+
+    irs::Or expected;
+    expected.add<irs::all>().boost(1.5f);
+
+    assertFilterSuccess("LET x=1 FOR d IN collection FILTER BOOST(TO_STRING(x), 1.5) RETURN d", expected, &ctx); // reference
+  }
+
+  // scalar with boost
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{0})));
+
+    irs::Or expected;
+    expected.add<irs::empty>();
+
+    assertFilterSuccess("LET x=0 FOR d IN collection FILTER BOOST(TO_BOOL(x), 1.5) RETURN d", expected, &ctx); // reference
+  }
+
   // nondeterministic expression : wrap it
   assertExpressionFilter("FOR d IN VIEW myView FILTER RAND() RETURN d");
 }
@@ -769,6 +857,155 @@ SECTION("UnsupportedUserFunctions") {
 //  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction() RETURN d", &ExpressionContextMock::EMPTY);
 //  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction1(d) RETURN d", &ExpressionContextMock::EMPTY);
 //  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction2(d, 'quick') RETURN d", &ExpressionContextMock::EMPTY);
+}
+
+SECTION("Boost") {
+  // simple boost
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.5})));
+
+    irs::Or expected;
+    auto& termFilter = expected.add<irs::by_term>();
+    termFilter.field(mangleStringIdentity("foo")).term("abc").boost(1.5);
+
+    assertFilterSuccess("LET x=1.5 FOR d IN collection FILTER BOOST(d.foo == 'abc', x) RETURN d", expected, &ctx);
+  }
+
+  // embedded boost
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.5})));
+
+    irs::Or expected;
+    auto& termFilter = expected.add<irs::by_term>();
+    termFilter.field(mangleStringIdentity("foo")).term("abc").boost(3.0f); // 1.5*2
+
+    assertFilterSuccess("LET x=1.5 FOR d IN collection FILTER BOOST(BOOST(d.foo == 'abc', x), 2) RETURN d", expected, &ctx);
+  }
+
+  // wrong number of arguments
+  assertFilterParseFail("FOR d IN collection FILTER BOOST(d.foo == 'abc') RETURN d");
+
+  // wrong argument type
+  assertFilterFail("FOR d IN collection FILTER BOOST(d.foo == 'abc', '2') RETURN d");
+  assertFilterFail("FOR d IN collection FILTER BOOST(d.foo == 'abc', null) RETURN d");
+  assertFilterFail("FOR d IN collection FILTER BOOST(d.foo == 'abc', true) RETURN d");
+
+  // non-deterministic expression
+  assertFilterFail("FOR d IN collection FILTER BOOST(d.foo == 'abc', RAND()) RETURN d");
+
+  // can't execute boost function
+  assertFilterExecutionFail(
+    "LET x=1.5 FOR d IN collection FILTER BOOST(d.foo == 'abc', BOOST(x, 2)) RETURN d",
+    &ExpressionContextMock::EMPTY
+  );
+}
+
+SECTION("Analyzer") {
+  // FIXME TODO
+}
+
+SECTION("MinMatch") {
+  // simplest MIN_MATCH
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{2})));
+
+    irs::Or expected;
+    auto& minMatch = expected.add<irs::Or>();
+    minMatch.min_match_count(2);
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobar")).term("bar");
+
+    assertFilterSuccess(
+      "LET x=2 FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', x) RETURN d",
+      expected,
+      &ctx
+    );
+  }
+
+  // simple MIN_MATCH
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{2})));
+
+    irs::Or expected;
+    auto& minMatch = expected.add<irs::Or>();
+    minMatch.min_match_count(2);
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobar")).term("bar");
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobaz")).term("baz");
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobad")).term("bad");
+
+    assertFilterSuccess(
+      "LET x=2 FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', d.foobaz == 'baz', d.foobad == 'bad', x) RETURN d",
+      expected,
+      &ctx
+    );
+  }
+
+  // simple MIN_MATCH
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.5})));
+
+    irs::Or expected;
+    auto& minMatch = expected.add<irs::Or>();
+    minMatch.min_match_count(2);
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobar")).term("bar");
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobaz")).term("baz").boost(1.5f);
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobad")).term("bad");
+
+    assertFilterSuccess(
+      "LET x=1.5 FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', BOOST(d.foobaz == 'baz', x), d.foobad == 'bad', x) RETURN d",
+      expected,
+      &ctx
+    );
+  }
+
+  // boosted MIN_MATCH
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.5})));
+
+    irs::Or expected;
+    auto& minMatch = expected.add<irs::Or>();
+    minMatch.boost(3.0f);
+    minMatch.min_match_count(2);
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobar")).term("bar");
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobaz")).term("baz").boost(1.5f);
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobad")).term("bad");
+
+    assertFilterSuccess(
+      "LET x=1.5 FOR d IN collection FILTER BOOST(MIN_MATCH(d.foobar == 'bar', BOOST(d.foobaz == 'baz', x), d.foobad == 'bad', x), x*2) RETURN d",
+      expected,
+      &ctx
+    );
+  }
+
+  // wrong number of arguments
+  assertFilterParseFail("FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar') RETURN d");
+
+  // wrong argument type
+  assertFilterFail(
+    "FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', d.foobaz == 'baz', d.foobad == 'bad', '2') RETURN d",
+    &ExpressionContextMock::EMPTY
+  );
+  assertFilterFail(
+    "FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', d.foobaz == 'baz', d.foobad == 'bad', null) RETURN d",
+    &ExpressionContextMock::EMPTY
+  );
+  assertFilterFail(
+    "FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', d.foobaz == 'baz', d.foobad == 'bad', true) RETURN d",
+    &ExpressionContextMock::EMPTY
+  );
+
+  // non-deterministic expression
+  assertFilterFail(
+    "FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', d.foobaz == 'baz', d.foobad == 'bad', RAND()) RETURN d",
+    &ExpressionContextMock::EMPTY
+  );
+
+  // FIXME TODO
 }
 
 SECTION("Exists") {
