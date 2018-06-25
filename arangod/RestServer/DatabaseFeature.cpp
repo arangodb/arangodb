@@ -533,7 +533,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       }
     }
     
-    VPackBuilder builder;
     builder.openObject();
     builder.add("database", VPackValue(id));
     builder.add("id", VPackValue(std::to_string(id)));

@@ -1066,36 +1066,30 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
             << "Missing name in agency database plan";
         continue;
       }
-
       std::string const name = options.value.get("name").copyString();
-      TRI_voc_tick_t id = 0;
-
-      if (options.value.hasKey("id")) {
-        VPackSlice const v = options.value.get("id");
-        if (v.isString()) {
-          try {
-            id = std::stoul(v.copyString());
-          } catch (std::exception const& e) {
-            LOG_TOPIC(ERR, Logger::HEARTBEAT)
-                << "Failed to convert id string to number";
-            LOG_TOPIC(ERR, Logger::HEARTBEAT) << e.what();
-          }
-        }
+      TRI_ASSERT(!name.empty());
+      
+      VPackSlice const idSlice = options.value.get("id");
+      if (!idSlice.isString()) {
+        LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Missing id in agency database plan";
+        TRI_ASSERT(false);
+        continue;
       }
-
+      TRI_voc_tick_t id = basics::StringUtils::uint64(idSlice.copyString());
       TRI_ASSERT(id != 0);
-      if (id > 0) {
-        ids.push_back(id);
+      if (id == 0) {
+        LOG_TOPIC(ERR, Logger::HEARTBEAT)
+        << "Failed to convert database id string to number";
+        TRI_ASSERT(false);
+        continue;
       }
+
+      // known plan IDs
+      ids.push_back(id);
 
       TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
-
-        if (id == 0) { // FIXME aren't these dropped below ??
-          // verify that we have an id
-          id = ClusterInfo::instance()->uniqid();
-        }
 
         // create a local database object...
         int res = databaseFeature->createDatabase(id, name, vocbase);
