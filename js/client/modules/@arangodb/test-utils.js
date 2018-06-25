@@ -477,14 +477,17 @@ function doOnePathInner (path) {
 }
 
 function scanTestPaths (paths) {
-  let allTestCases = [];
-  for (let i = 0; i < paths.length; i++) {
-    var community = doOnePathInner(paths[i]);
-    if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
-      community.concat(doOnePathInner('enterprise/' + paths[i]));
-    }
-    allTestCases = allTestCases.concat(community);
+  // add enterprise tests
+  if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+    paths = paths.concat(paths.map(function(p) {
+      return 'enterprise/' + p;
+    }));
   }
+
+  let allTestCases = [];
+  paths.forEach(function(p) {
+    allTestCases = allTestCases.concat(doOnePathInner(p));
+  });
   return allTestCases;
 }
 
