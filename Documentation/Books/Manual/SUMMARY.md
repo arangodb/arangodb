@@ -43,6 +43,7 @@
   * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/Options.md)
     * [Security](Programs/Starter/Security.md)
+	* [Architecture](Programs/Starter/Architecture.md)
   * [Arangodump](Programs/Arangodump/README.md)
     * [Examples](Programs/Arangodump/Examples.md)
     * [Options](Programs/Arangodump/Options.md)
