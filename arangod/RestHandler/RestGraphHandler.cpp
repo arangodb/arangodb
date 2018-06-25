@@ -856,19 +856,25 @@ Result RestGraphHandler::vertexCreate(std::shared_ptr<const graph::Graph> graph,
 }
 
 // /_api/gharial/{graph-name}/edge/{definition-name}
-Result RestGraphHandler::editEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
-                                               const std::string& edgeDefinitionName) {
-
-  return modifyEdgeDefinition(graph, EdgeDefinitionAction::EDIT, edgeDefinitionName);
+Result RestGraphHandler::editEdgeDefinition(
+    std::shared_ptr<const graph::Graph> graph,
+    const std::string& edgeDefinitionName) {
+  return modifyEdgeDefinition(std::move(graph), EdgeDefinitionAction::EDIT,
+                              edgeDefinitionName);
 }
 
-Result RestGraphHandler::createEdgeDefinition(std::shared_ptr<const graph::Graph> graph) {
-  return modifyEdgeDefinition(graph, EdgeDefinitionAction::CREATE, "");
+Result RestGraphHandler::createEdgeDefinition(
+    std::shared_ptr<const graph::Graph> graph) {
+  return modifyEdgeDefinition(std::move(graph), EdgeDefinitionAction::CREATE);
 }
+
 // /_api/gharial/{graph-name}/edge
-
 Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph> graph,
     EdgeDefinitionAction action, std::string edgeDefinitionName) {
+
+  // edgeDefinitionName == "" <=> action == CREATE
+  TRI_ASSERT((action == EdgeDefinitionAction::CREATE)
+             == edgeDefinitionName.empty());
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -910,21 +916,13 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
     return res;
   }
 
-  // TODO: new pointer to new graph instance
-  // graph cache
-  // add function invalidate (+ return)
-  // return new graph config
-  //std::string graphName = graph->name();
-  // TODO: REFACTOR THIS START !!
-  auto ctxx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  // TODO invalidate graph in _graphCache
 
-  std::string graphName = graph->name();
-  std::shared_ptr<Graph const> graphx = _graphCache.getGraph(std::move(ctxx), graphName);
-  GraphOperations gopss{*graphx, ctxx};
+  ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
+  graph = _graphCache.getGraph(ctx, graph->name());
   VPackBuilder builder;
-  gopss.readGraph(builder);
-  // TODO: REFACTOR THIS END !!
+  graph->graphToVpack(builder);
 
   generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
 
@@ -974,21 +972,13 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
     return res;
   }
 
-  // TODO: new pointer to new graph instance
-  // graph cache
-  // add function invalidate (+ return)
-  // return new graph config
-  //std::string graphName = graph->name();
-  // TODO: REFACTOR THIS START !!
-  auto ctxx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  // TODO invalidate graph in _graphCache
 
-  std::string graphName = graph->name();
-  std::shared_ptr<Graph const> graphx = _graphCache.getGraph(std::move(ctxx), graphName);
-  GraphOperations gopss{*graphx, ctxx};
+  ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
+  graph = _graphCache.getGraph(ctx, graph->name());
   VPackBuilder builder;
-  gopss.readGraph(builder);
-  // TODO: REFACTOR THIS END !!
+  graph->graphToVpack(builder);
 
   generateCreatedEdgeDefinition(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
 
@@ -1217,9 +1207,8 @@ Result RestGraphHandler::graphActionReadGraphConfig(
     const std::shared_ptr<const graph::Graph> graph) {
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  GraphOperations gops{*graph, ctx};
   VPackBuilder builder;
-  gops.readGraph(builder);
+  graph->graphToVpack(builder);
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 
   return Result();
@@ -1262,7 +1251,6 @@ Result RestGraphHandler::graphActionRemoveGraph(
 }
 
 Result RestGraphHandler::graphActionCreateGraph() {
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -1272,18 +1260,20 @@ Result RestGraphHandler::graphActionCreateGraph() {
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
-  GraphManager gmngr{ctx};
-  auto ResultT = gmngr.createGraph(body, waitForSync); // TODO CHANGE return type
+  {
+    auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    GraphManager gmngr{ctx};
+    auto result = gmngr.createGraph(body, waitForSync); // TODO CHANGE return type
+    // TODO check result value!
+  }
  
   std::string graphName = body.get(StaticStrings::DataSourceName).copyString();
 
-  auto ctxx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  std::shared_ptr<Graph const> graph = getGraph(ctxx, graphName);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  std::shared_ptr<Graph const> graph = getGraph(ctx, graphName);
 
-  GraphOperations gops{*graph, ctxx}; // TODO moves ctx, wanted?!
-  // must not be a single transaction anyway
   VPackBuilder builder;
-  gops.readGraph(builder);
+  graph->graphToVpack(builder);
 
   generateCreatedGraphConfig(waitForSync, builder.slice(), *ctx->getVPackOptionsForDump());
 
@@ -1303,20 +1293,19 @@ Result RestGraphHandler::graphActionReadGraphs() {
 }
 
 Result RestGraphHandler::graphActionReadConfig(
-    const std::shared_ptr<const graph::Graph> graph,
-    TRI_col_type_e colType, GraphProperty property) {
-
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
-  GraphOperations gops{*graph, ctx};
+    const std::shared_ptr<const graph::Graph> graph, TRI_col_type_e colType,
+    GraphProperty property) {
   VPackBuilder builder;
 
   if (colType == TRI_COL_TYPE_DOCUMENT && property == GraphProperty::VERTICES) {
-    gops.readVertices(builder);
+    graph->verticesToVpack(builder);
   } else if (colType == TRI_COL_TYPE_EDGE && property == GraphProperty::EDGES) {
-    gops.readEdges(builder);
+    graph->edgesToVpack(builder);
   } else {
     TRI_ASSERT(false);
   }
+
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   generateGraphConfig(builder.slice(), *ctx->getVPackOptionsForDump());
 

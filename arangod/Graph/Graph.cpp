@@ -796,7 +796,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseOrphanCollecti
 
   if (dropCollection) {
     std::vector<std::string> collectionsToBeRemoved;
-    checkIfCollectionMayBeDropped(collectionName, "", collectionsToBeRemoved);
+    pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
 
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
@@ -831,7 +831,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::addEdgeDefinition(
   OperationOptions options;
   options.waitForSync = waitForSync;
 
-  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer = Graph::SortEdgeDefinition(edgeDefinition);
+  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
+      Graph::SortEdgeDefinition(edgeDefinition);
   edgeDefinition = velocypack::Slice(buffer->data());
 
   std::string eC = edgeDefinition.get("collection").copyString();
@@ -854,7 +855,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::addEdgeDefinition(
 
   gmngr.findOrCreateCollectionsByEdgeDefinitions(builder.slice());
 
-  std::unordered_map<std::string, EdgeDefinition> edgeDefs= _graph.edgeDefinitions();
+  std::unordered_map<std::string, EdgeDefinition> edgeDefs =
+      _graph.edgeDefinitions();
   // build the updated document, reuse the builder
   builder.clear();
   builder.openObject();
@@ -970,13 +972,19 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
   std::vector<std::string> collectionsToBeRemoved;
   if (dropCollections) {
     for (auto const& vertexCollection : _graph.vertexCollections()) {
-      checkIfCollectionMayBeDropped(vertexCollection, _graph.name(), collectionsToBeRemoved);
+      pushCollectionIfMayBeDropped(
+        vertexCollection, _graph.name(), collectionsToBeRemoved
+      );
     }
     for (auto const& orphanCollection : _graph.orphanCollections()) {
-      checkIfCollectionMayBeDropped(orphanCollection, _graph.name(), collectionsToBeRemoved);
+      pushCollectionIfMayBeDropped(
+        orphanCollection, _graph.name(), collectionsToBeRemoved
+      );
     }
     for (auto const& edgeCollection : _graph.edgeCollections()) {
-      checkIfCollectionMayBeDropped(edgeCollection, _graph.name(), collectionsToBeRemoved);
+      pushCollectionIfMayBeDropped(
+        edgeCollection, _graph.name(), collectionsToBeRemoved
+      );
     }
   }
 
@@ -1341,67 +1349,73 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
   return std::make_pair(std::move(result), std::move(res));
 }
 
-void GraphOperations::checkIfCollectionMayBeDropped(
-  std::string colName, std::string graphName,
-  std::vector<std::string>& toBeRemoved) {
-
+void GraphOperations::pushCollectionIfMayBeDropped(
+    const std::string& colName, const std::string& graphName,
+    std::vector<std::string>& toBeRemoved) {
   GraphManager gmngr{ctx()};
   VPackBuilder graphsBuilder;
   gmngr.readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
   VPackSlice graphs = graphsBuilder.slice();
-  bool result = true;
+  bool collectionUnused = true;
 
-  if (graphs.get("graphs").isArray()) {
-    for (auto graph : VPackArrayIterator(graphs.get("graphs"))) {
-      graph = graph.resolveExternals();
-      if (!result) {
-        // Short circuit
-        break;
-      }
-      if (graph.get("_key").copyString() == graphName) {
-        break;
-      }
+  TRI_ASSERT(graphs.get("graphs").isArray());
 
-      // check edge definitions
-      VPackSlice edgeDefinitions = graph.get(Graph::_attrEdgeDefs);
-      if (edgeDefinitions.isArray()) {
-        for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
-          std::string from = edgeDefinition.get(StaticStrings::FromString).copyString();
-          std::string to = edgeDefinition.get(StaticStrings::ToString).copyString();
-          std::string collection = edgeDefinition.get("collection").copyString();
+  if (!graphs.get("graphs").isArray()) {
+    return;
+  }
 
-          if (collection == colName || from.find(colName) || to.find(colName)) {
-            result = false;
-          }
+  for (auto graph : VPackArrayIterator(graphs.get("graphs"))) {
+    graph = graph.resolveExternals();
+    if (!collectionUnused) {
+      // Short circuit
+      break;
+    }
+    if (graph.get("_key").copyString() == graphName) {
+      break;
+    }
+
+    // check edge definitions
+    VPackSlice edgeDefinitions = graph.get(Graph::_attrEdgeDefs);
+    if (edgeDefinitions.isArray()) {
+      for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
+        std::string from =
+            edgeDefinition.get(StaticStrings::FromString).copyString();
+        std::string to =
+            edgeDefinition.get(StaticStrings::ToString).copyString();
+        std::string collection = edgeDefinition.get("collection").copyString();
+
+        if (collection == colName || from.find(colName) || to.find(colName)) {
+          collectionUnused = false;
         }
       }
+    }
 
-      // check orphan collections
-      VPackSlice orphanCollections = graph.get(Graph::_attrOrphans);
-      if (orphanCollections.isArray()) {
-        for (auto const& orphanCollection : VPackArrayIterator(orphanCollections)) {
-          if (orphanCollection.copyString().find(colName)) {
-            result = false;
-          }
+    // check orphan collections
+    VPackSlice orphanCollections = graph.get(Graph::_attrOrphans);
+    if (orphanCollections.isArray()) {
+      for (auto const& orphanCollection :
+           VPackArrayIterator(orphanCollections)) {
+        if (orphanCollection.copyString().find(colName)) {
+          collectionUnused = false;
         }
       }
     }
   }
 
-  if (result) {
+  if (collectionUnused) {
     toBeRemoved.emplace_back(colName);
   }
 }
 
-void GraphOperations::readGraph(VPackBuilder& builder) {
+void Graph::graphToVpack(VPackBuilder &builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("graph", VPackValue(VPackValueType::Object));
 
-  builder.add("name", VPackValue(_graph.name()));
+  builder.add("name", VPackValue(name()));
 
   builder.add("edgeDefinitions", VPackValue(VPackValueType::Array));
-  auto edgeDefs = _graph.edgeDefinitions();
-  for (auto const& name : _graph.edgeDefinitionNames()) {
+  auto edgeDefs = edgeDefinitions();
+  for (auto const& name : edgeDefinitionNames()) {
     EdgeDefinition const& def = edgeDefs.at(name);
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("collection", VPackValue(def.getName()));
@@ -1420,27 +1434,27 @@ void GraphOperations::readGraph(VPackBuilder& builder) {
   builder.close(); // object edgedefs
 
   builder.add("orphanCollections", VPackValue(VPackValueType::Array));
-  for (auto const& orphan : _graph.orphanCollections()) {
+  for (auto const& orphan : orphanCollections()) {
     builder.add(VPackValue(orphan));
   }
   builder.close(); // orphan array
 
-  builder.add("isSmart", VPackValue(_graph.isSmart()));
-  builder.add("numberOfShards", VPackValue(_graph.numberOfShards()));
-  builder.add("replicationFactor", VPackValue(_graph.replicationFactor()));
-  builder.add("smartGraphAttribute", VPackValue(_graph.smartGraphAttribute()));
-  builder.add(StaticStrings::RevString, VPackValue(_graph.rev()));
-  builder.add(StaticStrings::IdString, VPackValue(_graph.id()));
+  builder.add("isSmart", VPackValue(isSmart()));
+  builder.add("numberOfShards", VPackValue(numberOfShards()));
+  builder.add("replicationFactor", VPackValue(replicationFactor()));
+  builder.add("smartGraphAttribute", VPackValue(smartGraphAttribute()));
+  builder.add(StaticStrings::RevString, VPackValue(rev()));
+  builder.add(StaticStrings::IdString, VPackValue(id()));
 
   builder.close(); // object
   builder.close(); // object
 }
 
-void GraphOperations::readEdges(VPackBuilder& builder) {
+void Graph::edgesToVpack(VPackBuilder &builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("collections", VPackValue(VPackValueType::Array));
 
-  for (auto const& edgeCollection : _graph.edgeCollections()) {
+  for (auto const& edgeCollection : edgeCollections()) {
     builder.add(VPackValue(edgeCollection));
   }
   builder.close();
@@ -1448,11 +1462,11 @@ void GraphOperations::readEdges(VPackBuilder& builder) {
   builder.close();
 }
 
-void GraphOperations::readVertices(VPackBuilder& builder) {
+void Graph::verticesToVpack(VPackBuilder &builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("collections", VPackValue(VPackValueType::Array));
 
-  for (auto const& vertexCollection : _graph.vertexCollections()) {
+  for (auto const& vertexCollection : vertexCollections()) {
     builder.add(VPackValue(vertexCollection));
   }
   builder.close();
@@ -1639,44 +1653,6 @@ void GraphManager::createCollection(std::string const& name,
     collection.add(StaticStrings::DataSourceName, VPackValue(name));
   }
   ctx()->vocbase().createCollection(collection.slice());
-}
-
-void GraphManager::getEdgeCollections(std::vector<std::string>& collections,
-    VPackSlice edgeDefinitions) {
-  for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
-    VPackSlice collection = edgeDefinition.get("collection");
-    if (collection.isString()) {
-      collections.emplace_back(collection.copyString());
-    }
-    VPackSlice from = edgeDefinition.get("from");
-    VPackSlice to = edgeDefinition.get("to");
-
-    if (from.isArray()) {
-      for (auto const& it : VPackArrayIterator(from)) {
-        if (it.isString()) {
-          collections.emplace_back(it.copyString());
-        }
-      }
-    }
-    if (to.isArray()) {
-      for (auto const& it : VPackArrayIterator(to)) {
-        if (it.isString()) {
-          collections.emplace_back(it.copyString());
-        }
-      }
-    }
-  }
-}
-
-void GraphManager::getVertexCollections(std::vector<std::string>& collections,
-    VPackSlice document) {
-  if (document.isArray()) {
-    for (auto const& it : VPackArrayIterator(document)) {
-      if (it.isString()) {
-        collections.emplace_back(it.copyString());
-      }
-    }
-  }
 }
 
 void GraphManager::findOrCreateVertexCollectionByName(
@@ -1970,26 +1946,32 @@ Result GraphManager::checkForEdgeDefinitionConflicts(
   readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
   VPackSlice graphs = graphsBuilder.slice();
 
-  if (graphs.get("graphs").isArray()) {
-    for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-      singleGraph = singleGraph.resolveExternals();
-      VPackSlice sGEDs = singleGraph.get("edgeDefinitions");
-      if (!sGEDs.isArray()) {
+  TRI_ASSERT(graphs.get("graphs").isArray());
+
+  if (!graphs.get("graphs").isArray()) {
+    return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+  }
+
+  for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
+    singleGraph = singleGraph.resolveExternals();
+    VPackSlice sGEDs = singleGraph.get("edgeDefinitions");
+    if (!sGEDs.isArray()) {
+      return {TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION};
+    }
+    for (auto const& sGED : VPackArrayIterator(sGEDs)) {
+      std::string col;
+      if (sGED.get("collection").isString()) {
+        col = sGED.get("collection").copyString();
+      } else {
         return {TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION};
       }
-      for (auto const& sGED : VPackArrayIterator(sGEDs)) {
-        std::string col;
-        if (sGED.get("collection").isString()) {
-          col = sGED.get("collection").copyString();
-        } else {
-          return {TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION};
-        }
-        if (col == edgeDefinitionName) {
-          if (sGED.toString() != edgeDefinition.toString()) {
-            return {TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS};
-          }
+      if (col == edgeDefinitionName) {
+        if (sGED.toString() != edgeDefinition.toString()) {
+          return {TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS};
         }
       }
     }
   }
+
+  return {TRI_ERROR_NO_ERROR};
 }

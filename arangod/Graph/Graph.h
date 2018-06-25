@@ -168,6 +168,10 @@ class Graph {
   /// @brief return a VelocyPack representation of the graph
   void toVelocyPack(velocypack::Builder&) const;
 
+  void graphToVpack(VPackBuilder& builder) const;
+  void edgesToVpack(VPackBuilder& builder) const;
+  void verticesToVpack(VPackBuilder& builder) const;
+
   virtual void enhanceEngineInfo(velocypack::Builder&) const;
 
   std::ostream& operator<<(std::ostream& ostream);
@@ -328,14 +332,9 @@ class GraphOperations {
       std::unordered_set<std::string> possibleOrphans, bool waitForSync,
       std::string thisGraphName, transaction::Methods& trx);
 
-  void checkIfCollectionMayBeDropped(std::string colName, std::string graphName,
-      std::vector<std::string>& toBeRemoved);
-
-  // TODO should these operations always fetch a new definition from the
-  // database?
-  void readGraph(VPackBuilder& builder);
-  void readEdges(VPackBuilder& builder);
-  void readVertices(VPackBuilder& builder);
+  void pushCollectionIfMayBeDropped(const std::string& colName,
+                                    const std::string& graphName,
+                                    std::vector<std::string>& toBeRemoved);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
@@ -384,21 +383,11 @@ class GraphManager {
    /// @brief create an edge collection
    ////////////////////////////////////////////////////////////////////////////////
    void createEdgeCollection(std::string const& name);
-   
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief get all vertex collections
-   ////////////////////////////////////////////////////////////////////////////////
-   void getVertexCollections(std::vector<std::string>& collections, VPackSlice document);
 
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief get all edge collections
-   ////////////////////////////////////////////////////////////////////////////////
-   void getEdgeCollections(std::vector<std::string>& collections, VPackSlice edgeDefinitions);
-
-  public:
+ public:
    GraphManager() = delete;
-   GraphManager(std::shared_ptr<transaction::Context> ctx_)
-        : _ctx(std::move(ctx_)) {}
+   explicit GraphManager(std::shared_ptr<transaction::Context> ctx_)
+       : _ctx(std::move(ctx_)) {}
    void readGraphs(velocypack::Builder& builder, arangodb::aql::QueryPart QueryPart);
 
     ////////////////////////////////////////////////////////////////////////////////

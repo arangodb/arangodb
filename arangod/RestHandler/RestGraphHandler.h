@@ -249,24 +249,28 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   );
 
   // edges
+  // PATCH /_api/gharial/{graph-name}/edge/{definition-name}
   Result editEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph, // TODO: do we need that layer of wrappers?
+    std::shared_ptr<const graph::Graph> graph,
     const std::string& edgeDefinitionName
   );
 
+  // DELETE /_api/gharial/{graph-name}/edge/{definition-name}
   Result removeEdgeDefinition(
-    std::shared_ptr<const graph::Graph> graph, // TODO: do we need that layer of wrappers?
+    std::shared_ptr<const graph::Graph> graph,
     const std::string& edgeDefinitionName
   );
 
-  Result createEdgeDefinition( // TODO: do we need that layer of wrappers?
+  // POST /_api/gharial/{graph-name}/edge/
+  Result createEdgeDefinition(
     std::shared_ptr<const graph::Graph> graph
   );
 
+  // edgeDefinitionName may be omitted when action == CREATE
   Result modifyEdgeDefinition(
     std::shared_ptr<const graph::Graph> graph,
     EdgeDefinitionAction action,
-    std::string edgeDefinitionName
+    std::string edgeDefinitionName = {}
   );
 
   Result modifyVertexDefinition(
