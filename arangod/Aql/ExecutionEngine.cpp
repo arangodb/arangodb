@@ -36,7 +36,6 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 
@@ -180,8 +179,7 @@ ExecutionEngine::ExecutionEngine(Query* query)
       _query(query),
       _resultRegister(0),
       _initializeCursorCalled(false),
-      _wasShutdown(false),
-      _lockedShards(nullptr) {
+      _wasShutdown(false) {
   _blocks.reserve(8);
 }
 
@@ -539,10 +537,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
         engine = result.engine();
         TRI_ASSERT(engine != nullptr);
-
-        // Now update _noLockHeaders:
-        // No need to cleanup, the RestHandler will make sure they are removed.
-        CollectionLockState::setNoLockHeaders(engine->_lockedShards.get());
 
         root = engine->root();
         TRI_ASSERT(root != nullptr);

@@ -22,7 +22,6 @@
 
 #include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
@@ -105,7 +104,7 @@ bool ClusterTransactionCollection::isLocked() const {
     return false;
   }
   std::string collName(_collection->name());
-  if (CollectionLockState::isLocked(collName)) {
+  if (_transaction->isLockedShard(collName)) {
     return true;
   }
   return (_lockType != AccessMode::Type::NONE);
@@ -251,7 +250,7 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type,
   TRI_ASSERT(_collection != nullptr);
 
   std::string collName(_collection->name());
-  if (CollectionLockState::isLocked(collName)) {
+  if (_transaction->isLockedShard(collName)) {
     // do not lock by command
     return TRI_ERROR_NO_ERROR;
   }
@@ -285,7 +284,7 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type,
   TRI_ASSERT(_collection != nullptr);
 
   std::string collName(_collection->name());
-  if (CollectionLockState::isLocked(collName)) {
+  if (_transaction->isLockedShard(collName)) {
     // do not lock by command
     return TRI_ERROR_NO_ERROR;
   }

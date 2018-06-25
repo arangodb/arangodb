@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -519,17 +518,17 @@ void RestCollectionHandler::collectionRepresentation(
   }
 
   if (showCount) {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-    Result res = trx.begin();
+    // Count should take no-lock-headers into account
+    auto trx = createTransaction(coll->name(), AccessMode::Type::READ);
+    Result res = trx->begin();
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    OperationResult opRes = trx.count(coll->name(), aggregateCount);
+    OperationResult opRes = trx->count(coll->name(), aggregateCount);
 
-    trx.finish(opRes.result);
+    trx->finish(opRes.result);
 
     if (opRes.fail()) {
       THROW_ARANGO_EXCEPTION(opRes.result);

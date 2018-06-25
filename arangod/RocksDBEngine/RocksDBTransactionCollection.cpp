@@ -23,7 +23,6 @@
 
 #include "RocksDBTransactionCollection.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
@@ -113,7 +112,7 @@ bool RocksDBTransactionCollection::isLocked() const {
     return false;
   }
   std::string collName(_collection->name());
-  if (CollectionLockState::isLocked(collName)) {
+  if (_transaction->isLockedShard(collName)) {
     return true;
   }
   return (_lockType != AccessMode::Type::NONE);
@@ -389,7 +388,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
   TRI_ASSERT(_collection != nullptr);
 
   std::string collName(_collection->name());
-  if (CollectionLockState::isLocked(collName)) {
+  if (_transaction->isLockedShard(collName)) {
     // do not lock by command
     return TRI_ERROR_NO_ERROR;
   }
@@ -453,7 +452,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
   TRI_ASSERT(_collection != nullptr);
 
   std::string collName(_collection->name());
-  if (CollectionLockState::isLocked(collName)) {
+  if (_transaction->isLockedShard(collName)) {
     // do not lock by command
     return TRI_ERROR_NO_ERROR;
   }

@@ -32,7 +32,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -113,30 +112,27 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
   std::string const queryStr("FOR user IN _users RETURN user");
   aql::QueryResult queryResult;
   auto emptyBuilder = std::make_shared<VPackBuilder>();
-  {
-    TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
-    arangodb::aql::Query query(
-      false,
-      *vocbase,
-      arangodb::aql::QueryString(queryStr),
-      emptyBuilder,
-      emptyBuilder,
-      arangodb::aql::PART_MAIN
-    );
+  arangodb::aql::Query query(
+    false,
+    *vocbase,
+    arangodb::aql::QueryString(queryStr),
+    emptyBuilder,
+    emptyBuilder,
+    arangodb::aql::PART_MAIN
+  );
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-        << "starting to load authentication and authorization information";
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      << "starting to load authentication and authorization information";
 
-    query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
-    while (true) {
-      auto state = query.execute(queryRegistry, queryResult);
-      if (state != aql::ExecutionState::WAITING) {
-        break;
-      }
-      query.tempWaitForAsyncResponse();
+  query.setContinueCallback([&query]() { query.tempSignalAsyncResponse(); });
+  while (true) {
+    auto state = query.execute(queryRegistry, queryResult);
+    if (state != aql::ExecutionState::WAITING) {
+      break;
     }
-
+    query.tempWaitForAsyncResponse();
   }
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {

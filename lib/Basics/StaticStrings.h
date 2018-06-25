@@ -140,6 +140,7 @@ class StaticStrings {
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
+  static std::string const XArangoNoLock;
 
   // mime types
   static std::string const MimeTypeJson;

@@ -26,7 +26,6 @@
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
@@ -66,19 +65,6 @@ QueryRegistry::~QueryRegistry() {
   }
 }
 
-/**
- * @brief Set the thread-local _noLockHeaders variable
- *
- * @param engine The Query engine that contains the no-lock-header
- *        information.
- */
-void QueryRegistry::setNoLockHeaders(ExecutionEngine* engine) const {
-  if (ServerState::instance()->isCoordinator() && engine != nullptr) {
-    CollectionLockState::setNoLockHeaders(engine->lockedShards());
-    // No need to clean up, the BaseHandler resets the ThreadLocal variable
-  }
-}
-
 /// @brief insert
 void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared) {
   TRI_ASSERT(query != nullptr);
@@ -111,7 +97,6 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl, bool isPrepared
     m->second.emplace(id, p.get());
     p.release();
   }
-  setNoLockHeaders(query->engine());
 }
 
 /// @brief open
@@ -146,8 +131,6 @@ Query* QueryRegistry::open(TRI_vocbase_t* vocbase, QueryId id) {
     qi->_isPrepared = true;
   }
 
-  setNoLockHeaders(qi->_query->engine());
-
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Query with id " << id << " is now in use";
   return qi->_query;
 }
@@ -179,8 +162,6 @@ void QueryRegistry::close(TRI_vocbase_t* vocbase, QueryId id, double ttl) {
     qi->_isPrepared = true;
     qi->_query->prepare(this, 0);
   }
-
-  setNoLockHeaders(qi->_query->engine());
 
   qi->_isOpen = false;
   qi->_expires = TRI_microtime() + qi->_timeToLive;
@@ -232,8 +213,6 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
     queryInfo->_query->prepare(this, 0);
   }
 
-
-  setNoLockHeaders(queryInfo->_query->engine());
 
   // If the query was open, we can delete it right away, if not, we need
   // to register the transaction with the current context and adjust

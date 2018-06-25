@@ -2767,7 +2767,7 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, aggregate, true);
+    return countCoordinator(collectionName, aggregate);
   }
 
   return countLocal(collectionName);
@@ -3184,6 +3184,18 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
 Result transaction::Methods::addCollection(std::string const& name,
                                            AccessMode::Type type) {
   return addCollection(resolver()->getCollectionId(name), name, type);
+}
+
+bool transaction::Methods::isLockedShard(std::string const& shardName) const {
+  return _state->isLockedShard(shardName);
+}
+
+void transaction::Methods::setLockedShard(std::string const& shardName) {
+  _state->setLockedShard(shardName);
+}
+
+void transaction::Methods::setLockedShards(std::unordered_set<std::string> const& lockedShards) {
+  _state->setLockedShards(lockedShards);
 }
 
 /// @brief test if a collection is already locked

@@ -36,7 +36,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/CollectionLockState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Cluster/FollowerInfo.h"
@@ -2821,7 +2820,7 @@ static void JS_CountVocbaseCol(
     AccessMode::Type::READ
   );
 
-  if (CollectionLockState::isLocked(collectionName)) {
+  if (trx.isLockedShard(collectionName)) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
 

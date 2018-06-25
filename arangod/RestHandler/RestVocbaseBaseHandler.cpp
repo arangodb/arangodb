@@ -29,12 +29,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/CollectionLockState.h"
 #include "Cluster/ServerState.h"
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -526,6 +526,18 @@ void RestVocbaseBaseHandler::extractStringParameter(
   }
 }
 
+std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTransaction(
+    std::string const& name, AccessMode::Type type) const {
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto trx = std::make_unique<SingleCollectionTransaction>(ctx, name, type);
+  if (_nolockHeaderSet != nullptr) {
+    for (auto const& it : *_nolockHeaderSet) {
+      trx->setLockedShard(it);
+    }
+  }
+  return std::move(trx);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepareExecute, to react to X-Arango-Nolock header
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,12 +564,11 @@ void RestVocbaseBaseHandler::pickupNoLockHeaders() {
   if (ServerState::instance()->isDBServer()) {
     // Only DBServer needs to react to them!
     bool found;
-    std::string const& shardId = _request->header("x-arango-nolock", found);
+    std::string const& shardId = _request->header(StaticStrings::XArangoNoLock, found);
 
     if (!found) {
       return;
     }
-
 
     TRI_ASSERT(_nolockHeaderSet == nullptr);
     _nolockHeaderSet = std::make_unique<std::unordered_set<std::string>>();
@@ -571,17 +582,9 @@ void RestVocbaseBaseHandler::pickupNoLockHeaders() {
       pos = shardId.find(',', oldpos);
     }
     _nolockHeaderSet->emplace(shardId.substr(oldpos));
-    CollectionLockState::setNoLockHeaders(_nolockHeaderSet.get());
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief clears the tls variable that stores the X-Arango-Nolock headers
-////////////////////////////////////////////////////////////////////////////////
-
 void RestVocbaseBaseHandler::clearNoLockHeaders() noexcept {
-  // The thread local variable does never take responsibility for
-  // the _noLockHeaders content, always the creator has to delete it
-  CollectionLockState::clearNoLockHeaders();
   _nolockHeaderSet.reset();
 }

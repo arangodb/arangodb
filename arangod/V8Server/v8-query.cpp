@@ -27,7 +27,6 @@
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/CollectionLockState.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
@@ -63,7 +62,6 @@ aql::QueryResultV8 AqlQuery(
 
   TRI_GET_GLOBALS();
   // If we execute an AQL query from V8 we need to unset the nolock headers
-  TRI_DEFER(CollectionLockState::clearNoLockHeaders(););
   arangodb::aql::Query query(
     true,
     col->vocbase(),
