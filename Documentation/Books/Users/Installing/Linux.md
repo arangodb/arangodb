@@ -21,7 +21,7 @@ Using a Package Manager to install ArangoDB
 -------------------------------------------
 
 Follow the instructions on the [ArangoDB download page](https://www.arangodb.com/download)
-page to use your favorite package manager for the major distributions. After
+to use your favorite package manager for the major distributions. After
 setting up the ArangoDB repository you can easily install ArangoDB using yum,
 aptitude, urpmi or zypper.
 
