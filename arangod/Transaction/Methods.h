@@ -430,7 +430,7 @@ class Methods {
    *
    * @param lockedShards The list of locked shards.
    */
-  void setLockedShards(std::unordered_set<std::string> const& lockedShards);
+  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards);
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
