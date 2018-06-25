@@ -1046,8 +1046,12 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
   }
 
   status = TRI_ERROR_NO_ERROR;
-
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, args.get("name").copyString());
+  
+  std::string cname = args.get("name").copyString();
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, id, cname);
+  }
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, cname);
 }
 
 void StorageEngineMock::createIndex(
