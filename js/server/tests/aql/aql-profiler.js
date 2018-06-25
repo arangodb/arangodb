@@ -383,7 +383,8 @@ function ahuacatlProfilerTestSuite () {
 
       assert.assertEqual(
         genNodeList(rows, batches),
-        getCompactStatsNodes(profile)
+        getCompactStatsNodes(profile),
+        {query,rows,batches}
       );
     }
   };
@@ -498,6 +499,19 @@ function ahuacatlProfilerTestSuite () {
         { type : CalculationBlock, calls : 1, items : 1 },
         { type : EnumerateListBlock, calls : batches, items : rows },
         { type : CountCollectBlock, calls : 1, items : 1 },
+        { type : ReturnBlock, calls : 1, items : 1 }
+      ];
+      runDefaultChecks(query, genNodeList);
+    },
+
+    // DistinctCollectBlock
+    testDistinctCollectBlock : function () {
+      const query = 'FOR i IN 1..@rows RETURN DISTINCT i';
+      const genNodeList = (rows, batches) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : batches, items : rows },
+        { type : DistinctCollectBlock, calls : 1, items : 1 },
         { type : ReturnBlock, calls : 1, items : 1 }
       ];
       runDefaultChecks(query, genNodeList);
