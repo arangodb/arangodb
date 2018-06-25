@@ -127,6 +127,7 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
   _upstreamState = ExecutionState::HASMORE;
   _returnFrontBlock = true;
   _pos = 0;
+  _skipped = 0;
 
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     // Set block type in per-block statistics.

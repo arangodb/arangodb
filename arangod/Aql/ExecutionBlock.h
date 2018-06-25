@@ -266,7 +266,7 @@ class ExecutionBlock {
   /// mean:
   /// - WAITING: upstream returned WAITING, state is unchanged
   /// - HAS_BLOCKS: there is at least one block in the buffer
-  /// - NO_NORE_BLOCKS: the buffer is empty and the upstream is DONE
+  /// - NO_MORE_BLOCKS: the buffer is empty and the upstream is DONE
   enum class BufferState { HAS_BLOCKS, NO_MORE_BLOCKS, WAITING };
   BufferState getBlockIfNeeded(size_t atMost);
 

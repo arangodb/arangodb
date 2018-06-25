@@ -138,9 +138,6 @@ class SortedCollectBlock final : public ExecutionBlock {
 
   /// @brief list of variables names for the registers
   std::vector<std::string> _variableNames;
-  
-  /// @brief builder for temporary aggregate values
-  arangodb::velocypack::Builder _builder;
 };
 
 class HashedCollectBlock final : public ExecutionBlock {
@@ -151,6 +148,9 @@ class HashedCollectBlock final : public ExecutionBlock {
   Type getType() const override final {
     return Type::HASHED_COLLECT;
   }
+
+  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items,
+                                                     size_t pos) override;
 
  private:
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,

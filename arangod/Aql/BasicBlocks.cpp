@@ -310,6 +310,8 @@ std::pair<ExecutionState, arangodb::Result> LimitBlock::initializeCursor(
   _count = 0;
   _remainingOffset = _offset;
   _result = nullptr;
+  _limitSkipped = 0;
+
   return ExecutionBlock::initializeCursor(items, pos);
 
   // cppcheck-suppress style

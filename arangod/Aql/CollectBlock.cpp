@@ -267,6 +267,7 @@ std::pair<ExecutionState, arangodb::Result> SortedCollectBlock::initializeCursor
   DEBUG_BEGIN_BLOCK();
   _currentGroup.reset();
   _pos = 0;
+  _lastBlock = nullptr;
   DEBUG_END_BLOCK();
 
   return res;
@@ -896,6 +897,25 @@ void HashedCollectBlock::_destroyAllGroupsAqlValues() {
   }
 }
 
+std::pair<ExecutionState, Result>
+HashedCollectBlock::initializeCursor(AqlItemBlock *items, size_t pos) {
+  ExecutionState state;
+  Result result;
+  std::tie(state, result) = ExecutionBlock::initializeCursor(items, pos);
+
+  if (state == ExecutionState::WAITING || result.fail()) {
+    // If we need to wait or get an error we return as is.
+    return {state, result};
+  }
+
+  _lastBlock = nullptr;
+  _destroyAllGroupsAqlValues();
+  _allGroups.clear();
+
+  return {state, result};
+
+}
+
 DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
                                            CollectNode const* en)
     : ExecutionBlock(engine, en),
@@ -938,6 +958,7 @@ std::pair<ExecutionState, arangodb::Result> DistinctCollectBlock::initializeCurs
 
   DEBUG_BEGIN_BLOCK();
   _pos = 0;
+  _res = nullptr;
   clearValues();
   DEBUG_END_BLOCK();
 
