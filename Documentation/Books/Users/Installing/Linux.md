@@ -2,7 +2,7 @@ Linux
 =====
 
 You can find binary packages for various Linux distributions
-[here](http://www.arangodb.com/install/).
+[here](https://www.arangodb.com/download).
 
 We provide packages for:
 
