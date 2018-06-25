@@ -438,11 +438,11 @@ function IResearchAqlTestSuite(numberOfShards, replicationFactor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(function IResearchAqlTestSuite_s1_r1() {
-  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 })
+  return IResearchAqlTestSuite({ numberOfShards: 1, replicationFactor: 1 });
 });
 
 jsunity.run(function IResearchAqlTestSuite_s4_r1() {
-  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 })
+  return IResearchAqlTestSuite({ numberOfShards: 4, replicationFactor: 1 });
 });
 
 /*

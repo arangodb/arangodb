@@ -140,7 +140,11 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = ecNode->restrictedShard();
       }
-      _type = ExecutionNode::ENUMERATE_COLLECTION;
+
+      // do not set '_type' of the engine here,
+      // bacause satellite collections may consists of
+      // multiple "main nodes"
+
       break;
     }
     case ExecutionNode::INDEX: {
@@ -150,7 +154,11 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = idxNode->restrictedShard();
       }
-      _type = ExecutionNode::INDEX;
+
+      // do not set '_type' of the engine here,
+      // bacause satellite collections may consists of
+      // multiple "main nodes"
+
       break;
     }
 #ifdef USE_IRESEARCH
@@ -936,6 +944,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
 
+  // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 
