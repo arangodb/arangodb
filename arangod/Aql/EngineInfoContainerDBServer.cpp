@@ -140,7 +140,11 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = ecNode->restrictedShard();
       }
-      _type = ExecutionNode::ENUMERATE_COLLECTION;
+
+      // do not set '_type' of the engine here,
+      // bacause satellite collections may consists of
+      // multiple "main nodes"
+
       break;
     }
     case ExecutionNode::INDEX: {
@@ -150,7 +154,11 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = idxNode->restrictedShard();
       }
-      _type = ExecutionNode::INDEX;
+
+      // do not set '_type' of the engine here,
+      // bacause satellite collections may consists of
+      // multiple "main nodes"
+
       break;
     }
 #ifdef USE_IRESEARCH
