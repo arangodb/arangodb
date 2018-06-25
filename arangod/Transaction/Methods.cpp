@@ -1433,6 +1433,7 @@ OperationResult transaction::Methods::documentCoordinator(
   int res = arangodb::getDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     value,
     options,
     std::move(headers),
@@ -1568,7 +1569,7 @@ OperationResult transaction::Methods::insertCoordinator(
   auto resultBody = std::make_shared<VPackBuilder>();
 
   Result res = arangodb::createDocumentOnCoordinator(
-      vocbase().name(), collectionName, options, value, responseCode,
+      vocbase().name(), collectionName, *this, options, value, responseCode,
       errorCounter, resultBody);
 
   if (res.ok()) {
@@ -1880,6 +1881,7 @@ OperationResult transaction::Methods::updateCoordinator(
   int res = arangodb::modifyDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     newValue,
     options,
     true /* isPatch */,
@@ -1941,6 +1943,7 @@ OperationResult transaction::Methods::replaceCoordinator(
   int res = arangodb::modifyDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     newValue,
     options,
     false /* isPatch */,
@@ -2250,6 +2253,7 @@ OperationResult transaction::Methods::removeCoordinator(
   int res = arangodb::deleteDocumentOnCoordinator(
     vocbase().name(),
     collectionName,
+    *this,
     value,
     options,
     responseCode,
@@ -2779,7 +2783,7 @@ OperationResult transaction::Methods::countCoordinator(
     std::string const& collectionName, bool aggregate, bool sendNoLockHeader) {
   std::vector<std::pair<std::string, uint64_t>> count;
   auto res = arangodb::countOnCoordinator(
-    vocbase().name(), collectionName, count, sendNoLockHeader
+    vocbase().name(), collectionName, *this, count 
   );
 
   if (res != TRI_ERROR_NO_ERROR) {
