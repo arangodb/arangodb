@@ -159,7 +159,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _followers(), // intentionally empty here
       _sharding() {
   TRI_ASSERT(_physical != nullptr);
-  
+
   _sharding = std::make_unique<ShardingInfo>(*other._sharding.get(), this);
   
   if (ServerState::instance()->isDBServer() ||

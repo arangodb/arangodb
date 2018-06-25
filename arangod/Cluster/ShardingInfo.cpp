@@ -203,6 +203,10 @@ ShardingInfo::~ShardingInfo() {}
 bool ShardingInfo::usesSameShardingStrategy(ShardingInfo const* other) const {
   return _shardingStrategy->isCompatible(other->_shardingStrategy.get());
 }
+  
+std::string ShardingInfo::shardingStrategyName() const {
+  return _shardingStrategy->name();
+}
 
 LogicalCollection* ShardingInfo::collection() const {
   TRI_ASSERT(_collection != nullptr);

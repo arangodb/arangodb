@@ -46,6 +46,7 @@ class ShardingInfo {
   ~ShardingInfo();
 
   bool usesSameShardingStrategy(ShardingInfo const* other) const;
+  std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const;
   void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids);

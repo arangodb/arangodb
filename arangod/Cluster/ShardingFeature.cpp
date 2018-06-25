@@ -60,6 +60,14 @@ void ShardingFeature::prepare() {
   });
 #endif
 }
+
+void ShardingFeature::start() {
+  std::vector<std::string> strategies;
+  for (auto const& it : _factories) {
+    strategies.emplace_back(it.first);
+  }
+  LOG_TOPIC(TRACE, Logger::CLUSTER) << "supported sharding strategies: " << strategies;
+}
   
 void ShardingFeature::registerFactory(std::string const& name, 
                                       ShardingStrategy::FactoryFunction const& creator) {
@@ -80,6 +88,9 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice sli
 
   if (!ServerState::instance()->isRunningInCluster()) {
     // not running in cluster... so no sharding
+    name = ShardingStrategyNone::NAME;
+  } else if (ServerState::instance()->isDBServer()) {
+    // on a DB server, we will not use sharding
     name = ShardingStrategyNone::NAME;
   } else {
     // running in cluster... determine the correct method for sharding
