@@ -347,14 +347,22 @@ class IResearchView final: public arangodb::DBServerLogicalView,
       }
     };
 
+    struct Thread: public arangodb::Thread {
+      std::function<void()> _fn;
+      Thread(std::string const& name): arangodb::Thread(name) {}
+      virtual bool isSystem() override { return true; } // or start(...) will fail
+      virtual void run() override { _fn(); }
+    };
+
     std::condition_variable _cond; // trigger reload of meta
+    arangodb::basics::ConditionVariable _join; // mutex to join on
     IResearchViewMeta::CommitMeta const& _meta; // the configuration for this worker, reloaded only upon 'refresh()'
     ReadMutex _metaMutex; // mutex used with '_meta'
     std::atomic<bool> _metaRefresh; // '_meta' refresh request
     std::mutex _mutex; // mutex used with '_cond'/'_tasks' and termination requests
     std::vector<Task> _tasks; // the tasks to perform
     bool _terminate; // unconditionaly terminate async job
-    std::thread _thread;
+    Thread _thread;
   };
 
   struct FlushCallbackUnregisterer {

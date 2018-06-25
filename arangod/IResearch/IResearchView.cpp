@@ -47,6 +47,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortCondition.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/Result.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterInfo.h"
@@ -684,8 +685,9 @@ IResearchView::ViewSyncWorker::ViewSyncWorker(
   ): _meta(meta),
      _metaMutex(std::move(metaMutex)),
      _metaRefresh(true), // ensure initial load of meta
-     _terminate(false) {
-  std::thread thread([this]()->void {
+     _terminate(false),
+     _thread("ArangoSearch Sync") {
+  _thread._fn = [this]()->void {
     IResearchViewMeta::CommitMeta meta;
     auto commitIntervalMsecRemainder = std::numeric_limits<size_t>::max(); // longest possible time for std::min(...)
     ReadMutex metaMutex(_metaMutex); // '_meta' can be asynchronously modified
@@ -791,9 +793,9 @@ IResearchView::ViewSyncWorker::ViewSyncWorker(
         ++i;
       }
     }
-  });
+  };
 
-  _thread = std::move(thread);
+  _thread.start(&_join); // std::thread thread(...); _thread = std::move(thread);
 }
 
 IResearchView::ViewSyncWorker::~ViewSyncWorker() {
@@ -804,7 +806,12 @@ IResearchView::ViewSyncWorker::~ViewSyncWorker() {
     _cond.notify_all();
   }
 
-  _thread.join();
+  CONDITION_LOCKER(lock, _join);
+
+  // _thread.join();
+  while(_thread.isRunning()) {
+    _join.wait();
+  }
 }
 
 void IResearchView::ViewSyncWorker::emplace(
