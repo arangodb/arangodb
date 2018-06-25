@@ -382,6 +382,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
                JobQueue::AQL_QUEUE);  // not allowed with strands
     handleRequestDirectly(basics::ConditionalLocking::DoNotLock,
                           std::move(handler));
+    _loop.scheduler->wakeupJobQueue();
     return true;
   }
 
@@ -427,9 +428,7 @@ void GeneralCommTask::handleRequestDirectly(
     if (doLock) {
       auto self = shared_from_this();
       auto h = handler->shared_from_this();
-      _loop.scheduler->_nrQueued++;
       _peer->strand.post([self, this, stat, h]() {
-        _loop.scheduler->_nrQueued--;
         JobGuard guard(_loop);
         guard.work();
         addResponse(*(h->response()), stat);
