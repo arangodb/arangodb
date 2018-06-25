@@ -153,7 +153,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &filter          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
   });
 
   arangodb::iresearch::addFunction(functions, {
@@ -162,7 +162,34 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
-    &filter          // function implementation (use function name as placeholder)
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "MIN_MATCH",   // name
+    ".,.|.+",       // positional arguments (filter expression [, filter expression, ... ], min match count)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "BOOST",       // name
+    ".,.",         // positional arguments (filter expression, boost)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
+  });
+
+  arangodb::iresearch::addFunction(functions, {
+    "ANALYZER",    // name
+    ".,.",         // positional arguments (filter expression, analyzer)
+    true,          // deterministic
+    true,          // can throw
+    true,          // can be run on server
+    &filter        // function implementation (use function name as placeholder)
   });
 }
 
