@@ -65,8 +65,6 @@ NS_END // arangodb
 NS_BEGIN(arangodb)
 NS_BEGIN(iresearch)
 
-struct QueryContext;
-
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                            Forward declarations
 ///////////////////////////////////////////////////////////////////////////////
@@ -278,8 +276,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ) override;
 
  private:
-  DECLARE_SPTR(LogicalView);
-
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
@@ -306,6 +302,60 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   class ViewStateHelper; // forward declaration
   struct ViewStateRead; // forward declaration
   struct ViewStateWrite; // forward declaration
+
+  class ViewSyncWorker {
+   public:
+    typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+
+    ViewSyncWorker(
+      IResearchViewMeta::CommitMeta const& meta,
+      ReadMutex&& metaMutex
+    );
+    ~ViewSyncWorker();
+
+    void emplace(
+      ReadMutex& viewMutex, // prevent data-store deallocation (lock @ AsyncSelf)
+      std::string const& name, // task/view name
+      std::atomic<bool> const& terminate,
+      DataStore& store,
+      irs::async_utils::read_write_mutex& storeMutex
+    ); // add a DataStore that should be sync'd/consolidated/cleaned-up
+    void refresh(); // notify of meta change
+
+   private:
+    struct Task {
+      size_t _cleanupIntervalCount;
+      std::string const* _name; // view/task name (need to store pointer for move-assignment)
+      DataStore* _store; // the store to sync/consolidate/clean-up (need to store pointer for move-assignment)
+      irs::async_utils::read_write_mutex* _storeMutex; // mutex used with '_store' (need to store pointer for move-assignment)
+      std::atomic<bool> const* _terminate; // trigger termination/removal of this job (need to store pointer for move-assignment)
+      std::unique_lock<ReadMutex> _viewLock; // prevent data-store deallocation (lock @ AsyncSelf)
+
+      Task(
+        std::unique_lock<ReadMutex>&& viewLock,
+        std::atomic<bool> const& terminate,
+        std::string const& name,
+        DataStore& store,
+        irs::async_utils::read_write_mutex& storeMutex
+      ): _cleanupIntervalCount(0),
+         _name(&name),
+         _store(&store),
+         _storeMutex(&storeMutex),
+         _terminate(&terminate),
+         _viewLock(std::move(viewLock)) {
+        TRI_ASSERT(_viewLock.owns_lock()); // must be locked otherwise '_terminate' may be invalid
+      }
+    };
+
+    std::condition_variable _cond; // trigger reload of meta
+    IResearchViewMeta::CommitMeta const& _meta; // the configuration for this worker, reloaded only upon 'refresh()'
+    ReadMutex _metaMutex; // mutex used with '_meta'
+    std::atomic<bool> _metaRefresh; // '_meta' refresh request
+    std::mutex _mutex; // mutex used with '_cond'/'_tasks' and termination requests
+    std::vector<Task> _tasks; // the tasks to perform
+    bool _terminate; // unconditionaly terminate async job
+    std::thread _thread;
+  };
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
@@ -342,9 +392,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   //////////////////////////////////////////////////////////////////////////////
   void verifyKnownCollections();
 
-  std::condition_variable _asyncCondition; // trigger reload of timeout settings for async jobs
-  std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
-  std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
   AsyncSelf::ptr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   IResearchViewMeta _meta;
@@ -354,7 +401,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   MemoryStoreNode* _toFlush; // points to memory store to be flushed
   PersistedStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
-  irs::async_utils::thread_pool _threadPool;
+  std::shared_ptr<ViewSyncWorker> _syncWorker; // object used for sync/consolidate/cleanup of data-stores
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
