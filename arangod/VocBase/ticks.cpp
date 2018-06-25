@@ -25,8 +25,6 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Cluster/ServerState.h"
 
-#include "Logger/Logger.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -80,8 +78,6 @@ TRI_voc_tick_t TRI_NewServerSpecificTick() {
        << UpperShift) &
       UpperMask;
   uint64_t tick = (upper | lower);
-  LOG_TOPIC(ERR, Logger::FIXME) << "generated tick " << tick << " for server "
-                                << ServerState::instance()->getShortId();
   return static_cast<TRI_voc_tick_t>(tick);
 }
 
@@ -91,6 +87,5 @@ uint32_t TRI_ExtractServerIdFromTick(TRI_voc_tick_t tick) {
   static constexpr size_t Shift{40};
 
   uint32_t shortId = static_cast<uint32_t>((tick >> Shift) & Mask);
-  LOG_TOPIC(ERR, Logger::FIXME) << "extracted " << shortId << " from " << tick;
   return shortId;
 }

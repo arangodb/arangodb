@@ -27,7 +27,9 @@
 
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
@@ -104,41 +106,61 @@ void RestHandler::setStatistics(RequestStatistics* stat) {
 
 void RestHandler::forwardRequest() {
   uint32_t shortId = forwardingTarget();
-  LOG_TOPIC(ERR, Logger::FIXME) << "forwarding request to " << shortId;
-  // TODO get actual server id from shortId
-  std::string serverId = std::to_string(shortId);
+  std::string serverId =
+      ClusterInfo::instance()->getCoordinatorByShortID(shortId);
+  LOG_TOPIC(DEBUG, Logger::REQUESTS) << "forwarding request " << _request->messageId() << " to " << serverId;
 
-  // TODO build new request from existing
-
-  // TODO convert vst to http?
+  // TODO refactor into a more general/customizable method?
+  // the below is mostly copied from
+  // RestReplicationHandler::handleTrampolineCoordinator, but that method needs
+  // some more specific checks regarding headers and param values, so we can't
+  // just reuse this method there; maybe with param/header filtering?
 
   bool useVst = false;
   if (_request->transportType() == Endpoint::TransportType::VST) {
     useVst = true;
   }
-  if (_request == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request");
-  }
-
   std::string const& dbname = _request->databaseName();
 
-  auto headers = std::make_shared<std::unordered_map<std::string, std::string>>(
-      arangodb::getForwardableRequestHeaders(_request.get()));
+  std::unordered_map<std::string, std::string> const& oldHeaders =
+      _request->headers();
+  std::unordered_map<std::string, std::string>::const_iterator it =
+      oldHeaders.begin();
+  auto headers = std::make_shared<std::unordered_map<std::string, std::string>>();
+  while (it != oldHeaders.end()) {
+    std::string const& key = (*it).first;
+
+    // ignore the following headers
+    if (key != "authorization") {
+      headers->emplace(key, (*it).second);
+    }
+    ++it;
+  }
+  auto auth = AuthenticationFeature::instance();
+  if (auth != nullptr && auth->isActive()) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder payload{&builder};
+      payload->add("preferred_username", VPackValue(_request->user()));
+    }
+    VPackSlice slice = builder.slice();
+    headers->emplace(StaticStrings::Authorization,
+                     "bearer " + auth->tokenCache()->generateJwt(slice));
+  }
+
   std::unordered_map<std::string, std::string> values = _request->values();
   std::string params;
-
   for (auto const& i : values) {
-    if (i.first != "DBserver") {
-      if (params.empty()) {
-        params.push_back('?');
-      } else {
-        params.push_back('&');
-      }
-      params.append(StringUtils::urlEncode(i.first));
-      params.push_back('=');
-      params.append(StringUtils::urlEncode(i.second));
+    if (params.empty()) {
+      params.push_back('?');
+    } else {
+      params.push_back('&');
     }
+    params.append(StringUtils::urlEncode(i.first));
+    params.push_back('=');
+    params.append(StringUtils::urlEncode(i.second));
   }
+
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr happens only during controlled shutdown

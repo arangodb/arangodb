@@ -224,6 +224,7 @@ void ClusterInfo::flush() {
   loadServers();
   loadCurrentDBServers();
   loadCurrentCoordinators();
+  loadCurrentMappings();
   loadPlan();
   loadCurrent();
 }
@@ -1413,7 +1414,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
             // wait that all followers have created our new collection
             if (tmpError.empty() && waitForReplication) {
-              
+
               std::vector<ServerID> plannedServers;
               {
                 READ_LOCKER(readLocker, _planProt.lock);
@@ -1466,7 +1467,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         }
         return true;
       };
-      
+
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
@@ -1558,7 +1559,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     // Update our cache:
     loadPlan();
   }
-      
+
   bool isSmart = false;
   VPackSlice smartSlice = json.get("isSmart");
   if (smartSlice.isBool() && smartSlice.getBool()) {
@@ -2979,6 +2980,72 @@ void ClusterInfo::loadCurrentCoordinators() {
       << " body: " << result.body();
 }
 
+static std::string const prefixMappings = "Target/MapUniqueToShortID";
+
+void ClusterInfo::loadCurrentMappings() {
+  ++_mappingsProt.wantedVersion;  // Indicate that after *NOW* somebody
+                                  // has to reread from the agency!
+  MUTEX_LOCKER(mutexLocker, _mappingsProt.mutex);
+  uint64_t storedVersion = _mappingsProt.wantedVersion;  // this is the
+                                                          // version we will
+                                                          // set in the end
+  if (_mappingsProt.doneVersion == storedVersion) {
+    // Somebody else did, what we intended to do, so just return
+    return;
+  }
+
+  // Now contact the agency:
+  AgencyCommResult result = _agency.getValues(prefixMappings);
+
+  if (result.successful()) {
+    velocypack::Slice mappings =
+        result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Target", "MapUniqueToShortID"}));
+
+    if (mappings.isObject()) {
+      decltype(_coordinatorIdMap) newCoordinatorIdMap;
+      decltype(_dbserverIdMap) newDBServerIdMap;
+      decltype(_nameMap) newNameMap;
+
+      for (auto const& mapping : VPackObjectIterator(mappings)) {
+        ServerID fullId = mapping.key.copyString();
+        auto mapObject = mapping.value;
+        if (mapObject.isObject()) {
+          ServerShortName shortName = mapObject.get("ShortName").copyString();
+          newNameMap.emplace(shortName, fullId);
+
+          ServerShortID shortId = mapObject.get("TransactionID").getNumericValue<ServerShortID>();
+          static std::string const expectedPrefix{"Coordinator"};
+          if (shortName.size() > expectedPrefix.size() &&
+              shortName.substr(0, expectedPrefix.size()) == expectedPrefix) {
+            newCoordinatorIdMap.emplace(shortId, fullId);
+          } else {
+            newDBServerIdMap.emplace(shortId, fullId);
+          }
+        }
+      }
+
+      // Now set the new value:
+      {
+        WRITE_LOCKER(writeLocker, _mappingsProt.lock);
+        _nameMap.swap(newNameMap);
+        _coordinatorIdMap.swap(newCoordinatorIdMap);
+        _dbserverIdMap.swap(newDBServerIdMap);
+        _mappingsProt.doneVersion = storedVersion;
+        _mappingsProt.isValid = true;  // will never be reset to false
+      }
+      return;
+    }
+  }
+
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "Error while loading " << prefixCurrentCoordinators
+      << " httpCode: " << result.httpCode()
+      << " errorCode: " << result.errorCode()
+      << " errorMessage: " << result.errorMessage()
+      << " body: " << result.body();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about all DBservers from the agency
 /// Usually one does not have to call this directly.
@@ -3284,6 +3351,72 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retreive full server ID from short ID
+////////////////////////////////////////////////////////////////////////////////
+
+ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
+  ServerID result;
+
+  if (!_mappingsProt.isValid) {
+    loadCurrentMappings();
+  }
+
+  // return a consistent state of servers
+  READ_LOCKER(readLocker, _mappingsProt.lock);
+
+  auto it = _coordinatorIdMap.find(shortId);
+  if (it != _coordinatorIdMap.end()) {
+    result = it->second;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retreive full server ID from short ID
+////////////////////////////////////////////////////////////////////////////////
+
+ServerID ClusterInfo::getDBServerByShortID(ServerShortID shortId) {
+  ServerID result;
+
+  if (!_mappingsProt.isValid) {
+    loadCurrentMappings();
+  }
+
+  // return a consistent state of servers
+  READ_LOCKER(readLocker, _mappingsProt.lock);
+
+  auto it = _dbserverIdMap.find(shortId);
+  if (it != _dbserverIdMap.end()) {
+    result = it->second;
+  }
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retreive full server ID from short ID
+////////////////////////////////////////////////////////////////////////////////
+
+ServerID ClusterInfo::getServerByShortName(ServerShortName const& shortName) {
+  ServerID result;
+
+  if (!_mappingsProt.isValid) {
+    loadCurrentMappings();
+  }
+
+  // return a consistent state of servers
+  READ_LOCKER(readLocker, _mappingsProt.lock);
+
+  auto it = _nameMap.find(shortName);
+  if (it != _nameMap.end()) {
+    result = it->second;
+  }
+
+  return result;
+}
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate plan
 //////////////////////////////////////////////////////////////////////////////
@@ -3311,6 +3444,17 @@ void ClusterInfo::invalidateCurrentCoordinators() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief invalidate current mappings
+//////////////////////////////////////////////////////////////////////////////
+
+void ClusterInfo::invalidateCurrentMappings() {
+  {
+    WRITE_LOCKER(writeLocker, _mappingsProt.lock);
+    _mappingsProt.isValid = false;
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current
 //////////////////////////////////////////////////////////////////////////////
 
@@ -3328,6 +3472,7 @@ void ClusterInfo::invalidateCurrent() {
     _currentProt.isValid = false;
   }
   invalidateCurrentCoordinators();
+  invalidateCurrentMappings();
 }
 
 //////////////////////////////////////////////////////////////////////////////

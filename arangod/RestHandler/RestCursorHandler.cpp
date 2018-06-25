@@ -512,6 +512,5 @@ uint32_t RestCursorHandler::forwardingTarget() {
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
-  LOG_TOPIC(ERR, Logger::FIXME) << "forwarding target is " << sourceServer;
   return sourceServer;
 }
