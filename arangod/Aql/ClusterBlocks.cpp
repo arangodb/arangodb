@@ -1670,10 +1670,28 @@ merge(VPackSlice document, std::string key, TRI_voc_rid_t revision){
 AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   int possibleWrites = 0; // TODO - get real statistic values!
+  traceGetSomeBegin(atMost);
 
   if (_done) {
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
+
+  AqlItemBlock* cur = nullptr;
+
+  if (_buffer.empty()) {
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+    if (!ExecutionBlock::getBlock(toFetch)) {
+      _done = true;
+      traceGetSomeEnd(nullptr);
+      return nullptr;
+    }
+    _pos = 0;  // this is in the first block
+  }
+
+  // If we get here, we do have _buffer.front()
+  cur = _buffer.front();
+  TRI_ASSERT(cur != nullptr);
 
   auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
   auto out = node->_outVariable;
@@ -1796,21 +1814,25 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
         // document not there is not an error in this situation.
         // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
         _done = true;
+        traceGetSomeEnd(nullptr);
         return nullptr;
       } else if (!opOptions.silent){
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
 
     if (node->_mode == ExecutionNode::NodeType::INDEX) {
+      traceGetSomeEnd(nullptr);
       return nullptr;
     }
   }
 
   //LOG_DEVEL << "error checking done: " <<  result.errorMessage();
   _engine->_stats.writesExecuted += possibleWrites;
+  _engine->_stats.scannedIndex++;
 
   if (!(out || OLD || NEW)) {
     _done = true;
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
@@ -1818,8 +1840,13 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   // create block that can hold a result with one entry and a number of variables
   // corresponing to the amount of out variables
   std::unique_ptr<AqlItemBlock> aqlres;
-  aqlres.reset(requestBlock(1, node->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
+  RegisterId nrRegs =
+    getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  aqlres.reset(requestBlock(1, nrRegs));
+
+  // only copy 1st row of registers inherited from previous frame(s)
+  inheritRegisters(cur, aqlres.get(), _pos);
   TRI_ASSERT(result.ok());
   VPackSlice outDocument = VPackSlice::noneSlice();
   if(result.buffer){
@@ -1870,6 +1897,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
     aqlValueSet = true;
     //LOG_DEVEL << "set new";
   }
+  traceGetSomeEnd(aqlres.get());
   throwIfKilled();  // check if we were aborted
 
   TRI_IF_FAILURE("SingleRemoteOperationBlock::moreDocuments") {
@@ -1879,6 +1907,7 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   _done = true;
   if(!aqlValueSet) {
     //LOG_DEVEL << "noting set in the value even though it should";
+    traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
