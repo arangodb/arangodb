@@ -28,7 +28,7 @@
 #include "Basics/hashes.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ShardingInfo.h"
+#include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>

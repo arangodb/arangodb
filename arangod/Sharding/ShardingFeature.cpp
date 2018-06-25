@@ -23,12 +23,12 @@
 
 #include "ShardingFeature.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ShardingInfo.h"
-#include "Cluster/ShardingStrategyDefault.h"
+#include "Sharding/ShardingInfo.h"
+#include "Sharding/ShardingStrategyDefault.h"
 #include "VocBase/LogicalCollection.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Cluster/ShardingStrategyEE.h"
+#include "Enterprise/Sharding/ShardingStrategyEE.h"
 #endif
 
 #include <velocypack/velocypack-aliases.h>

@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SHARDING_STRATEGY_H
-#define ARANGOD_CLUSTER_SHARDING_STRATEGY_H 1
+#ifndef ARANGOD_SHARDING_SHARDING_STRATEGY_H
+#define ARANGOD_SHARDING_SHARDING_STRATEGY_H 1
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
@@ -36,7 +36,6 @@ class Slice;
 }
 
 class ShardingStrategy {
-  
   ShardingStrategy(ShardingStrategy const&) = delete;
   ShardingStrategy& operator=(ShardingStrategy const&) = delete;
 

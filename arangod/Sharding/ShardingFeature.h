@@ -21,12 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_SHARDING_FEATURE_H
-#define ARANGOD_CLUSTER_SHARDING_FEATURE_H 1
+#ifndef ARANGOD_SHARDING_SHARDING_FEATURE_H
+#define ARANGOD_SHARDING_SHARDING_FEATURE_H 1
 
 #include "Basics/Common.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Cluster/ShardingStrategy.h"
+#include "Sharding/ShardingStrategy.h"
 
 #include <velocypack/Slice.h>
 
