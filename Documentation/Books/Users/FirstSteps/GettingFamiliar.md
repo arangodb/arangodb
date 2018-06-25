@@ -9,7 +9,7 @@ installing ArangoDB locally.
 
 ### For Linux
 
-* Visit the official [ArangoDB install page](https://www.arangodb.com/install)
+* Visit the official [ArangoDB download page](https://www.arangodb.com/download)
   and download the correct package for your Linux distribution
 * Install the package using your favorite package manager
 * Start up the database server, normally this is done by
@@ -23,7 +23,7 @@ installing ArangoDB locally.
 
 ### For Microsoft Windows
 
-* Visit the official [ArangoDB install page](https://www.arangodb.com/install)
+* Visit the official [ArangoDB download page](https://www.arangodb.com/download)
   and download the installer for Windows
 * Start up the database server
 
