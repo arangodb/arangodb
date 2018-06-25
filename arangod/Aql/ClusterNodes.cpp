@@ -475,13 +475,16 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   }
 
   // add out variables
+  bool isAnyVarUsedLater = false;
   if (_outVariableOld != nullptr) {
     nodes.add(VPackValue("outVariableOld"));
     _outVariableOld->toVelocyPack(nodes);
+    isAnyVarUsedLater |= isVarUsedLater(_outVariableOld);
   }
   if (_outVariableNew != nullptr) {
     nodes.add(VPackValue("outVariableNew"));
     _outVariableNew->toVelocyPack(nodes);
+    isAnyVarUsedLater |= isVarUsedLater(_outVariableNew);
   }
 
   if (_inVariable!= nullptr) {
@@ -492,10 +495,12 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   if (_outVariable != nullptr) {
     nodes.add(VPackValue("outVariable"));
     _outVariable->toVelocyPack(nodes);
+    isAnyVarUsedLater |= isVarUsedLater(_outVariable);
   }
-
+  nodes.add("producesResult", VPackValue(isAnyVarUsedLater));
   nodes.add(VPackValue("modificationFlags"));
   _options.toVelocyPack(nodes);
+
 
   // And close it:
   nodes.close();
