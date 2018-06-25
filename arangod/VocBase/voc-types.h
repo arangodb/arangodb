@@ -99,7 +99,6 @@ struct TRI_vocbase_t;
 
 struct DatabasesLists {
   std::unordered_map<std::string, TRI_vocbase_t*> _databases;
-  std::unordered_map<std::string, TRI_vocbase_t*> _coordinatorDatabases;
   std::unordered_set<TRI_vocbase_t*> _droppedDatabases;
 };
 
