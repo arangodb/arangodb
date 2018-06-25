@@ -35,7 +35,7 @@ var helper = require("@arangodb/aql-helper");
 var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 var assertQueryError = helper.assertQueryError;
 const isCluster = require('@arangodb/cluster').isCluster();
-const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } }
+const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations"] } };
 
 var sanitizeStats = function (stats) {
   // remove these members from the stats because they don't matter
