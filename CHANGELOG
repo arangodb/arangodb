@@ -1,6 +1,11 @@
 devel
 -----
 
+* added `"pbkdf2"` method to `@arangodb/foxx/auth` module
+
+* the `@arangodb/foxx/auth` module now uses a different method to generate salts,
+  so salts are no longer guaranteed to be alphanumeric
+
 * replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
   new optimizer rule.
 
