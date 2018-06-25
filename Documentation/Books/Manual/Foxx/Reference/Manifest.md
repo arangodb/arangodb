@@ -3,12 +3,13 @@ Manifest files
 
 Every service comes with a `manifest.json` file providing metadata. The following fields are allowed in manifests:
 
-* **configuration**: `Object` (optional)
+- **configuration**: `Object` (optional)
 
   An object defining the [configuration options](Configuration.md) this service requires.
+
   <!-- TODO: examples -->
 
-* **defaultDocument**: `string` (optional)
+- **defaultDocument**: `string` (optional)
 
   If specified, the `/` (root) route of the service will automatically redirect to the given relative path, e.g.:
 
@@ -19,21 +20,43 @@ Every service comes with a `manifest.json` file providing metadata. The followin
   This would have the same effect as creating the following route in JavaScript:
 
   ```js
-  const createRouter = require('@arangodb/foxx/router');
+  const createRouter = require("@arangodb/foxx/router");
   const indexRouter = createRouter();
-  indexRouter.all('/', function (req, res) {
-    res.redirect('index.html');
+  indexRouter.all("/", function(req, res) {
+    res.redirect("index.html");
   });
   module.context.use(indexRouter);
   ```
 
   **Note**: As of 3.0.0 this field can safely be omitted; the value no longer defaults to `"index.html"`.
 
-* **dependencies**: `Object` (optional) and **provides**: `Object` (optional)
+- **dependencies**: `Object` (optional)
 
-  Objects specifying other services this service has as [dependencies](Dependencies.md) and what dependencies it can provide to other services.
+  An object mapping local aliases to dependency definitions. Each entry can be a dependency name and version range in the format `name:version` or an object with the following properties:
 
-* **engines**: `Object` (optional)
+  - **name**: `string` (Default: `"*"`)
+
+    Name of the dependency.
+
+  - **version**: `string` (Default: `"*"`)
+
+    Version range of the dependency.
+
+  - **description**: `string` (optional)
+
+    Human-readable description of the dependency or how the dependency is used.
+
+  - **required**: `boolean` (Default: `true`)
+
+    Whether the service requires the dependency to be assigned in order to function. If a required dependency is not assigned, the service will marked as inoperable until a service mount point has been assigned for the dependency.
+
+  - **multiple**: `boolean` (Default: `false`)
+
+    Whether the dependency can be specified multiple times. If a dependency is marked as `multiple`, the value of the local alias will be an array of all services assigned for the dependency.
+
+  See [the dependencies guide](../Guides/Dependencies.md) for more information.
+
+- **engines**: `Object` (optional)
 
   An object indicating the [semantic version ranges](http://semver.org) of ArangoDB (or compatible environments) the service will be compatible with, e.g.:
 
@@ -45,25 +68,25 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
   This should correctly indicate the minimum version of ArangoDB the service has been tested against. Foxx maintains a strict semantic versioning policy as of ArangoDB 3.0.0 so it is generally safe to use semver ranges (e.g. `^3.0.0` to match any version greater or equal to `3.0.0` and below `4.0.0`) for maximum compatibility.
 
-* **files**: `Object` (optional)
+- **files**: `Object` (optional)
 
   An object defining file assets served by this service.
 
-  Each entry in can represent either a single file or a directory. When serving entire directories, the key acts as a prefix and requests to that prefix will be resolved within the given directory:
+  Each entry can represent either a single file or a directory. When serving entire directories, the key acts as a prefix and requests to that prefix will be resolved within the given directory:
 
-  * **path**: `string`
+  - **path**: `string`
 
     The relative path of the file or folder within the service.
 
-  * **type**: `string` (optional)
+  - **type**: `string` (optional)
 
     The MIME content type of the file. Defaults to an intelligent guess based on the filename's extension.
 
-  * **gzip**: `boolean` (Default: `false`)
+  - **gzip**: `boolean` (Default: `false`)
 
     If set to `true` the file will be served with gzip-encoding if supported by the client. This can be useful when serving text files like client-side JavaScript, CSS or HTML.
 
-  If a string is provided instead of an object, it will be interpreted as the *path* option.
+  If a string is provided instead of an object, it will be interpreted as the _path_ option.
 
   Example serving the `public` folder at `/static` and the `favicon.ico` at `/favicon.ico`:
 
@@ -77,8 +100,7 @@ Every service comes with a `manifest.json` file providing metadata. The followin
   }
   ```
 
-
-* **lib**: `string` (Default: `"."`)
+- **lib**: `string` (Default: `"."`)
 
   The relative path to the Foxx JavaScript files in the service, e.g.:
 
@@ -88,9 +110,9 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
   This would result in the main entry point (see below) and other JavaScript paths being resolved as relative to the `lib` folder inside the service folder.
 
-* **main**: `string` (optional)
+- **main**: `string` (optional)
 
-  The relative path to the main entry point of this service (relative to *lib*, see above), e.g.:
+  The relative path to the main entry point of this service (relative to _lib_, see above), e.g.:
 
   ```json
   "main": "index.js"
@@ -100,11 +122,15 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
   **Note**: while it is technically possible to omit this field, you will likely want to provide an entry point to your service as this is the only way to expose HTTP routes or export a JavaScript API.
 
-* **scripts**: `Object` (optional)
+- **provides**: `Object` (optional)
+
+  An object mapping dependency names to version ranges of that dependency provided by this service. See [the dependencies guide](../Guides/Dependencies.md) for more information.
+
+- **scripts**: `Object` (optional)
 
   An object defining [named scripts](Scripts.md) provided by this service, which can either be used directly or as queued jobs by other services.
 
-* **tests**: `string` or `Array<string>` (optional)
+- **tests**: `string` or `Array<string>` (optional)
 
   One or more patterns to match the paths of test files, e.g.:
 
@@ -117,41 +143,40 @@ Every service comes with a `manifest.json` file providing metadata. The followin
 
   These patterns can be either relative file paths or "globstar" patterns where
 
-  * `*` matches zero or more characters in a filename
-  * `**` matches zero or more nested directories.
-
+  - `*` matches zero or more characters in a filename
+  - `**` matches zero or more nested directories.
 
 Additionally manifests can provide the following metadata:
 
-* **author**: `string` (optional)
+- **author**: `string` (optional)
 
   The full name of the author of the service (i.e. you). This will be shown in the web interface.
 
-* **contributors**: `Array<string>` (optional)
+- **contributors**: `Array<string>` (optional)
 
   A list of names of people that have contributed to the development of the service in some way. This will be shown in the web interface.
 
-* **description**: `string` (optional)
+- **description**: `string` (optional)
 
   A human-readable description of the service. This will be shown in the web interface.
 
-* **keywords**: `Array<string>` (optional)
+- **keywords**: `Array<string>` (optional)
 
   A list of keywords that help categorize this service. This is used by the Foxx Store installers to organize services.
 
-* **license**: `string` (optional)
+- **license**: `string` (optional)
 
   A string identifying the license under which the service is published, ideally in the form of an [SPDX license identifier](https://spdx.org/licenses). This will be shown in the web interface.
 
-* **name**: `string` (optional)
+- **name**: `string` (optional)
 
   The name of the Foxx service. Allowed characters are A-Z, 0-9, the ASCII hyphen (`-`) and underscore (`_`) characters. The name must not start with a number. This will be shown in the web interface.
 
-* **thumbnail**: `string` (optional)
+- **thumbnail**: `string` (optional)
 
   The filename of a thumbnail that will be used alongside the service in the web interface. This should be a JPEG or PNG image that looks good at sizes 50x50 and 160x160.
 
-* **version**: `string` (optional)
+- **version**: `string` (optional)
 
   The version number of the Foxx service. The version number must follow the [semantic versioning format](http://semver.org). This will be shown in the web interface.
 

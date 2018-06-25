@@ -9,21 +9,21 @@ In development mode the service's source files and manifest will be re-evaluated
 
 There are a number of caveats you should be aware of when using development mode:
 
-* the additional information provided in error responses can leak critical information like source code and file system paths
+- the additional information provided in error responses can leak critical information like source code and file system paths
 
-* parallel requests may result in race conditions as the setup script may be executed in multiple threads in parallel (outside development mode the setup would only be executed in one thread)
+- parallel requests may result in race conditions as the setup script may be executed in multiple threads in parallel (outside development mode the setup would only be executed in one thread)
 
-* the setup script will likely be executed numerous times, although [using additional migration scripts](Migrations.md) may help avoiding some of the added overhead
+- the setup script will likely be executed numerous times, although [using additional migration scripts](Migrations.md) may help avoiding some of the added overhead
 
-* if you are [serving static files](Files.md#Serving-files), keep in mind that requests to these files will still result in a re-deployment of the service
+- if you are [serving static files](Files.md#Serving-files), keep in mind that requests to these files will still result in a re-deployment of the service
 
-* making HTTP requests to the service via `@arangodb/request` (e.g. [as part of an integration test](Testing.md)) also results in re-deployment, which can result in inconsistent behavior
+- making HTTP requests to the service via `@arangodb/request` (e.g. [as part of an integration test](Testing.md)) also results in re-deployment, which can result in inconsistent behavior
 
-* the service files should be treated as highly volatile as they will be erased if the service is uninstalled/replaced or the database removed
+- the service files should be treated as highly volatile as they will be erased if the service is uninstalled/replaced or the database removed
 
 For these reasons we strongly advise against using development mode on production servers.
 
-To avoid losing your changes, we recommend using a tool like [lsyncd](https://github.com/axkibe/lsyncd) to synchronise changes from your local working copy to the service files continuously rather than modifying those files directly. Alternatively you can easily re-deploy your local copy of the service using the [Foxx CLI](../Deployment/FoxxCLI/README.md).
+To avoid losing your changes, we recommend using a tool like [lsyncd](https://github.com/axkibe/lsyncd) to synchronize changes from your local working copy to the service files continuously rather than modifying those files directly. Alternatively you can easily re-deploy your local copy of the service using the [Foxx CLI](../Deployment/FoxxCLI/README.md).
 
 In a cluster
 ------------

@@ -1,136 +1,22 @@
-Foxx scripts and queued jobs
-============================
-
-Foxx lets you define scripts that can be executed as part of the installation and removal process, invoked manually or scheduled to run at a later time using the job queue.
-
-To register your script, just add a `scripts` section to your [service manifest](Manifest.md):
-
-```json
-{
-  ...
-  "scripts": {
-    "setup": "scripts/setup.js",
-    "send-mail": "scripts/send-mail.js"
-  }
-  ...
-}
-```
-
-The scripts you define in your service manifest can be invoked from the web interface in the service's settings page with the *Scripts* dropdown.
-
-<!-- TODO (Link to admin docs) -->
-
-You can also use the scripts as queued jobs:
-
-```js
-'use strict';
-const queues = require('@arangodb/foxx/queues');
-queues.get('default').push(
-  {mount: '/my-service-mount-point', name: 'send-mail'},
-  {to: 'user@example.com', body: 'Hello'}
-);
-```
-
-Script arguments and return values
-----------------------------------
-
-If the script was invoked with any arguments, you can access them using the `module.context.argv` array.
-
-To return data from your script, you can assign the data to `module.exports` as usual. Please note that this data will be converted to JSON.
-
-Any errors raised by the script will be handled depending on how the script was invoked:
-
-* if the script was invoked from the HTTP API (e.g. using the web interface), it will return an error response using the exception's `statusCode` property if specified or 500.
-* if the script was invoked from a Foxx job queue, the job's failure counter will be incremented and the job will be rescheduled or marked as failed if no attempts remain.
-
-**Examples**
-
-Let's say you want to define a script that takes two numeric values and returns the result of multiplying them:
-
-```js
-'use strict';
-const assert = require('assert');
-const argv = module.context.argv;
-
-assert.equal(argv.length, 2, 'Expected exactly two arguments');
-assert.equal(typeof argv[0], 'number', 'Expected first argument to be a number');
-assert.equal(typeof argv[1], 'number', 'Expected second argument to be a number');
-
-module.exports = argv[0] * argv[1];
-```
-
-Lifecycle Scripts
------------------
-
-Foxx recognizes lifecycle scripts if they are defined and will invoke them during the installation, update and removal process of the service if you want.
-
-The following scripts are currently recognized as lifecycle scripts by their name: `"setup"` and `"teardown"`.
-
-### Setup Script
-
-The setup script will be executed without arguments during the installation of your Foxx service.
-
-The setup script may be executed more than once and should therefore be treated as reentrant. Running the same setup script again should not result in any errors or duplicate data.
-
-The setup script is typically used to create collections your service needs or insert seed data like initial administrative user accounts and so on.
-
-**Examples**
-
-```js
-'use strict';
-const db = require('@arangodb').db;
-const textsCollectionName = module.context.collectionName('texts');
-// `textsCollectionName` is now the prefixed name of this service's "texts" collection.
-// e.g. "example_texts" if the service has been mounted at `/example`
-
-if (db._collection(textsCollectionName) === null) {
-  const collection = db._create(textsCollectionName);
-
-  collection.save({text: 'entry 1 from collection texts'});
-  collection.save({text: 'entry 2 from collection texts'});
-  collection.save({text: 'entry 3 from collection texts'});
-} else {
-  console.debug(`collection ${texts} already exists. Leaving it untouched.`);
-}
-```
-
-### Teardown Script
-
-The teardown script will be executed without arguments during the removal of your Foxx service.
-
-It can also optionally be executed before upgrading an service.
-
-This script typically removes the collections and/or documents created by your service's setup script.
-
-**Examples**
-
-```js
-'use strict';
-const db = require('@arangodb').db;
-
-const textsCollection = module.context.collection('texts');
-
-if (textsCollection) {
-  textsCollection.drop();
-}
-```
-
-Queues
-------
+Foxx queues
+===========
 
 `const queues = require('@arangodb/foxx/queues')`
 
 Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
 
-@startDocuBlock foxxQueues
+Foxx queue jobs can be any [script](../../Guides/Scripts.md) named in the [manifest](../Manifest.md) of a service in the same database.
 
-Please note that Foxx job queues are database-specific. Queues and jobs are always relative to the database in which they are created or accessed.
+Please note that Foxx queues are database-specific. Queues and jobs are always relative to the database in which they are created or accessed.
 
-@startDocuBlock foxxQueuesPollInterval
+For disabling the Foxx queues feature or adjusting the polling interval see the [`foxx.queues` and `foxx.queues-poll-interval` options](../../Administration/Configuration/GeneralArangod.html#foxx-queues).
 
 For the low-level functionality see the chapter on the [task management module](../../Appendix/JavaScriptModules/Tasks.md).
 
-### Creating or updating a queue
+Managing queues
+---------------
+
+### create
 
 `queues.create(name, [maxWorkers]): Queue`
 
@@ -160,7 +46,7 @@ const queue3 = queues.create("my-queue", 10);
 assertEqual(queue1, queue3);
 ```
 
-### Fetching an existing queue
+### get
 
 `queues.get(name): Queue`
 
@@ -192,7 +78,7 @@ const queue2 = queues.get("some-queue");
 assertEqual(queue1, queue2);
 ```
 
-### Deleting a queue
+### delete
 
 `queues.delete(name): boolean`
 
@@ -217,7 +103,10 @@ queues.delete("my-queue"); // true
 queues.delete("my-queue"); // false
 ```
 
-### Adding a job to a queue
+Queue API
+---------
+
+### push
 
 `queue.push(script, data, [opts]): string`
 
@@ -361,7 +250,7 @@ queue.push(
 );
 ```
 
-### Fetching a job from the queue
+### get
 
 `queue.get(jobId): Job`
 
@@ -384,7 +273,7 @@ const job = queue.get(jobId);
 assertEqual(job.id, jobId);
 ```
 
-### Deleting a job from the queue
+### delete
 
 `queue.delete(jobId): boolean`
 
@@ -399,23 +288,7 @@ The job will be looked up and deleted in the specified queue in the current data
 
 Returns `true` if the job was deleted successfully. If the job did not exist it returns `false` instead.
 
-### Fetching an array of jobs in a queue
-
-**Examples**
-
-```js
-const logScript = {mount: '/logger', name: 'log'};
-queue.push(logScript, 'Hello World!', {delayUntil: Date.now() + 50});
-assertEqual(queue.pending(logScript).length, 1);
-// 50 ms later...
-assertEqual(queue.pending(logScript).length, 0);
-assertEqual(queue.progress(logScript).length, 1);
-// even later...
-assertEqual(queue.progress(logScript).length, 0);
-assertEqual(queue.complete(logScript).length, 1);
-```
-
-#### Fetching an array of pending jobs in a queue
+### pending
 
 `queue.pending([script]): Array<string>`
 
@@ -436,7 +309,21 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-#### Fetching an array of jobs that are currently in progress
+**Examples**
+
+```js
+const logScript = {mount: '/logger', name: 'log'};
+queue.push(logScript, 'Hello World!', {delayUntil: Date.now() + 50});
+assertEqual(queue.pending(logScript).length, 1);
+// 50 ms later...
+assertEqual(queue.pending(logScript).length, 0);
+assertEqual(queue.progress(logScript).length, 1);
+// even later...
+assertEqual(queue.progress(logScript).length, 0);
+assertEqual(queue.complete(logScript).length, 1);
+```
+
+### progress
 
 `queue.progress([script])`
 
@@ -457,7 +344,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-#### Fetching an array of completed jobs in a queue
+### complete
 
 `queue.complete([script]): Array<string>`
 
@@ -478,7 +365,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-#### Fetching an array of failed jobs in a queue
+### failed
 
 `queue.failed([script]): Array<string>`
 
@@ -499,7 +386,7 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-#### Fetching an array of all jobs in a queue
+### all
 
 `queue.all([script]): Array<string>`
 
@@ -520,7 +407,10 @@ The jobs will be looked up in the specified queue in the current database.
 
   Mount path of the service defining the script.
 
-### Aborting a job
+Job API
+-------
+
+### abort
 
 `job.abort(): void`
 

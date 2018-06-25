@@ -1,5 +1,5 @@
-Legacy compatibility mode for 2.8 services
-==========================================
+Working with 2.x services
+=========================
 
 ArangoDB 3 continues to support Foxx services written for ArangoDB 2.8 by running them in a special legacy compatibility mode that provides access to some of the modules and APIs no longer provided in 3.0 and beyond.
 

@@ -1,97 +1,44 @@
-Collections
-===========
+Working with collections
+========================
 
-The preferred way to work with collections in Foxx services is via the [Foxx context](../Reference/Context.md). It provides methods that automatically qualify the collection name with the prefix of the service's mount path to make it unique. This procedure avoids naming conflicts of collection names between different services or multiple installed instances of the same service.
+Foxx provides the [`module.context.collection`]() method to provide easy access to ArangoDB collections. These collections are also called "prefixed collections" because Foxx will automatically prefix the name based on the mount path of the service.
 
-With the method `module.context.collectionName` you can get the prefixed collection name.
+The prefixes may initially feel unnecessarily verbose but help avoid conflicts between different services with similar collection names or even multiple copies of the same service sharing the same database. Keep in mind that you can also use collection objects when [writing queries](Queries.md), so you don't need to worry about writing out prefixes by hand.
 
-```js
-module.context.mount === '/hello'
-module.context.collectionName('myFoxxCollection') === 'hello_myFoxxCollection'
-```
-
-For direct access to the collection, use `module.context.collection`, which behaves exactly like `collectionName` in case of prefixing the collection name.
-
-```js
-module.context.collection('myFoxxCollection') === db._collection(module.context.collectionName('myFoxxCollection'))
-```
+As a rule of thumb you should always use `module.context.collection` to access collections in your service.
 
 Low-level collection access
 ---------------------------
 
+ArangoDB provides [a low-level API for managing collections](../../DataModeling/Collections/DatabaseMethods.html) via [the `db` object](../../Appendix/References/DBObject.html). These APIs are not very useful for most application logic but are allow you to create and destroy collections in your [lifecycle scripts and migrations](Migrations.md).
 
-
-Creating collections
---------------------
-
-In order to be able to use a collection from within our service, we should first make sure that the collection actually exists. The right place to create collections your service is going to use is in [a setup script](../Reference/Scripts.md), which Foxx will execute for you when installing or updating the service.
+Using these methods requires you to work with fully qualified collection names. This means instead of using `module.context.collection` to get a _collection object_ you need to use `module.context.collectionName` to get the prefixed _collection name_ ArangoDB understands:
 
 ```js
-'use strict';
-const db = require('@arangodb').db;
-const collectionName = module.context.collectionName('myFoxxCollection');
+"use strict";
+const { db } = require("@arangodb");
+const collectionName = module.context.collectionName("users");
 
 if (!db._collection(collectionName)) {
   db._createDocumentCollection(collectionName);
 }
 ```
 
-Accessing collections
----------------------
+Sharing collections
+-------------------
 
-We're using the `save` and `document` methods of the collection object to store and retrieve documents in the collection we created in our setup script.
+The most obvious way to share collections between multiple services is to use an unprefixed collection name and then use the low-level `db._collection` method to access that collection from each service that needs access to it.
+
+The downside of this approach is that it results in an implicit dependency of those services on a single collection as well as creating the potential for subtle problems if a different service uses the same unprefixed collection name in the future.
+
+The cleanest approach is to instead decide on a single service which manages the collection and set up [explicit dependencies](Dependencies.md) between the different services using the collection:
 
 ```js
-'use sctrict';
-const errors = require('@arangodb').errors;
-const DOC_NOT_FOUND = errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code;
-const createRouter = require('@arangodb/foxx/router');
-const router = createRouter();
-module.context.use(router);
+// in the service's main file:
+exports.users = module.context.collection("users");
 
-const foxxColl = module.context.collection('myFoxxCollection');
-
-// Store an entry
-router.post('/entries', function (req, res) {
-  const data = req.body;
-  const meta = foxxColl.save(req.body);
-  res.send(Object.assign(data, meta));
-});
-
-// Retrieve an entry
-router.get('/entries/:key', function (req, res) {
-  try {
-    const data = foxxColl.document(req.pathParams.key);
-    res.send(data)
-  } catch (e) {
-    if (!e.isArangoError || e.errorNum !== DOC_NOT_FOUND) {
-      throw e;
-    }
-    res.throw(404, 'The entry does not exist', e);
-  }
-});
+// in a dependent service's code:
+const users = module.dependencies.usersService.users;
 ```
 
-Because the key will be automatically generated by ArangoDB when one wasn't specified in the request body, we're using `Object.assign` to apply the attributes of the metadata object returned by the `save` method to the document before returning it from our route.
-
-The document method returns a document in a collection by its `_key` or `_id`. However when no matching document exists it throws an `ArangoError` exception. Because we want to provide a more descriptive error message than ArangoDB does out of the box, we need to handle that error explicitly.
-
-<!--
-
-# Collections
-
-In Foxx collection names are automatically qualified with a prefix based on the mount path to avoid conflicts between services using identical otherwise collection names (or multiple copies of the same service mounted at different mount paths).
-
-Just use `module.context.collection` bla bla.
-
-## Low-level collection access
-
-When managing collections in your [lifecycle scripts]() bla bla `db._collection`/`db._create`/`db._drop` bla bla `module.context.collectionName` to get the prefixed collection name.
-
-## Sharing collections
-
-While `db._collection` can also be used to share collections between services, bla bla discouraged.
-
-Instead, decide which service should own and manage the collections & expose using `module.exports` and Foxx dependencies to import into other services.
-
--->
+This approach not only makes the dependency on an externally managed collection explicit but also allows having those services still use different collections if necessary by providing multiple copies of the service that provides the shared collection.

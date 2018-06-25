@@ -15,9 +15,9 @@
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
   * [Next Steps](GettingStarted/NextSteps.md)
 * [Tutorials](Tutorials/README.md)
-#   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+#   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/
   * [ArangoDB Starter](Tutorials/Starter/README.md)
-#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
+#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
   * [Kubernetes](Tutorials/Kubernetes/README.md)
@@ -39,7 +39,7 @@
     * [Examples](Programs/Arangosh/Examples.md)
     * [Details](Programs/Arangosh/Details.md)
     * [Options](Programs/Arangosh/Options.md)
-#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/
   * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/Options.md)
     * [Security](Programs/Starter/Security.md)
@@ -130,18 +130,30 @@
   * [Storage Engines](Architecture/StorageEngines.md)
   * [Replication](Architecture/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
-* [Foxx Microservices](Foxx/README.md)
+* [Foxx services](Foxx/README.md)
   * [Getting started](Foxx/GettingStarted.md)
-  * [Guides](Foxx/Guides/README.md)
-    * [Access from browser](Foxx/Guides/Browser.md)
-    * [Writing tests](Foxx/Guides/Testing.md)
-    * [User management](Foxx/Guides/Users.md)
-    * [Working with files](Foxx/Guides/Files.md)
+  * [🚧 Guides](Foxx/Guides/README.md)
+    * [Authentication and sessions](Foxx/Guides/Auth.md)
+    * [Access from the browser](Foxx/Guides/Browser.md)
+    * [Bundling Node modules](Foxx/Guides/BundledNodeModules.md)
+    * [Foxx in a cluster](Foxx/Guides/Cluster.md)
+    * [Working with collections](Foxx/Guides/Collections.md)
+    * [🚧 Linking services together](Foxx/Guides/Dependencies.md)
+    * [File access](Foxx/Guides/Files.md)
+    * [🚧 Making requests](Foxx/Guides/MakingRequests.md)
+    * [🚧 ErrorHandling.md](Foxx/Guides/ErrorHandling.md)
+    * [🚧 Multipart.md](Foxx/Guides/Multipart.md)
+    * [🚧 Queries.md](Foxx/Guides/Queries.md)
+    * [🚧 Routing.md](Foxx/Guides/Routing.md)
+    * [🚧 Scripts.md](Foxx/Guides/Scripts.md)
+    * [🚧 Testing.md](Foxx/Guides/Testing.md)
+    * [🚧 Troubleshooting.md](Foxx/Guides/Troubleshooting.md)
+    * [🚧 TypeScript.md](Foxx/Guides/TypeScript.md)
+    * [Working with 2.x services](Foxx/Guides/LegacyMode.md)
   * [Reference](Foxx/Reference/README.md)
     * [Service manifest](Foxx/Reference/Manifest.md)
     * [Service context](Foxx/Reference/Context.md)
     * [Configuration](Foxx/Reference/Configuration.md)
-    * [Dependencies](Foxx/Reference/Dependencies.md)
     * [Routers](Foxx/Reference/Routers/README.md)
       * [Endpoints](Foxx/Reference/Routers/Endpoints.md)
       * [Middleware](Foxx/Reference/Routers/Middleware.md)
@@ -155,12 +167,11 @@
       * [Session transports](Foxx/Reference/Sessions/Transports/README.md)
         * [Cookie transport](Foxx/Reference/Sessions/Transports/Cookie.md)
         * [Header transport](Foxx/Reference/Sessions/Transports/Header.md)
-    * [Scripts and queued jobs](Foxx/Reference/Scripts.md)
-    * [Legacy compatibility mode](Foxx/Reference/LegacyMode.md)
     * [Related modules](Foxx/Reference/Modules/README.md)
       * [Authentication](Foxx/Reference/Modules/Auth.md)
       * [OAuth 1.0a](Foxx/Reference/Modules/OAuth1.md)
       * [OAuth 2.0](Foxx/Reference/Modules/OAuth2.md)
+      * [Queues](Foxx/Reference/Modules/Queues.md)
   * [Deployment](Foxx/Deployment.md)
   * [Migrating 2.x services](Foxx/Migrating2x/README.md)
     * [Migrating from pre-2.8](Foxx/Migrating2x/Wayback.md)
@@ -320,9 +331,9 @@
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
   * [Cluster](Troubleshooting/Cluster/README.md)
-    * [Agency Dump](Troubleshooting/Cluster/AgencyDump.md) 
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
-  * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)  
+    * [Agency Dump](Troubleshooting/Cluster/AgencyDump.md)
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
+  * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)
 
 ---
 

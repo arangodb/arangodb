@@ -1,6 +1,19 @@
-# Error handling
+Error handling
+==============
 
-Foxx will automatically generate machine-readable error responses when an error isn't caught but this is likely not what you want to expose to API users. Instead:
+Foxx automatically catches errors in your routes and generates machine-readable error responses for them, as well as logging them to the ArangoDB server log.
+
+If the error is an `ArangoError` thrown by the ArangoDB API (such as when trying to use `collection.document` to access a document that does not exist) or explicitly thrown using the [`res.throw` method](), Foxx will convert the error to a JSON response body with an appropriate HTTP status code. Otherwise Foxx will simply generate a generic JSON error response body with a HTTP 500 status code.
+
+Catching ArangoDB errors
+------------------------
+
+The ArangoDB JavaScript API will generally throw instances of the `ArangoError` type
+
+Better stuff
+------------
+
+Instead:
 
 Have application specific error objects with numeric codes to help API users, e.g.
 ```js

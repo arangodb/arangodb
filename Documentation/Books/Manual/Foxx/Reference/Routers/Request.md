@@ -7,7 +7,7 @@ The request object specifies the following properties:
 
   The authenticated ArangoDB username used to make the request.
   This value is only set if authentication is enabled in ArangoDB and the request set an `authorization` header ArangoDB was able to verify.
-  You are strongly encouraged to implement your own authentication logic for your own services but this property can be useful if you need to integrate with ArangoDB's own authentication mechanisms.
+  You are strongly encouraged to implement [your own authentication logic](../../Guides/Auth.md) for your own services but this property can be useful if you need to integrate with ArangoDB's own authentication mechanisms.
 
 * **arangoVersion**: `number`
 
