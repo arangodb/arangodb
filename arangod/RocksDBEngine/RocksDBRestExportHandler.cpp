@@ -110,7 +110,7 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
     options.add("ttl", VPackValue(30));
   }
   
-  uint64_t limit = UINT64_MAX;
+  int64_t limit = INT64_MAX;
   VPackSlice limitSlice = slice.get("limit");
   if (limitSlice.isNumber()) {
     limit = limitSlice.getInt();
@@ -120,18 +120,8 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
   options.add("stream", VPackValue(true)); // important!!
   VPackSlice count = slice.get("count");
   if (count.isBool() && count.getBool()) {
-    
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
-    Result res = trx.begin();
-    
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-    OperationResult opRes = trx.count(cname, true);
-    trx.finish(opRes.result);
     // QueryStreamCursor will add `exportCount` as `count`
-    options.add("exportCount", VPackValue(std::min(limit, opRes.slice().getUInt())));
+    options.add("exportCollection", VPackValue(cname));
   }
   options.close(); // options
   
@@ -139,7 +129,7 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
   
   options.add("bindVars", VPackValue(VPackValueType::Object));
   options.add("@collection", VPackValue(cname));
-  if (limit != UINT64_MAX) {
+  if (limit != INT64_MAX) {
     query.append("LIMIT @limit ");
     options.add("limit", limitSlice);
   }
@@ -179,11 +169,12 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
     
     if (fields.length() > 0) {
       // "restrict"."fields"
+      int i = 0;
       for (auto const& name : VPackArrayIterator(fields)) {
         if (name.isString()) {
-          query.append(", \"");
-          query.append(name.copyString());
-          query.append("\"");
+          std::string varName = std::string("var").append(std::to_string(i++));
+          query.append(", @").append(varName);
+          options.add(varName, VPackValue(name.copyString()));
         }
       }
       query += ")";
@@ -199,7 +190,7 @@ VPackBuilder RocksDBRestExportHandler::buildQueryOptions(std::string const& cnam
   options.close(); // bindVars
   options.add("query", VPackValue(query));
   options.close();
-
+  
   return options;
 }
 
