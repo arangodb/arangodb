@@ -30,7 +30,7 @@
 #include "Aql/Query.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Cluster/ShardingFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"

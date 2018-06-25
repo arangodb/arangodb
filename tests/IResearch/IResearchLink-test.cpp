@@ -36,7 +36,7 @@
 #endif
 
 #include "Basics/files.h"
-#include "Cluster/ShardingFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"

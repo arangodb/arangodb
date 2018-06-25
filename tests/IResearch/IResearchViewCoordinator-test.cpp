@@ -50,7 +50,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterComm.h"
-#include "Cluster/ShardingFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"

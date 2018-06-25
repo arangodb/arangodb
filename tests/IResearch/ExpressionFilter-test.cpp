@@ -37,7 +37,7 @@
 #include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ShardingFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchCommon.h"

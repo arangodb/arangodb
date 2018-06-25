@@ -23,8 +23,8 @@
 
 #include "catch.hpp"
 #include "../IResearch/StorageEngineMock.h"
-#include "Cluster/ShardingFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Parser.h"
 #include "VocBase/LogicalCollection.h"

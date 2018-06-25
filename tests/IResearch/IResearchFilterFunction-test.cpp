@@ -30,7 +30,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "Cluster/ShardingFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"

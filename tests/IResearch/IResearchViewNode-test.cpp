@@ -40,7 +40,7 @@
 #include "Aql/BasicBlocks.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Cluster/ShardingFeature.h"
+#include "Sharding/ShardingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
