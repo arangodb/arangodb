@@ -333,6 +333,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
     options.add("cache", cache);
   }
 
+  bool hasTtl = false;
   VPackSlice opts = slice.get("options");
   if (opts.isObject()) {
     for (auto const& it : VPackObjectIterator(opts)) {
@@ -345,16 +346,21 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
         if (keyName == "cache" && hasCache) {
           continue;
         }
+        if (keyName == "ttl") {
+          hasTtl = true;
+        }
         options.add(keyName, it.value);
       }
     }
   }
 
-  VPackSlice ttl = slice.get("ttl");
-  if (ttl.isNumber()) {
-    options.add("ttl", ttl);
-  } else {
-    options.add("ttl", VPackValue(30));
+  if (!hasTtl) {
+    VPackSlice ttl = slice.get("ttl");
+    if (ttl.isNumber()) {
+      options.add("ttl", ttl);
+    } else {
+      options.add("ttl", VPackValue(30));
+    }
   }
   options.close();
 
