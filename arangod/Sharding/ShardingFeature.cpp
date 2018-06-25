@@ -89,9 +89,6 @@ std::unique_ptr<ShardingStrategy> ShardingFeature::fromVelocyPack(VPackSlice sli
   if (!ServerState::instance()->isRunningInCluster()) {
     // not running in cluster... so no sharding
     name = ShardingStrategyNone::NAME;
-  } else if (ServerState::instance()->isDBServer()) {
-    // on a DB server, we will not use sharding
-    name = ShardingStrategyNone::NAME;
   } else {
     // running in cluster... determine the correct method for sharding
     VPackSlice s = slice.get("shardingStrategy");
