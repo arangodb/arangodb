@@ -2314,7 +2314,7 @@
         var check = true;
         var attributes = {};
 
-        if (result.length <= 1) {
+        if (result.length < 1) {
           check = false;
         }
 
