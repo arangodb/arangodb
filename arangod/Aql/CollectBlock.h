@@ -120,7 +120,8 @@ class SortedCollectBlock final : public ExecutionBlock {
   /// @brief details about the current group
   CollectGroup _currentGroup;
 
-  /// @brief the last input block
+  /// @brief the last input block. Only set in the iteration immediately after
+  // its last row was processed. Set to nullptr otherwise.
   AqlItemBlock* _lastBlock;
 
   /// @brief result built during getOrSkipSome

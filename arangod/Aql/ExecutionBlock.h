@@ -219,6 +219,9 @@ class ExecutionBlock {
   /// @brief return an AqlItemBlock to the memory manager
   void returnBlock(AqlItemBlock*& block);
 
+  /// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
+  void returnBlockUnlessNull(AqlItemBlock*& block);
+
   /// @brief copy register data from one block (src) into another (dst)
   /// register values are cloned
   void inheritRegisters(AqlItemBlock const* src, AqlItemBlock* dst, size_t row);
@@ -271,8 +274,11 @@ class ExecutionBlock {
   BufferState getBlockIfNeeded(size_t atMost);
 
   /// @brief Updates _skipped and _pos; removes the first item from the
-  /// buffer if necessary and returns it if _returnFrontBlock is true.
-  void advanceCursor(size_t numInputRowsConsumed, size_t numOutputRowsCreated);
+  /// buffer if necessary. If a block was removed it is returned, and nullptr
+  /// otherwise. The caller then owns the block (and therefore is responsible
+  /// for calling returnBlock()).
+  AqlItemBlock* advanceCursor(size_t numInputRowsConsumed,
+                              size_t numOutputRowsCreated);
 
  protected:
   /// @brief the execution engine
@@ -313,12 +319,6 @@ class ExecutionBlock {
   /// @brief the execution state of the dependency
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
-
-  /// @brief If true (default), advanceCursor() returns the front block to the
-  /// item manager. Every time the block ownership of the current_buffer.front()
-  /// is moved somewhere else, this must be set to false. When advanceCursor()
-  /// removes the first block of the buffer, it also sets this to true again.
-  bool _returnFrontBlock;
 
   /// @brief The number of skipped/processed rows in getOrSkipSome, used to keep
   /// track of it despite WAITING interruptions. As

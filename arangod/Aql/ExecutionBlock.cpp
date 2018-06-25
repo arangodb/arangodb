@@ -125,7 +125,6 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::initializeCursor(
 
   _done = false;
   _upstreamState = ExecutionState::HASMORE;
-  _returnFrontBlock = true;
   _pos = 0;
   _skipped = 0;
 
@@ -263,6 +262,13 @@ AqlItemBlock* ExecutionBlock::requestBlock(size_t nrItems, RegisterId nrRegs) {
 /// @brief return an AqlItemBlock to the memory manager
 void ExecutionBlock::returnBlock(AqlItemBlock*& block) {
   _engine->_itemBlockManager.returnBlock(block);
+}
+
+/// @brief return an AqlItemBlock to the memory manager, but ignore nullptr
+void ExecutionBlock::returnBlockUnlessNull(AqlItemBlock*& block) {
+  if (block != nullptr) {
+    _engine->_itemBlockManager.returnBlock(block);
+  }
 }
 
 /// @brief copy register data from one block (src) into another (dst)
@@ -444,6 +450,10 @@ ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
   // from _buffer, so if the buffer is empty, it must always be 0
   TRI_ASSERT(_pos == 0);
 
+  if (_upstreamState == ExecutionState::DONE) {
+    return BufferState::NO_MORE_BLOCKS;
+  }
+
   ExecutionState state;
   bool blockAppended;
   std::tie(state, blockAppended) = getBlock(atMost);
@@ -463,8 +473,8 @@ ExecutionBlock::BufferState ExecutionBlock::getBlockIfNeeded(size_t atMost) {
   return BufferState::NO_MORE_BLOCKS;
 }
 
-void ExecutionBlock::advanceCursor(
-  size_t numInputRowsConsumed, size_t numOutputRowsCreated) {
+AqlItemBlock* ExecutionBlock::advanceCursor(size_t numInputRowsConsumed,
+                                            size_t numOutputRowsCreated) {
   AqlItemBlock* cur = _buffer.front();
   TRI_ASSERT(cur != nullptr);
 
@@ -474,14 +484,11 @@ void ExecutionBlock::advanceCursor(
   if (_pos >= cur->size()) {
     _buffer.pop_front();
     _pos = 0;
-    // TODO maybe instead of adding state via _returnFrontBlock let this
-    // function return cur iff it's removed from buffer and let the caller
-    // handle returnBlock().
-    if (_returnFrontBlock) {
-      returnBlock(cur);
-    }
-    _returnFrontBlock = true;
+
+    return cur;
   }
+
+  return nullptr;
 }
 
 std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
@@ -494,12 +501,13 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
 
   // if _buffer.size() is > 0 then _pos points to a valid place . . .
 
-  auto processRows = [this](size_t atMost, bool skipping) -> std::pair<size_t,
-    size_t> {
+  auto processRows = [this](size_t atMost, bool skipping)
+    -> std::pair<size_t, bool> {
     AqlItemBlock* cur = _buffer.front();
     TRI_ASSERT(cur != nullptr);
 
     size_t rowsProcessed = 0;
+    bool keepFrontBlock = false;
 
     if (cur->size() - _pos > atMost) {
       // The current block is too large for atMost:
@@ -536,13 +544,13 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
         }
         _collector.add(cur);
         // claim ownership of cur
-        _returnFrontBlock = false;
+        keepFrontBlock = true;
       }
       rowsProcessed = cur->size();
     }
 
     // Number of input and output rows is always equal here
-    return {rowsProcessed, rowsProcessed};
+    return {rowsProcessed, keepFrontBlock};
   };
 
   while (ExecutionBlock::getHasMoreState() != ExecutionState::DONE &&
@@ -576,11 +584,15 @@ std::pair<ExecutionState, arangodb::Result> ExecutionBlock::getOrSkipSome(
     TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
     TRI_ASSERT(!_buffer.empty());
 
-    size_t numInputRowsConsumed;
-    size_t numOutputRowsCreated;
-    std::tie(numInputRowsConsumed, numOutputRowsCreated) =
+    size_t rowsProcessed;
+    bool keepFrontBlock;
+    std::tie(rowsProcessed, keepFrontBlock) =
         processRows(atMost - _skipped, skipping);
-    advanceCursor(numInputRowsConsumed, numOutputRowsCreated);
+    // number of input rows consumed and output rows created is equal here
+    AqlItemBlock* removedBlock = advanceCursor(rowsProcessed, rowsProcessed);
+    if (!keepFrontBlock) {
+      returnBlockUnlessNull(removedBlock);
+    }
   }
 
   TRI_ASSERT(result == nullptr);

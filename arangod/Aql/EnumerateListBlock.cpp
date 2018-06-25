@@ -159,7 +159,8 @@ EnumerateListBlock::getSome(size_t atMost) {
     if (_index == sizeInVar) {
       _index = 0;
 
-      advanceCursor(1, cur->size());
+      AqlItemBlock* removedBlock = advanceCursor(1, cur->size());
+      returnBlockUnlessNull(removedBlock);
     }
   }
 
