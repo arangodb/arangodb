@@ -30,7 +30,7 @@ arangod --javascript.dev-app-path /PATH/TO/foxx_apps /PATH/TO/DB
 
 In that case, `/PATH/TO/foxx_apps` is the path to the `foxx_apps` folder you created above and `/PATH/TO/DB` is the path to the folder where your database should be. If you can see the admin interface on [http://localhost:8529](http://localhost:8529) you're now ready to go. Click on 'Applications' in the navigation bar – this is the place where all your Foxx apps are. You will see an app called `todos (dev)` – the `dev` means that your app is running in development mode which features automatic reloading. We are now ready to go.
 
-*Don't have ArangoDB installed yet? Check out the instructions [on our downloads page](https://www.arangodb.com/install).*
+*Don't have ArangoDB installed yet? Check out the instructions on [the ArangoDB download page](https://www.arangodb.com/download).*
 
 ### Create the required collections
 
