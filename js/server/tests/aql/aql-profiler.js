@@ -367,6 +367,11 @@ function ahuacatlProfilerTestSuite () {
   // @brief Common checks for most blocks
   // @param query string - is assumed to have one bind parameter 'rows'
   // @param genNodeList function: (rows, batches) => [ { type, calls, items } ]
+  //        must generate the list of expected nodes
+  // @param prepare function: (rows) => {...}
+  //        called before the query is executed
+  // @param bind function: (rows) => ({rows})
+  //        must return the bind parameters for the query
   // Example for genNodeList:
   // genNodeList(2500, 3) ===
   // [
@@ -544,7 +549,7 @@ function ahuacatlProfilerTestSuite () {
     },
 
     // EnumerateCollectionBlock
-    testEnumerateCollectionBlock : function () {
+    testEnumerateCollectionBlock1 : function () {
       const col = db._create(colName);
       const prepare = (rows) => {
         col.truncate();
