@@ -1,6 +1,7 @@
 {
   "gitbook": "^3.2.2",
   "title": "ArangoDB VERSION_NUMBER Documentation",
+  "version": "VERSION_NUMBER",
   "author": "ArangoDB GmbH",
   "description": "Official manual for ArangoDB - the native multi-model NoSQL database",
   "language": "en",
@@ -14,6 +15,7 @@
     "sitemap-general@git+https://github.com/Simran-B/gitbook-plugin-sitemap-general.git",
     "ga",
     "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
+    "arangodb-outdated@git+https://github.com/Simran-B/gitbook-plugin-arangodb-outdated.git",
     "edit-link",
     "localized-footer"
   ],
