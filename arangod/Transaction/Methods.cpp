@@ -1549,7 +1549,7 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return insertCoordinator(collectionName, value, optionsCopy);
   }
-  if (_state->isDBServer()) {
+  if (_state->isDBServer() && !optionsCopy.isSynchronousReplicationFrom.empty()) {
     optionsCopy.silent = false;
   }
 
@@ -1734,7 +1734,8 @@ OperationResult transaction::Methods::insertLocal(
       std::string path =
         "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
         "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId();
+        "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId() +
+        "&" + StaticStrings::SilentString + "=true" + 
         "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
 
       VPackBuilder payload;
@@ -1857,7 +1858,7 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return updateCoordinator(collectionName, newValue, optionsCopy);
   }
-  if (_state->isDBServer()) {
+  if (_state->isDBServer() && !optionsCopy.isSynchronousReplicationFrom.empty()) {
     optionsCopy.silent = false;
   }
 
@@ -1918,7 +1919,7 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return replaceCoordinator(collectionName, newValue, optionsCopy);
   }
-  if (_state->isDBServer()) {
+  if (_state->isDBServer() && !optionsCopy.isSynchronousReplicationFrom.empty()) {
     optionsCopy.silent = false;
   }
 
@@ -2107,7 +2108,7 @@ OperationResult transaction::Methods::modifyLocal(
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
           "?isRestore=true&isSynchronousReplication=" +
-          ServerState::instance()->getId();
+          ServerState::instance()->getId() + "&" + StaticStrings::SilentString + "=true";
 
         VPackBuilder payload;
 
@@ -2230,7 +2231,7 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
-  if (_state->isDBServer()) {
+  if (_state->isDBServer() && !optionsCopy.isSynchronousReplicationFrom.empty()) {
     optionsCopy.silent = false;
   }
 
@@ -2398,7 +2399,7 @@ OperationResult transaction::Methods::removeLocal(
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
           "?isRestore=true&isSynchronousReplication=" +
-          ServerState::instance()->getId();
+          ServerState::instance()->getId() + "&" + StaticStrings::SilentString + "=true";
 
         VPackBuilder payload;
 
@@ -2669,10 +2670,7 @@ OperationResult transaction::Methods::truncateLocal(
         }
 
         size_t nrDone = 0;
-        // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
-        // can be a much more expensive operation than a single document
-        // insert/update/remove...
-        size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
+        size_t nrGood = cc->performRequests(requests, 120.0,
                                             nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
           // If any would-be-follower refused to follow there must be a
