@@ -505,7 +505,7 @@ function ahuacatlProfilerTestSuite () {
     },
 
     // DistinctCollectBlock
-    testDistinctCollectBlock : function () {
+    testDistinctCollectBlock1 : function () {
       const query = 'FOR i IN 1..@rows RETURN DISTINCT i';
       const genNodeList = (rows, batches) => [
         { type : SingletonBlock, calls : 1, items : 1 },
@@ -517,6 +517,23 @@ function ahuacatlProfilerTestSuite () {
       runDefaultChecks(query, genNodeList);
     },
 
+    testDistinctCollectBlock2 : function () {
+      const query = 'FOR i IN 1..@rows RETURN DISTINCT i%7';
+      const genNodeList = (rows, batches) => {
+        const resultRows = Math.min(rows, 7);
+        const resultBatches = Math.ceil(resultRows / 1000);
+        return [
+          {type: SingletonBlock, calls: 1, items: 1},
+          {type: CalculationBlock, calls: 1, items: 1},
+          {type: EnumerateListBlock, calls: batches, items: rows},
+          {type: CalculationBlock, calls: batches, items: rows},
+          {type: DistinctCollectBlock, calls: resultBatches, items: resultRows},
+          {type: ReturnBlock, calls: resultBatches, items: resultRows}
+        ];
+      };
+      runDefaultChecks(query, genNodeList);
+    },
+
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
 // like ModificationBlock and BlockWithClients are never instantiated separately
@@ -524,7 +541,7 @@ function ahuacatlProfilerTestSuite () {
 
 // *CalculationBlock
 // *CountCollectBlock
-// DistinctCollectBlock
+// *DistinctCollectBlock
 // EnumerateCollectionBlock
 // *EnumerateListBlock
 // FilterBlock
