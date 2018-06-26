@@ -45,11 +45,11 @@ namespace geo {
 /// in that case a lookup is completely valid. Do not use these
 /// bounds for any kind of arithmetics
 struct Interval {
-  Interval(S2CellId mn, S2CellId mx) noexcept : min(mn), max(mx) {}
-  S2CellId min;
-  S2CellId max;
+  Interval(S2CellId mn, S2CellId mx) noexcept : range_min(mn), range_max(mx) {}
+  S2CellId range_min;
+  S2CellId range_max;
   static bool compare(const Interval& a, const Interval& b) {
-    return a.min < b.min;
+    return a.range_min < b.range_min;
   }
 };
 

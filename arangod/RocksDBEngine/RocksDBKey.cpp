@@ -59,15 +59,20 @@ void RocksDBKey::constructCollection(TRI_voc_tick_t databaseId,
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
-void RocksDBKey::constructDocument(uint64_t collectionId,
+void RocksDBKey::constructDocument(uint64_t objectId,
                                    LocalDocumentId documentId) {
-  TRI_ASSERT(collectionId != 0);
+  TRI_ASSERT(objectId != 0);
   _type = RocksDBEntryType::Document;
   size_t keyLength = 2 * sizeof(uint64_t);
   _buffer.clear();
   _buffer.reserve(keyLength);
-  uint64ToPersistent(_buffer, collectionId);
-  uint64ToPersistent(_buffer, documentId.id());
+  uint64ToPersistent(_buffer, objectId);
+  if (rocksDBKeyFormatEndianess == RocksDBEndianness::Little) {
+    uint64ToPersistent(_buffer, documentId.id());
+  } else {
+    TRI_ASSERT(rocksDBKeyFormatEndianess == RocksDBEndianness::Big);
+    uint64ToBigEndianPersistent(_buffer, documentId.id());
+  }
   TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
@@ -104,7 +109,7 @@ void RocksDBKey::constructEdgeIndexValue(uint64_t indexId,
   _buffer.append(vertexId.data(), vertexId.length());
   _buffer.push_back(_stringSeparator);
   uint64ToPersistent(_buffer, documentId.id());
-  _buffer.push_back(0xFFU);
+  _buffer.push_back(0xFFU); // high-byte for prefix extractor
   TRI_ASSERT(_buffer.size() == keyLength);
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
@@ -304,12 +309,40 @@ TRI_voc_cid_t RocksDBKey::viewId(rocksdb::Slice const& slice) {
   return viewId(slice.data(), slice.size());
 }
 
-LocalDocumentId RocksDBKey::documentId(RocksDBKey const& key) {
-  return documentId(key._type, key._buffer.data(), key._buffer.size());
+LocalDocumentId RocksDBKey::documentId(rocksdb::Slice const& slice) {
+  TRI_ASSERT(slice.size() == 2 * sizeof(uint64_t));
+  // last 8 bytes should be the LocalDocumentId
+  if (rocksDBKeyFormatEndianess == RocksDBEndianness::Little) {
+    return LocalDocumentId(uint64FromPersistent(slice.data() + sizeof(uint64_t)));
+  }
+  TRI_ASSERT(rocksDBKeyFormatEndianess == RocksDBEndianness::Big);
+  return LocalDocumentId(uint64FromBigEndianPersistent(slice.data() + sizeof(uint64_t)));
 }
 
-LocalDocumentId RocksDBKey::documentId(RocksDBEntryType type,
-                                       rocksdb::Slice const& slice) {
+LocalDocumentId RocksDBKey::indexDocumentId(RocksDBEntryType type,
+                                            rocksdb::Slice const& slice) {
+  const char* data = slice.data();
+  const size_t size = slice.size();
+  switch (type) {
+    case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::FulltextIndexValue:
+    case RocksDBEntryType::GeoIndexValue: {
+      TRI_ASSERT(size >= (2 * sizeof(uint64_t)));
+      // last 8 bytes should be the LocalDocumentId
+      return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t)));
+    }
+    case RocksDBEntryType::EdgeIndexValue: {
+      TRI_ASSERT(size >= (sizeof(char) * 3 + 2 * sizeof(uint64_t)));
+      // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
+      // + 8 byte revision ID + 1-byte 0xff
+      return LocalDocumentId(uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
+    }
+      
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
+  }
+  
+  
   return documentId(type, slice.data(), slice.size());
 }
 
@@ -335,14 +368,6 @@ VPackSlice RocksDBKey::indexedVPack(RocksDBKey const& key) {
 
 VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
   return indexedVPack(slice.data(), slice.size());
-}
-
-std::pair<bool, int32_t> RocksDBKey::legacyGeoValues(
-    rocksdb::Slice const& slice) {
-  TRI_ASSERT(slice.size() == sizeof(uint64_t) * 2);
-  uint64_t val = uint64FromPersistent(slice.data() + sizeof(uint64_t));
-  bool isSlot = ((val & 0xFFULL) > 0);  // lowest byte is 0xFF if true
-  return std::pair<bool, int32_t>(isSlot, static_cast<int32_t>(val >> 32));
 }
 
 uint64_t RocksDBKey::geoValue(rocksdb::Slice const& slice) {
@@ -405,33 +430,6 @@ TRI_voc_cid_t RocksDBKey::objectId(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size > sizeof(uint64_t));
   return uint64FromPersistent(data);
-}
-
-LocalDocumentId RocksDBKey::documentId(RocksDBEntryType type, char const* data,
-                                       size_t size) {
-  TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(size >= sizeof(char));
-  switch (type) {
-    case RocksDBEntryType::Document:
-    case RocksDBEntryType::VPackIndexValue:
-    case RocksDBEntryType::FulltextIndexValue:
-    case RocksDBEntryType::GeoIndexValue: {
-      TRI_ASSERT(size >= (2 * sizeof(uint64_t)));
-      // last 8 bytes should be the revision
-      return LocalDocumentId(
-          uint64FromPersistent(data + size - sizeof(uint64_t)));
-    }
-    case RocksDBEntryType::EdgeIndexValue: {
-      TRI_ASSERT(size >= (sizeof(char) * 3 + 2 * sizeof(uint64_t)));
-      // 1 byte prefix + 8 byte objectID + _from/_to + 1 byte \0
-      // + 8 byte revision ID + 1-byte 0xff
-      return LocalDocumentId(
-          uint64FromPersistent(data + size - sizeof(uint64_t) - sizeof(char)));
-    }
-
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
-  }
 }
 
 arangodb::StringRef RocksDBKey::primaryKey(char const* data, size_t size) {

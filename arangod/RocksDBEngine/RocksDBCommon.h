@@ -97,14 +97,6 @@ inline uint64_t uint64FromPersistent(char const* p) {
   return uintFromPersistent<uint64_t>(p);
 }
 
-inline uint32_t uint32FromPersistent(char const* p) {
-  return uintFromPersistent<uint32_t>(p); 
-}
-
-inline uint16_t uint16FromPersistent(char const* p) {
-  return uintFromPersistent<uint16_t>(p); 
-}
-
 /// @brief encodes number little endian
 template<typename T>
 inline void uintToPersistent(char* p, T value) {
@@ -123,14 +115,6 @@ inline void uint64ToPersistent(char* p, uint64_t value) {
   return uintToPersistent<uint64_t>(p, value);
 }
 
-inline void uint32ToPersistent(char* p, uint32_t value) {
-  return uintToPersistent<uint32_t>(p, value);
-}
-
-inline void uint16ToPersistent(char* p, uint16_t value) {
-  return uintToPersistent<uint16_t>(p, value);
-}
-
 template<typename T>
 inline void uintToPersistent(std::string& p, T value) {
 #ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
@@ -147,15 +131,7 @@ inline void uintToPersistent(std::string& p, T value) {
 inline void uint64ToPersistent(std::string& out, uint64_t value) {
   return uintToPersistent<uint64_t>(out, value);
 }
-
-inline void uint32ToPersistent(std::string& out, uint32_t value) {
-  return uintToPersistent<uint32_t>(out, value);
-}
-
-inline void uint16ToPersistent(std::string& out, uint16_t value) {
-  return uintToPersistent<uint16_t>(out, value);
-}
-
+  
 // big endian string encoding to preserver proper ordering under
 // a memcmp based comparison function
 inline void uint64ToBigEndianPersistent(std::string& out, uint64_t value) {
@@ -197,24 +173,18 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds,
                         bool prefix_same_as_start);
 
-std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
-    TRI_voc_tick_t databaseId);
-std::vector<std::pair<RocksDBKey, RocksDBValue>> viewKVPairs(
-    TRI_voc_tick_t databaseId);
-
 // optional switch to std::function to reduce amount of includes and
 // to avoid template
 // this helper is not meant for transactional usage!
 template <typename T>  // T is a invokeable that takes a rocksdb::Iterator*
 void iterateBounds(RocksDBKeyBounds const& bounds, T callback,
-                   rocksdb::ColumnFamilyHandle* handle,
                    rocksdb::ReadOptions options = rocksdb::ReadOptions()) {
   rocksdb::Slice const end = bounds.end();
   options.iterate_upper_bound = &end;  // save to use on rocksb::DB directly
   options.prefix_same_as_start = true;
   options.verify_checksums = false;
   std::unique_ptr<rocksdb::Iterator> it(
-      globalRocksDB()->NewIterator(options, handle));
+      globalRocksDB()->NewIterator(options, bounds.columnFamily()));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     callback(it.get());
   }

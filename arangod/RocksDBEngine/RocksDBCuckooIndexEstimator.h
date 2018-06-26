@@ -289,7 +289,7 @@ class RocksDBCuckooIndexEstimator {
 
       for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
            i += _slotSize) {
-        rocksutils::uint16ToPersistent(
+        rocksutils::uintToPersistent<uint16_t>(
             serialized, *(reinterpret_cast<uint16_t*>(_base + i)));
       }
 
@@ -297,7 +297,7 @@ class RocksDBCuckooIndexEstimator {
 
       for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
            i += _counterSize) {
-        rocksutils::uint32ToPersistent(
+        rocksutils::uintToPersistent<uint32_t>(
             serialized, *(reinterpret_cast<uint32_t*>(_counters + i)));
       }
 
@@ -878,7 +878,7 @@ class RocksDBCuckooIndexEstimator {
     for (uint64_t i = 0; i < (_size * _slotSize * SlotsPerBucket);
          i += _slotSize) {
       *(reinterpret_cast<uint16_t*>(_base + i)) =
-          rocksutils::uint16FromPersistent(current);
+          rocksutils::uintFromPersistent<uint16_t>(current);
       current += _slotSize;
     }
 
@@ -887,7 +887,7 @@ class RocksDBCuckooIndexEstimator {
     for (uint64_t i = 0; i < (_size * _counterSize * SlotsPerBucket);
          i += _counterSize) {
       *(reinterpret_cast<uint32_t*>(_counters + i)) =
-          rocksutils::uint32FromPersistent(current);
+          rocksutils::uintFromPersistent<uint32_t>(current);
       current += _counterSize;
     }
   }

@@ -327,7 +327,7 @@ class MMFilesEngine final : public StorageEngine {
     TRI_voc_cid_t collectionId,
     TRI_idx_iid_t id,
     arangodb::velocypack::Slice const& data
-  ) override;
+  );
 
   // asks the storage engine to drop the specified index and persist the
   // deletion

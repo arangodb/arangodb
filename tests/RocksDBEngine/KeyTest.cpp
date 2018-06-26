@@ -130,8 +130,10 @@ TEST_CASE("RocksDBKeyTest", "[rocksdbkeytest]") {
             17));
   }
 
-  /// @brief test document
-  SECTION("test_document") {
+  /// @brief test document little-endian
+  SECTION("test_document little-endian") {
+    rocksDBKeyFormatEndianess = RocksDBEndianness::Little;
+    
     RocksDBKey key;
     key.constructDocument(1, LocalDocumentId(0));
     auto const& s1 = key.string();
@@ -174,11 +176,57 @@ TEST_CASE("RocksDBKeyTest", "[rocksdbkeytest]") {
     auto const& s7 = key.string();
 
     CHECK(s7.size() == sizeof(uint64_t) + sizeof(uint64_t));
-    CHECK(
-        s7 ==
-        std::string(
-            "\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0",
-            16));
+    CHECK(s7 ==
+          std::string("\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0", 16));
+  }
+  
+  /// @brief test document big-endian
+  SECTION("test_document big-endian") {
+    rocksDBKeyFormatEndianess = RocksDBEndianness::Big;
+    
+    RocksDBKey key;
+    key.constructDocument(1, LocalDocumentId(0));
+    auto const& s1 = key.string();
+    
+    CHECK(s1.size() == +sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s1 == std::string("\x01\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", 16));
+    
+    key.constructDocument(23, LocalDocumentId(42));
+    auto const& s2 = key.string();
+    
+    CHECK(s2.size() == +sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s2 == std::string("\x17\0\0\0\0\0\0\0\0\0\0\0\0\0\0\x2a", 16));
+    
+    key.constructDocument(255, LocalDocumentId(255));
+    auto const& s3 = key.string();
+    
+    CHECK(s3.size() == sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s3 == std::string("\xff\0\0\0\0\0\0\0\0\0\0\0\0\0\0\xff", 16));
+    
+    key.constructDocument(256, LocalDocumentId(257));
+    auto const& s4 = key.string();
+    
+    CHECK(s4.size() == sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s4 == std::string("\0\x01\0\0\0\0\0\0\0\0\0\0\0\0\x01\x01", 16));
+    
+    key.constructDocument(49152, LocalDocumentId(16384));
+    auto const& s5 = key.string();
+    
+    CHECK(s5.size() == sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s5 == std::string("\0\xc0\0\0\0\0\0\0\0\0\0\0\0\0\x40\0", 16));
+    
+    key.constructDocument(12345678901, LocalDocumentId(987654321));
+    auto const& s6 = key.string();
+    
+    CHECK(s6.size() == sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s6 == std::string("\x35\x1c\xdc\xdf\x02\0\0\0\0\0\0\0\x3a\xde\x68\xb1", 16));
+    
+    key.constructDocument(0xf0f1f2f3f4f5f6f7ULL, LocalDocumentId(0xf0f1f2f3f4f5f6f7ULL));
+    auto const& s7 = key.string();
+    
+    CHECK(s7.size() == sizeof(uint64_t) + sizeof(uint64_t));
+    CHECK(s7 ==
+          std::string("\xf7\xf6\xf5\xf4\xf3\xf2\xf1\xf0\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7", 16));
   }
 
   /// @brief test primary index

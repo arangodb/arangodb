@@ -262,13 +262,6 @@ class RocksDBEngine final : public StorageEngine {
     std::string const& oldName
   ) override;
 
-  void createIndex(
-    TRI_vocbase_t& vocbase,
-    TRI_voc_cid_t collectionId,
-    TRI_idx_iid_t id,
-    arangodb::velocypack::Slice const& data
-  ) override;
-
   void unloadCollection(
     TRI_vocbase_t& vocbase,
     LogicalCollection& collection

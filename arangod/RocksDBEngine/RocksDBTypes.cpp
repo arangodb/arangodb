@@ -25,6 +25,12 @@
 
 using namespace arangodb;
 
+/// @brief rocksdb format version
+char arangodb::rocksDBFormatVersion() { return '0'; }
+
+/// @brief format endianess
+RocksDBEndianness arangodb::rocksDBKeyFormatEndianess = RocksDBEndianness::Little;
+
 namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;
@@ -264,4 +270,3 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   return Placeholder;  // avoids warning - errorslice instead ?!
 }
 
-char arangodb::rocksDBFormatVersion() { return '0'; }

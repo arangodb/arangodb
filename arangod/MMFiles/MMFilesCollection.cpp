@@ -2213,7 +2213,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
   VPackSlice data = builder->slice();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(vocbase, collectionId, idx->id(), data);
+  static_cast<MMFilesEngine*>(engine)->createIndex(vocbase, collectionId, idx->id(), data);
 
   if (!engine->inRecovery()) {
     // We need to write an index marker

@@ -29,7 +29,7 @@
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/LocalDocumentId.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/voc-types.h"
 
 #include <rocksdb/slice.h>
 
@@ -223,9 +223,15 @@ class RocksDBKey {
   ///
   /// May be called only on Document keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static LocalDocumentId documentId(RocksDBKey const&);
-  static LocalDocumentId documentId(RocksDBEntryType type, rocksdb::Slice const&);
-
+  static LocalDocumentId documentId(rocksdb::Slice const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the LocalDocumentId from an index key
+  ///
+  /// May be called only on Index keys. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
+  static LocalDocumentId indexDocumentId(RocksDBEntryType type, rocksdb::Slice const&);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the primary key (`_key`) from a key
   ///
@@ -254,13 +260,6 @@ class RocksDBKey {
   static VPackSlice indexedVPack(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the geo pot offset
-  ///
-  /// May be called only on LegacyGeoIndexValues
-  //////////////////////////////////////////////////////////////////////////////
-  static std::pair<bool, int32_t> legacyGeoValues(rocksdb::Slice const& slice);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the geospatial cell id
   ///
   /// May be called only on GeoIndexValues
@@ -283,6 +282,7 @@ class RocksDBKey {
   }
 
  private:
+  /// @brief Entry type in the definitions CF
   static RocksDBEntryType type(char const* data, size_t size) {
     TRI_ASSERT(data != nullptr);
     TRI_ASSERT(size >= sizeof(char));

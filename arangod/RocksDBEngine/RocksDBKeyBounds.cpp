@@ -385,7 +385,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       _internals.push_back(_stringSeparator);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
       if (type == RocksDBEntryType::EdgeIndexValue) {
-        _internals.push_back(0xFFU);
+        _internals.push_back(0xFFU); // high-byte for prefix extractor
       }
       break;
     }
