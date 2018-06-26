@@ -26,6 +26,9 @@
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/ReplicationFeature.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
@@ -76,4 +79,74 @@ Result GlobalTailingSyncer::saveApplierState() {
     return Result(TRI_ERROR_INTERNAL, "unknown exception");
   }
   return TRI_ERROR_INTERNAL;
+}
+
+bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
+  // we do not have a "cname" attribute in the marker...
+  // now check for a globally unique id attribute ("cuid")
+  // if its present, then we will use our local cuid -> collection name
+  // translation table 
+  VPackSlice const name = slice.get("cuid");
+  if (!name.isString()) {
+    return false;
+  }
+
+  if (_translations.empty()) {
+    // no translations yet... query master inventory to find names of all
+    // collections
+    try {
+      GlobalInitialSyncer init(_configuration);
+      VPackBuilder inventoryResponse;
+      Result res = init.inventory(inventoryResponse);
+      if (res.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
+        return false;
+      }
+
+      VPackSlice invSlice = inventoryResponse.slice();
+      if (!invSlice.isObject()) { 
+        return false;
+      }
+      invSlice = invSlice.get("databases");
+      if (!invSlice.isObject()) {
+        return false;
+      }
+
+      for (auto const& it : VPackObjectIterator(invSlice)) {
+        VPackSlice dbObj = it.value;
+        if (!dbObj.isObject()) {
+          continue;
+        }
+
+        dbObj = dbObj.get("collections");
+        if (!dbObj.isArray()) {
+          return false;
+        }
+    
+        for (auto const& it : VPackArrayIterator(dbObj)) {
+          if (!it.isObject()) {
+            continue;
+          }
+          VPackSlice c = it.get("parameters");
+          if (c.hasKey("name") && c.hasKey("globallyUniqueId")) {
+            // we'll store everything for all databases in a global hash table,
+            // as we expect the globally unique ids to be unique...
+            _translations[c.get("globallyUniqueId").copyString()] = c.get("name").copyString();
+          }
+        }
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching inventory: " << ex.what();
+      return false;
+    }
+  }
+
+  // look up cuid in translations map 
+  auto it = _translations.find(name.copyString());
+
+  if (it != _translations.end()) {
+    return isExcludedCollection((*it).second);
+  }
+
+  return false;
 }
