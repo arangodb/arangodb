@@ -51,33 +51,31 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
-void GraphManager::createEdgeCollection(std::string const& name) {
-  createCollection(name, TRI_COL_TYPE_EDGE);
+Result GraphManager::createEdgeCollection(std::string const& name, bool waitForSync) {
+  return createCollection(name, TRI_COL_TYPE_EDGE, waitForSync);
 }
 
-void GraphManager::createVertexCollection(std::string const& name) {
-  createCollection(name, TRI_COL_TYPE_DOCUMENT);
+Result GraphManager::createVertexCollection(std::string const& name, bool waitForSync) {
+  return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSync);
 }
 
-void GraphManager::createCollection(std::string const& name,
-                                    TRI_col_type_e colType) {
+Result GraphManager::createCollection(std::string const& name,
+                                    TRI_col_type_e colType, bool waitForSync) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
-  VPackBuilder collection;
-  {
-    VPackObjectBuilder guard(&collection);
-    collection.add(StaticStrings::DataSourceType, VPackValue(colType));
-    collection.add(StaticStrings::DataSourceName, VPackValue(name));
-  }
-  ctx()->vocbase().createCollection(collection.slice());
+  Result res = methods::Collections::create(
+      &ctx()->vocbase(), name, colType, VPackSlice::emptyObjectSlice(), waitForSync, true,
+      [&](LogicalCollection* coll) {});
+
+  return res;
 }
 
-void GraphManager::findOrCreateVertexCollectionByName(const std::string& name) {
+void GraphManager::findOrCreateVertexCollectionByName(const std::string& name, bool waitForSync) {
   std::shared_ptr<LogicalCollection> def;
 
   def = getCollectionByName(ctx()->vocbase(), name);
   if (def == nullptr) {
-    createVertexCollection(name);
+    createVertexCollection(name, waitForSync);
   }
 }
 
@@ -141,7 +139,7 @@ void GraphManager::assertFeasibleEdgeDefinitions(
 
 // TODO replace the slice argument with an actual EdgeDefinition
 void GraphManager::findOrCreateCollectionsByEdgeDefinitions(
-    VPackSlice edgeDefinitions) {
+    VPackSlice edgeDefinitions, bool waitForSync) {
   std::shared_ptr<LogicalCollection> def;
 
   for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
@@ -155,20 +153,20 @@ void GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     def = getCollectionByName(ctx()->vocbase(), collection);
 
     if (def == nullptr) {
-      createEdgeCollection(collection);
+      createEdgeCollection(collection, waitForSync);
     }
 
     // duplicates in from and to shouldn't occur, but are safely ignored here
     for (auto const& edge : VPackArrayIterator(from)) {
       def = getCollectionByName(ctx()->vocbase(), edge.copyString());
       if (def == nullptr) {
-        createVertexCollection(edge.copyString());
+        createVertexCollection(edge.copyString(), waitForSync);
       }
     }
     for (auto const& edge : VPackArrayIterator(to)) {
       def = getCollectionByName(ctx()->vocbase(), edge.copyString());
       if (def == nullptr) {
-        createVertexCollection(edge.copyString());
+        createVertexCollection(edge.copyString(), waitForSync);
       }
     }
   }
@@ -290,11 +288,11 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(
   }
 
   // find or create the collections given by the edge definition
-  findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions);
+  findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, waitForSync);
 
   // find or create the oprhan collections
   for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
-    findOrCreateVertexCollectionByName(orphan.copyString());
+    findOrCreateVertexCollectionByName(orphan.copyString(), waitForSync);
   }
 
   // finally save the graph

@@ -139,7 +139,7 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
 
   GraphManager gmngr{ctx()};
   for (auto const& po : possibleOrphans) {
-    gmngr.createVertexCollection(po);
+    gmngr.createVertexCollection(po, waitForSync);
   }
 
   return result;
@@ -285,7 +285,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
   builder.close();
 
   GraphManager gmngr{ctx()};
-  gmngr.findOrCreateCollectionsByEdgeDefinitions(builder.slice());
+  gmngr.findOrCreateCollectionsByEdgeDefinitions(builder.slice(), waitForSync);
 
   std::unordered_set<std::string> possibleOrphans;
   std::string currentEdgeDefinitionName;
@@ -366,7 +366,7 @@ GraphOperations::addOrphanCollection(VPackSlice document, bool waitForSync) {
 
   def = gmngr.getCollectionByName(ctx()->vocbase(), collectionName);
   if (def == nullptr) {
-    gmngr.createVertexCollection(collectionName);
+    gmngr.createVertexCollection(collectionName, waitForSync);
   } else {
     if (def->type() != 2) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
@@ -516,7 +516,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::addEdgeDefinition(
   builder.add(edgeDefinition);
   builder.close();
 
-  gmngr.findOrCreateCollectionsByEdgeDefinitions(builder.slice());
+  gmngr.findOrCreateCollectionsByEdgeDefinitions(builder.slice(), waitForSync);
 
   std::unordered_map<std::string, EdgeDefinition> edgeDefs =
       _graph.edgeDefinitions();

@@ -166,7 +166,7 @@ class Graph {
 
   bool hasEdgeCollection(std::string const& collectionName) const;
 
-  bool const& isSmart() const;
+  virtual bool isSmart() const;
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
   std::string const& smartGraphAttribute() const;

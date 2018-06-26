@@ -57,12 +57,14 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create vertex collection by name
   ////////////////////////////////////////////////////////////////////////////////
-  void findOrCreateVertexCollectionByName(const std::string& name);
+  void findOrCreateVertexCollectionByName(const std::string& name,
+                                          bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
   ////////////////////////////////////////////////////////////////////////////////
-  void createCollection(std::string const& name, TRI_col_type_e colType);
+  Result createCollection(std::string const& name, TRI_col_type_e colType,
+                          bool waitForSync);
 
  public:
   GraphManager() = delete;
@@ -88,17 +90,18 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition);
+  void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition,
+                                                bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
   ////////////////////////////////////////////////////////////////////////////////
-  void createVertexCollection(std::string const& name);
+  Result createVertexCollection(std::string const& name, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an edge collection
   ////////////////////////////////////////////////////////////////////////////////
-  void createEdgeCollection(std::string const& name);
+  Result createEdgeCollection(std::string const& name, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief check if the edge definition conflicts with one in an existing

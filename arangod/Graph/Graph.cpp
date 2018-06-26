@@ -96,8 +96,6 @@ std::unordered_map<std::string, EdgeDefinition> const& Graph::edgeDefinitions()
   return _edgeDefs;
 }
 
-bool const& Graph::isSmart() const { return _isSmart; }
-
 uint64_t Graph::numberOfShards() const { return _numberOfShards; }
 
 uint64_t Graph::replicationFactor() const { return _replicationFactor; }
@@ -213,17 +211,21 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
     insertVertexCollections(orphans);
     insertOrphanCollections(orphans);
   }
+
+  #ifdef USE_ENTERPRISE
   if (slice.hasKey(_attrIsSmart)) {
     setSmartState(slice.get(_attrIsSmart).getBool());
   }
+  if (slice.hasKey(_attrSmartGraphAttribute)) {
+    setSmartGraphAttribute(slice.get(_attrSmartGraphAttribute).copyString());
+  }
+  #endif
+
   if (slice.hasKey(_attrNumberOfShards)) {
     setNumberOfShards(slice.get(_attrNumberOfShards).getUInt());
   }
   if (slice.hasKey(_attrReplicationFactor)) {
     setReplicationFactor(slice.get(_attrReplicationFactor).getUInt());
-  }
-  if (slice.hasKey(_attrSmartGraphAttribute)) {
-    setSmartGraphAttribute(slice.get(_attrSmartGraphAttribute).copyString());
   }
   setId("_graphs/" + graphName_);  // TODO: how to fetch id properly?
   setRev(slice.get(StaticStrings::RevString).copyString());
@@ -439,10 +441,13 @@ void Graph::graphToVpack(VPackBuilder& builder) const {
   }
   builder.close();  // orphan array
 
-  builder.add("isSmart", VPackValue(isSmart()));
+  if (isSmart()) {
+    builder.add("isSmart", VPackValue(isSmart()));
+    builder.add("smartGraphAttribute", VPackValue(smartGraphAttribute()));
+  }
+
   builder.add("numberOfShards", VPackValue(numberOfShards()));
   builder.add("replicationFactor", VPackValue(replicationFactor()));
-  builder.add("smartGraphAttribute", VPackValue(smartGraphAttribute()));
   builder.add(StaticStrings::RevString, VPackValue(rev()));
   builder.add(StaticStrings::IdString, VPackValue(id()));
 
@@ -472,4 +477,8 @@ void Graph::verticesToVpack(VPackBuilder& builder) const {
   builder.close();
 
   builder.close();
+}
+
+bool Graph::isSmart() const {
+  return false;
 }

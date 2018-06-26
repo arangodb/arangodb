@@ -229,10 +229,6 @@ void GeneralRequest::addSuffix(std::string&& part) {
   _suffixes.emplace_back(std::move(part));
 }
 
-void GeneralRequest::prependSuffix(std::string &&part) {
-  _suffixes.emplace(_suffixes.begin(), part);
-}
-
 // needs to be here because of a gcc bug with templates and namespaces
 // https://stackoverflow.com/a/25594741/1473569
 namespace arangodb {
