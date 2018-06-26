@@ -328,13 +328,13 @@ describe('_api/gharial', () => {
 
     const edgeDef = {
       _from: 'peter',
-      _to: 'xxx/charlie'
+      _to: 'persons/charlie'
     };
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
     expect(req.statusCode).to.equal(404);
-    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
     expect(db._collection(eName)).to.not.be.null;
     expect(db._collection(vName)).to.not.be.null;
@@ -351,14 +351,14 @@ describe('_api/gharial', () => {
     expect(g).to.not.be.null;
 
     const edgeDef = {
-      _from: 'xxx/peter',
+      _from: 'persons/peter',
       _to: 'charlie'
     };
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(404);
-    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
     expect(db._collection(eName)).to.not.be.null;
     expect(db._collection(vName)).to.not.be.null;
@@ -381,8 +381,8 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(404);
-    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
     expect(db._collection(eName)).to.not.be.null;
     expect(db._collection(vName)).to.not.be.null;
@@ -403,8 +403,8 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(404);
-    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
     expect(db._collection(eName)).to.not.be.null;
     expect(db._collection(vName)).to.not.be.null;

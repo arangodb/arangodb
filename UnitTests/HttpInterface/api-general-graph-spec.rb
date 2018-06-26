@@ -159,7 +159,6 @@ describe ArangoDB do
         return doc
       end
 
-
       def create_edge (waitForSync, graph_name, collection, from, to, body, options = {})
         cmd = edge_endpoint(graph_name, collection)
         cmd = cmd + "?waitForSync=#{waitForSync}"
@@ -1172,11 +1171,17 @@ describe ArangoDB do
               doc.parsed_response['code'].should eq(404)
             end
 
+            def check400 (doc)
+              doc.code.should eq(400)
+              doc.parsed_response['error'].should eq(true)
+              doc.parsed_response['code'].should eq(400)
+              doc.parsed_response['errorMessage'].should include("not found")
+            end
+
             def check404Edge (doc)
               check404(doc)
               doc.parsed_response['errorNum'].should eq(1930)
               doc.parsed_response['errorMessage'].should eq("edge collection not used in graph")
-
             end
 
             def check404Vertex (doc)
@@ -1188,6 +1193,12 @@ describe ArangoDB do
               check404(doc)
               doc.parsed_response['errorNum'].should eq(1203)
               doc.parsed_response['errorMessage'].should eq("collection or view not found")
+            end
+
+            def check400CRUD (doc)
+              check400(doc)
+              doc.parsed_response['errorNum'].should eq(1233)
+              doc.parsed_response['errorMessage'].should eq("not found")
             end
 
             it "change edge definition" do
@@ -1226,7 +1237,7 @@ describe ArangoDB do
             end
 
             it "create edge" do
-              check404CRUD(create_edge( sync, graph_name, unknown_name, unknown_name, unknown_name, {}))
+              check400CRUD(create_edge( sync, graph_name, unknown_name, unknown_name, unknown_name, {}))
             end
 
             it "get edge" do

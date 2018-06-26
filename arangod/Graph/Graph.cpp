@@ -1180,14 +1180,12 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceEdge(
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
     const std::string& definitionName, VPackSlice document, bool waitForSync,
     bool returnNew) {
-  // TODO create edge only if vertices id's are existent
-  auto const& vertexCollections = _graph.vertexCollections();
 
   VPackSlice fromStringSlice = document.get(StaticStrings::FromString);
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
 
   if (fromStringSlice.isNone() || toStringSlice.isNone()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,
                                    "not found");
   }
   std::string fromString = fromStringSlice.copyString();
@@ -1200,7 +1198,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
     fromCollectionName = fromString.substr(0, pos);
     fromCollectionKey = fromString.substr(pos + 1, fromString.length());
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,
                                    "not found");
   }
 
@@ -1211,6 +1209,20 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
     toCollectionName = toString.substr(0, pos);
     toCollectionKey = toString.substr(pos + 1, toString.length());
   } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,
+                                   "not found");
+  }
+
+  // check if vertex collections are part of the graph definition
+  auto it = _graph.vertexCollections().find(fromCollectionName);
+  if (it == _graph.vertexCollections().end()) {
+    // not found from vertex
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   "not found");
+  }
+  it = _graph.vertexCollections().find(toCollectionName);
+  if (it == _graph.vertexCollections().end()) {
+    // not found to vertex
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                    "not found");
   }
@@ -1230,17 +1242,17 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
     bF.add(StaticStrings::KeyString, VPackValue(fromCollectionKey));
   }
 
-  std::vector<std::string> trxCollections;
+  std::vector<std::string> readCollections;
   std::vector<std::string> writeCollections;
-  trxCollections.emplace_back(fromCollectionName);
-  trxCollections.emplace_back(toCollectionName);
+  readCollections.emplace_back(fromCollectionName);
+  readCollections.emplace_back(toCollectionName);
   writeCollections.emplace_back(definitionName);
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
 
   std::unique_ptr<transaction::Methods> trx(new UserTransaction(
-      ctx(), trxCollections, writeCollections, {}, trxOptions));
+      ctx(), readCollections, writeCollections, {}, trxOptions));
 
   Result res = trx->begin();
   if (!res.ok()) {
