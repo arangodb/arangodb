@@ -319,6 +319,9 @@ SET(ARANGOD_SOURCES
   Graph/ClusterTraverserCache.cpp
   Graph/EdgeCollectionInfo.cpp
   Graph/Graph.cpp
+  Graph/GraphCache.cpp
+  Graph/GraphManager.cpp
+  Graph/GraphOperations.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathOptions.cpp

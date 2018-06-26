@@ -333,7 +333,7 @@ describe('_api/gharial', () => {
     let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
       body: JSON.stringify(edgeDef)
     });
-    expect(req.statusCode).to.equal(404);
+    expect(req.statusCode).to.equal(400);
     expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
     expect(db._collection(eName)).to.not.be.null;
