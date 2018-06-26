@@ -2780,7 +2780,7 @@ OperationResult transaction::Methods::count(std::string const& collectionName,
 /// @brief count the number of documents in a collection
 #ifndef USE_ENTERPRISE
 OperationResult transaction::Methods::countCoordinator(
-    std::string const& collectionName, bool aggregate, bool sendNoLockHeader) {
+    std::string const& collectionName, bool aggregate) {
   std::vector<std::pair<std::string, uint64_t>> count;
   auto res = arangodb::countOnCoordinator(
     vocbase().name(), collectionName, *this, count 
