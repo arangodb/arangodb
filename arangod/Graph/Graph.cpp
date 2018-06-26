@@ -1696,6 +1696,11 @@ void GraphManager::assertFeasibleEdgeDefinitions(
   }
 
   for (auto graphSlice : VPackArrayIterator(graphs.get("graphs"))) {
+    graphSlice = graphSlice.resolveExternals();
+    TRI_ASSERT(graphSlice.isObject() && graphSlice.hasKey("_key"));
+    if (!graphSlice.isObject() || !graphSlice.hasKey("_key")) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+    }
     Graph graph{graphSlice.get("_key").copyString(), graphSlice};
 
     for (auto const& sGED : graph.edgeDefinitions()) {
@@ -1774,7 +1779,8 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(
 
   // validate edgeDefinitions
   VPackSlice edgeDefinitions = document.get(Graph::_attrEdgeDefs);
-  if (edgeDefinitions.isNull()) {
+  if (edgeDefinitions.isNull() || edgeDefinitions.isNone()) {
+    // TODO there is no test for this
     edgeDefinitions = VPackSlice::emptyArraySlice();
   }
 
