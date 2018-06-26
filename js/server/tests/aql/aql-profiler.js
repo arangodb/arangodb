@@ -40,6 +40,8 @@ const assert = jsunity.jsUnity.assertions;
 
 function ahuacatlProfilerTestSuite () {
 
+  const colName = 'UnitTestProfilerCol';
+
   const batchSize = 1000;
 
   const testRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
@@ -372,9 +374,15 @@ function ahuacatlProfilerTestSuite () {
   //   { type : EnumerateListNode, calls : 3, items : 2500 },
   //   { type : ReturnNode, calls : 3, items : 2500 }
   // ]
-  const runDefaultChecks = function (query, genNodeList) {
+  const runDefaultChecks = function (
+    query,
+    genNodeList,
+    prepare = () => {},
+    bind = (rows) => ({rows})
+  ) {
     for (const rows of testRowCounts) {
-      const profile = db._query(query, {rows}, {profile: 2}).getExtra();
+      prepare(rows);
+      const profile = db._query(query, bind(rows), {profile: 2}).getExtra();
 
       assertIsLevel2Profile(profile);
       assertStatsNodesMatchPlanNodes(profile);
@@ -403,6 +411,7 @@ function ahuacatlProfilerTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._drop(colName);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -533,6 +542,24 @@ function ahuacatlProfilerTestSuite () {
       };
       runDefaultChecks(query, genNodeList);
     },
+
+    // EnumerateCollectionBlock
+    testEnumerateCollectionBlock : function () {
+      const col = db._create(colName);
+      const prepare = (rows) => {
+        col.truncate();
+        col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
+      };
+      const bind = () => ({'@col': colName});
+      const query = `FOR d IN @@col RETURN d.value`;
+      const genNodeList = (rows, batches) => [
+        {type: SingletonBlock, calls: 1, items: 1},
+        {type: EnumerateCollectionBlock, calls: batches, items: rows},
+        {type: CalculationBlock, calls: batches, items: rows},
+        {type: ReturnBlock, calls: batches, items: rows}
+      ];
+      runDefaultChecks(query, genNodeList, prepare, bind);
+    }
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
