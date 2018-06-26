@@ -1936,7 +1936,9 @@ function optimizerAggregateResultsSuite () {
 
 jsunity.run(optimizerAggregateTestSuite);
 jsunity.run(optimizerAggregateCollectionTestSuite);
-jsunity.run(optimizerAggregateResultsSuite);
+if (isCluster) {
+  jsunity.run(optimizerAggregateResultsSuite);
+}
 
 return jsunity.done();
 
