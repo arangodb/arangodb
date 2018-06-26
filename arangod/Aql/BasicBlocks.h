@@ -52,6 +52,10 @@ class SingletonBlock final : public ExecutionBlock {
     }
   }
 
+  Type getType() const override final {
+    return Type::SINGLETON;
+  }
+
  private:
   std::pair<ExecutionState, arangodb::Result> getOrSkipSome(size_t atMost, bool skipping,
                                                             AqlItemBlock*& result, size_t& skipped) override;
@@ -70,6 +74,10 @@ class FilterBlock final : public ExecutionBlock {
 
   std::pair<ExecutionState, arangodb::Result> initializeCursor(
       AqlItemBlock* items, size_t pos) override final;
+
+  Type getType() const override final {
+    return Type::FILTER;
+  }
 
  private:
   /// @brief internal function to actually decide if the document should be used
@@ -110,7 +118,7 @@ class LimitBlock final : public ExecutionBlock {
         _count(0),
         _state(State::INITFULLCOUNT),  // start in the beginning
         _fullCount(ep->_fullCount),
-        _skipped(0),
+        _limitSkipped(0),
         _result(nullptr) {}
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) final override;
@@ -118,6 +126,10 @@ class LimitBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                   AqlItemBlock*& result_,
                                                   size_t& skipped) override;
+
+  Type getType() const override final {
+    return Type::LIMIT;
+  }
 
  protected:
 
@@ -142,7 +154,10 @@ class LimitBlock final : public ExecutionBlock {
   /// @brief whether or not the block should count what it limits
   bool const _fullCount;
 
-  size_t _skipped;
+  /// @brief skipped count. We cannot use _skipped here, has it would interfere
+  /// with calling ExecutionBlock::getOrSkipSome in this getOrSkipSome
+  /// implementation.
+  size_t _limitSkipped;
 
   /// @brief result to return in getOrSkipSome
   std::unique_ptr<AqlItemBlock> _result;
@@ -160,6 +175,10 @@ class ReturnBlock final : public ExecutionBlock {
   /// without creating new blocks
   /// returns the id of the register the final result can be found in
   RegisterId returnInheritedResults();
+
+  Type getType() const override final {
+    return Type::RETURN;
+  }
 
  private:
   /// @brief if set to true, the return block will return the AqlItemBlocks it
@@ -179,6 +198,10 @@ class NoResultsBlock final : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
   ExecutionState hasMoreState() override final { return ExecutionState::DONE; }
+
+  Type getType() const override final {
+    return Type::NO_RESULTS;
+  }
 
  private:
   std::pair<ExecutionState, arangodb::Result> getOrSkipSome(

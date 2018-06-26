@@ -809,13 +809,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         continue;
       }
 
-      {
-        JobGuard jobGuard(SchedulerFeature::SCHEDULER);
-        jobGuard.block();
-        
-        TRI_ASSERT(guard.isLocked());
-        guard.wait(100000);
-      }
+      TRI_ASSERT(guard.isLocked());
+      guard.wait(100000);
 
       if (exitWhenNoContext.tick()) {
         vocbase->release();

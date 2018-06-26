@@ -566,23 +566,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
       // in short: this avoids copying the return values
       engine->resultRegister(
-          static_cast<ReturnBlock*>(root)->returnInheritedResults());
+        dynamic_cast<ReturnBlock*>(root)->returnInheritedResults());
     }
 
     engine->_root = root;
-
-    if (plan->isResponsibleForInitialize()) {
-      // TODO REMOVE THIS LOOP
-      // TODO if possible, remove the initializeCursor() call completely.
-      while (true) {
-        auto res = root->initializeCursor(nullptr, 0);
-        if (res.first == ExecutionState::WAITING) {
-          engine->getQuery()->tempWaitForAsyncResponse();
-        } else {
-          break;
-        }
-      }
-    }
 
     return engine;
   } catch (...) {

@@ -77,6 +77,50 @@ class ExecutionBlock {
 
   virtual ~ExecutionBlock();
 
+  /// @brief type of the block. only the blocks actually instantiated are
+  // needed, so e.g. ModificationBlock or ExecutionBlock are omitted.
+  enum class Type {
+    _UNDEFINED,
+    CALCULATION,
+    COUNT_COLLECT,
+    DISTINCT_COLLECT,
+    ENUMERATE_COLLECTION,
+    ENUMERATE_LIST,
+    FILTER,
+    HASHED_COLLECT,
+    INDEX,
+    LIMIT,
+    NO_RESULTS,
+    REMOTE,
+    RETURN,
+    SHORTEST_PATH,
+    SINGLETON,
+    SORT,
+    SORTED_COLLECT,
+    SORTING_GATHER,
+    SUBQUERY,
+    TRAVERSAL,
+    UNSORTING_GATHER,
+    REMOVE,
+    INSERT,
+    UPDATE,
+    REPLACE,
+    UPSERT,
+    SCATTER,
+    DISTRIBUTE,
+    IRESEARCH_VIEW,
+    IRESEARCH_VIEW_ORDERED,
+    IRESEARCH_VIEW_UNORDERED,
+  };
+  // omitted in this list are (because):
+  // WaitingExecutionBlockMock (mock)
+  // ExecutionBlockMock (mock)
+  // ModificationBlock (insert, update, etc.)
+  // BlockWithClients (scatter, distribute)
+  // IResearchViewBlockBase (IResearchView*)
+
+  static std::string typeToString(Type type);
+
  public:
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
@@ -166,6 +210,8 @@ class ExecutionBlock {
 
   RegisterId getNrOutputRegisters() const;
 
+  virtual Type getType() const = 0;
+
  protected:
   /// @brief request an AqlItemBlock from the memory manager
   AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
@@ -203,8 +249,10 @@ class ExecutionBlock {
   /// clearRegisters() - both is done in getSome(), which calls this via
   /// getSomeWithoutRegisterClearout(). The same must hold for all overriding
   /// implementations.
-  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
-                                                          AqlItemBlock*& result, size_t& skipped);
+  virtual std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost,
+                                                          bool skipping,
+                                                          AqlItemBlock*& result,
+                                                          size_t& skipped);
 
   /// @brief Returns the success return start of this block.
   ///        Can either be HASMORE or DONE.
@@ -213,6 +261,18 @@ class ExecutionBlock {
   ///        HASMORE is allowed to lie, so a next call to get/skipSome could return
   ///        no more results.
   virtual ExecutionState getHasMoreState();
+
+  /// @brief If the buffer is empty, calls getBlock(atMost). The return values
+  /// mean:
+  /// - WAITING: upstream returned WAITING, state is unchanged
+  /// - HAS_BLOCKS: there is at least one block in the buffer
+  /// - NO_NORE_BLOCKS: the buffer is empty and the upstream is DONE
+  enum class BufferState { HAS_BLOCKS, NO_MORE_BLOCKS, WAITING };
+  BufferState getBlockIfNeeded(size_t atMost);
+
+  /// @brief Updates _skipped and _pos; removes the first item from the
+  /// buffer if necessary and returns it if _returnFrontBlock is true.
+  void advanceCursor(size_t numInputRowsConsumed, size_t numOutputRowsCreated);
 
  protected:
   /// @brief the execution engine
@@ -254,7 +314,12 @@ class ExecutionBlock {
   ///        used to determine HASMORE or DONE better
   ExecutionState _upstreamState;
 
- private:
+  /// @brief If true (default), advanceCursor() returns the front block to the
+  /// item manager. Every time the block ownership of the current_buffer.front()
+  /// is moved somewhere else, this must be set to false. When advanceCursor()
+  /// removes the first block of the buffer, it also sets this to true again.
+  bool _returnFrontBlock;
+
   /// @brief The number of skipped/processed rows in getOrSkipSome, used to keep
   /// track of it despite WAITING interruptions. As
   /// ExecutionBlock::getOrSkipSome is called directly in some overriden
@@ -262,6 +327,7 @@ class ExecutionBlock {
   /// _skipped counter.
   size_t _skipped;
 
+ private:
   /// @brief Collects result blocks during ExecutionBlock::getOrSkipSome. Must
   /// be a member variable due to possible WAITING interruptions.
   aql::BlockCollector _collector;

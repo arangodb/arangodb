@@ -227,17 +227,6 @@ BlockWithClients::BlockWithClients(ExecutionEngine* engine,
   }
 }
 
-void BlockWithClients::resetDoneForClient() {
-  _doneForClient.clear();
-  _doneForClient.reserve(_nrClients);
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    _doneForClient.push_back(false);
-    TRI_ASSERT(hasMoreForClientId(i));
-  }
-}
-
-/// @brief initializeCursor: reset _doneForClient
 std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
     AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
@@ -250,7 +239,6 @@ std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
     return res;
   }
 
-  resetDoneForClient();
   return res;
 
   // cppcheck-suppress style
@@ -260,8 +248,6 @@ std::pair<ExecutionState, Result> BlockWithClients::initializeCursor(
 /// @brief shutdown
 int BlockWithClients::shutdown(int errorCode) {
   DEBUG_BEGIN_BLOCK();
-
-  _doneForClient.clear();
 
   if (_wasShutdown) {
     return TRI_ERROR_NO_ERROR;
@@ -378,9 +364,7 @@ bool ScatterBlock::hasMoreForClientId(size_t clientId) {
   if (pos.first <= _buffer.size()) {
     return true;
   }
-
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  return !_doneForClient[clientId];
+  return _upstreamState == ExecutionState::HASMORE;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -424,10 +408,8 @@ std::pair<ExecutionState, arangodb::Result> ScatterBlock::getOrSkipSomeForShard(
     if (res.first == ExecutionState::WAITING) {
       return {res.first, TRI_ERROR_NO_ERROR};
     }
-    if (res.first == ExecutionState::DONE) {
-      _doneForClient[clientId] = true;
-    }
     if (!res.second) {
+      TRI_ASSERT(res.first == ExecutionState::DONE);
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
     }
   }
@@ -536,15 +518,15 @@ ExecutionState DistributeBlock::getHasMoreStateForClientId(size_t clientId) {
 
 bool DistributeBlock::hasMoreForClientId(size_t clientId) {
   DEBUG_BEGIN_BLOCK();
+  // We have more for a client ID if
+  // we still have some information in the local buffer
+  // or if there is still some information from upstream
 
   TRI_ASSERT(_distBuffer.size() > clientId);
   if (!_distBuffer[clientId].empty()) {
     return true;
   }
-
-  TRI_ASSERT(_doneForClient.size() > clientId);
-  return !_doneForClient[clientId];
-
+  return _upstreamState == ExecutionState::HASMORE;
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
@@ -588,11 +570,9 @@ DistributeBlock::getOrSkipSomeForShard(size_t atMost, bool skipping,
       return {res.first, TRI_ERROR_NO_ERROR};
     }
     if (!res.second) {
+      // Upstream is empty!
+      TRI_ASSERT(res.first == ExecutionState::DONE);
       return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-    }
-    if (res.first == ExecutionState::DONE) {
-      // Do not ask again, but we still have some stuff to process
-      _doneForClient[clientId] = true;
     }
   }
 
@@ -662,10 +642,8 @@ std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
       if (res.first == ExecutionState::WAITING) {
         return {res.first, false};
       }
-      if (res.first == ExecutionState::DONE) {
-        _doneForClient[clientId] = true;
-      }
       if (!res.second) {
+        TRI_ASSERT(res.first == ExecutionState::DONE);
         if (buf.empty()) {
           TRI_ASSERT(getHasMoreStateForClientId(clientId) == ExecutionState::DONE);
           return {ExecutionState::DONE, false};
@@ -676,7 +654,7 @@ std::pair<ExecutionState, bool> DistributeBlock::getBlockForClient(
 
     AqlItemBlock* cur = _buffer[_index];
 
-    while (_pos < cur->size() && buf.size() < atMost) {
+    while (_pos < cur->size()) {
       // this may modify the input item buffer in place
       size_t const id = sendToClient(cur);
 
@@ -993,16 +971,11 @@ Result RemoteBlock::sendAsyncRequest(
 
   ++_engine->_stats.requests;
   std::shared_ptr<ClusterCommCallback> callback = std::make_shared<WakeupQueryCallback>(this, _engine->getQuery());
-  {
-    // TODO Do we need this jobguard?
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
 
-    // TODO Returns OperationID do we need it in any way?
-    cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
-                     std::move(url), body, headers, callback, defaultTimeOut,
-                     true);
-  }
+  // TODO Returns OperationID do we need it in any way?
+  cc->asyncRequest(clientTransactionId, coordTransactionId, _server, type,
+                   std::move(url), body, headers, callback, defaultTimeOut,
+                   true);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
@@ -1033,13 +1006,9 @@ std::unique_ptr<ClusterCommResult> RemoteBlock::sendRequest(
     urlPart + _queryId;
 
   ++_engine->_stats.requests;
-  {
-    JobGuard guard(SchedulerFeature::SCHEDULER);
-    guard.block();
 
-    return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
-                           std::move(url), body, headers, defaultTimeOut);
-  }
+  return cc->syncRequest(clientTransactionId, coordTransactionId, _server, type,
+                         std::move(url), body, headers, defaultTimeOut);
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

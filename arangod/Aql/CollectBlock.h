@@ -95,6 +95,10 @@ class SortedCollectBlock final : public ExecutionBlock {
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
+  Type getType() const override final {
+    return Type::SORTED_COLLECT;
+  }
+
  private:
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                   AqlItemBlock*& result,
@@ -115,9 +119,6 @@ class SortedCollectBlock final : public ExecutionBlock {
 
   /// @brief details about the current group
   CollectGroup _currentGroup;
-
-  /// @brief number of skipped items
-  size_t _skipped;
 
   /// @brief the last input block
   AqlItemBlock* _lastBlock;
@@ -147,6 +148,10 @@ class HashedCollectBlock final : public ExecutionBlock {
   HashedCollectBlock(ExecutionEngine*, CollectNode const*);
   ~HashedCollectBlock() final;
 
+  Type getType() const override final {
+    return Type::HASHED_COLLECT;
+  }
+
  private:
   std::pair<ExecutionState, Result> getOrSkipSome(size_t atMost, bool skipping,
                                                   AqlItemBlock*& result,
@@ -165,9 +170,6 @@ class HashedCollectBlock final : public ExecutionBlock {
   /// used
   RegisterId _collectRegister;
 
-  /// @brief number of skipped items
-  size_t _skipped;
-
   /// @brief the last input block
   AqlItemBlock* _lastBlock;
 
@@ -185,6 +187,10 @@ class DistinctCollectBlock final : public ExecutionBlock {
   DistinctCollectBlock(ExecutionEngine*, CollectNode const*);
   ~DistinctCollectBlock();
 
+  Type getType() const override final {
+    return Type::DISTINCT_COLLECT;
+  }
+
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
@@ -201,12 +207,15 @@ class DistinctCollectBlock final : public ExecutionBlock {
   
   std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
   std::unique_ptr<AqlItemBlock> _res;
-  size_t _skipped;
 };
 
 class CountCollectBlock final : public ExecutionBlock {
  public:
   CountCollectBlock(ExecutionEngine*, CollectNode const*);
+
+  Type getType() const override final {
+    return Type::COUNT_COLLECT;
+  }
 
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
   

@@ -642,10 +642,6 @@ ClusterCommResult const ClusterComm::wait(
   ClusterCommResult return_result;
   return_result.status = CL_COMM_DROPPED;
 
-  // tell scheduler that we are waiting:
-  JobGuard guard{SchedulerFeature::SCHEDULER};
-  guard.block();
-
   do {
     CONDITION_LOCKER(locker, somethingReceived);
     match_good = false;

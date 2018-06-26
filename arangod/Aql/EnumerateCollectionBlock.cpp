@@ -135,12 +135,13 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
   bool needMore = false;
   AqlItemBlock* cur = nullptr;
   std::unique_ptr<AqlItemBlock> res;
+  // TODO This does getBlock calls after the upstream reported DONE
   do {
     do {
       needMore = false;
 
       if (_buffer.empty()) {
-        size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+        size_t toFetch = std::min(DefaultBatchSize(), atMost);
         auto upstreamRes = ExecutionBlock::getBlock(toFetch);
         if (upstreamRes.first == ExecutionState::WAITING) {
           return {ExecutionState::WAITING, nullptr};

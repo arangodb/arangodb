@@ -55,15 +55,7 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       _request(request),
       _response(response),
       _statistics(nullptr),
-      _state(HandlerState::PREPARE) {
-  bool found;
-  std::string const& startThread =
-      _request->header(StaticStrings::StartThread, found);
-
-  if (found) {
-    _needsOwnThread = StringUtils::boolean(startThread);
-  }
-}
+      _state(HandlerState::PREPARE) {}
 
 RestHandler::~RestHandler() {
   RequestStatistics* stat = _statistics.exchange(nullptr);

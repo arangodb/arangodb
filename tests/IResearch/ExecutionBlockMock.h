@@ -101,6 +101,10 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
     size_t atMost
   ) override;
 
+  Type getType() const override {
+    return Type::_UNDEFINED;
+  }
+
  private:
   arangodb::aql::AqlItemBlock const* _data;
   size_t _pos_in_data{};

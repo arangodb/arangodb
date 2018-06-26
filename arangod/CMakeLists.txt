@@ -441,9 +441,7 @@ SET(ARANGOD_SOURCES
   RestServer/VocbaseContext.cpp
   Scheduler/Acceptor.cpp
   Scheduler/AcceptorTcp.cpp
-  Scheduler/Job.cpp
   Scheduler/JobGuard.cpp
-  Scheduler/JobQueue.cpp
   Scheduler/ListenTask.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp

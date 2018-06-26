@@ -115,13 +115,6 @@ bool RestCursorHandler::cancel() {
   return cancelQuery();
 }
 
-size_t RestCursorHandler::queue() const {
-  if (ServerState::instance()->isCoordinator()) {
-    return JobQueue::AQL_QUEUE; // needs to be on background thread
-  }
-  return JobQueue::STANDARD_QUEUE;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register the query either as streaming cursor or in _query
 /// the query is not executed here.

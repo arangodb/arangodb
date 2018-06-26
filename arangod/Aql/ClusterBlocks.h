@@ -106,9 +106,6 @@ class BlockWithClients : public ExecutionBlock {
   /// corresponding to <shardId>
   size_t getClientId(std::string const& shardId);
 
-  /// @brief reset the list of done for client information
-  void resetDoneForClient();
-
   /// @brief hasMoreForClientId: any more for client <cliendId>?
   virtual bool hasMoreForClientId(size_t clientId) = 0;
 
@@ -120,19 +117,19 @@ class BlockWithClients : public ExecutionBlock {
   /// @brief _nrClients: total number of clients
   size_t _nrClients;
 
-  /// @brief _doneForClient: the analogue of _done: _doneForClient.at(i) = true
-  /// if we are done for the shard with clientId = i
-  std::vector<bool> _doneForClient;
-
  private:
   bool _wasShutdown;
 };
 
-class ScatterBlock : public BlockWithClients {
+class ScatterBlock final : public BlockWithClients {
  public:
   ScatterBlock(ExecutionEngine* engine, ScatterNode const* ep,
                std::vector<std::string> const& shardIds)
       : BlockWithClients(engine, ep, shardIds) {}
+
+  Type getType() const override final {
+    return Type::SCATTER;
+  }
 
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
@@ -159,11 +156,15 @@ class ScatterBlock : public BlockWithClients {
   std::vector<std::pair<size_t, size_t>> _posForClient;
 };
 
-class DistributeBlock : public BlockWithClients {
+class DistributeBlock final : public BlockWithClients {
  public:
   DistributeBlock(ExecutionEngine* engine, DistributeNode const* ep,
                   std::vector<std::string> const& shardIds,
                   Collection const* collection);
+
+  Type getType() const override final {
+    return Type::DISTRIBUTE;
+  }
 
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
@@ -255,8 +256,12 @@ class RemoteBlock final : public ExecutionBlock {
   ExecutionState hasMoreState() override final;
 
   /// @brief handleAsyncResult
-  bool handleAsyncResult(ClusterCommResult* result) override; 
-  
+  bool handleAsyncResult(ClusterCommResult* result) override;
+
+  Type getType() const override final {
+    return Type::REMOTE;
+  }
+
  private:
   /// @brief internal method to send a request
   /// TODO:Deprecated!
@@ -327,6 +332,10 @@ class UnsortingGatherBlock final : public ExecutionBlock {
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
 
+  Type getType() const override final {
+    return Type::UNSORTING_GATHER;
+  }
+
  private:
   /// @brief _atDep: currently pulling blocks from _dependencies.at(_atDep),
   size_t _atDep{};
@@ -377,6 +386,10 @@ class SortingGatherBlock final : public ExecutionBlock {
 
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override final;
+
+  Type getType() const override final {
+    return Type::SORTING_GATHER;
+  }
 
  private:
 

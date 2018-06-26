@@ -46,6 +46,10 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
   EnumerateCollectionBlock(ExecutionEngine* engine,
                            EnumerateCollectionNode const* ep);
 
+  Type getType() const override final {
+    return Type::ENUMERATE_COLLECTION;
+  }
+
   /// @brief initializeCursor
   std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos) override;
 
