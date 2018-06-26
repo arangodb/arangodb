@@ -56,6 +56,8 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   uint64_t _nrMinimalThreads = 2;
   uint64_t _nrMaximalThreads = 0;
   uint64_t _queueSize = 128;
+  uint64_t _fifo1Size = 16 * 4096;
+  uint64_t _fifo2Size = 4096;
 
  public:
   size_t concurrency() const { return static_cast<size_t>(_nrMaximalThreads); }

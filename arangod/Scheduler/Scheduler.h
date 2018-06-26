@@ -57,7 +57,8 @@ class Scheduler {
   friend class arangodb::ListenTask;
 
  public:
-  Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize);
+  Scheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
+            uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~Scheduler();
 
   // queue handling:
@@ -91,7 +92,8 @@ class Scheduler {
   };
 
   void post(std::function<void()> const& callback);
-  void post(asio_ns::io_context::strand&, std::function<void()> const& callback);
+  void post(asio_ns::io_context::strand&,
+            std::function<void()> const& callback);
 
   bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();
