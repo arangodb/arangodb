@@ -32,6 +32,9 @@ set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield
 set(WITH_TESTS OFF CACHE BOOL "disable tests")
 set(WITH_SNAPPY ON CACHE BOOL "force enable snappy")
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+if (MSVC) 
+  set(SNAPPY_HOME "${SNAPPY_SOURCE_DIR}" CACHE PATH "snappy source")
+endif ()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/${ARANGO_ROCKSDB_VERSION} EXCLUDE_FROM_ALL)
 
 target_link_libraries(rocksdb)
