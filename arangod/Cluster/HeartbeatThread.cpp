@@ -1066,61 +1066,60 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
             << "Missing name in agency database plan";
         continue;
       }
-
       std::string const name = options.value.get("name").copyString();
-      TRI_voc_tick_t id = 0;
-
-      if (options.value.hasKey("id")) {
-        VPackSlice const v = options.value.get("id");
-        if (v.isString()) {
-          try {
-            id = std::stoul(v.copyString());
-          } catch (std::exception const& e) {
-            LOG_TOPIC(ERR, Logger::HEARTBEAT)
-                << "Failed to convert id string to number";
-            LOG_TOPIC(ERR, Logger::HEARTBEAT) << e.what();
-          }
-        }
+      TRI_ASSERT(!name.empty());
+      
+      VPackSlice const idSlice = options.value.get("id");
+      if (!idSlice.isString()) {
+        LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Missing id in agency database plan";
+        TRI_ASSERT(false);
+        continue;
+      }
+      TRI_voc_tick_t id = basics::StringUtils::uint64(idSlice.copyString());
+      TRI_ASSERT(id != 0);
+      if (id == 0) {
+        LOG_TOPIC(ERR, Logger::HEARTBEAT)
+        << "Failed to convert database id string to number";
+        TRI_ASSERT(false);
+        continue;
       }
 
-      if (id > 0) {
-        ids.push_back(id);
-      }
+      // known plan IDs
+      ids.push_back(id);
 
-      TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(name);
-
+      TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
       if (vocbase == nullptr) {
         // database does not yet exist, create it now
 
-        if (id == 0) {
-          // verify that we have an id
-          id = ClusterInfo::instance()->uniqid();
-        }
-
         // create a local database object...
-        int res = databaseFeature->createDatabaseCoordinator(id, name, vocbase);
+        int res = databaseFeature->createDatabase(id, name, vocbase);
 
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "creating local database '" << name
                    << "' failed: " << TRI_errno_string(res);
         } else {
-          HasRunOnce = true;
+          HasRunOnce.store(true, std::memory_order_release);
         }
       } else {
+        if (vocbase->isSystem()) {
+          // workaround: _system collection already exists now on every coordinator
+          // setting HasRunOnce lets coordinator startup continue
+          TRI_ASSERT(vocbase->id() == 1);
+          HasRunOnce.store(true, std::memory_order_release);
+        }
         vocbase->release();
       }
     }
 
     // get the list of databases that we know about locally
-    std::vector<TRI_voc_tick_t> localIds =
-        databaseFeature->getDatabaseIdsCoordinator(false);
+    std::vector<TRI_voc_tick_t> localIds = databaseFeature->getDatabaseIds(false);
 
     for (auto id : localIds) {
       auto r = std::find(ids.begin(), ids.end(), id);
 
       if (r == ids.end()) {
         // local database not found in the plan...
-        databaseFeature->dropDatabaseCoordinator(id, false);
+        databaseFeature->dropDatabase(id, false, true);
       }
     }
 

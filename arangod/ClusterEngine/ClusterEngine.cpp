@@ -258,13 +258,13 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
   status = TRI_ERROR_NO_ERROR;
 
   return std::make_unique<TRI_vocbase_t>(
-    TRI_VOCBASE_TYPE_NORMAL, id, args.get("name").copyString()
+    TRI_VOCBASE_TYPE_COORDINATOR, id, args.get("name").copyString()
   );
 }
 
 int ClusterEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                              VPackSlice const& slice) {
-  return id == 1 ? TRI_ERROR_NO_ERROR : TRI_ERROR_NOT_IMPLEMENTED;
+  return TRI_ERROR_NO_ERROR;
 }
 
 void ClusterEngine::prepareDropDatabase(
@@ -272,7 +272,7 @@ void ClusterEngine::prepareDropDatabase(
     bool useWriteMarker,
     int& status
 ) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  status = TRI_ERROR_NO_ERROR;
 }
 
 Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {
@@ -288,7 +288,7 @@ void ClusterEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
 
 // wal in recovery
 bool ClusterEngine::inRecovery() {
-  return false;
+  return false; // never
 }
 
 void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {
