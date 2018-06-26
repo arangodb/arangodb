@@ -191,8 +191,8 @@ struct IResearchViewMetaState {
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
-  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
-  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMetaState::Mask !!!
+  // NOTE: if adding fields don't forget to modify IResearchLinkMetaState::Mask constructor !!!
   // NOTE: if adding fields don't forget to modify the init(...) function !!!
   // NOTE: if adding fields don't forget to modify the json(...) function !!!
   // NOTE: if adding fields don't forget to modify the memory() function !!!
