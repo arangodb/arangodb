@@ -649,11 +649,12 @@ function optimizerAggregateTestSuite () {
     testAggregateNested : function () {
       var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE length = LENGTH(j) RETURN length";
 
-      var results = AQL_EXECUTE(query);
+      let opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
+      var results = AQL_EXECUTE(query, null, opts);
       assertEqual(1, results.json.length);
       assertEqual(4000, results.json[0]);
 
-      var plan = AQL_EXPLAIN(query).plan;
+      var plan = AQL_EXPLAIN(query, null, opts).plan;
       // must not have a SortNode
       assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
 
@@ -1816,12 +1817,126 @@ function optimizerAggregateCollectionTestSuite () {
   };
 }
 
+function optimizerAggregateResultsSuite () {
+  const opt = { optimizer: { rules: ["-collect-in-cluster"] } };
+  let compare = function(query) {
+    let expected = AQL_EXECUTE(query, null, opt).json[0];
+    if (typeof expected === 'number') {
+      expected = expected.toFixed(6);
+    }
+
+    let plan = AQL_EXPLAIN(query, null, opt).plan;
+    let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+    assertEqual(1, collectNodes.length);
+    assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+
+    let actual   = AQL_EXECUTE(query).json[0];
+    if (typeof actual === 'number') {
+      actual = actual.toFixed(6);
+    }
+    assertEqual(expected, actual, query);
+    
+    plan = AQL_EXPLAIN(query).plan;
+    collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+    assertEqual(2, collectNodes.length);
+    assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
+  };
+
+  let c;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection", { numberOfShards: 5 });
+
+      for (var i = 0; i < 2000; ++i) {
+        c.save({ group: "test" + (i % 10), value1: i, value2: i % 5 });
+      }
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+    testCount : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = COUNT(doc.value1) RETURN v");
+    },
+
+    testAvg1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = AVG(doc.value1) RETURN v");
+    },
+    
+    testAvg2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = AVG(doc.value2) RETURN v");
+    },
+    
+    testVariance1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = VARIANCE(doc.value1) RETURN v");
+    },
+    
+    testVariance2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = VARIANCE(doc.value2) RETURN v");
+    },
+    
+    testVarianceSample1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = VARIANCE_SAMPLE(doc.value1) RETURN v");
+    },
+    
+    testVarianceSample2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = VARIANCE_SAMPLE(doc.value2) RETURN v");
+    },
+    
+    testStddev1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = STDDEV(doc.value1) RETURN v");
+    },
+    
+    testStddev2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = STDDEV(doc.value2) RETURN v");
+    },
+    
+    testStddevSample1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = STDDEV_SAMPLE(doc.value1) RETURN v");
+    },
+    
+    testStddevSample2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = STDDEV_SAMPLE(doc.value2) RETURN v");
+    },
+    
+    testUnique1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value1) RETURN v");
+    },
+
+    testUnique2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value2) RETURN v");
+    },
+    
+    testSortedUnique1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = SORTED_UNIQUE(doc.value1) RETURN v");
+    },
+
+    testSortedUnique2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = SORTED_UNIQUE(doc.value2) RETURN v");
+    },
+    
+    testCountDistinct1 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = COUNT_DISTINCT(doc.value1) RETURN v");
+    },
+
+    testCountDistinct2 : function () {
+      compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = COUNT_DISTINCT(doc.value2) RETURN v");
+    }
+
+  };
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerAggregateTestSuite);
 jsunity.run(optimizerAggregateCollectionTestSuite);
+jsunity.run(optimizerAggregateResultsSuite);
 
 return jsunity.done();
 
