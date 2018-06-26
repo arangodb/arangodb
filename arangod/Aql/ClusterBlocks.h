@@ -353,6 +353,10 @@ class SortingGatherBlock final : public ExecutionBlock {
 
 class SingleRemoteOperationBlock final : public ExecutionBlock {
   /// @brief constructors/destructors
+ private:
+  bool getOne(size_t atMost,
+              arangodb::aql::AqlItemBlock* aqlres,
+              size_t outputCounter);
  public:
   SingleRemoteOperationBlock(ExecutionEngine* engine,
                              SingleRemoteOperationNode const* en

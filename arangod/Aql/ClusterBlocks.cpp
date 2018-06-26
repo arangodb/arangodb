@@ -1666,33 +1666,10 @@ merge(VPackSlice document, std::string key, TRI_voc_rid_t revision){
   return builder;
 }
 
-/// @brief getSome
-AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
-  DEBUG_BEGIN_BLOCK();
+bool SingleRemoteOperationBlock::getOne(size_t atMost,
+                                        arangodb::aql::AqlItemBlock* aqlres,
+                                        size_t outputCounter) {
   int possibleWrites = 0; // TODO - get real statistic values!
-  traceGetSomeBegin(atMost);
-
-  if (_done) {
-    traceGetSomeEnd(nullptr);
-    return nullptr;
-  }
-
-  AqlItemBlock* cur = nullptr;
-
-  if (_buffer.empty()) {
-    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-    if (!ExecutionBlock::getBlock(toFetch)) {
-      _done = true;
-      traceGetSomeEnd(nullptr);
-      return nullptr;
-    }
-    _pos = 0;  // this is in the first block
-  }
-
-  // If we get here, we do have _buffer.front()
-  cur = _buffer.front();
-  TRI_ASSERT(cur != nullptr);
-
   auto node = ExecutionNode::castTo<SingleRemoteOperationNode const*>(getPlanNode());
   auto out = node->_outVariable;
   auto in = node->_inVariable;
@@ -1746,12 +1723,11 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   VPackBuilder inBuilder;
   VPackSlice inSlice = VPackSlice::emptyObjectSlice();
   if(in) {// IF NOT REMOVE OR SELECT
-   std::unique_ptr<AqlItemBlock> inVariables(ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
-   //LOG_DEVEL << "in Doc " << inRegId;
-   AqlValue const& inDocument = inVariables->getValueReference(0, inRegId);
-   //LOG_DEVEL << "in Doc";
-   inBuilder.add(inDocument.slice());
-   inSlice = inBuilder.slice();
+    //LOG_DEVEL << "in Doc " << inRegId;
+    AqlValue const& inDocument = _buffer.front()->getValueReference(_pos, inRegId);
+    // LOG_DEVEL << "in Doc";
+    inBuilder.add(inDocument.slice());
+    inSlice = inBuilder.slice();
     //LOG_DEVEL <<"#### ClusterBlock inSlice from inDoc" << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
   }
 
@@ -1815,14 +1791,16 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
         // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
         _done = true;
         traceGetSomeEnd(nullptr);
-        return nullptr;
+        // LOG_DEVEL << "error1";
+        return false;
       } else if (!opOptions.silent){
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
 
     if (node->_mode == ExecutionNode::NodeType::INDEX) {
       traceGetSomeEnd(nullptr);
-      return nullptr;
+      // LOG_DEVEL << "error2";
+      return false;
     }
   }
 
@@ -1833,20 +1811,15 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   if (!(out || OLD || NEW)) {
     _done = true;
     traceGetSomeEnd(nullptr);
-    return nullptr;
+    //LOG_DEVEL << "neither output";
+    return false;
   }
 
   // Fill itemblock
   // create block that can hold a result with one entry and a number of variables
   // corresponing to the amount of out variables
-  std::unique_ptr<AqlItemBlock> aqlres;
-
-  RegisterId nrRegs =
-    getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
-  aqlres.reset(requestBlock(1, nrRegs));
 
   // only copy 1st row of registers inherited from previous frame(s)
-  inheritRegisters(cur, aqlres.get(), _pos);
   TRI_ASSERT(result.ok());
   VPackSlice outDocument = VPackSlice::noneSlice();
   if(result.buffer){
@@ -1870,9 +1843,9 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   bool aqlValueSet = false;
   if(out) {
     if(!outDocument.isNone()){
-      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), AqlValue(outDocument));
     } else {
-      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
     //LOG_DEVEL << "set out";
@@ -1880,39 +1853,87 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   if(OLD) {
     TRI_ASSERT(opOptions.returnOld);
     if(!oldDocument.isNone()){
-      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), AqlValue(oldDocument));
     } else {
-      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
-    //LOG_DEVEL << "set old";
+    // LOG_DEVEL << "set old";
   }
   if(NEW) {
     TRI_ASSERT(opOptions.returnNew);
     if(!newDocument.isNone()){
-      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), AqlValue(newDocument));
     } else {
-      aqlres->emplaceValue(0, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
+      aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
     //LOG_DEVEL << "set new";
   }
-  traceGetSomeEnd(aqlres.get());
+  traceGetSomeEnd(aqlres);
   throwIfKilled();  // check if we were aborted
 
   TRI_IF_FAILURE("SingleRemoteOperationBlock::moreDocuments") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-
-  _done = true;
   if(!aqlValueSet) {
-    //LOG_DEVEL << "noting set in the value even though it should";
+    // LOG_DEVEL << "noting set in the value even though it should";
+    traceGetSomeEnd(nullptr);
+    return false;
+  }
+  return true;
+}
+
+/// @brief getSome
+AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
+  DEBUG_BEGIN_BLOCK();
+  traceGetSomeBegin(atMost);
+
+  if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
 
-  return aqlres.release();
+  std::unique_ptr<AqlItemBlock> aqlres;
 
+  RegisterId nrRegs =
+    getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+  aqlres.reset(requestBlock(atMost, nrRegs));
+
+  int outputCounter = 0;
+  if (_buffer.empty()) {
+    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+    if (!ExecutionBlock::getBlock(toFetch)) {
+      _done = true;
+      traceGetSomeEnd(nullptr);
+      return nullptr;
+    }
+    _pos = 0;  // this is in the first block
+  }
+
+  // If we get here, we do have _buffer.front()
+  arangodb::aql::AqlItemBlock* cur = _buffer.front();
+  TRI_ASSERT(cur != nullptr);
+  size_t n = cur->size();
+  for (size_t i = 0; i < n; i++) {
+    // LOG_DEVEL << "One Regset" << i;
+    inheritRegisters(cur, aqlres.get(), _pos);
+    if (getOne(1, aqlres.get(), outputCounter)) {
+      outputCounter++;
+    }
+    _pos++;
+  }
+  _buffer.pop_front();  // does not throw
+  returnBlock(cur);
+  _pos = 0;
+  if (outputCounter == 0) {
+    return nullptr;
+  }
+  aqlres->shrink(outputCounter);
+
+  // Clear out registers no longer needed later:
+  clearRegisters(aqlres.get());
+  return aqlres.release();
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
