@@ -51,26 +51,30 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
-Result GraphManager::createEdgeCollection(std::string const& name, bool waitForSync) {
+Result GraphManager::createEdgeCollection(std::string const& name,
+                                          bool waitForSync) {
   return createCollection(name, TRI_COL_TYPE_EDGE, waitForSync);
 }
 
-Result GraphManager::createVertexCollection(std::string const& name, bool waitForSync) {
+Result GraphManager::createVertexCollection(std::string const& name,
+                                            bool waitForSync) {
   return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSync);
 }
 
 Result GraphManager::createCollection(std::string const& name,
-                                    TRI_col_type_e colType, bool waitForSync) {
+                                      TRI_col_type_e colType,
+                                      bool waitForSync) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
   Result res = methods::Collections::create(
-      &ctx()->vocbase(), name, colType, VPackSlice::emptyObjectSlice(), waitForSync, true,
-      [&](LogicalCollection* coll) {});
+      &ctx()->vocbase(), name, colType, VPackSlice::emptyObjectSlice(),
+      waitForSync, true, [&](LogicalCollection* coll) {});
 
   return res;
 }
 
-void GraphManager::findOrCreateVertexCollectionByName(const std::string& name, bool waitForSync) {
+void GraphManager::findOrCreateVertexCollectionByName(const std::string& name,
+                                                      bool waitForSync) {
   std::shared_ptr<LogicalCollection> def;
 
   def = getCollectionByName(ctx()->vocbase(), name);
@@ -86,7 +90,8 @@ void GraphManager::assertFeasibleEdgeDefinitions(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
 
-  std::unordered_map<std::string, ::arangodb::graph::EdgeDefinition> tmpEdgeDefinitions;
+  std::unordered_map<std::string, ::arangodb::graph::EdgeDefinition>
+      tmpEdgeDefinitions;
 
   for (auto const& slice : VPackArrayIterator(edgeDefinitionsSlice)) {
     auto res = EdgeDefinition::createFromVelocypack(slice);
@@ -233,24 +238,32 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(
 
   uint64_t replicationFactor;
   try {
-    replicationFactor = document.get(Graph::_attrReplicationFactor).getUInt();
+    replicationFactor = document.get(std::vector<std::string>({ "options", Graph::_attrReplicationFactor})).getUInt();
   } catch (...) {
     replicationFactor = 1;
   }
 
   uint64_t numberOfShards;
   try {
-    numberOfShards = document.get(Graph::_attrNumberOfShards).getUInt();
+    numberOfShards = document.get(std::vector<std::string>({ "options", Graph::_attrNumberOfShards})).getUInt();
   } catch (...) {
     numberOfShards = 1;
   }
 
-  bool isSmart;
+  #ifdef USE_ENTERPRISE
+  bool isSmart = false;
   try {
     isSmart = document.get(Graph::_attrIsSmart).getBool();
   } catch (...) {
-    isSmart = false;
   }
+
+  std::string smartGraphAttribute;
+  try {
+    LOG_TOPIC(FATAL, Logger::GRAPHS) << document.toString();
+    smartGraphAttribute = document.get(std::vector<std::string>({ "options", Graph::_attrSmartGraphAttribute})).copyString();
+  } catch (...) {
+  }
+  #endif
 
   // check for multiple collection graph usage
 
@@ -303,7 +316,12 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(
   builder.add(Graph::_attrOrphans, orphanCollections);
   builder.add(Graph::_attrReplicationFactor, VPackValue(replicationFactor));
   builder.add(Graph::_attrNumberOfShards, VPackValue(numberOfShards));
+
+#ifdef USE_ENTERPRISE
   builder.add(Graph::_attrIsSmart, VPackValue(isSmart));
+  builder.add(Graph::_attrSmartGraphAttribute, VPackValue(smartGraphAttribute));
+#endif
+
   builder.close();
 
   OperationResult result = trx.insert(Graph::_graphs, builder.slice(), options);

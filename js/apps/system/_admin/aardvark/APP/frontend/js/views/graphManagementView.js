@@ -655,7 +655,7 @@
         } else {
           newCollectionObject.isSmart = true;
           newCollectionObject.options = {
-            numberOfShards: $('#new-numberOfShards').val(),
+            numberOfShards: parseInt($('#new-numberOfShards').val()),
             smartGraphAttribute: $('#new-smartGraphAttribute').val(),
             replicationFactor: parseInt($('#new-replicationFactor').val())
           };
@@ -664,7 +664,7 @@
         if (frontendConfig.isCluster) {
           if ($('#general-numberOfShards').val().length > 0) {
             newCollectionObject.options = {
-              numberOfShards: $('#general-numberOfShards').val()
+              numberOfShards: parseInt($('#general-numberOfShards').val())
             };
           }
           if ($('#general-replicationFactor').val().length > 0) {
@@ -672,7 +672,7 @@
               newCollectionObject.options.replicationFactor = $('#general-replicationFactor').val();
             } else {
               newCollectionObject.options = {
-                replicationFactor: $('#general-replicationFactor').val()
+                replicationFactor: parseInt($('#general-replicationFactor').val())
               };
             }
           }
