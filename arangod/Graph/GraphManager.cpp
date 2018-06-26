@@ -259,7 +259,6 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(
 
   std::string smartGraphAttribute;
   try {
-    LOG_TOPIC(FATAL, Logger::GRAPHS) << document.toString();
     smartGraphAttribute = document.get(std::vector<std::string>({ "options", Graph::_attrSmartGraphAttribute})).copyString();
   } catch (...) {
   }
