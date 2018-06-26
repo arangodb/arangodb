@@ -113,7 +113,7 @@ auto expressionExtractor = [](arangodb::aql::AstNode* root) {
   return root->getMember(0);
 };
 
-auto boostedExpressionExtractor = [](arangodb::aql::AstNode* root) {
+auto wrappedExpressionExtractor = [](arangodb::aql::AstNode* root) {
   return expressionExtractor(root)->getMember(0)->getMember(0);
 };
 
@@ -545,15 +545,18 @@ SECTION("AttributeAccess") {
   }
 
   assertExpressionFilter("FOR d IN collection FILTER d RETURN d"); // no reference to `d`
-  assertExpressionFilter("FOR d IN collection FILTER BOOST(d, 1.5) RETURN d", 1.5, boostedExpressionExtractor); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER ANALYZER(d, 'test_analyzer') RETURN d", 1, wrappedExpressionExtractor); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d, 1.5) RETURN d", 1.5, wrappedExpressionExtractor); // no reference to `d`
   assertExpressionFilter("FOR d IN collection FILTER d.a.b.c RETURN d"); // no reference to `d`
-  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b.c, 2.5) RETURN d", 2.5, boostedExpressionExtractor); // no reference to `d`
-  assertExpressionFilter("FOR d IN collection FILTER d.a.b[TO_STRING('c')] RETURN d"); // no reference to `d`
-  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b[TO_STRING('c')], 3.5) RETURN d", 3.5, boostedExpressionExtractor); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER d.a.b.c RETURN d"); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b.c, 2.5) RETURN d", 2.5, wrappedExpressionExtractor); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER ANALYZER(d.a.b[TO_STRING('c')], 'test_analyzer') RETURN d", 1, wrappedExpressionExtractor); // no reference to `d`
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b[TO_STRING('c')], 3.5) RETURN d", 3.5, wrappedExpressionExtractor); // no reference to `d`
 
   // nondeterministic expression -> wrap it
   assertExpressionFilter("FOR d IN collection FILTER d.a.b[_NONDETERM_('c')] RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b[_NONDETERM_('c')], 1.5) RETURN d", 1.5, boostedExpressionExtractor);
+  assertExpressionFilter("FOR d IN collection FILTER ANALYZER(d.a.b[_NONDETERM_('c')], 'test_analyzer') RETURN d", 1.0, wrappedExpressionExtractor);
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d.a.b[_NONDETERM_('c')], 1.5) RETURN d", 1.5, wrappedExpressionExtractor);
 }
 
 SECTION("ValueReference") {
@@ -821,6 +824,14 @@ SECTION("ValueReference") {
     assertFilterSuccess("FOR d IN collection FILTER BOOST('1', 2.5) RETURN d", expected);
   }
 
+  // string value == true, analyzer
+  {
+    irs::Or expected;
+    expected.add<irs::all>();
+
+    assertFilterSuccess("FOR d IN collection FILTER ANALYZER('1', 'test_analyzer') RETURN d", expected);
+  }
+
   // null expression, boost
   {
     ExpressionContextMock ctx;
@@ -838,10 +849,11 @@ SECTION("ValueReference") {
   // self-reference
   assertExpressionFilter("FOR d IN collection FILTER d RETURN d");
   assertExpressionFilter("FOR d IN collection FILTER d[1] RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER BOOST(d[1], 1.5) RETURN d", 1.5, boostedExpressionExtractor);
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d[1], 1.5) RETURN d", 1.5, wrappedExpressionExtractor);
+  assertExpressionFilter("FOR d IN collection FILTER ANALYZER(d[1], 'test_analyzer') RETURN d", 1.0, wrappedExpressionExtractor);
   assertExpressionFilter("FOR d IN collection FILTER d.a[1] RETURN d");
   assertExpressionFilter("FOR d IN collection FILTER d[*] RETURN d");
-  assertExpressionFilter("FOR d IN collection FILTER BOOST(d[*], 0.5) RETURN d", 0.5, boostedExpressionExtractor);
+  assertExpressionFilter("FOR d IN collection FILTER BOOST(d[*], 0.5) RETURN d", 0.5, wrappedExpressionExtractor);
   assertExpressionFilter("FOR d IN collection FILTER d.a[*] RETURN d");
 }
 
@@ -892,6 +904,8 @@ SECTION("SystemFunctions") {
 
   // nondeterministic expression : wrap it
   assertExpressionFilter("FOR d IN VIEW myView FILTER RAND() RETURN d");
+  assertExpressionFilter("FOR d IN VIEW myView FILTER BOOST(RAND(), 1.5) RETURN d", 1.5, wrappedExpressionExtractor);
+  assertExpressionFilter("FOR d IN VIEW myView FILTER ANALYZER(RAND(), 'test_analyzer') RETURN d", 1.0, wrappedExpressionExtractor);
 }
 
 SECTION("UnsupportedUserFunctions") {
@@ -946,7 +960,60 @@ SECTION("Boost") {
 }
 
 SECTION("Analyzer") {
-  // FIXME TODO
+  // simple analyzer
+  {
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleString("foo", "test_analyzer")).term("bar");
+
+    assertFilterSuccess(
+      "FOR d IN collection FILTER ANALYZER(d.foo == 'bar', 'test_analyzer') RETURN d",
+      expected
+    );
+  }
+
+  // overriden analyzer
+  {
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleStringIdentity("foo")).term("bar");
+
+    assertFilterSuccess(
+      "FOR d IN collection FILTER ANALYZER(ANALYZER(d.foo == 'bar', 'identity'), 'test_analyzer') RETURN d",
+      expected
+    );
+  }
+
+  // expression as the parameter
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue("test_")));
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleString("foo", "test_analyzer")).term("bar");
+
+    assertFilterSuccess(
+      "LET x='test_' FOR d IN collection FILTER ANALYZER(d.foo == 'bar', CONCAT(x, 'analyzer')) RETURN d",
+      expected,
+      &ctx
+    );
+  }
+
+  // wrong number of arguments
+  assertFilterParseFail("FOR d IN collection FILTER ANALYZER(d.foo == 'bar') RETURN d");
+
+  // wrong argument type
+  assertFilterFail("FOR d IN collection FILTER ANALYZER(d.foo == 'abc', 'invalid analzyer') RETURN d");
+  assertFilterFail("FOR d IN collection FILTER ANALYZER(d.foo == 'abc', 3.14) RETURN d");
+  assertFilterFail("FOR d IN collection FILTER ANALYZER(d.foo == 'abc', null) RETURN d");
+  assertFilterFail("FOR d IN collection FILTER ANALYZER(d.foo == 'abc', true) RETURN d");
+
+  // non-deterministic expression
+  assertFilterFail("FOR d IN collection FILTER ANALYZER(d.foo == 'abc', RAND() > 0 ? 'test_analyzer' : 'identity') RETURN d");
+
+  // can't execute boost function
+  assertFilterExecutionFail(
+    "LET x=1.5 FOR d IN collection FILTER ANALYZER(d.foo == 'abc', ANALYZER(x, 'test_analyzer')) RETURN d",
+    &ExpressionContextMock::EMPTY
+  );
 }
 
 SECTION("MinMatch") {
@@ -1001,6 +1068,17 @@ SECTION("MinMatch") {
     assertFilterSuccess(
       "LET x=1.5 FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', BOOST(d.foobaz == 'baz', x), d.foobad == 'bad', x) RETURN d",
       expected,
+      &ctx
+    );
+  }
+
+  // wrong sub-expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.5})));
+
+    assertFilterExecutionFail(
+      "LET x=1.5 FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', BOOST(d.foobaz == 'baz', TO_STRING(x)), d.foobad == 'bad', x) RETURN d",
       &ctx
     );
   }
@@ -1079,8 +1157,6 @@ SECTION("MinMatch") {
     "FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar', d.foobaz == 'baz', d.foobad == 'bad', RAND()) RETURN d",
     &ExpressionContextMock::EMPTY
   );
-
-  // FIXME TODO
 }
 
 SECTION("Exists") {
@@ -2021,6 +2097,7 @@ SECTION("StartsWith") {
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['name'][1], 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.name[1], 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(starts_with(d.name[1], 'abc'), 'identity') RETURN d", expected);
   }
 
   // without scoring limit, complex name
@@ -2033,6 +2110,7 @@ SECTION("StartsWith") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['obj']['properties']['name'], 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj['properties']['name'], 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj['properties'].name, 'abc') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(starts_with(d.obj['properties'].name, 'abc'), 'identity') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj.properties.name, 'abc') RETURN d", expected);
   }
 
@@ -2047,6 +2125,19 @@ SECTION("StartsWith") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]']['name'], 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]'].name, 'abc') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, 'abc') RETURN d", expected);
+  }
+
+  // without scoring limit, complex name with offset, analyzer
+  {
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field(mangleString("obj[400].properties[3].name", "test_analyzer")).term("abc");
+    prefix.scored_terms_limit(128);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER Analyzer(starts_with(d['obj'][400]['properties'][3]['name'], 'abc'), 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER Analyzer(starts_with(d.obj[400]['properties[3]']['name'], 'abc'), 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER Analyzer(starts_with(d.obj[400]['properties[3]'].name, 'abc'), 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER Analyzer(starts_with(d.obj[400].properties[3].name, 'abc'), 'test_analyzer') RETURN d", expected);
   }
 
   // without scoring limit, complex name with offset, prefix as an expression
@@ -2142,6 +2233,24 @@ SECTION("StartsWith") {
     assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]']['name'], CONCAT(prefix, 'c'), (scoringLimit + 1.5)) RETURN d", expected, &ctx);
     assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]'].name, CONCAT(prefix, 'c'), (scoringLimit + 1.5)) RETURN d", expected, &ctx);
     assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, CONCAT(prefix, 'c'), (scoringLimit + 1.5)) RETURN d", expected, &ctx);
+  }
+
+  // without scoring limit, complex name with offset, scoringLimit as an expression, analyzer
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
+    ctx.vars.emplace("analyzer", arangodb::aql::AqlValue("analyzer"));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field(mangleString("obj[400].properties[3].name", "test_analyzer")).term("abc");
+    prefix.scored_terms_limit(6);
+
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' LET analyzer='analyzer' FOR d IN VIEW myView FILTER analyzer(starts_with(d['obj'][400]['properties'][3]['name'], CONCAT(prefix, 'c'), (scoringLimit + 1.5)), CONCAT('test_',analyzer)) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' LET analyzer='analyzer' FOR d IN VIEW myView FILTER analyzer(starts_with(d.obj[400]['properties[3]']['name'], CONCAT(prefix, 'c'), (scoringLimit + 1.5)), CONCAT('test_',analyzer))  RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' LET analyzer='analyzer' FOR d IN VIEW myView FILTER analyzer(starts_with(d.obj[400]['properties[3]'].name, CONCAT(prefix, 'c'), (scoringLimit + 1.5)), CONCAT('test_',analyzer))  RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' LET analyzer='analyzer' FOR d IN VIEW myView FILTER analyzer(starts_with(d.obj[400].properties[3].name, CONCAT(prefix, 'c'), (scoringLimit + 1.5)), CONCAT('test_',analyzer))  RETURN d", expected, &ctx);
   }
 
   // without scoring limit, complex name with offset, scoringLimit as an expression of invalid type
