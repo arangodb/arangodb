@@ -1791,7 +1791,7 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(
 
   // validate orphans
   VPackSlice orphanCollections = document.get(Graph::_attrOrphans);
-  if (orphanCollections.isNull()) {
+  if (orphanCollections.isNull() || orphanCollections.isNone()) {
     orphanCollections = VPackSlice::emptyArraySlice();
   }
 
