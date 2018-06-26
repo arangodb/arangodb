@@ -72,6 +72,10 @@ RETURN COUNT_DISTINCT([ "yes", "no", "yes", "sauron", "no", "yes" ])
 @END_EXAMPLE_AQL
 @endDocuBlock aqlArrayCountDistinct_2
 
+## COUNT_UNIQUE()
+
+This is an alias for [COUNT_DISTINCT()](#countdistinct).
+
 ## FIRST()
 
 `FIRST(anyArray) → firstElement`
