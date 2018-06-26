@@ -202,6 +202,43 @@ void assertExpressionFilter(
   }
 }
 
+void assertFilterBoost(
+    irs::filter const& expected,
+    irs::filter const& actual
+) {
+  CHECK(expected.boost() == actual.boost());
+
+  auto* expectedBooleanFilter = dynamic_cast<irs::boolean_filter const*>(&expected);
+
+  if (expectedBooleanFilter) {
+    auto* actualBooleanFilter = dynamic_cast<irs::boolean_filter const*>(&actual);
+    REQUIRE(nullptr != actualBooleanFilter);
+    REQUIRE(expectedBooleanFilter->size() == actualBooleanFilter->size());
+
+    auto expectedBegin = expectedBooleanFilter->begin();
+    auto expectedEnd = expectedBooleanFilter->end();
+
+    for (auto actualBegin = actualBooleanFilter->begin(); expectedBegin != expectedEnd;) {
+      assertFilterBoost(*expectedBegin, *actualBegin);
+      ++expectedBegin;
+      ++actualBegin;
+    }
+
+    return; // we're done
+  }
+
+  auto* expectedNegationFilter = dynamic_cast<irs::Not const*>(&expected);
+
+  if (expectedNegationFilter) {
+    auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
+    REQUIRE(nullptr != expectedNegationFilter);
+
+    assertFilterBoost(*expectedNegationFilter->filter(), *actualNegationFilter->filter());
+
+    return; // we're done
+  }
+}
+
 void assertFilter(
     bool parseOk,
     bool execOk,
@@ -209,7 +246,8 @@ void assertFilter(
     irs::filter const& expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-    std::string const& refName = "d") {
+    std::string const& refName = "d"
+) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   auto options = std::make_shared<arangodb::velocypack::Builder>();
@@ -278,7 +316,11 @@ void assertFilter(
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, exprCtx, ref };
     CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
-    CHECK((!execOk || (expected == actual && expected.boost() == actual.boost())));
+    CHECK((!execOk || (expected == actual)));
+
+    if (execOk) {
+      assertFilterBoost(expected, actual);
+    }
   }
 }
 
@@ -879,9 +921,10 @@ SECTION("Boost") {
 
     irs::Or expected;
     auto& termFilter = expected.add<irs::by_term>();
-    termFilter.field(mangleStringIdentity("foo")).term("abc").boost(3.0f); // 1.5*2
+    termFilter.field(mangleStringIdentity("foo")).term("abc").boost(6.0f); // 1.5*4 or 1.5*2*2
 
-    assertFilterSuccess("LET x=1.5 FOR d IN collection FILTER BOOST(BOOST(d.foo == 'abc', x), 2) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET x=1.5 FOR d IN collection FILTER BOOST(BOOST(d.foo == 'abc', x), 4) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET x=1.5 FOR d IN collection FILTER BOOST(BOOST(BOOST(d.foo == 'abc', x), 2), 2) RETURN d", expected, &ctx);
   }
 
   // wrong number of arguments
@@ -982,6 +1025,38 @@ SECTION("MinMatch") {
     );
   }
 
+  // boosted embedded MIN_MATCH
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.5})));
+
+    irs::Or expected;
+    auto& minMatch = expected.add<irs::Or>();
+    minMatch.boost(3.0f);
+    minMatch.min_match_count(2);
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobar")).term("bar");
+    minMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobaz")).term("baz").boost(1.5f);
+    auto& subMinMatch = minMatch.add<irs::Or>().add<irs::Or>();
+    subMinMatch.min_match_count(2);
+    subMinMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobar")).term("bar");
+    subMinMatch.add<irs::Or>().add<irs::by_range>().field(mangleStringIdentity("foobaz")).term<irs::Bound::MIN>("baz").include<irs::Bound::MIN>(false);
+    subMinMatch.add<irs::Or>().add<irs::by_term>().field(mangleStringIdentity("foobad")).term("bad").boost(2.7f);
+
+    assertFilterSuccess(
+      "LET x=1.5 FOR d IN collection FILTER "
+      "  BOOST("
+      "    MIN_MATCH("
+      "      d.foobar == 'bar', "
+      "      BOOST(d.foobaz == 'baz', x), "
+      "      MIN_MATCH(d.foobar == 'bar', d.foobaz > 'baz', BOOST(d.foobad == 'bad', 2.7), x),"
+      "    x), "
+      "  x*2) "
+      "RETURN d",
+      expected,
+      &ctx
+    );
+  }
+
   // wrong number of arguments
   assertFilterParseFail("FOR d IN collection FILTER MIN_MATCH(d.foobar == 'bar') RETURN d");
 
@@ -1052,6 +1127,18 @@ SECTION("Exists") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
+  }
+
+  // complex field with offset
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field("obj.prop[3].name").prefix_match(true).boost(1.5f);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(exists(d.obj.prop[3].name), 1.5) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER BooSt(exists(d['obj']['prop'][3]['name']), 0.5*3) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER booSt(eXists(d.obj.prop[3].name), 1+0.5) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER BoOSt(eXists(d['obj'].prop[3].name), 1.5) RETURN d", expected);
   }
 
   // complex field with offset
@@ -1611,6 +1698,20 @@ SECTION("Phrase") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj']['name'], [ 'quick', 5.5, 'brown' ], 'test_analyzer') RETURN d", expected);
   }
 
+  // with offset, complex name, custom analyzer, boost
+  // quick <...> <...> <...> <...> <...> brown
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleString("obj.name", "test_analyzer")).boost(3.0f);
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
+    phrase.push_back("b", 5).push_back("r").push_back("o").push_back("w").push_back("n");
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER BOOST(phrase(d['obj']['name'], 'quick', 5, 'brown', 'test_analyzer'), 3) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER BOoST(phrase(d.obj.name, 'quick', 5, 'brown', 'test_analyzer'), 2.9+0.1) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER Boost(phrase(d.obj.name, 'quick', 5.0, 'brown', 'test_analyzer'), 3.0) RETURN d", expected);
+  }
+
   // with offset, complex name with offset, custom analyzer
   // quick <...> <...> <...> <...> <...> brown
   {
@@ -1975,6 +2076,18 @@ SECTION("StartsWith") {
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['name'], 'abc', 100.5) RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', 100.5) RETURN d", expected);
+  }
+
+  // with scoring limit (double), boost
+  {
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("name")).term("abc");
+    prefix.scored_terms_limit(100);
+    prefix.boost(3.1f);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER boost(starts_with(d['name'], 'abc', 100.5), 0.1+3) RETURN d", expected, &ExpressionContextMock::EMPTY);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER BooST(starts_with(d.name, 'abc', 100.5), 3.1) RETURN d", expected);
   }
 
   // without scoring limit, complex name with offset, scoringLimit as an expression

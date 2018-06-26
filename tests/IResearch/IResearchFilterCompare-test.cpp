@@ -174,6 +174,43 @@ void assertExpressionFilter(
   }
 }
 
+void assertFilterBoost(
+    irs::filter const& expected,
+    irs::filter const& actual
+) {
+  CHECK(expected.boost() == actual.boost());
+
+  auto* expectedBooleanFilter = dynamic_cast<irs::boolean_filter const*>(&expected);
+
+  if (expectedBooleanFilter) {
+    auto* actualBooleanFilter = dynamic_cast<irs::boolean_filter const*>(&actual);
+    REQUIRE(nullptr != actualBooleanFilter);
+    REQUIRE(expectedBooleanFilter->size() == actualBooleanFilter->size());
+
+    auto expectedBegin = expectedBooleanFilter->begin();
+    auto expectedEnd = expectedBooleanFilter->end();
+
+    for (auto actualBegin = actualBooleanFilter->begin(); expectedBegin != expectedEnd;) {
+      assertFilterBoost(*expectedBegin, *actualBegin);
+      ++expectedBegin;
+      ++actualBegin;
+    }
+
+    return; // we're done
+  }
+
+  auto* expectedNegationFilter = dynamic_cast<irs::Not const*>(&expected);
+
+  if (expectedNegationFilter) {
+    auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
+    REQUIRE(nullptr != expectedNegationFilter);
+
+    assertFilterBoost(*expectedNegationFilter->filter(), *actualNegationFilter->filter());
+
+    return; // we're done
+  }
+}
+
 void assertFilter(
     bool parseOk,
     bool execOk,
@@ -181,7 +218,8 @@ void assertFilter(
     irs::filter const& expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-    std::string const& refName = "d") {
+    std::string const& refName = "d"
+) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
 
   auto options = std::make_shared<arangodb::velocypack::Builder>();
@@ -250,7 +288,11 @@ void assertFilter(
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, exprCtx, ref };
     CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
-    CHECK((!execOk || (expected == actual && expected.boost() == actual.boost())));
+    CHECK((!execOk || (expected == actual)));
+
+    if (execOk) {
+      assertFilterBoost(expected, actual);
+    }
   }
 }
 
