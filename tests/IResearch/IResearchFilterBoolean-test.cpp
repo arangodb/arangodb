@@ -87,7 +87,7 @@ std::string mangleNumeric(std::string name) {
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleStringField(
     name,
-    arangodb::iresearch::IResearchAnalyzerFeature::identity()
+    *arangodb::iresearch::IResearchAnalyzerFeature::identity()
   );
   return name;
 }

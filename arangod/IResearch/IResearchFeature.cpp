@@ -158,7 +158,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 
   arangodb::iresearch::addFunction(functions, {
     "PHRASE",      // name
-    ".,.,.|.+",    // positional arguments (attribute, input [, offset, input... ], analyzer)
+    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
@@ -167,7 +167,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 
   arangodb::iresearch::addFunction(functions, {
     "MIN_MATCH",   // name
-    ".,.|.+",       // positional arguments (filter expression [, filter expression, ... ], min match count)
+    ".,.|.+",      // positional arguments (filter expression [, filter expression, ... ], min match count)
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server

@@ -270,7 +270,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.missing, 'abc', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.missing, 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -292,7 +292,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['missing'], 'abc', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['missing'], 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -314,7 +314,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.seq, '0', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.seq, '0') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -336,7 +336,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['seq'], '0', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['seq'], '0') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -356,7 +356,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.value, [ ], 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.value, [ ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -365,7 +365,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['value'], [ ], 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['value'], [ ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -374,7 +374,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.value, [ 1, \"abc\" ], 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.value, [ 1, \"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -383,7 +383,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['value'], [ 1, \"abc\" ], 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['value'], [ 1, \"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -392,7 +392,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.value, true, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.value, true) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -401,7 +401,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['value'], false, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['value'], false) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -410,7 +410,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.value, null, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.value, null) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -419,7 +419,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['value'], null, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['value'], null) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -428,7 +428,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.value, 3.14, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.value, 3.14) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -437,7 +437,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['value'], 1234, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['value'], 1234) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -446,7 +446,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.value, { \"a\": 7, \"b\": \"c\" }, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.value, { \"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -455,25 +455,25 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['value'], { \"a\": 7, \"b\": \"c\" }, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['value'], { \"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
 
-  // test missing analyzer
+  // test missing value
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.value, 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d.value) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH == result.code);
   }
 
-  // test missing analyzer via []
+  // test missing value via []
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['value'], 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER PHRASE(d['value']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH == result.code);
   }
@@ -482,7 +482,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', [ 1, \"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, 'z'), [ 1, \"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -491,7 +491,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', [ 1, \"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d['duplicated'], 'z'), [ 1, \"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -500,7 +500,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', true) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, 'z'), true) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -509,7 +509,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', false) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d['duplicated'], 'z'), false) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -518,7 +518,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', null) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d.duplicated, 'z'), null) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -527,7 +527,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', null) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d['duplicated'], 'z'), null) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -536,7 +536,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', 3.14) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d.duplicated, 'z'), 3.14) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -545,7 +545,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', 1234) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d['duplicated'], 'z'), 1234) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -554,7 +554,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', { \"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d.duplicated, 'z'), { \"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -563,7 +563,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', { \"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d['duplicated'], 'z'), { \"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -572,7 +572,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', 'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d.duplicated, 'z'), 'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -581,7 +581,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', 'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d['duplicated'], 'z'), 'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
   }
@@ -599,7 +599,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -628,7 +628,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER analyzer(PHRASE(d['duplicated'], 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -657,7 +657,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'v', 1, 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, 'v', 1, 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -686,7 +686,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'v', 2, 'c', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d['duplicated'], 'v', 2, 'c'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -708,7 +708,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'v', 0, 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, 'v', 0, 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -730,7 +730,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'v', 1, 'c', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d['duplicated'], 'v', 1, 'c'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -759,7 +759,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, [ 'z' ], 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, [ 'z' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -788,7 +788,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], [ 'z' ], 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d['duplicated'], [ 'z' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -817,7 +817,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, [ 'v', 1, 'z' ], 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, [ 'v', 1, 'z' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -846,7 +846,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], [ 'v', 2, 'c' ], 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d['duplicated'], [ 'v', 2, 'c' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -868,7 +868,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, [ 'v', 0, 'z' ], 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d.duplicated, [ 'v', 0, 'z' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
@@ -890,7 +890,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], [ 'v', 1, 'c' ], 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
+      "FOR d IN VIEW testView FILTER ANALYZER(PHRASE(d['duplicated'], [ 'v', 1, 'c' ]), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();

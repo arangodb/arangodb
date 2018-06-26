@@ -310,7 +310,13 @@ class ScopedAqlValue : private irs::util::noncopyable {
     if (_node->isConstant()) {
       return parseValue(value, *_node);
     } else {
-      value = getStringRef(_value.slice());
+      auto const valueSlice = _value.slice();
+
+      if (VPackValueType::String != valueSlice.type()) {
+        return false;
+      }
+
+      value = getStringRef(valueSlice);
     }
 
     return true;

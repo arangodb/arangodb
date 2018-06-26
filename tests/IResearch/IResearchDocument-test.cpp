@@ -137,7 +137,7 @@ std::string mangleString(std::string name, std::string suffix) {
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleStringField(
     name,
-    arangodb::iresearch::IResearchAnalyzerFeature::identity()
+    *arangodb::iresearch::IResearchAnalyzerFeature::identity()
   );
   return name;
 }
