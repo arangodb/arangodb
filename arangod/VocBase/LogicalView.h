@@ -30,6 +30,8 @@
 #include "Basics/ReadWriteLock.h"
 #include "Meta/utility.h"
 #include "VocBase/voc-types.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Buffer.h>
 
@@ -78,7 +80,14 @@ class LogicalView : public LogicalDataSource {
     // to explicitly expose our intention to fail in 'noexcept' function
     // in case of wrong type
     auto impl = dynamic_cast<typename target_type_t::pointer>(&view);
-    TRI_ASSERT(impl);
+
+    if (!impl) {
+      LOG_TOPIC(ERR, Logger::VIEWS)
+        << "invalid convertion attempt from '" << typeid(Source).name() << "'"
+        << " to '" << typeid(typename target_type_t::value_type).name() << "'";
+      TRI_ASSERT(false);
+    }
+
     return *impl;
   #else
     return static_cast<typename target_type_t::reference>(view);

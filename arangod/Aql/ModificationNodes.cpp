@@ -93,6 +93,7 @@ RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 
 void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   ModificationNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
   nodes.add(VPackValue("inVariable"));
   _inVariable->toVelocyPack(nodes);
 
@@ -192,6 +193,7 @@ UpdateNode::UpdateNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief toVelocyPack
 void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   ModificationNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
@@ -257,6 +259,7 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
 /// @brief toVelocyPack
 void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   ModificationNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);
@@ -322,6 +325,7 @@ UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 /// @brief toVelocyPack
 void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   ModificationNode::toVelocyPackHelper(nodes, flags);
+  ModificationNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   nodes.add(VPackValue("inDocVariable"));
   _inDocVariable->toVelocyPack(nodes);

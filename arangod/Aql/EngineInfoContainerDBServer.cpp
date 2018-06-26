@@ -140,7 +140,11 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = ecNode->restrictedShard();
       }
-      _type = ExecutionNode::ENUMERATE_COLLECTION;
+
+      // do not set '_type' of the engine here,
+      // bacause satellite collections may consists of
+      // multiple "main nodes"
+
       break;
     }
     case ExecutionNode::INDEX: {
@@ -150,13 +154,24 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
         TRI_ASSERT(_restrictedShard.empty());
         _restrictedShard = idxNode->restrictedShard();
       }
-      _type = ExecutionNode::INDEX;
+
+      // do not set '_type' of the engine here,
+      // bacause satellite collections may consists of
+      // multiple "main nodes"
+
       break;
     }
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:{
       TRI_ASSERT(_type == ExecutionNode::MAX_NODE_TYPE_VALUE);
       auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
+
+      // FIXME should we have a separate optimizer rule for that?
+      //
+      // evaluate node volatility before the distribution
+      // can't do it on DB servers since only parts of the plan will be sent
+      viewNode.volatility(true);
+
       _type = ExecutionNode::ENUMERATE_IRESEARCH_VIEW;
       _view = viewNode.view().get();
       break;
@@ -929,6 +944,7 @@ Result EngineInfoContainerDBServer::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
 
+  // we need to lock per server in a deterministic order to avoid deadlocks
   for (auto& it : dbServerMapping) {
     std::string const serverDest = "server:" + it.first;
 

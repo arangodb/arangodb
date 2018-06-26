@@ -870,11 +870,22 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     // second operand is a view
     std::string const viewName = expression->getString();
     auto& vocbase = _ast->query()->vocbase();
-    auto view = vocbase.lookupView(viewName);
+
+    std::shared_ptr<LogicalView> view;
+
+    if (ServerState::instance()->isSingleServer()) {
+      view = vocbase.lookupView(viewName);
+    } else {
+      // need cluster wide view
+      TRI_ASSERT(ClusterInfo::instance());
+      view = ClusterInfo::instance()->getView(vocbase.name(), viewName);
+    }
 
     if (!view) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no view for EnumerateView");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "no view for EnumerateView"
+      );
     }
 
     en = registerNode(new iresearch::IResearchViewNode(

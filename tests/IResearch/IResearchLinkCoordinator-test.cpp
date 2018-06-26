@@ -241,7 +241,7 @@ SECTION("test_create_drop") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -373,7 +373,7 @@ SECTION("test_create_drop") {
 
     // drop view
     CHECK(vocbase->dropView(logicalView->planId(), false).ok());
-    CHECK(nullptr == vocbase->lookupView(viewId));
+    CHECK(nullptr == ci->getView(vocbase->name(), viewId));
 
     // old index remains valid
     {
