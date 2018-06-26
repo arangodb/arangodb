@@ -3271,8 +3271,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::COLLECT, true);
+  
+  std::unordered_set<Variable const*> allUsed;
 
   for (auto& node : nodes) {
+    allUsed.clear();
     auto used = node->getVariablesUsedHere();
 
     // found a node we need to replace in the plan
@@ -3289,6 +3292,16 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
         
     while (current != nullptr) {
       bool eligible = true;
+      
+      // check if any of the nodes we pass use a variable that will not be
+      // available after we insert a new COLLECT on top of it (note: COLLECT
+      // will eliminate all variables from the scope but its own)
+      for (auto const& it : current->getVariablesUsedHere()) {
+        if (current->getType() != EN::GATHER) {
+          // Gather nodes are taken care of separately below
+          allUsed.emplace(it);
+        }
+      }
 
       for (auto const& it : current->getVariablesSetHere()) {
         if (std::find(used.begin(), used.end(), it) != used.end()) {
@@ -3316,6 +3329,18 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
         }
 
         if (previous != nullptr) {
+          for (auto const& otherVariable : allUsed) {
+            auto const setHere = collectNode->getVariablesSetHere();
+            if (std::find(setHere.begin(), setHere.end(), otherVariable) == setHere.end()) {
+              eligible = false;
+              break;
+            }
+          }
+
+          if (!eligible) {
+            break;
+          }
+
           bool removeGatherNodeSort = false;
 
           if (collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT) {

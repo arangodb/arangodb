@@ -12,7 +12,7 @@ There are two slightly different syntaxes for traversals in AQL, one for
 ### Working with named graphs
 
 ```
-[WITH collection1[, collection2[, ...collectionN]]]
+[WITH vertexCollection1[, vertexCollection2[, ...vertexCollectionN]]]
 FOR vertex[, edge[, path]]
   IN [min[..max]]
   OUTBOUND|INBOUND|ANY startVertex
@@ -21,7 +21,7 @@ FOR vertex[, edge[, path]]
 ```
 - `WITH`: optional for single server instances, but required for
   [graph traversals in a cluster](#graph-traversals-in-a-cluster).
-  - **collections** (collection, *repeatable*): list of collections that will
+  - **collections** (collection, *repeatable*): list of vertex collections that will
     be involved in the traversal
 - `FOR`: emits up to three variables:
   - **vertex** (object): the current vertex in a traversal
@@ -62,12 +62,6 @@ FOR vertex[, edge[, path]]
   - **uniqueEdges** (string): optionally ensure edge uniqueness
     - "path" (default) – it is guaranteed that there is no path returned with a
       duplicate edge
-    - "global" – it is guaranteed that each edge is visited at most once during
-      the traversal, no matter how many paths lead from the start vertex to this edge.
-      If you start with a `min depth > 1`, an edge that was found before *min* depth
-      might not be returned at all (it still might be part of a path). **Note:**
-      Using this configuration the result is not deterministic any more. If there
-      are multiple paths from *startVertex* over *edge* one of those is picked.
     - "none" – no uniqueness check is applied on edges. **Note:**
       Using this configuration the traversal will follow cycles in edges.
   - **bfs** (bool): optionally use the alternative breadth-first traversal algorithm
@@ -80,7 +74,7 @@ FOR vertex[, edge[, path]]
 ### Working with collection sets
 
 ```
-[WITH collection1[, collection2[, ...collectionN]]]
+[WITH vertexCollection1[, vertexCollection2[, ...vertexCollectionN]]]
 FOR vertex[, edge[, path]]
   IN [min[..max]]
   OUTBOUND|INBOUND|ANY startVertex

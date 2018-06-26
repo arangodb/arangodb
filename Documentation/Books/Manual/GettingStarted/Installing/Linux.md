@@ -1,7 +1,7 @@
 Linux
 =====
 
-- Visit the official [ArangoDB install page](https://www.arangodb.com/install)
+- Visit the official [ArangoDB download page](https://www.arangodb.com/download)
   and download the correct package for your Linux distribution. You can find
   binary packages for the most common distributions there.
 - Follow the instructions to use your favorite package manager for the
