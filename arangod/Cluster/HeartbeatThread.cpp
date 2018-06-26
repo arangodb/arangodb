@@ -814,7 +814,7 @@ void HeartbeatThread::runCoordinator() {
             // We won the race we are the master
             ServerState::instance()->setFoxxmaster(state->getId());
           }
-
+          _agency.increment("Current/Version");
         }
 
         VPackSlice versionSlice =

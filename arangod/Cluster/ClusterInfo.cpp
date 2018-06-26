@@ -2175,8 +2175,10 @@ Result ClusterInfo::setCollectionStatusCoordinator(
   AgencyOperation setColl(
       "Plan/Collections/" + databaseName + "/" + collectionID,
       AgencyValueOperationType::SET, builder.slice());
+  AgencyOperation incrementVersion(
+      "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
 
-  AgencyWriteTransaction trans(setColl, databaseExists);
+  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
 
   res = ac.sendTransactionWithFailover(trans);
 
