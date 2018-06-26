@@ -107,49 +107,46 @@ function optimizerClusterSingleDocumentTestSuite () {
   };
   var runTestSet = function(sets, expectedRules, expectedNodes) {
     let count = 0;
-
-    const query = 0;
-    const expectedRulesField = 1;
-    const expectedNodesField = 2;
-    const doFullTest = 3; // Do advanced checking
-    const setupFunction = 4; // this resets the setup
-    const errorCode = 5; // expected error code
-
-
     sets.forEach(function(set) {
-      const queryString = set[query];
+
+      let queryString = set[0];
+      let expectRule = expectedRules[set[1]];
+      let expectNode = expectedNodes[set[2]];
+      let doFullTest = set[3]; // Do advanced checking
+      let setupFunction = set[4]; // this resets the setup
+      let errorCode = set[5]; // expected error code
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set);
 
       var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled); // explain - only
-      assertEqual(expectedRules[set[expectedRulesField]], result.plan.rules, "rules mismatch: " + queryInfo);
-      assertEqual(expectedNodes[set[expectedNodesField]], explain(result), "nodes mismatch: " + queryInfo);
-      if (set[doFullTest]) {
+      assertEqual(expectRule, result.plan.rules, "rules mismatch: " + queryInfo);
+      assertEqual(expectNode, explain(result), "nodes mismatch: " + queryInfo);
+      if (doFullTest) {
         var r1 = {json: []}, r2 = {json: []};
 
         // run it first without the rule
-        set[setupFunction]();
+        setupFunction();
         try {
-          r1 = AQL_EXECUTE(set[query], {}, thisRuleDisabled);
-          assertEqual(0, set[errorCode], "we have no error in the original, but the tests expects an exception: " + queryInfo);
+          r1 = AQL_EXECUTE(queryString, {}, thisRuleDisabled);
+          assertEqual(0, errorCode, "we have no error in the original, but the tests expects an exception: " + queryInfo);
         }
         catch (y) {
-          assertTrue(set[errorCode].hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + JSON.stringify(y) + queryInfo);
-          assertEqual(y.errorNum, set[errorCode].code, "match other error code - got: " + JSON.stringify(y) + queryInfo);
+          assertTrue(errorCode.hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + JSON.stringify(y) + queryInfo);
+          assertEqual(y.errorNum, errorCode.code, "match other error code - got: " + JSON.stringify(y) + queryInfo);
         }
 
         // Run it again with our rule
-        set[setupFunction]();
+        setupFunction();
         try {
-          r2 = AQL_EXECUTE(set[query], {}, thisRuleEnabled);
-          assertEqual(0, set[errorCode], "we have no error in our plan, but the tests expects an exception" + queryInfo);
+          r2 = AQL_EXECUTE(queryString, {}, thisRuleEnabled);
+          assertEqual(0, errorCode, "we have no error in our plan, but the tests expects an exception" + queryInfo);
         }
         catch (x) {
-          assertTrue(set[errorCode].hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + JSON.stringify(x) + queryInfo);
-          assertEqual(x.errorNum, set[errorCode].code, "match our error code" + JSON.stringify(x) + queryInfo);
+          assertTrue(errorCode.hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + JSON.stringify(x) + queryInfo);
+          assertEqual(x.errorNum, errorCode.code, "match our error code" + JSON.stringify(x) + queryInfo);
         }
         pruneRevisions(r1);
         pruneRevisions(r2);
-        assertEqual(r1.json, r2.json, set);
+        assertEqual(r1.json, r2.json, "results of with and without rule differ: " + queryInfo);
       }
       count += 1;
     });
@@ -176,7 +173,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       var queries = [
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s, 0],
-
+        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN 123", 2, 2, true, s, 0],
       ];
       var expectedRules = [[ "use-indexes",
                              "remove-filter-covered-by-index",
@@ -184,13 +181,20 @@ function optimizerClusterSingleDocumentTestSuite () {
                              "optimize-cluster-single-document-operations" ],
                            [ "scatter-in-cluster",
                              "distribute-filtercalc-to-cluster",
-                             "remove-unnecessary-remote-scatter" ]
+                             "remove-unnecessary-remote-scatter" ],
+                           [ "move-calculations-up", 
+                             "use-indexes", 
+                             "remove-filter-covered-by-index", 
+                             "remove-unnecessary-calculations-2", 
+                             "optimize-cluster-single-document-operations" ]
                           ];
 
       var expectedNodes = [
         [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [ "SingletonNode", "EnumerateCollectionNode", "CalculationNode",
-          "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ]
+          "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode",
+          "ReturnNode"]
       ];
       runTestSet(queries, expectedRules, expectedNodes);
     },
@@ -211,20 +215,25 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: false} RETURN NEW`, 0, 1, true, setupC2, errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED],
 
         [ `INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW]`, 1, 2, true, setupC2, 0 ],
-        [ `INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 2, true, setupC2, 0 ]
+        [ `INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 2, true, setupC2, 0 ],
+        [ `LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW, a]`, 2, 2, true, setupC2, 0 ],
+        [ `LET a = { a: 123 } INSERT {_key: '${yeOldeDoc}',  insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW, a: a }`, 2, 2, true, setupC2, 0 ],
+        [ `LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN a`, 3, 3, true, setupC2, 0 ],
+
       ];
 
       var expectedRules = [
-        [ "remove-data-modification-out-variables",
-          "optimize-cluster-single-document-operations"
-        ],
-        [  "optimize-cluster-single-document-operations" ]
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2", 
+          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ]
       ];
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", 
-          "ReturnNode" ]
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ]
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
@@ -239,42 +248,42 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
-        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
-        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
-        [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, true, setupC1, 0],          
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
+        [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
+        [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
+        [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, true, setupC1, 0],          
         [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],        
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 6, 3, true, s, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 7, 2, true, setupC1, 0],
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],        
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, s, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 5, 2, true, setupC1, 0],
+        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN { NEW: NEW, a: a }`, 6, 4, true, s, 0],
+        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 7, 2, true, setupC1, 0],
+        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 6, 4, true, s, 0],
+        [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 7, 2, true, setupC1, 0],
       ];
 
       var expectedRules = [
         [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables",
-          "optimize-cluster-single-document-operations"],
-        [ "move-calculations-up", "move-calculations-up-2",
-          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [   "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", 
-            "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
         [ "optimize-cluster-single-document-operations" ],
-        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", 
-          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", 
-          "optimize-cluster-single-document-operations" ]
-
+        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
       ];
 
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
-        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ]
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
+        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ]
+
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
@@ -289,68 +298,71 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, s, 0],
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
         [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN NEW", 0, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, false],
-        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 5, 2, false],          
+        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
+        [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],          
         [ "REPLACE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 4, 2, true, setupC1, 0],   
-        [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 5, 2, true, setupC1, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 4, 2, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 7, 2, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 6, 3, true, setupC1, 0],
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],   
+        [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, true, setupC1, 0],
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW]`, 5, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN NEW`, 4, 3, true, setupC1, 0],
+
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '-1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 6, 2, true, setupC1, 0 ],
+        
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 6, 2, true, setupC1, 0],
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 7, 4, true, setupC1, 0],
       ];
 
       var expectedRules = [
         [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables",
-          "optimize-cluster-single-document-operations"],
-        [ "move-calculations-up", "move-calculations-up-2",
-          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [   "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", 
-            "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
         [ "optimize-cluster-single-document-operations" ],
-        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", 
-          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", 
-          "optimize-cluster-single-document-operations" ]
+        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
       ];
 
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
-        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ]
-      ];
+        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ]
+  ];
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
-    
+
     testRuleRemove : function () {
       var queries = [
-
         [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
         [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
         [ "REMOVE {_key: '3'} IN   " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
         [ "REMOVE {_key: '4'} INTO " + cn1 + " OPTIONS {} RETURN OLD", 0, 1, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == '1' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, setupC1, 0],
         [ `FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD`, 1, 1, true, s, 0],
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REMOVE doc IN ${cn1} RETURN [OLD, a]`, 2, 2, true, setupC1, 0],
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN [OLD, a]`, 2, 2, true, s, 0],
+        [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN a`, 3, 3, true, s, 0],
       ];
       var expectedRules = [
-        ["remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
-        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", 
-          "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
-     ];
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
+      ];
 
       var expectedNodes = [
-        ["SingletonNode",
-         "SingleRemoteOperationNode" ],
-        [ "SingletonNode",
-          "SingleRemoteOperationNode",
-          "ReturnNode" ],
+        [ "SingletonNode", "SingleRemoteOperationNode" ],
+        [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ]
       ];
       runTestSet(queries, expectedRules, expectedNodes);
     }
