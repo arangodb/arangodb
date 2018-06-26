@@ -42,11 +42,12 @@
 // TODO this is here for easy debugging during development. most log messages
 // using this should be removed or at least have their log level reduced before
 // this is merged.
-#define S1(x) #x
+/*#define S1(x) #x
 #define S2(x) S1(x)
 #define LOGPREFIX(func)                                                   \
   "[" << (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__) \
       << ":" S2(__LINE__) << "@" << func << "] "
+*/
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -58,9 +59,6 @@ RestGraphHandler::RestGraphHandler(GeneralRequest* request,
     : RestVocbaseBaseHandler(request, response), _graphCache(*graphCache_) {}
 
 RestStatus RestGraphHandler::execute() {
-  LOG_TOPIC(INFO, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << request()->requestType() << " "
-      << request()->requestPath() << " " << request()->suffixes();
 
   boost::optional<RestStatus> maybeResult;
   try {
@@ -80,31 +78,10 @@ RestStatus RestGraphHandler::execute() {
   };
 
   if (maybeResult) {
-    LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__)
-                                    << "Used C++ handler";
     return maybeResult.get();
   }
 
-  LOG_TOPIC(INFO, Logger::GRAPHS) << LOGPREFIX(__func__)
-                                  << "Using fallback JS handler";
-
   RestStatus restStatus = RestStatus::FAIL;
-
-  {
-    // prepend in reverse order
-    // TODO when the fallback routes are removed, the prependSuffix method
-    // in GeneralRequest can be removed again.
-    _request->prependSuffix("gharial");
-    _request->prependSuffix("_api");
-    _request->setRequestPath("/");
-
-    // Fallback for routes that aren't implemented yet. TODO Remove later.
-    RestActionHandler restActionHandler(_request.release(),
-                                        _response.release());
-    restStatus = restActionHandler.execute();
-    _request = restActionHandler.stealRequest();
-    _response = restActionHandler.stealResponse();
-  }
 
   return restStatus;
 }
@@ -286,9 +263,6 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetsAction(
 boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
     const std::shared_ptr<const Graph> graph,
     const std::string& edgeDefinitionName) {
-  LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
-      << "edgeDefinitionName = " << edgeDefinitionName;
 
   switch (request()->requestType()) {
     case RequestType::POST:
@@ -308,9 +282,6 @@ boost::optional<RestStatus> RestGraphHandler::edgeSetAction(
 boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
     const std::shared_ptr<const Graph> graph,
     const std::string& vertexCollectionName) {
-  LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
-      << "vertexCollectionName = " << vertexCollectionName;
 
   switch (request()->requestType()) {
     case RequestType::POST:
@@ -327,10 +298,6 @@ boost::optional<RestStatus> RestGraphHandler::vertexSetAction(
 boost::optional<RestStatus> RestGraphHandler::vertexAction(
     const std::shared_ptr<const Graph> graph,
     const std::string& vertexCollectionName, const std::string& vertexKey) {
-  LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
-      << "vertexCollectionName = " << vertexCollectionName << ", "
-      << "vertexKey = " << vertexKey;
 
   switch (request()->requestType()) {
     case RequestType::GET: {
@@ -356,10 +323,6 @@ boost::optional<RestStatus> RestGraphHandler::vertexAction(
 boost::optional<RestStatus> RestGraphHandler::edgeAction(
     const std::shared_ptr<const Graph> graph,
     const std::string& edgeDefinitionName, const std::string& edgeKey) {
-  LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "graphName = " << graph->name() << ", "
-      << "edgeDefinitionName = " << edgeDefinitionName << ", "
-      << "edgeKey = " << edgeKey;
 
   switch (request()->requestType()) {
     case RequestType::GET:
@@ -384,9 +347,6 @@ boost::optional<RestStatus> RestGraphHandler::edgeAction(
 Result RestGraphHandler::vertexActionRead(
     const std::shared_ptr<const Graph> graph, const std::string& collectionName,
     const std::string& key) {
-  LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "collectionName = " << collectionName << ", "
-      << "key = " << key;
 
   bool isValidRevision;
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
@@ -668,9 +628,6 @@ void RestGraphHandler::generateResultMergedWithObject(
 Result RestGraphHandler::edgeActionRead(
     const std::shared_ptr<const graph::Graph> graph,
     const std::string& definitionName, const std::string& key) {
-  LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "definitionName = " << definitionName << ", "
-      << "key = " << key;
 
   bool isValidRevision;
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
@@ -733,9 +690,6 @@ std::shared_ptr<Graph const> RestGraphHandler::getGraph(
 Result RestGraphHandler::edgeActionRemove(
     const std::shared_ptr<const Graph> graph, const std::string& definitionName,
     const std::string& key) {
-  LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "definitionName = " << definitionName << ", "
-      << "key = " << key;
 
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -749,12 +703,6 @@ Result RestGraphHandler::edgeActionRemove(
         UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
-
-  LOG_TOPIC(INFO, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "opts: "
-      << "waitForSync = " << waitForSync << ", "
-      << "returnOld = " << returnOld << ", "
-      << "rev = " << (maybeRev ? maybeRev.get() : 0ul);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
@@ -1152,9 +1100,6 @@ Result RestGraphHandler::documentCreate(
 Result RestGraphHandler::vertexActionRemove(
     const std::shared_ptr<const graph::Graph> graph,
     const std::string& collectionName, const std::string& key) {
-  LOG_TOPIC(WARN, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "collectionName = " << collectionName << ", "
-      << "key = " << key;
 
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
@@ -1168,12 +1113,6 @@ Result RestGraphHandler::vertexActionRemove(
         UINT64_MAX;  // an impossible rev, so precondition failed will happen
   }
   auto maybeRev = boost::make_optional(revision != 0, revision);
-
-  LOG_TOPIC(INFO, Logger::GRAPHS)
-      << LOGPREFIX(__func__) << "opts: "
-      << "waitForSync = " << waitForSync << ", "
-      << "returnOld = " << returnOld << ", "
-      << "rev = " << (maybeRev ? maybeRev.get() : 0ul);
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
