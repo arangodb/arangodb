@@ -65,6 +65,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   size_t queue() const override final;
 
+  virtual bool shouldForwardRequest() override;
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief processes the query and returns the results/cursor
@@ -72,6 +74,8 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void processQuery(arangodb::velocypack::Slice const&);
+
+  virtual uint32_t forwardingTarget() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -128,12 +132,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void deleteQueryCursor();
-
-  /// @brief whether the request should be forwarded to a different server
-  virtual bool shouldForwardRequest() override;
-
-  /// @brief returns the short id of the server which should handle this request
-  virtual uint32_t forwardingTarget() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

@@ -106,11 +106,20 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual void handleError(basics::Exception const&) = 0;
 
   /// @brief whether the request should be forwarded to a different server
+  ///
+  /// If a particular handler requires server-specific state (e.g. a query
+  /// cursor state is stored on a specific coordinator), then it should be able
+  /// to detect this condition and override this method to return true as
+  /// appropriate
   virtual bool shouldForwardRequest() { return false; }
 
  protected:
 
   /// @brief returns the short id of the server which should handle this request
+  ///
+  /// This method will be called if and only if shouldForwardRequest() returns
+  /// true. In that case, this method should return a valid (non-zero) short ID
+  /// (TransactionID) for the target server.
   virtual uint32_t forwardingTarget() { return 0; }
 
   void resetResponse(rest::ResponseCode);

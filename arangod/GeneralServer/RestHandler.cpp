@@ -105,16 +105,24 @@ void RestHandler::setStatistics(RequestStatistics* stat) {
 }
 
 void RestHandler::forwardRequest() {
+  // TODO refactor into a more general/customizable method
+  //
+  // The below is mostly copied and only lightly modified from
+  // RestReplicationHandler::handleTrampolineCoordinator; however, that method
+  // needs some more specific checks regarding headers and param values, so we
+  // can't just reuse this method there. Maybe we just need to implement some
+  // virtual methods to handle param/header filtering?
+
+  // TODO verify that vst -> http -> vst conversion works correctly
+
+  // TODO verify that async requests work correctly
+
+  // TODO verify that user-JWT works correctly
+
   uint32_t shortId = forwardingTarget();
   std::string serverId =
       ClusterInfo::instance()->getCoordinatorByShortID(shortId);
   LOG_TOPIC(DEBUG, Logger::REQUESTS) << "forwarding request " << _request->messageId() << " to " << serverId;
-
-  // TODO refactor into a more general/customizable method?
-  // the below is mostly copied from
-  // RestReplicationHandler::handleTrampolineCoordinator, but that method needs
-  // some more specific checks regarding headers and param values, so we can't
-  // just reuse this method there; maybe with param/header filtering?
 
   bool useVst = false;
   if (_request->transportType() == Endpoint::TransportType::VST) {
@@ -177,7 +185,6 @@ void RestHandler::forwardRequest() {
                                      "invalid request type");
     }
 
-    // TODO handle async?
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
@@ -185,8 +192,8 @@ void RestHandler::forwardRequest() {
                               _request->requestPath() + params,
                           httpRequest->body(), *headers, 300.0);
   } else {
-    // do we need to handle multiple payloads here - TODO
-    // here we switch from vst to http?!
+    // do we need to handle multiple payloads here? - TODO
+    // here we switch from vst to http
     res = cc->syncRequest("", TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
@@ -200,18 +207,19 @@ void RestHandler::forwardRequest() {
                   "timeout within cluster");
     return;
   }
+
   if (res->status == CL_COMM_BACKEND_UNAVAILABLE) {
     // there is no result
     generateError(rest::ResponseCode::BAD, TRI_ERROR_CLUSTER_CONNECTION_LOST,
                   "lost connection within cluster");
     return;
   }
+
   if (res->status == CL_COMM_ERROR) {
     // This could be a broken connection or an Http error:
     TRI_ASSERT(nullptr != res->result && res->result->isComplete());
     // In this case a proper HTTP error was reported by the DBserver,
-    // we simply forward the result.
-    // We intentionally fall through here.
+    // we simply forward the result. Intentionally fall through here.
   }
 
   bool dummy;
@@ -229,18 +237,17 @@ void RestHandler::forwardRequest() {
     }
     httpResponse->body().swap(&(res->result->getBody()));
   } else {
+    // need to switch back from http to vst
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
     std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
     _response->setPayload(std::move(*buf),
-                          true);  // do we need to generate the body?!
+                          true);
   }
 
   auto const& resultHeaders = res->result->getHeaderFields();
   for (auto const& it : resultHeaders) {
     _response->setHeader(it.first, it.second);
   }
-
-  // generate manual error response
 }
 
 void RestHandler::runHandlerStateMachine() {

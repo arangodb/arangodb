@@ -544,7 +544,7 @@ class ClusterInfo {
   ServerID getDBServerByShortID(ServerShortID);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup a full dbserver ID by short ID
+  /// @brief lookup a full server ID by short name
   //////////////////////////////////////////////////////////////////////////////
 
   ServerID getServerByShortName(ServerShortName const&);

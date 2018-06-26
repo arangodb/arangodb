@@ -3039,7 +3039,7 @@ void ClusterInfo::loadCurrentMappings() {
   }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "Error while loading " << prefixCurrentCoordinators
+      << "Error while loading " << prefixMappings
       << " httpCode: " << result.httpCode()
       << " errorCode: " << result.errorCode()
       << " errorMessage: " << result.errorMessage()
@@ -3352,7 +3352,7 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief retreive full server ID from short ID
+/// @brief lookup full coordinator ID from short ID
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
@@ -3374,7 +3374,7 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID shortId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief retreive full server ID from short ID
+/// @brief lookup full dbserver ID from short ID
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerID ClusterInfo::getDBServerByShortID(ServerShortID shortId) {
@@ -3396,7 +3396,7 @@ ServerID ClusterInfo::getDBServerByShortID(ServerShortID shortId) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief retreive full server ID from short ID
+/// @brief lookup full server ID from short name
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerID ClusterInfo::getServerByShortName(ServerShortName const& shortName) {
