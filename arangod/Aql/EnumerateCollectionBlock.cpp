@@ -116,7 +116,7 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
 
-  TRI_ASSERT(_cursor.get() != nullptr);
+  TRI_ASSERT(_cursor != nullptr);
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
@@ -133,46 +133,37 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
   RegisterId const nrOutRegs = getNrOutputRegisters();
     
   bool needMore = false;
-  AqlItemBlock* cur = nullptr;
   std::unique_ptr<AqlItemBlock> res;
   // TODO This does getBlock calls after the upstream reported DONE
   do {
     do {
       needMore = false;
 
-      if (_buffer.empty()) {
-        size_t toFetch = std::min(DefaultBatchSize(), atMost);
-        auto upstreamRes = ExecutionBlock::getBlock(toFetch);
-        if (upstreamRes.first == ExecutionState::WAITING) {
-          return {ExecutionState::WAITING, nullptr};
-        }
-        _upstreamState = upstreamRes.first;
-        if (!upstreamRes.second) {
-          TRI_ASSERT(_inflight == 0);
-          _done = true;
-          TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
-          traceGetSomeEnd(nullptr, ExecutionState::DONE);
-          return {ExecutionState::DONE, nullptr};
-        }
-        _pos = 0;  // this is in the first block
-        _cursor->reset();
+      size_t toFetch = std::min(DefaultBatchSize(), atMost);
+      BufferState bufferState = getBlockIfNeeded(toFetch);
+      if (bufferState == BufferState::WAITING) {
+        return {ExecutionState::WAITING, nullptr};
       }
-
-      // If we get here, we do have _buffer.front()
-      cur = _buffer.front();
+      if (bufferState == BufferState::NO_MORE_BLOCKS) {
+        TRI_ASSERT(_inflight == 0);
+        _done = true;
+        TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
+        traceGetSomeEnd(nullptr, ExecutionState::DONE);
+        return {ExecutionState::DONE, nullptr};
+      }
 
       if (!_cursor->hasMore()) {
         needMore = true;
         // we have exhausted this cursor
         // re-initialize fetching of documents
         _cursor->reset();
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          returnBlock(cur);
-          _pos = 0;
-        }
+        AqlItemBlock* removedBlock = advanceCursor(1, 0);
+        returnBlockUnlessNull(removedBlock);
       }
     } while (needMore);
+
+    // If we get here, we do have _buffer.front()
+    AqlItemBlock* cur = _buffer.front();
 
     TRI_ASSERT(cur != nullptr);
     TRI_ASSERT(_cursor->hasMore());
@@ -192,21 +183,21 @@ EnumerateCollectionBlock::getSome(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
    
-    bool tmp;
+    bool cursorHasMore;
     if (produceResult()) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
-      tmp = _cursor->nextDocument([&](LocalDocumentId const&, VPackSlice slice) {
+      cursorHasMore = _cursor->nextDocument([&](LocalDocumentId const&, VPackSlice slice) {
         _documentProducer(res.get(), slice, nrInRegs, _inflight, 0);
       }, atMost);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
-      tmp = _cursor->next([&](LocalDocumentId const&) {
+      cursorHasMore = _cursor->next([&](LocalDocumentId const&) {
         _documentProducer(res.get(), VPackSlice::nullSlice(), nrInRegs, _inflight, 0);
       }, atMost);
     }
-    if (!tmp) {
+    if (!cursorHasMore) {
       TRI_ASSERT(!_cursor->hasMore());
     }
 
@@ -243,7 +234,7 @@ std::pair<ExecutionState, size_t> EnumerateCollectionBlock::skipSome(size_t atMo
 
   while (_inflight < atMost) {
     if (_buffer.empty()) {
-      size_t toFetch = (std::min)(DefaultBatchSize(), atMost - _inflight);
+      size_t toFetch = std::min(DefaultBatchSize(), atMost - _inflight);
       auto upstreamRes = getBlock(toFetch);
       if (upstreamRes.first == ExecutionState::WAITING) {
         return {ExecutionState::WAITING, 0};
