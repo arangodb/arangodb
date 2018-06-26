@@ -581,6 +581,7 @@ log_t State::lastLog() const {
   return _log.back();  
 }
   
+  
 /// Configure with agent
 bool State::configure(Agent* agent) {
   _agent = agent;
@@ -1377,6 +1378,13 @@ index_t State::lastIndex() const {
   MUTEX_LOCKER(mutexLocker, _logLock);
   TRI_ASSERT(!_log.empty());
   return _log.back().index;
+}
+
+// Index of last log entry
+index_t State::firstIndex() const {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  TRI_ASSERT(!_log.empty());
+  return _log.front().index;
 }
 
 /// @brief this method is intended for manual recovery only. It only looks
