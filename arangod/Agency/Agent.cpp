@@ -317,10 +317,12 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
   if (toLog > 0) {
     // This is only used for non-empty appendEntriesRPC calls. If such calls
     // fail, we have to set this earliestPackage time to now such that the
-    // main thread tries again immediately:
+    // main thread tries again immediately: and for that agent starting at 0
+    // which effectively will be _state.firstIndex().
     MUTEX_LOCKER(guard, _tiLock);
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Resetting _earliestPackage to now for id " << slaveId;
+    _confirmed[slaveId] = 0;
     _earliestPackage[slaveId] = steady_clock::now();
   }
 }
@@ -396,9 +398,11 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
+  LOG_TOPIC(INFO, Logger::AGENCY) << __FILE__<< __LINE__;
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
+    LOG_TOPIC(INFO, Logger::AGENCY) << __FILE__<< __LINE__;
     return;
   }
 
@@ -440,6 +444,17 @@ void Agent::sendAppendEntriesRPC() {
         READ_LOCKER(oLocker, _outputLock);
         commitIndex = _commitIndex;
       }
+
+      // If lastConfirmed is smaller than our first log entry's index, and
+      // given that our first log entry is either the 0-entry or a compacted
+      // state and that compaction are only performed up to a RAFT-wide committed
+      // index, and by that up to absolut truth we can correct lastConfirmed
+      // to our first log index. 
+      if (lastConfirmed < _state.firstIndex()) {
+        lastConfirmed = _state.firstIndex();
+      }
+      LOG_TOPIC(TRACE, Logger::AGENCY)
+        << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
 
       lockTime = steady_clock::now() - startTime;
@@ -558,6 +573,7 @@ void Agent::sendAppendEntriesRPC() {
       // Really leading?
       if (challengeLeadership()) {
         resign();
+        LOG_TOPIC(INFO, Logger::AGENCY) << __FILE__<< __LINE__;
         return;
       }
 
@@ -599,6 +615,7 @@ void Agent::sendAppendEntriesRPC() {
           earliestPackage - steady_clock::now()).count() << "ms";
     }
   }
+  LOG_TOPIC(INFO, Logger::AGENCY) << __FILE__<< __LINE__;
 }
 
 
@@ -835,24 +852,37 @@ bool Agent::challengeLeadership() {
 /// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
 
-  std::unordered_map<std::string, SteadyTimePoint> lastAcked;
+  decltype(_lastAcked) lastAcked;
+  decltype(_confirmed) confirmed;
+  decltype(_lastSent) lastSent;
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;
+    confirmed = _confirmed;
+    lastSent = _lastSent;
   }
 
+  std::function<double(std::pair<std::string,SteadyTimePoint> const&)> dur2str =
+    [&](std::pair<std::string,SteadyTimePoint> const& i) {
+    return id() == i.first ? 0.0 :
+      1.0e-3 *
+        std::floor(duration<double>(steady_clock::now()-i.second).count()*1.0e3);
+  };
+
   auto ret = std::make_shared<Builder>();
-  ret->openObject();
-  if (leading()) {
-    for (auto const& i : lastAcked) {
-      ret->add(i.first, VPackValue(
-                 1.0e-3 * std::floor(
-                   (i.first!=id() ?
-                    duration<double>(steady_clock::now()-i.second).count()*1.0e3 :
-		    0.0))));
-    }
-  }
-  ret->close();
+  { VPackObjectBuilder e(ret.get());
+    if (leading()) {
+      for (auto const& i : lastAcked) {
+        auto lsit = lastSent.find(i.first);
+        ret->add(VPackValue(i.first));
+        { VPackObjectBuilder o(ret.get());
+          ret->add("lastAckedTime", VPackValue(dur2str(i)));
+          ret->add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
+          if (i.first != id()) {
+            ret->add("lastAppend", VPackValue(dur2str(*lsit)));
+          }}
+      }
+    }}
 
   return ret;
 
