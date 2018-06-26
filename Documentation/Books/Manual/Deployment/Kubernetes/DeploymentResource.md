@@ -108,6 +108,23 @@ Possible values are:
 
 This setting cannot be changed after the cluster has been created.
 
+### `spec.downtimeAllowed: bool`
+
+This setting is used to allow automatic reconciliation actions that yield
+some downtime of the ArangoDB deployment.
+When this setting is set to `false` (the default), no automatic action that
+may result in downtime is allowed.
+If the need for such an action is detected, an event is added to the `ArangoDeployment`.
+
+Once this setting is set to `true`, the automatic action is executed.
+
+Operations that may result in downtime are:
+
+- Rotating TLS CA certificate
+
+Note: It is still possible that there is some downtime when the Kubernetes
+cluster is down, or in a bad state, irrespective of the value of this setting.
+
 ### `spec.rocksdb.encryption.keySecretName`
 
 This setting specifies the name of a kubernetes `Secret` that contains

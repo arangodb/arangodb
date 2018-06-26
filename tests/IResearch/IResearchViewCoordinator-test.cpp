@@ -198,6 +198,7 @@ struct IResearchViewCoordinatorSetup {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::ClusterInfo::cleanup(); // reset ClusterInfo::instance() before DatabaseFeature::unprepare()
     arangodb::application_features::ApplicationServer::server = nullptr;
 
     // destroy application features
@@ -404,7 +405,7 @@ SECTION("test_create_drop_view") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -564,7 +565,7 @@ SECTION("test_update_properties") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -728,7 +729,7 @@ SECTION("test_update_links_partial_remove") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -1288,7 +1289,7 @@ SECTION("test_update_links_partial_add") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -1854,7 +1855,7 @@ SECTION("test_update_links_replace") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -2417,7 +2418,7 @@ SECTION("test_update_links_clear") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -2847,7 +2848,7 @@ SECTION("test_drop_link") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());
@@ -3077,7 +3078,7 @@ SECTION("IResearchViewNode::createBlock") {
   // create database
   {
     // simulate heartbeat thread
-    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabaseCoordinator(1, "testDatabase", vocbase));
+    REQUIRE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
 
     REQUIRE(nullptr != vocbase);
     CHECK("testDatabase" == vocbase->name());

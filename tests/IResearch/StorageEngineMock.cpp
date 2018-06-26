@@ -1037,12 +1037,21 @@ std::string StorageEngineMock::createCollection(
 }
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
-    TRI_voc_tick_t id,
-    arangodb::velocypack::Slice const& args,
+    TRI_voc_tick_t id, 
+    arangodb::velocypack::Slice const& args, 
     int& status
 ) {
-  TRI_ASSERT(false);
-  return nullptr;
+  if (!args.get("name").isString()) {
+    status = TRI_ERROR_BAD_PARAMETER;
+  }
+
+  status = TRI_ERROR_NO_ERROR;
+  
+  std::string cname = args.get("name").copyString();
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, id, cname);
+  }
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, id, cname);
 }
 
 void StorageEngineMock::createIndex(
@@ -1440,8 +1449,7 @@ void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& st
 }
 
 int StorageEngineMock::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
-  TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL;
+  return TRI_ERROR_NO_ERROR;
 }
 
 TransactionCollectionMock::TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid)

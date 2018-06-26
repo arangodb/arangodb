@@ -40,7 +40,7 @@ metadata:
   name: "replication-from-a-to-b"
 spec:
   source:
-    endpoint: ["https://163.172.149.229:31888", "https://51.15.225.110:31888", "https://51.15.229.133:31888"]
+    masterEndpoint: ["https://163.172.149.229:31888", "https://51.15.225.110:31888", "https://51.15.229.133:31888"]
     auth:
       keyfileSecretName: cluster-a-sync-auth
     tls:
@@ -68,7 +68,7 @@ with sync enabled.
 
 This cluster configured as the replication source.
 
-### `spec.source.endpoint: []string`
+### `spec.source.masterEndpoint: []string`
 
 This setting specifies zero or more master endpoint URL's of the source cluster.
 
@@ -109,7 +109,7 @@ with sync enabled.
 
 This cluster configured as the replication destination.
 
-### `spec.destination.endpoint: []string`
+### `spec.destination.masterEndpoint: []string`
 
 This setting specifies zero or more master endpoint URL's of the destination cluster.
 

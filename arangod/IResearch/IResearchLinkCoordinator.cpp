@@ -126,31 +126,35 @@ bool IResearchLinkCoordinator::init(VPackSlice definition) {
   auto identifier = definition.get(StaticStrings::ViewIdField);
   auto viewId = identifier.getNumber<uint64_t>();
   auto& vocbase = _collection->vocbase();
-    auto logicalView  = vocbase.lookupView(viewId);
 
-    if (!logicalView
-        || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+  TRI_ASSERT(ClusterInfo::instance());
+  auto logicalView  = ClusterInfo::instance()->getView(
+    vocbase.name(), basics::StringUtils::itoa(viewId)
+  );
+
+  if (!logicalView
+      || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error looking up view '" << viewId << "': no such view";
-      return false; // no such view
-    }
+    return false; // no such view
+  }
 
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto view = std::dynamic_pointer_cast<IResearchViewCoordinator>(logicalView);
-    #else
-      auto view = std::static_pointer_cast<IResearchViewCoordinator>(logicalView);
-    #endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto view = std::dynamic_pointer_cast<IResearchViewCoordinator>(logicalView);
+#else
+  auto view = std::static_pointer_cast<IResearchViewCoordinator>(logicalView);
+#endif
 
-    if (!view) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+  if (!view) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "error finding view: '" << viewId << "' for link '" << id() << "'";
 
-      return false;
-    }
+    return false;
+  }
 
-    _view = view;
+  _view = view;
 
-    return true;
+  return true;
 }
 
 /*static*/ IResearchLinkCoordinator::ptr IResearchLinkCoordinator::make(

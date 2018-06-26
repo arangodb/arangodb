@@ -992,10 +992,30 @@ function processQuery (query, explain) {
     }
     return '';
   };
+  
+  var iterateIndexes = function (idx, i, node, types, variable) {
+    var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
+    if (types.length === 0 || what !== types[types.length - 1]) {
+      types.push(what);
+    }
+    idx.collection = node.collection;
+    idx.node = node.id;
+    if (node.hasOwnProperty('condition') && node.condition.type && node.condition.type === 'n-ary or') {
+      idx.condition = buildExpression(node.condition.subNodes[i]);
+    } else {
+      if (variable !== false) {
+        idx.condition = variable;
+      } else {
+        idx.condition = '*'; // empty condition. this is likely an index used for sorting only
+      }
+    }
+    indexes.push(idx);
+  };
 
   var label = function (node) {
     var rc, v, e, edgeCols;
     var parts = [];
+    var types = [];
     switch (node.type) {
       case 'SingletonNode':
         return keyword('ROOT');
@@ -1010,22 +1030,9 @@ function processQuery (query, explain) {
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        var types = [];
-        node.indexes.forEach(function (idx, i) {
-          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
-          if (types.length === 0 || what !== types[types.length - 1]) {
-            types.push(what);
-          }
-          idx.collection = node.collection;
-          idx.node = node.id;
-          if (node.condition.type && node.condition.type === 'n-ary or') {
-            idx.condition = buildExpression(node.condition.subNodes[i]);
-          } else {
-            idx.condition = '*'; // empty condition. this is likely an index used for sorting only
-          }
-          indexes.push(idx);
-        });
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
+        //`
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1275,33 +1282,41 @@ function processQuery (query, explain) {
       case 'UpdateNode': {
         modificationFlags = node.modificationFlags;
         let inputExplain = '';
+        let indexRef = '';
         if (node.hasOwnProperty('inKeyVariable')) {
+          indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `variableName(node.inDocVariable)`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
         }
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('UPDATE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'ReplaceNode': {
         modificationFlags = node.modificationFlags;
         let inputExplain = '';
+        let indexRef = '';
         if (node.hasOwnProperty('inKeyVariable')) {
+          indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
           } else {
-          inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `variableName(node.inDocVariable)`;
           }
         let restrictString = '';
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
           }
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REPLACE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'UpsertNode':
         modificationFlags = node.modificationFlags;
+        let indexRef = `${variableName(node.inDocVariable)}`;
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return keyword('UPSERT') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('INSERT') + ' ' + variableName(node.insertVariable) + ' ' + keyword(node.isReplace ? 'REPLACE' : 'UPDATE') + ' ' + variableName(node.updateVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
       case 'RemoveNode': {
         modificationFlags = node.modificationFlags;
@@ -1309,6 +1324,8 @@ function processQuery (query, explain) {
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
           }
+        let indexRef = `${variableName(node.inVariable)}`;
+        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'RemoteNode':
