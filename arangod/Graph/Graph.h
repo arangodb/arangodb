@@ -27,13 +27,13 @@
 #include <chrono>
 #include <utility>
 
-#include "Aql/VariableGenerator.h"
 #include "Aql/Query.h"
+#include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ResultT.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 
 namespace arangodb {
@@ -53,6 +53,19 @@ class EdgeDefinition {
   // TODO implement these
   bool isFrom(std::string const& vertexCollection) const;
   bool isTo(std::string const& vertexCollection) const;
+
+  /// @brief validate the structure of edgeDefinition, i.e.
+  /// that it contains the correct attributes, and that they contain the correct
+  /// types of values.
+  static Result validateEdgeDefinition(const velocypack::Slice& edgeDefinition);
+  static std::shared_ptr<velocypack::Buffer<uint8_t>> sortEdgeDefinition(
+      const velocypack::Slice& edgeDefinition);
+
+  static ResultT<EdgeDefinition> createFromVelocypack(
+      velocypack::Slice edgeDefinition);
+
+  bool operator==(EdgeDefinition const& other) const;
+  bool operator!=(EdgeDefinition const& other) const;
 
  private:
   std::string _edgeCollection;
@@ -81,7 +94,7 @@ class Graph {
 
   /// @brief the cids of all edgeCollections
   std::unordered_set<std::string> _edgeColls;
-  
+
   /// @brief edge definition names of this graph, ordered as in the database
   std::vector<std::string> _edgeDefsNames;
 
@@ -112,7 +125,7 @@ class Graph {
 
   /// @brief Graph collection edge definition attribute name
   static char const* _attrDropCollections;
-  
+
   /// @brief Graph collection edge definition attribute name
   static char const* _attrEdgeDefs;
 
@@ -131,12 +144,8 @@ class Graph {
   /// @brief Graph collection smartgraph attribute name
   static char const* _attrSmartGraphAttribute;
 
-  /// @brief validate the structure of edgeDefinition, i.e.
-  /// that it contains the correct attributes, and that they contain the correct
-  /// types of values.
-  static Result ValidateEdgeDefinition(const velocypack::Slice& edgeDefinition);
-  static Result ValidateOrphanCollection(const velocypack::Slice& orphanDefinition);
-  static std::shared_ptr<velocypack::Buffer<uint8_t>> SortEdgeDefinition(const velocypack::Slice& edgeDefinition);
+  static Result validateOrphanCollection(
+      const velocypack::Slice& orphanDefinition);
 
  public:
   /// @brief get the cids of all vertexCollections
@@ -149,7 +158,8 @@ class Graph {
   std::unordered_set<std::string> const& edgeCollections() const;
 
   /// @brief get the cids of all edgeCollections
-  std::unordered_map<std::string, EdgeDefinition> const& edgeDefinitions() const;
+  std::unordered_map<std::string, EdgeDefinition> const& edgeDefinitions()
+      const;
 
   /// @brief get the cids of all edgeCollections
   std::vector<std::string> const& edgeDefinitionNames() const;
@@ -179,7 +189,7 @@ class Graph {
  private:
   /// @brief adds one edge definition. the edge definition must not have been
   /// added before.
-  Result addEdgeDefinition(velocypack::Slice const& edgeDefinition);
+  Result addEdgeDefinition(velocypack::Slice const& edgeDefinitionSlice);
 
   /// @brief Add an edge collection to this graphs definition
   void addEdgeCollection(std::string&&);
@@ -276,8 +286,8 @@ class GraphOperations {
       bool returnOld, bool returnNew, bool keepNull);
 
   ResultT<std::pair<OperationResult, Result>> createEdge(
-      const std::string& definitionName,
-      VPackSlice document, bool waitForSync, bool returnNew);
+      const std::string& definitionName, VPackSlice document, bool waitForSync,
+      bool returnNew);
 
   ResultT<std::pair<OperationResult, Result>> updateVertex(
       const std::string& collectionName, const std::string& key,
@@ -290,8 +300,8 @@ class GraphOperations {
       bool returnOld, bool returnNew, bool keepNull);
 
   ResultT<std::pair<OperationResult, Result>> createVertex(
-      const std::string& collectionName,
-      VPackSlice document, bool waitForSync, bool returnNew);
+      const std::string& collectionName, VPackSlice document, bool waitForSync,
+      bool returnNew);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
@@ -321,16 +331,16 @@ class GraphOperations {
   /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   ResultT<std::pair<OperationResult, Result>> editEdgeDefinition(
-      VPackSlice edgeDefinition, bool waitForSync, std::string edgeDefinitionName);
+      VPackSlice edgeDefinition, bool waitForSync,
+      const std::string& edgeDefinitionName);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief change the edge definition for a specified graph
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult changeEdgeDefinitionsForGraph(
       VPackSlice graph, VPackSlice edgeDefinition,
-      std::unordered_set<std::string> newCollections,
       std::unordered_set<std::string> possibleOrphans, bool waitForSync,
-      std::string thisGraphName, transaction::Methods& trx);
+      transaction::Methods& trx);
 
   void pushCollectionIfMayBeDropped(const std::string& colName,
                                     const std::string& graphName,
@@ -343,6 +353,8 @@ class GraphOperations {
       std::string const& collectionName, const std::string& key,
       boost::optional<TRI_voc_rid_t> rev);
 
+  /// @brief creates a vpack { _key: key } or { _key: key, _rev: rev }
+  /// (depending on whether rev is set)
   VPackBufferPtr _getSearchSlice(const std::string& key,
                                  boost::optional<TRI_voc_rid_t>& rev) const;
 
@@ -355,80 +367,77 @@ class GraphOperations {
       transaction::Methods* trx, const std::string& collectionName,
       VPackSlice document, bool waitForSync, bool returnNew);
 
-    void checkEdgeCollectionAvailability(std::string edgeDefinitionName);
-    void checkVertexCollectionAvailability(std::string VertexDefinitionName);
+  void assertEdgeCollectionAvailability(std::string edgeDefinitionName);
+  void assertVertexCollectionAvailability(std::string VertexDefinitionName);
 };
 
 class GraphManager {
-  private:
-   std::shared_ptr<transaction::Context> _ctx;
-   std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
+ private:
+  std::shared_ptr<transaction::Context> _ctx;
+  std::shared_ptr<transaction::Context>& ctx() { return _ctx; };
+  std::shared_ptr<transaction::Context> const& ctx() const { return _ctx; };
 
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief check for duplicate definitions within edge definitions
-   ////////////////////////////////////////////////////////////////////////////////
-   void checkDuplicateEdgeDefinitions(VPackSlice edgeDefinition);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief assert that there are no duplicate edge definitions in the
+  /// argument, and that there are no mismatching edge definitions in existing
+  /// graphs.
+  ////////////////////////////////////////////////////////////////////////////////
+  void assertFeasibleEdgeDefinitions(VPackSlice edgeDefinitionsSlice) const;
 
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief find or create vertex collection by name
-   ////////////////////////////////////////////////////////////////////////////////
-   void findOrCreateVertexCollectionByName(std::string&& name);
-   
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief find or create collection by name and type
-   ////////////////////////////////////////////////////////////////////////////////
-   void createCollection(std::string const& name, TRI_col_type_e colType);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief find or create vertex collection by name
+  ////////////////////////////////////////////////////////////////////////////////
+  void findOrCreateVertexCollectionByName(const std::string& name);
 
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief create an edge collection
-   ////////////////////////////////////////////////////////////////////////////////
-   void createEdgeCollection(std::string const& name);
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief find or create collection by name and type
+  ////////////////////////////////////////////////////////////////////////////////
+  void createCollection(std::string const& name, TRI_col_type_e colType);
 
  public:
-   GraphManager() = delete;
-   explicit GraphManager(std::shared_ptr<transaction::Context> ctx_)
-       : _ctx(std::move(ctx_)) {}
-   void readGraphs(velocypack::Builder& builder, arangodb::aql::QueryPart QueryPart);
+  GraphManager() = delete;
+  explicit GraphManager(std::shared_ptr<transaction::Context> ctx_)
+      : _ctx(std::move(ctx_)) {}
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief find and return a collections if available
-    ////////////////////////////////////////////////////////////////////////////////
-    std::shared_ptr<LogicalCollection> getCollectionByName(
-        TRI_vocbase_t& vocbase,
-        std::string const& name);
-
-
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief create a graph
-   ////////////////////////////////////////////////////////////////////////////////
-   ResultT<std::pair<OperationResult, Result>> createGraph(VPackSlice document,
-       bool waitForSync);
-
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief find or create collections by EdgeDefinitions
-   ////////////////////////////////////////////////////////////////////////////////
-   void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition);
-
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief create a vertex collection
-   ////////////////////////////////////////////////////////////////////////////////
-   void createVertexCollection(std::string const& name);
-
-   ////////////////////////////////////////////////////////////////////////////////
-   /// @brief remove a vertex collection
-   ////////////////////////////////////////////////////////////////////////////////
-   void removeVertexCollection(
-     std::string const& collectionName,
-     bool dropCollection
-   );
+  void readGraphs(velocypack::Builder& builder,
+                  arangodb::aql::QueryPart queryPart) const;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief check if the edge definition conflicts with one in an existing graph
+  /// @brief find and return a collections if available
   ////////////////////////////////////////////////////////////////////////////////
-   Result checkForEdgeDefinitionConflicts(std::string const& edgeDefinitionName,
-                                          VPackSlice edgeDefinition);
+  std::shared_ptr<LogicalCollection> getCollectionByName(
+      const TRI_vocbase_t& vocbase, std::string const& name) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a graph
+  ////////////////////////////////////////////////////////////////////////////////
+  ResultT<std::pair<OperationResult, Result>> createGraph(VPackSlice document,
+                                                          bool waitForSync);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief find or create collections by EdgeDefinitions
+  ////////////////////////////////////////////////////////////////////////////////
+  void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create a vertex collection
+  ////////////////////////////////////////////////////////////////////////////////
+  void createVertexCollection(std::string const& name);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief create an edge collection
+  ////////////////////////////////////////////////////////////////////////////////
+  void createEdgeCollection(std::string const& name);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check if the edge definition conflicts with one in an existing
+  /// graph
+  ////////////////////////////////////////////////////////////////////////////////
+  Result checkForEdgeDefinitionConflicts(std::string const& edgeDefinitionName,
+                                         VPackSlice edgeDefinition);
 };
 
+// TODO continue review here
 
 class GraphCache {
  public:

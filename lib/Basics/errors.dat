@@ -377,6 +377,7 @@ ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,1939,"edge collection does not exist or is n
 ERROR_GRAPH_EMPTY,1940,"empty graph","The requested graph has no edge collections."
 ERROR_GRAPH_INTERNAL_DATA_CORRUPT,1941,"internal graph data corrupt","The _graphs collection contains invalid data."
 ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,1942,"edge collection already set","Tried to add an edge collection which is already defined."
+ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orphan list argument is malformed. It has to be an array of strings."
 
 ################################################################################
 ## Session errors

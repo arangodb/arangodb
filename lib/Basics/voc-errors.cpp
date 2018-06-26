@@ -286,6 +286,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_EMPTY, "empty graph");
   REG_ERROR(ERROR_GRAPH_INTERNAL_DATA_CORRUPT, "internal graph data corrupt");
   REG_ERROR(ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET, "edge collection already set");
+  REG_ERROR(ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST, "malformed orphan list");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");

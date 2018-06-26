@@ -38,8 +38,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Graphs.h"
@@ -91,33 +91,24 @@ std::vector<std::string> const& Graph::edgeDefinitionNames() const {
   return _edgeDefsNames;
 }
 
-std::unordered_map<std::string, EdgeDefinition> const& Graph::edgeDefinitions() const {
+std::unordered_map<std::string, EdgeDefinition> const& Graph::edgeDefinitions()
+    const {
   return _edgeDefs;
 }
 
-bool const& Graph::isSmart() const {
-  return _isSmart;
-}
+bool const& Graph::isSmart() const { return _isSmart; }
 
-uint64_t Graph::numberOfShards() const {
-  return _numberOfShards;
-}
+uint64_t Graph::numberOfShards() const { return _numberOfShards; }
 
-uint64_t Graph::replicationFactor() const {
-  return _replicationFactor;
-}
+uint64_t Graph::replicationFactor() const { return _replicationFactor; }
 
 std::string const& Graph::smartGraphAttribute() const {
   return _smartGraphAttribute;
 }
 
-std::string const& Graph::id() const {
-  return _id;
-}
+std::string const& Graph::id() const { return _id; }
 
-std::string const& Graph::rev() const {
-  return _rev;
-}
+std::string const& Graph::rev() const { return _rev; }
 
 void Graph::addEdgeCollection(std::string&& name) {
   _edgeColls.emplace(std::move(name));
@@ -131,9 +122,7 @@ void Graph::addOrphanCollection(std::string&& name) {
   _orphanColls.emplace(std::move(name));
 }
 
-void Graph::setSmartState(bool state) {
-  _isSmart = state;
-}
+void Graph::setSmartState(bool state) { _isSmart = state; }
 
 void Graph::setNumberOfShards(uint64_t numberOfShards) {
   _numberOfShards = numberOfShards;
@@ -147,13 +136,9 @@ void Graph::setSmartGraphAttribute(std::string&& smartGraphAttribute) {
   _smartGraphAttribute = std::move(smartGraphAttribute);
 }
 
-void Graph::setId(std::string&& id) {
-  _id = std::move(id);
-}
+void Graph::setId(std::string&& id) { _id = std::move(id); }
 
-void Graph::setRev(std::string&& rev) {
-  _rev = std::move(rev);
-}
+void Graph::setRev(std::string&& rev) { _rev = std::move(rev); }
 
 void Graph::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
@@ -177,7 +162,6 @@ void Graph::toVelocyPack(VPackBuilder& builder) const {
 
 Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
     : _graphName(graphName_), _vertexColls(), _edgeColls() {
-
   if (slice.hasKey(_attrEdgeDefs)) {
     VPackSlice edgeDefs = slice.get(_attrEdgeDefs);
     TRI_ASSERT(edgeDefs.isArray());
@@ -241,7 +225,7 @@ Graph::Graph(std::string&& graphName_, velocypack::Slice const& slice)
   if (slice.hasKey(_attrSmartGraphAttribute)) {
     setSmartGraphAttribute(slice.get(_attrSmartGraphAttribute).copyString());
   }
-  setId("_graphs/" + graphName_); // TODO: how to fetch id properly?
+  setId("_graphs/" + graphName_);  // TODO: how to fetch id properly?
   setRev(slice.get(StaticStrings::RevString).copyString());
 }
 
@@ -249,7 +233,8 @@ void Graph::enhanceEngineInfo(VPackBuilder&) const {}
 
 // validates the type:
 // edgeDefinition : { collection : string, from : [string], to : [string] }
-Result Graph::ValidateEdgeDefinition(VPackSlice const& edgeDefinition) {
+Result EdgeDefinition::validateEdgeDefinition(
+    VPackSlice const& edgeDefinition) {
   TRI_ASSERT(edgeDefinition.isObject());
   if (!edgeDefinition.isObject()) {
     return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
@@ -290,7 +275,8 @@ Result Graph::ValidateEdgeDefinition(VPackSlice const& edgeDefinition) {
 // TODO: maybe create a class instance here + func as class func
 // sort an edgeDefinition:
 // edgeDefinition : { collection : string, from : [string], to : [string] }
-std::shared_ptr<velocypack::Buffer<uint8_t>> Graph::SortEdgeDefinition(VPackSlice const& edgeDefinition) {
+std::shared_ptr<velocypack::Buffer<uint8_t>> EdgeDefinition::sortEdgeDefinition(
+    VPackSlice const& edgeDefinition) {
   arangodb::basics::VelocyPackHelper::VPackLess<true> sorter;
   VPackBuilder from = VPackCollection::sort(edgeDefinition.get("from"), sorter);
   VPackBuilder to = VPackCollection::sort(edgeDefinition.get("to"), sorter);
@@ -304,18 +290,9 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Graph::SortEdgeDefinition(VPackSlic
   return sortedBuilder.steal();
 }
 
-// validates the type:
-// orphanDefinition : string <collectionName>
-Result Graph::ValidateOrphanCollection(VPackSlice const& orphanCollection) {
-  if (!orphanCollection.isString()) {
-    return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
-                  "orphan collection is not a string!");
-  }
-  return Result();
-}
-
-Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinition) {
-  Result res = ValidateEdgeDefinition(edgeDefinition);
+ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(
+    velocypack::Slice edgeDefinition) {
+  Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
   // should always be valid unless someone broke his _graphs collection
   // manually
   TRI_ASSERT(res.ok());
@@ -323,7 +300,6 @@ Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinition) {
     return res;
   }
   std::string collection = edgeDefinition.get("collection").copyString();
-  _edgeDefsNames.emplace_back(collection);
   VPackSlice from = edgeDefinition.get("from");
   VPackSlice to = edgeDefinition.get("to");
 
@@ -338,10 +314,46 @@ Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinition) {
     toSet.emplace(it.copyString());
   }
 
+  return EdgeDefinition{collection, std::move(fromSet), std::move(toSet)};
+}
+
+bool EdgeDefinition::operator==(EdgeDefinition const& other) const {
+  return this->getName() == other.getName() &&
+         this->getFrom() == other.getFrom() && this->getTo() == other.getTo();
+}
+
+bool EdgeDefinition::operator!=(EdgeDefinition const& other) const {
+  return this->getName() != other.getName() ||
+         this->getFrom() != other.getFrom() || this->getTo() != other.getTo();
+}
+
+// validates the type:
+// orphanDefinition : string <collectionName>
+Result Graph::validateOrphanCollection(VPackSlice const& orphanCollection) {
+  if (!orphanCollection.isString()) {
+    return Result(TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,
+                  "orphan collection is not a string!");
+  }
+  return Result();
+}
+
+Result Graph::addEdgeDefinition(VPackSlice const& edgeDefinitionSlice) {
+  auto res = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
+
+  TRI_ASSERT(res.ok());
+  if (res.fail()) {
+    return res;
+  }
+
+  EdgeDefinition const& edgeDefinition = res.get();
+
+  std::string const& collection = edgeDefinition.getName();
+
+  _edgeDefsNames.emplace_back(collection);
+
   bool inserted;
-  std::tie(std::ignore, inserted) = _edgeDefs.emplace(
-      collection,
-      EdgeDefinition{collection, std::move(fromSet), std::move(toSet)});
+  std::tie(std::ignore, inserted) =
+      _edgeDefs.emplace(collection, edgeDefinition);
 
   // This can only happen if addEdgeDefinition is called without clearing
   // _edgeDefs first (which would be a logical error), or if the same collection
@@ -385,7 +397,7 @@ std::ostream& Graph::operator<<(std::ostream& ostream) {
   return ostream;
 }
 
-bool Graph::hasEdgeCollection(std::string const &collectionName) const {
+bool Graph::hasEdgeCollection(std::string const& collectionName) const {
   for (auto const& edgeCollection : edgeCollections()) {
     if (collectionName == edgeCollection) {
       return true;
@@ -399,11 +411,11 @@ bool Graph::hasEdgeCollection(std::string const &collectionName) const {
 
 OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
     VPackSlice graph, VPackSlice edgeDefinition,
-    std::unordered_set<std::string> newCollections, std::unordered_set<std::string> possibleOrphans,
-    bool waitForSync, std::string thisGraphName, transaction::Methods& trx) {
-
+    std::unordered_set<std::string> possibleOrphans, bool waitForSync,
+    transaction::Methods& trx) {
   std::unordered_set<std::string> graphCollections;
-  std::string edgeDefinitionName = edgeDefinition.get("collection").copyString();
+  std::string edgeDefinitionName =
+      edgeDefinition.get("collection").copyString();
   bool gotAHit = false;
 
   VPackSlice eDs;
@@ -417,7 +429,8 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
   OperationOptions options;
   options.waitForSync = waitForSync;
 
-  std::unordered_map<std::string, EdgeDefinition> edgeDefs = _graph.edgeDefinitions();
+  std::unordered_map<std::string, EdgeDefinition> edgeDefs =
+      _graph.edgeDefinitions();
 
   // replace edgeDefinition
   for (auto const& eD : VPackArrayIterator(eDs)) {
@@ -428,7 +441,8 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
       builder.openObject();
 
       // build edge definitions start
-      builder.add(StaticStrings::KeyString, VPackValue(graph.get(StaticStrings::KeyString).copyString()));
+      builder.add(StaticStrings::KeyString,
+                  VPackValue(graph.get(StaticStrings::KeyString).copyString()));
       builder.add(Graph::_attrEdgeDefs, VPackValue(VPackValueType::Array));
       for (auto const& it : edgeDefs) {
         builder.add(VPackValue(VPackValueType::Object));
@@ -441,7 +455,7 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
           for (auto const& from : it.second.getFrom()) {
             builder.add(VPackValue(from));
           }
-          builder.close(); // from
+          builder.close();  // from
         }
         if (it.second.getName() == edgeDefinitionName) {
           builder.add("to", edgeDefinition.get("to"));
@@ -451,23 +465,23 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
           for (auto const& to : it.second.getTo()) {
             builder.add(VPackValue(to));
           }
-          builder.close(); // to
+          builder.close();  // to
         }
-        builder.close(); // obj
+        builder.close();  // obj
       }
-      builder.close(); // array
+      builder.close();  // array
       // build edge definitions end
 
-      builder.close(); // object
+      builder.close();  // object
 
       // now write to database
       result = trx.update(Graph::_graphs, builder.slice(), options);
     } else {
       // collect all used collections
-      for (auto const& from: VPackArrayIterator(eD.get("from"))) {
+      for (auto const& from : VPackArrayIterator(eD.get("from"))) {
         graphCollections.emplace(from.copyString());
       }
-      for (auto const& to: VPackArrayIterator(eD.get("to"))) {
+      for (auto const& to : VPackArrayIterator(eD.get("to"))) {
         graphCollections.emplace(to.copyString());
       }
     }
@@ -478,10 +492,6 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
   }
 
   GraphManager gmngr{ctx()};
-  // collection creation
-  for (auto const& nc : newCollections) {
-    gmngr.removeVertexCollection(nc, false);
-  }
   for (auto const& po : possibleOrphans) {
     gmngr.createVertexCollection(po);
   }
@@ -489,16 +499,17 @@ OperationResult GraphOperations::changeEdgeDefinitionsForGraph(
   return result;
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseEdgeDefinition(
-  bool waitForSync, std::string edgeDefinitionName, bool dropCollection
-) {
-
+ResultT<std::pair<OperationResult, Result>>
+GraphOperations::eraseEdgeDefinition(bool waitForSync,
+                                     std::string edgeDefinitionName,
+                                     bool dropCollection) {
   // check if edgeCollection is available
-  checkEdgeCollectionAvailability(edgeDefinitionName);
+  assertEdgeCollectionAvailability(edgeDefinitionName);
 
   std::unordered_set<std::string> possibleOrphans;
   std::unordered_set<std::string> usedVertexCollections;
-  std::unordered_map<std::string, EdgeDefinition> edgeDefs = _graph.edgeDefinitions();
+  std::unordered_map<std::string, EdgeDefinition> edgeDefs =
+      _graph.edgeDefinitions();
 
   VPackBuilder newEdgeDefs;
   newEdgeDefs.add(VPackValue(VPackValueType::Array));
@@ -521,22 +532,23 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseEdgeDefinition
 
       // add still existing edgeDefinition to builder for update commit
       newEdgeDefs.openObject();
-      newEdgeDefs.add("collection", VPackValue(edgeDefinition.second.getName()));
+      newEdgeDefs.add("collection",
+                      VPackValue(edgeDefinition.second.getName()));
       newEdgeDefs.add("from", VPackValue(VPackValueType::Array));
       for (auto const& from : edgeDefinition.second.getFrom()) {
         newEdgeDefs.add(VPackValue(from));
       }
-      newEdgeDefs.close(); // array
+      newEdgeDefs.close();  // array
       newEdgeDefs.add("to", VPackValue(VPackValueType::Array));
       for (auto const& to : edgeDefinition.second.getTo()) {
         newEdgeDefs.add(VPackValue(to));
       }
-      newEdgeDefs.close(); // array
-      newEdgeDefs.close(); // object
+      newEdgeDefs.close();  // array
+      newEdgeDefs.close();  // object
     }
   }
 
-  newEdgeDefs.close(); // array
+  newEdgeDefs.close();  // array
 
   // build orphan array
   VPackBuilder newOrphColls;
@@ -545,11 +557,12 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseEdgeDefinition
     newOrphColls.add(VPackValue(orph));
   }
   for (auto const& po : possibleOrphans) {
-    if (std::find(usedVertexCollections.begin(), usedVertexCollections.end(), po) != usedVertexCollections.end()) {
+    if (std::find(usedVertexCollections.begin(), usedVertexCollections.end(),
+                  po) != usedVertexCollections.end()) {
       newOrphColls.add(VPackValue(po));
     }
   }
-  newOrphColls.close(); // array
+  newOrphColls.close();  // array
 
   // remove edgeDefinition from graph config
 
@@ -577,14 +590,16 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseEdgeDefinition
 
   if (dropCollection) {
     // TODO: also drop collection if not used
-    // old gharial api is dropping without a check, docu says we need to check if other graphs are using
-    // the collection. what should we do?! 
+    // old gharial api is dropping without a check, docu says we need to check
+    // if other graphs are using
+    // the collection. what should we do?!
   }
 
   return std::make_pair(std::move(result), std::move(res));
 }
 
-void GraphOperations::checkEdgeCollectionAvailability(std::string edgeDefinitionName) {
+void GraphOperations::assertEdgeCollectionAvailability(
+    std::string edgeDefinitionName) {
   bool found = false;
   for (auto const& edgeCollection : _graph.edgeCollections()) {
     if (edgeCollection == edgeDefinitionName) {
@@ -597,25 +612,26 @@ void GraphOperations::checkEdgeCollectionAvailability(std::string edgeDefinition
   }
 }
 
-void GraphOperations::checkVertexCollectionAvailability(std::string vertexDefinitionName) {
+void GraphOperations::assertVertexCollectionAvailability(
+    std::string vertexDefinitionName) {
   GraphManager gmngr{ctx()};
 
-  std::shared_ptr<LogicalCollection> def = gmngr.getCollectionByName(
-    ctx()->vocbase(), vertexDefinitionName
-  );
+  std::shared_ptr<LogicalCollection> def =
+      gmngr.getCollectionByName(ctx()->vocbase(), vertexDefinitionName);
   if (def == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST);
   }
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
-    VPackSlice edgeDefinition, bool waitForSync, std::string edgeDefinitionName) {
-
-  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer = Graph::SortEdgeDefinition(edgeDefinition);
+    VPackSlice edgeDefinition, bool waitForSync,
+    const std::string& edgeDefinitionName) {
+  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
+      EdgeDefinition::sortEdgeDefinition(edgeDefinition);
   edgeDefinition = velocypack::Slice(buffer->data());
 
   // check if edgeCollection is available
-  checkEdgeCollectionAvailability(edgeDefinitionName);
+  assertEdgeCollectionAvailability(edgeDefinitionName);
 
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Array));
@@ -638,8 +654,10 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED);
   }
 
-  std::unordered_map<std::string, EdgeDefinition> edgeDefs = _graph.edgeDefinitions();
-  EdgeDefinition const& currentEdgeDefinition = edgeDefs.at(currentEdgeDefinitionName);
+  std::unordered_map<std::string, EdgeDefinition> edgeDefs =
+      _graph.edgeDefinitions();
+  EdgeDefinition const& currentEdgeDefinition =
+      edgeDefs.at(currentEdgeDefinitionName);
 
   std::unordered_set<std::string> currentCollections;
   std::unordered_set<std::string> newCollections;
@@ -661,7 +679,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
   }
 
   for (auto const& colName : currentCollections) {
-    if (std::find(newCollections.begin(), newCollections.end(), colName) == newCollections.end()) {
+    if (newCollections.find(colName) == newCollections.end()) {
       possibleOrphans.emplace(colName);
     }
   }
@@ -671,7 +689,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
   VPackSlice graphs = graphsBuilder.slice();
 
   SingleCollectionTransaction trx(ctx(), Graph::_graphs,
-      AccessMode::Type::WRITE);
+                                  AccessMode::Type::WRITE);
 
   Result res = trx.begin();
 
@@ -683,8 +701,9 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::editEdgeDefinition(
   OperationResult result;
   if (graphs.get("graphs").isArray()) {
     for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-      result = changeEdgeDefinitionsForGraph(singleGraph.resolveExternals(), edgeDefinition,
-              newCollections, possibleOrphans, waitForSync, _graph.name(), trx);
+      result = changeEdgeDefinitionsForGraph(singleGraph.resolveExternals(),
+                                             edgeDefinition, possibleOrphans,
+                                             waitForSync, trx);
     }
   }
 
@@ -727,8 +746,8 @@ GraphOperations::addOrphanCollection(VPackSlice document, bool waitForSync) {
     builder.add(VPackValue(orph));
   }
   builder.add(VPackValue(collectionName));
-  builder.close(); // array
-  builder.close(); // object
+  builder.close();  // array
+  builder.close();  // object
 
   SingleCollectionTransaction trx(ctx(), Graph::_graphs,
                                   AccessMode::Type::WRITE);
@@ -748,14 +767,15 @@ GraphOperations::addOrphanCollection(VPackSlice document, bool waitForSync) {
   return std::make_pair(std::move(result), std::move(res));
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseOrphanCollection(
-  bool waitForSync, std::string collectionName, bool dropCollection
-) {
-
+ResultT<std::pair<OperationResult, Result>>
+GraphOperations::eraseOrphanCollection(bool waitForSync,
+                                       std::string collectionName,
+                                       bool dropCollection) {
   // check if collection exists
-  checkVertexCollectionAvailability(collectionName);
+  assertVertexCollectionAvailability(collectionName);
 
-  std::unordered_set<std::string> orphanCollections = _graph.orphanCollections();
+  std::unordered_set<std::string> orphanCollections =
+      _graph.orphanCollections();
 
   bool found = false;
   for (auto const& oName : _graph.orphanCollections()) {
@@ -776,8 +796,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseOrphanCollecti
       builder.add(VPackValue(orph));
     }
   }
-  builder.close(); // array
-  builder.close(); // object
+  builder.close();  // array
+  builder.close();  // object
 
   SingleCollectionTransaction trx(ctx(), Graph::_graphs,
                                   AccessMode::Type::WRITE);
@@ -801,12 +821,10 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseOrphanCollecti
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-              &ctx()->vocbase(),
-              collection,
-              [&](LogicalCollection* coll) {
-                  resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false, -1.0);
-              }
-      );
+          &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
+            resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
+                                               -1.0);
+          });
 
       if (found.fail()) {
         THROW_ARANGO_EXCEPTION(res);
@@ -820,9 +838,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::eraseOrphanCollecti
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::addEdgeDefinition(
-  VPackSlice edgeDefinition, bool waitForSync
-) {
-  Result res = Graph::ValidateEdgeDefinition(edgeDefinition);
+    VPackSlice edgeDefinition, bool waitForSync) {
+  Result res = EdgeDefinition::validateEdgeDefinition(edgeDefinition);
 
   if (res.fail()) {
     return {res};
@@ -832,7 +849,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::addEdgeDefinition(
   options.waitForSync = waitForSync;
 
   std::shared_ptr<velocypack::Buffer<uint8_t>> buffer =
-      Graph::SortEdgeDefinition(edgeDefinition);
+      EdgeDefinition::sortEdgeDefinition(edgeDefinition);
   edgeDefinition = velocypack::Slice(buffer->data());
 
   std::string eC = edgeDefinition.get("collection").copyString();
@@ -870,23 +887,23 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::addEdgeDefinition(
     for (auto const& from : it.second.getFrom()) {
       builder.add(VPackValue(from));
     }
-    builder.close(); // from
+    builder.close();  // from
     // to
     builder.add("to", VPackValue(VPackValueType::Array));
     for (auto const& to : it.second.getTo()) {
       builder.add(VPackValue(to));
     }
-    builder.close(); // to
-    builder.close(); // obj
+    builder.close();  // to
+    builder.close();  // obj
   }
   builder.add(edgeDefinition);
-  builder.close(); // array
-  builder.close(); // object
+  builder.close();  // array
+  builder.close();  // object
 
   OperationResult result;
   {
     SingleCollectionTransaction trx(ctx(), Graph::_graphs,
-      AccessMode::Type::WRITE);
+                                    AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
     res = trx.begin();
@@ -964,7 +981,6 @@ GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
     bool waitForSync, bool dropCollections) {
-
   std::vector<std::string> trxCollections;
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(Graph::_graphs);
@@ -972,19 +988,16 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
   std::vector<std::string> collectionsToBeRemoved;
   if (dropCollections) {
     for (auto const& vertexCollection : _graph.vertexCollections()) {
-      pushCollectionIfMayBeDropped(
-        vertexCollection, _graph.name(), collectionsToBeRemoved
-      );
+      pushCollectionIfMayBeDropped(vertexCollection, _graph.name(),
+                                   collectionsToBeRemoved);
     }
     for (auto const& orphanCollection : _graph.orphanCollections()) {
-      pushCollectionIfMayBeDropped(
-        orphanCollection, _graph.name(), collectionsToBeRemoved
-      );
+      pushCollectionIfMayBeDropped(orphanCollection, _graph.name(),
+                                   collectionsToBeRemoved);
     }
     for (auto const& edgeCollection : _graph.edgeCollections()) {
-      pushCollectionIfMayBeDropped(
-        edgeCollection, _graph.name(), collectionsToBeRemoved
-      );
+      pushCollectionIfMayBeDropped(edgeCollection, _graph.name(),
+                                   collectionsToBeRemoved);
     }
   }
 
@@ -1003,12 +1016,13 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
   Result res;
   OperationResult result;
   {
-    std::unique_ptr<transaction::Methods> trx(
-      new UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+    std::unique_ptr<transaction::Methods> trx(new UserTransaction(
+        ctx(), trxCollections, writeCollections, {}, trxOptions));
 
     res = trx->begin();
     if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                     "not found");
     }
     VPackSlice search = builder.slice();
     result = trx->remove(Graph::_graphs, search, options);
@@ -1024,12 +1038,10 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeGraph(
     for (auto const& collection : collectionsToBeRemoved) {
       Result resIn;
       Result found = methods::Collections::lookup(
-        &ctx()->vocbase(),
-        collection,
-        [&](LogicalCollection* coll) {
-          resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false, -1.0);
-        }
-      );
+          &ctx()->vocbase(), collection, [&](LogicalCollection* coll) {
+            resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false,
+                                               -1.0);
+          });
 
       if (found.fail()) {
         THROW_ARANGO_EXCEPTION(res);
@@ -1132,7 +1144,6 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::modifyDocument(
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createDocument(
     transaction::Methods* trx, std::string const& collectionName,
     VPackSlice document, bool waitForSync, bool returnNew) {
-
   OperationOptions options;
   options.waitForSync = waitForSync;
   options.returnNew = returnNew;
@@ -1142,7 +1153,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createDocument(
 
   if (!result.ok()) {
     trx->finish(result.result);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                   "not found");
   }
   Result res = trx->finish(result.result);
 
@@ -1154,7 +1166,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::updateEdge(
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   return modifyDocument(definitionName, key, document, true, std::move(rev),
-                         waitForSync, returnOld, returnNew, keepNull);
+                        waitForSync, returnOld, returnNew, keepNull);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceEdge(
@@ -1162,13 +1174,12 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceEdge(
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   return modifyDocument(definitionName, key, document, false, std::move(rev),
-                         waitForSync, returnOld, returnNew, keepNull);
+                        waitForSync, returnOld, returnNew, keepNull);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
-    const std::string& definitionName,
-    VPackSlice document, bool waitForSync, bool returnNew) {
-
+    const std::string& definitionName, VPackSlice document, bool waitForSync,
+    bool returnNew) {
   // TODO create edge only if vertices id's are existent
   auto const& vertexCollections = _graph.vertexCollections();
 
@@ -1176,7 +1187,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
 
   if (fromStringSlice.isNone() || toStringSlice.isNone()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   "not found");
   }
   std::string fromString = fromStringSlice.copyString();
   std::string toString = toStringSlice.copyString();
@@ -1188,7 +1200,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
     fromCollectionName = fromString.substr(0, pos);
     fromCollectionKey = fromString.substr(pos + 1, fromString.length());
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   "not found");
   }
 
   pos = toString.find('/');
@@ -1198,7 +1211,8 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
     toCollectionName = toString.substr(0, pos);
     toCollectionKey = toString.substr(pos + 1, toString.length());
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   "not found");
   }
 
   OperationOptions options;
@@ -1225,25 +1239,31 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::createEdge(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
 
-  std::unique_ptr<transaction::Methods> trx(
-    new UserTransaction(ctx(), trxCollections, writeCollections, {}, trxOptions));
+  std::unique_ptr<transaction::Methods> trx(new UserTransaction(
+      ctx(), trxCollections, writeCollections, {}, trxOptions));
 
   Result res = trx->begin();
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                   "not found");
   }
-  OperationResult resultFrom = trx->document(fromCollectionName, bF.slice(), options);
-  OperationResult resultTo = trx->document(toCollectionName, bT.slice(), options);
+  OperationResult resultFrom =
+      trx->document(fromCollectionName, bF.slice(), options);
+  OperationResult resultTo =
+      trx->document(toCollectionName, bT.slice(), options);
 
   if (!resultFrom.ok()) {
     trx->finish(resultFrom.result);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                   "not found");
   }
   if (!resultTo.ok()) {
     trx->finish(resultTo.result);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, "not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                   "not found");
   }
-  return createDocument(trx.get(), definitionName, document, waitForSync, returnNew);
+  return createDocument(trx.get(), definitionName, document, waitForSync,
+                        returnNew);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::updateVertex(
@@ -1251,7 +1271,7 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::updateVertex(
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   return modifyDocument(collectionName, key, document, true, std::move(rev),
-                         waitForSync, returnOld, returnNew, keepNull);
+                        waitForSync, returnOld, returnNew, keepNull);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceVertex(
@@ -1259,27 +1279,27 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::replaceVertex(
     VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   return modifyDocument(collectionName, key, document, false, std::move(rev),
-                         waitForSync, returnOld, returnNew, keepNull);
+                        waitForSync, returnOld, returnNew, keepNull);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::createVertex(
-    const std::string& collectionName,
-    VPackSlice document, bool waitForSync, bool returnNew) {
+    const std::string& collectionName, VPackSlice document, bool waitForSync,
+    bool returnNew) {
+  transaction::Options trxOptions;
 
-    transaction::Options trxOptions;
-
-    std::vector<std::string> writeCollections;
-    writeCollections.emplace_back(collectionName);
-    std::unique_ptr<transaction::Methods> trx(
+  std::vector<std::string> writeCollections;
+  writeCollections.emplace_back(collectionName);
+  std::unique_ptr<transaction::Methods> trx(
       new UserTransaction(ctx(), {}, writeCollections, {}, trxOptions));
 
-    Result res = trx->begin();
+  Result res = trx->begin();
 
-    if (!res.ok()) {
-      return res;
-    }
+  if (!res.ok()) {
+    return res;
+  }
 
-  return createDocument(trx.get(), collectionName, document, waitForSync, returnNew);
+  return createDocument(trx.get(), collectionName, document, waitForSync,
+                        returnNew);
 }
 
 ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
@@ -1407,7 +1427,7 @@ void GraphOperations::pushCollectionIfMayBeDropped(
   }
 }
 
-void Graph::graphToVpack(VPackBuilder &builder) const {
+void Graph::graphToVpack(VPackBuilder& builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("graph", VPackValue(VPackValueType::Object));
 
@@ -1423,21 +1443,21 @@ void Graph::graphToVpack(VPackBuilder &builder) const {
     for (auto const& from : def.getFrom()) {
       builder.add(VPackValue(from));
     }
-    builder.close(); // array from
+    builder.close();  // array from
     builder.add("to", VPackValue(VPackValueType::Array));
     for (auto const& to : def.getTo()) {
       builder.add(VPackValue(to));
     }
-    builder.close(); // array to
-    builder.close(); // object
+    builder.close();  // array to
+    builder.close();  // object
   }
-  builder.close(); // object edgedefs
+  builder.close();  // object edgedefs
 
   builder.add("orphanCollections", VPackValue(VPackValueType::Array));
   for (auto const& orphan : orphanCollections()) {
     builder.add(VPackValue(orphan));
   }
-  builder.close(); // orphan array
+  builder.close();  // orphan array
 
   builder.add("isSmart", VPackValue(isSmart()));
   builder.add("numberOfShards", VPackValue(numberOfShards()));
@@ -1446,11 +1466,11 @@ void Graph::graphToVpack(VPackBuilder &builder) const {
   builder.add(StaticStrings::RevString, VPackValue(rev()));
   builder.add(StaticStrings::IdString, VPackValue(id()));
 
-  builder.close(); // object
-  builder.close(); // object
+  builder.close();  // object
+  builder.close();  // object
 }
 
-void Graph::edgesToVpack(VPackBuilder &builder) const {
+void Graph::edgesToVpack(VPackBuilder& builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("collections", VPackValue(VPackValueType::Array));
 
@@ -1462,7 +1482,7 @@ void Graph::edgesToVpack(VPackBuilder &builder) const {
   builder.close();
 }
 
-void Graph::verticesToVpack(VPackBuilder &builder) const {
+void Graph::verticesToVpack(VPackBuilder& builder) const {
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("collections", VPackValue(VPackValueType::Array));
 
@@ -1610,30 +1630,6 @@ const std::shared_ptr<const Graph> GraphCache::getGraph(
   return graph;
 }
 
-void GraphManager::removeVertexCollection(
-    std::string const& collectionName, bool dropCollection) {
-
-  Result resIn;
-  OperationResult result;
-
-  if (dropCollection) {
-    Result found = methods::Collections::lookup(
-      &ctx()->vocbase(),
-      collectionName,
-      [&](LogicalCollection* coll) {
-        resIn = methods::Collections::drop(&ctx()->vocbase(), coll, false, -1.0);
-      }
-    );
-
-    if (found.fail()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST);
-    } else if (resIn.fail()) {
-      THROW_ARANGO_EXCEPTION(resIn);
-    }
-  }
-}
-
-
 void GraphManager::createEdgeCollection(std::string const& name) {
   createCollection(name, TRI_COL_TYPE_EDGE);
 }
@@ -1643,7 +1639,7 @@ void GraphManager::createVertexCollection(std::string const& name) {
 }
 
 void GraphManager::createCollection(std::string const& name,
-    TRI_col_type_e colType) {
+                                    TRI_col_type_e colType) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
   VPackBuilder collection;
@@ -1655,80 +1651,74 @@ void GraphManager::createCollection(std::string const& name,
   ctx()->vocbase().createCollection(collection.slice());
 }
 
-void GraphManager::findOrCreateVertexCollectionByName(
-    std::string&& name) {
+void GraphManager::findOrCreateVertexCollectionByName(const std::string& name) {
   std::shared_ptr<LogicalCollection> def;
 
   def = getCollectionByName(ctx()->vocbase(), name);
   if (def == nullptr) {
-    createVertexCollection(std::move(name));
+    createVertexCollection(name);
   }
-  
 }
 
-void GraphManager::checkDuplicateEdgeDefinitions(
-    VPackSlice edgeDefinitions) {
+void GraphManager::assertFeasibleEdgeDefinitions(
+    VPackSlice edgeDefinitionsSlice) const {
+  TRI_ASSERT(edgeDefinitionsSlice.isArray());
+  if (!edgeDefinitionsSlice.isArray()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 
-  std::vector<std::string> tmpCollections;
-  std::map<std::string, VPackSlice> tmpEdgeDefinitions;
+  std::unordered_map<std::string, EdgeDefinition> tmpEdgeDefinitions;
 
-  if (edgeDefinitions.isArray()) {
-    for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
-      std::string col;
-      if (edgeDefinition.get("collection").isString()) {
-        col = edgeDefinition.get("collection").copyString();
-      } else {
-        return;
-      }
+  for (auto const& slice : VPackArrayIterator(edgeDefinitionsSlice)) {
+    auto res = EdgeDefinition::createFromVelocypack(slice);
+    TRI_ASSERT(res.ok());
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    EdgeDefinition& def = res.get();
+    bool inserted;
+    std::tie(std::ignore, inserted) =
+        tmpEdgeDefinitions.emplace(def.getName(), std::move(def));
 
-      bool found = std::find(tmpCollections.begin(), tmpCollections.end(), col) != tmpCollections.end();
-      if (found) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE);
-      }
-      tmpCollections.emplace_back(col);
-      tmpEdgeDefinitions.emplace(std::make_pair("col", edgeDefinition));
+    if (!inserted) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE);
     }
   }
 
   VPackBuilder graphsBuilder;
+  // TODO Maybe use the cache here
   readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
   VPackSlice graphs = graphsBuilder.slice();
 
-  if (graphs.get("graphs").isArray()) {
-    for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
-      singleGraph = singleGraph.resolveExternals();
-      VPackSlice sGEDs = singleGraph.get("edgeDefinitions");
-      if (!sGEDs.isArray()) {
-        return;
-      }
-      for (auto const& sGED : VPackArrayIterator(sGEDs)) {
-        std::string col;
-        if (sGED.get("collection").isString()) {
-          col = sGED.get("collection").copyString();
-        } else {
-          return;
-        }
-        bool foundS = std::find(tmpCollections.begin(), tmpCollections.end(), col) != tmpCollections.end();
-        if (foundS) {
-          try {
-            if (sGED.toString() != tmpEdgeDefinitions.at(col).toString()) {
-              THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE);
-            }
-          } catch (...) {
-          }
+  TRI_ASSERT(graphs.get("graphs").isArray());
+  if (!graphs.get("graphs").isArray()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
+  }
+
+  for (auto graphSlice : VPackArrayIterator(graphs.get("graphs"))) {
+    Graph graph{graphSlice.get("_key").copyString(), graphSlice};
+
+    for (auto const& sGED : graph.edgeDefinitions()) {
+      std::string col = sGED.first;
+
+      auto it = tmpEdgeDefinitions.find(col);
+      if (it != tmpEdgeDefinitions.end()) {
+        if (sGED.second != it->second) {
+          // found an incompatible edge definition for the same collection
+          THROW_ARANGO_EXCEPTION(
+              TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS);
         }
       }
     }
   }
 }
 
+// TODO replace the slice argument with an actual EdgeDefinition
 void GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     VPackSlice edgeDefinitions) {
   std::shared_ptr<LogicalCollection> def;
 
   for (auto const& edgeDefinition : VPackArrayIterator(edgeDefinitions)) {
-    Result res = Graph::ValidateEdgeDefinition(edgeDefinition); // TODO forward res correctly
-
     std::string collection = edgeDefinition.get("collection").copyString();
     VPackSlice from = edgeDefinition.get("from");
     VPackSlice to = edgeDefinition.get("to");
@@ -1739,7 +1729,7 @@ void GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     def = getCollectionByName(ctx()->vocbase(), collection);
 
     if (def == nullptr) {
-      createEdgeCollection(std::move(collection));
+      createEdgeCollection(collection);
     }
 
     // duplicates in from and to shouldn't occur, but are safely ignored here
@@ -1760,9 +1750,7 @@ void GraphManager::findOrCreateCollectionsByEdgeDefinitions(
 
 /// @brief extract the collection by either id or name, may return nullptr!
 std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
-    TRI_vocbase_t& vocbase,
-    std::string const& name
-) {
+    const TRI_vocbase_t& vocbase, std::string const& name) const {
   std::shared_ptr<LogicalCollection> nameCol;
 
   if (!name.empty()) {
@@ -1777,8 +1765,8 @@ std::shared_ptr<LogicalCollection> GraphManager::getCollectionByName(
   return nameCol;
 }
 
-ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(VPackSlice document, bool waitForSync) {
-
+ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(
+    VPackSlice document, bool waitForSync) {
   VPackSlice graphName = document.get("name");
   if (graphName.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MISSING_NAME);
@@ -1786,36 +1774,48 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(VPackSlice
 
   // validate edgeDefinitions
   VPackSlice edgeDefinitions = document.get(Graph::_attrEdgeDefs);
-  if (edgeDefinitions.isArray()) {
-    for (auto const& def : VPackArrayIterator(edgeDefinitions)) {
-      Result res = Graph::ValidateEdgeDefinition(def);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+  if (edgeDefinitions.isNull()) {
+    edgeDefinitions = VPackSlice::emptyArraySlice();
+  }
+
+  if (!edgeDefinitions.isArray()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
+  }
+
+  for (auto const& def : VPackArrayIterator(edgeDefinitions)) {
+    Result res = EdgeDefinition::validateEdgeDefinition(def);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
   }
 
   // validate orphans
   VPackSlice orphanCollections = document.get(Graph::_attrOrphans);
-  if (orphanCollections.isArray()) {
-    for (auto const& def : VPackArrayIterator(orphanCollections)) {
-      Result res = Graph::ValidateOrphanCollection(def);
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
+  if (orphanCollections.isNull()) {
+    orphanCollections = VPackSlice::emptyArraySlice();
+  }
+
+  if (!orphanCollections.isArray()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST);
+  }
+
+  for (auto const& def : VPackArrayIterator(orphanCollections)) {
+    Result res = Graph::validateOrphanCollection(def);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
     }
   }
 
-  int replicationFactor;
+  uint64_t replicationFactor;
   try {
-    replicationFactor = document.get(Graph::_attrReplicationFactor).getInt();
+    replicationFactor = document.get(Graph::_attrReplicationFactor).getUInt();
   } catch (...) {
     replicationFactor = 1;
   }
 
-  int numberOfShards;
+  uint64_t numberOfShards;
   try {
-    numberOfShards = document.get(Graph::_attrNumberOfShards).getInt();
+    numberOfShards = document.get(Graph::_attrNumberOfShards).getUInt();
   } catch (...) {
     numberOfShards = 1;
   }
@@ -1829,25 +1829,20 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(VPackSlice
 
   // check for multiple collection graph usage
 
-  
   // check if graph already exists
   VPackBuilder checkDocument;
   {
     VPackObjectBuilder guard(&checkDocument);
     checkDocument.add(StaticStrings::KeyString, graphName);
   }
-
-  std::vector<std::string> readCollections;
-  std::vector<std::string> writeCollections;
-  writeCollections.emplace_back(Graph::_graphs);
-
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
 
-  std::unique_ptr<transaction::Methods> trx(
-    new UserTransaction(ctx(), readCollections, writeCollections, {}, trxOptions));
+  SingleCollectionTransaction trx(ctx(), Graph::_graphs,
+                                  AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-  Result res = trx->begin();
+  Result res = trx.begin();
 
   if (!res.ok()) {
     return res;
@@ -1856,66 +1851,53 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(VPackSlice
   OperationOptions options;
   options.waitForSync = waitForSync;
 
-  // TODO: verify graph collection usage in multiple graphs
-  // TODO: arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code
-  // TODO: not implemented yet
   // check, if a collection is already used in a different edgeDefinition
-  if (edgeDefinitions.isArray()) {
-    checkDuplicateEdgeDefinitions(edgeDefinitions);
-  }
+  assertFeasibleEdgeDefinitions(edgeDefinitions);
 
-  OperationResult checkDoc = trx->document(Graph::_graphs, checkDocument.slice(), options);
+  OperationResult checkDoc =
+      trx.document(Graph::_graphs, checkDocument.slice(), options);
   if (checkDoc.ok()) {
-    trx->finish(checkDoc.result);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_DUPLICATE, "graph already exists");
+    trx.finish(checkDoc.result);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_DUPLICATE,
+                                   "graph already exists");
   }
-
-  // find or create the collections given by the edge definition 
-  findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions);
 
   // find or create the collections given by the edge definition
-  if (orphanCollections.isArray()) {
-    for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
-      findOrCreateVertexCollectionByName(orphan.copyString());
-    }
+  findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions);
+
+  // find or create the oprhan collections
+  for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
+    findOrCreateVertexCollectionByName(orphan.copyString());
   }
 
   // finally save the graph
   VPackBuilder builder;
   builder.add(VPackValue(VPackValueType::Object));
   builder.add(StaticStrings::KeyString, graphName);
-  if (edgeDefinitions.isArray()) {
-    builder.add(Graph::_attrEdgeDefs, edgeDefinitions);
-  }
-  if (orphanCollections.isArray()) {
-    builder.add(Graph::_attrOrphans, orphanCollections);
-  }
+  builder.add(Graph::_attrEdgeDefs, edgeDefinitions);
+  builder.add(Graph::_attrOrphans, orphanCollections);
   builder.add(Graph::_attrReplicationFactor, VPackValue(replicationFactor));
   builder.add(Graph::_attrNumberOfShards, VPackValue(numberOfShards));
   builder.add(Graph::_attrIsSmart, VPackValue(isSmart));
   builder.close();
 
-  OperationResult result = trx->insert(Graph::_graphs, builder.slice(), options);
+  OperationResult result = trx.insert(Graph::_graphs, builder.slice(), options);
 
-  res = trx->finish(result.result);
+  res = trx.finish(result.result);
   return std::make_pair(std::move(result), std::move(res));
 }
 
-void GraphManager::readGraphs(velocypack::Builder& builder, aql::QueryPart QueryPart) {
-  std::string const queryStr("FOR g IN _graphs RETURN g");
-  auto emptyBuilder = std::make_shared<VPackBuilder>();
-  arangodb::aql::Query query(
-    false,
-    ctx()->vocbase(),
-    arangodb::aql::QueryString(queryStr),
-    emptyBuilder,
-    emptyBuilder,
-    QueryPart
-  );
+void GraphManager::readGraphs(velocypack::Builder& builder,
+                              aql::QueryPart const queryPart) const {
+  std::string const queryStr{"FOR g IN _graphs RETURN g"};
+  arangodb::aql::Query query(false, ctx()->vocbase(),
+                             arangodb::aql::QueryString(queryStr), nullptr,
+                             nullptr, queryPart);
 
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
       << "starting to load graphs information";
-  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+  aql::QueryResult queryResult =
+      query.execute(QueryRegistryFeature::QUERY_REGISTRY);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
@@ -1923,7 +1905,8 @@ void GraphManager::readGraphs(velocypack::Builder& builder, aql::QueryPart Query
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        queryResult.code, "Error executing graphs query: " + queryResult.details);
+        queryResult.code,
+        "Error executing graphs query: " + queryResult.details);
   }
 
   VPackSlice graphsSlice = queryResult.result->slice();
@@ -1940,6 +1923,7 @@ void GraphManager::readGraphs(velocypack::Builder& builder, aql::QueryPart Query
   builder.close();
 }
 
+// TODO unify with assertFeasibleEdgeDefinitions
 Result GraphManager::checkForEdgeDefinitionConflicts(
     std::string const& edgeDefinitionName, VPackSlice edgeDefinition) {
   VPackBuilder graphsBuilder;

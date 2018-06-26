@@ -1517,6 +1517,11 @@ constexpr int TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT                             
 /// Tried to add an edge collection which is already defined.
 constexpr int TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET              = 1942;
 
+/// 1943: ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST
+/// "malformed orphan list"
+/// the orphan list argument is malformed. It has to be an array of strings.
+constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      = 1943;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.

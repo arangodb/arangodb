@@ -287,6 +287,7 @@
     "ERROR_GRAPH_EMPTY"            : { "code" : 1940, "message" : "empty graph" },
     "ERROR_GRAPH_INTERNAL_DATA_CORRUPT" : { "code" : 1941, "message" : "internal graph data corrupt" },
     "ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET" : { "code" : 1942, "message" : "edge collection already set" },
+    "ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST" : { "code" : 1943, "message" : "malformed orphan list" },
     "ERROR_SESSION_UNKNOWN"        : { "code" : 1950, "message" : "unknown session" },
     "ERROR_SESSION_EXPIRED"        : { "code" : 1951, "message" : "session expired" },
     "SIMPLE_CLIENT_UNKNOWN_ERROR"  : { "code" : 2000, "message" : "unknown client error" },
