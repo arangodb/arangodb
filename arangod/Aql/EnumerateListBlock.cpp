@@ -90,8 +90,7 @@ EnumerateListBlock::getSome(size_t atMost) {
     BufferState bufferState = getBlockIfNeeded(toFetch);
     if (bufferState == BufferState::WAITING) {
       TRI_ASSERT(res == nullptr);
-      TRI_ASSERT(getHasMoreState() == ExecutionState::DONE);
-      traceGetSomeEnd(nullptr, ExecutionState::DONE);
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return {ExecutionState::WAITING, nullptr};
     }
     if (bufferState == BufferState::NO_MORE_BLOCKS) {
