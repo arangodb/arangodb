@@ -410,7 +410,7 @@ std::pair<bool, bool> Condition::findIndexes(
     SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
-  std::string collectionName = node->collection()->getName();
+  std::string collectionName = node->collection()->name();
 
   transaction::Methods* trx = _ast->query()->trx();
 

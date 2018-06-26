@@ -39,7 +39,7 @@ class ListenTask : virtual public rest::Task {
   static size_t const MAX_ACCEPT_ERRORS = 128;
 
  public:
-  ListenTask(EventLoop, Endpoint*);
+  ListenTask(rest::Scheduler*, Endpoint*);
   ~ListenTask();
 
  public:
@@ -54,12 +54,12 @@ class ListenTask : virtual public rest::Task {
  private:
   Endpoint* _endpoint;
   size_t _acceptFailures = 0;
-  
-  Mutex _shutdownMutex; 
+
+  Mutex _shutdownMutex;
   bool _bound;
 
   std::unique_ptr<Acceptor> _acceptor;
-  std::function<void(asio::error_code const&)> _handler;
+  std::function<void(asio_ns::error_code const&)> _handler;
 };
 }
 

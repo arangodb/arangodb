@@ -73,7 +73,7 @@ void AqlFunctionFeature::prepare() {
   addStorageEngineFunctions();
 
   add({"PREGEL_RESULT", ".", false, true,
-    true, &Functions::PregelResult, NotInCoordinator});
+    true, &Functions::PregelResult});
 }
 
 void AqlFunctionFeature::unprepare() {
@@ -202,6 +202,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SHA512", ".", true, false, true, &Functions::Sha512});
   add({"HASH", ".", true, false, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, &Functions::RandomToken});
+  add({"FULLTEXT", ".h,.,.|." , false, true, false, &Functions::Fulltext});
 }
 
 void AqlFunctionFeature::addNumericFunctions() {
@@ -302,6 +303,8 @@ void AqlFunctionFeature::addGeoFunctions() {
   add({"GEO_CONTAINS", ".,.", true, false, true, &Functions::GeoContains});
   add({"GEO_INTERSECTS", ".,.", true, false, true, &Functions::GeoIntersects});
   add({"GEO_EQUALS", ".,.", true, false, true, &Functions::GeoEquals});
+  add({"NEAR", ".h,.,.|.,.", false, true, false, &Functions::Near});
+  add({"WITHIN", ".h,.,.,.|.", false, true, false, &Functions::Within});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {

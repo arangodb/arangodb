@@ -329,17 +329,17 @@ void ShortestPathNode::prepareOptions() {
     auto dir = _directions[i];
     switch (dir) {
       case TRI_EDGE_IN:
-        opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addLookupInfo(_plan, _edgeColls[i]->name(),
                             StaticStrings::ToString, _toCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::FromString,
                                    _fromCondition->clone(ast));
         break;
       case TRI_EDGE_OUT:
-        opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addLookupInfo(_plan, _edgeColls[i]->name(),
                             StaticStrings::FromString,
                             _fromCondition->clone(ast));
-        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->name(),
                                    StaticStrings::ToString,
                                    _toCondition->clone(ast));
         break;

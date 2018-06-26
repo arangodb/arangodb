@@ -207,10 +207,10 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
 /// @brief add or remove databases such that the local inventory mirrors the masters
 Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDatabases) {
   std::set<std::string> existingDBs;
-  DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-    existingDBs.insert(vocbase->name());
-  });
-  
+  DatabaseFeature::DATABASE->enumerateDatabases(
+    [&](TRI_vocbase_t& vocbase)->void { existingDBs.insert(vocbase.name()); }
+  );
+
   for (auto const& database : VPackObjectIterator(masterDatabases)) {
     VPackSlice it = database.value;
 
@@ -218,18 +218,21 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     "database declaration is invalid in response");
     }
-    
+
     VPackSlice const nameSlice = it.get("name");
     VPackSlice const idSlice = it.get("id");
     VPackSlice const collections = it.get("collections");
+
     if (!nameSlice.isString() ||
         !idSlice.isString() ||
         !collections.isArray()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     "database declaration is invalid in response");
     }
+
     std::string const dbName = nameSlice.copyString();
     TRI_vocbase_t* vocbase = resolveVocbase(nameSlice);
+
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
       Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
@@ -306,28 +309,30 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     
     TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
     Result r = methods::Databases::drop(system, dbname);
+
     if (r.fail()) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
       return r;
     }
-    
+
     sendExtendBatch();
     sendExtendBarrier();
   }
-  
+
   return TRI_ERROR_NO_ERROR;
 }
 
 Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   std::string url = ReplicationUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId) + "&global=true";
+
   if (_configuration._includeSystem) {
     url += "&includeSystem=true";
   }
-  
+
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
-  
+
   if (hasFailed(response.get())) {
     sendFinishBatch();
     return buildHttpError(response.get(), url);
@@ -339,8 +344,9 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
     return Result(r.errorNumber(), std::string("got invalid response from master at ") + _masterInfo._endpoint +
                   ": invalid response type for initial data. expecting array");
   }
-  
+
   VPackSlice const slice = builder.slice();
+
   if (!slice.isObject()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: InitialSyncer::run - inventoryResponse is not an object";
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +

@@ -291,10 +291,10 @@ void SchedulerFeature::buildControlCHandler() {
   pthread_sigmask(SIG_SETMASK, &all, nullptr);
 
   auto ioService = _scheduler->managerService();
-  _exitSignals =
-      std::make_shared<asio::signal_set>(*ioService, SIGINT, SIGTERM, SIGQUIT);
+  _exitSignals = std::make_shared<asio_ns::signal_set>(*ioService, SIGINT,
+                                                       SIGTERM, SIGQUIT);
 
-  _signalHandler = [this](const asio::error_code& error, int number) {
+  _signalHandler = [this](const asio_ns::error_code& error, int number) {
     if (error) {
       return;
     }
@@ -310,7 +310,7 @@ void SchedulerFeature::buildControlCHandler() {
     }
   };
 
-  _exitHandler = [](const asio::error_code& error, int number) {
+  _exitHandler = [](const asio_ns::error_code& error, int number) {
     if (error) {
       return;
     }
@@ -328,9 +328,9 @@ void SchedulerFeature::buildHangupHandler() {
 #ifndef _WIN32
   auto ioService = _scheduler->managerService();
 
-  _hangupSignals = std::make_shared<asio::signal_set>(*ioService, SIGHUP);
+  _hangupSignals = std::make_shared<asio_ns::signal_set>(*ioService, SIGHUP);
 
-  _hangupHandler = [this](const asio::error_code& error, int number) {
+  _hangupHandler = [this](const asio_ns::error_code& error, int number) {
     if (error) {
       return;
     }

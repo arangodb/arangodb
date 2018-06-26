@@ -554,7 +554,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
-      coll->id(),
+      coll,
       AccessMode::Type::EXCLUSIVE
     );
 
@@ -761,7 +761,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
     // remote collection has no documents. now truncate our local collection
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase()),
-      coll->id(),
+      coll,
       AccessMode::Type::EXCLUSIVE
     );
     Result res = trx.begin();
@@ -788,7 +788,9 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
 
   // now we can fetch the complete chunk information from the master
   try {
-    return EngineSelectorFeature::ENGINE->handleSyncKeys(*this, coll, keysId.copyString());
+    return EngineSelectorFeature::ENGINE->handleSyncKeys(
+      *this, *coll, keysId.copyString()
+    );
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -816,7 +818,7 @@ Result DatabaseInitialSyncer::changeCollection(arangodb::LogicalCollection* col,
 int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
   SingleCollectionTransaction trx(
     transaction::StandaloneContext::Create(vocbase()),
-    col->id(),
+    col,
     AccessMode::Type::READ
   );
   Result res = trx.begin();
@@ -936,7 +938,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
             SingleCollectionTransaction trx(
               transaction::StandaloneContext::Create(vocbase()),
-              col->id(),
+              col,
               AccessMode::Type::EXCLUSIVE
             );
             Result res = trx.begin();
@@ -1060,7 +1062,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       try {
         SingleCollectionTransaction trx(
           transaction::StandaloneContext::Create(vocbase()),
-          col->id(),
+          col,
           AccessMode::Type::EXCLUSIVE
         );
 

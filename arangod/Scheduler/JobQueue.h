@@ -29,7 +29,6 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
-//#include "Basics/asio-helper.h"
 #include "Scheduler/Job.h"
 
 namespace arangodb {

@@ -82,6 +82,8 @@ function httpReplication (options) {
   
   let testCases = tu.scanTestPaths(testPaths.http_replication);
 
+  testCases = tu.splitBuckets(options, testCases);
+
   return tu.performTests(opts, testCases, 'http_replication', tu.runInRSpec);
 }
 
@@ -96,6 +98,8 @@ function httpServer (options) {
   _.defaults(opts, options);
 
   let testCases = tu.scanTestPaths(testPaths.http_server);
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(opts, testCases, 'http_server', tu.runInRSpec);
 }
@@ -120,6 +124,8 @@ function sslServer (options) {
   _.defaults(opts, options);
 
   let testCases = tu.scanTestPaths(testPaths.ssl_server);
+
+  testCases = tu.splitBuckets(options, testCases);
 
   return tu.performTests(opts, testCases, 'ssl_server', tu.runInRSpec);
 }

@@ -681,31 +681,38 @@ describe ArangoDB do
       end
       
       it "calls wrong cursor API" do
-        cmd = api + "?collection=#{@cn}"
-        body = "{ \"count\" : true, \"batchSize\" : 100, \"flush\" : true }"
-        doc = ArangoDB.log_post("#{prefix}-limit-return", cmd, :body => body)
-        
-        doc.code.should eq(201)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(false)
-        doc.parsed_response['code'].should eq(201)
-        doc.parsed_response['id'].should be_kind_of(String)
-        doc.parsed_response['id'].should match(@reId)
-        doc.parsed_response['hasMore'].should eq(true)
-        doc.parsed_response['count'].should eq(2000)
-        doc.parsed_response['result'].length.should eq(100)
 
-        id = doc.parsed_response['id']
+        cmd = "/_api/engine"
+        doc = ArangoDB.log_get("#{prefix}-limit-return", cmd)
+        doc.code.should eq(200)
+        if doc.parsed_response['name'] != 'rocksdb'
+          
+          cmd = api + "?collection=#{@cn}"
+          body = "{ \"count\" : true, \"batchSize\" : 100, \"flush\" : true }"
+          doc = ArangoDB.log_post("#{prefix}-limit-return", cmd, :body => body)
+          
+          doc.code.should eq(201)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(false)
+          doc.parsed_response['code'].should eq(201)
+          doc.parsed_response['id'].should be_kind_of(String)
+          doc.parsed_response['id'].should match(@reId)
+          doc.parsed_response['hasMore'].should eq(true)
+          doc.parsed_response['count'].should eq(2000)
+          doc.parsed_response['result'].length.should eq(100)
 
-        # intentionally wrong
-        cmd = "/_api/cursor/#{id}"
-        doc = ArangoDB.log_put("#{prefix}-return-cont", cmd)
-        
-        doc.code.should eq(404)
-        doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        doc.parsed_response['error'].should eq(true)
-        doc.parsed_response['code'].should eq(404)
-        doc.parsed_response['errorNum'].should eq(1600)
+          id = doc.parsed_response['id']
+
+          # intentionally wrong
+          cmd = "/_api/cursor/#{id}"
+          doc = ArangoDB.log_put("#{prefix}-return-cont", cmd)
+          
+          doc.code.should eq(404)
+          doc.headers['content-type'].should eq("application/json; charset=utf-8")
+          doc.parsed_response['error'].should eq(true)
+          doc.parsed_response['code'].should eq(404)
+          doc.parsed_response['errorNum'].should eq(1600)
+        end
       end
     end
 

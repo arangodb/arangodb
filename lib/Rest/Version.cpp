@@ -27,8 +27,12 @@
 #include "Basics/win-utils.h"
 #endif
 
-#include <openssl/ssl.h>
 #include <sstream>
+
+#include <openssl/ssl.h>
+
+#include <rocksdb/convenience.h>
+#include <rocksdb/version.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
@@ -36,14 +40,10 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/asio_ns.h"
 #include "Basics/build-date.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
-
-#include <asio.hpp>
-
-#include <rocksdb/convenience.h>
-#include <rocksdb/version.h>
 
 #ifdef USE_IRESEARCH
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"

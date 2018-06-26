@@ -46,11 +46,11 @@ size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      // 1024 MB
 size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  // 1024 MB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
-HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
+HttpCommTask::HttpCommTask(Scheduler* scheduler, GeneralServer* server,
                            std::unique_ptr<Socket> socket,
                            ConnectionInfo&& info, double timeout)
-    : Task(loop, "HttpCommTask"),
-      GeneralCommTask(loop, server, std::move(socket), std::move(info),
+    : Task(scheduler, "HttpCommTask"),
+      GeneralCommTask(scheduler, server, std::move(socket), std::move(info),
                       timeout),
       _readPosition(0),
       _startPosition(0),
@@ -94,7 +94,8 @@ void HttpCommTask::addSimpleResponse(rest::ResponseCode code, rest::ContentType 
 
 void HttpCommTask::addResponse(GeneralResponse& baseResponse,
                                RequestStatistics* stat) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
 #else
@@ -201,7 +202,7 @@ void HttpCommTask::addResponse(GeneralResponse& baseResponse,
 // reads data from the socket
 // caller must hold the _lock
 bool HttpCommTask::processRead(double startTime) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
   
   cancelKeepAlive();
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
@@ -281,7 +282,7 @@ bool HttpCommTask::processRead(double startTime) {
       }
 
       std::shared_ptr<GeneralCommTask> commTask = std::make_shared<VstCommTask>(
-          _loop, _server, std::move(_peer), std::move(_connectionInfo),
+          _scheduler, _server, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(), 
           protocolVersion, /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
@@ -594,7 +595,8 @@ bool HttpCommTask::processRead(double startTime) {
 }
 
 void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
-  TRI_ASSERT(_peer->strand.running_in_this_thread());
+  TRI_ASSERT(_peer->runningInThisThread());
+
   {
     LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
@@ -760,16 +762,13 @@ void HttpCommTask::resetState() {
 
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
   bool found;
-  std::string const& authStr =
-    request->header(StaticStrings::Authorization, found);
-  
+  std::string const& authStr = request->header(StaticStrings::Authorization, found);
   if (!found) {
     events::CredentialsMissing(request);
     return rest::ResponseCode::UNAUTHORIZED;
   }
   
   size_t methodPos = authStr.find_first_of(' ');
-  
   if (methodPos != std::string::npos) {
     // skip over authentication method
     char const* auth = authStr.c_str() + methodPos;

@@ -333,7 +333,9 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::shared_ptr<LogicalView> getView(
-      DatabaseID const& vocbase, ViewID const& viewID);
+      DatabaseID const& vocbase,
+      ViewID const& viewID
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about all views of a database
@@ -688,6 +690,8 @@ class ClusterInfo {
   std::unordered_map<ShardID, std::vector<ServerID>> _shardServers;
 
   AllViews _plannedViews;     // from Plan/Views/
+  AllViews _newPlannedViews;  // views that have been created during `loadPlan` execution
+  std::atomic<std::thread::id> _planLoader; // thread id that is loading plan
 
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/

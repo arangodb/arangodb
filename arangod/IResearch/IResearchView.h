@@ -26,6 +26,7 @@
 
 #include "Containers.h"
 #include "IResearchViewMeta.h"
+#include "Transaction/Status.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalView.h"
@@ -130,9 +131,10 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   using arangodb::LogicalView::name;
 
   ///////////////////////////////////////////////////////////////////////////////
-  /// @brief apply any changes to 'state' required by this view
+  /// @brief apply any changes to 'trx' required by this view
+  /// @return success
   ///////////////////////////////////////////////////////////////////////////////
-  void apply(arangodb::TransactionState& state);
+  bool apply(arangodb::transaction::Methods& trx);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief persist the specified WAL file into permanent storage
@@ -231,7 +233,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
   PrimaryKeyIndexReader* snapshot(
-    TransactionState& state,
+    transaction::Methods& trx,
     bool force = false
   ) const;
 
@@ -302,8 +304,8 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   };
 
   class ViewStateHelper; // forward declaration
-  class ViewStateRead; // forward declaration
-  class ViewStateWrite; // forward declaration
+  struct ViewStateRead; // forward declaration
+  struct ViewStateWrite; // forward declaration
 
   struct FlushCallbackUnregisterer {
     void operator()(IResearchView* view) const noexcept;
@@ -353,8 +355,8 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   PersistedStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;
-  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
-  std::function<void(arangodb::TransactionState& state)> _trxWriteCallback; // for insert(...)/remove(...)
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
 };
 

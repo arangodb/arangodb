@@ -1,8 +1,11 @@
 #include "Transactions.h"
 #include <v8.h>
 
+#include "Basics/WriteLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Logger/Logger.h"
+#include "Transaction/Methods.h"
 #include "Transaction/Options.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
@@ -10,10 +13,8 @@
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbaseprivate.h"
-#include "Logger/Logger.h"
+
 #include <velocypack/Slice.h>
-#include "Basics/WriteLocker.h"
-#include "Basics/ReadLocker.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Transaction/IgnoreNoAccessMethods.h"
@@ -317,11 +318,10 @@ Result executeTransactionJS(
     return rv;
   }
 
-  auto transactionContext =
-    std::make_shared<transaction::V8Context>(vocbase, embed);
+  auto ctx = std::make_shared<transaction::V8Context>(vocbase, embed);
 
   // start actual transaction
-  std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(transactionContext, readCollections,
+  std::unique_ptr<transaction::Methods> trx(new transaction::Methods(ctx, readCollections,
                                             writeCollections, exclusiveCollections,
                                             trxOptions));
 

@@ -104,6 +104,23 @@ arangodb::aql::AqlValue noop(
   );
 }
 
+void registerFunctions(arangodb::aql::AqlFunctionFeature& functions) {
+  arangodb::iresearch::addFunction(functions, {
+    "__ARANGOSEARCH_SCORE_DEBUG",  // name
+    ".",    // value to convert
+    true,   // deterministic
+    false,  // can't throw
+    true,   // can be run on server
+    [](arangodb::aql::Query*,
+       arangodb::transaction::Methods*,
+       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) noexcept {
+      auto arg = arangodb::aql::Functions::ExtractFunctionParameterValue(args, 0);
+      auto const floatValue = *reinterpret_cast<float_t const*>(arg.slice().begin());
+      return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+    }
+  });
+}
+
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, {
     "EXISTS",      // name
@@ -246,13 +263,12 @@ void registerViewFactory() {
   }
 }
 
-template<typename Impl>
-arangodb::Result transactionStateRegistrationCallback(
+arangodb::Result transactionDataSourceRegistrationCallback(
     arangodb::LogicalDataSource& dataSource,
-    arangodb::TransactionState& state
+    arangodb::transaction::Methods& trx
 ) {
   if (arangodb::iresearch::DATA_SOURCE_TYPE != dataSource.type()) {
-    return arangodb::Result(); // not an IResearchView (noop)
+    return {}; // not an IResearchView (noop)
   }
 
   // TODO FIXME find a better way to look up a LogicalView
@@ -264,40 +280,23 @@ arangodb::Result transactionStateRegistrationCallback(
 
   if (!view) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to get LogicalView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' name '" << dataSource.name() << "'";
+      << "failure to get LogicalView while processing a TransactionState by IResearchFeature for name '" << dataSource.name() << "'";
 
-    return arangodb::Result(TRI_ERROR_INTERNAL);
+    return {TRI_ERROR_INTERNAL};
   }
 
   // TODO FIXME find a better way to look up an IResearch View
-  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* impl = dynamic_cast<Impl*>(view);
-  #else
-    auto* impl = static_cast<Impl*>(view);
-  #endif
+  auto& impl = arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(*view);
 
-  if (!impl) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << dataSource.name() << "'";
-
-    return arangodb::Result(TRI_ERROR_INTERNAL);
-  }
-
-  impl->apply(state);
-
-  return arangodb::Result();
+  return arangodb::Result(
+    impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL
+  );
 }
 
-void registerTransactionStateCallback() {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    // NOOP
-  } else if(arangodb::ServerState::instance()->isDBServer()) {
-    arangodb::transaction::Methods::addStateRegistrationCallback(
-      transactionStateRegistrationCallback<arangodb::iresearch::IResearchViewDBServer>
-    );
-  } else {
-    arangodb::transaction::Methods::addStateRegistrationCallback(
-      transactionStateRegistrationCallback<arangodb::iresearch::IResearchView>
+void registerTransactionDataSourceRegistrationCallback() {
+  if (arangodb::ServerState::instance()->isSingleServer()) {
+    arangodb::transaction::Methods::addDataSourceRegistrationCallback(
+      &transactionDataSourceRegistrationCallback
     );
   }
 }
@@ -361,8 +360,8 @@ void IResearchFeature::prepare() {
   // register 'arangosearch' view
   registerViewFactory();
 
-  // register 'arangosearch' TransactionState state-change callback factory
-  registerTransactionStateCallback();
+  // register 'arangosearch' Transaction DataSource registration callback
+  registerTransactionDataSourceRegistrationCallback();
 
   registerRecoveryHelper();
 }
@@ -379,6 +378,7 @@ void IResearchFeature::start() {
     if (functions) {
       registerFilters(*functions);
       registerScorers(*functions);
+      registerFunctions(*functions);
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature 'AQLFunctions' while registering iresearch filters";

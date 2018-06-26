@@ -79,21 +79,22 @@ void RocksDBBackgroundThread::run() {
 
       TRI_voc_tick_t minTick = rocksutils::latestSequenceNumber();
       auto cmTick = _engine->settingsManager()->earliestSeqNeeded();
+
       if (cmTick < minTick) {
         minTick = cmTick;
       }
+
       if (DatabaseFeature::DATABASE != nullptr) {
         DatabaseFeature::DATABASE->enumerateDatabases(
-            [force, &minTick](TRI_vocbase_t* vocbase) {
-              vocbase->cursorRepository()->garbageCollect(force);
-              vocbase->garbageCollectReplicationClients(TRI_microtime());
-              auto clients = vocbase->getReplicationClients();
+          [&minTick](TRI_vocbase_t& vocbase)->void {
+              auto clients = vocbase.getReplicationClients();
               for (auto c : clients) {
-                if (std::get<2>(c) < minTick) {
-                  minTick = std::get<2>(c);
+                if (std::get<3>(c) < minTick) {
+                  minTick = std::get<3>(c);
                 }
               }
-            });
+          }
+        );
       }
 
       // only start pruning of obsolete WAL files a few minutes after
@@ -115,5 +116,6 @@ void RocksDBBackgroundThread::run() {
           << "caught unknown exception in rocksdb background";
     }
   }
+
   _engine->settingsManager()->sync(true);  // final write on shutdown
 }

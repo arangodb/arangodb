@@ -393,7 +393,7 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
     builder.openObject();
     builder.add("name", VPackValue(c.first));
     builder.add("type",
-                VPackValue(AccessMode::typeString(c.second->accessType)));
+                VPackValue(AccessMode::typeString(c.second->accessType())));
     builder.close();
   }
   builder.close();
@@ -729,7 +729,7 @@ ModificationOptions ExecutionPlan::createModificationOptions(
       auto const collections = _ast->query()->collections();
 
       for (auto const& it : *(collections->collections())) {
-        if (it.second->isReadWrite) {
+        if (it.second->isReadWrite()) {
           isReadWrite = true;
           break;
         }
@@ -862,18 +862,29 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                      "no collection for EnumerateCollection");
     }
     en = registerNode(new EnumerateCollectionNode(
-      this, nextId(), &(_ast->query()->vocbase()), collection, v, false)
+      this, nextId(), collection, v, false)
     );
 #ifdef USE_IRESEARCH
   } else if (expression->type == NODE_TYPE_VIEW) {
     // second operand is a view
     std::string const viewName = expression->getString();
     auto& vocbase = _ast->query()->vocbase();
-    auto view = vocbase.lookupView(viewName);
+
+    std::shared_ptr<LogicalView> view;
+
+    if (ServerState::instance()->isSingleServer()) {
+      view = vocbase.lookupView(viewName);
+    } else {
+      // need cluster wide view
+      TRI_ASSERT(ClusterInfo::instance());
+      view = ClusterInfo::instance()->getView(vocbase.name(), viewName);
+    }
 
     if (!view) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "no view for EnumerateView");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "no view for EnumerateView"
+      );
     }
 
     en = registerNode(new iresearch::IResearchViewNode(
@@ -1553,7 +1564,6 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     en = registerNode(new RemoveNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1566,7 +1576,6 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     en = registerNode(new RemoveNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1619,7 +1628,6 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     en = registerNode(new InsertNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1633,7 +1641,6 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     en = registerNode(new InsertNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1701,7 +1708,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     en = registerNode(new UpdateNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1716,7 +1722,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
     en = registerNode(new UpdateNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1785,7 +1790,6 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     en = registerNode(new ReplaceNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       v,
@@ -1800,7 +1804,6 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
     en = registerNode(new ReplaceNode(
       this,
       nextId(),
-      &(_ast->query()->vocbase()),
       collection,
       options,
       getOutVariable(calc),
@@ -1871,7 +1874,6 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
   ExecutionNode* en = registerNode(new UpsertNode(
     this,
     nextId(),
-    &(_ast->query()->vocbase()),
     collection,
     options,
     docVariable,
@@ -2224,6 +2226,7 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
   TRI_ASSERT(newNode != nullptr);
   TRI_ASSERT(previous->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
+
   std::vector<ExecutionNode*> parents = previous->getParents(); // Intentional copy
   for (ExecutionNode* parent : parents) {
     if (!parent->replaceDependency(previous, newNode)) {
@@ -2232,6 +2235,20 @@ void ExecutionPlan::insertAfter(ExecutionNode* previous, ExecutionNode* newNode)
     }
   }
   newNode->addDependency(previous);
+}
+
+/// @brief insert note directly before current
+void ExecutionPlan::insertBefore(ExecutionNode* current, ExecutionNode* newNode) {
+  TRI_ASSERT(newNode != nullptr);
+  TRI_ASSERT(current->id() != newNode->id());
+  TRI_ASSERT(newNode->getDependencies().empty());
+  TRI_ASSERT(!newNode->hasParent());
+
+  for (auto* dep : current->getDependencies()){
+    newNode->addDependency(dep);
+  }
+  current->removeDependencies();
+  current->addDependency(newNode);
 }
 
 /// @brief create a plan from VPack

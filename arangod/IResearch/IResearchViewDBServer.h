@@ -25,47 +25,53 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_DBSERVER_H 1
 
 #include "utils/async_utils.hpp"
-#include "utils/memory.hpp"
 #include "utils/utf8_path.hpp"
 #include "velocypack/Builder.h"
 #include "VocBase/LogicalView.h"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
-class DatabasePathFeature; // forward declaration
-class TransactionState; // forward declaration
+class DatabasePathFeature;
+class TransactionState;
+class CollectionNameResolver;
 
-NS_END // arangodb
+namespace transaction {
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+class Methods; // forward declaration
 
-class PrimaryKeyIndexReader; // forward declaration
+} // transaction
+
+} // arangodb
+
+namespace arangodb {
+namespace iresearch {
+
+class PrimaryKeyIndexReader;
 
 class IResearchViewDBServer final: public arangodb::LogicalView {
  public:
   virtual ~IResearchViewDBServer();
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief apply any changes to 'state' required by this view
-  ///////////////////////////////////////////////////////////////////////////////
-  void apply(arangodb::TransactionState& state);
-
+  /// @return success
   virtual arangodb::Result drop() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop the view association for the specified 'cid'
   /// @return if an association was removed
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result drop(TRI_voc_cid_t cid);
+  arangodb::Result drop(TRI_voc_cid_t cid) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure there is a view instance for the specified 'cid'
+  /// @param force creation of a new instance if none is available in vocbase
   /// @return an existing instance or create a new instance if none is registred
   ///         on ptr reset the view will be dropped if it has no collections
   /// @note view created in vocbase() to match callflow during regular startup
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalView> ensure(TRI_voc_cid_t cid);
+  std::shared_ptr<arangodb::LogicalView> ensure(
+      TRI_voc_cid_t cid,
+      bool create = true
+  );
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
@@ -89,7 +95,8 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
   PrimaryKeyIndexReader* snapshot(
-    TransactionState& state,
+    transaction::Methods& trx,
+    std::vector<std::string> const& shards,
     bool force = false
   ) const;
 
@@ -110,13 +117,10 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   ) const override;
 
  private:
-  DECLARE_SPTR(LogicalView);
-
   std::map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>> _collections;
   arangodb::velocypack::Builder _meta; // the view definition
   mutable irs::async_utils::read_write_mutex _mutex; // for use with members
   irs::utf8_path const _persistedPath;
-  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
 
   IResearchViewDBServer(
     TRI_vocbase_t& vocbase,
@@ -126,7 +130,7 @@ class IResearchViewDBServer final: public arangodb::LogicalView {
   );
 };
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif

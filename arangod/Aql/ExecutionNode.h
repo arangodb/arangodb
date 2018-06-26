@@ -53,6 +53,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/types.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
@@ -95,6 +96,18 @@ struct SortElement {
 
   SortElement(Variable const* v, bool asc, std::vector<std::string> const& path)
     : var(v), ascending(asc), attributePath(path) {
+  }
+
+  /// @brief stringify a sort element. note: the output of this should match the
+  /// stringification output of an AstNode for an attribute access
+  /// (e.g. foo.bar => $0.bar)
+  std::string toString() const {
+    std::string result("$");
+    result += std::to_string(var->id);
+    for (auto const& it : attributePath) {
+      result += "." + it;
+    }
+    return result;
   }
 };
 
@@ -167,7 +180,7 @@ class ExecutionNode {
   /// in maintainer mode, this function will perform a dynamic_cast and abort the
   /// program if the cast is invalid. in release mode, this function will perform
   /// a static_cast and will not abort the program
-  template<typename T, typename FromType> 
+  template<typename T, typename FromType>
   static inline T castTo(FromType node) noexcept {
     static_assert(std::is_pointer<T>::value, "invalid type passed into ExecutionNode::castTo");
     static_assert(std::is_pointer<FromType>::value, "invalid type passed into ExecutionNode::castTo");
@@ -181,7 +194,7 @@ class ExecutionNode {
     return static_cast<T>(node);
 #endif
   }
-  
+
   /// @brief return the node's id
   inline size_t id() const { return _id; }
 
@@ -341,7 +354,7 @@ class ExecutionNode {
 
   /// @brief walk a complete execution plan recursively
   bool walk(WalkerWorker<ExecutionNode>& worker);
-  
+
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS    = 1;
   /// include estimate cost  (used in the explainer)
@@ -653,7 +666,7 @@ class SingletonNode : public ExecutionNode {
 };
 
 /// @brief class EnumerateCollectionNode
-class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNode {
+class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNode, public CollectionAccessingNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class EnumerateCollectionBlock;
@@ -661,16 +674,12 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief constructor with a vocbase and a collection name
  public:
   EnumerateCollectionNode(ExecutionPlan* plan, size_t id,
-                          TRI_vocbase_t* vocbase, Collection* collection,
+                          aql::Collection const* collection,
                           Variable const* outVariable, bool random)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
-        _vocbase(vocbase),
-        _collection(collection),
-        _random(random),
-        _restrictedTo("") {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(_collection != nullptr);
+        CollectionAccessingNode(collection),
+        _random(random) {
   }
 
   EnumerateCollectionNode(ExecutionPlan* plan,
@@ -709,45 +718,9 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
 
-  /// @brief return the database
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  /**
-   * @brief Restrict this Node to a single Shard (cluster only)
-   *
-   * @param shardId The shard restricted to
-   */
-  void restrictToShard(std::string const& shardId) { _restrictedTo = shardId; }
-
-  /**
-   * @brief Check if this Node is restricted to a single Shard (cluster only)
-   *
-   * @return True if we are restricted, false otherwise
-   */
-  bool isRestricted() const { return !_restrictedTo.empty(); }
-
-  /**
-   * @brief Get the Restricted shard for this Node
-   *
-   * @return The Shard this node is restricted to
-   */
-  std::string const& restrictedShard() const { return _restrictedTo; }
-
  private:
-  /// @brief the database
-  TRI_vocbase_t* _vocbase;
-
-  /// @brief collection
-  Collection* _collection;
-
   /// @brief whether or not we want random iteration
   bool _random;
-
-  /// @brief A shard this node is restricted to, may be empty
-  std::string _restrictedTo;
 };
 
 /// @brief class EnumerateListNode
@@ -1221,7 +1194,7 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief return the type of the node
   NodeType getType() const override final { return RETURN; }
-  
+
   /// @brief tell the node to count the returned values
   void setCount() { _count = true; }
 

@@ -34,6 +34,12 @@ class Optimizer;
 class ExecutionNode;
 class SubqueryNode;
 
+
+class Query;
+struct Collection;
+/// Helper
+Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert = true);
+
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
@@ -228,15 +234,16 @@ void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerR
 
 /// @brief replace FILTER and SORT containing DISTANCE function
 void geoIndexRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRule const*);
-  
+
 /// @brief replace WITHIN_RECTANGLE, NEAR, WITHIN (under certain conditions)
 void replaceLegacyGeoFunctionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
-/// @brief replace FULLTEXT function
-void fulltextIndexRule(aql::Optimizer*, std::unique_ptr<aql::ExecutionPlan>, aql::OptimizerRule const*);
-
 /// @brief push LIMIT into subqueries, and simplify them
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
+/// @brief replace legacy JS functions in the plan.
+void replaceNearWithinFulltext(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
 
 }  // namespace aql
 }  // namespace arangodb

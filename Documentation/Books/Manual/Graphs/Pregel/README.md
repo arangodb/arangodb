@@ -192,7 +192,19 @@ number of iterations use the `maxGSS` parameter.
 
 ```javascript
 var pregel = require("@arangodb/pregel");
-pregel.start("pagerank", "graphname", {maxGSS: 100, threshold:0.00000001})
+pregel.start("pagerank", "graphname", {maxGSS: 100, threshold:0.00000001, resultField:'rank'})
+```
+
+#### Seeded PageRank
+
+It is possible to specify an initial distribution for the vertex-documents in your graph. To define these
+seed ranks / centralities you can specify a `sourceField` in the properties for this algorithm.
+If the specified field is set on a document _and_ the value is numeric, then it will be
+used instead of the default initial rank of `1 / numVertices`.
+
+```javascript
+var pregel = require("@arangodb/pregel");
+pregel.start("pagerank", "graphname", {maxGSS: 20, threshold:0.00000001, sourceField:'seed', resultField:'rank'})
 ```
 
 ### Single-Source Shortest Path

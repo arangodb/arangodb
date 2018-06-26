@@ -74,22 +74,53 @@ using namespace arangodb::transaction::helpers;
 namespace {
 
 // wrap vector inside a static function to ensure proper initialization order
-std::vector<arangodb::transaction::Methods::StateRegistrationCallback>& getStateRegistrationCallbacks() {
-  static std::vector<arangodb::transaction::Methods::StateRegistrationCallback> callbacks;
+std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback>& getDataSourceRegistrationCallbacks() {
+  static std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback> callbacks;
 
   return callbacks;
+}
+
+/// @return the status change callbacks stored in state
+///         or nullptr if none and !create
+std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>* getStatusChangeCallbacks(
+    arangodb::TransactionState& state,
+    bool create = false
+) {
+  struct CookieType: public arangodb::TransactionState::Cookie {
+    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*> _callbacks;
+  };
+
+  static const int key = 0; // arbitrary location in memory, common for all
+
+  // TODO FIXME find a better way to look up a ViewState
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* cookie = dynamic_cast<CookieType*>(state.cookie(&key));
+  #else
+    auto* cookie = static_cast<CookieType*>(state.cookie(&key));
+  #endif
+
+  if (!cookie && create) {
+    auto ptr = std::make_unique<CookieType>();
+
+    cookie = ptr.get();
+    state.cookie(&key, std::move(ptr));
+  }
+
+  return cookie ? &(cookie->_callbacks) : nullptr;
 }
 
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
-arangodb::Result applyStateRegistrationCallbacks(
+arangodb::Result applyDataSourceRegistrationCallbacks(
     LogicalDataSource& dataSource,
-    arangodb::TransactionState& state
+    arangodb::transaction::Methods& trx
 ) {
-  for (auto& callback: getStateRegistrationCallbacks()) {
+  for (auto& callback: getDataSourceRegistrationCallbacks()) {
+    TRI_ASSERT(callback); // addDataSourceRegistrationCallback(...) ensures valid
+
     try {
-      auto res = callback(dataSource, state);
+      auto res = callback(dataSource, trx);
 
       if (!res.ok()) {
         return res;
@@ -100,6 +131,50 @@ arangodb::Result applyStateRegistrationCallbacks(
   }
 
   return arangodb::Result();
+}
+
+/// @brief notify callbacks of association of 'cid' with this TransactionState
+/// @note done separately from addCollection() to avoid creating a
+///       TransactionCollection instance for virtual entities, e.g. View
+void applyStatusChangeCallbacks(
+    arangodb::transaction::Methods& trx,
+    arangodb::transaction::Status status
+) noexcept {
+  TRI_ASSERT(
+    arangodb::transaction::Status::ABORTED == status
+    || arangodb::transaction::Status::COMMITTED == status
+    || arangodb::transaction::Status::RUNNING == status
+  );
+  TRI_ASSERT(
+    !trx.state() // for embeded transactions status is not always updated
+    || (trx.state()->isTopLevelTransaction() && trx.state()->status() == status)
+    || (!trx.state()->isTopLevelTransaction()
+        && arangodb::transaction::Status::RUNNING == trx.state()->status()
+       )
+  );
+
+  auto* state = trx.state();
+
+  if (!state) {
+    return; // nothing to apply
+  }
+
+  auto* callbacks = getStatusChangeCallbacks(*state);
+
+  if (!callbacks) {
+    return; // no callbacks to apply
+  }
+
+  // no need to lock since transactions are single-threaded
+  for (auto& callback: *callbacks) {
+    TRI_ASSERT(callback); // addStatusChangeCallback(...) ensures valid
+
+    try {
+      (*callback)(trx, status);
+    } catch (...) {
+      // we must not propagate exceptions from here
+    }
+  }
 }
 
 static void throwCollectionNotFound(char const* name) {
@@ -162,14 +237,37 @@ static OperationResult emptyResult(OperationOptions const& options) {
 }
 }  // namespace
 
-/*static*/ void transaction::Methods::addStateRegistrationCallback(
-    StateRegistrationCallback callback
+/*static*/ void transaction::Methods::addDataSourceRegistrationCallback(
+    DataSourceRegistrationCallback const& callback
 ) {
-  getStateRegistrationCallbacks().emplace_back(callback);
+  if (callback) {
+    getDataSourceRegistrationCallbacks().emplace_back(callback);
+  }
 }
 
-/*static*/ void transaction::Methods::clearStateRegistrationCallbacks() {
-  getStateRegistrationCallbacks().clear();
+bool transaction::Methods::addStatusChangeCallback(
+    StatusChangeCallback const* callback
+) {
+  if (!callback || !*callback) {
+    return true; // nothing to call back
+  }
+
+  if (!_state) {
+    return false; // nothing to add to
+  }
+
+  auto* statusChangeCallbacks = getStatusChangeCallbacks(*_state, true);
+
+  TRI_ASSERT(nullptr != statusChangeCallbacks); // 'create' was specified
+
+  // no need to lock since transactions are single-threaded
+  statusChangeCallbacks->emplace_back(callback);
+
+  return true;
+}
+
+/*static*/ void transaction::Methods::clearDataSourceRegistrationCallbacks() {
+  getDataSourceRegistrationCallbacks().clear();
 }
 
 /// @brief Get the field names of the used index
@@ -633,15 +731,36 @@ transaction::Methods::Methods(
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
     _state = engine->createTransactionState(
-       _transactionContextPtr->resolver(), options
+       _transactionContextPtr->vocbase(), options
     ).release();
     TRI_ASSERT(_state != nullptr);
-
+    TRI_ASSERT(_state->isTopLevelTransaction());
+    
     // register the transaction in the context
     _transactionContextPtr->registerTransaction(_state);
   }
 
   TRI_ASSERT(_state != nullptr);
+}
+
+/// @brief create the transaction, used to be UserTransaction
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
+                              std::vector<std::string> const& readCollections,
+                              std::vector<std::string> const& writeCollections,
+                              std::vector<std::string> const& exclusiveCollections,
+                              transaction::Options const& options)
+    : transaction::Methods(ctx, options) {
+  addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+
+  for (auto const& it : exclusiveCollections) {
+    addCollection(it, AccessMode::Type::EXCLUSIVE);
+  }
+  for (auto const& it : writeCollections) {
+    addCollection(it, AccessMode::Type::WRITE);
+  }
+  for (auto const& it : readCollections) {
+    addCollection(it, AccessMode::Type::READ);
+  }
 }
 
 /// @brief destroy the transaction
@@ -778,10 +897,17 @@ Result transaction::Methods::begin() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
     }
-    return Result();
+  } else {
+    auto res = _state->beginTransaction(_localHints);
+
+    if (!res.ok()) {
+      return res;
+    }
   }
 
-  return _state->beginTransaction(_localHints);
+  applyStatusChangeCallbacks(*this, Status::RUNNING);
+
+  return Result();
 }
 
 /// @brief commit / finish the transaction
@@ -807,10 +933,17 @@ Result transaction::Methods::commit() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
     }
-    return Result();
+  } else {
+    auto res = _state->commitTransaction(this);
+
+    if (!res.ok()) {
+      return res;
+    }
   }
 
-  return _state->commitTransaction(this);
+  applyStatusChangeCallbacks(*this, Status::COMMITTED);
+
+  return Result();
 }
 
 /// @brief abort the transaction
@@ -824,11 +957,17 @@ Result transaction::Methods::abort() {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::ABORTED);
     }
+  } else {
+    auto res = _state->abortTransaction(this);
 
-    return Result();
+    if (!res.ok()) {
+      return res;
+    }
   }
 
-  return _state->abortTransaction(this);
+  applyStatusChangeCallbacks(*this, Status::ABORTED);
+
+  return Result();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -920,18 +1059,18 @@ OperationResult transaction::Methods::anyLocal(
 }
 
 TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
-    TRI_voc_cid_t cid, std::string const& collectionName,
+    TRI_voc_cid_t cid, std::string const& cname,
     AccessMode::Type type) {
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
-    int res = _state->addCollection(cid, type, _state->nestingLevel(), true);
+    int res = _state->addCollection(cid, cname, type, _state->nestingLevel(), true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
         // special error message to indicate which collection was undeclared
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            res, std::string(TRI_errno_string(res)) + ": " + collectionName +
+            res, std::string(TRI_errno_string(res)) + ": " + cname +
                      " [" + AccessMode::typeString(type) + "]");
       }
       THROW_ARANGO_EXCEPTION(res);
@@ -943,7 +1082,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto result = applyStateRegistrationCallbacks(*dataSource, *_state);
+    auto result = applyDataSourceRegistrationCallbacks(*dataSource, *this);
 
     if (!result.ok()) {
       THROW_ARANGO_EXCEPTION(result.errorNumber());
@@ -953,7 +1092,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
     collection = trxCollection(cid);
 
     if (collection == nullptr) {
-      throwCollectionNotFound(collectionName.c_str());
+      throwCollectionNotFound(cname.c_str());
     }
   }
 
@@ -1845,7 +1984,7 @@ OperationResult transaction::Methods::modifyLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
-  }
+  } // isDBServer - early block
 
   if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
@@ -2152,7 +2291,7 @@ OperationResult transaction::Methods::removeLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
-  }
+  } // isDBServer - early block
 
   if (options.returnOld) {
     pinData(cid);  // will throw when it fails
@@ -2474,7 +2613,7 @@ OperationResult transaction::Methods::truncateLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
       }
     }
-  }
+  } // isDBServer - early block
 
   pinData(cid);  // will throw when it fails
 
@@ -2952,7 +3091,7 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
 }
 
 /// @brief add a collection by id, with the name supplied
-Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
+Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const& cname,
                                            AccessMode::Type type) {
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2969,51 +3108,60 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
         "cannot add collection to committed or aborted transaction");
   }
 
+  if (_state->isTopLevelTransaction()
+      && status != transaction::Status::CREATED) {
+    // transaction already started?
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_TRANSACTION_INTERNAL,
+      "cannot add collection to a previously started top-level transaction"
+    );
+  }
+
   if (cid == 0) {
     // invalid cid
-    throwCollectionNotFound(name);
+    throwCollectionNotFound(cname.c_str());
   }
+
+  auto addCollection = [this, &cname, type](TRI_voc_cid_t cid)->void {
+    auto res =
+      _state->addCollection(cid, cname, type, _state->nestingLevel(), false);
+
+    if (TRI_ERROR_NO_ERROR == res) {
+      return;
+    }
+
+    if (TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION == res) {
+      // special error message to indicate which collection was undeclared
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        res,
+        std::string(TRI_errno_string(res)) + ": " + cname
+        + " [" + AccessMode::typeString(type) + "]"
+      );
+    }
+
+    if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == res) {
+      throwCollectionNotFound(cname.c_str());
+    }
+
+    THROW_ARANGO_EXCEPTION(res);
+  };
 
   Result res;
   bool visited = false;
-  auto visitor = _state->isEmbeddedTransaction()
-    ? std::function<bool(LogicalCollection&)>(
-        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
-          res = addCollectionEmbedded(col.id(), name, type);
+  std::function<bool(LogicalCollection&)> visitor(
+    [this, &addCollection, &res, cid, &visited](LogicalCollection& col)->bool {
+      addCollection(col.id()); // will throw on error
+      res = applyDataSourceRegistrationCallbacks(col, *this);
+      visited |= cid == col.id();
 
-          if (!res.ok()) {
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(col, *_state);
-          visited |= cid == col.id();
-
-          return res.ok(); // add the remaining collections (or break on error)
-        }
-      )
-    : std::function<bool(LogicalCollection&)>(
-        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
-          res = addCollectionToplevel(col.id(), name, type);
-
-          if (!res.ok()) {
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(col, *_state);
-          visited |= cid == col.id();
-
-          return res.ok(); // add the remaining collections (or break on error)
-        }
-      )
-    ;
+      return res.ok(); // add the remaining collections (or break on error)
+    }
+  );
 
   if (!resolver()->visitCollections(visitor, cid) || !res.ok()) {
     // trigger exception as per the original behaviour (tests depend on this)
     if (res.ok() && !visited) {
-      res = _state->isEmbeddedTransaction()
-          ? addCollectionEmbedded(cid, name, type)
-          : addCollectionToplevel(cid, name, type)
-          ;
+      addCollection(cid); // will throw on error
     }
 
     return res.ok() ? Result(TRI_ERROR_INTERNAL) : res; // return first error
@@ -3027,28 +3175,15 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
   auto dataSource = resolver()->getDataSource(cid);
 
   return dataSource
-    ? applyStateRegistrationCallbacks(*dataSource, *_state)
+    ? applyDataSourceRegistrationCallbacks(*dataSource, *this)
     : Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
     ;
-}
-
-/// @brief add a collection by id, with the name supplied
-Result transaction::Methods::addCollection(TRI_voc_cid_t cid,
-                                           std::string const& name,
-                                           AccessMode::Type type) {
-  return addCollection(cid, name.c_str(), type);
-}
-
-/// @brief add a collection by id
-Result transaction::Methods::addCollection(TRI_voc_cid_t cid,
-                                           AccessMode::Type type) {
-  return addCollection(cid, nullptr, type);
 }
 
 /// @brief add a collection by name
 Result transaction::Methods::addCollection(std::string const& name,
                                            AccessMode::Type type) {
-  return addCollection(resolver()->getCollectionId(name), name.c_str(), type);
+  return addCollection(resolver()->getCollectionId(name), name, type);
 }
 
 /// @brief test if a collection is already locked
@@ -3205,61 +3340,6 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
 
   // We have successfully found an index with the requested id.
   return IndexHandle(idx);
-}
-
-/// @brief add a collection to an embedded transaction
-Result transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid,
-                                                   char const* name,
-                                                   AccessMode::Type type) {
-  TRI_ASSERT(_state != nullptr);
-
-  int res = _state->addCollection(cid, type, _state->nestingLevel(), false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-      // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res, std::string(TRI_errno_string(res)) + ": " +
-                   resolver()->getCollectionNameCluster(cid) + " [" +
-                   AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      throwCollectionNotFound(name);
-    }
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return res;
-}
-
-/// @brief add a collection to a top-level transaction
-Result transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid,
-                                                   char const* name,
-                                                   AccessMode::Type type) {
-  TRI_ASSERT(_state != nullptr);
-
-  int res;
-
-  if (_state->status() != transaction::Status::CREATED) {
-    // transaction already started?
-    res = TRI_ERROR_TRANSACTION_INTERNAL;
-  } else {
-    res = _state->addCollection(cid, type, _state->nestingLevel(), false);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (res == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
-      // special error message to indicate which collection was undeclared
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res, std::string(TRI_errno_string(res)) + ": " +
-                   resolver()->getCollectionNameCluster(cid) + " [" +
-                   AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-      throwCollectionNotFound(name);
-    }
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return res;
 }
 
 Result transaction::Methods::resolveId(char const* handle, size_t length,

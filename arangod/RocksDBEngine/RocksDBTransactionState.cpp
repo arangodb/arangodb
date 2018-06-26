@@ -57,10 +57,10 @@ struct RocksDBTransactionData final : public TransactionData {};
 
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
-    CollectionNameResolver const& resolver,
+    TRI_vocbase_t& vocbase,
     TRI_voc_tid_t tid,
     transaction::Options const& options
-): TransactionState(resolver, tid, options),
+): TransactionState(vocbase, tid, options),
       _rocksTransaction(nullptr),
       _snapshot(nullptr),
       _rocksWriteOptions(),
@@ -192,7 +192,7 @@ void RocksDBTransactionState::createTransaction() {
   // add transaction begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
     auto header =
-      RocksDBLogValue::BeginTransaction(_resolver.vocbase().id(), _id);
+      RocksDBLogValue::BeginTransaction(_vocbase.id(), _id);
 
     _rocksTransaction->PutLogData(header.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -235,7 +235,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
       // add custom commit marker to increase WAL tailing reliability
       auto logValue =
-        RocksDBLogValue::CommitTransaction(_resolver.vocbase().id(), id());
+        RocksDBLogValue::CommitTransaction(_vocbase.id(), id());
 
       _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -394,7 +394,7 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
       case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
         auto logValue =
-          RocksDBLogValue::SinglePut(_resolver.vocbase().id(), cid);
+          RocksDBLogValue::SinglePut(_vocbase.id(), cid);
 
         _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -407,7 +407,7 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
         TRI_ASSERT(rid != 0);
 
         auto logValue =
-          RocksDBLogValue::SingleRemoveV2(_resolver.vocbase().id(), cid, rid);
+          RocksDBLogValue::SingleRemoveV2(_vocbase.id(), cid, rid);
 
         _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -457,7 +457,7 @@ Result RocksDBTransactionState::addOperation(
   // clear the query cache for this collection
   if (arangodb::aql::QueryCache::instance()->mayBeActive()) {
     arangodb::aql::QueryCache::instance()->invalidate(
-      &(_resolver.vocbase()), collection->collectionName()
+      &_vocbase, collection->collectionName()
     );
   }
 

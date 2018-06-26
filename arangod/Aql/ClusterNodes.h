@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/Ast.h"
+#include "Aql/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
@@ -195,7 +196,7 @@ class ScatterNode : public ExecutionNode {
 };
 
 /// @brief class DistributeNode
-class DistributeNode final : public ScatterNode {
+class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class DistributeBlock;
   friend class RedundantCalculationsReplacer;
@@ -210,7 +211,7 @@ class DistributeNode final : public ScatterNode {
       bool createKeys,
       bool allowKeyConversionToObject)
     : ScatterNode(plan, id),
-      _collection(collection),
+      CollectionAccessingNode(collection),
       _variable(variable),
       _alternativeVariable(alternativeVariable),
       _createKeys(createKeys),
@@ -260,12 +261,6 @@ class DistributeNode final : public ScatterNode {
   /// @brief estimateCost
   double estimateCost(size_t&) const override final;
 
-  /// @brief return the collection
-  Collection const* collection() const { return _collection; }
-
-  /// @brief set collection
-  void setCollection(Collection* coll) { _collection = coll; }
-
   void variable(Variable const* variable) { _variable = variable; }
 
   void alternativeVariable(Variable const* variable) {
@@ -282,9 +277,6 @@ class DistributeNode final : public ScatterNode {
   void setAllowSpecifiedKeys(bool b) { _allowSpecifiedKeys = b; }
 
  private:
-  /// @brief the underlying collection
-  Collection const* _collection;
-
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
 

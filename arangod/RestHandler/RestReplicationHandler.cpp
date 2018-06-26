@@ -45,6 +45,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -413,6 +414,11 @@ RestStatus RestReplicationHandler::execute() {
         }
         handleCommandApplierGetState();
       }
+    } else if (command == "applier-state-all") {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+      handleCommandApplierGetStateAll();
     } else if (command == "clusterInventory") {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
@@ -917,7 +923,7 @@ Result RestReplicationHandler::processRestoreCollection(
         // instead, truncate them
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(
-          ctx, col->id(), AccessMode::Type::EXCLUSIVE
+          ctx, col, AccessMode::Type::EXCLUSIVE
         );
 
         // to turn off waitForSync!
@@ -1976,6 +1982,42 @@ void RestReplicationHandler::handleCommandApplierGetState() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JSF_get_api_replication_applier_state_all
+////////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandApplierGetStateAll() {
+  if (_request->databaseName() != StaticStrings::SystemDatabase) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "global inventory can only be fetched from within _system database");
+    return;
+  }
+  DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
+  VPackBuilder builder;
+  builder.openObject();
+  for (auto& name : databaseFeature->getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+
+    if (vocbase == nullptr) {
+      continue;
+    }
+
+    ReplicationApplier* applier = vocbase->replicationApplier();
+
+    if (applier == nullptr) {
+      continue;
+    }
+
+    builder.add(name, VPackValue(VPackValueType::Object));
+    applier->toVelocyPack(builder);
+    builder.close();
+  }
+  builder.close();
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief delete the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2030,7 +2072,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     // Short cut for the case that the collection is empty
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     SingleCollectionTransaction trx(
-      ctx, col->id(), AccessMode::Type::EXCLUSIVE
+      ctx, col.get(), AccessMode::Type::EXCLUSIVE
     );
     auto res = trx.begin();
 
@@ -2242,8 +2284,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   auto trx =
-      std::make_shared<SingleCollectionTransaction>(ctx, col->id(), access);
-
+      std::make_shared<SingleCollectionTransaction>(ctx, col.get(), access);
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
 
   Result res = trx->begin();

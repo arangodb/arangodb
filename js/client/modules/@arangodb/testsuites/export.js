@@ -118,7 +118,7 @@ function exportTest (options) {
   }
 
   print(CYAN + Date() + ': Export data (json)' + RESET);
-  results.exportJson = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+  results.exportJson = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportJson.failed = results.exportJson.status ? 0 : 1;
 
   try {
@@ -138,7 +138,7 @@ function exportTest (options) {
 
   print(CYAN + Date() + ': Export data (jsonl)' + RESET);
   args['type'] = 'jsonl';
-  results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+  results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportJsonl.failed = results.exportJsonl.status ? 0 : 1;
   try {
     fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
@@ -161,7 +161,7 @@ function exportTest (options) {
   print(CYAN + Date() + ': Export data (xgmml)' + RESET);
   args['type'] = 'xgmml';
   args['graph-name'] = 'UnitTestsExport';
-  results.exportXgmml = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+  results.exportXgmml = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportXgmml.failed = results.exportXgmml.status ? 0 : 1;
   try {
     const filesContent = fs.read(fs.join(tmpPath, 'UnitTestsExport.xgmml'));
@@ -192,7 +192,7 @@ function exportTest (options) {
   args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
   delete args['graph-name'];
   delete args['collection'];
-  results.exportQuery = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, options.coreCheck);
+  results.exportQuery = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportQuery.failed = results.exportQuery.status ? 0 : 1;
   try {
     fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')

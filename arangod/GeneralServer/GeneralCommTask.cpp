@@ -66,12 +66,12 @@ static std::string const Open("/_open/");
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
+GeneralCommTask::GeneralCommTask(Scheduler* scheduler, GeneralServer* server,
                                  std::unique_ptr<Socket> socket,
                                  ConnectionInfo&& info, double keepAliveTimeout,
                                  bool skipSocketInit)
-    : Task(loop, "GeneralCommTask"),
-      SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
+    : Task(scheduler, "GeneralCommTask"),
+      SocketTask(scheduler, std::move(socket), std::move(info), keepAliveTimeout,
                  skipSocketInit),
       _server(server),
       _auth(nullptr) {
@@ -105,16 +105,9 @@ TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
     // if no databases was specified in the request, use system database name
     // as a fallback
     req.setDatabaseName(StaticStrings::SystemDatabase);
-    if (ServerState::instance()->isCoordinator()) {
-      return databaseFeature->useDatabaseCoordinator(
-          StaticStrings::SystemDatabase);
-    }
     return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
   }
 
-  if (ServerState::instance()->isCoordinator()) {
-    return databaseFeature->useDatabaseCoordinator(dbName);
-  }
   return databaseFeature->useDatabase(dbName);
 }
 }
@@ -164,22 +157,23 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(
   // now check the authentication will determine if the user can access
   // this path checks db permissions and contains exceptions for the
   // users API to allow logins
-  const rest::ResponseCode ok = GeneralCommTask::canAccessPath(req);
-  if (ok == rest::ResponseCode::UNAUTHORIZED) {
+  const rest::ResponseCode code = GeneralCommTask::canAccessPath(req);
+  if (code == rest::ResponseCode::UNAUTHORIZED) {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                      req.contentTypeResponse(), req.messageId(),
                      TRI_ERROR_FORBIDDEN,
                      "not authorized to execute this request");
     return RequestFlow::Abort;
   }
-  TRI_ASSERT(ok == rest::ResponseCode::OK);  // nothing else allowed
-
-  // check for an HLC time stamp, only after authentication
-  std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
-  if (found) {
-    uint64_t parsed = basics::HybridLogicalClock::decodeTimeStamp(timeStamp);
-    if (parsed != 0 && parsed != UINT64_MAX) {
-      TRI_HybridLogicalClock(parsed);
+  
+  if (code == rest::ResponseCode::OK && req.authenticated()) {
+    // check for an HLC time stamp only with auth
+    std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
+    if (found) {
+      uint64_t parsed = basics::HybridLogicalClock::decodeTimeStamp(timeStamp);
+      if (parsed != 0 && parsed != UINT64_MAX) {
+        TRI_HybridLogicalClock(parsed);
+      }
     }
   }
 
@@ -364,7 +358,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   } else if (handler->isDirect()) {
     isDirect = true;
   } else if (queuePrio != JobQueue::BACKGROUND_QUEUE &&
-             _loop.scheduler->shouldExecuteDirect()) {
+             _scheduler->shouldExecuteDirect()) {
     isDirect = true;
   } else if (ServerState::instance()->isDBServer()) {
     isPrio = true;
@@ -388,7 +382,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   auto self = shared_from_this();
 
   if (isPrio) {
-    _loop.scheduler->post([self, this, handler]() {
+    _scheduler->post([self, this, handler]() {
       handleRequestDirectly(basics::ConditionalLocking::DoLock,
                             std::move(handler));
     });
@@ -397,7 +391,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   // ok, we need to queue the request
   LOG_TOPIC(TRACE, Logger::THREADS) << "too much work, queuing handler: "
-                                    << _loop.scheduler->infoStatus();
+                                    << _scheduler->infoStatus();
   uint64_t messageId = handler->messageId();
   auto job = std::make_unique<Job>(
       _server, std::move(handler),
@@ -419,7 +413,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 // Just run the handler, could have been called in a different thread
 void GeneralCommTask::handleRequestDirectly(
     bool doLock, std::shared_ptr<RestHandler> handler) {
-  TRI_ASSERT(doLock || _peer->strand.running_in_this_thread());
+  TRI_ASSERT(doLock || _peer->runningInThisThread());
 
   handler->runHandler([this, doLock](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
@@ -427,15 +421,12 @@ void GeneralCommTask::handleRequestDirectly(
     if (doLock) {
       auto self = shared_from_this();
       auto h = handler->shared_from_this();
-      _loop.scheduler->_nrQueued++;
-      _peer->strand.post([self, this, stat, h]() {
-        _loop.scheduler->_nrQueued--;
-        JobGuard guard(_loop);
-        guard.work();
+
+      _peer->post([self, this, stat, h]() {
         addResponse(*(h->response()), stat);
       });
     } else {
-      TRI_ASSERT(_peer->strand.running_in_this_thread());
+      TRI_ASSERT(_peer->runningInThisThread());
       addResponse(*handler->response(), stat);
     }
   });
@@ -476,6 +467,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
   if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
+  } else if (ServerState::serverMode() == ServerState::Mode::MAINTENANCE) {
+    return rest::ResponseCode::SERVICE_UNAVAILABLE;
   }
 
   std::string const& path = request.requestPath();

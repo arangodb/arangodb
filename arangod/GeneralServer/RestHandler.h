@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/EventLoop.h"
 #include "Scheduler/JobQueue.h"
 
 namespace arangodb {

@@ -57,7 +57,7 @@ class EnumerateCollectionBlock final : public ExecutionBlock, public DocumentPro
 
  private:
   /// @brief collection
-  Collection* _collection;
+  Collection const* _collection;
   
   /// @brief cursor
   std::unique_ptr<OperationCursor> _cursor;

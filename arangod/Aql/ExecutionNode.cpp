@@ -442,6 +442,10 @@ ExecutionNode* ExecutionNode::cloneHelper(
     // now assign a new id to the cloned node, otherwise it will fail
     // upon node registration and/or its meaning is ambiguous
     other->setId(plan->nextId());
+    
+    // cloning with properties will only work if we clone a node into
+    // a different plan
+    TRI_ASSERT(!withProperties);
   }
 
   if (withProperties) {
@@ -1313,47 +1317,25 @@ EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())),
-      _random(base.get("random").getBoolean()),
-      _restrictedTo("") {
-  TRI_ASSERT(_vocbase != nullptr);
-  TRI_ASSERT(_collection != nullptr);
-  VPackSlice restrictedTo = base.get("restrictedTo");
-
-  if (restrictedTo.isString()) {
-    _restrictedTo = restrictedTo.copyString();
-  }
-
-  if (_collection == nullptr) {
-    std::string msg("collection '");
-    msg.append(base.get("collection").copyString());
-    msg.append("' not found");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
-  }
+      CollectionAccessingNode(plan, base),
+      _random(base.get("random").getBoolean()) {
 }
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
-void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
+void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
 
-  // Now put info about vocbase and cid in there
-  nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
-  nodes.add("random", VPackValue(_random));
-  nodes.add("satellite", VPackValue(_collection->isSatellite()));
-
-  if (!_restrictedTo.empty()) {
-    nodes.add("restrictedTo", VPackValue(_restrictedTo));
-  }
+  builder.add("random", VPackValue(_random));
 
   // add outvariable and projection
-  DocumentProducingNode::toVelocyPack(nodes);
+  DocumentProducingNode::toVelocyPack(builder);
+
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(builder);
 
   // And close it:
-  nodes.close();
+  builder.close();
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -1374,7 +1356,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
     TRI_ASSERT(outVariable != nullptr);
   }
 
-  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _vocbase, _collection, outVariable, _random);
+  auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _collection, outVariable, _random);
 
   c->projections(_projections);
 
@@ -1562,7 +1544,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
   }
 
   nodes.add("expressionType", VPackValue(_expression->typeString()));
-  
+
   if ((flags & SERIALIZE_FUNCTIONS) &&
       _expression->node() != nullptr) {
     auto root = _expression->node();
@@ -1580,7 +1562,7 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic", VPackValue(func->isDeterministic));
             nodes.add("canRunOnDBServer", VPackValue(func->canRunOnDBServer));
-            nodes.add("usesV8", VPackValue(func->implementation == nullptr || (func->condition && !func->condition())));
+            nodes.add("usesV8", VPackValue(false));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {
@@ -1702,7 +1684,7 @@ bool SubqueryNode::mayAccessCollections() {
     // document, then we count this as a "yes"
     return true;
   }
-  
+
   TRI_ASSERT(_subquery != nullptr);
 
   // if the subquery contains any of these nodes, it may access data from
@@ -1724,10 +1706,10 @@ bool SubqueryNode::mayAccessCollections() {
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
-     
+
   NodeFinder<std::vector<ExecutionNode::NodeType>> finder(types, nodes, true);
   _subquery->walk(finder);
-  
+
   if (!nodes.empty()) {
     return true;
   }

@@ -4,7 +4,6 @@
 
 # add sources for cluster engine
 set(CLUSTER_ENGINE_SOURCES
-  ClusterEngine/ClusterAqlFunctions.cpp
   ClusterEngine/ClusterCollection.cpp
   ClusterEngine/ClusterEngine.cpp
   ClusterEngine/ClusterIndex.cpp

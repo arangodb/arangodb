@@ -208,7 +208,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<transaction::V8Context> transactionContext =
       transaction::V8Context::Create(collection->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, collection->id(), AccessMode::Type::READ
+    transactionContext, collection, AccessMode::Type::READ
   );
   Result res = trx.begin();
 
@@ -299,7 +299,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::shared_ptr<transaction::V8Context> transactionContext =
       transaction::V8Context::Create(col->vocbase(), true);
   SingleCollectionTransaction trx(
-    transactionContext, col->id(), AccessMode::Type::READ
+    transactionContext, col, AccessMode::Type::READ
   );
   Result res = trx.begin();
 

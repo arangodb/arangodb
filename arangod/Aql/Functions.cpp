@@ -195,8 +195,8 @@ std::string executeDateFormatRegex(std::string const& search, tp_sys_clock_ms co
 }
 
 std::string tail(std::string const& source, size_t const length) {
-  if (length >= source.size()) { 
-    return source; 
+  if (length >= source.size()) {
+    return source;
   }
   return source.substr(source.size() - length);
 } // tail
@@ -363,10 +363,10 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
         wrk.append("00");
       } else if (daysSinceFirst < 100) {
         wrk.append("0");
-      } 
+      }
       wrk.append(std::to_string(daysSinceFirst));
     }},
-  
+
   // there"s no really sensible way to handle negative years, but better not drop the sign
   {"%yy", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto ymd = year_month_day(floor<days>(tp));
@@ -427,7 +427,7 @@ std::vector<std::pair<std::string, format_func_t>> const sortedDateMap = {
       }
       wrk.append(std::to_string(isoWeek));
     }},
-  
+
   {"%t", [](std::string& wrk, tp_sys_clock_ms const& tp) {
       auto diffDuration = tp - unixEpoch;
       auto diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
@@ -2906,7 +2906,7 @@ AqlValue Functions::DateFromParameters(
       h = hours((ExtractFunctionParameterValue(parameters, 3).toInt64(trx)));
     }
     if (parameters.size() >= 5) {
-      min = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx))); 
+      min = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
     }
     if (parameters.size() >= 6) {
       s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
@@ -2935,7 +2935,7 @@ AqlValue Functions::DateFromParameters(
 
   if (asTimestamp) {
     return AqlValue(AqlValueHintInt(time.count()));
-  } 
+  }
   return ::timeAqlValue(tp);
 }
 
@@ -3414,7 +3414,7 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
 
   if (asFloat) {
     return AqlValue(AqlValueHintDouble(diff));
-  } 
+  }
   return AqlValue(AqlValueHintInt(static_cast<int64_t>(std::round(diff))));
 }
 
@@ -4744,6 +4744,7 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   }
 
   S2Loop loop;
+  loop.set_s2debug_override(S2Debug::DISABLE);
   Result res = geo::geojson::parseLoop(coords.slice(), geoJson, loop);
   if (res.fail() || !loop.IsValid()) {
     ::registerWarning(query, "IS_IN_POLYGON", res);
@@ -5213,7 +5214,7 @@ AqlValue Functions::Zip(arangodb::aql::Query* query, transaction::Methods* trx,
   std::unordered_set<std::string> keysSeen;
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
- 
+
   VPackArrayIterator keysIt(keysSlice);
   VPackArrayIterator valuesIt(valuesSlice);
 
@@ -6864,8 +6865,8 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query,
     transaction::BuilderLeaser builder(trx);
     worker->aqlResult(builder.get());
     return AqlValue(builder.get());
-  } 
-    
+  }
+
   ::registerWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
   return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
@@ -6944,8 +6945,24 @@ AqlValue Functions::DateFormat(arangodb::aql::Query* query,
   if (!aqlFormatString.isString()) {
     ::registerInvalidArgumentWarning(query, AFN);
     return AqlValue(AqlValueHintNull());
-  }      
+  }
 
   std::string const formatString = aqlFormatString.slice().copyString();
   return AqlValue(::executeDateFormatRegex(formatString, tp));
+}
+
+AqlValue Functions::Near(arangodb::aql::Query* query, transaction::Methods*,
+              VPackFunctionParameters const& params){
+    ::registerError(query,"NEAR",TRI_ERROR_NOT_IMPLEMENTED);
+    return AqlValue(AqlValueHintNull());
+}
+AqlValue Functions::Within(arangodb::aql::Query* query, transaction::Methods*,
+              VPackFunctionParameters const& params){
+    ::registerError(query,"WITHIN",TRI_ERROR_NOT_IMPLEMENTED);
+    return AqlValue(AqlValueHintNull());
+}
+AqlValue Functions::Fulltext(arangodb::aql::Query* query, transaction::Methods*,
+                     VPackFunctionParameters const& params){
+    ::registerError(query,"FULLTEXT",TRI_ERROR_NOT_IMPLEMENTED);
+    return AqlValue(AqlValueHintNull());
 }

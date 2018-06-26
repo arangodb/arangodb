@@ -20,28 +20,23 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Scheduler/SocketTcp.h"
-#include "Logger/Logger.h"
+#include "Scheduler/SocketSslTcp.h"
 
-#include <asio/ip/tcp.hpp>
-#include <asio/ssl.hpp>
 #include <thread>
 
 using namespace arangodb;
 
-namespace {
-template <typename T>
-bool doSslHandshake(T& socket) {
-  asio::error_code ec;
+bool SocketSslTcp::sslHandshake() {
+  asio_ns::error_code ec;
 
   uint64_t tries = 0;
   double start = 0.0;
 
   while (true) {
     ec.clear();
-    socket.handshake(asio::ssl::stream_base::handshake_type::server, ec);
+    _sslSocket->handshake(asio_ns::ssl::stream_base::handshake_type::server, ec);
 
-    if (ec.value() != asio::error::would_block) {
+    if (ec.value() != asio_ns::error::would_block) {
       break;
     }
 
@@ -65,7 +60,12 @@ bool doSslHandshake(T& socket) {
       TRI_ASSERT(start != 0.0);
 
       if (TRI_microtime() - start >= 3) {
-        ec.assign(asio::error::connection_reset, std::generic_category());
+#if ARANGODB_STANDALONE_ASIO
+        ec.assign(asio_ns::error::connection_reset, std::generic_category());
+#else
+        ec.assign(boost::asio::error::connection_reset,
+                  boost::system::generic_category());
+#endif
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "forcefully shutting down connection after wait time";
         break;
@@ -87,48 +87,4 @@ bool doSslHandshake(T& socket) {
     return false;
   }
   return true;
-}
-}
-
-bool SocketSslTcp::sslHandshake() {
-  // MUTEX_LOCKER(guard, _lock);
-  return ::doSslHandshake(_sslSocket);
-}
-
-void SocketTcp::close(asio::error_code& ec) {
-  // MUTEX_LOCKER(guard, _lock);
-  if (_socket.is_open()) {
-    _socket.close(ec);
-    if (ec && ec != asio::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing socket failed with: "
-                                              << ec.message();
-    }
-  }
-}
-
-void SocketTcp::shutdownReceive(asio::error_code& ec) {
-  _socket.shutdown(asio::ip::tcp::socket::shutdown_receive, ec);
-}
-
-void SocketTcp::shutdownSend(asio::error_code& ec) {
-  _socket.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
-}
-
-void SocketSslTcp::close(asio::error_code& ec) {
-  // MUTEX_LOCKER(guard, _lock);
-  if (_socket.is_open()) {
-    _socket.close(ec);
-    if (ec && ec != asio::error::not_connected) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "closing socket failed with: "
-                                              << ec.message();
-    }
-  }
-}
-
-void SocketSslTcp::shutdownReceive(asio::error_code& ec) {
-  _socket.shutdown(asio::ip::tcp::socket::shutdown_receive, ec);
-}
-
-void SocketSslTcp::shutdownSend(asio::error_code& ec) {
-  _socket.shutdown(asio::ip::tcp::socket::shutdown_send, ec);
 }

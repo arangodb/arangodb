@@ -196,7 +196,7 @@ transaction::ContextData* transaction::Context::contextData() {
   if (_contextData == nullptr) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-    _contextData.reset(engine->createTransactionContextData());
+    _contextData = engine->createTransactionContextData();
   }
 
   return _contextData.get();

@@ -44,6 +44,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Methods.h"
+#include "Transaction/StandaloneContext.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -53,8 +55,6 @@
 #include "Aql/Query.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/AqlFunctionFeature.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -166,7 +166,7 @@ void assertExpressionFilter(
 
   // iteratorForCondition
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       {},
       {},
@@ -253,7 +253,7 @@ void assertFilter(
 
   // execution time
   {
-    arangodb::transaction::UserTransaction trx(
+    arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase),
       {},
       {},

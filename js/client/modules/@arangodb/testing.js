@@ -35,8 +35,10 @@ let functionsDocumentation = {
 
 let optionsDocumentation = [
   '',
+
   ' The following properties of `options` are defined:',
   '',
+  '   - `testOutput`: set the output directory for testresults, defaults to `out`',
   '   - `jsonReply`: if set a json is returned which the caller has to ',
   '        present the user',
   '   - `force`: if set to true the tests are continued even if one fails',
@@ -79,7 +81,7 @@ let optionsDocumentation = [
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
-  '   - `writeXml`:  Write junit xml report files',
+  '   - `writeXmlReport`:  Write junit xml report files',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
   '   - `rr`: if set to true arangod instances are run with rr',
@@ -126,7 +128,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
-  'arangosearch':false,
+  'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,

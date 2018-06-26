@@ -28,11 +28,11 @@
 #include <atomic>
 
 #include "AutoTuneThread.h"
+#include "QuickHistogram.h"
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-
 #include "Basics/StringBuffer.h"
 #include "Basics/csv.h"
 
@@ -64,6 +64,7 @@ struct ImportStatistics {
   size_t _numberIgnored = 0;
 
   arangodb::Mutex _mutex;
+  QuickHistogram _histogram;
 };
 
 class ImportHelper {
@@ -242,6 +243,11 @@ class ImportHelper {
   size_t getRowsRead() const { return _rowsRead; }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief start the optional histogram thread
+  //////////////////////////////////////////////////////////////////////////////
+  void startHistogram() { _stats._histogram.start(); }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief get the error message
   ///
   /// @return string       get the error message
@@ -274,6 +280,7 @@ class ImportHelper {
   void addLastField(char const*, size_t, size_t row, size_t column,
                     bool escaped);
 
+  bool collectionExists();
   bool checkCreateCollection();
   bool truncateCollection();
 
@@ -291,7 +298,7 @@ class ImportHelper {
   std::vector<std::unique_ptr<SenderThread>> _senderThreads;
   uint32_t const _threadCount;
   basics::ConditionVariable _threadsCondition;
-
+  basics::StringBuffer _tempBuffer;
 
   std::string _separator;
   std::string _quote;

@@ -34,9 +34,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/UserTransaction.h"
 #include "Transaction/StandaloneContext.h"
-#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -238,7 +236,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       arangodb::OperationOptions opt;
       TRI_voc_tick_t tick;
 
-      arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase),
         EMPTY, EMPTY, EMPTY,
         arangodb::transaction::Options()

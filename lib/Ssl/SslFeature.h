@@ -26,9 +26,8 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include <openssl/ssl.h>
-#include <asio/ssl.hpp>
 
-//#include "Basics/asio-helper.h"
+#include "Basics/asio_ns.h"
 
 namespace arangodb {
 class SslFeature final : public application_features::ApplicationFeature {

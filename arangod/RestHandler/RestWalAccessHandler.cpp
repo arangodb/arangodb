@@ -366,9 +366,13 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 
-  DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-    vocbase->updateReplicationClient(serverId, tickStart, InitialSyncer::defaultBatchTimeout);
-  });
+  DatabaseFeature::DATABASE->enumerateDatabases(
+    [&](TRI_vocbase_t& vocbase)->void {
+      vocbase.updateReplicationClient(
+        serverId, tickStart, InitialSyncer::defaultBatchTimeout
+      );
+    }
+  );
 }
 
 void RestWalAccessHandler::handleCommandDetermineOpenTransactions(

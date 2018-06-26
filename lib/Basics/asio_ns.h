@@ -17,24 +17,44 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_CLUSTER_AQL_FUNCTIONS_H
-#define ARANGOD_CLUSTER_CLUSTER_AQL_FUNCTIONS_H 1
+#ifndef ARANGOD_LIB_ASIO_NS_H
+#define ARANGOD_LIB_ASIO_NS_H 1
 
-#include "Basics/Common.h"
-#include "Aql/Functions.h"
+#if ARANGODB_STANDALONE_ASIO
 
-namespace arangodb {
-namespace aql {
-struct Function;
+#define ASIO_HAS_MOVE 1
+
+#include <asio/buffer.hpp>
+#include <asio/error.hpp>
+#include <asio/io_context.hpp>
+#include <asio/io_context_strand.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
+#include <asio/signal_set.hpp>
+#include <asio/ssl.hpp>
+#include <asio/steady_timer.hpp>
+
+namespace asio_ns = asio;
+
+#else
+
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/asio/steady_timer.hpp>
+
+namespace boost {
+namespace asio {
+using error_code = boost::system::error_code;
+using io_context = boost::asio::io_service;
+using system_error = boost::system::system_error;
+}
 }
 
-struct ClusterAqlFunctions : public aql::Functions {
-  static void registerResources();
-};
+namespace asio_ns = boost::asio;
 
-}  // namespace arangodb
+#endif
 
 #endif

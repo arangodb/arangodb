@@ -584,12 +584,14 @@ function getServerData(arango) {
             }
           }
           
-          const version = arango.GET('_api/version'); // version api
+          const version = arango.GET('_api/version?details=true'); // version api
           const log = arango.GET('_admin/log'); // log api
           const statistics = arango.GET('_admin/statistics'); // statistics api
           var agencyConfig;
+          var agencyState;
           if (server.startsWith("AGNT")) {
             agencyConfig = arango.GET('_api/agency/config');
+            agencyState = arango.GET('_api/agency/state');
           }
           const status = arango.GET('_admin/status');
           const time = require('internal').time();
@@ -646,6 +648,7 @@ function getServerData(arango) {
 
           if (agencyConfig !==  undefined) {
             report[server].config = agencyConfig;
+            report[server].state = agencyState;
           }
           if (top !==  undefined) {
             report[server].top = top;
