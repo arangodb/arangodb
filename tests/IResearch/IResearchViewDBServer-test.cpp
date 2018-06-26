@@ -300,7 +300,7 @@ SECTION("test_ensure") {
   CHECK((std::string("_iresearch_123_1") == view->name()));
   CHECK((false == view->deleted()));
   CHECK((wiew->id() != view->id())); // must have unique ID
-  CHECK((view->id() == view->planId())); // same as view ID
+  CHECK((wiew->id() == view->planId())); // same as view ID
   CHECK((0 == view->planVersion()));
   CHECK((arangodb::iresearch::DATA_SOURCE_TYPE == view->type()));
   CHECK((&vocbase == &(view->vocbase())));
