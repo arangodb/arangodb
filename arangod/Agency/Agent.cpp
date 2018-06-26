@@ -398,11 +398,9 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  LOG_TOPIC(INFO, Logger::AGENCY) << __FILE__<< __LINE__;
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
-    LOG_TOPIC(INFO, Logger::AGENCY) << __FILE__<< __LINE__;
     return;
   }
 
@@ -445,8 +443,8 @@ void Agent::sendAppendEntriesRPC() {
         commitIndex = _commitIndex;
       }
 
-      if (lastConfirmed < _state.firstIndex) {
-        lastConfirmed = _state.firstIndex;
+      if (lastConfirmed < _state.firstIndex()) {
+        lastConfirmed = _state.firstIndex();
       }
       LOG_TOPIC(TRACE, Logger::AGENCY) << "Getting unconfirmed from " << lastConfirmed
                                        << " to " <<  lastConfirmed+99;
@@ -568,7 +566,6 @@ void Agent::sendAppendEntriesRPC() {
       // Really leading?
       if (challengeLeadership()) {
         resign();
-        LOG_TOPIC(INFO, Logger::AGENCY) << __FILE__<< __LINE__;
         return;
       }
 
@@ -609,7 +606,6 @@ void Agent::sendAppendEntriesRPC() {
           earliestPackage - steady_clock::now()).count() << "ms";
     }
   }
-  LOG_TOPIC(INFO, Logger::AGENCY) << __FILE__<< __LINE__;
 }
 
 
