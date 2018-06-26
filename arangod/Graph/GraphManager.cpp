@@ -259,7 +259,10 @@ ResultT<std::pair<OperationResult, Result>> GraphManager::createGraph(
 
   std::string smartGraphAttribute;
   try {
-    smartGraphAttribute = document.get(std::vector<std::string>({ "options", Graph::_attrSmartGraphAttribute})).copyString();
+    smartGraphAttribute = document
+                              .get(std::vector<std::string>(
+                                  {"options", Graph::_attrSmartGraphAttribute}))
+                              .copyString();
   } catch (...) {
   }
   #endif
