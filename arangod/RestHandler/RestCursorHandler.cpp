@@ -304,7 +304,8 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
         continue;
       }
       std::string keyName = it.key.copyString();
-      if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" ||
+      if (keyName == "count" || keyName == "batchSize" || 
+          keyName == "ttl" || keyName == "memoryLimit" ||
           (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys
       } else if (keyName == "cache") {
