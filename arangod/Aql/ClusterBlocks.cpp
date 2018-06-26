@@ -1785,7 +1785,8 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
     //LOG_DEVEL << "ignoreErrors " <<  nodeOps.ignoreErrors; // CHECKME
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
         (( node->_mode == ExecutionNode::NodeType::INDEX) ||
-         ( node->_mode == ExecutionNode::NodeType::REMOVE && node->_replaceIndexNode)))
+         ( node->_mode == ExecutionNode::NodeType::REMOVE && node->_replaceIndexNode) ||
+         ( node->_mode == ExecutionNode::NodeType::REPLACE && node->_replaceIndexNode) ))
       {
         // document not there is not an error in this situation.
         // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
@@ -1809,10 +1810,9 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
   _engine->_stats.scannedIndex++;
 
   if (!(out || OLD || NEW)) {
-    _done = true;
     traceGetSomeEnd(nullptr);
-    //LOG_DEVEL << "neither output";
-    return false;
+    // LOG_DEVEL << "neither output" << node->hasParent();
+    return node->hasParent();
   }
 
   // Fill itemblock
