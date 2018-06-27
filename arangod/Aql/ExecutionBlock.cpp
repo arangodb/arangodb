@@ -237,7 +237,9 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>>
 ExecutionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
-    LOG_DEVEL << "getSome() called when already _done! Fix caller block.";
+    std::string blockType = typeToString(getType());
+    LOG_DEVEL << blockType << "@ExecutionBlock::getSome() called when already "
+                              "_done! Fix caller block.";
   }
 
   traceGetSomeBegin(atMost);
@@ -332,7 +334,8 @@ std::pair<ExecutionState, bool> ExecutionBlock::getBlock(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_upstreamState == ExecutionState::DONE) {
-    LOG_DEVEL << "getBlock() called when already _done! Fix caller block.";
+    LOG_DEVEL << "getBlock() called when already _done! Fix this block: "
+              << typeToString(getType());
   }
 
   throwIfKilled();  // check if we were aborted
