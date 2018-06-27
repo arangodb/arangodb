@@ -369,21 +369,21 @@ VPackSlice transaction::helpers::extractRevSliceFromDocument(VPackSlice slice) {
   return slice.get(StaticStrings::RevString);
 }
 
-OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool aggregate) {
+OperationResult transaction::helpers::buildCountResult(std::vector<std::pair<std::string, uint64_t>> const& count, bool details) {
   VPackBuilder resultBuilder;
 
-  if (aggregate) {
+  if (details) {
+    resultBuilder.openObject();
+    for (auto const& it : count) {
+      resultBuilder.add(it.first, VPackValue(it.second));
+    }
+    resultBuilder.close();
+  } else {
     uint64_t result = 0;
     for (auto const& it : count) {
       result += it.second;
     }
     resultBuilder.add(VPackValue(result));
-  } else {
-    resultBuilder.openObject(true);
-    for (auto const& it : count) {
-      resultBuilder.add(it.first, VPackValue(it.second));
-    }
-    resultBuilder.close();
   }
   return OperationResult(Result(), resultBuilder.buffer(), nullptr);
 }
