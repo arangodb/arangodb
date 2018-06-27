@@ -15,7 +15,7 @@ There is a job that can restore this property safely. However, while the
 job is running,
 - the `replicationFactor` *must not be changed* for any affected collection or
   prototype collection (i.e. set in `distributeShardsLike`, including
-  [SmartGraphs](../../Manual/Graphs/SmartGraphs/)),
+  [SmartGraphs](../../Manual/Graphs/SmartGraphs/index.html)),
 - *neither should shards be moved* of one of those prototypes
 - and shutdown of DBServers *should be avoided*
 during the repairs. Also only one repair job should run at any given time.
@@ -170,7 +170,7 @@ with additional information on how to handle a specific error.
 As this job possibly has to move a lot of data around, it can take a while
 depending on the size of the affected collections. So this should *not
 be called synchronously*, but only via
-[Async Results](../../HTTP/AsyncResultsManagement): i.e., set the
+[Async Results](../../HTTP/AsyncResultsManagement/index.html): i.e., set the
 header `x-arango-async: store` to put the job into background and get
 its results later. Otherwise the request will most probably result in a
 timeout and the response will be lost! The job will still continue unless

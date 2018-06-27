@@ -46,7 +46,7 @@ your ArangoDB 3.0 distribution!):
     arangorestore --server.endpoint tcp://localhost:8530 --input-directory dump
 
 to import your data into your new ArangoDB 3.0 instance. See
-[this page](../../Manual/Administration/Arangorestore.html)
+[this page](../../Manual/Programs/Arangorestore/index.html)
 for details on the available command line options. If your ArangoDB 3.0
 instance is a cluster, then simply use one of the coordinators as
 `--server.endpoint`.

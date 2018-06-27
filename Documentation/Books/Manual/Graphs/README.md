@@ -161,7 +161,7 @@ and [Arangorestore](../Programs/Arangorestore/README.md) to restore a backup int
 Managing graphs
 ---------------
 
-By default you should use [the interface your driver provides to manage graphs](../HTTP/Gharial/Management.html).
+By default you should use [the interface your driver provides to manage graphs](../../HTTP/Gharial/Management.html).
 
 This is i.e. documented [in Graphs-Section of the ArangoDB Java driver](https://github.com/arangodb/arangodb-java-driver#graphs).
 
@@ -290,7 +290,6 @@ Cookbook examples
 The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
 
  - [Traversing a graph in full depth](../../Cookbook/Graph/FulldepthTraversal.html)
- - [Using an example vertex with the java driver](../../Cookbook/Graph/JavaDriverGraphExampleVertex.html)
  - [Retrieving documents from ArangoDB without knowing the structure](../../Cookbook/UseCases/JavaDriverBaseDocument.html)
  - [Using a custom visitor from node.js](../../Cookbook/Graph/CustomVisitorFromNodeJs.html)
  - [AQL Example Queries on an Actors and Movies Database](../../Cookbook/Graph/ExampleActorsAndMovies.html)
