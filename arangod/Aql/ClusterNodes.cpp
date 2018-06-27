@@ -501,6 +501,10 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   nodes.add(VPackValue("modificationFlags"));
   _options.toVelocyPack(nodes);
 
+  nodes.add("projections", VPackValue(VPackValueType::Array));
+  // TODO: support projections?
+  nodes.close();
+
 
   // And close it:
   nodes.close();
