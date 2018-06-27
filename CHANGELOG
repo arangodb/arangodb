@@ -1,6 +1,14 @@
 devel
 -----
 
+* introduce SingleRemoteOperationNode via optimize-cluster-single-document-operations,
+  which does single document operations directly from the coordinator instead of
+  using respective AQL queries. This saves cluster roundtrips.
+
+  Queries directly referencing the document key benefit from this:
+
+	UPDATE {_key: '1'} WITH {foo: 'bar'} IN collection RETURN OLD
+
 * replace JavaScript functions FULLTEXT, NEAR, WITHIN with regular AQL via a
   new optimizer rule.
 
