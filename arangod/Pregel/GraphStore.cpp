@@ -101,7 +101,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   // Allocating some memory
   uint64_t vCount = 0;
   for (auto const& shard : _config->localVertexShardIDs()) {
-    OperationResult opResult = countTrx->count(shard, true);
+    OperationResult opResult = countTrx->count(shard, false);
     if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
@@ -112,7 +112,7 @@ std::unordered_map<ShardID, uint64_t> GraphStore<V, E>::_preallocateMemory() {
   
   uint64_t eCount = 0;
   for (auto const& shard : _config->localEdgeShardIDs()) {
-    OperationResult opResult = countTrx->count(shard, true);
+    OperationResult opResult = countTrx->count(shard, false);
     if (opResult.fail() || _destroyed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }
