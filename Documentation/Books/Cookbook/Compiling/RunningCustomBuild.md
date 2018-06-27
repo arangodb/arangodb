@@ -9,7 +9,8 @@ You've already built a custom version of ArangoDB and want to run it. Possibly i
 Solution
 --------
 
-First, you need to build your own version of ArangoDB. If you haven't done so already, have a look at any of the [Compiling](README.md) recipes.
+First, you need to build your own version of ArangoDB. If you haven't done so
+already, have a look at any of the [Compiling](README.md) recipes.
 
 This recipe assumes you're in the root directory of the ArangoDB distribution and compiling has successfully finished.
 

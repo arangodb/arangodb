@@ -160,7 +160,7 @@ this:
 If something is to be repaired, the response will have the property
 `collections` with an entry `<db>/<collection>` for each collection which
 has to be repaired. Each collection also as a separate `error` property
-which will be `true` iff an error occured for this collection (and `false`
+which will be `true` iff an error occurred for this collection (and `false`
 otherwise). If `error` is `true`, the properties `errorNum` and
 `errorMessage` will also be set, and in some cases also `errorDetails`
 with additional information on how to handle a specific error.
@@ -224,5 +224,5 @@ $ wget --method=PUT -qSO - http://localhost:8529/_api/job/152223973119118 | jq .
 ```
 
 The final response will look like the response of the `GET` call.
-If an error occured the response should contain details on how to proceed.
+If an error occurred the response should contain details on how to proceed.
 If in doubt, ask as on Slack: https://arangodb.com/community/

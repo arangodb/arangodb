@@ -198,7 +198,7 @@ HTTP layer:
   *HTTP/1.1* will get an *HTTP 505* (HTTP version not supported) error in return.
 * ArangoDB will reject client requests with a negative value in the
   *Content-Length* request header with *HTTP 411* (Length Required).
-* Arangodb doesn't support POST with *transfer-encoding: chunked* which forbids
+* ArangoDB doesn't support POST with *transfer-encoding: chunked* which forbids
   the *Content-Length* header above.
 * the maximum URL length accepted by ArangoDB is 16K. Incoming requests with
   longer URLs will be rejected with an *HTTP 414* (Request-URI too long) error.
@@ -213,7 +213,7 @@ HTTP layer:
   complete its request. If the client does not send the remaining body data
   within this time, ArangoDB will close the connection. Clients should avoid
   sending such malformed requests as this will block one tcp connection,
-  and may lead to a temporary filedescriptor leak.
+  and may lead to a temporary file descriptor leak.
 * when clients send a body or a *Content-Length* value bigger than the maximum
   allowed value (512 MB), ArangoDB will respond with *HTTP 413* (Request Entity
   Too Large).
@@ -260,7 +260,7 @@ ArangoDB will set the following headers in the response:
 * `access-control-allow-credentials`: will be set to `false` by default.
   For details on when it will be set to `true` see the next section on cookies.
 
-* `access-control-allow-headers`: will be set to the exect value of the
+* `access-control-allow-headers`: will be set to the exact value of the
   request's `access-control-request-headers` header or omitted if no such
   header was sent in the request.
 
@@ -275,7 +275,7 @@ ArangoDB will set the following headers in the response:
 * `access-control-expose-headers`: will be set to a list of response headers used
   by the ArangoDB HTTP API.
 
-* `access-control-max-age`: will be set to an implementation-specifc value.
+* `access-control-max-age`: will be set to an implementation-specific value.
 
 ### Actual request
 
