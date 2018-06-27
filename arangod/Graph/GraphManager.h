@@ -52,12 +52,12 @@ class GraphManager {
   /// argument, and that there are no mismatching edge definitions in existing
   /// graphs.
   ////////////////////////////////////////////////////////////////////////////////
-  void assertFeasibleEdgeDefinitions(VPackSlice edgeDefinitionsSlice) const;
+  Result assertFeasibleEdgeDefinitions(VPackSlice edgeDefinitionsSlice) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create vertex collection by name
   ////////////////////////////////////////////////////////////////////////////////
-  void findOrCreateVertexCollectionByName(const std::string& name,
+  Result findOrCreateVertexCollectionByName(const std::string& name,
                                           bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -84,13 +84,12 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> createGraph(VPackSlice document,
-                                                          bool waitForSync);
+  OperationResult createGraph(VPackSlice document, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  void findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition,
+  Result findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition,
                                                 bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////

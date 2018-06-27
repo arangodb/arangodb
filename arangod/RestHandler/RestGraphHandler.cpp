@@ -1205,8 +1205,12 @@ Result RestGraphHandler::graphActionCreateGraph() {
   {
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     GraphManager gmngr{ctx};
-    auto result = gmngr.createGraph(body, waitForSync); // TODO CHANGE return type
-    // TODO check result value!
+    OperationResult result = gmngr.createGraph(body, waitForSync);
+
+    if (result.fail()) {
+      generateTransactionError(result);
+      return result.result;
+    }
   }
  
   std::string graphName = body.get(StaticStrings::DataSourceName).copyString();

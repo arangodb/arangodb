@@ -994,10 +994,10 @@ ResultT<std::pair<OperationResult, Result>> GraphOperations::removeVertex(
 
   {
     aql::QueryString const queryString =
-        aql::QueryString({"FOR e IN @@collection "
+        aql::QueryString{"FOR e IN @@collection "
                           "FILTER e._from == @vertexId "
                           "OR e._to == @vertexId "
-                          "REMOVE e IN @@collection"});
+                          "REMOVE e IN @@collection"};
 
     std::string const vertexId = collectionName + "/" + key;
 
