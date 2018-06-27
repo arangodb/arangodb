@@ -39,6 +39,7 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchLink.h"
 #include "IResearchLinkHelper.h"
+#include "IResearchViewDBServer.h"
 #include "ExpressionFilter.h"
 #include "AqlHelper.h"
 
@@ -46,8 +47,10 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/SortCondition.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/Result.h"
 #include "Basics/files.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -676,6 +679,164 @@ class IResearchView::ViewStateHelper {
   enum offsets { Reader, Writer }; // offsets from key
 };
 
+IResearchView::ViewSyncWorker::ViewSyncWorker(
+    IResearchViewMeta::CommitMeta const& meta,
+    ReadMutex&& metaMutex
+  ): _meta(meta),
+     _metaMutex(std::move(metaMutex)),
+     _metaRefresh(true), // ensure initial load of meta
+     _terminate(false),
+     _thread("ArangoSearch Sync") {
+  _thread._fn = [this]()->void {
+    IResearchViewMeta::CommitMeta meta;
+    auto commitIntervalMsecRemainder = std::numeric_limits<size_t>::max(); // longest possible time for std::min(...)
+    ReadMutex metaMutex(_metaMutex); // '_meta' can be asynchronously modified
+
+    for(;;) {
+      if (_metaRefresh.load()) {
+        SCOPED_LOCK(metaMutex); // '_meta' may be modified asynchronously (do not aquire inside '_mutex')
+        meta = _meta; // local copy
+        _metaRefresh.store(false);
+      }
+
+      bool commitTimeoutReached = false;
+      SCOPED_LOCK_NAMED(_mutex, lock); // aquire before '_terminate' check so that don't miss notify()
+
+      if (_terminate) {
+        return; // termination requested
+      }
+
+      // sleep until timeout
+      if (!meta._commitIntervalMsec) {
+        _cond.wait(lock); // wait forever
+      } else {
+        auto msecRemainder =
+          std::min(commitIntervalMsecRemainder, meta._commitIntervalMsec);
+        auto startTime = std::chrono::system_clock::now();
+        auto endTime = startTime + std::chrono::milliseconds(msecRemainder);
+
+        commitIntervalMsecRemainder = std::numeric_limits<size_t>::max(); // longest possible time assuming an uninterrupted sleep
+        commitTimeoutReached = true;
+
+        if (std::cv_status::timeout != _cond.wait_until(lock, endTime)) {
+          auto nowTime = std::chrono::system_clock::now();
+
+          // if still need to sleep more then must relock '_meta' and sleep for min (remainder, interval)
+          if (nowTime < endTime) {
+            commitIntervalMsecRemainder =
+              std::chrono::duration_cast<std::chrono::milliseconds>(endTime - nowTime).count();
+            commitTimeoutReached = false;
+          }
+        }
+      }
+
+      if (_terminate) { // check again after sleep
+        return; // termination requested
+      }
+
+      auto thresholdSec = TRI_microtime() + meta._commitTimeoutMsec/1000.0;
+
+      // task removals only done here, they cannot disapear otherwise (new tasks can appear though)
+      for (size_t i = 0, count = _tasks.size();
+           i < count && TRI_microtime() <= thresholdSec;
+           count = _tasks.size()) {
+        auto& task = _tasks[i];
+
+        // task removal requested
+        if (task._terminate->load()) {
+          if (i < count - 1) {
+            std::swap(_tasks[i], _tasks[count - 1]); // swap 'i' with tail
+          }
+
+          _tasks.pop_back(); // remove stale tail
+
+          continue;
+        }
+
+        auto& name = *(task._name);
+        auto& store = *(task._store);
+        ReadMutex storeMutex(*(task._storeMutex));
+        auto runCleanupAfterCommit =
+          task._cleanupIntervalCount > meta._cleanupIntervalStep;
+        bool success;
+
+        lock.unlock(); // unlock for the duration of the task execution (safe to use references without lock)
+
+        {
+          SCOPED_LOCK(storeMutex); // 'store' can be asynchronously modified/reset (do not aquire inside '_mutex')
+          success =
+            store._directory
+            && store._writer
+            && syncStore(*(store._directory),
+                         store._reader,
+                         *(store._writer),
+                         store._segmentCount,
+                         meta._consolidationPolicies,
+                         commitTimeoutReached,
+                         runCleanupAfterCommit,
+                         name
+                        )
+            ;
+        }
+
+        lock.lock();
+
+        if (success) {
+          commitIntervalMsecRemainder = std::numeric_limits<size_t>::max(); // longest possible time for std::min(...)
+
+          if (runCleanupAfterCommit
+              && ++(_tasks[i]._cleanupIntervalCount) >= meta._cleanupIntervalStep) {
+            _tasks[i]._cleanupIntervalCount = 0; // use offset since task may have changed its location im memory due to addition/resize
+          }
+        }
+
+        ++i;
+      }
+    }
+  };
+
+  _thread.start(&_join); // std::thread thread(...); _thread = std::move(thread);
+}
+
+IResearchView::ViewSyncWorker::~ViewSyncWorker() {
+  // stop asynchronous jobs
+  {
+    SCOPED_LOCK(_mutex);
+    _terminate = true;
+    _cond.notify_all();
+  }
+
+  CONDITION_LOCKER(lock, _join);
+
+  // _thread.join();
+  while(_thread.isRunning()) {
+    _join.wait();
+  }
+}
+
+void IResearchView::ViewSyncWorker::emplace(
+    ReadMutex& viewMutex, // prevent data-store deallocation (lock @ AsyncSelf)
+    std::string const& name,
+    std::atomic<bool> const& terminate,
+    DataStore& store,
+    irs::async_utils::read_write_mutex& storeMutex
+) {
+  SCOPED_LOCK_NAMED(viewMutex, viewLock);
+
+  if (terminate.load()) {
+    return; // skip already terminated jobs
+  }
+
+  SCOPED_LOCK(_mutex);
+  _tasks.emplace_back(std::move(viewLock), terminate, name, store, storeMutex);
+}
+
+void IResearchView::ViewSyncWorker::refresh() {
+  SCOPED_LOCK(_mutex);
+  _metaRefresh.store(true);
+  _cond.notify_all(); // wake up threads
+}
+
 IResearchView::IResearchView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
@@ -683,14 +844,35 @@ IResearchView::IResearchView(
     uint64_t planVersion
 ): DBServerLogicalView(vocbase, info, planVersion),
     FlushTransaction(toString(*this)),
-   _asyncMetaRevision(1),
    _asyncSelf(irs::memory::make_unique<AsyncSelf>(this)),
    _asyncTerminate(false),
    _memoryNode(&_memoryNodes[0]), // set current memory node (arbitrarily 0)
    _toFlush(&_memoryNodes[1]), // set flush-pending memory node (not same as _memoryNode)
    _storePersisted(getPersistedPath(dbPathFeature, vocbase, id())),
-   _threadPool(0, 0), // 0 == create pool with no threads, i.e. not running anything
    _inRecovery(false) {
+  // creation of view on a DBServer
+  if (arangodb::ServerState::instance()->isDBServer()) {
+    auto* ci = ClusterInfo::instance();
+
+    if (ci) {
+      auto logicalWiew = ci->getView(vocbase.name(), std::to_string(planId()));
+      auto* wiew = LogicalView::cast<IResearchViewDBServer>(logicalWiew.get());
+
+      // reference syncWorker from cluster-wide view if available to avoid thread allocation
+      // if not availble then the syncWorker will be reassigned when this instance is associated with the cluster-wide view
+      if (wiew) {
+        /*FIXME TODO implement
+        _syncWorker = wiew->syncWorker();
+        */
+      }
+    }
+  }
+
+  if (!_syncWorker) {
+    _syncWorker =
+      std::make_shared<ViewSyncWorker>(_meta._commit, ReadMutex(_mutex));
+  }
+
   // set up in-recovery insertion hooks
   auto* feature = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::DatabaseFeature
@@ -736,7 +918,6 @@ IResearchView::IResearchView(
           << "finished persisted-sync sync for iResearch view '" << viewPtr->id() << "'";
       }
 
-      viewPtr->_threadPool.max_threads(viewPtr->_meta._threadsMaxTotal); // start pool
       viewPtr->_inRecovery = false;
 
       return arangodb::Result();
@@ -808,7 +989,6 @@ IResearchView::IResearchView(
         cookie->_writer->commit(); // ensure have latest view in reader
         memoryStore._writer->import(cookie->_reader.reopen());
         ++memoryStore._segmentCount; // a new segment was imported
-        viewPtr->_asyncCondition.notify_all(); // trigger recheck of sync
       }
 
       if (state->waitForSync() && !viewPtr->sync()) {
@@ -828,128 +1008,18 @@ IResearchView::IResearchView(
       IR_LOG_EXCEPTION();
     }
   };
-
-  // add asynchronous commit job
-  _threadPool.run([this]()->void {
-    struct DataStoreState {
-      size_t _cleanupIntervalCount;
-      DataStore& _dataStore;
-      DataStoreState(DataStore& store)
-        : _cleanupIntervalCount(0), _dataStore(store) {}
-    };
-
-    size_t asyncMetaRevision = 0; // '0' differs from IResearchView constructor above
-    size_t cleanupIntervalStep = std::numeric_limits<size_t>::max(); // will be initialized when states are updated below
-    auto commitIntervalMsecRemainder = std::numeric_limits<size_t>::max(); // longest possible time for std::min(...)
-    size_t commitTimeoutMsec = 0; // will be initialized when states are updated below
-    IResearchViewMeta::CommitMeta::ConsolidationPolicies consolidationPolicies;
-    DataStoreState states[] = {
-      DataStoreState(_memoryNodes[0]._store),
-      DataStoreState(_memoryNodes[1]._store),
-      DataStoreState(_storePersisted)
-    };
-    ReadMutex mutex(_mutex); // '_meta' can be asynchronously modified
-
-    for(;;) {
-      bool commitTimeoutReached = false;
-
-      // sleep until timeout
-      {
-        SCOPED_LOCK_NAMED(mutex, lock); // for '_meta._commit._commitIntervalMsec'
-        SCOPED_LOCK_NAMED(_asyncMutex, asyncLock); // aquire before '_asyncTerminate' check
-
-        if (_asyncTerminate.load()) {
-          return; // termination requested
-        }
-
-        if (!_meta._commit._commitIntervalMsec) {
-          lock.unlock(); // do not hold read lock while waiting on condition
-          _asyncCondition.wait(asyncLock); // wait forever
-        } else {
-          auto msecRemainder =
-            std::min(commitIntervalMsecRemainder, _meta._commit._commitIntervalMsec);
-          auto startTime = std::chrono::system_clock::now();
-          auto endTime = startTime + std::chrono::milliseconds(msecRemainder);
-
-          lock.unlock(); // do not hold read lock while waiting on condition
-          commitIntervalMsecRemainder = std::numeric_limits<size_t>::max(); // longest possible time assuming an uninterrupted sleep
-          commitTimeoutReached = true;
-
-          if (std::cv_status::timeout != _asyncCondition.wait_until(asyncLock, endTime)) {
-            auto nowTime = std::chrono::system_clock::now();
-
-            // if still need to sleep more then must relock '_meta' and sleep for min (remainder, interval)
-            if (nowTime < endTime) {
-              commitIntervalMsecRemainder = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - nowTime).count();
-              commitTimeoutReached = false;
-            }
-          }
-        }
-
-        if (_asyncTerminate.load()) {
-          return; // termination requested
-        }
-      }
-
-      SCOPED_LOCK(mutex); // '_meta'/'_memoryStore'/'_storePersisted' can be asynchronously modified
-
-      // reload states if required
-      if (_asyncMetaRevision.load() != asyncMetaRevision) {
-        asyncMetaRevision = _asyncMetaRevision.load();
-        cleanupIntervalStep = _meta._commit._cleanupIntervalStep;
-        commitTimeoutMsec = _meta._commit._commitTimeoutMsec;
-        consolidationPolicies = _meta._commit._consolidationPolicies; // local copy
-      }
-
-      auto thresholdSec = TRI_microtime() + commitTimeoutMsec/1000.0;
-
-      // perform sync
-      for (size_t i = 0, count = IRESEARCH_COUNTOF(states);
-           i < count && TRI_microtime() <= thresholdSec;
-           ++i) {
-        auto& state = states[i];
-        auto runCleanupAfterCommit =
-          state._cleanupIntervalCount > cleanupIntervalStep;
-
-        if (state._dataStore._directory
-            && state._dataStore._writer
-            && syncStore(*(state._dataStore._directory),
-                         state._dataStore._reader,
-                         *(state._dataStore._writer),
-                         state._dataStore._segmentCount,
-                         consolidationPolicies,
-                         commitTimeoutReached,
-                         runCleanupAfterCommit,
-                         name()
-                        )) {
-          commitIntervalMsecRemainder = std::numeric_limits<size_t>::max(); // longest possible time for std::min(...)
-
-          if (runCleanupAfterCommit
-              && ++state._cleanupIntervalCount >= cleanupIntervalStep) {
-            state._cleanupIntervalCount = 0;
-          }
-        }
-      }
-    }
-  });
 }
 
 IResearchView::~IResearchView() {
+  _asyncTerminate.store(true); // mark long-running async jobs for terminatation
+  _syncWorker->refresh(); // trigger reload of settings for async jobs
+  _syncWorker.reset(); // ensure destructor called if required
+
   {
     WriteMutex mutex(_asyncSelf->_mutex);
     SCOPED_LOCK(mutex); // wait for all the view users to finish
     _asyncSelf->_value.store(nullptr); // the view is being deallocated, its use is no longer valid
   }
-
-  _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-
-  {
-    SCOPED_LOCK(_asyncMutex);
-    _asyncCondition.notify_all(); // trigger reload of settings for async jobs
-  }
-
-  _threadPool.max_threads_delta(int(std::max(size_t(std::numeric_limits<int>::max()), _threadPool.tasks_pending()))); // finish ASAP
-  _threadPool.stop();
 
   _flushCallback.reset(); // unregister flush callback from flush thread
 
@@ -1061,20 +1131,14 @@ arangodb::Result IResearchView::dropImpl() {
     );
   }
 
+  _asyncTerminate.store(true); // mark long-running async jobs for terminatation
+  _syncWorker->refresh(); // trigger reload of settings for async jobs
+
   {
     WriteMutex mutex(_asyncSelf->_mutex);
     SCOPED_LOCK(mutex); // wait for all the view users to finish
     _asyncSelf->_value.store(nullptr); // the view data-stores are being deallocated, view use is no longer valid
   }
-
-  _asyncTerminate.store(true); // mark long-running async jobs for terminatation
-
-  {
-    SCOPED_LOCK(_asyncMutex);
-    _asyncCondition.notify_all(); // trigger reload of settings for async jobs
-  }
-
-  _threadPool.stop();
 
   WriteMutex mutex(_mutex); // members can be asynchronously updated
   SCOPED_LOCK(mutex);
@@ -1219,8 +1283,6 @@ arangodb::Result IResearchView::commit() {
     _storePersisted._segmentCount += _storePersisted._reader.size(); // add commited segments
     memoryStore._reader = memoryStore._reader.reopen(); // update reader
     memoryStore._segmentCount += memoryStore._reader.size(); // add commited segments
-
-    _asyncCondition.notify_all(); // trigger recheck of sync
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception const& e) {
@@ -1525,7 +1587,9 @@ int IResearchView::insert(
     return nullptr;
   }
 
-  PTR_NAMED(IResearchView, view, vocbase, info, *feature, planVersion);
+  auto view = std::shared_ptr<IResearchView>(
+    new IResearchView(vocbase, info, *feature, planVersion)
+  );
   auto& impl = reinterpret_cast<IResearchView&>(*view);
   auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   auto props = json.get(StaticStrings::PropertiesField);
@@ -1611,19 +1675,32 @@ void IResearchView::open() {
 
         if (_storePersisted._writer) {
           _storePersisted._writer->commit(); // initialize 'store'
-          _threadPool.max_idle(_meta._threadsMaxIdle);
-
-          if (!_inRecovery) {
-            // start pool only if we're not in recovery now,
-            // otherwise 'PostRecoveryCallback' will take care of that
-            _threadPool.max_threads(_meta._threadsMaxTotal);
-          }
-
           _storePersisted._reader
             = irs::directory_reader::open(*(_storePersisted._directory));
 
           if (_storePersisted._reader) {
             registerFlushCallback();
+            _syncWorker->emplace(
+              _asyncSelf->mutex(),
+              name(),
+              _asyncTerminate,
+              _memoryNode[0]._store,
+              _mutex
+            );
+            _syncWorker->emplace(
+              _asyncSelf->mutex(),
+              name(),
+              _asyncTerminate,
+              _memoryNode[1]._store,
+              _mutex
+            );
+            _syncWorker->emplace(
+              _asyncSelf->mutex(),
+              name(),
+              _asyncTerminate,
+              _storePersisted,
+              _mutex
+            );
 
             return; // success
           }
@@ -1892,21 +1969,8 @@ arangodb::Result IResearchView::updateProperties(
 
     // reset non-updatable values to match current meta
     meta._collections = _meta._collections;
-
-    if (mask._threadsMaxIdle) {
-      _threadPool.max_idle(meta._threadsMaxIdle);
-    }
-
-    if (mask._threadsMaxTotal) {
-      _threadPool.max_threads(meta._threadsMaxTotal);
-    }
-
-    {
-      SCOPED_LOCK(_asyncMutex);
-      _asyncCondition.notify_all(); // trigger reload of timeout settings for async jobs
-    }
-
     _meta = std::move(meta);
+  _syncWorker->refresh();
   mutex.unlock(true); // downgrade to a read-lock
 
   if (!slice.hasKey(StaticStrings::LinksField)) {
