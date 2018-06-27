@@ -181,27 +181,6 @@ std::string generateName(TRI_voc_cid_t viewId, TRI_voc_cid_t collectionId) {
    ;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute the data path to user for iresearch persisted-store
-///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
-///        the path is hardcoded to reside under:
-///        <DatabasePath>/<IResearchView::type()>-<view id>
-///        similar to the data path calculation for collections
-////////////////////////////////////////////////////////////////////////////////
-irs::utf8_path getPersistedPath(
-    arangodb::DatabasePathFeature const& dbPathFeature, TRI_voc_cid_t id
-) {
-  irs::utf8_path dataPath(dbPathFeature.directory());
-  static const std::string subPath("databases");
-
-  dataPath /= subPath;
-  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  dataPath += "-";
-  dataPath += std::to_string(id);
-
-  return dataPath;
-}
-
 }
 
 namespace arangodb {
@@ -216,8 +195,7 @@ IResearchViewDBServer::IResearchViewDBServer(
    _meta(
      info.isObject() && info.get(StaticStrings::PropertiesField).isObject()
      ? info.get(StaticStrings::PropertiesField) : emptyObjectSlice()
-   ),
-   _persistedPath(getPersistedPath(dbPathFeature, id())) {
+   ) {
 }
 
 IResearchViewDBServer::~IResearchViewDBServer() {
@@ -676,6 +654,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   props.close();
 
   IResearchViewMeta meta;
+  IResearchViewMetaState metaState;
   std::string error;
 
   if (partialUpdate) {
@@ -698,10 +677,10 @@ arangodb::Result IResearchViewDBServer::updateProperties(
   WriteMutex mutex(_mutex);
   SCOPED_LOCK(mutex); // '_meta' can be asynchronously read
 
-  meta._collections.clear();
+  metaState._collections.clear();
 
   for (auto& entry: _collections) {
-    meta._collections.emplace(entry.first);
+    metaState._collections.emplace(entry.first);
   }
 
   // ...........................................................................
@@ -712,7 +691,7 @@ arangodb::Result IResearchViewDBServer::updateProperties(
 
   builder.openObject();
 
-  if (!meta.json(builder)) {
+  if (!meta.json(builder) || !metaState.json(builder)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
       std::string("failure to generate 'properties' definition while updating IResearch View in database '") + vocbase().name() + "'"
