@@ -93,7 +93,7 @@ Besides the above list, you probably want to use the following:
 In the following paragraphs you'll learn which components have to be deployed
 for datacenter to datacenter replication using the `direct` message queue.
 For detailed deployment instructions or instructions for the `kafka` message queue,
-consult the [reference manual](../../Deployment/DC2DC.md).
+consult the [reference manual](../../Deployment/DC2DC/README.md).
 
 ### ArangoDB cluster
 
