@@ -39,11 +39,12 @@ class RestSimpleQueryHandler : public RestCursorHandler {
 
  public:
   RestStatus execute() override final;
+  RestStatus continueExecute() override final;
 
  private:
-  void allDocuments();
-  void allDocumentKeys();
-  void byExample();
+  RestStatus allDocuments();
+  RestStatus allDocumentKeys();
+  RestStatus byExample();
 };
 }
 
