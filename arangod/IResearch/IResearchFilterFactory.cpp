@@ -1237,7 +1237,7 @@ bool fromFuncBoost(
   return ::filter(filter, ctx, subFilterContext, *expressionArg);
 }
 
-// EXISTS(<attribute>, <"type"|"analyzer">, <analyzer-name|"string"|"null"|"bool","numeric">)
+// EXISTS(<attribute>, <"analyzer"|"string"|"null"|"bool"|"numeric">)
 bool fromFuncExists(
     irs::boolean_filter* filter,
     QueryContext const& ctx,
@@ -1252,9 +1252,9 @@ bool fromFuncExists(
 
   auto const argc = args.numMembers();
 
-  if (argc < 1 || argc > 3) {
+  if (argc < 1 || argc > 2) {
     LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-      << "'EXISTS' AQL function: Invalid number of arguments passed (must be >= 1 and <= 3)";
+      << "'EXISTS' AQL function: Invalid number of arguments passed (must be >= 1 and <= 2)";
     return false;
   }
 
@@ -1269,7 +1269,7 @@ bool fromFuncExists(
     return false;
   }
 
-  bool prefix_match = true;
+  bool prefixMatch = true;
   std::string fieldName;
 
   if (filter && !arangodb::iresearch::nameFromAttributeAccess(fieldName, *fieldArg, ctx)) {
@@ -1288,7 +1288,6 @@ bool fromFuncExists(
     }
 
     irs::string_ref arg;
-    bool bAnalyzer = false;
     ScopedAqlValue type(*typeArg);
 
     if (filter || type.isConstant()) {
@@ -1311,134 +1310,79 @@ bool fromFuncExists(
         return false;
       }
 
-      static irs::string_ref const TYPE = "type";
-      static irs::string_ref const ANALYZER = "analyzer";
+      std::string strArg(arg);
+      arangodb::basics::StringUtils::tolowerInPlace(&strArg); // normalize user input
 
-      bAnalyzer = (ANALYZER == arg);
+      typedef bool(*TypeHandler)(std::string&, IResearchAnalyzerFeature::AnalyzerPool const&);
 
-      if (!bAnalyzer && TYPE != arg) {
+      static std::map<irs::string_ref, TypeHandler> const TypeHandlers {
+        // any string
+        {
+          irs::string_ref("string"),
+          [] (std::string& name,
+              IResearchAnalyzerFeature::AnalyzerPool const&) {
+            kludge::mangleAnalyzer(name);
+            return true; // a prefix match
+          }
+        },
+        // any non-string type
+        {
+          irs::string_ref("type"),
+          [](std::string& name,
+             IResearchAnalyzerFeature::AnalyzerPool const&) {
+            kludge::mangleType(name);
+            return true; // a prefix match
+          }
+        },
+        // concrete analyzer from the context
+        {
+          irs::string_ref("analyzer"),
+          [](std::string& name,
+             IResearchAnalyzerFeature::AnalyzerPool const& analyzer) {
+            kludge::mangleStringField(name, analyzer);
+            return false; // not a prefix match
+          }
+        },
+        {
+          irs::string_ref("numeric"),
+          [] (std::string& name, IResearchAnalyzerFeature::AnalyzerPool const&) {
+            kludge::mangleNumeric(name);
+            return false; // not a prefix match
+          }
+        },
+        {
+          irs::string_ref("bool"),
+          [] (std::string& name, IResearchAnalyzerFeature::AnalyzerPool const&) {
+            kludge::mangleBool(name);
+            return false; // not a prefix match
+          }
+        },
+        {
+          irs::string_ref("boolean"),
+          [] (std::string& name, IResearchAnalyzerFeature::AnalyzerPool const&) {
+            kludge::mangleBool(name);
+            return false; // not a prefix match
+          }
+        },
+        {
+          irs::string_ref("null"),
+          [] (std::string& name, IResearchAnalyzerFeature::AnalyzerPool const&) {
+            kludge::mangleNull(name);
+            return false; // not a prefix match
+          }
+        }
+      };
+
+      auto const typeHandler = TypeHandlers.find(strArg);
+
+      if (TypeHandlers.end() == typeHandler) {
         LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "'EXISTS' AQL function: 2nd argument must be equal to '" << TYPE
-            << "' or '" << ANALYZER << "', got '" << arg << "'";
+            << "'EXISTS' AQL function: 2nd argument must be equal to one of the following:"
+               " 'string', 'type', 'analyzer', 'numeric', 'bool', 'boolean', 'null', but got '" << arg << "'";
         return false;
       }
-    }
 
-    if (argc > 2) {
-
-      // 3rd argument defines a value (if present)
-      auto const analyzerArg= args.getMemberUnchecked(2);
-
-      if (!analyzerArg) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "'EXISTS' AQL function: 3rd argument is invalid";
-      }
-
-      ScopedAqlValue analyzerId(*analyzerArg);
-
-      if (filter || analyzerId.isConstant()) {
-
-        if (!analyzerId.execute(ctx)) {
-          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "'EXISTS' AQL function: Failed to evaluate 3rd argument";
-          return false;
-        }
-
-        if (!analyzerId.getString(arg)) {
-          LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-            << "'EXISTS' AQL function: Unable to parse 3rd argument as string";
-          return false;
-        }
-
-        if (bAnalyzer) {
-          auto* analyzerFeature = arangodb::application_features::ApplicationServer::lookupFeature<
-            IResearchAnalyzerFeature
-          >();
-
-          if (!analyzerFeature) {
-            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-              << "'" << IResearchAnalyzerFeature::name()
-              << "' feature is not registered, unable to evaluate 'EXISTS' function";
-            return false;
-          }
-
-          auto analyzer = analyzerFeature->get(arg);
-
-          if (!analyzer) {
-            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-              << "'EXISTS' AQL function: Unable to lookup analyzer '" << arg << "'";
-            return false;
-          }
-
-          if (filter) {
-            kludge::mangleStringField(fieldName, *analyzer);
-          }
-        } else {
-
-          typedef void(*TypeHandler)(std::string&);
-
-          static std::unordered_map<irs::hashed_string_ref, TypeHandler> const TypeHandlers {
-            {
-              irs::make_hashed_ref(irs::string_ref("string"), std::hash<irs::string_ref>()),
-              [] (std::string& name) {
-                kludge::mangleStringField(
-                  name,
-                  *arangodb::iresearch::IResearchAnalyzerFeature::identity()
-                );
-              }
-            },
-            {
-              irs::make_hashed_ref(irs::string_ref("numeric"), std::hash<irs::string_ref>()),
-              [] (std::string& name) {
-                kludge::mangleNumeric(name);
-              }
-            },
-            {
-              irs::make_hashed_ref(irs::string_ref("bool"), std::hash<irs::string_ref>()),
-              [] (std::string& name) {
-                kludge::mangleBool(name);
-              }
-            },
-            {
-              irs::make_hashed_ref(irs::string_ref("boolean"), std::hash<irs::string_ref>()),
-              [] (std::string& name) {
-                kludge::mangleBool(name);
-              }
-            },
-            {
-              irs::make_hashed_ref(irs::string_ref("null"), std::hash<irs::string_ref>()),
-              [] (std::string& name) {
-                kludge::mangleNull(name);
-              }
-            }
-          };
-
-          const auto it = TypeHandlers.find(
-            irs::make_hashed_ref(arg, std::hash<irs::string_ref>())
-          );
-
-          if (TypeHandlers.end() == it) {
-            LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-              << "'EXISTS' AQL function: 3rd argument must be equal to one of the following 'string', 'numeric', 'bool', 'null', got '"
-              << arg << "'";
-
-            return false;
-          }
-
-          if (filter) {
-            it->second(fieldName);
-          }
-        }
-
-      }
-      prefix_match = false;
-
-    } else if (filter) {
-
-      bAnalyzer
-        ? kludge::mangleAnalyzer(fieldName)
-        : kludge::mangleType(fieldName);
-
+      prefixMatch = typeHandler->second(fieldName, filterCtx.analyzer);
     }
   }
 
@@ -1446,7 +1390,7 @@ bool fromFuncExists(
     auto& exists = filter->add<irs::by_column_existence>();
     exists.field(std::move(fieldName));
     exists.boost(filterCtx.boost);
-    exists.prefix_match(prefix_match);
+    exists.prefix_match(prefixMatch);
   }
 
   return true;

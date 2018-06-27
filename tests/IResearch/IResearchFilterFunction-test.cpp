@@ -1298,10 +1298,11 @@ SECTION("Exists") {
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type') RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'Type') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'TYPE') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER ANALYZER(exists(d.name, 'TYPE'), 'test_analyzer') RETURN d", expected);
 
     // invalid 2nd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'Type') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'TYPE') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'invalid') RETURN d");
     assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d", &ExpressionContextMock::EMPTY);
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, null) RETURN d");
@@ -1311,19 +1312,20 @@ SECTION("Exists") {
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, false) RETURN d");
   }
 
-  // field + analyzer
+  // field + any string value
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleAnalyzer("name")).prefix_match(true);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'string') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'string') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'String') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'STRING') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'STRING'), 'test_analyzer') RETURN d", expected);
   }
 
   // invalid 2nd argument
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'Analyzer') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'ANALYZER') RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'foo') RETURN d");
   assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, null) RETURN d");
@@ -1332,17 +1334,17 @@ SECTION("Exists") {
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, true) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, false) RETURN d");
 
-  // field + analyzer as an expression
+  // field + any string value mode as an expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue("analyz"));
+    ctx.vars.emplace("anl", arangodb::aql::AqlValue("str"));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleAnalyzer("name")).prefix_match(true);
 
-    assertFilterSuccess("LET anl='analyz' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'er')) RETURN d", expected, &ctx);
-    assertFilterSuccess("LET anl='analyz' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'er')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET anl='str' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'ing')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET anl='str' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'ing')) RETURN d", expected, &ctx);
   }
 
   // field + analyzer as invalid expression
@@ -1354,77 +1356,78 @@ SECTION("Exists") {
     assertFilterExecutionFail("LET anl='analyz' FOR d IN VIEW myView FILTER eXists(d.name, anl) RETURN d", &ctx);
   }
 
-  // field + type + string
+  // field + analyzer
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleStringIdentity("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'string') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type', 'string') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(eXists(d.name, 'analyzer'), 'identity') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'Analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'ANALYZER') RETURN d", expected);
 
-    // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'String') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'STRING') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'invalid') RETURN d");
+    // invalid 2nd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'invalid') RETURN d");
   }
 
-  // field + type + string as an expression
+  // field + analyzer as an expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue("ty"));
-    ctx.vars.emplace("type", arangodb::aql::AqlValue("stri"));
+    ctx.vars.emplace("type", arangodb::aql::AqlValue("analy"));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleStringIdentity("name")).prefix_match(false);
 
-    assertFilterSuccess("LET anl='ty' LET type='stri' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'pe'), CONCAT(type,'ng')) RETURN d", expected, &ctx);
-    assertFilterSuccess("LET anl='ty' LET type='stri' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'pe'), CONCAT(type,'ng')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='analy' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(type,'zer')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='analy' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(type,'zer')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='analy' FOR d IN VIEW myView FILTER analyzer(eXists(d.name, CONCAT(type,'zer')), 'identity') RETURN d", expected, &ctx);
   }
 
-  // field + type + numeric
+  // field + numeric
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleNumeric("obj.name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.obj.name, 'type', 'numeric') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.name, 'type', 'numeric') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.obj.name, 'numeric') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.name, 'numeric') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.name, 'Numeric') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.name, 'NUMERIC') RETURN d", expected);
 
-    // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.obj.name, 'type', 'Numeric') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.obj.name, 'type', 'NUMERIC') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.obj.name, 'type', 'foo') RETURN d");
+    // invalid argument
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.obj.name, 'foo') RETURN d");
   }
 
-  // field + type + numeric as an expression
+  // field + numeric as an expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue("ty"));
     ctx.vars.emplace("type", arangodb::aql::AqlValue("nume"));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleNumeric("name")).prefix_match(false);
 
-    assertFilterSuccess("LET anl='ty' LET type='nume' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'pe'), CONCAT(type,'ric')) RETURN d", expected, &ctx);
-    assertFilterSuccess("LET anl='ty' LET type='nume' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'pe'), CONCAT(type,'ric')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='nume' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(type,'ric')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='nume' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(type,'ric')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='nume' FOR d IN VIEW myView FILTER ANALYZER(eXists(d.name, CONCAT(type,'ric')), 'test_analyzer') RETURN d", expected, &ctx);
   }
 
-  // field + type + bool
+  // field + bool
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleBool("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'bool') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type', 'bool') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'bool') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'bool') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'Bool') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'BOOL') RETURN d", expected);
 
-    // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'Bool') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'BOOL') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'asdfasdfa') RETURN d");
+    // invalid 2nd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'asdfasdfa') RETURN d");
   }
 
   // field + type + boolean
@@ -1433,144 +1436,155 @@ SECTION("Exists") {
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleBool("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'boolean') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type', 'boolean') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'boolean') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'boolean') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(eXists(d.name, 'boolean'), 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'Boolean') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'BOOLEAN') RETURN d", expected);
 
-    // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'Boolean') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'BOOLEAN') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'asdfasdfa') RETURN d");
+    // invalid 2nd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'asdfasdfa') RETURN d");
   }
 
-  // field + type + boolean as an expression
+  // field + boolean as an expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue("ty"));
     ctx.vars.emplace("type", arangodb::aql::AqlValue("boo"));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleBool("name")).prefix_match(false);
 
-    assertFilterSuccess("LET anl='ty' LET type='boo' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'pe'), CONCAT(type,'lean')) RETURN d", expected, &ctx);
-    assertFilterSuccess("LET anl='ty' LET type='boo' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'pe'), CONCAT(type,'lean')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='boo' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(type,'lean')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='boo' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(type,'lean')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='boo' FOR d IN VIEW myView FILTER ANALYZER(eXists(d.name, CONCAT(type,'lean')), 'test_analyzer') RETURN d", expected, &ctx);
   }
 
-  // field + type + null
+  // field + null
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleNull("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'null') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'type', 'null') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'null') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'null') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'Null') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'NULL') RETURN d", expected);
 
-    // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'Null') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'NULL') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'asdfasdfa') RETURN d");
+    // invalid 2nd argument
+    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'asdfasdfa') RETURN d");
   }
 
-  // field + type + null as an expression
+  // field + null as an expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue("ty"));
     ctx.vars.emplace("type", arangodb::aql::AqlValue("nu"));
 
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleNull("name")).prefix_match(false);
 
-    assertFilterSuccess("LET anl='ty' LET type='nu' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'pe'), CONCAT(type,'ll')) RETURN d", expected, &ctx);
-    assertFilterSuccess("LET anl='ty' LET type='nu' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'pe'), CONCAT(type,'ll')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='nu' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(type,'ll')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='nu' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(type,'ll')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='nu' FOR d IN VIEW myView FILTER ANALYZER(eXists(d.name, CONCAT(type,'ll')), 'identity') RETURN d", expected, &ctx);
   }
 
   // field + type + invalid expression
   {
     ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue("ty"));
     ctx.vars.emplace("type", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
 
-    assertFilterExecutionFail("LET anl='ty' LET type='boo' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'pe'), type) RETURN d", &ctx);
-    assertFilterExecutionFail("LET anl='ty' LET type='boo' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'pe'), type) RETURN d", &ctx);
+    assertFilterExecutionFail("LET type=null FOR d IN VIEW myView FILTER exists(d.name, type) RETURN d", &ctx);
+    assertFilterExecutionFail("LET type=null FOR d IN VIEW myView FILTER eXists(d.name, type) RETURN d", &ctx);
   }
 
-  // invalid 3rd argument
-  assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', d) RETURN d", &ExpressionContextMock::EMPTY);
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', null) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 123) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 123.5) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', true) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', false) RETURN d");
+  // invalid 2nd argument
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d", &ExpressionContextMock::EMPTY);
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, null) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123.5) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, true) RETURN d");
+  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, false) RETURN d");
 
-  // field + type + analyzer
-  {
-    irs::Or expected;
-    auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
-
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer', 'test_analyzer') RETURN d", expected);
-
-    // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'foo') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'invalid') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', '') RETURN d");
-    assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', d) RETURN d", &ExpressionContextMock::EMPTY);
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', null) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 123) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 123.5) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', true) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', false) RETURN d");
-  }
-
-  // field + type + analyzer as an expression
-  {
-    ExpressionContextMock ctx;
-    ctx.vars.emplace("anl", arangodb::aql::AqlValue("analyz"));
-    ctx.vars.emplace("type", arangodb::aql::AqlValue("test_"));
-
-    irs::Or expected;
-    auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
-
-    assertFilterSuccess("LET anl='analyz' LET type='test_' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'er'), CONCAT(type,'analyzer')) RETURN d", expected, &ctx);
-    assertFilterSuccess("LET anl='analyz' LET type='test_' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'er'), CONCAT(type,'analyzer')) RETURN d", expected, &ctx);
-  }
-
-  // field + type + analyzer via []
-  {
-    irs::Or expected;
-    auto& exists = expected.add<irs::by_column_existence>();
-    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
-
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 'test_analyzer') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['name'], 'analyzer', 'test_analyzer') RETURN d", expected);
-
-    // invalid 3rd argument
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 'foo') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 'invalid') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', '') RETURN d");
-    assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', d) RETURN d", &ExpressionContextMock::EMPTY);
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', null) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 123) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 123.5) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', true) RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', false) RETURN d");
-  }
-
-  // field + type + identity analyzer
+  // field + default analyzer
   {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     exists.field(mangleStringIdentity("name")).prefix_match(false);
 
-    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'identity') RETURN d", expected);
-    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer', 'identity') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), 'identity') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
+  }
+
+  // field + analyzer
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(eXists(d.name, 'analyzer'), 'test_analyzer') RETURN d", expected);
+
+    // invalid analyzer
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), 'foo') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), 'invalid') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), '') RETURN d");
+    assertFilterExecutionFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), d) RETURN d", &ExpressionContextMock::EMPTY);
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), false) RETURN d");
+  }
+
+  // field + type + analyzer as an expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("anl", arangodb::aql::AqlValue("test_"));
+    ctx.vars.emplace("type", arangodb::aql::AqlValue("analyz"));
+
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
+
+    assertFilterSuccess("LET type='analyz' LET anl='test_' FOR d IN VIEW myView FILTER analyzer(exists(d.name, CONCAT(type,'er')), CONCAT(anl,'analyzer')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET type='analyz' LET anl='test_' FOR d IN VIEW myView FILTER analyzer(eXists(d.name, CONCAT(type,'er')), CONCAT(anl,'analyzer')) RETURN d", expected, &ctx);
+  }
+
+  // field + analyzer via []
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleString("name", "test_analyzer")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), 'test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(eXists(d['name'], 'analyzer'), 'test_analyzer') RETURN d", expected);
+
+    // invalid analyzer argument
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), 'foo') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), 'invalid') RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), '') RETURN d");
+    assertFilterExecutionFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), d) RETURN d", &ExpressionContextMock::EMPTY);
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), null) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), 123) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), 123.5) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), true) RETURN d");
+    assertFilterFail("FOR d IN VIEW myView FILTER analyzer(exists(d['name'], 'analyzer'), false) RETURN d");
+  }
+
+  // field + identity analyzer
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field(mangleStringIdentity("name")).prefix_match(false);
+
+    assertFilterSuccess("FOR d IN VIEW myView FILTER analyzer(exists(d.name, 'analyzer'), 'identity') RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.name, 'analyzer') RETURN d", expected);
   }
 
   // invalid number of arguments
   assertFilterParseFail("FOR d IN VIEW myView FILTER exists() RETURN d");
+  assertFilterParseFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'null') RETURN d");
   assertFilterParseFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 'null', d) RETURN d");
   assertFilterParseFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'test_analyzer', false) RETURN d");
 
