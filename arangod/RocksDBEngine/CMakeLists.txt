@@ -72,6 +72,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBThrottle.cpp
   RocksDBEngine/RocksDBTypes.cpp
+  RocksDBEngine/RocksDBUpgrade.cpp
   RocksDBEngine/RocksDBV8Functions.cpp
   RocksDBEngine/RocksDBVPackIndex.cpp
   RocksDBEngine/RocksDBValue.cpp

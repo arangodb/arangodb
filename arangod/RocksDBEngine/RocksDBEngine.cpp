@@ -67,6 +67,7 @@
 #include "RocksDBEngine/RocksDBTransactionManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBUpgrade.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
@@ -552,61 +553,8 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
 
-  // try to find version
-  const char version = rocksDBFormatVersion();
-  RocksDBKey key;
-  key.constructSettingsValue(RocksDBSettingsType::Version);
-  rocksdb::PinnableSlice oldVersion;
-  rocksdb::Status s;
-  s = _db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
-               key.string(), &oldVersion);
-  if (dbExisted) {
-    if (s.IsNotFound() || oldVersion.data()[0] < version) {
-      // Should only ever happen if we forgot to provide an upgrade routine
-      // and CheckVersionFeature did not prevent the start for some reason
-      LOG_TOPIC(FATAL, Logger::ENGINES) << "Your db directory is in an old "
-                                        << "format. Please downgrade the server, "
-                                        << "export & re-import your data.";
-      FATAL_ERROR_EXIT();
-    } else if (oldVersion.data()[0] > version) {
-      LOG_TOPIC(FATAL, Logger::ENGINES)
-          << "You are using an old version of ArangoDB, please update "
-          << "before opening this dir.";
-      FATAL_ERROR_EXIT();
-    }
-    TRI_ASSERT(oldVersion.data()[0] == version);
-    
-    // read current endianess
-    rocksdb::PinnableSlice endianess;
-    key.constructSettingsValue(RocksDBSettingsType::Endianness);
-    s = _db->Get(rocksdb::ReadOptions(), RocksDBColumnFamily::definitions(),
-                 key.string(), &endianess);
-    if (s.ok()) {
-      rocksDBKeyFormatEndianess = static_cast<RocksDBEndianness>(endianess.data()[0]);
-    } else if (s.IsNotFound()) {
-      rocksDBKeyFormatEndianess = RocksDBEndianness::Little;
-    } else {
-      LOG_TOPIC(FATAL, Logger::ENGINES)
-      << "Error reading key-format";
-      FATAL_ERROR_EXIT();
-    }
-  } else {
-    rocksDBKeyFormatEndianess = RocksDBEndianness::Big;
-  }
-  
-  // store current version
-  s = _db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
-               key.string(), rocksdb::Slice(&version, sizeof(char)));
-  TRI_ASSERT(s.ok());
-  
-  // store endianess
-  key.constructSettingsValue(RocksDBSettingsType::Endianness);
-  const char rocksDBKeyFormatEndianess = rocksDBKeyFormatEndianess;
-  s = _db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
-               key.string(), rocksdb::Slice(&rocksDBKeyFormatEndianess, sizeof(char)));
-  if (!s.ok()) {
-    FATAL_ERROR_EXIT();
-  }
+  // will crash the process if version does not match
+  arangodb::rocksdbStartupVersionCheck(_db, dbExisted);
 
   // only enable logger after RocksDB start
   logger->enable();
