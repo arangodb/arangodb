@@ -91,9 +91,9 @@ class Scheduler {
     uint64_t _queued;
   };
 
-  void post(std::function<void()> const& callback);
+  void post(std::function<void()> const callback);
   void post(asio_ns::io_context::strand&,
-            std::function<void()> const& callback);
+            std::function<void()> const callback);
 
   bool queue(RequestPriority prio, std::function<void()> const&);
   void drain();
