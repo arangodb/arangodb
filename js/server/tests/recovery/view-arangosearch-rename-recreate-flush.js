@@ -43,12 +43,12 @@ function runSetup () {
   db._dropView('UnitTestsRecovery1');
   db._dropView('UnitTestsRecovery2');
   var v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
-  v.properties({ "commit" { "commitTimeoutMsec": 17 } });
+  v.properties({ "commit": { "commitTimeoutMsec": 17 } });
 
   v.rename('UnitTestsRecovery2');
 
   v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
-  v.properties({ "commit" { "commitTimeoutMsec": 7 } });
+  v.properties({ "commit": { "commitTimeoutMsec": 7 } });
 
   internal.wal.flush(true, true);
 
