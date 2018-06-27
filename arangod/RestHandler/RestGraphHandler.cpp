@@ -358,16 +358,7 @@ Result RestGraphHandler::vertexActionRead(
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
-  auto resultT = gops.getVertex(collectionName, key, maybeRev);
-
-  if (!resultT.ok()) {
-    generateTransactionError(collectionName, resultT, "");
-    return resultT.copy_result();
-  }
-
-  OperationResult& result = resultT.get().first;
-
-  Result res = resultT.get().second;
+  OperationResult result = gops.getVertex(collectionName, key, maybeRev);
 
   if (!result.ok()) {
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
@@ -375,14 +366,9 @@ Result RestGraphHandler::vertexActionRead(
     } else if (maybeRev && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
       generatePreconditionFailed(result.slice());
     } else {
-      generateTransactionError(collectionName, res, key);
+      generateTransactionError(collectionName, result.result, key);
     }
     return result.result;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, key);
-    return res;
   }
 
   // use default options
@@ -639,34 +625,13 @@ Result RestGraphHandler::edgeActionRead(
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
-  auto resultT = gops.getEdge(definitionName, key, maybeRev);
+  OperationResult result = gops.getEdge(definitionName, key, maybeRev);
 
-  if (!resultT.ok()) {
-    generateTransactionError(definitionName, resultT, "");
-    return resultT.copy_result();
-  }
-
-  OperationResult& result = resultT.get().first;
-
-  Result res = resultT.get().second;
-
-  if (!result.ok()) {
-    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-      generateDocumentNotFound(definitionName, key);
-    } else if (maybeRev && result.is(TRI_ERROR_ARANGO_CONFLICT)) {
-      generatePreconditionFailed(result.slice());
-    } else {
-      generateTransactionError(definitionName, res, key);
-    }
+  if (result.fail()) {
+    generateTransactionError(result);
     return result.result;
   }
 
-  if (!res.ok()) {
-    generateTransactionError(definitionName, res, key);
-    return res;
-  }
-
-  // use default options
   generateEdgeRead(result.slice(), *ctx->getVPackOptionsForDump());
   return Result();
 }
@@ -707,26 +672,12 @@ Result RestGraphHandler::edgeActionRemove(
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
 
-  auto resultT =
+  OperationResult result =
       gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
-
-  if (!resultT.ok()) {
-    generateTransactionError(definitionName, resultT, "");
-    return resultT.copy_result();
-  }
-
-  OperationResult& result = resultT.get().first;
-
-  Result res = resultT.get().second;
 
   if (result.fail()) {
     generateTransactionError(result);
     return result.result;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError(definitionName, res, key);
-    return res;
   }
 
   generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
@@ -961,43 +912,28 @@ Result RestGraphHandler::documentModify(
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
 
-  ResultT<std::pair<OperationResult, Result>> resultT{
-      Result(TRI_ERROR_INTERNAL)};
+  OperationResult result;
   // TODO get rid of this branching, rather use several functions and reuse the
   // common code another way.
   if (isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
-    resultT = gops.updateVertex(collectionName, key, body, maybeRev,
+    result = gops.updateVertex(collectionName, key, body, maybeRev,
                                 waitForSync, returnOld, returnNew, keepNull);
   } else if (!isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
-    resultT = gops.replaceVertex(collectionName, key, body, maybeRev,
+    result = gops.replaceVertex(collectionName, key, body, maybeRev,
                                  waitForSync, returnOld, returnNew, keepNull);
   } else if (isPatch && colType == TRI_COL_TYPE_EDGE) {
-    resultT = gops.updateEdge(collectionName, key, body, maybeRev, waitForSync,
+    result = gops.updateEdge(collectionName, key, body, maybeRev, waitForSync,
                               returnOld, returnNew, keepNull);
   } else if (!isPatch && colType == TRI_COL_TYPE_EDGE) {
-    resultT = gops.replaceEdge(collectionName, key, body, maybeRev, waitForSync,
+    result = gops.replaceEdge(collectionName, key, body, maybeRev, waitForSync,
                                returnOld, returnNew, keepNull);
   } else {
     TRI_ASSERT(false);
   }
 
-  if (!resultT.ok()) {
-    generateTransactionError(collectionName, resultT, "");
-    return resultT.copy_result();
-  }
-
-  OperationResult& result = resultT.get().first;
-
-  Result res = resultT.get().second;
-
   if (result.fail()) {
     generateTransactionError(result);
-    return false;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, key, 0);
-    return false;
+    return result.result;
   }
 
   switch (colType) {
@@ -1034,33 +970,19 @@ Result RestGraphHandler::documentCreate(
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
 
-  ResultT<std::pair<OperationResult, Result>> resultT{
-      Result(TRI_ERROR_INTERNAL)};
+  OperationResult result;
   if (colType == TRI_COL_TYPE_DOCUMENT) {
-    resultT = gops.createVertex(collectionName, body, waitForSync, returnNew);
+    result = gops.createVertex(collectionName, body, waitForSync, returnNew);
   } else if (colType == TRI_COL_TYPE_EDGE) {
-    resultT = gops.createEdge(collectionName, body, waitForSync, returnNew);
+    result = gops.createEdge(collectionName, body, waitForSync, returnNew);
   } else {
     TRI_ASSERT(false);
   }
 
-  if (!resultT.ok()) {
-    generateTransactionError(collectionName, resultT, "");
-    return resultT.copy_result();
-  }
-
-  OperationResult& result = resultT.get().first;
-
-  Result res = resultT.get().second;
-
   if (result.fail()) {
-    generateTransactionError(result);
-    return false;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, nullptr, 0);
-    return false;
+    // need to call more detailed constructor here
+    generateTransactionError(collectionName, result, "", 0);
+    return result.result;
   }
 
   switch (colType) {
@@ -1099,26 +1021,12 @@ Result RestGraphHandler::vertexActionRemove(
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
 
-  auto resultT =
+  OperationResult result =
       gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);
-
-  if (!resultT.ok()) {
-    generateTransactionError(collectionName, resultT, "");
-    return resultT.copy_result();
-  }
-
-  OperationResult& result = resultT.get().first;
-
-  Result res = resultT.get().second;
 
   if (result.fail()) {
     generateTransactionError(result);
     return result.result;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, key);
-    return res;
   }
 
   generateRemoved(true, result._options.waitForSync, result.slice().get("old"),
@@ -1147,25 +1055,11 @@ Result RestGraphHandler::graphActionRemoveGraph(
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   GraphOperations gops{*graph, ctx};
-  auto resultT = gops.removeGraph(waitForSync, dropCollections);
-
-  if (!resultT.ok()) {
-    generateTransactionError("", resultT, "");
-    return resultT.copy_result();
-  }
-
-  OperationResult& result = resultT.get().first;
-
-  Result res = resultT.get().second;
+  OperationResult result = gops.removeGraph(waitForSync, dropCollections);
 
   if (result.fail()) {
     generateTransactionError(result);
     return result.result;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError("", res, "");
-    return res;
   }
 
   generateGraphRemoved(true, result._options.waitForSync,

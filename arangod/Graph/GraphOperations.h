@@ -77,57 +77,57 @@ class GraphOperations {
   /// returned as a pair.
   /// This is because in case of a precondition error during trx.document(),
   /// the OperationResult may still be needed.
-  ResultT<std::pair<OperationResult, Result>> getVertex(
-      std::string const& collectionName, std::string const& key,
-      boost::optional<TRI_voc_rid_t> rev);
+  OperationResult getVertex(
+          std::string const &collectionName, std::string const &key,
+          boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief Get a single edge document from definitionName.
   /// Similar to getVertex().
-  ResultT<std::pair<OperationResult, Result>> getEdge(
-      const std::string& definitionName, const std::string& key,
-      boost::optional<TRI_voc_rid_t> rev);
+  OperationResult getEdge(
+          const std::string &definitionName, const std::string &key,
+          boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief Remove a single edge document from definitionName.
-  ResultT<std::pair<OperationResult, Result>> removeEdge(
-      const std::string& definitionName, const std::string& key,
-      boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
+  OperationResult removeEdge(
+          const std::string &definitionName, const std::string &key,
+          boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
-  ResultT<std::pair<OperationResult, Result>> removeVertex(
-      const std::string& collectionName, const std::string& key,
-      boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
+  OperationResult removeVertex(
+          const std::string &collectionName, const std::string &key,
+          boost::optional<TRI_voc_rid_t> rev, bool waitForSync, bool returnOld);
 
   /// @brief Remove a graph and optional all connected collections
-  ResultT<std::pair<OperationResult, Result>> removeGraph(bool waitForSync,
-                                                          bool dropCollections);
+  OperationResult removeGraph(bool waitForSync,
+                              bool dropCollections);
 
-  ResultT<std::pair<OperationResult, Result>> updateEdge(
-      const std::string& definitionName, const std::string& key,
-      VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-      bool returnOld, bool returnNew, bool keepNull);
+  OperationResult updateEdge(
+          const std::string &definitionName, const std::string &key,
+          VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+          bool returnOld, bool returnNew, bool keepNull);
 
-  ResultT<std::pair<OperationResult, Result>> replaceEdge(
-      const std::string& definitionName, const std::string& key,
-      VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-      bool returnOld, bool returnNew, bool keepNull);
+  OperationResult replaceEdge(
+          const std::string &definitionName, const std::string &key,
+          VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+          bool returnOld, bool returnNew, bool keepNull);
 
-  ResultT<std::pair<OperationResult, Result>> createEdge(
-      const std::string& definitionName, VPackSlice document, bool waitForSync,
-      bool returnNew);
+  OperationResult createEdge(
+          const std::string &definitionName, VPackSlice document, bool waitForSync,
+          bool returnNew);
 
-  ResultT<std::pair<OperationResult, Result>> updateVertex(
-      const std::string& collectionName, const std::string& key,
-      VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-      bool returnOld, bool returnNew, bool keepNull);
+  OperationResult updateVertex(
+          const std::string &collectionName, const std::string &key,
+          VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+          bool returnOld, bool returnNew, bool keepNull);
 
-  ResultT<std::pair<OperationResult, Result>> replaceVertex(
-      const std::string& collectionName, const std::string& key,
-      VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-      bool returnOld, bool returnNew, bool keepNull);
+  OperationResult replaceVertex(
+          const std::string &collectionName, const std::string &key,
+          VPackSlice document, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+          bool returnOld, bool returnNew, bool keepNull);
 
-  ResultT<std::pair<OperationResult, Result>> createVertex(
-      const std::string& collectionName, VPackSlice document, bool waitForSync,
-      bool returnNew);
+  OperationResult createVertex(
+          const std::string &collectionName, VPackSlice document, bool waitForSync,
+          bool returnNew);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
@@ -168,30 +168,30 @@ class GraphOperations {
       std::unordered_set<std::string> possibleOrphans, bool waitForSync,
       transaction::Methods& trx);
 
-  void pushCollectionIfMayBeDropped(const std::string& colName,
-                                    const std::string& graphName,
-                                    std::vector<std::string>& toBeRemoved);
+  OperationResult pushCollectionIfMayBeDropped(const std::string &colName,
+                                               const std::string &graphName,
+                                               std::vector<std::string> &toBeRemoved);
 
  private:
   using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-  ResultT<std::pair<OperationResult, Result>> getDocument(
-      std::string const& collectionName, const std::string& key,
-      boost::optional<TRI_voc_rid_t> rev);
+  OperationResult getDocument(
+          std::string const &collectionName, const std::string &key,
+          boost::optional<TRI_voc_rid_t> rev);
 
   /// @brief creates a vpack { _key: key } or { _key: key, _rev: rev }
   /// (depending on whether rev is set)
   VPackBufferPtr _getSearchSlice(const std::string& key,
                                  boost::optional<TRI_voc_rid_t>& rev) const;
 
-  ResultT<std::pair<OperationResult, Result>> modifyDocument(
-      const std::string& collectionName, const std::string& key,
-      VPackSlice document, bool isPatch, boost::optional<TRI_voc_rid_t> rev,
-      bool waitForSync, bool returnOld, bool returnNew, bool keepNull);
+  OperationResult modifyDocument(
+          const std::string &collectionName, const std::string &key,
+          VPackSlice document, bool isPatch, boost::optional<TRI_voc_rid_t> rev,
+          bool waitForSync, bool returnOld, bool returnNew, bool keepNull);
 
-  ResultT<std::pair<OperationResult, Result>> createDocument(
-      transaction::Methods* trx, const std::string& collectionName,
-      VPackSlice document, bool waitForSync, bool returnNew);
+  OperationResult createDocument(
+          transaction::Methods *trx, const std::string &collectionName,
+          VPackSlice document, bool waitForSync, bool returnNew);
 
   void assertEdgeCollectionAvailability(std::string edgeDefinitionName);
   void assertVertexCollectionAvailability(std::string VertexDefinitionName);
