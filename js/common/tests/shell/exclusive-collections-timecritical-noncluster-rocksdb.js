@@ -122,12 +122,13 @@ function ExclusiveSuite () {
     }, // testExclusiveExpectConflict
 
     testExclusiveExpectNoConflict : function () {
+      assertEqual(0, c2.count());
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
       tasks.register({
         command: function() {
           var db = require("internal").db;
           db._executeTransaction({
-            collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
+            collections: { exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
             action: function () {
               var db = require("internal").db;
               for(var i = 0; i <= 100000; i++) {
@@ -140,7 +141,7 @@ function ExclusiveSuite () {
       });
 
       db._executeTransaction({
-        collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
+        collections: { exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
         action: function () {
           require("internal").wait(7, false);
           var db = require("internal").db;
