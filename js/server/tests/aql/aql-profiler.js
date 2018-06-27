@@ -706,8 +706,7 @@ function ahuacatlProfilerTestSuite () {
           const listBatches = Math.ceil(listRows / defaultBatchSize);
           const totalRows = listRows * collectionRows;
 
-          // Number of batches at the return node
-          const endBatches = Math.ceil(totalRows / defaultBatchSize);
+          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
 
           // This is more complex due to two reasons:
           // - mmfiles lies about hasMore and may result in +1
@@ -721,10 +720,19 @@ function ahuacatlProfilerTestSuite () {
           //    described under a).
           // So endBatches is a sharp lower bound for every implementation,
           // while the upper bound may be reduced if the implementation changes.
+
+          // Number of batches at the enumerate collection node
           const enumerateCollectionBatches = [
-            endBatches,
+            optimalBatches,
             listRows * Math.ceil(collectionRows / defaultBatchSize) * 2 + 1
           ];
+
+          // Number of batches at the return node
+          let endBatches = optimalBatches;
+          if (db._engine().name === 'mmfiles') {
+            endBatches = [optimalBatches, optimalBatches + 1];
+          }
+
 
           const expected = [
             {type: SingletonBlock, items: 1, calls: 1},
