@@ -51,17 +51,17 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using UserTransaction = transaction::Methods;
 
-Result GraphManager::createEdgeCollection(std::string const& name,
+OperationResult GraphManager::createEdgeCollection(std::string const& name,
                                           bool waitForSync) {
   return createCollection(name, TRI_COL_TYPE_EDGE, waitForSync);
 }
 
-Result GraphManager::createVertexCollection(std::string const& name,
+OperationResult GraphManager::createVertexCollection(std::string const& name,
                                             bool waitForSync) {
   return createCollection(name, TRI_COL_TYPE_DOCUMENT, waitForSync);
 }
 
-Result GraphManager::createCollection(std::string const& name,
+OperationResult GraphManager::createCollection(std::string const& name,
                                       TRI_col_type_e colType,
                                       bool waitForSync) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
@@ -70,10 +70,10 @@ Result GraphManager::createCollection(std::string const& name,
       &ctx()->vocbase(), name, colType, VPackSlice::emptyObjectSlice(),
       waitForSync, true, [&](LogicalCollection* coll) {});
 
-  return res;
+  return OperationResult(res);
 }
 
-Result GraphManager::findOrCreateVertexCollectionByName(const std::string& name,
+OperationResult GraphManager::findOrCreateVertexCollectionByName(const std::string& name,
                                                       bool waitForSync) {
   std::shared_ptr<LogicalCollection> def;
 
@@ -82,7 +82,7 @@ Result GraphManager::findOrCreateVertexCollectionByName(const std::string& name,
     return createVertexCollection(name, waitForSync);
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
 Result GraphManager::assertFeasibleEdgeDefinitions(
@@ -146,7 +146,7 @@ Result GraphManager::assertFeasibleEdgeDefinitions(
 }
 
 // TODO replace the slice argument with an actual EdgeDefinition
-Result GraphManager::findOrCreateCollectionsByEdgeDefinitions(
+OperationResult GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     VPackSlice edgeDefinitions, bool waitForSync) {
   std::shared_ptr<LogicalCollection> def;
 
@@ -161,7 +161,7 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     def = getCollectionByName(ctx()->vocbase(), collection);
 
     if (def == nullptr) {
-      Result res = createEdgeCollection(collection, waitForSync);
+      OperationResult res = createEdgeCollection(collection, waitForSync);
       if (res.fail()) {
         return res;
       }
@@ -171,7 +171,7 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     for (auto const& edge : VPackArrayIterator(from)) {
       def = getCollectionByName(ctx()->vocbase(), edge.copyString());
       if (def == nullptr) {
-        Result res = createVertexCollection(edge.copyString(), waitForSync);
+        OperationResult res = createVertexCollection(edge.copyString(), waitForSync);
         if (res.fail()) {
           return res;
         }
@@ -180,7 +180,7 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     for (auto const& edge : VPackArrayIterator(to)) {
       def = getCollectionByName(ctx()->vocbase(), edge.copyString());
       if (def == nullptr) {
-        Result res = createVertexCollection(edge.copyString(), waitForSync);
+        OperationResult res = createVertexCollection(edge.copyString(), waitForSync);
         if (res.fail()) {
           return res;
         }
@@ -188,7 +188,7 @@ Result GraphManager::findOrCreateCollectionsByEdgeDefinitions(
     }
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief extract the collection by either id or name, may return nullptr!
@@ -313,20 +313,20 @@ OperationResult GraphManager::createGraph(
       trx.document(Graph::_graphs, checkDocument.slice(), options);
   if (checkDoc.ok()) {
     trx.finish(checkDoc.result);
-    return OperationResult(TRI_ERROR_GRAPH_DUPLICATE); //, "graph already exists");
+    return OperationResult(TRI_ERROR_GRAPH_DUPLICATE);
   }
 
   // find or create the collections given by the edge definition
-  res = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, waitForSync);
-  if (res.fail()) {
-    return OperationResult(res);
+  OperationResult result = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, waitForSync);
+  if (result.fail()) {
+    return result;
   }
 
   // find or create the oprhan collections
   for (auto const& orphan : VPackArrayIterator(orphanCollections)) {
-    res = findOrCreateVertexCollectionByName(orphan.copyString(), waitForSync);
-    if (res.fail()) {
-      return OperationResult(res);
+    result = findOrCreateVertexCollectionByName(orphan.copyString(), waitForSync);
+    if (result.fail()) {
+      return result;
     }
   }
 
@@ -346,7 +346,7 @@ OperationResult GraphManager::createGraph(
 
   builder.close();
 
-  OperationResult result = trx.insert(Graph::_graphs, builder.slice(), options);
+  result = trx.insert(Graph::_graphs, builder.slice(), options);
   res = trx.finish(result.result);
 
   if (result.ok() && res.fail()) {
@@ -355,7 +355,7 @@ OperationResult GraphManager::createGraph(
   return result;
 }
 
-void GraphManager::readGraphs(velocypack::Builder& builder,
+OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                               aql::QueryPart const queryPart) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   arangodb::aql::Query query(false, ctx()->vocbase(),
@@ -370,17 +370,15 @@ void GraphManager::readGraphs(velocypack::Builder& builder,
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+      return OperationResult(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        queryResult.code,
-        "Error executing graphs query: " + queryResult.details);
+    return OperationResult(queryResult.code);
   }
 
   VPackSlice graphsSlice = queryResult.result->slice();
 
   if (graphsSlice.isNone()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!graphsSlice.isArray()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "cannot read users from _graphs collection";
@@ -389,41 +387,46 @@ void GraphManager::readGraphs(velocypack::Builder& builder,
   builder.add(VPackValue(VPackValueType::Object));
   builder.add("graphs", graphsSlice);
   builder.close();
+
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
 // TODO unify with assertFeasibleEdgeDefinitions
-Result GraphManager::checkForEdgeDefinitionConflicts(
+OperationResult GraphManager::checkForEdgeDefinitionConflicts(
     std::string const& edgeDefinitionName, VPackSlice edgeDefinition) {
   VPackBuilder graphsBuilder;
-  readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  OperationResult result = readGraphs(graphsBuilder, arangodb::aql::PART_DEPENDENT);
+  if (result.fail()) {
+    return result;
+  }
   VPackSlice graphs = graphsBuilder.slice();
 
   TRI_ASSERT(graphs.get("graphs").isArray());
 
   if (!graphs.get("graphs").isArray()) {
-    return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT};
+    return OperationResult(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT);
   }
 
   for (auto singleGraph : VPackArrayIterator(graphs.get("graphs"))) {
     singleGraph = singleGraph.resolveExternals();
     VPackSlice sGEDs = singleGraph.get("edgeDefinitions");
     if (!sGEDs.isArray()) {
-      return {TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION};
+      return OperationResult(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
     }
     for (auto const& sGED : VPackArrayIterator(sGEDs)) {
       std::string col;
       if (sGED.get("collection").isString()) {
         col = sGED.get("collection").copyString();
       } else {
-        return {TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION};
+        return OperationResult(TRI_ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION);
       }
       if (col == edgeDefinitionName) {
         if (sGED.toString() != edgeDefinition.toString()) {
-          return {TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS};
+          return OperationResult(TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS);
         }
       }
     }
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return OperationResult(TRI_ERROR_NO_ERROR);
 }

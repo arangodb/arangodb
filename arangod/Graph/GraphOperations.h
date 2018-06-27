@@ -132,31 +132,31 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> addOrphanCollection(
+  OperationResult addOrphanCollection(
       VPackSlice document, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an orphan collection from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> eraseOrphanCollection(
+  OperationResult eraseOrphanCollection(
       bool waitForSync, std::string collectionName, bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a new edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> addEdgeDefinition(
-      VPackSlice edgeDefinition, bool waitForSync);
+  OperationResult addEdgeDefinition(VPackSlice edgeDefinition,
+                                    bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an edge definition from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> eraseEdgeDefinition(
+  OperationResult eraseEdgeDefinition(
       bool waitForSync, std::string edgeDefinitionName, bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<OperationResult, Result>> editEdgeDefinition(
+  OperationResult editEdgeDefinition(
       VPackSlice edgeDefinition, bool waitForSync,
       const std::string& edgeDefinitionName);
 

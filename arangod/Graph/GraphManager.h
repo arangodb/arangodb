@@ -57,13 +57,13 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create vertex collection by name
   ////////////////////////////////////////////////////////////////////////////////
-  Result findOrCreateVertexCollectionByName(const std::string& name,
+  OperationResult findOrCreateVertexCollectionByName(const std::string& name,
                                           bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
   ////////////////////////////////////////////////////////////////////////////////
-  Result createCollection(std::string const& name, TRI_col_type_e colType,
+  OperationResult createCollection(std::string const& name, TRI_col_type_e colType,
                           bool waitForSync);
 
  public:
@@ -72,7 +72,7 @@ class GraphManager {
   explicit GraphManager(std::shared_ptr<transaction::Context> ctx_)
       : _ctx(std::move(ctx_)) {}
 
-  void readGraphs(velocypack::Builder& builder,
+  OperationResult readGraphs(velocypack::Builder& builder,
                   arangodb::aql::QueryPart queryPart) const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -89,24 +89,24 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  Result findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition,
+  OperationResult findOrCreateCollectionsByEdgeDefinitions(VPackSlice edgeDefinition,
                                                 bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
   ////////////////////////////////////////////////////////////////////////////////
-  Result createVertexCollection(std::string const& name, bool waitForSync);
+  OperationResult createVertexCollection(std::string const& name, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an edge collection
   ////////////////////////////////////////////////////////////////////////////////
-  Result createEdgeCollection(std::string const& name, bool waitForSync);
+  OperationResult createEdgeCollection(std::string const& name, bool waitForSync);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief check if the edge definition conflicts with one in an existing
   /// graph
   ////////////////////////////////////////////////////////////////////////////////
-  Result checkForEdgeDefinitionConflicts(std::string const& edgeDefinitionName,
+  OperationResult checkForEdgeDefinitionConflicts(std::string const& edgeDefinitionName,
                                          VPackSlice edgeDefinition);
 };
 }  // namespace graph

@@ -839,32 +839,23 @@ Result RestGraphHandler::modifyEdgeDefinition(std::shared_ptr<const graph::Graph
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   GraphOperations gops{*graph, ctx};
-  ResultT<std::pair<OperationResult, Result>> resultT{
-      Result(TRI_ERROR_INTERNAL)};
-  
+  OperationResult result;
+
   if (action == EdgeDefinitionAction::CREATE) {
-    resultT = gops.addEdgeDefinition(body, waitForSync);
+    result = gops.addEdgeDefinition(body, waitForSync);
   } else if (action == EdgeDefinitionAction::EDIT) {
-    resultT = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
+    result = gops.editEdgeDefinition(body, waitForSync, edgeDefinitionName);
   } else if (action == EdgeDefinitionAction::REMOVE) {
-    resultT = gops.eraseEdgeDefinition(
+    result = gops.eraseEdgeDefinition(
       waitForSync, edgeDefinitionName, dropCollections
     );
   } else {
     TRI_ASSERT(false);
   }
 
-  OperationResult& result = resultT.get().first;
-  Result res = resultT.get().second;
-
   if (result.fail()) {
     generateTransactionError(result);
     return result.result;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError("", res, ""); // TODO: how to do properly?
-    return res;
   }
 
   // TODO invalidate graph in _graphCache
@@ -897,30 +888,21 @@ Result RestGraphHandler::modifyVertexDefinition(std::shared_ptr<const graph::Gra
   auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
 
   GraphOperations gops{*graph, ctx};
-  ResultT<std::pair<OperationResult, Result>> resultT{
-          Result(TRI_ERROR_INTERNAL)};
+  OperationResult result;
 
   if (action == VertexDefinitionAction::CREATE) {
-    resultT = gops.addOrphanCollection(body, waitForSync);
+    result = gops.addOrphanCollection(body, waitForSync);
   } else if (action == VertexDefinitionAction::REMOVE) {
-    resultT = gops.eraseOrphanCollection(
+    result = gops.eraseOrphanCollection(
       waitForSync, vertexDefinitionName, dropCollections
     );
   } else {
     TRI_ASSERT(false);
   }
 
-  OperationResult& result = resultT.get().first;
-  Result res = resultT.get().second;
-
   if (result.fail()) {
     generateTransactionError(result);
     return result.result;
-  }
-
-  if (!res.ok()) {
-    generateTransactionError("", res, ""); // TODO: how to do properly?
-    return res;
   }
 
   // TODO invalidate graph in _graphCache
