@@ -406,15 +406,6 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
   , _outVariableNew(NEW)
   , _options(options)
 {
-  //LOG_DEVEL << "Creating SingleRemoteOperationNode for "
-  //          << ExecutionNode::getTypeString(_mode)
-  //          << std::boolalpha << " -"
-  //          << " replaceIndexNode " << !! _replaceIndexNode
-  //          << " in " << !!_inVariable
-  //          << " out " << !!_outVariable
-  //          << " OLD " << !!_outVariableOld
-  //          << " NEW " << !!_outVariableNew;
-
   if (_mode == NodeType::INDEX) { //select
     TRI_ASSERT(!_key.empty());
     TRI_ASSERT(_inVariable== nullptr);
@@ -428,27 +419,15 @@ SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan,
     TRI_ASSERT(_outVariableNew == nullptr);
   } else if (_mode == NodeType::INSERT) {
     TRI_ASSERT(_key.empty());
-    //TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable == nullptr);
   } else if (_mode == NodeType::UPDATE) {
-    //TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable == nullptr);
   } else if (_mode == NodeType::REPLACE) {
-    //TRI_ASSERT(_inVariable != nullptr);
     TRI_ASSERT(_outVariable == nullptr);
   } else {
-    //LOG_DEVEL << "Ctor failed unkown node type";
     TRI_ASSERT(false);
   }
 }
-
-// //FIXME / DELETEME
-// /// @brief constructor for SingleRemoteOperationNode
-// SingleRemoteOperationNode::SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
-//     : ExecutionNode(plan, base)
-//     , CollectionAccessingNode(plan, base)
-//     , _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {
-// }
 
 /// @brief creates corresponding SingleRemoteOperationNode
 std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
@@ -504,7 +483,6 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
   nodes.add("projections", VPackValue(VPackValueType::Array));
   // TODO: support projections?
   nodes.close();
-
 
   // And close it:
   nodes.close();

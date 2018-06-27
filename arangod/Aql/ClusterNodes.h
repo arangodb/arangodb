@@ -429,7 +429,6 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
   // We probably do not need this, because the rule will only be used on the coordinator
   SingleRemoteOperationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
   : ExecutionNode(plan, base), CollectionAccessingNode(plan, base){
-    //LOG_DEVEL << "SingleRemoteOperationNode fromSlice not implemented -- terminating";
     std::terminate();
   }
 
@@ -446,11 +445,9 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
   ) const override;
 
-  //TESTME
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    //LOG_DEVEL << "Cloning Single Operation Node";
     return cloneHelper(
       std::make_unique<SingleRemoteOperationNode>(
         plan, _id,

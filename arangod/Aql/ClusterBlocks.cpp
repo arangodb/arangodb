@@ -1723,12 +1723,9 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
   VPackBuilder inBuilder;
   VPackSlice inSlice = VPackSlice::emptyObjectSlice();
   if(in) {// IF NOT REMOVE OR SELECT
-    //LOG_DEVEL << "in Doc " << inRegId;
     AqlValue const& inDocument = _buffer.front()->getValueReference(_pos, inRegId);
-    // LOG_DEVEL << "in Doc";
     inBuilder.add(inDocument.slice());
     inSlice = inBuilder.slice();
-    //LOG_DEVEL <<"#### ClusterBlock inSlice from inDoc" << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
   }
 
   auto const& nodeOps = node->_options;
@@ -1749,13 +1746,10 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
     inSlice = mergedBuilder->slice();
   }
 
-  //LOG_DEVEL <<"#### ClusterBlock inSlice " << ExecutionNode::getTypeString(node->_mode) << inSlice.toJson();
-
   OperationResult result;
   if(node->_mode == ExecutionNode::NodeType::INDEX) {
     result = _trx->document(_collection->name(), inSlice, opOptions);
   } else if(node->_mode == ExecutionNode::NodeType::INSERT) {
-    //LOG_DEVEL << "overwrite" << opOptions.overwrite;
     if(opOptions.returnOld && !opOptions.overwrite){
       THROW_ARANGO_EXCEPTION_MESSAGE(666, "OLD is only available when using INSERT with the overwrite option");
     }
@@ -1780,9 +1774,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
 
   // check operation result
   if (!result.ok()) {
-    //LOG_DEVEL << "result not ok: " <<  result.errorMessage();
-    //LOG_DEVEL << "silent " <<  opOptions.silent;
-    //LOG_DEVEL << "ignoreErrors " <<  nodeOps.ignoreErrors; // CHECKME
     if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
         (( node->_mode == ExecutionNode::NodeType::INDEX) ||
          ( node->_mode == ExecutionNode::NodeType::REMOVE && node->_replaceIndexNode) ||
@@ -1792,7 +1783,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
         // FOR ... FILTER ... REMOVE wouldn't invoke REMOVE in first place, so don't throw an excetpion.
         _done = true;
         traceGetSomeEnd(nullptr);
-        // LOG_DEVEL << "error1";
         return false;
       } else if (!opOptions.silent){
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
@@ -1800,18 +1790,15 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
 
     if (node->_mode == ExecutionNode::NodeType::INDEX) {
       traceGetSomeEnd(nullptr);
-      // LOG_DEVEL << "error2";
       return false;
     }
   }
 
-  //LOG_DEVEL << "error checking done: " <<  result.errorMessage();
   _engine->_stats.writesExecuted += possibleWrites;
   _engine->_stats.scannedIndex++;
 
   if (!(out || OLD || NEW)) {
     traceGetSomeEnd(nullptr);
-    // LOG_DEVEL << "neither output" << node->hasParent();
     return node->hasParent();
   }
 
@@ -1824,8 +1811,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
   VPackSlice outDocument = VPackSlice::noneSlice();
   if(result.buffer){
     outDocument = result.slice().resolveExternal();
-  } else {
-    //LOG_DEVEL << "no result slice";
   }
 
   VPackSlice oldDocument = VPackSlice::noneSlice();
@@ -1848,7 +1833,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(outRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
-    //LOG_DEVEL << "set out";
   }
   if(OLD) {
     TRI_ASSERT(opOptions.returnOld);
@@ -1858,7 +1842,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(oldRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
-    // LOG_DEVEL << "set old";
   }
   if(NEW) {
     TRI_ASSERT(opOptions.returnNew);
@@ -1868,7 +1851,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
       aqlres->emplaceValue(outputCounter, static_cast<arangodb::aql::RegisterId>(newRegId), VPackSlice::nullSlice());
     }
     aqlValueSet = true;
-    //LOG_DEVEL << "set new";
   }
   traceGetSomeEnd(aqlres);
   throwIfKilled();  // check if we were aborted
@@ -1877,7 +1859,6 @@ bool SingleRemoteOperationBlock::getOne(size_t atMost,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   if(!aqlValueSet) {
-    // LOG_DEVEL << "noting set in the value even though it should";
     traceGetSomeEnd(nullptr);
     return false;
   }
@@ -1916,7 +1897,6 @@ AqlItemBlock* SingleRemoteOperationBlock::getSome(size_t atMost) {
   TRI_ASSERT(cur != nullptr);
   size_t n = cur->size();
   for (size_t i = 0; i < n; i++) {
-    // LOG_DEVEL << "One Regset" << i;
     inheritRegisters(cur, aqlres.get(), _pos);
     if (getOne(1, aqlres.get(), outputCounter)) {
       outputCounter++;
