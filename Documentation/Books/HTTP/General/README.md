@@ -80,7 +80,7 @@ response to the client instantly and thus finish this HTTP-request.
 The server will execute the tasks from the queue asynchronously as fast
 as possible, while clients can continue to do other work.
 If the server queue is full (i.e. contains as many tasks as specified by the
-option ["--scheduler.maximal-queue-size"](../../Manual/Administration/Configuration/Communication.html)),
+option ["--server.maximal-queue-size"](../../Manual/Programs/Arangod/Options.html#server-options)),
 then the request will be rejected instantly with an *HTTP 500* (internal
 server error) response.
 
