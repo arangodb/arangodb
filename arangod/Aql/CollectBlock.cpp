@@ -1015,6 +1015,9 @@ std::pair<ExecutionState, Result> DistinctCollectBlock::getOrSkipSome(
       return {getHasMoreState(), TRI_ERROR_NO_ERROR};
     }
 
+    TRI_ASSERT(bufferState == BufferState::HAS_BLOCKS);
+    TRI_ASSERT(!_buffer.empty());
+
     AqlItemBlock *cur = _buffer.front();
     TRI_ASSERT(cur != nullptr);
 

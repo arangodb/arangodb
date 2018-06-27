@@ -86,6 +86,10 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
     arangodb::aql::ExecutionNode const& node
   );
 
+  Type getType() const override final {
+    return Type::_UNDEFINED;
+  }
+
   // here we release our docs from this collection
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
       arangodb::aql::AqlItemBlock* items, size_t pos) override;
