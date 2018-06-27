@@ -53,17 +53,17 @@ struct NearOrWithinParams{
   AstNode* radius = nullptr;
   AstNode* distanceName = nullptr;
 
-  NearOrWithinParams(AstNode const* node, bool isNear){
+  NearOrWithinParams(AstNode const* node, bool isNear) {
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    if (arr->getMember(0)->isStringValue()){
+    if (arr->getMember(0)->isStringValue()) {
       collection = arr->getMember(0)->getString();
       // otherwise the "" collection will not be found
     }
     latitude = arr->getMember(1);
     longitude = arr->getMember(2);
-    if(arr->numMembers() > 4){
+    if (arr->numMembers() > 4) {
       distanceName = arr->getMember(4);
     }
 
@@ -81,28 +81,28 @@ struct FulltextParams{
   std::string attribute;
   AstNode* limit = nullptr;
 
-  FulltextParams(AstNode const* node){
+  explicit FulltextParams(AstNode const* node) {
     TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_FCALL);
     AstNode* arr = node->getMember(0);
     TRI_ASSERT(arr->type == AstNodeType::NODE_TYPE_ARRAY);
-    if (arr->getMember(0)->isStringValue()){
+    if (arr->getMember(0)->isStringValue()) {
       collection = arr->getMember(0)->getString();
     }
-    if (arr->getMember(1)->isStringValue()){
+    if (arr->getMember(1)->isStringValue()) {
       attribute = arr->getMember(1)->getString();
     }
-    if(arr->numMembers() > 3){
+    if (arr->numMembers() > 3) {
       limit = arr->getMember(3);
     }
   }
 };
 
-AstNode* getAstNode(CalculationNode* c){
+AstNode* getAstNode(CalculationNode* c) {
   return c->expression()->nodeForModification();
 }
 
-Function* getFunction(AstNode const* ast){
-  if (ast->type == AstNodeType::NODE_TYPE_FCALL){
+Function* getFunction(AstNode const* ast) {
+  if (ast->type == AstNodeType::NODE_TYPE_FCALL) {
     return static_cast<Function*>(ast->getData());
   }
   return nullptr;
@@ -135,8 +135,8 @@ AstNode* createSubqueryWithLimit(
   // `outVariable` that can be used to replace the expression (or only a
   // part) of a `CalculationNode`.
   //
-  if(limit && !(limit->isIntValue() || limit->isNullValue())) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"limit parameter is for wrong type");
+  if (limit && !(limit->isIntValue() || limit->isNullValue())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,"limit parameter is for wrong type");
   }
 
 
