@@ -14,6 +14,15 @@ This module provides access to various ArangoDB internals as well as three of th
 
 You can find a full description of this module [in the ArangoDB module appendix](../../../Appendix/JavaScriptModules/ArangoDB.md).
 
+The `@arangodb/locals` module
+-----------------------------
+
+`require('@arangodb/locals')`
+
+This module provides a `context` object which is identical to the [service context](../Context.md) of whichever module requires it.
+
+There is no advantage to using this module over the `module.context` variable directly unless you're [using a tool like Webpack](../../Guides/Webpack.md) or [a compiler like TypeScript](../../Guides/TypeScript.md) to translate your code and can't use the `module` object Foxx provides directly.
+
 The `@arangodb/request` module
 ------------------------------
 

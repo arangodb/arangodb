@@ -149,6 +149,7 @@
     * [🚧 Testing.md](Foxx/Guides/Testing.md)
     * [🚧 Troubleshooting.md](Foxx/Guides/Troubleshooting.md)
     * [🚧 TypeScript.md](Foxx/Guides/TypeScript.md)
+    * [Using Webpack with Foxx](Foxx/Guides/Webpack.md)
     * [Working with 2.x services](Foxx/Guides/LegacyMode.md)
   * [Reference](Foxx/Reference/README.md)
     * [Service manifest](Foxx/Reference/Manifest.md)
