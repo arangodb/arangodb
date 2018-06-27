@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_H 1
 
 #include "Containers.h"
+#include "Basics/Thread.h"
 #include "IResearchViewMeta.h"
 #include "Transaction/Status.h"
 #include "VocBase/LogicalDataSource.h"
