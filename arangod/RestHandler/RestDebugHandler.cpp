@@ -73,7 +73,3 @@ RestStatus RestDebugHandler::execute() {
   }
   return RestStatus::DONE;
 }
-
-RequestLane RestDebugHandler::lane() const {
-  return RequestLane::CLUSTER_ADMIN;
-}
