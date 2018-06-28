@@ -30,7 +30,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/WorkMonitor.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/Builder.h>
@@ -54,12 +53,6 @@ std::atomic<uint64_t> NEXT_THREAD_ID(1);
 }
 
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief current work description as thread local variable
-////////////////////////////////////////////////////////////////////////////////
-
-thread_local Thread* Thread::CURRENT_THREAD = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief static started with access to the private variables
@@ -86,30 +79,16 @@ void Thread::startThread(void* arg) {
     TRI_SetProcessorAffinity(&ptr->_thread, ptr->_affinity);
   }
 
-  bool pushed = WorkMonitor::pushThread(ptr);
-
   try {
     ptr->runMe();
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
-    if (pushed) {
-      WorkMonitor::popThread(ptr);
-    }
-
     ptr->cleanupMe();
     throw;
   } catch (...) {
-    if (pushed) {
-      WorkMonitor::popThread(ptr);
-    }
-
     ptr->cleanupMe();
     throw;
-  }
-
-  if (pushed) {
-    WorkMonitor::popThread(ptr);
   }
 
   ptr->cleanupMe();
@@ -184,8 +163,7 @@ Thread::Thread(std::string const& name, bool deleteOnExit)
       _threadId(),
       _finishedCondition(nullptr),
       _state(ThreadState::CREATED),
-      _affinity(-1),
-      _workDescription(nullptr) {
+      _affinity(-1) {
   TRI_InitThread(&_thread);
 
   // allow failing memory allocations for all threads by default
@@ -362,22 +340,6 @@ bool Thread::start(ConditionVariable* finishedCondition) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void Thread::setProcessorAffinity(size_t c) { _affinity = (int)c; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the current work description
-////////////////////////////////////////////////////////////////////////////////
-
-void Thread::setWorkDescription(WorkDescription* desc) {
-  _workDescription.store(desc);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the previous work description
-////////////////////////////////////////////////////////////////////////////////
-
-WorkDescription* Thread::setPrevWorkDescription() {
-  return _workDescription.exchange(_workDescription.load()->_prev.load());
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets status

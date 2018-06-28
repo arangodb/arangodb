@@ -21,6 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Conductor.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
@@ -32,6 +36,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/asio_ns.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -40,9 +45,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -402,16 +404,16 @@ void Conductor::startRecovery() {
   _statistics.reset();
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  boost::asio::io_service* ioService = SchedulerFeature::SCHEDULER->ioService();
+  asio_ns::io_service* ioService = SchedulerFeature::SCHEDULER->ioContext();
   TRI_ASSERT(ioService != nullptr);
 
   // let's wait for a final state in the cluster
-  _boost_timer.reset(new boost::asio::deadline_timer(
+  _boost_timer.reset(new asio_ns::deadline_timer(
       *ioService, boost::posix_time::seconds(2)));
   _boost_timer->async_wait([this](const boost::system::error_code& error) {
     _boost_timer.reset();
 
-    if (error == boost::asio::error::operation_aborted ||
+    if (error == asio_ns::error::operation_aborted ||
         _state != ExecutionState::RECOVERING) {
       return;  // seems like we are canceled
     }

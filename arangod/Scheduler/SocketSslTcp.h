@@ -21,27 +21,30 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_SOCKET_TCP_H
-#define ARANGOD_SCHEDULER_SOCKET_TCP_H 1
+#ifndef ARANGOD_SCHEDULER_SOCKET_SSL_TCP_H
+#define ARANGOD_SCHEDULER_SOCKET_SSL_TCP_H 1
 
 #include "Scheduler/Socket.h"
 
 #include "Logger/Logger.h"
 
 namespace arangodb {
-class SocketTcp final : public Socket {
+class SocketSslTcp final : public Socket {
   friend class AcceptorTcp;
 
  public:
-  SocketTcp(asio_ns::io_context& ioService)
-      : Socket(ioService, /*encrypted*/ false),
-        _socket(ioService),
+  SocketSslTcp(asio_ns::io_context& ioService, asio_ns::ssl::context&& context)
+      : Socket(ioService, /*encrypted*/ true),
+        _sslContext(std::move(context)),
+        _sslSocket(ioService, _sslContext),
+        _socket(_sslSocket.next_layer()),
         _peerEndpoint() {}
 
-  SocketTcp(SocketTcp const& that) = delete;
+  SocketSslTcp(SocketSslTcp const& that) = delete;
 
-  SocketTcp(SocketTcp&& that) = delete;
+  SocketSslTcp(SocketSslTcp&& that) = delete;
 
+ public:
   std::string peerAddress() const override {
     return _peerEndpoint.address().to_string();
   }
@@ -52,23 +55,27 @@ class SocketTcp final : public Socket {
 
   size_t writeSome(basics::StringBuffer* buffer,
                    asio_ns::error_code& ec) override {
-    return _socket.write_some(
+    return _sslSocket.write_some(
         asio_ns::buffer(buffer->begin(), buffer->length()), ec);
   }
 
   void asyncWrite(asio_ns::mutable_buffers_1 const& buffer,
                   AsyncHandler const& handler) override {
-    return asio_ns::async_write(_socket, buffer, strand.wrap(handler));
+    return asio_ns::async_write(_sslSocket, buffer, strand.wrap(handler));
   }
 
   size_t readSome(asio_ns::mutable_buffers_1 const& buffer,
                   asio_ns::error_code& ec) override {
-    return _socket.read_some(buffer, ec);
+    return _sslSocket.read_some(buffer, ec);
   }
 
   void asyncRead(asio_ns::mutable_buffers_1 const& buffer,
                  AsyncHandler const& handler) override {
-    return _socket.async_read_some(buffer, strand.wrap(handler));
+    return _sslSocket.async_read_some(buffer, strand.wrap(handler));
+  }
+
+  std::size_t available(asio_ns::error_code& ec) override {
+    return static_cast<size_t>(_socket.available(ec));
   }
 
   void close(asio_ns::error_code& ec) override {
@@ -81,12 +88,8 @@ class SocketTcp final : public Socket {
     }
   }
 
-  std::size_t available(asio_ns::error_code& ec) override {
-    return static_cast<size_t>(_socket.available(ec));
-  }
-
  protected:
-  bool sslHandshake() override { return false; }
+  bool sslHandshake() override;
 
   void shutdownReceive(asio_ns::error_code& ec) override {
     _socket.shutdown(asio_ns::ip::tcp::socket::shutdown_receive, ec);
@@ -97,7 +100,9 @@ class SocketTcp final : public Socket {
   }
 
  private:
-  asio_ns::ip::tcp::socket _socket;
+  asio_ns::ssl::context _sslContext;
+  asio_ns::ssl::stream<asio_ns::ip::tcp::socket> _sslSocket;
+  asio_ns::ip::tcp::socket& _socket;
   asio_ns::ip::tcp::acceptor::endpoint_type _peerEndpoint;
 };
 }

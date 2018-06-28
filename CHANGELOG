@@ -1,3 +1,11 @@
+v3.3.12 (XXXX-XX-XX)
+--------------------
+
+* changed communication tasks to use boost strands instead of locks,
+  this fixes a race condition with parallel VST communication over
+  SSL
+
+
 v3.3.11 (2018-06-26)
 --------------------
 

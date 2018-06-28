@@ -2027,33 +2027,6 @@ static void JS_DecodeRev(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the current context
-////////////////////////////////////////////////////////////////////////////////
-
-void JS_ArangoDBContext(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("ARANGODB_CONTEXT()");
-  }
-
-  v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  auto context = Thread::currentWorkContext();
-
-  if (context != nullptr) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "user"),
-                TRI_V8_STD_STRING(isolate, context->_user));
-    result->Set(TRI_V8_ASCII_STRING(isolate, "database"),
-                TRI_V8_STD_STRING(isolate, context->_database));
-  }
-
-  TRI_V8_RETURN(result);
-
-  TRI_V8_TRY_CATCH_END;
-}
-
 /// @brief return a list of all wal files (empty list if not rocksdb)
 static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -2299,11 +2272,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "DECODE_REV"),
                                JS_DecodeRev, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING(isolate, "ARANGODB_CONTEXT"),
-                               JS_ArangoDBContext,
-                               true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AGENCY_DUMP"),

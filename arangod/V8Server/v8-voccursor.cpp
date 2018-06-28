@@ -32,7 +32,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a general cursor from an array

@@ -39,7 +39,6 @@ TransactionManagerFeature::TransactionManagerFeature(ApplicationServer* server)
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("EngineSelector");
-  startsAfter("WorkMonitor");
 }
 
 void TransactionManagerFeature::prepare() {

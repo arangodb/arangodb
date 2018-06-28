@@ -33,7 +33,8 @@ class RestHandler;
 
 class Job {
  public:
-  explicit Job(std::function<void(std::shared_ptr<rest::RestHandler>)> callback);
+  explicit Job(
+      std::function<void(std::shared_ptr<rest::RestHandler>)> callback);
 
   Job(rest::GeneralServer* server, std::shared_ptr<rest::RestHandler> handler,
       std::function<void(std::shared_ptr<rest::RestHandler>)> callback);

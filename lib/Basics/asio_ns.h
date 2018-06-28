@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,25 +20,39 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_DEMO_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_DEMO_HANDLER_H 1
+#ifndef ARANGOD_LIB_ASIO_NS_H
+#define ARANGOD_LIB_ASIO_NS_H 1
 
-#include "RestHandler/RestBaseHandler.h"
+#if ARANGODB_STANDALONE_ASIO
 
-namespace arangodb {
-class RestDemoHandler : public arangodb::RestBaseHandler {
- public:
-  RestDemoHandler(GeneralRequest*, GeneralResponse*);
+#include <asio/buffer.hpp>
+#include <asio/error.hpp>
+#include <asio/io_context.hpp>
+#include <asio/io_context_strand.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/local/stream_protocol.hpp>
+#include <asio/signal_set.hpp>
+#include <asio/ssl.hpp>
+#include <asio/steady_timer.hpp>
 
- public:
-  virtual char const* name() const override { return "RestDemoHandler"; }
-  bool isDirect() const override { return true; }
-  RestStatus execute() override;
+namespace asio_ns = asio;
 
-private:
-  void doSomeMoreWork();
-  RestStatus evenMoreWork();
-};
+#else
+
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+#include <boost/asio/steady_timer.hpp>
+
+namespace boost {
+namespace asio {
+using error_code = boost::system::error_code;
+using io_context = boost::asio::io_service;
+using system_error = boost::system::system_error;
 }
+}
+
+namespace asio_ns = boost::asio;
+
+#endif
 
 #endif
