@@ -477,7 +477,6 @@ void ClusterInfo::loadPlan() {
       // Now the same for views:
       databasesSlice = planSlice.get("Views"); // format above
       if (databasesSlice.isObject()) {
-        bool isCoordinator = ServerState::instance()->isCoordinator();
         for (auto const& databasePairSlice :
              VPackObjectIterator(databasesSlice)) {
           VPackSlice const& viewsSlice = databasePairSlice.value;
@@ -485,12 +484,7 @@ void ClusterInfo::loadPlan() {
             continue;
           }
           std::string const databaseName = databasePairSlice.key.copyString();
-          TRI_vocbase_t* vocbase = nullptr;
-          if (isCoordinator) {
-            vocbase = databaseFeature->lookupDatabaseCoordinator(databaseName);
-          } else {
-            vocbase = databaseFeature->lookupDatabase(databaseName);
-          }
+          TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(databaseName);
 
           if (vocbase == nullptr) {
             // No database with this name found.
@@ -631,12 +625,7 @@ void ClusterInfo::loadPlan() {
           }
           DatabaseCollections databaseCollections;
           std::string const databaseName = databasePairSlice.key.copyString();
-          TRI_vocbase_t* vocbase = nullptr;
-          if (isCoordinator) {
-            vocbase = databaseFeature->lookupDatabaseCoordinator(databaseName);
-          } else {
-            vocbase = databaseFeature->lookupDatabase(databaseName);
-          }
+          TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(databaseName);
 
           if (vocbase == nullptr) {
             // No database with this name found.
@@ -1300,6 +1289,10 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
 int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
                                          std::string& errorMsg,
                                          double timeout) {
+  if (name == TRI_VOC_SYSTEM_DATABASE) {
+    return TRI_ERROR_FORBIDDEN;
+  }
+  
   AgencyComm ac;
   AgencyCommResult res;
 
