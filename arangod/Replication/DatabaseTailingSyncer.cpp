@@ -185,3 +185,58 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Fetching more data fromTick " << fromTick;
   }
 }
+
+bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
+  // we do not have a "cname" attribute in the marker...
+  // now check for a globally unique id attribute ("cuid")
+  // if its present, then we will use our local cuid -> collection name
+  // translation table 
+  VPackSlice const name = slice.get("cuid");
+  if (!name.isString()) {
+    return false;
+  }
+
+  if (_translations.empty()) {
+    // no translations yet... query master inventory to find names of all
+    // collections
+    try {
+      DatabaseInitialSyncer init(_vocbase, _configuration);
+      VPackBuilder inventoryResponse;
+      Result res = init.inventory(inventoryResponse);
+      if (res.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching master inventory for collection name translations: " << res.errorMessage();
+        return false;
+      }
+      VPackSlice invSlice = inventoryResponse.slice();
+      if (!invSlice.isObject()) { 
+        return false;
+      }
+      invSlice = invSlice.get("collections");
+      if (!invSlice.isArray()) {
+        return false;
+      }
+  
+      for (auto const& it : VPackArrayIterator(invSlice)) {
+        if (!it.isObject()) {
+          continue;
+        }
+        VPackSlice c = it.get("parameters");
+        if (c.hasKey("name") && c.hasKey("globallyUniqueId")) {
+          _translations[c.get("globallyUniqueId").copyString()] = c.get("name").copyString();
+        }
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "got error while fetching inventory: " << ex.what();
+      return false;
+    }
+  }
+
+  // look up cuid in translations map 
+  auto it = _translations.find(name.copyString());
+
+  if (it != _translations.end()) {
+    return isExcludedCollection((*it).second);
+  }
+
+  return false;
+}
