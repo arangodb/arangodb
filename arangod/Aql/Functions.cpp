@@ -48,6 +48,7 @@
 #include "Geo/ShapeContainer.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
+#include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Random/UniformCharacter.h"
@@ -6339,7 +6340,7 @@ AqlValue Functions::CollectionCount(arangodb::aql::Query*,
 
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   std::string const collectionName = element.slice().copyString();
-  OperationResult res = trx->count(collectionName, true);
+  OperationResult res = trx->count(collectionName, false);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }
@@ -6856,19 +6857,42 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query,
 
   uint64_t execNr = arg1.toInt64(trx);
   pregel::PregelFeature* feature = pregel::PregelFeature::instance();
-  if (feature) {
-    std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
-    if (!worker) {
-      ::registerWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
+  if (!feature) {
+    ::registerWarning(query, AFN, TRI_ERROR_FAILED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+    
+  auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
+  VPackBuilder builder(*buffer);
+  if (ServerState::instance()->isCoordinator()) {
+    std::shared_ptr<pregel::Conductor> c = feature->conductor(execNr);
+    if (!c) {
+      ::registerWarning(query, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
     }
-    transaction::BuilderLeaser builder(trx);
-    worker->aqlResult(builder.get());
-    return AqlValue(builder.get());
+    c->collectAQLResults(builder);
+    
+  } else {
+    std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
+    if (!worker) {
+      ::registerWarning(query, AFN, TRI_ERROR_HTTP_NOT_FOUND);
+      return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+    }
+    worker->aqlResult(builder);
   }
-
-  ::registerWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
-  return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  
+  if (builder.isEmpty()) {
+    return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
+  }
+  TRI_ASSERT(builder.slice().isArray());
+  
+  // move the buffer into
+  bool shouldDelete = true;
+  AqlValue val(buffer.get(), shouldDelete);
+  if (!shouldDelete) {
+    buffer.release();
+  }
+  return val;
 }
 
 AqlValue Functions::Assert(arangodb::aql::Query* query,
