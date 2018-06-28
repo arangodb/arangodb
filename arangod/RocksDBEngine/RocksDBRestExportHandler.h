@@ -39,7 +39,6 @@ class RocksDBRestExportHandler : public RestCursorHandler {
   RocksDBRestExportHandler(GeneralRequest*, GeneralResponse*, aql::QueryRegistry*);
 
  public:
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
  private:
