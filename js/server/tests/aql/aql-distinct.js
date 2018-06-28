@@ -268,7 +268,11 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief distinct regression test:
 /// crash when a subsequent call to DistinctCollectBlock::getSome() added no new
-/// non-distinct results
+/// non-distinct results. The crash may occur ONLY IN MAINTAINER MODE, while
+/// in non-maintainer mode problems may occur only because either an empty
+/// result is returned (which would cause some parent blocks to crash), or
+/// an erroneous result is returned, but I didn't find a way to produce this
+/// reliably with an AQL query.
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctRegressionGetSomeWithEmptyResult : function () {
