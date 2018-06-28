@@ -341,7 +341,7 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
   try {
 
     // _log is never empty, but for now, we leave this Vorsichtsmassnahme:
-    index_t lastIndex = _log.back().index;
+    index_t lastIndex = gotSnapshot ? 0 : _log.back().index;
 
     while (ndups < slices.length()) {
       VPackSlice slice = slices[ndups];
@@ -478,7 +478,7 @@ log_t State::atNoLock(index_t index) const {
     std::string excMessage = 
       std::string(
         "Access beyond the end of the log deque: (last, requested): (") +
-      std::to_string(_cur+_log.size()) + ", " + std::to_string(index);
+      std::to_string(_cur+_log.size()) + ", " + std::to_string(index) + ")";
     LOG_TOPIC(DEBUG, Logger::AGENCY) << excMessage;
     throw std::out_of_range(excMessage);
   }
@@ -495,6 +495,12 @@ int State::checkLog(index_t index, term_t term) const {
 
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
+  LOG_TOPIC(ERR, Logger::AGENCY) << index << " " << term << " " << _log.back().index;
+  // If index above highest entry
+  if (_log.size() > 0 && index > _log.back().index) {
+    return -1;
+  }
+  
   // Catch exceptions and avoid overflow:
   if (index < _cur || index - _cur > _log.size()) {
     return 0;

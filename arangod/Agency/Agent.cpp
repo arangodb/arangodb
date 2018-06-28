@@ -350,17 +350,30 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
     return priv_rpc_ret_t(false,t);
   }
 
+  size_t nqs = payload.length();
+  if(nqs > 0 && !payload[0].get("readDB").isNone()) {
+    prevIndex = 0;
+    prevTerm = 0;
+  }
+  
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Not accepting appendEntries from " << leaderId;
+    
     return priv_rpc_ret_t(false,t);
+    
   }
-
-  size_t nqs = payload.length();
 
   if (nqs == 0) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Finished empty AppendEntriesRPC from "
       << leaderId << " with term " << term;
+    {
+      WRITE_LOCKER(oLocker, _outputLock);
+      _commitIndex = leaderCommitIndex;
+      if (_commitIndex >= _state.nextCompactionAfter()) {
+        _compactor.wakeUp();
+      }
+    }
     return priv_rpc_ret_t(true,t);
   }
 
