@@ -1549,7 +1549,7 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return insertCoordinator(collectionName, value, optionsCopy);
   }
-  if (_state->isDBServer() && !optionsCopy.isSynchronousReplicationFrom.empty()) {
+  if (_state->isDBServer()) {
     optionsCopy.silent = false;
   }
 
@@ -1670,25 +1670,27 @@ OperationResult transaction::Methods::insertLocal(
       return res;
     }
 
-    if (!options.silent) {
+
+
+    if (!options.silent || _state->isDBServer()) {
       TRI_ASSERT(!documentResult.empty());
 
-      StringRef keyString(transaction::helpers::extractKeyFromDocument(
-      VPackSlice(documentResult.vpack())));
+        StringRef keyString(transaction::helpers::extractKeyFromDocument(
+        VPackSlice(documentResult.vpack())));
 
-      bool showReplaced = false;
-      if(options.returnOld && previousRevisionId){
-        showReplaced = true;
-      }
+        bool showReplaced = false;
+        if(options.returnOld && previousRevisionId){
+          showReplaced = true;
+        }
 
-      if(showReplaced){
-        TRI_ASSERT(!previousDocumentResult.empty());
-      }
+        if(showReplaced){
+          TRI_ASSERT(!previousDocumentResult.empty());
+        }
 
-      buildDocumentIdentity(collection, resultBuilder
-                            ,cid, keyString, revisionId ,previousRevisionId
-                            ,showReplaced ? &previousDocumentResult : nullptr
-                            ,options.returnNew ? &documentResult : nullptr);
+        buildDocumentIdentity(collection, resultBuilder
+                             ,cid, keyString, revisionId ,previousRevisionId
+                             ,showReplaced ? &previousDocumentResult : nullptr
+                             ,options.returnNew ? &documentResult : nullptr);
     }
     return Result();
   };
@@ -1732,8 +1734,7 @@ OperationResult transaction::Methods::insertLocal(
       std::string path =
         "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
         "/_api/document/" + arangodb::basics::StringUtils::urlEncode(collection->name()) +
-        "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId() +
-        "&" + StaticStrings::SilentString + "=true" + 
+        "?isRestore=true&isSynchronousReplication=" + ServerState::instance()->getId();
         "&" + StaticStrings::OverWrite + "=" + (options.overwrite ? "true" : "false");
 
       VPackBuilder payload;
@@ -1856,7 +1857,7 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return updateCoordinator(collectionName, newValue, optionsCopy);
   }
-  if (_state->isDBServer() && !optionsCopy.isSynchronousReplicationFrom.empty()) {
+  if (_state->isDBServer()) {
     optionsCopy.silent = false;
   }
 
@@ -1917,7 +1918,7 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return replaceCoordinator(collectionName, newValue, optionsCopy);
   }
-  if (_state->isDBServer() && !optionsCopy.isSynchronousReplicationFrom.empty()) {
+  if (_state->isDBServer()) {
     optionsCopy.silent = false;
   }
 
@@ -2042,7 +2043,7 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
-    if (!options.silent) {
+    if (!options.silent || _state->isDBServer()) {
       TRI_ASSERT(!previous.empty());
       TRI_ASSERT(!result.empty());
       StringRef key(newVal.get(StaticStrings::KeyString));
@@ -2106,7 +2107,7 @@ OperationResult transaction::Methods::modifyLocal(
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
           "?isRestore=true&isSynchronousReplication=" +
-          ServerState::instance()->getId() + "&" + StaticStrings::SilentString + "=true";
+          ServerState::instance()->getId();
 
         VPackBuilder payload;
 
@@ -2229,7 +2230,7 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return removeCoordinator(collectionName, value, optionsCopy);
   }
-  if (_state->isDBServer() && !optionsCopy.isSynchronousReplicationFrom.empty()) {
+  if (_state->isDBServer()) {
     optionsCopy.silent = false;
   }
 
@@ -2343,7 +2344,7 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     TRI_ASSERT(!previous.empty());
-    if (!options.silent) {
+    if (!options.silent || _state->isDBServer()) {
       buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
                             0, options.returnOld ? &previous : nullptr, nullptr);
     }
@@ -2397,7 +2398,7 @@ OperationResult transaction::Methods::removeLocal(
           "/_api/document/" +
           arangodb::basics::StringUtils::urlEncode(collection->name()) +
           "?isRestore=true&isSynchronousReplication=" +
-          ServerState::instance()->getId() + "&" + StaticStrings::SilentString + "=true";
+          ServerState::instance()->getId();
 
         VPackBuilder payload;
 
@@ -2668,7 +2669,10 @@ OperationResult transaction::Methods::truncateLocal(
         }
 
         size_t nrDone = 0;
-        size_t nrGood = cc->performRequests(requests, 120.0,
+        // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
+        // can be a much more expensive operation than a single document
+        // insert/update/remove...
+        size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
                                             nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
           // If any would-be-follower refused to follow there must be a
