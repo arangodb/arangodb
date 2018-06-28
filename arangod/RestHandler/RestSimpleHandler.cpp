@@ -71,9 +71,9 @@ RestStatus RestSimpleHandler::execute() {
     std::string const& prefix = _request->requestPath();
 
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
-      removeByKeys(body);
+      return removeByKeys(body);
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
-      lookupByKeys(body);
+      return lookupByKeys(body);
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
@@ -204,8 +204,10 @@ void RestSimpleHandler::handleQueryResult(aql::QueryResult& queryResult) {
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
       handleQueryResultRemoveByKeys(queryResult);
+      return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
       handleQueryResultLookupByKeys(queryResult);
+      return;
     }
   }
 
