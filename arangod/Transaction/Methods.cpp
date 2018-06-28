@@ -1670,27 +1670,25 @@ OperationResult transaction::Methods::insertLocal(
       return res;
     }
 
-
-
-    if (!options.silent || _state->isDBServer()) {
+    if (!options.silent) {
       TRI_ASSERT(!documentResult.empty());
 
-        StringRef keyString(transaction::helpers::extractKeyFromDocument(
-        VPackSlice(documentResult.vpack())));
+      StringRef keyString(transaction::helpers::extractKeyFromDocument(
+      VPackSlice(documentResult.vpack())));
 
-        bool showReplaced = false;
-        if(options.returnOld && previousRevisionId){
-          showReplaced = true;
-        }
+      bool showReplaced = false;
+      if(options.returnOld && previousRevisionId){
+        showReplaced = true;
+      }
 
-        if(showReplaced){
-          TRI_ASSERT(!previousDocumentResult.empty());
-        }
+      if(showReplaced){
+        TRI_ASSERT(!previousDocumentResult.empty());
+      }
 
-        buildDocumentIdentity(collection, resultBuilder
-                             ,cid, keyString, revisionId ,previousRevisionId
-                             ,showReplaced ? &previousDocumentResult : nullptr
-                             ,options.returnNew ? &documentResult : nullptr);
+      buildDocumentIdentity(collection, resultBuilder
+                            ,cid, keyString, revisionId ,previousRevisionId
+                            ,showReplaced ? &previousDocumentResult : nullptr
+                            ,options.returnNew ? &documentResult : nullptr);
     }
     return Result();
   };
@@ -2044,7 +2042,7 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
-    if (!options.silent || _state->isDBServer()) {
+    if (!options.silent) {
       TRI_ASSERT(!previous.empty());
       TRI_ASSERT(!result.empty());
       StringRef key(newVal.get(StaticStrings::KeyString));
@@ -2345,7 +2343,7 @@ OperationResult transaction::Methods::removeLocal(
     }
 
     TRI_ASSERT(!previous.empty());
-    if (!options.silent || _state->isDBServer()) {
+    if (!options.silent) {
       buildDocumentIdentity(collection, resultBuilder, cid, key, actualRevision,
                             0, options.returnOld ? &previous : nullptr, nullptr);
     }
