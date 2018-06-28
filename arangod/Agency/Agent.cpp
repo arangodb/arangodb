@@ -443,11 +443,17 @@ void Agent::sendAppendEntriesRPC() {
         commitIndex = _commitIndex;
       }
 
-      if (lastConfirmed < _state.firstIndex()) {
+      // If lastConfirmed is smaller than our first log entry's index, and
+      // given that our first log entry is either the 0-entry or a compacted
+      // state and that compaction are only performed up to a RAFT-wide committed
+      // index, and by that up to absolut truth we can correct lastConfirmed
+      // to our first log index.
+      bool raiseLastConfirmed = lastConfirmed < _state.firstIndex();
+      if (raiseLastConfirmed) {
         lastConfirmed = _state.firstIndex();
       }
-      LOG_TOPIC(TRACE, Logger::AGENCY) << "Getting unconfirmed from " << lastConfirmed
-                                       << " to " <<  lastConfirmed+99;
+      LOG_TOPIC(TRACE, Logger::AGENCY)
+        << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
          
       lockTime = steady_clock::now() - startTime;
@@ -459,13 +465,12 @@ void Agent::sendAppendEntriesRPC() {
       // Note that despite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
 
-      if (unconfirmed.empty()) {
+      if (unconfirmed.empty() && !raiseLastConfirmed) {
         LOG_TOPIC(ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
           << "lastConfirmed=" << lastConfirmed << " commitIndex="
           << commitIndex;
+        TRI_ASSERT(false);
       }
-
-      TRI_ASSERT(!unconfirmed.empty());
 
       if (unconfirmed.size() == 1) {
         // Note that this case means that everything we have is already
@@ -491,7 +496,7 @@ void Agent::sendAppendEntriesRPC() {
       Store snapshot(this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
-      if (lowest > lastConfirmed) {
+      if (lowest > lastConfirmed || raiseLastConfirmed) {
         // Ooops, compaction has thrown away so many log entries that
         // we cannot actually update the follower. We need to send our
         // latest snapshot instead:
@@ -841,9 +846,9 @@ bool Agent::challengeLeadership() {
 /// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
 
-  decltype(_lastAcked) lastAcked;
-  decltype(_confirmed) confirmed;
-  decltype(_lastSent) lastSent;
+  std::unordered_map<std::string, index_t> confirmed;
+  std::unordered_map<std::string, SteadyTimePoint> lastAcked;
+  std::unordered_map<std::string, SteadyTimePoint> lastSent;
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;
