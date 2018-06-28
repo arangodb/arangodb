@@ -1001,8 +1001,9 @@ void DatabaseFeature::stopAppliers() {
   for (auto& p : _databasesLists.load()->_databases) {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    replicationFeature->stopApplier(vocbase);
+    if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
+      replicationFeature->stopApplier(vocbase);
+    }
   }
 }
 
