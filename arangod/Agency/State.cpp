@@ -1293,6 +1293,13 @@ index_t State::lastIndex() const {
   return _log.back().index;
 }
 
+// Index of first log entry
+index_t State::firstIndex() const {
+  MUTEX_LOCKER(mutexLocker, _logLock);
+  TRI_ASSERT(!_log.empty());
+  return _cur;
+}
+
 /// @brief this method is intended for manual recovery only. It only looks
 /// at the persisted data structure and tries to recover the latest state.
 /// The returned builder has the complete state of the agency and index

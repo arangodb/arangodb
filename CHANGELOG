@@ -1,3 +1,10 @@
+v3.3.12 (XXXX-XX-XX)
+-------------------
+
+* agency bug fixed, where restarts out of compation lead to stuck
+  agencies
+  
+
 v3.3.11 (2018-06-26)
 --------------------
 

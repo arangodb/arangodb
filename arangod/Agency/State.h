@@ -115,9 +115,11 @@ class State {
   /// after the return
   log_t lastLog() const;
 
-  /// @brief last log entry, copy entry because we do no longer have the lock
-  /// after the return
+  /// @brief last log entry's index
   index_t lastIndex() const;
+
+  /// @brief first log entry's index
+  index_t firstIndex() const;
 
   /// @brief Set endpoint
   bool configure(Agent* agent);

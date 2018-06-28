@@ -317,10 +317,12 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
   if (toLog > 0) {
     // This is only used for non-empty appendEntriesRPC calls. If such calls
     // fail, we have to set this earliestPackage time to now such that the
-    // main thread tries again immediately:
+    // main thread tries again immediately: and for that agent starting at 0
+    // which effectively will be _state.firstIndex().
     MUTEX_LOCKER(guard, _tiLock);
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Resetting _earliestPackage to now for id " << slaveId;
+    _confirmed[slaveId] = 0;
     _earliestPackage[slaveId] = steady_clock::now();
   }
 }
@@ -424,8 +426,7 @@ void Agent::sendAppendEntriesRPC() {
         earliestPackage = _earliestPackage[followerId];
       }
 
-      if (
-        ((steady_clock::now() - earliestPackage).count() < 0)) {
+      if ((steady_clock::now() - earliestPackage).count() < 0) {
         continue;
       }
 
@@ -440,6 +441,18 @@ void Agent::sendAppendEntriesRPC() {
         READ_LOCKER(oLocker, _outputLock);
         commitIndex = _commitIndex;
       }
+
+      // If lastConfirmed is smaller than our first log entry's index, and
+      // given that our first log entry is either the 0-entry or a compacted
+      // state and that compaction are only performed up to a RAFT-wide committed
+      // index, and by that up to absolut truth we can correct lastConfirmed
+      // to our first log index.
+      bool raiseLastConfirmed = lastConfirmed < _state.firstIndex();
+      if (raiseLastConfirmed) {
+        lastConfirmed = _state.firstIndex();
+      }
+      LOG_TOPIC(TRACE, Logger::AGENCY)
+        << "Getting unconfirmed from " << lastConfirmed << " to " <<  lastConfirmed+99;
       std::vector<log_t> unconfirmed = _state.get(lastConfirmed, lastConfirmed+99);
 
       lockTime = steady_clock::now() - startTime;
@@ -450,19 +463,19 @@ void Agent::sendAppendEntriesRPC() {
 
       // Note that despite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
-
       if (unconfirmed.empty()) {
         LOG_TOPIC(ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
           << "lastConfirmed=" << lastConfirmed << " commitIndex="
           << commitIndex;
+        TRI_ASSERT(false); 
       }
 
-      TRI_ASSERT(!unconfirmed.empty());
-
-      if (unconfirmed.size() == 1) {
-        // Note that this case means that everything we have is already
-        // confirmed, since we always get everything from (and including!)
-        // the last confirmed entry.
+      // Note that this case means that everything we have is already
+      // confirmed, since we always get everything from (and including!)
+      // the last confirmed entry.
+      // EXCEPT: when we raised lastConfirmed to last compacted state,
+      // which needs to be transmitted even if alone.
+      if (unconfirmed.size() == 1 && !raiseLastConfirmed) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
         continue;
       }
@@ -483,7 +496,8 @@ void Agent::sendAppendEntriesRPC() {
       Store snapshot(this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
-      if (lowest > lastConfirmed) {
+      
+      if (lowest > lastConfirmed || raiseLastConfirmed) {
         // Ooops, compaction has thrown away so many log entries that
         // we cannot actually update the follower. We need to send our
         // latest snapshot instead:
@@ -835,24 +849,37 @@ bool Agent::challengeLeadership() {
 /// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
 
+  std::unordered_map<std::string, index_t> confirmed;
   std::unordered_map<std::string, SteadyTimePoint> lastAcked;
+  std::unordered_map<std::string, SteadyTimePoint> lastSent;
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;
+    confirmed = _confirmed;
+    lastSent = _lastSent;
   }
 
+  std::function<double(std::pair<std::string,SteadyTimePoint> const&)> dur2str =
+    [&](std::pair<std::string,SteadyTimePoint> const& i) {
+    return id() == i.first ? 0.0 :
+      1.0e-3 *
+        std::floor(duration<double>(steady_clock::now()-i.second).count()*1.0e3);
+  };
+
   auto ret = std::make_shared<Builder>();
-  ret->openObject();
-  if (leading()) {
-    for (auto const& i : lastAcked) {
-      ret->add(i.first, VPackValue(
-                 1.0e-3 * std::floor(
-                   (i.first!=id() ?
-                    duration<double>(steady_clock::now()-i.second).count()*1.0e3 :
-		    0.0))));
-    }
-  }
-  ret->close();
+  { VPackObjectBuilder e(ret.get());
+    if (leading()) {
+      for (auto const& i : lastAcked) {
+        auto lsit = lastSent.find(i.first);
+        ret->add(VPackValue(i.first));
+        { VPackObjectBuilder o(ret.get());
+          ret->add("lastAckedTime", VPackValue(dur2str(i)));
+          ret->add("lastAckedIndex", VPackValue(confirmed.at(i.first)));
+          if (i.first != id()) {
+            ret->add("lastAppend", VPackValue(dur2str(*lsit)));
+          }}
+      }
+    }}
 
   return ret;
 
