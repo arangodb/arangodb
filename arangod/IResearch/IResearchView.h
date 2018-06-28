@@ -25,7 +25,9 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_H 1
 
 #include "Containers.h"
+#include "Basics/Thread.h"
 #include "IResearchViewMeta.h"
+#include "Basics/Thread.h"
 #include "Transaction/Status.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LocalDocumentId.h"
@@ -38,13 +40,20 @@
 #include "utils/async_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_BEGIN(arangodb)
+namespace {
+
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+
+}
+
+namespace arangodb {
 
 class DatabasePathFeature; // forward declaration
 class TransactionState; // forward declaration
 class ViewIterator; // forward declaration
 
-NS_BEGIN(aql)
+namespace aql {
 
 class Ast; // forward declaration
 struct AstNode; // forward declaration
@@ -52,18 +61,18 @@ class SortCondition; // forward declaration
 struct Variable; // forward declaration
 class ExpressionContext; // forward declaration
 
-NS_END // aql
+} // aql
 
-NS_BEGIN(transaction)
+namespace transaction {
 
 class Methods; // forward declaration
 
-NS_END // transaction
+} // transaction
 
-NS_END // arangodb
+} // arangodb
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                            Forward declarations
@@ -74,6 +83,22 @@ struct IResearchLinkMeta;
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                              utility constructs
 ///////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief IResearchViewMeta with an associated read-write mutex that can be
+///        referenced by an std::unique_lock via read()/write()
+////////////////////////////////////////////////////////////////////////////////
+class AsyncMeta: public IResearchViewMeta {
+ public:
+  AsyncMeta(): _readMutex(_mutex), _writeMutex(_mutex) {}
+  ReadMutex& read() const { return _readMutex; } // prevent modification
+  WriteMutex& write() { return _writeMutex; } // exclusive modification
+
+ private:
+  irs::async_utils::read_write_mutex _mutex;
+  mutable ReadMutex _readMutex; // object that can be referenced by std::unique_lock
+  WriteMutex _writeMutex; // object that can be referenced by std::unique_lock
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief index reader implementation with a cached primary-key reader lambda
@@ -243,6 +268,9 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   bool sync(size_t maxMsec = 0);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief updates properties of an existing view
+  //////////////////////////////////////////////////////////////////////////////
   using LogicalView::updateProperties;
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -402,20 +430,21 @@ class IResearchView final: public arangodb::DBServerLogicalView,
 
   AsyncSelf::ptr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
-  IResearchViewMeta _meta;
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
+  std::shared_ptr<AsyncMeta>_meta; // the shared view configuration (never null!!!)
+  IResearchViewMetaState _metaState; // the per-instance configuration state
+  mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_metaState'
   MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
   MemoryStoreNode* _memoryNode; // points to the current memory store
   MemoryStoreNode* _toFlush; // points to memory store to be flushed
   PersistedStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
-  std::shared_ptr<ViewSyncWorker> _syncWorker; // object used for sync/consolidate/cleanup of data-stores
+  std::shared_ptr<ViewSyncWorker> _syncWorker; // object used for sync/consolidate/cleanup of data-stores (never null!!!)
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxReadCallback; // for snapshot(...)
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
 };
 
-NS_END // iresearch
-NS_END // arangodb
+} // iresearch
+} // arangodb
 
 #endif
