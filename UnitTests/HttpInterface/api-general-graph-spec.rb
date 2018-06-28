@@ -1175,7 +1175,8 @@ describe ArangoDB do
               doc.code.should eq(400)
               doc.parsed_response['error'].should eq(true)
               doc.parsed_response['code'].should eq(400)
-              doc.parsed_response['errorMessage'].should include("not found")
+              puts doc.parsed_response['errorMessage']
+              doc.parsed_response['errorMessage'].should include("edge attribute missing or invalid")
             end
 
             def check404Edge (doc)
@@ -1198,7 +1199,6 @@ describe ArangoDB do
             def check400CRUD (doc)
               check400(doc)
               doc.parsed_response['errorNum'].should eq(1233)
-              doc.parsed_response['errorMessage'].should eq("not found")
             end
 
             it "change edge definition" do
