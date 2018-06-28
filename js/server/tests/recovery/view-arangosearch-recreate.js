@@ -45,7 +45,7 @@ function runSetup () {
   internal.wal.flush(true, true);
 
   db._dropView('UnitTestsRecovery1');
-  var v2 = db._createView('UnitTestsRecovery1', 'arangosearch', {threadsMaxTotal: 7});
+  var v2 = db._createView('UnitTestsRecovery1', 'arangosearch', { "commit": { "commitTimeoutMsec": 7 } });
 
   c.save({ _key: 'crashme' }, true);
 
@@ -72,7 +72,7 @@ function recoverySuite () {
       var v2 = db._view('UnitTestsRecovery1');
       assertEqual(v2.name(), 'UnitTestsRecovery1');
       assertEqual(v2.type(), 'arangosearch');
-      assertEqual(v2.properties().threadsMaxTotal, 7);
+      assertEqual(v2.properties().commit.commitTimeoutMsec, 7);
     }
 
   };
