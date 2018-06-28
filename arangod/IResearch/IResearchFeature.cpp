@@ -158,7 +158,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 
   arangodb::iresearch::addFunction(functions, {
     "PHRASE",      // name
-    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ])
+    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
