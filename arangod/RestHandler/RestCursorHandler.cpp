@@ -136,7 +136,7 @@ void RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
-  if (false && stream) {
+  if (stream) {
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER, "cannot use 'count' option for a streaming query"));
     } else {
