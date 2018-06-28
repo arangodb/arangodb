@@ -426,8 +426,7 @@ void Agent::sendAppendEntriesRPC() {
         earliestPackage = _earliestPackage[followerId];
       }
 
-      if (
-        ((steady_clock::now() - earliestPackage).count() < 0)) {
+      if ((steady_clock::now() - earliestPackage).count() < 0) {
         continue;
       }
 
@@ -447,8 +446,9 @@ void Agent::sendAppendEntriesRPC() {
       // given that our first log entry is either the 0-entry or a compacted
       // state and that compaction are only performed up to a RAFT-wide committed
       // index, and by that up to absolut truth we can correct lastConfirmed
-      // to our first log index. 
-      if (lastConfirmed < _state.firstIndex()) {
+      // to our first log index.
+      bool raiseLastConfirmed = lastConfirmed < _state.firstIndex();
+      if (raiseLastConfirmed) {
         lastConfirmed = _state.firstIndex();
       }
       LOG_TOPIC(TRACE, Logger::AGENCY)
@@ -463,19 +463,19 @@ void Agent::sendAppendEntriesRPC() {
 
       // Note that despite compaction this vector can never be empty, since
       // any compaction keeps at least one active log entry!
-
       if (unconfirmed.empty()) {
         LOG_TOPIC(ERR, Logger::AGENCY) << "Unexpected empty unconfirmed: "
           << "lastConfirmed=" << lastConfirmed << " commitIndex="
           << commitIndex;
+        TRI_ASSERT(false); 
       }
 
-      TRI_ASSERT(!unconfirmed.empty());
-
-      if (unconfirmed.size() == 1) {
-        // Note that this case means that everything we have is already
-        // confirmed, since we always get everything from (and including!)
-        // the last confirmed entry.
+      // Note that this case means that everything we have is already
+      // confirmed, since we always get everything from (and including!)
+      // the last confirmed entry.
+      // EXCEPT: when we raised lastConfirmed to last compacted state,
+      // which needs to be transmitted even if alone.
+      if (unconfirmed.size() == 1 && !raiseLastConfirmed) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
         continue;
       }
@@ -496,7 +496,8 @@ void Agent::sendAppendEntriesRPC() {
       Store snapshot(this, "snapshot");
       index_t snapshotIndex;
       term_t snapshotTerm;
-      if (lowest > lastConfirmed) {
+      
+      if (lowest > lastConfirmed || raiseLastConfirmed) {
         // Ooops, compaction has thrown away so many log entries that
         // we cannot actually update the follower. We need to send our
         // latest snapshot instead:
@@ -848,9 +849,9 @@ bool Agent::challengeLeadership() {
 /// Get last acknowledged responses on leader
 query_t Agent::lastAckedAgo() const {
 
-  decltype(_lastAcked) lastAcked;
-  decltype(_confirmed) confirmed;
-  decltype(_lastSent) lastSent;
+  std::unordered_map<std::string, index_t> confirmed;
+  std::unordered_map<std::string, SteadyTimePoint> lastAcked;
+  std::unordered_map<std::string, SteadyTimePoint> lastSent;
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
     lastAcked = _lastAcked;

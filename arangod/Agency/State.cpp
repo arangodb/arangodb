@@ -1297,7 +1297,7 @@ index_t State::lastIndex() const {
 index_t State::firstIndex() const {
   MUTEX_LOCKER(mutexLocker, _logLock);
   TRI_ASSERT(!_log.empty());
-  return _log.front().index;
+  return _cur;
 }
 
 /// @brief this method is intended for manual recovery only. It only looks
