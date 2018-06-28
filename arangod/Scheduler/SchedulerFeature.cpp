@@ -113,7 +113,6 @@ void SchedulerFeature::validateOptions(
 
   TRI_ASSERT(0 < _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrServerThreads);
-  TRI_ASSERT(_nrServerThreads <= _nrMaximalThreads);
 }
 
 void SchedulerFeature::start() {
